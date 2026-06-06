@@ -2,21 +2,17 @@ import type { SentryRuntimeState } from '@shared/lib/sentry';
 import type { Provider } from '@shared/lib/proxyService';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const addTechnicalBreadcrumbMock = vi.hoisted(() => vi.fn());
 const createClientMock = vi.hoisted(() => vi.fn());
 const createServiceMock = vi.hoisted(() => vi.fn());
 const setDiagnosticsRuntimeStateMock = vi.hoisted(() => vi.fn());
+const TEST_SESSION_ID = 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb';
 
 describe('sentryWorkerSync', () => {
   beforeEach(() => {
     vi.resetModules();
-    addTechnicalBreadcrumbMock.mockReset();
     createClientMock.mockReset();
     createServiceMock.mockReset();
     setDiagnosticsRuntimeStateMock.mockReset();
-    vi.doMock('@shared/lib/diagnostics', () => ({
-      addTechnicalBreadcrumb: addTechnicalBreadcrumbMock,
-    }));
     vi.doMock('@shared/lib/proxyService', () => ({
       createClient: createClientMock,
       createService: createServiceMock,
@@ -29,7 +25,7 @@ describe('sentryWorkerSync', () => {
     }));
   });
 
-  it('worker applyRuntimeState adds a technical breadcrumb before applying state', async () => {
+  it('worker applyRuntimeState forwards runtime state to the shared runtime', async () => {
     const serviceFactoryHolder: {
       factory?: () => { applyRuntimeState: (state: SentryRuntimeState) => void };
     } = {};
@@ -46,21 +42,12 @@ describe('sentryWorkerSync', () => {
     registerWorkerSentrySyncService(provider);
     serviceFactoryHolder.factory?.().applyRuntimeState({
       reportingState: 'disabled',
-      sessionId: 'session:test',
+      sessionId: TEST_SESSION_ID,
     });
 
-    expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith({
-      category: 'worker.runtime',
-      data: {
-        operation: 'applyRuntimeState',
-        runtime: 'worker',
-      },
-      level: 'warning',
-      message: 'worker reporting state received: disabled',
-    });
     expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
       reportingState: 'disabled',
-      sessionId: 'session:test',
+      sessionId: TEST_SESSION_ID,
     });
   });
 });

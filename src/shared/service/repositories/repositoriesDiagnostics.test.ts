@@ -45,6 +45,7 @@ describe('repositoriesDiagnostics', () => {
       reportWriteAccessReplayStillBlocked({ flushedCount: 2, pendingCount: 3 });
 
       expect(sink).toHaveLength(1);
+      expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
       expect(sink[0]).toMatchObject({
         name: 'writeAccessRecovery.repositoryReplayStillBlocked',
         severity: DiagnosticSeverity.Error,
@@ -78,6 +79,7 @@ describe('repositoriesDiagnostics', () => {
       });
 
       expect(sink).toHaveLength(1);
+      expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
       expect(sink[0]).toMatchObject({
         name: 'writeAccessRecovery.repositoryReplayStorageFailure',
         severity: DiagnosticSeverity.Error,
@@ -236,6 +238,7 @@ describe('repositoriesDiagnostics', () => {
       reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('disk full') });
 
       expect(sink).toHaveLength(1);
+      expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
       expect(sink[0]).toMatchObject({
         name: 'repositoryStorage.saveFailed',
         severity: DiagnosticSeverity.Error,

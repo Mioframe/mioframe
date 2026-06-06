@@ -1,7 +1,6 @@
 import { createClient, createService } from '@shared/lib/proxyService';
 import type { Provider } from '@shared/lib/proxyService';
 import { transformers } from '@shared/lib/wrapWorker/workerTransformerMap';
-import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import { setDiagnosticsRuntimeState } from '@shared/lib/setupSentry';
 import type { SentryRuntimeState } from '@shared/lib/sentry/sentryRuntimeState';
 
@@ -14,15 +13,6 @@ type SentrySyncApi = {
 let syncClient: ReturnType<typeof createClient<SentrySyncApi>> | undefined;
 
 const applyRuntimeState = (state: SentryRuntimeState): void => {
-  addTechnicalBreadcrumb({
-    category: 'worker.runtime',
-    data: {
-      operation: 'applyRuntimeState',
-      runtime: 'worker',
-    },
-    level: state.reportingState === 'disabled' ? 'warning' : 'info',
-    message: `worker reporting state received: ${state.reportingState}`,
-  });
   setDiagnosticsRuntimeState(state);
 };
 

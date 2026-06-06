@@ -49,6 +49,10 @@ Good breadcrumb cases:
 - worker diagnostics state application
 - Sentry runtime initialization success
 
+Breadcrumbs should capture earlier technical milestones that help explain a later failure.
+Do not add a breadcrumb in the same wrapper immediately before emitting a terminal
+diagnostic event when the breadcrumb only repeats the same failure or result.
+
 Do not use breadcrumbs for:
 
 - user clicks, input, navigation, or behavior tracking

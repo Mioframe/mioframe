@@ -85,16 +85,6 @@ export const reportWriteAccessReplayStillBlocked = ({
   flushedCount: number;
   pendingCount: number;
 }): void => {
-  addRepositoryBreadcrumb({
-    failureClassification: 'accessRequired',
-    flushedCount,
-    level: 'warning',
-    message: 'pending save replay remains blocked',
-    operation: 'flushPendingSaves',
-    pendingCount,
-    result: 'blocked',
-  });
-
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -121,22 +111,6 @@ export const reportWriteAccessReplayStorageFailure = ({
 }): void => {
   const safeClassification: RetryingStorageAdapterFailureClassification =
     failureClassification ?? 'unknown';
-  addRepositoryBreadcrumb({
-    classification:
-      safeClassification === 'accessRequired'
-        ? 'access'
-        : safeClassification === 'storageFailure'
-          ? 'storage'
-          : 'unknown',
-    failureClassification: safeClassification,
-    flushedCount,
-    level: 'error',
-    message: 'pending save replay failed',
-    operation: 'flushPendingSaves',
-    pendingCount,
-    result: 'failed',
-  });
-
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
@@ -179,17 +153,6 @@ export const reportRepositorySaveFailed = ({
   caughtError: unknown;
 }): void => {
   const error = sanitizeDiagnosticError(caughtError);
-  addRepositoryBreadcrumb({
-    errorClass: error.errorClass,
-    errorClassification: error.errorClassification,
-    failureClassification: 'storageFailure',
-    level: 'error',
-    message: 'repository save failed',
-    operation: 'repositorySave',
-    pendingCount,
-    result: 'failed',
-  });
-
   reportDiagnosticEvent({
     name: 'repositoryStorage.saveFailed',
     severity: DiagnosticSeverity.Error,
@@ -211,22 +174,6 @@ export const reportRepositoryRemoveFailed = ({ caughtError }: { caughtError: unk
   const classification = classificationFromSanitizedError(error);
   const failureClassification =
     classification === DiagnosticClassification.Access ? 'accessRequired' : 'storageFailure';
-  addRepositoryBreadcrumb({
-    classification:
-      classification === DiagnosticClassification.Access
-        ? 'access'
-        : classification === DiagnosticClassification.Storage
-          ? 'storage'
-          : 'unknown',
-    errorClass: error.errorClass,
-    errorClassification: error.errorClassification,
-    failureClassification,
-    level: 'error',
-    message: 'repository remove failed',
-    operation: 'repositoryRemove',
-    result: 'failed',
-  });
-
   reportDiagnosticEvent({
     name: 'repositoryStorage.removeFailed',
     severity: DiagnosticSeverity.Error,

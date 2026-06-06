@@ -84,6 +84,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
       reportWriteAccessPermissionDenied({ attemptId: TEST_ATTEMPT_ID });
 
       expect(sink).toHaveLength(1);
+      expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
       expect(sink[0]).toMatchObject({
         name: 'writeAccessRecovery.permissionDenied',
         severity: DiagnosticSeverity.Warning,
@@ -142,6 +143,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
       reportWriteAccessProviderFailure({ attemptId: TEST_ATTEMPT_ID, error });
 
       expect(sink).toHaveLength(1);
+      expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
       expect(sink[0]).toMatchObject({
         name: 'writeAccessRecovery.providerFailure',
         severity: DiagnosticSeverity.Error,
@@ -167,6 +169,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
       reportWriteAccessReplayFailure({ attemptId: TEST_ATTEMPT_ID });
 
       expect(sink).toHaveLength(1);
+      expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
       expect(sink[0]).toMatchObject({
         name: 'writeAccessRecovery.grantReplayStillBlocked',
         severity: DiagnosticSeverity.Error,
@@ -228,6 +231,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
       reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });
 
       expect(sink).toHaveLength(1);
+      expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
       expect(sink[0]).toMatchObject({
         name: 'writeAccessRecovery.grantReplayStorageFailure',
         severity: DiagnosticSeverity.Error,

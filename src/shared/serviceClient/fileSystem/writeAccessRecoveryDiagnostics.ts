@@ -153,13 +153,6 @@ export const addWriteAccessPermissionResolvedBreadcrumb = ({
  * @param root0 - Event options (attemptId).
  */
 export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: string }): void => {
-  addWriteAccessBreadcrumb({
-    level: 'warning',
-    message: 'write access denied after prompt',
-    operation: 'resolveAccessRequest',
-    result: 'denied',
-  });
-
   reportWebFsEvent({
     name: 'writeAccessRecovery.permissionDenied',
     severity: DiagnosticSeverity.Warning,
@@ -182,15 +175,6 @@ export const reportWriteAccessProviderFailure = ({
   attemptId: string;
   error: SanitizedDiagnosticError;
 }): void => {
-  addWriteAccessBreadcrumb({
-    errorClass: error.errorClass,
-    errorClassification: error.errorClassification,
-    level: 'error',
-    message: 'write access recovery provider failed',
-    operation: 'requestAccess',
-    result: 'failed',
-  });
-
   reportWebFsEvent({
     name: 'writeAccessRecovery.providerFailure',
     severity: DiagnosticSeverity.Error,
@@ -215,15 +199,6 @@ export const reportWriteAccessReplayFailure = ({
   replay?: BrokerReplaySummary | undefined;
 }): void => {
   const failureClassification = replay?.failureClassification ?? 'unknown';
-  addWriteAccessBreadcrumb({
-    failureClassification,
-    flushedCount: replay?.flushedCount,
-    level: 'warning',
-    message: 'write access grant replay remains blocked',
-    operation: 'resolveAccessRequest',
-    pendingCount: replay?.pendingCount,
-    result: 'blocked',
-  });
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -257,16 +232,6 @@ export const reportWriteAccessStorageFailure = ({
       : replay?.failureClassification === 'unknown'
         ? DiagnosticClassification.Unknown
         : DiagnosticClassification.Storage;
-
-  addWriteAccessBreadcrumb({
-    failureClassification,
-    flushedCount: replay?.flushedCount,
-    level: 'error',
-    message: 'write access grant replay failed',
-    operation: 'resolveAccessRequest',
-    pendingCount: replay?.pendingCount,
-    result: 'failed',
-  });
 
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStorageFailure',

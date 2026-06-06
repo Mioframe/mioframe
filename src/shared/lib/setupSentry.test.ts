@@ -5,6 +5,9 @@ const TestAppRoot = {
   template: '<div />',
 };
 
+const TEST_SESSION_ID = 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb';
+const INITIAL_SESSION_ID = 'session:11111111-2222-4333-8444-555555555555';
+
 const { flushDiagnosticsRuntimeEffectsMock, clearDiagnosticsRuntimeEffectsMock } = vi.hoisted(
   () => ({
     flushDiagnosticsRuntimeEffectsMock: vi.fn(),
@@ -136,7 +139,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     const [firstFacade, secondFacade] = await Promise.all([ensureSentry(app), ensureSentry(app)]);
 
@@ -165,7 +168,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry(app);
 
     expect(setUserMock).toHaveBeenCalledOnce();
@@ -184,7 +187,7 @@ describe('setupSentry', () => {
       enabled: true,
       release: 'abc123sha',
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -200,7 +203,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -219,7 +222,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const messageContext = { tags: { classification: 'unexpected' } };
@@ -281,7 +284,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
     expect(initMock).not.toHaveBeenCalled();
@@ -320,7 +323,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
     await expect(ensureSentry()).resolves.toBe(useSentry());
@@ -400,7 +403,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -456,7 +459,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -487,7 +490,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -525,7 +528,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -555,7 +558,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -593,7 +596,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -632,7 +635,7 @@ describe('setupSentry', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -659,7 +662,7 @@ describe('setupSentry', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -683,7 +686,7 @@ describe('setupSentry', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -735,7 +738,7 @@ describe('setupSentry', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -762,7 +765,7 @@ describe('setupSentry', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -798,7 +801,7 @@ describe('setupSentry', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -830,7 +833,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -880,7 +883,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setDiagnosticsRuntimeState({ reportingState: 'unknown', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'unknown', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -904,7 +907,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setDiagnosticsRuntimeState({ reportingState: 'disabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'disabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -928,7 +931,7 @@ describe('setupSentry', () => {
         dsn: 'https://example@sentry.io/123',
         enabled: true,
       });
-      setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+      setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
       await ensureSentry();
 
       const initOptions = initMock.mock.calls[0]?.[0];
@@ -1087,7 +1090,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -1124,7 +1127,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -1153,7 +1156,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     await ensureSentry();
 
@@ -1194,7 +1197,7 @@ describe('setupSentry', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -1243,7 +1246,7 @@ describe('setupSentry', () => {
         dsn: 'https://example@sentry.io/123',
         enabled: true,
       });
-      setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+      setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
       await ensureSentry();
 
       const initOptions = initMock.mock.calls[0]?.[0];
@@ -1407,7 +1410,7 @@ describe('unified diagnostics runtime', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -1424,7 +1427,7 @@ describe('unified diagnostics runtime', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
     await ensureSentry(createApp(TestAppRoot));
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -1462,7 +1465,7 @@ describe('unified diagnostics runtime', () => {
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:init' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: INITIAL_SESSION_ID });
     await ensureSentry(); // SDK loaded at this point
 
     setUserMock.mockClear();
@@ -1489,7 +1492,7 @@ describe('unified diagnostics runtime', () => {
     } = await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:init' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: INITIAL_SESSION_ID });
     await ensureSentry();
 
     setUserMock.mockClear();
@@ -1514,7 +1517,7 @@ describe('unified diagnostics runtime', () => {
     } = await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:init' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: INITIAL_SESSION_ID });
     await ensureSentry();
 
     setUserMock.mockClear();
@@ -1564,7 +1567,7 @@ describe('unified diagnostics runtime', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
 
     const facade = await ensureSentry();
 
