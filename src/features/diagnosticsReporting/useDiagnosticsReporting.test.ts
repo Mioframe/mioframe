@@ -13,6 +13,8 @@ const activeScopes: EffectScope[] = [];
 let sentryConfigured = true;
 const ensureSentryMock = vi.fn();
 const setSentryReportingStateMock = vi.fn();
+const getSentryReportingStateMock = vi.fn(() => 'unknown' as const);
+const syncSentryStateToWorkerMock = vi.fn();
 const flushQueuedHandledReportsMock = vi.fn();
 const clearQueuedHandledReportsMock = vi.fn();
 const flushQueuedDiagnosticEventsMock = vi.fn();
@@ -40,6 +42,15 @@ vi.mock('@shared/lib/setupSentry', () => ({
   ensureSentry: ensureSentryMock,
   isSentryConfigured: () => sentryConfigured,
   setSentryReportingState: setSentryReportingStateMock,
+  getSentryReportingState: getSentryReportingStateMock,
+}));
+
+vi.mock('@shared/lib/sentry', () => ({
+  getOrCreateSentrySessionId: () => 'session:test-id',
+}));
+
+vi.mock('@shared/service/sentryWorkerSync', () => ({
+  syncSentryStateToWorker: syncSentryStateToWorkerMock,
 }));
 
 vi.mock('@shared/lib/reportHandledError', () => ({
@@ -64,6 +75,9 @@ describe('useDiagnosticsReporting', () => {
     ensureSentryMock.mockReset();
     ensureSentryMock.mockResolvedValue(undefined);
     setSentryReportingStateMock.mockReset();
+    getSentryReportingStateMock.mockReset();
+    getSentryReportingStateMock.mockReturnValue('unknown');
+    syncSentryStateToWorkerMock.mockReset();
     flushQueuedHandledReportsMock.mockReset();
     clearQueuedHandledReportsMock.mockReset();
     flushQueuedDiagnosticEventsMock.mockReset();

@@ -12,7 +12,9 @@ import {
   reportWriteAccessReplayStorageFailure,
   reportRepositorySaveQueued,
   reportRepositorySaveFailed,
+  reportRepositoryDeleteCleanupFailed,
 } from './repositoriesDiagnostics';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   concat,
@@ -295,9 +297,23 @@ const setupRepositoriesService = () => {
 
     const repo = await getRepo(path);
 
+    // repo.delete is fire-and-forget — Automerge calls adapter.removeRange internally.
+    // Failures surface in cleanupDeletedDocumentStorageFiles below.
     repo?.delete(id);
 
-    await cleanupDeletedDocumentStorageFiles(vfs, path, id);
+    try {
+      await cleanupDeletedDocumentStorageFiles(vfs, path, id);
+    } catch (error) {
+      reportRepositoryDeleteCleanupFailed({ caughtError: error });
+
+      if (error instanceof Error) {
+        captureDiagnosticException(error, {
+          operation: 'repositoryDeleteCleanup',
+        });
+      }
+
+      throw error;
+    }
   };
 
   const createDocument = async (path: string, initialValue: CFRDocumentContent) => {

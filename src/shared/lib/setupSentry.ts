@@ -1,88 +1,20 @@
 import type { App, Plugin } from 'vue';
 import type { Scope as SentryScope } from '@sentry/vue';
+import type { SentryReportingState } from './sentry/sentryRuntimeState';
+import {
+  createSentryOptions,
+  getOrCreateSentrySessionId,
+  SAFE_EVENT_TAG_KEYS,
+  pickEventTags,
+  pickSafeEventExtras,
+  sanitizeContexts,
+  sanitizeUser,
+} from './sentry';
 
-// Numeric extras: must be a finite number (counters from DiagnosticCounters).
-const SAFE_NUMERIC_EXTRA_KEYS = ['pendingCount', 'failedCount', 'flushedCount'] as const;
-// String extras: must be a string within the length cap (error summary, correlation, user message).
-const SAFE_STRING_EXTRA_KEYS = [
-  'userMessage',
-  'domainErrorCode',
-  'originalThrownType',
-  'errorClass',
-  'domExceptionName',
-  'vfsErrorCode',
-  'errorClassification',
-  'attemptId',
-] as const;
-const SAFE_EXTRA_STRING_MAX_LENGTH = 200;
+export type { SentryReportingState };
 
-const SAFE_EVENT_TAG_KEYS = [
-  'handled',
-  'feature',
-  'action',
-  // Structured diagnostic event fields — project-controlled enum values only.
-  'eventKind',
-  'severity',
-  'result',
-  'classification',
-  // Flow-specific safe tags from diagnostic wrappers — project-controlled values only.
-  // New safe tag keys must also be added here and covered by beforeSend tests.
-  'provider',
-  'operation',
-  'failureClassification',
-] as const;
-type SentryTagValue = boolean | number | string | null | undefined;
-
-const pickSafeEventExtras = (
-  source: Record<string, unknown> | undefined,
-): Record<string, unknown> => {
-  const result: Record<string, unknown> = {};
-
-  if (!source) {
-    return result;
-  }
-
-  for (const key of SAFE_NUMERIC_EXTRA_KEYS) {
-    const value = source[key];
-    if (typeof value === 'number' && isFinite(value)) {
-      result[key] = value;
-    }
-  }
-
-  for (const key of SAFE_STRING_EXTRA_KEYS) {
-    const value = source[key];
-    if (typeof value === 'string' && value.length <= SAFE_EXTRA_STRING_MAX_LENGTH) {
-      result[key] = value;
-    }
-  }
-
-  return result;
-};
-
-const isSentryTagValue = (value: unknown): value is SentryTagValue =>
-  value === null ||
-  value === undefined ||
-  typeof value === 'boolean' ||
-  typeof value === 'number' ||
-  typeof value === 'string';
-
-const pickEventTags = (source: Record<string, unknown> | undefined, keys: readonly string[]) => {
-  const result: Record<string, SentryTagValue> = {};
-
-  if (!source) {
-    return result;
-  }
-
-  for (const key of keys) {
-    const value = source[key];
-
-    if (value !== undefined && isSentryTagValue(value)) {
-      result[key] = value;
-    }
-  }
-
-  return result;
-};
+// Re-export for consumers that still use the old import path during migration.
+export { SAFE_EVENT_TAG_KEYS, pickEventTags, pickSafeEventExtras, sanitizeContexts, sanitizeUser };
 
 /**
  * Runtime configuration for the optional Sentry integration.
@@ -92,6 +24,8 @@ export type SentryConfig = {
   dsn?: string;
   /** Whether runtime configuration allows lazy Sentry initialization. */
   enabled?: boolean;
+  /** Release string matched to uploaded source map artifacts. */
+  release?: string | undefined;
 };
 
 type SentryModule = typeof import('@sentry/vue');
@@ -144,13 +78,6 @@ let loadedSentryModule: SentryModule | undefined;
 let runtimeConfig: SentryConfig | undefined;
 let initPromise: Promise<SentryFacade> | undefined;
 let appRef: App | undefined;
-/**
- * Tracks whether Sentry event delivery is allowed.
- * `unknown` means local settings have not been hydrated yet, so the user's
- * diagnostics preference is still unknown. Errors that arrive while in this
- * state are queued and flushed once the state transitions to `enabled`.
- */
-export type SentryReportingState = 'unknown' | 'enabled' | 'disabled';
 
 let reportingState: SentryReportingState = 'unknown';
 let warnedMissingConfig = false;
@@ -187,7 +114,6 @@ const canInitializeSentry = (config: SentryConfig | undefined) =>
 
 /**
  * Returns whether the runtime configuration is valid for lazy Sentry initialization.
- * This only reflects registered config and does not imply delivery is currently allowed.
  * @returns Whether Sentry has valid runtime config.
  */
 export const isSentryConfigured = () => canInitializeSentry(runtimeConfig);
@@ -201,8 +127,6 @@ export const getSentryReportingState = () => reportingState;
 
 /**
  * Sets the Sentry reporting state at runtime.
- * Use `'enabled'` when the user opts in to diagnostics, `'disabled'` when
- * they opt out, and `'unknown'` before local settings are hydrated.
  * @param state - The reporting state to set.
  */
 export const setSentryReportingState = (state: SentryReportingState) => {
@@ -211,14 +135,12 @@ export const setSentryReportingState = (state: SentryReportingState) => {
 
 /**
  * Returns whether runtime delivery to Sentry is currently allowed.
- * This gate is independent from SDK initialization and can be toggled without importing Sentry.
  * @returns Whether Sentry event delivery is enabled right now.
  */
 export const isSentryReportingEnabled = () => reportingState === 'enabled';
 
 /**
  * Enables or disables Sentry event delivery at runtime.
- * Initialization still remains lazy and requires valid runtime config.
  * @param enabled - Whether Sentry should be allowed to send reports.
  */
 export const setSentryReportingEnabled = (enabled: boolean) => {
@@ -300,8 +222,8 @@ export const registerSentryConfig = (config: SentryConfig) => {
 
 /**
  * Lazily imports and initializes `@sentry/vue` once.
- * If configuration is missing, the returned facade stays in no-op mode. When
- * an app instance is provided, it is cached and passed to `Sentry.init`.
+ * Sets the session-scoped user identity after initialization.
+ * If configuration is missing, the returned facade stays in no-op mode.
  * @param app - Optional Vue app instance used for Vue-specific Sentry wiring.
  * @returns The stable Sentry facade, backed by the real SDK after initialization.
  */
@@ -327,34 +249,19 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       return sentryFacade;
     }
 
-    sentry.init({
+    const options = createSentryOptions({
       dsn,
-      ...(appRef ? { app: appRef } : {}),
-      tracesSampleRate: 0,
-      beforeSend: (event) => {
-        if (getSentryReportingState() !== 'enabled') {
-          return null;
-        }
-
-        const {
-          breadcrumbs: _breadcrumbs,
-          contexts: _contexts,
-          extra,
-          request: _request,
-          tags,
-          user: _user,
-          ...safeEvent
-        } = event;
-        const safeTags = pickEventTags(tags, SAFE_EVENT_TAG_KEYS);
-        const safeExtra = pickSafeEventExtras(extra);
-
-        return {
-          ...safeEvent,
-          ...(Object.keys(safeExtra).length > 0 ? { extra: safeExtra } : {}),
-          ...(Object.keys(safeTags).length > 0 ? { tags: safeTags } : {}),
-        };
-      },
+      release: config.release,
+      getReportingState: getSentryReportingState,
     });
+
+    sentry.init({
+      ...options,
+      ...(appRef ? { app: appRef } : {}),
+    });
+
+    // Set session-scoped user identity on the main thread.
+    sentry.setUser({ id: getOrCreateSentrySessionId() });
 
     loadedSentryModule = sentry;
 
@@ -373,10 +280,7 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
 
 /**
  * Compatibility wrapper that registers runtime config and initializes Sentry
- * for a Vue app.
- * Prefer `sentryPlugin` for app bootstrap, but keep this helper available for
- * call sites that still want an explicit setup function. This compatibility API
- * preserves the legacy behavior where an explicit setup call enables delivery.
+ * for a Vue app. Prefer `sentryPlugin` for app bootstrap.
  * @param app - Vue app instance used during Sentry initialization.
  * @param dsn - Sentry DSN to register before lazy initialization.
  * @returns The stable Sentry facade.

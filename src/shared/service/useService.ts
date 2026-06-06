@@ -1,6 +1,6 @@
 import { defineWorkerClient } from '@shared/lib/wrapWorker';
 import { setupMainService, serviceId } from './setupMainService';
-import { registerMainThreadDiagnosticsService } from './diagnosticsService';
+import { initSentryWorkerBridge } from './sentryWorkerSync';
 import Worker from './serviceWorker.ts?worker';
 
 let worker: Worker | undefined;
@@ -8,7 +8,7 @@ let worker: Worker | undefined;
 const getWorker = () => {
   if (!worker) {
     worker = new Worker();
-    registerMainThreadDiagnosticsService(worker);
+    initSentryWorkerBridge(worker);
   }
   return worker;
 };

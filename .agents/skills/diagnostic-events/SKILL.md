@@ -1,28 +1,47 @@
 ---
 name: diagnostic-events
-description: 'Use this skill when adding, reviewing, or testing structured diagnostic events via reportDiagnosticEvent. Covers: two-layer model, when to emit events, generic event contract, enum selection, wrapper creation, sanitizeDiagnosticError, test sink usage, reporting layer policy, and privacy rules. Applies to writeAccessRecovery flows, save-replay failures, access-recovery flows, and any future instrumented operation.'
+description: 'Use this skill when adding, reviewing, or testing structured diagnostic events via reportDiagnosticEvent, captureDiagnosticException, or reportHandledError. Covers: two-layer model, when to emit events, generic event contract, enum selection, wrapper creation, sanitizeDiagnosticError, test sink usage, reporting layer policy, and privacy rules. Applies to writeAccessRecovery flows, save-replay failures, access-recovery flows, repository storage failures, and any future instrumented operation.'
 ---
 
 # Diagnostic events skill
 
-Use this skill before adding, reviewing, or testing any `reportDiagnosticEvent` call, new wrapper module, enum value, or `sanitizeDiagnosticError` usage.
+Use this skill before adding, reviewing, or testing any `reportDiagnosticEvent` call, `captureDiagnosticException` call, new wrapper module, enum value, or `sanitizeDiagnosticError` usage.
 
 ## Activation check
 
 Use this skill when:
 
-- Adding a new `reportDiagnosticEvent(...)` call or wrapper function.
+- Adding a new `reportDiagnosticEvent(...)` or `captureDiagnosticException(...)` call or wrapper function.
 - Reviewing existing diagnostic event coverage.
 - Adding test coverage for a flow that emits a diagnostic event.
-- Deciding whether `reportHandledError` or `reportDiagnosticEvent` is the right call.
+- Deciding whether `reportHandledError`, `reportDiagnosticEvent`, or `captureDiagnosticException` is the right call.
 - Checking which layer is allowed to emit diagnostic events.
 - Creating a new flow-specific diagnostics module.
+- Adding enum values to `diagnosticEnums.ts`.
+
+## Key rule: which API to use
+
+| Situation                                                   | Correct API                  |
+| ----------------------------------------------------------- | ---------------------------- |
+| Structured async/status/recovery observation (no Error)     | `reportDiagnosticEvent`      |
+| Caught Error where stack trace helps diagnosis              | `captureDiagnosticException` |
+| Unexpected exception (programmer error or external failure) | `reportHandledError`         |
+| Access recovery flow outcome                                | `reportDiagnosticEvent`      |
+| Save-replay result                                          | `reportDiagnosticEvent`      |
+| Storage/VFS failure at service boundary                     | both — event + exception     |
+
+`reportHandledError` accepts only `{ feature, action }` — there is no generic `metadata` field. Do not add it.
+
+`reportDiagnosticEvent` uses `captureMessage`. `captureDiagnosticException` uses `captureException`. Use both together at storage/VFS failure sites: the event for structured state, the exception for the stack trace.
+
+Never import `@sentry/vue` directly in product code. Use project wrappers.
 
 ## Two-layer model
 
 **Generic core** (`src/shared/lib/diagnostics`):
 
 - `reportDiagnosticEvent`, queue, flush, Sentry transport;
+- `captureDiagnosticException` — thin wrapper for `captureException` with safe `diagnostic` context;
 - `sanitizeDiagnosticError`;
 - `setDiagnosticEventSink`;
 - generic enums: `DiagnosticSeverity`, `DiagnosticResult`, `DiagnosticClassification`;
@@ -30,35 +49,18 @@ Use this skill when:
 
 **Flow-specific wrappers** (next to the flow):
 
-- `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts` — current example.
+- `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts` — write-access recovery flow.
+- `src/shared/service/repositories/repositoriesDiagnostics.ts` — repository save/remove/cleanup flow.
 
-**Rule**: Do NOT add flow-specific feature/operation/stage/provider enum values to the shared core. Create a local `*Diagnostics.ts` module near the flow instead. The wrapper calls `reportDiagnosticEvent` internally and exposes short named functions.
+**Rule**: Do NOT add flow-specific feature/operation/stage/provider enum values to the shared core. Create a local `*Diagnostics.ts` module near the flow instead. The wrapper calls `reportDiagnosticEvent` and/or `captureDiagnosticException` internally and exposes short named functions.
 
-## setDiagnosticEventForwarder — worker bootstrap only
+## Worker diagnostics
 
-`setDiagnosticEventForwarder` is the mechanism worker contexts use to relay diagnostic events to the main-thread Sentry reporter via the proxyService diagnostics channel. It is **not** a general-purpose API.
+Both main thread and worker each initialize their own Sentry SDK instance. There is no event-forwarding channel from worker to main. Dynamic runtime state (session ID + reporting state) is synced from main to worker via `sentryWorkerSync`.
 
-Allowed only in worker or service bootstrap code — see `setupWorkerDiagnosticsForwarder` in `src/shared/service/diagnosticsService.ts`.
+Worker diagnostic events are delivered directly by the worker's own Sentry instance. The worker Sentry starts with reporting state `unknown` and queues events until the first sync from main.
 
-Must **not** be called from:
-
-- main-thread product code;
-- UI layers (`pages`, `widgets`, `features`, `entities`);
-- low-level adapters or VFS providers;
-- flow-specific `*Diagnostics.ts` wrapper functions.
-
-Normal diagnostics code must call `reportDiagnosticEvent` instead.
-
-## Key rule: which API to use
-
-| Situation                                                   | Correct API             |
-| ----------------------------------------------------------- | ----------------------- |
-| Unexpected exception (programmer error or external failure) | `reportHandledError`    |
-| Structured async/status/recovery observation                | `reportDiagnosticEvent` |
-| Access recovery flow outcome                                | `reportDiagnosticEvent` |
-| Save-replay result                                          | `reportDiagnosticEvent` |
-
-`reportHandledError` accepts only `{ feature, action }` — there is no generic `metadata` field. Do not add it.
+There is no `setDiagnosticEventForwarder` API — it was removed. Do not reference `diagnosticsService.ts` — it was deleted. All product code calls `reportDiagnosticEvent` or `captureDiagnosticException` directly.
 
 ## String enums — use PascalCase members
 
@@ -93,6 +95,33 @@ interface DiagnosticEvent {
 
 The `name` field replaces the old `feature/operation/stage` triplet. Flow-specific context goes in `safeTags`.
 
+## captureDiagnosticException contract
+
+```ts
+captureDiagnosticException(
+  error: Error,
+  context: DiagnosticExceptionContext,
+  scopeTags?: Record<string, string>
+): void
+```
+
+`DiagnosticExceptionContext` allows only these fields (all optional):
+
+```ts
+{
+  operation?: string;
+  errorClass?: string;
+  domExceptionName?: string;
+  vfsErrorCode?: string;
+  domainErrorCode?: string;
+  errorClassification?: string;
+  failureClassification?: string;
+  runtime?: string;
+}
+```
+
+Context is set as the `diagnostic` Sentry context key and sanitized by `beforeSend`. Never pass paths, document ids, file names, storage keys, or raw error messages in `context`.
+
 ## Creating a flow-specific wrapper
 
 1. Create `src/shared/<area>/<flow>Diagnostics.ts` next to the flow.
@@ -100,7 +129,7 @@ The `name` field replaces the old `feature/operation/stage` triplet. Flow-specif
 3. Expose short named functions, e.g. `reportFlowNameFailure({ attemptId, error })`.
 4. Map flow outcomes to generic `DiagnosticResult` and `DiagnosticClassification`.
 5. Add `safeTags` with project-controlled values for flow context (provider, operation, etc.).
-6. **For any new `safeTags` key used:** also add that key to `SAFE_EVENT_TAG_KEYS` in `src/shared/lib/setupSentry.ts` and add a `beforeSend` survival test in `setupSentry.test.ts`. Tags not in the whitelist are silently dropped by Sentry's `beforeSend`.
+6. **For any new `safeTags` key used:** also add that key to `SAFE_EVENT_TAG_KEYS` in `src/shared/lib/sentry/sanitizeSentryEvent.ts` and add a `beforeSend` survival test. Tags not in the whitelist are silently dropped by Sentry's `beforeSend`.
 7. Add a sibling `<flow>Diagnostics.test.ts` with full coverage.
 
 ## Dedupe/rate-limit
@@ -110,7 +139,7 @@ The `name` field replaces the old `feature/operation/stage` triplet. Flow-specif
 - `attemptId` is excluded from the dedupe key — loop failures with different attempt IDs are still correctly deduplicated.
 - The memory sink (`setDiagnosticEventSink`) receives every event regardless of dedupe state.
 - Dedupe is session-local and in-memory; it resets on page reload.
-- Emit diagnostic events only at terminal/abnormal states, not as progress logs. The dedupe window protects against retry loops but is not a substitute for emitting at the right moment.
+- Emit diagnostic events only at terminal/abnormal states, not as progress logs.
 
 Example (from write-access recovery wrapper):
 
@@ -127,14 +156,44 @@ export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: st
 };
 ```
 
+Example (from repositories wrapper — combined event + exception):
+
+```ts
+export const reportRepositoryDeleteCleanupFailed = ({
+  caughtError,
+}: {
+  caughtError: unknown;
+}): void => {
+  reportDiagnosticEvent({
+    name: 'repositoryStorage.deleteCleanupFailed',
+    severity: DiagnosticSeverity.Error,
+    result: DiagnosticResult.Failed,
+    classification: DiagnosticClassification.Storage,
+    error: sanitizeDiagnosticError(caughtError),
+    safeTags: CLEANUP_TAGS,
+  });
+};
+
+// At call site:
+try {
+  await cleanupDeletedDocumentStorageFiles(vfs, path, id);
+} catch (error) {
+  reportRepositoryDeleteCleanupFailed({ caughtError: error });
+  if (error instanceof Error) {
+    captureDiagnosticException(error, { operation: 'repositoryDeleteCleanup' });
+  }
+  throw error;
+}
+```
+
 ## Allowed reporting layers
 
-Only these layers may call `reportDiagnosticEvent` (always through wrappers when one exists):
+Only these layers may call `reportDiagnosticEvent` or `captureDiagnosticException` (always through wrappers when one exists):
 
 - `src/shared/service/**` — at service boundary after recovery/flush results are known.
 - `src/shared/serviceClient/**` — main-thread broker boundary, through flow-specific wrappers.
 
-The following layers must never call `reportDiagnosticEvent` or Sentry directly:
+The following layers must never call `reportDiagnosticEvent`, `captureDiagnosticException`, or Sentry directly:
 
 - `src/shared/lib/**` adapters and providers — return structured results instead.
 - `src/entities/**`, `src/features/**`, `src/widgets/**`, `src/pages/**`.
@@ -150,6 +209,7 @@ Emit a diagnostic event for:
 - Replay failures after a grant (`grantedWithReplayFailures`).
 - Failed flush with non-zero pending count.
 - Unexpected provider errors caught at the outer boundary (use `sanitizeDiagnosticError`).
+- Repository storage remove or cleanup failures.
 
 Do NOT emit for:
 
@@ -169,6 +229,7 @@ Before submitting a diagnostic event call, verify:
 6. `safeTags` values are project-controlled strings — no paths, ids, names, URLs, or user data.
 7. `attemptId` is set to `crypto.randomUUID()` generated at the start of the operation — never derived from user data.
 8. No path, file name, document name, document id, storage key, URL, raw external message, or bytes appear anywhere.
+9. For `captureDiagnosticException` context: only allowed `DiagnosticExceptionContext` fields, no path/id/name/key.
 
 ## sanitizeDiagnosticError usage
 
@@ -194,14 +255,15 @@ Never pass `error.message` from browser APIs, storage, network, VFS, Automerge, 
 
 ## Consent lifecycle
 
-`useDiagnosticsReporting` manages both the handled-error queue and the diagnostic event queue:
+`useDiagnosticsReporting` manages both the handled-error queue and the diagnostic event queue, and syncs runtime state to the worker:
 
-- When reporting becomes **enabled**: calls `flushQueuedDiagnosticEvents()` after `flushQueuedHandledReports()`.
-- When reporting becomes **disabled** or Sentry is not configured: calls `clearQueuedDiagnosticEvents()`.
+- When reporting becomes **enabled**: sets state to `enabled`, syncs session ID + state to worker via `syncSentryStateToWorker`, then flushes both queues.
+- When reporting becomes **disabled** or Sentry is not configured: sets state to `disabled`, syncs to worker, clears both queues.
+- State `unknown`: also synced to worker so the worker holds events during the `unknown` period.
 
 The diagnostic queue flush is fire-and-forget and never produces unhandled promise rejections.
 
-## Test pattern
+## Test pattern — diagnostic events
 
 Use the in-memory sink — do not mock Sentry:
 
@@ -236,16 +298,38 @@ expect(JSON.stringify(sink[0])).not.toContain('/user/path');
 expect(JSON.stringify(sink[0])).not.toContain('Work');
 ```
 
+## Test pattern — captureDiagnosticException
+
+Mock the Sentry facade; assert the safe context:
+
+```ts
+import * as sentrySetup from '@shared/lib/setupSentry';
+
+vi.spyOn(sentrySetup, 'useSentry').mockReturnValue({
+  withScope: vi.fn((cb) => cb(mockScope)),
+} as unknown as ReturnType<typeof sentrySetup.useSentry>);
+
+// Assert:
+expect(mockScope.setContext).toHaveBeenCalledWith('diagnostic', {
+  operation: 'repositoryDeleteCleanup',
+});
+expect(mockScope.captureException).toHaveBeenCalledWith(theError);
+// Privacy:
+const ctx = mockScope.setContext.mock.calls[0][1];
+expect(JSON.stringify(ctx)).not.toContain('/');
+expect(JSON.stringify(ctx)).not.toContain('doc-');
+```
+
 ## Reference files
 
 - Generic core: `src/shared/lib/diagnostics/`
 - Core implementation: `src/shared/lib/diagnostics/reportDiagnosticEvent.ts`
+- Exception wrapper: `src/shared/lib/diagnostics/captureDiagnosticException.ts`
 - Core tests: `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts`, `sanitizeDiagnosticError.test.ts`
-- Worker-to-main-thread forwarder: `src/shared/service/diagnosticsService.ts`
-- Forwarder tests: `src/shared/service/diagnosticsService.test.ts`
+- Sentry shared lib: `src/shared/lib/sentry/` — `sanitizeSentryEvent.ts`, `createSentryOptions.ts`, `sentrySession.ts`, `setupWorkerSentry.ts`
+- Worker state sync: `src/shared/service/sentryWorkerSync.ts`
+- Main Sentry facade: `src/shared/lib/setupSentry.ts`
 - Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`
-- Wrapper tests: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.test.ts`
-- Broker call sites: `src/shared/serviceClient/fileSystem/useFileSystemAccessPermissionBroker.ts`
-- Service boundary calls: `src/shared/service/repositories/repositoriesService.ts`, `src/shared/service/repositories/repositoriesDiagnostics.ts`
-- Sentry privacy boundary: `src/shared/lib/setupSentry.ts`
+- Repository save/remove/cleanup wrapper: `src/shared/service/repositories/repositoriesDiagnostics.ts`
+- Consent lifecycle: `src/features/diagnosticsReporting/useDiagnosticsReporting.ts`
 - Policy doc: `docs/diagnostics.md`

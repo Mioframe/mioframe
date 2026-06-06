@@ -176,6 +176,58 @@ describe('setupSentry', () => {
     expect(initOptions.beforeSend).toEqual(expect.any(Function));
   });
 
+  it('calls setUser with session-prefixed id after initialization', async () => {
+    const { setUserMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+    const app = createApp(TestAppRoot);
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+    await ensureSentry(app);
+
+    expect(setUserMock).toHaveBeenCalledOnce();
+    const userArg = setUserMock.mock.calls[0]?.[0];
+    expect(typeof userArg?.id).toBe('string');
+    expect(userArg?.id).toMatch(/^session:/);
+  });
+
+  it('passes release from config to Sentry init', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+      release: 'abc123sha',
+    });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    expect(initOptions?.release).toBe('abc123sha');
+  });
+
+  it('omits release from init when not provided in config', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    expect(initOptions).not.toHaveProperty('release');
+  });
+
   it('delegates proxied SDK calls after initialization, including non-curated methods', async () => {
     const { captureMessageMock, setUserMock, flushMock, startInactiveSpanMock } =
       setupSentryMocks();
@@ -572,7 +624,7 @@ describe('setupSentry', () => {
     }
   });
 
-  it('beforeSend removes request, contexts, breadcrumbs, and user entirely', async () => {
+  it('beforeSend removes request, breadcrumbs, unknown contexts, and non-session user', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
       await import('./setupSentry');
@@ -590,6 +642,7 @@ describe('setupSentry', () => {
     const event = {
       breadcrumbs: [{ message: 'user breadcrumb' }],
       contexts: {
+        // 'browser' is not a whitelisted context name — stripped
         browser: {
           name: 'Chrome',
         },
@@ -600,6 +653,7 @@ describe('setupSentry', () => {
         url: 'https://app.example/doc/secret-id',
       },
       user: {
+        // 'user-1' is not a session-prefixed ID — stripped
         id: 'user-1',
       },
     };
@@ -609,6 +663,197 @@ describe('setupSentry', () => {
       expect(beforeSend(event)).toEqual({
         message: 'test-event',
       });
+    }
+  });
+
+  it('beforeSend keeps session-prefixed user.id and strips all other user fields', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(
+        beforeSend({
+          message: 'test',
+          user: { id: 'session:abc-123', email: 'user@example.com', username: 'user' },
+        }),
+      ).toEqual({ message: 'test', user: { id: 'session:abc-123' } });
+    }
+  });
+
+  it('beforeSend strips user when id is not session-prefixed', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(
+        beforeSend({ message: 'test', user: { id: 'install-abc', email: 'user@example.com' } }),
+      ).toEqual({ message: 'test' });
+
+      expect(beforeSend({ message: 'test', user: { email: 'user@example.com' } })).toEqual({
+        message: 'test',
+      });
+    }
+  });
+
+  it('beforeSend keeps whitelisted context names with safe fields', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(
+        beforeSend({
+          message: 'test',
+          contexts: {
+            diagnostic: {
+              operation: 'repositorySave',
+              errorClass: 'DOMException',
+              domExceptionName: 'NotAllowedError',
+              errorClassification: 'accessDenied',
+              // Forbidden field — stripped
+              path: '/user/private/doc',
+            },
+            storage: {
+              provider: 'webFileSystem',
+              failureClassification: 'storageFailure',
+              pendingCount: 3,
+            },
+          },
+        }),
+      ).toEqual({
+        message: 'test',
+        contexts: {
+          diagnostic: {
+            operation: 'repositorySave',
+            errorClass: 'DOMException',
+            domExceptionName: 'NotAllowedError',
+            errorClassification: 'accessDenied',
+          },
+          storage: {
+            provider: 'webFileSystem',
+            failureClassification: 'storageFailure',
+            pendingCount: 3,
+          },
+        },
+      });
+    }
+  });
+
+  it('beforeSend strips unknown context names', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(
+        beforeSend({
+          message: 'test',
+          contexts: {
+            browser: { name: 'Chrome' },
+            runtime: { name: 'node' },
+            trace: { trace_id: 'abc' },
+          },
+        }),
+      ).toEqual({ message: 'test' });
+    }
+  });
+
+  it('beforeSend strips forbidden fields from whitelisted contexts', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(
+        beforeSend({
+          message: 'test',
+          contexts: {
+            diagnostic: {
+              // safe fields
+              errorClass: 'DOMException',
+              // forbidden fields — stripped
+              path: '/private/doc',
+              documentId: 'abc-123',
+              storageKey: 'opfs://key',
+              rawMessage: 'some error text',
+            },
+          },
+        }),
+      ).toEqual({
+        message: 'test',
+        contexts: { diagnostic: { errorClass: 'DOMException' } },
+      });
+    }
+  });
+
+  it('beforeSend drops whitelisted context that becomes empty after field sanitization', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(
+        beforeSend({
+          message: 'test',
+          contexts: {
+            diagnostic: {
+              // all forbidden — context becomes empty → dropped
+              path: '/private',
+              documentId: 'abc',
+            },
+          },
+        }),
+      ).toEqual({ message: 'test' });
     }
   });
 

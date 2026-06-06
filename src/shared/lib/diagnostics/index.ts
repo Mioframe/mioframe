@@ -9,7 +9,8 @@ export {
   clearQueuedDiagnosticEvents,
   flushQueuedDiagnosticEvents,
   reportDiagnosticEvent,
-  setDiagnosticEventForwarder,
   setDiagnosticEventSink,
 } from './reportDiagnosticEvent';
 export { sanitizeDiagnosticError } from './sanitizeDiagnosticError';
+export { captureDiagnosticException } from './captureDiagnosticException';
+export type { DiagnosticExceptionContext } from './captureDiagnosticException';

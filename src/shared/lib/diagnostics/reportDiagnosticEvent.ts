@@ -45,7 +45,6 @@ const isRecentDuplicate = (key: string): boolean => {
 };
 let flushPromise: Promise<void> | undefined;
 let memorySink: DiagnosticEvent[] | undefined;
-let eventForwarder: ((event: DiagnosticEvent) => void) | undefined;
 
 /**
  * Sets an in-memory sink that receives every `reportDiagnosticEvent` call.
@@ -56,29 +55,6 @@ let eventForwarder: ((event: DiagnosticEvent) => void) | undefined;
  */
 export const setDiagnosticEventSink = (sink: DiagnosticEvent[] | undefined): void => {
   memorySink = sink;
-};
-
-/**
- * Registers a fire-and-forget forwarder for diagnostic events.
- *
- * When set, `reportDiagnosticEvent` forwards every event to the forwarder and skips the
- * local Sentry delivery path. This is the mechanism worker contexts use to relay events
- * to the main-thread diagnostics reporter, which owns Sentry delivery.
- *
- * **Worker bootstrap only.** Must be called once at the worker entry point before any
- * diagnostic calls are made. Must not be called from:
- * - main-thread product code;
- * - UI layers (pages, widgets, features, entities);
- * - low-level adapters or VFS providers;
- * - flow-specific diagnostics wrappers (call `reportDiagnosticEvent` instead).
- *
- * Pass `undefined` to remove the forwarder and restore local Sentry delivery.
- * @param forwarder - The function to receive forwarded events, or `undefined` to clear it.
- */
-export const setDiagnosticEventForwarder = (
-  forwarder: ((event: DiagnosticEvent) => void) | undefined,
-): void => {
-  eventForwarder = forwarder;
 };
 
 /**
@@ -208,12 +184,8 @@ const doFlush = (isAutoRetry: boolean): void => {
       flushPromise = undefined;
       if (!isSentryConfigured() || getSentryReportingState() !== 'enabled') return;
       if (pendingRetry) {
-        // A new event arrived during this flush — start one more cycle.
         doFlush(true);
       } else if (!isAutoRetry && diagnosticQueue.length > 0) {
-        // First retry after a failed flush with remaining items (e.g. ensureSentry rejection).
-        // Prevents a tight infinite loop: a second auto-retry only runs if a new event
-        // sets pendingRetry during this retry cycle.
         doFlush(true);
       }
     });
@@ -222,10 +194,7 @@ const doFlush = (isAutoRetry: boolean): void => {
 /**
  * Flushes queued diagnostic events when reporting is currently allowed.
  * Fire-and-forget: never throws into product code and never creates unhandled promise rejections.
- * Parallel flush cycles are collapsed into the active in-flight run. If a new event is added
- * while a flush is running, `pendingRetry` is set so one follow-up flush runs after completion.
- * After a failed flush attempt (e.g. Sentry init rejection), one automatic retry is scheduled
- * when the queue is non-empty; further retries require a new event or an explicit call.
+ * Parallel flush cycles are collapsed into the active in-flight run.
  */
 export const flushQueuedDiagnosticEvents = (): void => {
   doFlush(false);
@@ -238,8 +207,7 @@ export const flushQueuedDiagnosticEvents = (): void => {
  * - Fire-and-forget: does not throw into product code.
  * - Writes to an optional in-memory test sink set by `setDiagnosticEventSink`.
  * - Uses Sentry as the transport backend; callers must not import Sentry directly.
- * - In worker contexts, delegates to the forwarder set by `setDiagnosticEventForwarder`
- *   so the main-thread diagnostics reporter owns Sentry delivery.
+ * - In the worker runtime, the worker's own Sentry instance delivers events directly.
  *
  * Must only be called from service, repository-service, or service-client layers.
  * Do not call from VFS providers or low-level storage adapters.
@@ -247,15 +215,6 @@ export const flushQueuedDiagnosticEvents = (): void => {
  */
 export const reportDiagnosticEvent = (event: DiagnosticEvent): void => {
   memorySink?.push(event);
-
-  if (eventForwarder) {
-    try {
-      eventForwarder(event);
-    } catch {
-      // Fire-and-forget: forwarding failures must never propagate into product code.
-    }
-    return;
-  }
 
   try {
     if (!isSentryConfigured()) {

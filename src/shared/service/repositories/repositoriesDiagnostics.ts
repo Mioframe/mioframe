@@ -3,11 +3,33 @@ import {
   DiagnosticResult,
   DiagnosticSeverity,
   reportDiagnosticEvent,
+  sanitizeDiagnosticError,
 } from '@shared/lib/diagnostics';
+import type { SanitizedDiagnosticError } from '@shared/lib/diagnostics';
 import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
 
 const REPLAY_TAGS = { provider: 'webFileSystem', operation: 'flushPendingSaves' } as const;
 const SAVE_TAGS = { provider: 'webFileSystem', operation: 'repositorySave' } as const;
+const REMOVE_TAGS = { provider: 'webFileSystem', operation: 'repositoryRemove' } as const;
+const CLEANUP_TAGS = {
+  provider: 'webFileSystem',
+  operation: 'repositoryDeleteCleanup',
+} as const;
+
+const classificationFromSanitizedError = (
+  error: SanitizedDiagnosticError,
+): DiagnosticClassification => {
+  switch (error.errorClassification) {
+    case 'accessDenied':
+      return DiagnosticClassification.Access;
+    case 'storageFailure':
+      return DiagnosticClassification.Storage;
+    case 'notFound':
+      return DiagnosticClassification.Storage;
+    default:
+      return DiagnosticClassification.Unknown;
+  }
+};
 
 /**
  * Emits a diagnostic event when pending repository saves remain blocked after a write-access
@@ -64,8 +86,6 @@ export const reportWriteAccessReplayStorageFailure = ({
 
 /**
  * Emits a diagnostic event when a primary repository save fails and is queued for retry.
- * This event fires at the repository service boundary when the retrying storage adapter
- * queues a failed save due to a missing write-access permission.
  * @param root0 - Event options (pendingCount).
  */
 export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: number }): void => {
@@ -81,8 +101,6 @@ export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: num
 
 /**
  * Emits a diagnostic event when a primary repository save fails and is NOT queued for retry.
- * This event fires at the repository service boundary when the retrying storage adapter
- * discards a failed save because the failure is not a recoverable access error.
  * @param root0 - Event options (pendingCount).
  */
 export const reportRepositorySaveFailed = ({ pendingCount }: { pendingCount: number }): void => {
@@ -93,5 +111,52 @@ export const reportRepositorySaveFailed = ({ pendingCount }: { pendingCount: num
     classification: DiagnosticClassification.Storage,
     counters: { pendingCount },
     safeTags: { ...SAVE_TAGS, failureClassification: 'storageFailure' },
+  });
+};
+
+/**
+ * Emits a diagnostic event when a repository storage remove (single key) fails.
+ * Distinguishes access-required failures from hard storage errors.
+ * @param root0 - Event options (caughtError).
+ */
+export const reportRepositoryRemoveFailed = ({ caughtError }: { caughtError: unknown }): void => {
+  const error = sanitizeDiagnosticError(caughtError);
+  const classification = classificationFromSanitizedError(error);
+  const failureClassification =
+    classification === DiagnosticClassification.Access ? 'accessRequired' : 'storageFailure';
+
+  reportDiagnosticEvent({
+    name: 'repositoryStorage.removeFailed',
+    severity: DiagnosticSeverity.Error,
+    result: DiagnosticResult.Failed,
+    classification,
+    error,
+    safeTags: { ...REMOVE_TAGS, failureClassification },
+  });
+};
+
+/**
+ * Emits a diagnostic event when repository document cleanup (post-delete storage file removal)
+ * fails. This covers failures outside the retryable save queue — notably VFS delete failures
+ * caused by access-required or hard storage errors during document cleanup.
+ * @param root0 - Event options (caughtError).
+ */
+export const reportRepositoryDeleteCleanupFailed = ({
+  caughtError,
+}: {
+  caughtError: unknown;
+}): void => {
+  const error = sanitizeDiagnosticError(caughtError);
+  const classification = classificationFromSanitizedError(error);
+  const failureClassification =
+    classification === DiagnosticClassification.Access ? 'accessRequired' : 'storageFailure';
+
+  reportDiagnosticEvent({
+    name: 'repositoryStorage.deleteCleanupFailed',
+    severity: DiagnosticSeverity.Error,
+    result: DiagnosticResult.Failed,
+    classification,
+    error,
+    safeTags: { ...CLEANUP_TAGS, failureClassification },
   });
 };
