@@ -1,9 +1,10 @@
 import type { App, Plugin } from 'vue';
-import type { CaptureContext } from '@sentry/vue';
+import type { Breadcrumb, CaptureContext } from '@sentry/vue';
 import {
   clearDiagnosticsRuntimeEffects,
   flushDiagnosticsRuntimeEffects,
 } from './diagnosticsRuntimeEffects';
+import type { DiagnosticsMode } from '@shared/config';
 import type { SentryReportingState, SentryRuntimeState } from './sentry/sentryRuntimeState';
 import { createSentryOptions, getOrCreateSentrySessionId } from './sentry';
 
@@ -15,6 +16,8 @@ export type { SentryReportingState, SentryRuntimeState };
 export type SentryConfig = {
   /** Sentry DSN used for SDK initialization. */
   dsn?: string;
+  /** Shared static diagnostics detail mode used by main and worker runtimes. */
+  diagnosticsMode?: DiagnosticsMode | undefined;
   /** Whether runtime configuration allows lazy Sentry initialization. */
   enabled?: boolean;
   /** Release string matched to uploaded source map artifacts. */
@@ -47,6 +50,11 @@ export type SentryFacade = {
    * No-op when Sentry is not yet initialized.
    */
   setUser(userOrNull: { id: string } | null): void;
+  /**
+   * Adds a breadcrumb to the current Sentry scope.
+   * No-op when Sentry is not yet initialized.
+   */
+  addBreadcrumb(breadcrumb: Breadcrumb): void;
 };
 
 type SentryModule = typeof import('@sentry/vue');
@@ -84,6 +92,11 @@ const warnInitFailureOnce = (error: unknown) => {
   );
 };
 
+const getRuntimeLabel = (): 'main' | 'worker' =>
+  typeof WorkerGlobalScope !== 'undefined' && globalThis instanceof WorkerGlobalScope
+    ? 'worker'
+    : 'main';
+
 const getSentryModule = async () => {
   sentryModulePromise ??= import('@sentry/vue');
   return await sentryModulePromise;
@@ -120,6 +133,17 @@ export const isSentryReportingEnabled = () => reportingState === 'enabled';
  * @param state - Dynamic runtime state to apply.
  */
 export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
+  sentryFacade.addBreadcrumb({
+    category: state.reportingState === 'enabled' ? 'sentry.runtime' : 'worker.runtime',
+    data: {
+      operation: 'applyRuntimeState',
+      runtime: getRuntimeLabel(),
+    },
+    level: state.reportingState === 'disabled' ? 'warning' : 'info',
+    message: `reporting state applied: ${state.reportingState}`,
+    type: 'default',
+  });
+
   reportingState = state.reportingState;
 
   if (state.reportingState === 'enabled') {
@@ -156,6 +180,9 @@ export const sentryFacade: SentryFacade = {
   },
   setUser(userOrNull: { id: string } | null): void {
     loadedSentryModule?.setUser(userOrNull);
+  },
+  addBreadcrumb(breadcrumb: Breadcrumb): void {
+    loadedSentryModule?.addBreadcrumb(breadcrumb);
   },
 };
 
@@ -201,6 +228,7 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
     }
 
     const options = createSentryOptions({
+      diagnosticsMode: config.diagnosticsMode ?? 'production',
       dsn,
       release: config.release,
       getReportingState: getSentryReportingState,
@@ -212,6 +240,16 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
     });
 
     loadedSentryModule = sentry;
+    sentry.addBreadcrumb({
+      category: 'sentry.runtime',
+      data: {
+        result: 'success',
+        runtime: getRuntimeLabel(),
+      },
+      level: 'info',
+      message: 'Sentry runtime initialized',
+      type: 'default',
+    });
 
     if (reportingState === 'enabled') {
       sentry.setUser({ id: pendingSessionId ?? getOrCreateSentrySessionId() });

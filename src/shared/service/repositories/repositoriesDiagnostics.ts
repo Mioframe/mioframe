@@ -2,6 +2,7 @@ import {
   DiagnosticClassification,
   DiagnosticResult,
   DiagnosticSeverity,
+  addTechnicalBreadcrumb,
   reportDiagnosticEvent,
   sanitizeDiagnosticError,
 } from '@shared/lib/diagnostics';
@@ -15,6 +16,47 @@ const CLEANUP_TAGS = {
   provider: 'webFileSystem',
   operation: 'repositoryDeleteCleanup',
 } as const;
+
+const addRepositoryBreadcrumb = ({
+  level = 'info',
+  message,
+  ...data
+}: {
+  classification?: string | undefined;
+  errorClass?: string | undefined;
+  errorClassification?: string | undefined;
+  failureClassification?: string | undefined;
+  flushedCount?: number | undefined;
+  level?: 'debug' | 'info' | 'warning' | 'error' | undefined;
+  message: string;
+  operation: string;
+  pendingCount?: number | undefined;
+  provider?: string | undefined;
+  result?: string | undefined;
+  storageOperation?: string | undefined;
+}): void => {
+  addTechnicalBreadcrumb({
+    category: 'repository.storage',
+    data: {
+      provider: data.provider ?? 'webFileSystem',
+      operation: data.operation,
+      ...(data.storageOperation !== undefined ? { storageOperation: data.storageOperation } : {}),
+      ...(data.pendingCount !== undefined ? { pendingCount: data.pendingCount } : {}),
+      ...(data.flushedCount !== undefined ? { flushedCount: data.flushedCount } : {}),
+      ...(data.failureClassification !== undefined
+        ? { failureClassification: data.failureClassification }
+        : {}),
+      ...(data.errorClass !== undefined ? { errorClass: data.errorClass } : {}),
+      ...(data.errorClassification !== undefined
+        ? { errorClassification: data.errorClassification }
+        : {}),
+      ...(data.classification !== undefined ? { classification: data.classification } : {}),
+      ...(data.result !== undefined ? { result: data.result } : {}),
+    },
+    level,
+    message,
+  });
+};
 
 const classificationFromSanitizedError = (
   error: SanitizedDiagnosticError,
@@ -43,6 +85,16 @@ export const reportWriteAccessReplayStillBlocked = ({
   flushedCount: number;
   pendingCount: number;
 }): void => {
+  addRepositoryBreadcrumb({
+    failureClassification: 'accessRequired',
+    flushedCount,
+    level: 'warning',
+    message: 'pending save replay remains blocked',
+    operation: 'flushPendingSaves',
+    pendingCount,
+    result: 'blocked',
+  });
+
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -69,6 +121,22 @@ export const reportWriteAccessReplayStorageFailure = ({
 }): void => {
   const safeClassification: RetryingStorageAdapterFailureClassification =
     failureClassification ?? 'unknown';
+  addRepositoryBreadcrumb({
+    classification:
+      safeClassification === 'accessRequired'
+        ? 'access'
+        : safeClassification === 'storageFailure'
+          ? 'storage'
+          : 'unknown',
+    failureClassification: safeClassification,
+    flushedCount,
+    level: 'error',
+    message: 'pending save replay failed',
+    operation: 'flushPendingSaves',
+    pendingCount,
+    result: 'failed',
+  });
+
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
@@ -111,6 +179,17 @@ export const reportRepositorySaveFailed = ({
   caughtError: unknown;
 }): void => {
   const error = sanitizeDiagnosticError(caughtError);
+  addRepositoryBreadcrumb({
+    errorClass: error.errorClass,
+    errorClassification: error.errorClassification,
+    failureClassification: 'storageFailure',
+    level: 'error',
+    message: 'repository save failed',
+    operation: 'repositorySave',
+    pendingCount,
+    result: 'failed',
+  });
+
   reportDiagnosticEvent({
     name: 'repositoryStorage.saveFailed',
     severity: DiagnosticSeverity.Error,
@@ -132,6 +211,21 @@ export const reportRepositoryRemoveFailed = ({ caughtError }: { caughtError: unk
   const classification = classificationFromSanitizedError(error);
   const failureClassification =
     classification === DiagnosticClassification.Access ? 'accessRequired' : 'storageFailure';
+  addRepositoryBreadcrumb({
+    classification:
+      classification === DiagnosticClassification.Access
+        ? 'access'
+        : classification === DiagnosticClassification.Storage
+          ? 'storage'
+          : 'unknown',
+    errorClass: error.errorClass,
+    errorClassification: error.errorClassification,
+    failureClassification,
+    level: 'error',
+    message: 'repository remove failed',
+    operation: 'repositoryRemove',
+    result: 'failed',
+  });
 
   reportDiagnosticEvent({
     name: 'repositoryStorage.removeFailed',
@@ -166,5 +260,62 @@ export const reportRepositoryDeleteCleanupFailed = ({
     classification,
     error,
     safeTags: { ...CLEANUP_TAGS, failureClassification },
+  });
+};
+
+/**
+ * Adds a breadcrumb when a repository save attempt starts.
+ */
+export const addRepositorySaveAttemptBreadcrumb = (): void => {
+  addRepositoryBreadcrumb({
+    message: 'repository save started',
+    operation: 'repositorySave',
+  });
+};
+
+/**
+ * Adds a breadcrumb when a pending-save replay starts.
+ * @param root0 - Safe replay counters at the start of the replay.
+ */
+export const addRepositoryReplayStartedBreadcrumb = ({
+  pendingCount,
+}: {
+  pendingCount: number;
+}): void => {
+  addRepositoryBreadcrumb({
+    message: 'pending save replay started',
+    operation: 'flushPendingSaves',
+    pendingCount,
+  });
+};
+
+/**
+ * Adds a breadcrumb when a pending-save replay completes successfully.
+ * @param root0 - Aggregate replay counters after completion.
+ */
+export const addRepositoryReplayCompletedBreadcrumb = ({
+  flushedCount,
+  pendingCount,
+}: {
+  flushedCount: number;
+  pendingCount: number;
+}): void => {
+  addRepositoryBreadcrumb({
+    flushedCount,
+    message: 'pending save replay completed',
+    operation: 'flushPendingSaves',
+    pendingCount,
+    result: 'success',
+  });
+};
+
+/**
+ * Adds a breadcrumb when repository storage removal starts.
+ */
+export const addRepositoryRemoveStartBreadcrumb = (): void => {
+  addRepositoryBreadcrumb({
+    message: 'repository remove started',
+    operation: 'repositoryRemove',
+    storageOperation: 'removeRange',
   });
 };

@@ -5,19 +5,34 @@ import {
   DiagnosticSeverity,
   setDiagnosticEventSink,
 } from '@shared/lib/diagnostics';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  addRepositoryRemoveStartBreadcrumb,
+  addRepositoryReplayCompletedBreadcrumb,
+  addRepositoryReplayStartedBreadcrumb,
+  addRepositorySaveAttemptBreadcrumb,
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
   reportRepositorySaveQueued,
   reportRepositorySaveFailed,
 } from './repositoriesDiagnostics';
 
+const addTechnicalBreadcrumbMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
+  return {
+    ...actual,
+    addTechnicalBreadcrumb: addTechnicalBreadcrumbMock,
+  };
+});
+
 describe('repositoriesDiagnostics', () => {
   let sink: DiagnosticEvent[];
 
   beforeEach(() => {
     sink = [];
+    addTechnicalBreadcrumbMock.mockReset();
     setDiagnosticEventSink(sink);
   });
 
@@ -154,6 +169,65 @@ describe('repositoriesDiagnostics', () => {
       expect(serialized).not.toContain('path');
       expect(serialized).not.toContain('Work');
       expect(serialized).not.toContain('docId');
+    });
+  });
+
+  describe('technical breadcrumbs', () => {
+    it('adds repository save start breadcrumb', () => {
+      addRepositorySaveAttemptBreadcrumb();
+
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith({
+        category: 'repository.storage',
+        data: {
+          operation: 'repositorySave',
+          provider: 'webFileSystem',
+        },
+        level: 'info',
+        message: 'repository save started',
+      });
+    });
+
+    it('adds repository replay start and completion breadcrumbs', () => {
+      addRepositoryReplayStartedBreadcrumb({ pendingCount: 2 });
+      addRepositoryReplayCompletedBreadcrumb({ flushedCount: 2, pendingCount: 0 });
+
+      expect(addTechnicalBreadcrumbMock).toHaveBeenNthCalledWith(1, {
+        category: 'repository.storage',
+        data: {
+          operation: 'flushPendingSaves',
+          pendingCount: 2,
+          provider: 'webFileSystem',
+        },
+        level: 'info',
+        message: 'pending save replay started',
+      });
+      expect(addTechnicalBreadcrumbMock).toHaveBeenNthCalledWith(2, {
+        category: 'repository.storage',
+        data: {
+          flushedCount: 2,
+          operation: 'flushPendingSaves',
+          pendingCount: 0,
+          provider: 'webFileSystem',
+          result: 'success',
+        },
+        level: 'info',
+        message: 'pending save replay completed',
+      });
+    });
+
+    it('adds repository remove start breadcrumb', () => {
+      addRepositoryRemoveStartBreadcrumb();
+
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith({
+        category: 'repository.storage',
+        data: {
+          operation: 'repositoryRemove',
+          provider: 'webFileSystem',
+          storageOperation: 'removeRange',
+        },
+        level: 'info',
+        message: 'repository remove started',
+      });
     });
   });
 

@@ -105,6 +105,7 @@ export default defineConfig(({ mode, isPreview }) => {
       __APP_VERSION__: JSON.stringify(version),
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),
+      __DIAGNOSTICS_MODE__: JSON.stringify(isPreviewBuild ? 'preview' : 'production'),
     },
   };
 });

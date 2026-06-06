@@ -3,6 +3,7 @@ import {
   DiagnosticClassification,
   DiagnosticResult,
   DiagnosticSeverity,
+  addTechnicalBreadcrumb,
   reportDiagnosticEvent,
 } from '@shared/lib/diagnostics';
 import type { DiagnosticEvent } from '@shared/lib/diagnostics';
@@ -21,6 +22,42 @@ export interface BrokerReplaySummary {
 }
 
 const PROVIDER = 'webFileSystem' as const;
+
+const addWriteAccessBreadcrumb = ({
+  level = 'info',
+  message,
+  ...data
+}: {
+  errorClass?: string | undefined;
+  errorClassification?: string | undefined;
+  failureClassification?: string | undefined;
+  flushedCount?: number | undefined;
+  level?: 'debug' | 'info' | 'warning' | 'error' | undefined;
+  message: string;
+  operation: string;
+  pendingCount?: number | undefined;
+  result?: string | undefined;
+}): void => {
+  addTechnicalBreadcrumb({
+    category: 'writeAccessRecovery',
+    data: {
+      provider: PROVIDER,
+      operation: data.operation,
+      ...(data.pendingCount !== undefined ? { pendingCount: data.pendingCount } : {}),
+      ...(data.flushedCount !== undefined ? { flushedCount: data.flushedCount } : {}),
+      ...(data.failureClassification !== undefined
+        ? { failureClassification: data.failureClassification }
+        : {}),
+      ...(data.errorClass !== undefined ? { errorClass: data.errorClass } : {}),
+      ...(data.errorClassification !== undefined
+        ? { errorClassification: data.errorClassification }
+        : {}),
+      ...(data.result !== undefined ? { result: data.result } : {}),
+    },
+    level,
+    message,
+  });
+};
 
 type WebFsEventParams = Omit<DiagnosticEvent, 'safeTags'> & {
   operation: string;
@@ -51,6 +88,16 @@ export const reportWriteAccessMissingRequest = ({ attemptId }: { attemptId: stri
 };
 
 /**
+ * Adds a breadcrumb when write-access recovery starts.
+ */
+export const addWriteAccessRequestStartBreadcrumb = (): void => {
+  addWriteAccessBreadcrumb({
+    message: 'write access recovery started',
+    operation: 'requestAccess',
+  });
+};
+
+/**
  * Emits a diagnostic event when a write-access recovery attempt reaches the resolve stage
  * but the request has disappeared by the time the service responds (stale request).
  * @param root0 - Event options (attemptId).
@@ -67,10 +114,52 @@ export const reportWriteAccessStaleResolve = ({ attemptId }: { attemptId: string
 };
 
 /**
+ * Adds a breadcrumb when the browser permission prompt starts.
+ */
+export const addWriteAccessPermissionPromptStartBreadcrumb = (): void => {
+  addTechnicalBreadcrumb({
+    category: 'webFileSystem.permission',
+    data: {
+      operation: 'requestPermission',
+      provider: PROVIDER,
+    },
+    message: 'write permission prompt started',
+  });
+};
+
+/**
+ * Adds a breadcrumb with the resolved result of the write permission prompt.
+ * @param root0 - Safe permission prompt result.
+ */
+export const addWriteAccessPermissionResolvedBreadcrumb = ({
+  permissionState,
+}: {
+  permissionState: PermissionState;
+}): void => {
+  addTechnicalBreadcrumb({
+    category: 'webFileSystem.permission',
+    data: {
+      operation: 'requestPermission',
+      provider: PROVIDER,
+      result: permissionState,
+    },
+    level: permissionState === 'denied' ? 'warning' : 'info',
+    message: `write permission prompt resolved: ${permissionState}`,
+  });
+};
+
+/**
  * Emits a diagnostic event when the user denies write permission during a recovery attempt.
  * @param root0 - Event options (attemptId).
  */
 export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: string }): void => {
+  addWriteAccessBreadcrumb({
+    level: 'warning',
+    message: 'write access denied after prompt',
+    operation: 'resolveAccessRequest',
+    result: 'denied',
+  });
+
   reportWebFsEvent({
     name: 'writeAccessRecovery.permissionDenied',
     severity: DiagnosticSeverity.Warning,
@@ -93,6 +182,15 @@ export const reportWriteAccessProviderFailure = ({
   attemptId: string;
   error: SanitizedDiagnosticError;
 }): void => {
+  addWriteAccessBreadcrumb({
+    errorClass: error.errorClass,
+    errorClassification: error.errorClassification,
+    level: 'error',
+    message: 'write access recovery provider failed',
+    operation: 'requestAccess',
+    result: 'failed',
+  });
+
   reportWebFsEvent({
     name: 'writeAccessRecovery.providerFailure',
     severity: DiagnosticSeverity.Error,
@@ -117,6 +215,15 @@ export const reportWriteAccessReplayFailure = ({
   replay?: BrokerReplaySummary | undefined;
 }): void => {
   const failureClassification = replay?.failureClassification ?? 'unknown';
+  addWriteAccessBreadcrumb({
+    failureClassification,
+    flushedCount: replay?.flushedCount,
+    level: 'warning',
+    message: 'write access grant replay remains blocked',
+    operation: 'resolveAccessRequest',
+    pendingCount: replay?.pendingCount,
+    result: 'blocked',
+  });
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -150,6 +257,16 @@ export const reportWriteAccessStorageFailure = ({
       : replay?.failureClassification === 'unknown'
         ? DiagnosticClassification.Unknown
         : DiagnosticClassification.Storage;
+
+  addWriteAccessBreadcrumb({
+    failureClassification,
+    flushedCount: replay?.flushedCount,
+    level: 'error',
+    message: 'write access grant replay failed',
+    operation: 'resolveAccessRequest',
+    pendingCount: replay?.pendingCount,
+    result: 'failed',
+  });
 
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStorageFailure',

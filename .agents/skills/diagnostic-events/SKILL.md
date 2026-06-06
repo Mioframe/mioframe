@@ -1,17 +1,18 @@
 ---
 name: diagnostic-events
-description: 'Use this skill when adding, reviewing, or testing structured diagnostic events via reportDiagnosticEvent, captureDiagnosticException, or reportHandledError. Covers: two-layer model, when to emit events, generic event contract, enum selection, wrapper creation, sanitizeDiagnosticError, test sink usage, reporting layer policy, and privacy rules. Applies to writeAccessRecovery flows, save-replay failures, access-recovery flows, repository storage failures, and any future instrumented operation.'
+description: 'Use this skill when adding, reviewing, or testing structured diagnostic events or technical breadcrumbs via reportDiagnosticEvent, captureDiagnosticException, reportHandledError, or addTechnicalBreadcrumb. Covers: two-layer model, when to emit events, breadcrumb timeline rules, generic event contract, enum selection, wrapper creation, sanitizeDiagnosticError, test sink usage, reporting layer policy, and privacy rules. Applies to writeAccessRecovery flows, save-replay failures, access-recovery flows, repository storage failures, and any future instrumented operation.'
 ---
 
 # Diagnostic events skill
 
-Use this skill before adding, reviewing, or testing any `reportDiagnosticEvent` call, `captureDiagnosticException` call, new wrapper module, enum value, or `sanitizeDiagnosticError` usage.
+Use this skill before adding, reviewing, or testing any `reportDiagnosticEvent` call, `captureDiagnosticException` call, `addTechnicalBreadcrumb` call, new wrapper module, enum value, or `sanitizeDiagnosticError` usage.
 
 ## Activation check
 
 Use this skill when:
 
 - Adding a new `reportDiagnosticEvent(...)` or `captureDiagnosticException(...)` call or wrapper function.
+- Adding a new `addTechnicalBreadcrumb(...)` call or breadcrumb helper.
 - Reviewing existing diagnostic event coverage.
 - Adding test coverage for a flow that emits a diagnostic event.
 - Deciding whether `reportHandledError`, `reportDiagnosticEvent`, or `captureDiagnosticException` is the right call.
@@ -35,6 +36,44 @@ Use this skill when:
 `reportDiagnosticEvent` uses `captureMessage`. `captureDiagnosticException` uses `captureException`. Use both together at storage/VFS failure sites: the event for structured state, the exception for the stack trace.
 
 Never import `@sentry/vue` directly in product code. Use project wrappers.
+
+## Technical breadcrumbs
+
+Use `addTechnicalBreadcrumb(...)` only for project-controlled technical timeline milestones that explain a later failure.
+
+Good breadcrumb cases:
+
+- repository save start
+- pending-save replay start, completion, or failure boundary
+- write-access recovery start and permission prompt boundaries
+- worker diagnostics state application
+- Sentry runtime initialization success
+
+Do not use breadcrumbs for:
+
+- user clicks, input, navigation, or behavior tracking
+- arbitrary metadata or payload dumps
+- repeating the same terminal diagnostic event at the same location
+
+Keep breadcrumb data narrow and allowlisted. Reuse the existing safe vocabulary:
+
+- `operation`
+- `result`
+- `classification`
+- `failureClassification`
+- `provider`
+- `storageOperation`
+- `pendingCount`
+- `flushedCount`
+- `failedCount`
+- `errorClass`
+- `domExceptionName`
+- `vfsErrorCode`
+- `domainErrorCode`
+- `errorClassification`
+- `runtime`
+
+Preview mode may keep more safe technical breadcrumb detail, but it still must not include paths, names, ids, URLs, raw error text, or user-entered text.
 
 ## Two-layer model
 
@@ -65,6 +104,8 @@ There is one shared diagnostics runtime (`src/shared/lib/setupSentry.ts`) used b
 **Never do**: separate worker-local `sentryModule`, worker-local `reportingState`, worker-local `beforeSend`, or any worker-only Sentry init override.
 
 Dynamic runtime state (session ID + reporting state) is synced from main to worker via `sentryWorkerSync`, which calls `setDiagnosticsRuntimeState` on the shared runtime. Static config (`SENTRY_DSN`, `APP_BUILD_ID`, `APP_VERSION`) is imported directly in both runtimes — never passed through proxy.
+
+Static diagnostics mode (`production` or `preview`) also comes from shared build config and must stay identical in main and worker. Preview mode increases safe technical breadcrumb detail only; it does not relax privacy rules.
 
 Queue side effects (`flushQueuedDiagnosticEvents`, `clearQueuedDiagnosticEvents`, `flushQueuedHandledReports`, `clearQueuedHandledReports`) are registered with the neutral `diagnosticsRuntimeEffects` registry at module import time. `setDiagnosticsRuntimeState` calls the registry's aggregate `flushDiagnosticsRuntimeEffects` / `clearDiagnosticsRuntimeEffects` — it does not import transport modules directly. This prevents a circular dependency between the Sentry runtime foundation and diagnostics transport modules.
 
@@ -240,6 +281,18 @@ Before submitting a diagnostic event call, verify:
 7. `attemptId` is set to `crypto.randomUUID()` generated at the start of the operation — never derived from user data.
 8. No path, file name, document name, document id, storage key, URL, raw external message, or bytes appear anywhere.
 9. For `captureDiagnosticException` context: only allowed `DiagnosticExceptionContext` fields, no path/id/name/key.
+
+## Breadcrumb checklist
+
+Before adding a technical breadcrumb, verify:
+
+1. The breadcrumb represents a technical milestone, not a user action.
+2. The category is one of the project technical categories.
+3. Data keys come only from the allowlisted breadcrumb vocabulary.
+4. Strings are project-controlled enums or short technical messages.
+5. No path, file name, document name, document id, storage key, URL, raw external message, or user text appears anywhere.
+6. The same detail is not already better expressed on the terminal diagnostic event.
+7. Tests cover both the emitting helper and the sanitizer path when the breadcrumb could matter for privacy.
 
 ## sanitizeDiagnosticError usage
 

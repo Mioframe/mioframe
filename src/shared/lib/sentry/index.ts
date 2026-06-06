@@ -2,6 +2,7 @@ export { getOrCreateSentrySessionId, isSessionSentryUserId } from './sentrySessi
 export type { SentryReportingState, SentryRuntimeState } from './sentryRuntimeState';
 export { createSentryOptions } from './createSentryOptions';
 export {
+  createBeforeBreadcrumb,
   createBeforeSend,
   pickEventTags,
   pickSafeEventExtras,
@@ -9,3 +10,16 @@ export {
   sanitizeUser,
   SAFE_EVENT_TAG_KEYS,
 } from './sanitizeSentryEvent';
+export {
+  sanitizeTechnicalBreadcrumb,
+  sanitizeTechnicalBreadcrumbs,
+  TECHNICAL_BREADCRUMB_CATEGORIES,
+  TECHNICAL_BREADCRUMB_DATA_KEYS,
+} from './technicalBreadcrumbs';
+export type {
+  TechnicalBreadcrumbCategory,
+  TechnicalBreadcrumbData,
+  TechnicalBreadcrumbDataKey,
+  TechnicalBreadcrumbInput,
+  TechnicalBreadcrumbLevel,
+} from './technicalBreadcrumbs';

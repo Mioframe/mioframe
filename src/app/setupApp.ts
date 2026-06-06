@@ -5,7 +5,7 @@ import MainApp from './MainApp.vue';
 import { createHead } from '@unhead/vue/client';
 import { router } from './router';
 import { backNavigationHandler } from '@shared/lib/onBackNavigation';
-import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION } from '@shared/config';
+import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, DIAGNOSTICS_MODE } from '@shared/config';
 import { sentryPlugin } from '@shared/lib/setupSentry';
 import { setupStackNavigation } from '@page/routes';
 
@@ -17,6 +17,7 @@ import { setupStackNavigation } from '@page/routes';
 export const setupApp = async (app: App = createApp(MainApp)) => {
   app.use(sentryPlugin, {
     dsn: SENTRY_DSN,
+    diagnosticsMode: DIAGNOSTICS_MODE,
     enabled: import.meta.env.PROD,
     release: APP_BUILD_ID || APP_VERSION,
   });

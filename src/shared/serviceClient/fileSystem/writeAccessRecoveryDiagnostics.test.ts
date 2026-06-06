@@ -5,8 +5,11 @@ import {
   DiagnosticSeverity,
   setDiagnosticEventSink,
 } from '@shared/lib/diagnostics';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  addWriteAccessPermissionPromptStartBreadcrumb,
+  addWriteAccessPermissionResolvedBreadcrumb,
+  addWriteAccessRequestStartBreadcrumb,
   reportWriteAccessMissingRequest,
   reportWriteAccessPermissionDenied,
   reportWriteAccessProviderFailure,
@@ -16,12 +19,22 @@ import {
 } from './writeAccessRecoveryDiagnostics';
 
 const TEST_ATTEMPT_ID = '00000000-0000-0000-0000-000000000001';
+const addTechnicalBreadcrumbMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
+  return {
+    ...actual,
+    addTechnicalBreadcrumb: addTechnicalBreadcrumbMock,
+  };
+});
 
 describe('writeAccessRecoveryDiagnostics', () => {
   let sink: DiagnosticEvent[];
 
   beforeEach(() => {
     sink = [];
+    addTechnicalBreadcrumbMock.mockReset();
     setDiagnosticEventSink(sink);
   });
 
@@ -78,6 +91,42 @@ describe('writeAccessRecoveryDiagnostics', () => {
         classification: DiagnosticClassification.Access,
         attemptId: TEST_ATTEMPT_ID,
         safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
+      });
+    });
+  });
+
+  describe('technical breadcrumbs', () => {
+    it('adds request start and permission prompt breadcrumbs', () => {
+      addWriteAccessRequestStartBreadcrumb();
+      addWriteAccessPermissionPromptStartBreadcrumb();
+      addWriteAccessPermissionResolvedBreadcrumb({ permissionState: 'denied' });
+
+      expect(addTechnicalBreadcrumbMock).toHaveBeenNthCalledWith(1, {
+        category: 'writeAccessRecovery',
+        data: {
+          operation: 'requestAccess',
+          provider: 'webFileSystem',
+        },
+        level: 'info',
+        message: 'write access recovery started',
+      });
+      expect(addTechnicalBreadcrumbMock).toHaveBeenNthCalledWith(2, {
+        category: 'webFileSystem.permission',
+        data: {
+          operation: 'requestPermission',
+          provider: 'webFileSystem',
+        },
+        message: 'write permission prompt started',
+      });
+      expect(addTechnicalBreadcrumbMock).toHaveBeenNthCalledWith(3, {
+        category: 'webFileSystem.permission',
+        data: {
+          operation: 'requestPermission',
+          provider: 'webFileSystem',
+          result: 'denied',
+        },
+        level: 'warning',
+        message: 'write permission prompt resolved: denied',
       });
     });
   });

@@ -23,11 +23,13 @@ const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   const shouldRejectImportOnce = options ? 'importErrorOnce' in options : false;
   const importErrorOnce = options?.importErrorOnce;
   const initMock = vi.fn();
+  const addBreadcrumbMock = vi.fn();
   const captureExceptionMock = vi.fn(() => 'exception-id');
   const captureMessageMock = vi.fn(() => 'message-id');
   const setUserMock = vi.fn();
 
   const sentryModule = {
+    addBreadcrumb: addBreadcrumbMock,
     init: initMock,
     captureException: captureExceptionMock,
     captureMessage: captureMessageMock,
@@ -45,6 +47,7 @@ const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   });
 
   return {
+    addBreadcrumbMock,
     initMock,
     captureMessageMock,
     captureExceptionMock,
@@ -205,7 +208,8 @@ describe('setupSentry', () => {
   });
 
   it('delegates facade calls to the SDK after initialization', async () => {
-    const { captureMessageMock, captureExceptionMock, setUserMock } = setupSentryMocks();
+    const { addBreadcrumbMock, captureMessageMock, captureExceptionMock, setUserMock } =
+      setupSentryMocks();
     const { sentryPlugin, ensureSentry, setDiagnosticsRuntimeState, useSentry } =
       await import('./setupSentry');
     const app = createApp(TestAppRoot);
@@ -222,10 +226,16 @@ describe('setupSentry', () => {
     const exceptionContext = { tags: { handled: 'true' } };
     expect(useSentry().captureMessage('hello', messageContext)).toBe('message-id');
     expect(useSentry().captureException(new Error('boom'), exceptionContext)).toBe('exception-id');
+    useSentry().addBreadcrumb({ category: 'sentry.runtime', message: 'hello', type: 'default' });
     useSentry().setUser(null);
 
     expect(captureMessageMock).toHaveBeenCalledWith('hello', messageContext);
     expect(captureExceptionMock).toHaveBeenCalledWith(new Error('boom'), exceptionContext);
+    expect(addBreadcrumbMock).toHaveBeenCalledWith({
+      category: 'sentry.runtime',
+      message: 'hello',
+      type: 'default',
+    });
     expect(setUserMock).toHaveBeenCalledWith(null);
   });
 
@@ -1167,7 +1177,7 @@ describe('setupSentry', () => {
     }
   });
 
-  it('beforeSend does not register beforeBreadcrumb', async () => {
+  it('registers beforeBreadcrumb', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry } = await import('./setupSentry');
 
@@ -1175,10 +1185,10 @@ describe('setupSentry', () => {
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
-    expect(initOptions?.beforeBreadcrumb).toBeUndefined();
+    expect(initOptions?.beforeBreadcrumb).toEqual(expect.any(Function));
   });
 
-  it('beforeSend always drops breadcrumbs regardless of category or content', async () => {
+  it('beforeSend keeps sanitized technical breadcrumbs only', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
@@ -1192,16 +1202,34 @@ describe('setupSentry', () => {
 
     expect(beforeSend).toEqual(expect.any(Function));
     if (beforeSend instanceof Function) {
-      // Any breadcrumb — even a project-controlled one — must be stripped.
       expect(
         beforeSend({
           message: '[diagnostic] repositoryStorage.saveQueued',
           breadcrumbs: [
-            { category: 'repository.storage', message: 'repository save retry queued' },
+            {
+              category: 'repository.storage',
+              data: {
+                operation: 'repositorySave',
+                path: '/secret',
+              },
+              message: 'repository save retry queued',
+            },
             { category: 'ui.click', message: 'button pressed' },
           ],
         }),
-      ).toEqual({ message: '[diagnostic] repositoryStorage.saveQueued' });
+      ).toEqual({
+        message: '[diagnostic] repositoryStorage.saveQueued',
+        breadcrumbs: [
+          {
+            category: 'repository.storage',
+            data: {
+              operation: 'repositorySave',
+            },
+            level: 'info',
+            message: 'repository save retry queued',
+          },
+        ],
+      });
     }
   });
 

@@ -2,6 +2,9 @@ import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
 import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
 import {
+  addWriteAccessPermissionPromptStartBreadcrumb,
+  addWriteAccessPermissionResolvedBreadcrumb,
+  addWriteAccessRequestStartBreadcrumb,
   reportWriteAccessMissingRequest,
   reportWriteAccessPermissionDenied,
   reportWriteAccessProviderFailure,
@@ -45,6 +48,7 @@ export const useFileSystemAccessPermissionBroker = () => {
     const attemptId = crypto.randomUUID();
 
     try {
+      addWriteAccessRequestStartBreadcrumb();
       const request = await getTemporaryFileSystemAccessHandle(key);
 
       if (!request) {
@@ -55,9 +59,11 @@ export const useFileSystemAccessPermissionBroker = () => {
       let handle: FileSystemDirectoryHandle | undefined = request.handle;
 
       try {
+        addWriteAccessPermissionPromptStartBreadcrumb();
         const permissionState = await handle.requestPermission({
           mode: operationToMode(request.operation),
         });
+        addWriteAccessPermissionResolvedBreadcrumb({ permissionState });
 
         const result = await resolveFileSystemAccessRequest({
           operation: request.operation,

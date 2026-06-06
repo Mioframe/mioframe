@@ -71,6 +71,42 @@ export interface RetryingStorageAdapterOptions {
    * @param info - Safe summary with queued status, classification, and pending count.
    */
   onSaveFailure?: ((info: RetryingStorageAdapterSaveFailureInfo) => void) | undefined;
+  /**
+   * Optional callback invoked before a primary save attempt.
+   */
+  onSaveStart?: (() => void) | undefined;
+  /**
+   * Optional callback invoked before a removeRange attempt.
+   */
+  onRemoveRangeStart?: (() => void) | undefined;
+  /**
+   * Optional callback invoked when removeRange throws.
+   * @param error - Raw adapter error from removeRange.
+   */
+  onRemoveRangeFailure?: ((error: unknown) => void) | undefined;
+  /**
+   * Optional callback invoked before a pending-save flush begins.
+   * @param info - Current number of queued saves before the flush attempt.
+   */
+  onFlushPendingSavesStart?: ((info: { pendingCount: number }) => void) | undefined;
+  /**
+   * Optional callback invoked after a pending-save flush finishes successfully.
+   * @param info - Aggregate flush counts after a successful flush.
+   */
+  onFlushPendingSavesComplete?:
+    | ((info: { flushedCount: number; pendingCount: number }) => void)
+    | undefined;
+  /**
+   * Optional callback invoked when a pending-save flush stops at a failure.
+   * @param info - Aggregate counts plus safe failure classification.
+   */
+  onFlushPendingSavesFailure?:
+    | ((info: {
+        failureClassification: RetryingStorageAdapterFailureClassification;
+        flushedCount: number;
+        pendingCount: number;
+      }) => void)
+    | undefined;
 }
 
 type PendingSave = {
@@ -92,7 +128,16 @@ const keyStartsWith = (key: StorageKey, prefix: StorageKey) =>
  */
 export const createRetryingStorageAdapter = (
   adapter: StorageAdapterInterface,
-  { shouldQueueFailedSave, onSaveFailure }: RetryingStorageAdapterOptions,
+  {
+    shouldQueueFailedSave,
+    onSaveFailure,
+    onSaveStart,
+    onRemoveRangeStart,
+    onRemoveRangeFailure,
+    onFlushPendingSavesStart,
+    onFlushPendingSavesComplete,
+    onFlushPendingSavesFailure,
+  }: RetryingStorageAdapterOptions,
 ) => {
   const pendingSaves = new Map<string, PendingSave>();
 
@@ -127,9 +172,28 @@ export const createRetryingStorageAdapter = (
     },
     removeRange: (keyPrefix) => {
       deletePendingSaveRange(keyPrefix);
-      return adapter.removeRange(keyPrefix);
+      try {
+        onRemoveRangeStart?.();
+      } catch {
+        // diagnostic callbacks must not affect adapter behavior
+      }
+
+      return adapter.removeRange(keyPrefix).catch((error) => {
+        try {
+          onRemoveRangeFailure?.(error);
+        } catch {
+          // diagnostic callbacks must not affect adapter behavior
+        }
+        throw error;
+      });
     },
     async save(key, data) {
+      try {
+        onSaveStart?.();
+      } catch {
+        // diagnostic callbacks must not affect adapter behavior
+      }
+
       try {
         await adapter.save(key, data);
       } catch (error) {
@@ -153,6 +217,11 @@ export const createRetryingStorageAdapter = (
     hasPendingSaves: () => pendingSaves.size > 0,
     async flushPendingSaves() {
       let flushedCount = 0;
+      try {
+        onFlushPendingSavesStart?.({ pendingCount: pendingSaves.size });
+      } catch {
+        // diagnostic callbacks must not affect adapter behavior
+      }
 
       for (const [pendingKey, pendingSave] of pendingSaves.entries()) {
         try {
@@ -162,6 +231,15 @@ export const createRetryingStorageAdapter = (
           flushedCount += 1;
         } catch (error) {
           if (shouldQueueFailedSave(error)) {
+            try {
+              onFlushPendingSavesFailure?.({
+                failureClassification: 'accessRequired',
+                flushedCount,
+                pendingCount: pendingSaves.size,
+              });
+            } catch {
+              // diagnostic callbacks must not affect adapter behavior
+            }
             return {
               status: 'stillBlocked',
               flushedCount,
@@ -170,6 +248,15 @@ export const createRetryingStorageAdapter = (
             };
           }
 
+          try {
+            onFlushPendingSavesFailure?.({
+              failureClassification: 'storageFailure',
+              flushedCount,
+              pendingCount: pendingSaves.size,
+            });
+          } catch {
+            // diagnostic callbacks must not affect adapter behavior
+          }
           return {
             status: 'failed',
             flushedCount,
@@ -177,6 +264,15 @@ export const createRetryingStorageAdapter = (
             failureClassification: 'storageFailure',
           };
         }
+      }
+
+      try {
+        onFlushPendingSavesComplete?.({
+          flushedCount,
+          pendingCount: pendingSaves.size,
+        });
+      } catch {
+        // diagnostic callbacks must not affect adapter behavior
       }
 
       return {

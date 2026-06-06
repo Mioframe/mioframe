@@ -8,10 +8,15 @@ import type { WriteAccessRecoveryResult } from '../fileSystem/fileSystemAccessRe
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
+  addRepositoryRemoveStartBreadcrumb,
+  addRepositoryReplayCompletedBreadcrumb,
+  addRepositoryReplayStartedBreadcrumb,
+  addRepositorySaveAttemptBreadcrumb,
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
   reportRepositorySaveQueued,
   reportRepositorySaveFailed,
+  reportRepositoryRemoveFailed,
   reportRepositoryDeleteCleanupFailed,
 } from './repositoriesDiagnostics';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
@@ -149,7 +154,22 @@ const setupRepositoriesService = () => {
     return defer(() => {
       if (!repoEntry) {
         const storageRecovery = createRetryingStorageAdapter(createVFSAdapter(vfs, path), {
+          onFlushPendingSavesComplete: ({ flushedCount, pendingCount }) => {
+            addRepositoryReplayCompletedBreadcrumb({ flushedCount, pendingCount });
+          },
+          onFlushPendingSavesStart: ({ pendingCount }) => {
+            addRepositoryReplayStartedBreadcrumb({ pendingCount });
+          },
+          onRemoveRangeFailure: (caughtError) => {
+            reportRepositoryRemoveFailed({ caughtError });
+          },
+          onRemoveRangeStart: () => {
+            addRepositoryRemoveStartBreadcrumb();
+          },
           shouldQueueFailedSave,
+          onSaveStart: () => {
+            addRepositorySaveAttemptBreadcrumb();
+          },
           onSaveFailure: ({ queued, pendingCount, caughtError }) => {
             if (queued) {
               reportRepositorySaveQueued({ pendingCount });

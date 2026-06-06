@@ -23,10 +23,11 @@ Product code must never import `@sentry/vue` directly. Use project wrappers inst
 | `reportDiagnosticEvent(event)`               | Structured state observations without an Error object |
 | `captureDiagnosticException(error, context)` | Caught Error with useful stack trace                  |
 | `reportHandledError(error, options)`         | Unexpected handled exceptions                         |
+| `addTechnicalBreadcrumb(breadcrumb)`         | Safe technical timeline breadcrumb                    |
 
 `reportDiagnosticEvent` uses `captureMessage`. `captureDiagnosticException` uses `captureException`. `reportHandledError` uses `captureException`.
 
-Project wrappers attach tags, extras, and `diagnostic` context through Sentry capture context instead of scope callbacks.
+Project wrappers attach tags, extras, `diagnostic` context, and technical breadcrumbs through the shared Sentry facade instead of direct SDK calls.
 
 Use `captureException` when a real Error object and stack are useful for diagnosis. Use `captureMessage` (via `reportDiagnosticEvent`) for structured state observations without an Error.
 
@@ -56,6 +57,15 @@ registerSentryConfig({ dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release: 
 ```
 
 The worker uses the same shared config shape as the main thread — there is no worker-specific Sentry init policy and no `defaultIntegrations: false` override. Dynamic reporting state is the only thing that differs across runtimes, and it is synced from main via `sentryWorkerSync`.
+
+### Diagnostics detail mode
+
+Static config also includes `DIAGNOSTICS_MODE`:
+
+- `production` — conservative breadcrumb count, no debug breadcrumbs
+- `preview` — larger breadcrumb count and debug technical breadcrumbs
+
+Preview mode still uses the same privacy rules. It allows more safe technical detail, not private data.
 
 ### Dynamic state (synced from main to worker)
 
@@ -189,6 +199,26 @@ The `context` parameter maps to the `diagnostic` Sentry context and is sanitized
 
 ---
 
+## `addTechnicalBreadcrumb` usage
+
+Use `addTechnicalBreadcrumb` only for technical milestones that help explain a later failure:
+
+- repository save start
+- queued write replay start and completion
+- write-access recovery start, permission prompt start, permission resolution
+- worker runtime state application
+- Sentry runtime initialization
+
+Do not use breadcrumbs for:
+
+- user clicks, input, navigation, or account/session activity
+- arbitrary payload dumps or open-ended metadata
+- repeating the same terminal failure event at the same location
+
+Breadcrumbs are timeline only. Keep structured detail on the terminal event via safe tags, safe extras, `contexts.diagnostic`, and `captureException` when a real `Error` exists.
+
+---
+
 ## API
 
 All generic diagnostics infrastructure is in `src/shared/lib/diagnostics`.
@@ -222,14 +252,35 @@ Sets an in-memory array for test capture. Use only in unit tests.
 
 ---
 
-## beforeSend privacy boundary
+## beforeBreadcrumb and beforeSend privacy boundary
 
-The `createBeforeSend` function in `src/shared/lib/sentry/sanitizeSentryEvent.ts` is the client-side privacy boundary shared by main thread and worker.
+The shared Sentry runtime uses both `beforeBreadcrumb` and `beforeSend`:
 
-### What `beforeSend` drops
+- `beforeBreadcrumb` filters or drops breadcrumbs before they enter the scope
+- `beforeSend` is the final client-side privacy boundary before sending
+
+Both hooks are shared by main thread and worker.
+
+### What the breadcrumb sanitizer keeps
+
+- manual project technical breadcrumbs only
+- known categories such as `repository.storage`, `writeAccessRecovery`, `worker.runtime`, `sentry.runtime`, and `webFileSystem.permission`
+- allowlisted data keys only
+- `debug` breadcrumbs only in preview mode
+
+### What the breadcrumb sanitizer drops
+
+- automatic UI, click, navigation, fetch, and network breadcrumbs
+- unknown categories
+- unknown data keys
+- empty breadcrumbs
+- overlong strings
+- private-looking fields such as paths, names, ids, URLs, and raw error text
+
+### What `beforeSend` drops or sanitizes
 
 - `request` — always stripped entirely
-- `breadcrumbs` — stripped entirely (explicit technical breadcrumbs can be re-enabled in a later pass)
+- `breadcrumbs` — sanitized through the same technical breadcrumb sanitizer; removed entirely if none survive
 - Unknown `contexts` names — only `diagnostic`, `operation`, and `storage` are kept
 - Unknown fields within kept contexts — only whitelisted fields survive
 - `user` fields other than a valid `session:`-prefixed `id`
@@ -245,6 +296,21 @@ The `createBeforeSend` function in `src/shared/lib/sentry/sanitizeSentryEvent.ts
 `attemptId`, `flow`, `operation`, `storageOperation`, `provider`, `result`, `classification`, `failureClassification`, `errorClass`, `domExceptionName`, `vfsErrorCode`, `domainErrorCode`, `errorClassification`, `runtime`, `pendingCount`, `flushedCount`, `failedCount`
 
 Forbidden in all contexts: paths, file names, document ids, document names, storage keys, URLs, raw error messages, raw causes, bytes, document contents, user-entered text.
+
+The same privacy rules apply in preview mode. Preview mode may keep more safe technical breadcrumbs, but it must not send private user data.
+
+---
+
+## Intentional non-goals
+
+This diagnostics setup intentionally does not enable:
+
+- tracing
+- session replay
+- logs
+- profiling
+
+`attachStacktrace` also stays off. Enabling it would change Sentry grouping for message events, so the current runtime keeps message grouping stable.
 
 ---
 

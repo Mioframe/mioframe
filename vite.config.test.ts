@@ -59,6 +59,7 @@ describe('vite sentry config', () => {
     );
     expect(config.build?.sourcemap).toBe('hidden');
     expect(config.define?.__BUILD_ID__).toBe(JSON.stringify('build-123'));
+    expect(config.define?.__DIAGNOSTICS_MODE__).toBe(JSON.stringify('production'));
     expect(config.plugins?.at(-1)).toEqual({ name: 'sentry' });
 
     const workerPlugins = config.worker?.plugins?.();
@@ -74,5 +75,12 @@ describe('vite sentry config', () => {
     expect(config.build?.sourcemap).toBe(false);
     expect(config.plugins ?? []).not.toContainEqual({ name: 'sentry' });
     expect(config.worker?.plugins?.()).not.toContainEqual({ name: 'sentry' });
+  });
+
+  it('marks preview builds with preview diagnostics mode', async () => {
+    const viteConfig = (await import('./vite.config')).default;
+    const config = viteConfig({ command: 'build', mode: 'production', isPreview: true });
+
+    expect(config.define?.__DIAGNOSTICS_MODE__).toBe(JSON.stringify('preview'));
   });
 });

@@ -3,8 +3,10 @@ import type {
   Contexts as SentryContexts,
   User as SentryUser,
 } from '@sentry/vue';
+import type { DiagnosticsMode } from '@shared/config';
 import { isSessionSentryUserId } from './sentrySession';
 import type { SentryReportingState } from './sentryRuntimeState';
+import { createBeforeBreadcrumb, sanitizeTechnicalBreadcrumbs } from './technicalBreadcrumbs';
 
 // ---------------------------------------------------------------------------
 // Tag filtering
@@ -206,58 +208,75 @@ export const sanitizeUser = (user: SentryUser | undefined): { id: string } | und
 // Main sanitizer — used as Sentry beforeSend callback
 // ---------------------------------------------------------------------------
 
-type BeforeSendFactory = (
-  getState: () => SentryReportingState,
-) => (event: SentryErrorEvent) => SentryErrorEvent | null;
+type BeforeSendFactory = (params: {
+  diagnosticsMode: DiagnosticsMode;
+  getState: () => SentryReportingState;
+}) => (event: SentryErrorEvent) => SentryErrorEvent | null;
+
+/**
+ * Shared `beforeBreadcrumb` callback for both main-thread and worker runtimes.
+ * Keeps only sanitized project technical breadcrumbs.
+ * @param diagnosticsMode - Shared diagnostics detail mode.
+ * @returns Hook that keeps only safe project technical breadcrumbs.
+ */
+export { createBeforeBreadcrumb };
 
 /**
  * Creates the shared `beforeSend` callback for both main-thread and worker Sentry instances.
  * Acts as the client-side privacy boundary:
  * - Drops events when reporting is not enabled.
  * - Strips `request` entirely.
- * - Strips `breadcrumbs` entirely (add explicit breadcrumb support in a later pass if needed).
+ * - Keeps only sanitized project technical breadcrumbs.
  * - Keeps only whitelisted `contexts` keys (`diagnostic`, `operation`, `storage`) with safe fields.
  * - Keeps only a session-scoped `user.id`; strips all other user fields.
  * - Keeps only whitelisted `tags` keys.
  * - Keeps only whitelisted `extras` keys.
- * @param getState - Function that returns the current reporting state at event time.
+ * @param params - Reporting-state getter plus shared diagnostics mode.
  * @returns The `beforeSend` callback for `Sentry.init`.
  */
-export const createBeforeSend: BeforeSendFactory = (getState) => (event) => {
-  if (getState() !== 'enabled') return null;
+export const createBeforeSend: BeforeSendFactory =
+  ({ diagnosticsMode, getState }) =>
+  (event) => {
+    if (getState() !== 'enabled') return null;
 
-  const sanitized: SentryErrorEvent = { ...event };
+    const sanitized: SentryErrorEvent = { ...event };
 
-  delete sanitized.breadcrumbs;
-  delete sanitized.request;
+    delete sanitized.request;
 
-  const safeContexts = sanitizeContexts(event.contexts);
-  if (Object.keys(safeContexts).length > 0) {
-    sanitized.contexts = safeContexts;
-  } else {
-    delete sanitized.contexts;
-  }
+    const safeBreadcrumbs = sanitizeTechnicalBreadcrumbs(event.breadcrumbs, diagnosticsMode);
+    if (safeBreadcrumbs !== undefined) {
+      sanitized.breadcrumbs = safeBreadcrumbs;
+    } else {
+      delete sanitized.breadcrumbs;
+    }
 
-  const safeUser = sanitizeUser(event.user);
-  if (safeUser !== undefined) {
-    sanitized.user = safeUser;
-  } else {
-    delete sanitized.user;
-  }
+    const safeContexts = sanitizeContexts(event.contexts);
+    if (Object.keys(safeContexts).length > 0) {
+      sanitized.contexts = safeContexts;
+    } else {
+      delete sanitized.contexts;
+    }
 
-  const safeExtra = pickSafeEventExtras(event.extra);
-  if (Object.keys(safeExtra).length > 0) {
-    sanitized.extra = safeExtra;
-  } else {
-    delete sanitized.extra;
-  }
+    const safeUser = sanitizeUser(event.user);
+    if (safeUser !== undefined) {
+      sanitized.user = safeUser;
+    } else {
+      delete sanitized.user;
+    }
 
-  const safeTags = pickEventTags(event.tags, SAFE_EVENT_TAG_KEYS);
-  if (Object.keys(safeTags).length > 0) {
-    sanitized.tags = safeTags;
-  } else {
-    delete sanitized.tags;
-  }
+    const safeExtra = pickSafeEventExtras(event.extra);
+    if (Object.keys(safeExtra).length > 0) {
+      sanitized.extra = safeExtra;
+    } else {
+      delete sanitized.extra;
+    }
 
-  return sanitized;
-};
+    const safeTags = pickEventTags(event.tags, SAFE_EVENT_TAG_KEYS);
+    if (Object.keys(safeTags).length > 0) {
+      sanitized.tags = safeTags;
+    } else {
+      delete sanitized.tags;
+    }
+
+    return sanitized;
+  };
