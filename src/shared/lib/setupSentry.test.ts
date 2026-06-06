@@ -124,7 +124,7 @@ describe('setupSentry', () => {
 
   it('initializes the SDK only once across repeated ensureSentry calls', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
     const app = createApp(TestAppRoot);
 
@@ -133,7 +133,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     const [firstFacade, secondFacade] = await Promise.all([ensureSentry(app), ensureSentry(app)]);
 
@@ -154,7 +154,7 @@ describe('setupSentry', () => {
 
   it('calls setUser with session-prefixed id after initialization', async () => {
     const { setUserMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
     const app = createApp(TestAppRoot);
 
@@ -162,7 +162,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry(app);
 
     expect(setUserMock).toHaveBeenCalledOnce();
@@ -173,7 +173,7 @@ describe('setupSentry', () => {
 
   it('passes release from config to Sentry init', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
@@ -181,7 +181,7 @@ describe('setupSentry', () => {
       enabled: true,
       release: 'abc123sha',
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -190,14 +190,14 @@ describe('setupSentry', () => {
 
   it('omits release from init when not provided in config', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -206,7 +206,7 @@ describe('setupSentry', () => {
 
   it('delegates facade calls to the SDK after initialization', async () => {
     const { captureMessageMock, captureExceptionMock, setUserMock } = setupSentryMocks();
-    const { sentryPlugin, ensureSentry, setSentryReportingEnabled, useSentry } =
+    const { sentryPlugin, ensureSentry, setDiagnosticsRuntimeState, useSentry } =
       await import('./setupSentry');
     const app = createApp(TestAppRoot);
 
@@ -215,7 +215,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const messageContext = { tags: { classification: 'unexpected' } };
@@ -258,30 +258,20 @@ describe('setupSentry', () => {
     expect(getImportAttempts()).toBe(1);
   });
 
-  it('setSentryReportingEnabled does not import the SDK by itself', async () => {
-    const { getImportAttempts } = setupSentryMocks();
-    const { isSentryReportingEnabled, setSentryReportingEnabled } = await import('./setupSentry');
-
-    setSentryReportingEnabled(true);
-
-    expect(isSentryReportingEnabled()).toBe(true);
-    expect(getImportAttempts()).toBe(0);
-  });
-
   it('recovers after a failed Sentry module import', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const importError = new Error('chunk failed');
     const { initMock, captureMessageMock, getImportAttempts } = setupSentryMocks({
       importErrorOnce: importError,
     });
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled, useSentry } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState, useSentry } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
     expect(initMock).not.toHaveBeenCalled();
@@ -306,7 +296,7 @@ describe('setupSentry', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const initError = new Error('init failed');
     const { initMock, captureMessageMock, getImportAttempts } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled, useSentry } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState, useSentry } =
       await import('./setupSentry');
 
     initMock.mockImplementationOnce(() => {
@@ -320,7 +310,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
     await expect(ensureSentry()).resolves.toBe(useSentry());
@@ -393,14 +383,14 @@ describe('setupSentry', () => {
 
   it('beforeSend keeps events while reporting is enabled', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -449,14 +439,14 @@ describe('setupSentry', () => {
 
   it('beforeSend drops unsafe-only extra payloads', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -480,14 +470,14 @@ describe('setupSentry', () => {
 
   it('beforeSend keeps only allowlisted extra keys from mixed payloads', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -518,14 +508,14 @@ describe('setupSentry', () => {
 
   it('beforeSend drops unsafe-only tags', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -548,14 +538,14 @@ describe('setupSentry', () => {
 
   it('beforeSend keeps only allowlisted tags from mixed payloads', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -586,14 +576,14 @@ describe('setupSentry', () => {
 
   it('beforeSend removes request, breadcrumbs, unknown contexts, and non-session user', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -628,11 +618,11 @@ describe('setupSentry', () => {
 
   it('beforeSend keeps session-prefixed user.id and strips all other user fields', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -655,11 +645,11 @@ describe('setupSentry', () => {
 
   it('beforeSend strips user when id is not session-prefixed', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -679,11 +669,11 @@ describe('setupSentry', () => {
 
   it('beforeSend keeps whitelisted context names with safe fields', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -731,11 +721,11 @@ describe('setupSentry', () => {
 
   it('beforeSend strips unknown context names', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -758,11 +748,11 @@ describe('setupSentry', () => {
 
   it('beforeSend strips forbidden fields from whitelisted contexts', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -794,11 +784,11 @@ describe('setupSentry', () => {
 
   it('beforeSend drops whitelisted context that becomes empty after field sanitization', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -823,14 +813,14 @@ describe('setupSentry', () => {
 
   it('beforeSend preserves core error event fields', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -864,69 +854,15 @@ describe('setupSentry', () => {
     }
   });
 
-  it('setupSentry enables reporting and keeps beforeSend open', async () => {
-    const { initMock } = setupSentryMocks();
-    const { isSentryReportingEnabled, setupSentry } = await import('./setupSentry');
-    const app = createApp(TestAppRoot);
-
-    await setupSentry(app, 'https://example@sentry.io/123');
-
-    expect(isSentryReportingEnabled()).toBe(true);
-
-    const initOptions = initMock.mock.calls[0]?.[0];
-    const beforeSend = initOptions?.beforeSend;
-    const event = {
-      extra: { userMessage: 'Could not save', path: '/docs/private' },
-      message: 'setup-event',
-    };
-
-    expect(beforeSend).toEqual(expect.any(Function));
-    if (beforeSend instanceof Function) {
-      expect(beforeSend(event)).toEqual({
-        extra: {
-          userMessage: 'Could not save',
-        },
-        message: 'setup-event',
-      });
-    }
-  });
-
   it('default state is unknown and isSentryReportingEnabled returns false', async () => {
     const { getSentryReportingState, isSentryReportingEnabled } = await import('./setupSentry');
     expect(getSentryReportingState()).toBe('unknown');
     expect(isSentryReportingEnabled()).toBe(false);
   });
 
-  it('setSentryReportingState updates state and isSentryReportingEnabled', async () => {
-    const { getSentryReportingState, setSentryReportingState, isSentryReportingEnabled } =
-      await import('./setupSentry');
-
-    setSentryReportingState('enabled');
-    expect(getSentryReportingState()).toBe('enabled');
-    expect(isSentryReportingEnabled()).toBe(true);
-
-    setSentryReportingState('disabled');
-    expect(getSentryReportingState()).toBe('disabled');
-    expect(isSentryReportingEnabled()).toBe(false);
-
-    setSentryReportingState('unknown');
-    expect(getSentryReportingState()).toBe('unknown');
-    expect(isSentryReportingEnabled()).toBe(false);
-  });
-
-  it('setSentryReportingEnabled compatibility sets correct state', async () => {
-    const { getSentryReportingState, setSentryReportingEnabled } = await import('./setupSentry');
-
-    setSentryReportingEnabled(true);
-    expect(getSentryReportingState()).toBe('enabled');
-
-    setSentryReportingEnabled(false);
-    expect(getSentryReportingState()).toBe('disabled');
-  });
-
   it('beforeSend drops events when state is unknown', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingState } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
@@ -934,7 +870,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setSentryReportingState('unknown');
+    setDiagnosticsRuntimeState({ reportingState: 'unknown', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -950,7 +886,7 @@ describe('setupSentry', () => {
 
   it('beforeSend drops events when state is disabled', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingState } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
@@ -958,7 +894,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    setSentryReportingState('disabled');
+    setDiagnosticsRuntimeState({ reportingState: 'disabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -972,26 +908,17 @@ describe('setupSentry', () => {
     }
   });
 
-  it('setupSentry compatibility sets state to enabled', async () => {
-    const { getSentryReportingState, setupSentry } = await import('./setupSentry');
-    const app = createApp(TestAppRoot);
-
-    await setupSentry(app, 'https://example@sentry.io/123');
-
-    expect(getSentryReportingState()).toBe('enabled');
-  });
-
   describe('beforeSend diagnostic tag filtering', () => {
     const setupBeforeSend = async () => {
       const { initMock } = setupSentryMocks();
-      const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
         await import('./setupSentry');
 
       registerSentryConfig({
         dsn: 'https://example@sentry.io/123',
         enabled: true,
       });
-      setSentryReportingEnabled(true);
+      setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
       await ensureSentry();
 
       const initOptions = initMock.mock.calls[0]?.[0];
@@ -1143,14 +1070,14 @@ describe('setupSentry', () => {
 
   it('beforeSend keeps failureClassification tag when present', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -1180,14 +1107,14 @@ describe('setupSentry', () => {
 
   it('beforeSend keeps storageFailure and unknown failureClassification values', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -1209,14 +1136,14 @@ describe('setupSentry', () => {
 
   it('beforeSend strips unknown private tags even when failureClassification is present', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     await ensureSentry();
 
@@ -1253,11 +1180,11 @@ describe('setupSentry', () => {
 
   it('beforeSend always drops breadcrumbs regardless of category or content', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -1281,14 +1208,14 @@ describe('setupSentry', () => {
   describe('beforeSend extra value filtering', () => {
     const setupBeforeSend = async () => {
       const { initMock } = setupSentryMocks();
-      const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
         await import('./setupSentry');
 
       registerSentryConfig({
         dsn: 'https://example@sentry.io/123',
         enabled: true,
       });
-      setSentryReportingEnabled(true);
+      setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
       await ensureSentry();
 
       const initOptions = initMock.mock.calls[0]?.[0];
@@ -1434,6 +1361,8 @@ describe('unified diagnostics runtime', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
+    flushDiagnosticsRuntimeEffectsMock.mockReset();
+    clearDiagnosticsRuntimeEffectsMock.mockReset();
   });
 
   afterEach(() => {
@@ -1443,14 +1372,14 @@ describe('unified diagnostics runtime', () => {
 
   it('worker-style init uses the shared Sentry options without worker-only overrides', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -1460,14 +1389,14 @@ describe('unified diagnostics runtime', () => {
 
   it('main-thread-style init also uses shared options', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
     await ensureSentry(createApp(TestAppRoot));
 
     const initOptions = initMock.mock.calls[0]?.[0];
@@ -1501,18 +1430,15 @@ describe('unified diagnostics runtime', () => {
 
   it('setDiagnosticsRuntimeState enabled applies session id to already-loaded Sentry', async () => {
     const { setUserMock } = setupSentryMocks();
-    const {
-      registerSentryConfig,
-      ensureSentry,
-      setSentryReportingEnabled,
-      setDiagnosticsRuntimeState,
-    } = await import('./setupSentry');
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
+      await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:init' });
     await ensureSentry(); // SDK loaded at this point
 
     setUserMock.mockClear();
+    flushDiagnosticsRuntimeEffectsMock.mockClear();
 
     setDiagnosticsRuntimeState({
       sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
@@ -1530,13 +1456,12 @@ describe('unified diagnostics runtime', () => {
     const {
       registerSentryConfig,
       ensureSentry,
-      setSentryReportingEnabled,
       setDiagnosticsRuntimeState,
       getSentryReportingState,
     } = await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:init' });
     await ensureSentry();
 
     setUserMock.mockClear();
@@ -1556,16 +1481,16 @@ describe('unified diagnostics runtime', () => {
     const {
       registerSentryConfig,
       ensureSentry,
-      setSentryReportingEnabled,
       setDiagnosticsRuntimeState,
       getSentryReportingState,
     } = await import('./setupSentry');
 
     registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:init' });
     await ensureSentry();
 
     setUserMock.mockClear();
+    flushDiagnosticsRuntimeEffectsMock.mockClear();
 
     setDiagnosticsRuntimeState({
       sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
@@ -1603,7 +1528,7 @@ describe('unified diagnostics runtime', () => {
 
   it('worker init uses same shared runtime as main: same facade, same beforeSend', async () => {
     const { initMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, useSentry, setSentryReportingEnabled } =
+    const { registerSentryConfig, ensureSentry, useSentry, setDiagnosticsRuntimeState } =
       await import('./setupSentry');
 
     // Simulate worker-style registration
@@ -1611,7 +1536,7 @@ describe('unified diagnostics runtime', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
-    setSentryReportingEnabled(true);
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
 
     const facade = await ensureSentry();
 

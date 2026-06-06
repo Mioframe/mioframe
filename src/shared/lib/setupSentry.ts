@@ -106,26 +106,10 @@ export const isSentryConfigured = () => canInitializeSentry(runtimeConfig);
 export const getSentryReportingState = () => reportingState;
 
 /**
- * Sets the Sentry reporting state at runtime.
- * @param state - The reporting state to set.
- */
-export const setSentryReportingState = (state: SentryReportingState) => {
-  reportingState = state;
-};
-
-/**
  * Returns whether runtime delivery to Sentry is currently allowed.
  * @returns Whether Sentry event delivery is enabled right now.
  */
 export const isSentryReportingEnabled = () => reportingState === 'enabled';
-
-/**
- * Enables or disables Sentry event delivery at runtime.
- * @param enabled - Whether Sentry should be allowed to send reports.
- */
-export const setSentryReportingEnabled = (enabled: boolean) => {
-  reportingState = enabled ? 'enabled' : 'disabled';
-};
 
 /**
  * Applies dynamic runtime state (reporting consent + session ID) received from
@@ -246,24 +230,6 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
     warnInitFailureOnce(error);
     return sentryFacade;
   }
-};
-
-/**
- * Compatibility wrapper that registers runtime config and initializes Sentry
- * for a Vue app. Prefer `sentryPlugin` for app bootstrap.
- * @param app - Vue app instance used during Sentry initialization.
- * @param dsn - Sentry DSN to register before lazy initialization.
- * @returns The stable Sentry facade.
- */
-export const setupSentry = async (app: App, dsn: string) => {
-  registerSentryConfig({
-    dsn,
-    enabled: true,
-  });
-
-  setSentryReportingEnabled(true);
-
-  return await ensureSentry(app);
 };
 
 /**
