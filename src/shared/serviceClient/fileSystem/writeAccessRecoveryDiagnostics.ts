@@ -19,6 +19,8 @@ export interface BrokerReplaySummary {
   pendingCount: number;
   /** Safe classification of the first failure, when available. */
   failureClassification?: 'accessRequired' | 'storageFailure' | 'unknown' | undefined;
+  /** Safe sanitized summary of the first replay failure when available. */
+  error?: SanitizedDiagnosticError | undefined;
 }
 
 const PROVIDER = 'webFileSystem' as const;
@@ -239,6 +241,7 @@ export const reportWriteAccessStorageFailure = ({
     result: DiagnosticResult.Failed,
     classification,
     attemptId,
+    ...(replay?.error !== undefined ? { error: replay.error } : {}),
     operation: 'resolveAccessRequest',
     safeTags: { failureClassification },
     ...(replay !== undefined

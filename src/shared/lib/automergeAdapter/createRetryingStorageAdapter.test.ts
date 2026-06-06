@@ -101,17 +101,22 @@ describe('createRetryingStorageAdapter', () => {
 
     const result = await wrapped.flushPendingSaves();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       flushedCount: 0,
       pendingCount: 1,
       status: 'failed',
       failureClassification: 'storageFailure',
+      error: {
+        errorClass: 'Error',
+        errorClassification: 'unknown',
+      },
     });
     expect(Object.keys(result)).toEqual([
       'status',
       'flushedCount',
       'pendingCount',
       'failureClassification',
+      'error',
     ]);
     expect(wrapped.hasPendingSaves()).toBe(true);
   });

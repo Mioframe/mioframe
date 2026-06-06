@@ -43,7 +43,25 @@ export interface SanitizedDiagnosticError {
    */
   domainErrorCode?: string;
   /** Safe classification derived from the error type and code. */
-  errorClassification: 'accessDenied' | 'storageFailure' | 'notFound' | 'unknown';
+  errorClassification:
+    | 'accessDenied'
+    | 'browserFileStateChanged'
+    | 'storageFailure'
+    | 'notFound'
+    | 'unknown';
+  /** Browser write phase that observed the failure when available. */
+  writePhase?:
+    | 'lookupExistingHandle'
+    | 'lookupParentDirectory'
+    | 'createFileHandle'
+    | 'createWritable'
+    | 'writeContent'
+    | 'closeWritable'
+    | 'statAfterWrite';
+  /** Whether a fresh-handle retry was attempted. */
+  retryAttempted?: 'false' | 'true';
+  /** Outcome of the bounded retry decision. */
+  retryResult?: 'failed' | 'notAttempted' | 'succeeded';
 }
 
 /**

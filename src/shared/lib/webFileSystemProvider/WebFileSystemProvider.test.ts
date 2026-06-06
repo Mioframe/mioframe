@@ -457,6 +457,58 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toThrow(storageError);
   });
 
+  it('retries once with a fresh handle after InvalidStateError during createWritable and then succeeds', async () => {
+    const staleHandle = createFileHandleMock({
+      fileContent: ['hello'],
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const freshHandle = createFileHandleMock({
+      fileContent: ['hello'],
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    staleHandle.createWritable = vi.fn(() =>
+      Promise.reject(
+        new DOMException(
+          'The state cached in an interface object has changed since it was read from disk.',
+          'InvalidStateError',
+        ),
+      ),
+    );
+    const rootHandle = createDirectoryHandleMock({
+      entries: [staleHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const getFileHandleSpy = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockResolvedValueOnce(staleHandle)
+      .mockResolvedValueOnce(freshHandle);
+    rootHandle.getFileHandle = getFileHandleSpy;
+    const onWriteRetry = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onWriteRetry,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(getFileHandleSpy).toHaveBeenNthCalledWith(1, 'note.txt', { create: false });
+    expect(getFileHandleSpy).toHaveBeenNthCalledWith(2, 'note.txt', { create: false });
+    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+      result: 'started',
+      writePhase: 'createWritable',
+    });
+    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+      result: 'succeeded',
+      writePhase: 'createWritable',
+    });
+    expect(freshHandle.__writtenContent).toEqual(['fresh']);
+  });
+
   it('converts a removeEntry browser failure to WebFileSystemAccessRequiredError when readwrite is no longer granted', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const queryPermissionMock = vi

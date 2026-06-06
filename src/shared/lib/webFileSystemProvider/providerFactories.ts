@@ -3,6 +3,7 @@ import {
   WebFileSystemProvider,
   type WebFileSystemProviderAccessRequiredContext,
   type WebFileSystemProviderOptions,
+  type WebFileSystemWriteRetryEvent,
 } from './WebFileSystemProvider';
 import type { WebFileSystemAccessRequiredDetails } from './WebFileSystemAccessRequiredError';
 
@@ -15,6 +16,7 @@ export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
 type AccessRequiredHandler = (
   context: WebFileSystemProviderAccessRequiredContext,
 ) => WebFileSystemAccessRequiredDetails;
+type WriteRetryHandler = (event: WebFileSystemWriteRetryEvent) => void;
 
 /** Mounted provider kind used by the provider-boundary factory mapping. */
 export type MountedWebFileSystemKind = 'browserStorage' | 'localDirectory';
@@ -28,15 +30,18 @@ const createProvider = (
  * Creates a provider for a user-selected directory that may need permission recovery.
  * @param rootHandle - Mounted root directory handle.
  * @param onAccessRequired - Service-owned callback that records a pending access request.
+ * @param onWriteRetry - Optional safe retry milestone callback.
  * @returns Refreshable provider instance for the selected directory.
  */
 export const createUserSelectedDirectoryProvider = (
   rootHandle: FileSystemDirectoryHandle,
   onAccessRequired: AccessRequiredHandler,
+  onWriteRetry?: WriteRetryHandler,
 ): RefreshableWebFileSystemProvider =>
   createProvider(rootHandle, {
     permissionPolicy: 'userSelectedDirectory',
     onAccessRequired,
+    ...(onWriteRetry !== undefined ? { onWriteRetry } : {}),
   });
 
 /**
@@ -59,16 +64,19 @@ export const createOriginPrivateStorageProvider = (
 export const createMountedWebFileSystemProvider = ({
   kind,
   onAccessRequired,
+  onWriteRetry,
   rootHandle,
 }: {
   kind: MountedWebFileSystemKind;
   onAccessRequired?: AccessRequiredHandler | undefined;
+  onWriteRetry?: WriteRetryHandler | undefined;
   rootHandle: FileSystemDirectoryHandle;
 }): RefreshableWebFileSystemProvider =>
   kind === 'localDirectory' && onAccessRequired
-    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired)
+    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired, onWriteRetry)
     : kind === 'localDirectory'
       ? createProvider(rootHandle, {
           permissionPolicy: 'userSelectedDirectory',
+          ...(onWriteRetry !== undefined ? { onWriteRetry } : {}),
         })
       : createOriginPrivateStorageProvider(rootHandle);

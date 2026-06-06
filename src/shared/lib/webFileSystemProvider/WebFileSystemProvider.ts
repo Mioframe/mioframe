@@ -6,6 +6,7 @@ import type {
   VfsEvent,
   WriteFileResult,
 } from '../virtualFileSystem';
+import { DomainError } from '@shared/lib/error';
 import {
   EventEmitter,
   FileSystemError,
@@ -21,6 +22,11 @@ import type {
   WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
+import {
+  attachWebFileSystemWriteDiagnosticSummary,
+  type WebFileSystemWriteDiagnosticSummary,
+  type WebFileSystemWritePhase,
+} from './webFileSystemWriteDiagnosticSummary';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -42,7 +48,20 @@ export interface WebFileSystemProviderOptions {
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
   ) => WebFileSystemAccessRequiredDetails;
+  /** Called with safe retry milestones for bounded InvalidStateError recovery. */
+  onWriteRetry?: (event: WebFileSystemWriteRetryEvent) => void;
 }
+
+/**
+ * Safe retry milestone emitted by the provider for bounded InvalidStateError recovery.
+ */
+export type WebFileSystemWriteRetryEvent =
+  | { result: 'started' | 'succeeded'; writePhase: WebFileSystemWritePhase }
+  | {
+      result: 'failed';
+      error: WebFileSystemWriteDiagnosticSummary;
+      writePhase: WebFileSystemWritePhase;
+    };
 
 /**
  * Creates a VFS provider backed by the browser File System Access API.
@@ -54,7 +73,7 @@ export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
 ): IFileSystemProvider & { notifyAccessChanged(): Promise<void> } => {
-  const { onAccessRequired, permissionPolicy } = options;
+  const { onAccessRequired, onWriteRetry, permissionPolicy } = options;
   const events = new EventEmitter();
 
   const getWriteCapability = (
@@ -170,17 +189,110 @@ export const WebFileSystemProvider = (
    * Writes `content` to `handle` via createWritable, applying write access recovery once.
    * @param handle - File handle to write to.
    * @param content - Content to write.
+   * @param onPhaseChange - Safe phase observer for diagnostics.
    * @returns Promise that resolves when the write is complete.
    */
   const writeFileHandleContent = (
     handle: FileSystemFileHandle,
     content: FileContent,
+    onPhaseChange: (phase: WebFileSystemWritePhase) => void = () => {},
   ): Promise<void> =>
     withWriteAccessRecovery(async () => {
+      onPhaseChange('createWritable');
       const writable = await handle.createWritable();
+      onPhaseChange('writeContent');
       await writable.write(content);
+      onPhaseChange('closeWritable');
       await writable.close();
     });
+
+  const classifyWriteError = (
+    error: unknown,
+  ): Pick<
+    WebFileSystemWriteDiagnosticSummary,
+    'domainErrorCode' | 'domExceptionName' | 'errorClass' | 'errorClassification' | 'vfsErrorCode'
+  > => {
+    if (error instanceof DOMException) {
+      return {
+        errorClass: 'DOMException',
+        domExceptionName: error.name,
+        errorClassification:
+          error.name === 'NotAllowedError' || error.name === 'AbortError'
+            ? 'accessDenied'
+            : error.name === 'InvalidStateError'
+              ? 'browserFileStateChanged'
+              : 'unknown',
+      };
+    }
+
+    if (error instanceof VfsError) {
+      return {
+        errorClass: 'VfsError',
+        vfsErrorCode: error.code,
+        errorClassification:
+          error.code === FileSystemError.NoPermissions
+            ? 'accessDenied'
+            : error.code === FileSystemError.FileNotFound
+              ? 'notFound'
+              : error.code === FileSystemError.Unknown
+                ? 'storageFailure'
+                : 'unknown',
+      };
+    }
+
+    if (error instanceof DomainError) {
+      return {
+        errorClass: 'DomainError',
+        ...(typeof error.code === 'string' ? { domainErrorCode: error.code } : {}),
+        errorClassification: 'unknown',
+      };
+    }
+
+    return error instanceof Error
+      ? {
+          errorClass: 'Error',
+          errorClassification: 'unknown',
+        }
+      : {
+          errorClass: 'unknown',
+          errorClassification: 'unknown',
+        };
+  };
+
+  const annotateWriteError = ({
+    error,
+    retryAttempted,
+    retryResult,
+    writePhase,
+  }: {
+    error: unknown;
+    retryAttempted: 'false' | 'true';
+    retryResult: 'failed' | 'notAttempted' | 'succeeded';
+    writePhase: WebFileSystemWritePhase | undefined;
+  }): void => {
+    attachWebFileSystemWriteDiagnosticSummary(error, {
+      ...classifyWriteError(error),
+      ...(writePhase !== undefined ? { writePhase } : {}),
+      retryAttempted,
+      retryResult,
+    });
+  };
+
+  const reportWriteRetry = (
+    event:
+      | { result: 'started' | 'succeeded'; writePhase: WebFileSystemWritePhase }
+      | {
+          result: 'failed';
+          error: WebFileSystemWriteDiagnosticSummary;
+          writePhase: WebFileSystemWritePhase;
+        },
+  ) => {
+    try {
+      onWriteRetry?.(event);
+    } catch {
+      // diagnostics hooks must not affect provider behavior
+    }
+  };
 
   const isLookupMiss = (
     error: unknown,
@@ -351,34 +463,111 @@ export const WebFileSystemProvider = (
   ): Promise<WriteFileResult> => {
     await ensureAccess('readwrite');
 
-    let resolvedHandle: FileSystemFileHandle;
-    try {
-      resolvedHandle = await getHandle(path, false, 'file');
-      if (!overwrite) {
-        throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
+    const runWriteAttempt = async (): Promise<
+      | { result: WriteFileResult; status: 'succeeded' }
+      | {
+          error: unknown;
+          status: 'failed';
+          writePhase: WebFileSystemWritePhase | undefined;
+        }
+    > => {
+      let currentWritePhase: WebFileSystemWritePhase | undefined;
+      const setWritePhase = (phase: WebFileSystemWritePhase) => {
+        currentWritePhase = phase;
+      };
+
+      try {
+        let resolvedHandle: FileSystemFileHandle;
+        try {
+          setWritePhase('lookupExistingHandle');
+          resolvedHandle = await getHandle(path, false, 'file');
+          if (!overwrite) {
+            throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
+          }
+        } catch (lookupError) {
+          if (
+            !(lookupError instanceof VfsError && lookupError.code === FileSystemError.FileNotFound)
+          ) {
+            throw lookupError;
+          }
+          if (!create) {
+            throw lookupError;
+          }
+          const normalized = PathUtils.normalize(path);
+          setWritePhase('lookupParentDirectory');
+          const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
+          setWritePhase('createFileHandle');
+          resolvedHandle = await createFileHandleWithWriteRecovery(
+            parentDir,
+            PathUtils.basename(normalized),
+          );
+        }
+
+        await writeFileHandleContent(resolvedHandle, content, setWritePhase);
+
+        try {
+          setWritePhase('statAfterWrite');
+          return {
+            result: { stat: await fileHandleStat(resolvedHandle) },
+            status: 'succeeded',
+          };
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'InvalidStateError') {
+            throw error;
+          }
+          return {
+            result: { stat: { type: FSNodeType.File } },
+            status: 'succeeded',
+          };
+        }
+      } catch (error) {
+        return {
+          error,
+          status: 'failed',
+          writePhase: currentWritePhase,
+        };
       }
-    } catch (lookupError) {
-      if (!(lookupError instanceof VfsError && lookupError.code === FileSystemError.FileNotFound)) {
-        throw lookupError;
-      }
-      if (!create) {
-        throw lookupError;
-      }
-      const normalized = PathUtils.normalize(path);
-      const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
-      resolvedHandle = await createFileHandleWithWriteRecovery(
-        parentDir,
-        PathUtils.basename(normalized),
-      );
+    };
+
+    const attemptResult = await runWriteAttempt();
+
+    if (attemptResult.status === 'succeeded') {
+      return attemptResult.result;
     }
 
-    await writeFileHandleContent(resolvedHandle, content);
+    const { error, writePhase } = attemptResult;
 
-    try {
-      return { stat: await fileHandleStat(resolvedHandle) };
-    } catch {
-      return { stat: { type: FSNodeType.File } };
+    if (error instanceof DOMException && error.name === 'InvalidStateError' && writePhase) {
+      reportWriteRetry({ result: 'started', writePhase });
+
+      const retryResult = await runWriteAttempt();
+
+      if (retryResult.status === 'succeeded') {
+        reportWriteRetry({ result: 'succeeded', writePhase });
+        return retryResult.result;
+      }
+
+      annotateWriteError({
+        error: retryResult.error,
+        retryAttempted: 'true',
+        retryResult: 'failed',
+        writePhase: retryResult.writePhase,
+      });
+      reportWriteRetry({
+        result: 'failed',
+        writePhase,
+        error: classifyWriteError(retryResult.error),
+      });
+      throw retryResult.error;
     }
+
+    annotateWriteError({
+      error,
+      retryAttempted: 'false',
+      retryResult: 'notAttempted',
+      writePhase,
+    });
+    throw error;
   };
 
   const writeFile = async (

@@ -15,7 +15,7 @@ const buildDedupeKey = (event: DiagnosticEvent): string => {
     ? JSON.stringify(Object.entries(event.safeTags).sort(([a], [b]) => a.localeCompare(b)))
     : '';
   const errKey = event.error
-    ? `${event.error.errorClass}|${event.error.errorClassification}|${event.error.domExceptionName ?? ''}|${event.error.vfsErrorCode ?? ''}|${event.error.domainErrorCode ?? ''}`
+    ? `${event.error.errorClass}|${event.error.errorClassification}|${event.error.domExceptionName ?? ''}|${event.error.vfsErrorCode ?? ''}|${event.error.domainErrorCode ?? ''}|${event.error.writePhase ?? ''}|${event.error.retryAttempted ?? ''}|${event.error.retryResult ?? ''}`
     : '';
   return `${event.name}|${event.severity}|${event.result}|${event.classification}|${tagsKey}|${errKey}`;
 };
@@ -113,6 +113,10 @@ const sendEntry = (
       if (entry.error.domainErrorCode !== undefined)
         extras.domainErrorCode = entry.error.domainErrorCode;
       extras.errorClassification = entry.error.errorClassification;
+      if (entry.error.writePhase !== undefined) extras.writePhase = entry.error.writePhase;
+      if (entry.error.retryAttempted !== undefined)
+        extras.retryAttempted = entry.error.retryAttempted;
+      if (entry.error.retryResult !== undefined) extras.retryResult = entry.error.retryResult;
     }
 
     const eventId = sentry.captureMessage(`[diagnostic] ${entry.name}`, {

@@ -1,5 +1,6 @@
 import { DomainError } from '@shared/lib/error';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
+import { getWebFileSystemWriteDiagnosticSummary } from '@shared/lib/webFileSystemProvider/webFileSystemWriteDiagnosticSummary';
 import type { SanitizedDiagnosticError } from './DiagnosticEvent';
 
 /**
@@ -17,6 +18,32 @@ import type { SanitizedDiagnosticError } from './DiagnosticEvent';
  * @returns Safe structured diagnostic data with no raw messages, paths, ids, or user data.
  */
 export const sanitizeDiagnosticError = (error: unknown): SanitizedDiagnosticError => {
+  const webFileSystemSummary = getWebFileSystemWriteDiagnosticSummary(error);
+  if (webFileSystemSummary !== undefined) {
+    return {
+      errorClass: webFileSystemSummary.errorClass,
+      errorClassification: webFileSystemSummary.errorClassification,
+      ...(webFileSystemSummary.domExceptionName !== undefined
+        ? { domExceptionName: webFileSystemSummary.domExceptionName }
+        : {}),
+      ...(webFileSystemSummary.vfsErrorCode !== undefined
+        ? { vfsErrorCode: webFileSystemSummary.vfsErrorCode }
+        : {}),
+      ...(webFileSystemSummary.domainErrorCode !== undefined
+        ? { domainErrorCode: webFileSystemSummary.domainErrorCode }
+        : {}),
+      ...(webFileSystemSummary.writePhase !== undefined
+        ? { writePhase: webFileSystemSummary.writePhase }
+        : {}),
+      ...(webFileSystemSummary.retryAttempted !== undefined
+        ? { retryAttempted: webFileSystemSummary.retryAttempted }
+        : {}),
+      ...(webFileSystemSummary.retryResult !== undefined
+        ? { retryResult: webFileSystemSummary.retryResult }
+        : {}),
+    };
+  }
+
   if (error instanceof DOMException) {
     return {
       errorClass: 'DOMException',
@@ -60,6 +87,7 @@ const classifyDomException = (
 ): SanitizedDiagnosticError['errorClassification'] => {
   if (error.name === 'NotAllowedError') return 'accessDenied';
   if (error.name === 'AbortError') return 'accessDenied';
+  if (error.name === 'InvalidStateError') return 'browserFileStateChanged';
   return 'unknown';
 };
 

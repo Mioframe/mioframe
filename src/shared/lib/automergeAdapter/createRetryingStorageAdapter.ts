@@ -1,4 +1,6 @@
 import type { StorageAdapterInterface, StorageKey } from '@automerge/automerge-repo';
+import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
+import type { SanitizedDiagnosticError } from '@shared/lib/diagnostics';
 
 /**
  * Safe classification of a flush failure exposed to service-layer recovery.
@@ -27,6 +29,8 @@ export interface RetryingStorageAdapterFlushResult {
    * Present only when `status` is `'failed'` or `'stillBlocked'`.
    */
   failureClassification?: RetryingStorageAdapterFailureClassification;
+  /** Safe sanitized summary of the first failure encountered during this flush attempt. */
+  error?: SanitizedDiagnosticError | undefined;
 }
 
 /**
@@ -102,6 +106,7 @@ export interface RetryingStorageAdapterOptions {
    */
   onFlushPendingSavesFailure?:
     | ((info: {
+        error?: SanitizedDiagnosticError | undefined;
         failureClassification: RetryingStorageAdapterFailureClassification;
         flushedCount: number;
         pendingCount: number;
@@ -248,8 +253,10 @@ export const createRetryingStorageAdapter = (
             };
           }
 
+          const sanitizedError = sanitizeDiagnosticError(error);
           try {
             onFlushPendingSavesFailure?.({
+              error: sanitizedError,
               failureClassification: 'storageFailure',
               flushedCount,
               pendingCount: pendingSaves.size,
@@ -262,6 +269,7 @@ export const createRetryingStorageAdapter = (
             flushedCount,
             pendingCount: pendingSaves.size,
             failureClassification: 'storageFailure',
+            error: sanitizedError,
           };
         }
       }

@@ -24,6 +24,9 @@ export const TECHNICAL_BREADCRUMB_DATA_KEYS = [
   'vfsErrorCode',
   'domainErrorCode',
   'errorClassification',
+  'writePhase',
+  'retryAttempted',
+  'retryResult',
   'runtime',
 ] as const;
 

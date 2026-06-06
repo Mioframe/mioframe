@@ -28,6 +28,11 @@ import {
   createFileSystemAccessRequestRegistry,
   type WriteAccessRecoveryHandler,
 } from './fileSystemAccessRequestRegistry';
+import {
+  addWebFileSystemWriteRetryFailedBreadcrumb,
+  addWebFileSystemWriteRetryStartedBreadcrumb,
+  addWebFileSystemWriteRetrySucceededBreadcrumb,
+} from './webFileSystemWriteDiagnostics';
 
 /**
  * UI-facing options for reading directory content through the shared file-system service.
@@ -79,6 +84,21 @@ const setupFileSystemService = () => {
             mode,
             refreshProvider: () => notifyHolder.fn(),
           }),
+        onWriteRetry: (event) => {
+          switch (event.result) {
+            case 'started':
+              addWebFileSystemWriteRetryStartedBreadcrumb({ writePhase: event.writePhase });
+              return;
+            case 'succeeded':
+              addWebFileSystemWriteRetrySucceededBreadcrumb({ writePhase: event.writePhase });
+              return;
+            case 'failed':
+              addWebFileSystemWriteRetryFailedBreadcrumb({
+                error: event.error,
+                writePhase: event.writePhase,
+              });
+          }
+        },
       });
 
       notifyHolder.fn = () => provider.notifyAccessChanged();

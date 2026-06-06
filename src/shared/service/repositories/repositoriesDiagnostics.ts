@@ -101,10 +101,12 @@ export const reportWriteAccessReplayStillBlocked = ({
  * @param root0 - Event options (flushedCount, pendingCount, failureClassification).
  */
 export const reportWriteAccessReplayStorageFailure = ({
+  error,
   flushedCount,
   pendingCount,
   failureClassification,
 }: {
+  error?: SanitizedDiagnosticError | undefined;
   flushedCount: number;
   pendingCount: number;
   failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
@@ -122,6 +124,7 @@ export const reportWriteAccessReplayStorageFailure = ({
           ? DiagnosticClassification.Storage
           : DiagnosticClassification.Unknown,
     counters: { flushedCount, pendingCount },
+    ...(error !== undefined ? { error } : {}),
     safeTags: { ...REPLAY_TAGS, failureClassification: safeClassification },
   });
 };

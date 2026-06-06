@@ -285,6 +285,7 @@ const setupRepositoriesService = () => {
           reportWriteAccessReplayStorageFailure({
             flushedCount,
             pendingCount: result.pendingCount,
+            error: result.error,
             failureClassification: result.failureClassification,
           });
         }
@@ -293,6 +294,7 @@ const setupRepositoriesService = () => {
           replay: {
             flushedCount,
             pendingCount: result.pendingCount,
+            ...(result.error !== undefined ? { error: result.error } : {}),
             ...(result.failureClassification !== undefined
               ? { failureClassification: result.failureClassification }
               : {}),

@@ -293,6 +293,34 @@ describe('writeAccessRecoveryDiagnostics', () => {
       expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
     });
 
+    it('includes sanitized write error summary when replay provides one', () => {
+      reportWriteAccessStorageFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: {
+          flushedCount: 0,
+          pendingCount: 1,
+          failureClassification: 'storageFailure',
+          error: {
+            errorClass: 'DOMException',
+            domExceptionName: 'InvalidStateError',
+            errorClassification: 'browserFileStateChanged',
+            writePhase: 'createWritable',
+            retryAttempted: 'true',
+            retryResult: 'failed',
+          },
+        },
+      });
+
+      expect(sink[0]?.error).toMatchObject({
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+        errorClassification: 'browserFileStateChanged',
+        writePhase: 'createWritable',
+        retryAttempted: 'true',
+        retryResult: 'failed',
+      });
+    });
+
     it('includes unknown failureClassification in safeTags when no replay is provided', () => {
       reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });
 
