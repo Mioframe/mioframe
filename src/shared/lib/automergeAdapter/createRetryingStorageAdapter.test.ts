@@ -1,4 +1,6 @@
 import type { StorageAdapterInterface } from '@automerge/automerge-repo';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { createRetryingStorageAdapter } from './createRetryingStorageAdapter';
 
@@ -106,19 +108,26 @@ describe('createRetryingStorageAdapter', () => {
       pendingCount: 1,
       status: 'failed',
       failureClassification: 'storageFailure',
-      error: {
-        errorClass: 'Error',
-        errorClassification: 'unknown',
-      },
+      caughtError: flushError,
     });
     expect(Object.keys(result)).toEqual([
       'status',
       'flushedCount',
       'pendingCount',
       'failureClassification',
-      'error',
+      'caughtError',
     ]);
     expect(wrapped.hasPendingSaves()).toBe(true);
+  });
+
+  it('keeps diagnostics concerns out of the adapter source', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src/shared/lib/automergeAdapter/createRetryingStorageAdapter.ts'),
+      'utf8',
+    );
+
+    expect(source).not.toContain('@shared/lib/diagnostics');
+    expect(source).not.toContain('sanitizeDiagnosticError');
   });
 
   it('removes a pending save when remove deletes the same storage key', async () => {
@@ -439,5 +448,43 @@ describe('createRetryingStorageAdapter', () => {
     await expect(wrapped.loadRange(['doc-id'])).resolves.toBe(range);
     await expect(wrapped.remove(key)).resolves.toBeUndefined();
     await expect(wrapped.removeRange(['doc-id'])).resolves.toBeUndefined();
+  });
+
+  it('passes raw flush failures only to the local callback and result for service-layer sanitization', async () => {
+    const queuedError = new Error('permission blocked');
+    const flushError = new Error('disk full');
+    const onFlushPendingSavesFailure = vi.fn();
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn(),
+      save: vi
+        .fn<StorageAdapterInterface['save']>()
+        .mockRejectedValueOnce(queuedError)
+        .mockRejectedValueOnce(flushError),
+    } satisfies StorageAdapterInterface;
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === queuedError,
+      onFlushPendingSavesFailure,
+    });
+
+    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([7]))).rejects.toBe(
+      queuedError,
+    );
+
+    const result = await wrapped.flushPendingSaves();
+
+    expect(onFlushPendingSavesFailure).toHaveBeenCalledWith({
+      caughtError: flushError,
+      failureClassification: 'storageFailure',
+      flushedCount: 0,
+      pendingCount: 1,
+    });
+    expect(result).toMatchObject({
+      status: 'failed',
+      failureClassification: 'storageFailure',
+      caughtError: flushError,
+    });
   });
 });

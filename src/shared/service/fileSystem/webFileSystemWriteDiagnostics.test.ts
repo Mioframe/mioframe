@@ -1,16 +1,30 @@
-import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
-import { describe, expect, it, vi } from 'vitest';
+import { addTechnicalBreadcrumb, reportDiagnosticEvent } from '@shared/lib/diagnostics';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addWebFileSystemWriteRetryFailedBreadcrumb,
   addWebFileSystemWriteRetryStartedBreadcrumb,
   addWebFileSystemWriteRetrySucceededBreadcrumb,
+  reportWebFileSystemWriteRetrySucceededForPreview,
 } from './webFileSystemWriteDiagnostics';
+
+vi.mock('@shared/config', () => ({
+  DIAGNOSTICS_MODE: 'preview',
+}));
 
 vi.mock('@shared/lib/diagnostics', () => ({
   addTechnicalBreadcrumb: vi.fn(),
+  reportDiagnosticEvent: vi.fn(),
+  DiagnosticClassification: { Storage: 'storage' },
+  DiagnosticResult: { Success: 'success' },
+  DiagnosticSeverity: { Info: 'info' },
 }));
 
 describe('webFileSystemWriteDiagnostics', () => {
+  beforeEach(() => {
+    vi.mocked(reportDiagnosticEvent).mockReset();
+    vi.mocked(addTechnicalBreadcrumb).mockReset();
+  });
+
   it('adds retry started and succeeded breadcrumbs with safe write metadata', () => {
     addWebFileSystemWriteRetryStartedBreadcrumb({ writePhase: 'createWritable' });
     addWebFileSystemWriteRetrySucceededBreadcrumb({ writePhase: 'createWritable' });
@@ -65,6 +79,29 @@ describe('webFileSystemWriteDiagnostics', () => {
       },
       level: 'warning',
       message: 'web file write retry failed',
+    });
+  });
+
+  it('emits a preview-only diagnostic event for a successful retry', () => {
+    reportWebFileSystemWriteRetrySucceededForPreview({ writePhase: 'createWritable' });
+
+    expect(reportDiagnosticEvent).toHaveBeenCalledWith({
+      name: 'writeAccessRecovery.webFileWriteRetrySucceeded',
+      severity: 'info',
+      result: 'success',
+      classification: 'storage',
+      error: {
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+        errorClassification: 'browserFileStateChanged',
+        retryAttempted: 'true',
+        retryResult: 'succeeded',
+        writePhase: 'createWritable',
+      },
+      safeTags: {
+        operation: 'webFileSystemWrite',
+        provider: 'webFileSystem',
+      },
     });
   });
 });

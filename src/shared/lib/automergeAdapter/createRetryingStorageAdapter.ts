@@ -1,6 +1,4 @@
 import type { StorageAdapterInterface, StorageKey } from '@automerge/automerge-repo';
-import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
-import type { SanitizedDiagnosticError } from '@shared/lib/diagnostics';
 
 /**
  * Safe classification of a flush failure exposed to service-layer recovery.
@@ -29,15 +27,18 @@ export interface RetryingStorageAdapterFlushResult {
    * Present only when `status` is `'failed'` or `'stillBlocked'`.
    */
   failureClassification?: RetryingStorageAdapterFailureClassification;
-  /** Safe sanitized summary of the first failure encountered during this flush attempt. */
-  error?: SanitizedDiagnosticError | undefined;
+  /**
+   * Raw error from the first failure encountered during this flush attempt.
+   * The receiver must sanitize it immediately before any diagnostics use.
+   */
+  caughtError?: unknown;
 }
 
 /**
  * Safe summary passed to the {@link RetryingStorageAdapterOptions.onSaveFailure} callback.
  * Contains project-controlled classification values plus the raw caught error.
- * The raw `caughtError` stays within the same runtime boundary — the receiver
- * must sanitize it with `sanitizeDiagnosticError` before any diagnostics use.
+ * The raw `caughtError` stays within the same runtime/call-stack boundary.
+ * The receiver must sanitize it immediately before any diagnostics use.
  * Never serialize, queue, store, or send `caughtError` directly.
  */
 export interface RetryingStorageAdapterSaveFailureInfo {
@@ -70,9 +71,9 @@ export interface RetryingStorageAdapterOptions {
   shouldQueueFailedSave: (error: unknown) => boolean;
   /**
    * Optional callback invoked on every primary save failure — both queued and non-queued.
-   * Receives only safe project-controlled data — no storage keys, bytes, or raw errors.
+   * Receives only safe project-controlled data plus a raw same-runtime `caughtError`.
    * Throwing inside this callback does not affect save or queue semantics.
-   * @param info - Safe summary with queued status, classification, and pending count.
+   * @param info - Safe summary with queued status, classification, pending count, and raw error.
    */
   onSaveFailure?: ((info: RetryingStorageAdapterSaveFailureInfo) => void) | undefined;
   /**
@@ -102,11 +103,13 @@ export interface RetryingStorageAdapterOptions {
     | undefined;
   /**
    * Optional callback invoked when a pending-save flush stops at a failure.
-   * @param info - Aggregate counts plus safe failure classification.
+   * The raw `caughtError` stays local to the same runtime and must be sanitized immediately
+   * by the receiver before any diagnostics use.
+   * @param info - Aggregate counts plus safe failure classification and raw error.
    */
   onFlushPendingSavesFailure?:
     | ((info: {
-        error?: SanitizedDiagnosticError | undefined;
+        caughtError?: unknown;
         failureClassification: RetryingStorageAdapterFailureClassification;
         flushedCount: number;
         pendingCount: number;
@@ -253,10 +256,9 @@ export const createRetryingStorageAdapter = (
             };
           }
 
-          const sanitizedError = sanitizeDiagnosticError(error);
           try {
             onFlushPendingSavesFailure?.({
-              error: sanitizedError,
+              caughtError: error,
               failureClassification: 'storageFailure',
               flushedCount,
               pendingCount: pendingSaves.size,
@@ -269,7 +271,7 @@ export const createRetryingStorageAdapter = (
             flushedCount,
             pendingCount: pendingSaves.size,
             failureClassification: 'storageFailure',
-            error: sanitizedError,
+            caughtError: error,
           };
         }
       }

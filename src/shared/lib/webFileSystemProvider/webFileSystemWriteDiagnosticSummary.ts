@@ -39,34 +39,24 @@ export interface WebFileSystemWriteDiagnosticSummary {
   retryResult?: 'failed' | 'notAttempted' | 'succeeded' | undefined;
 }
 
-const WEB_FILE_SYSTEM_DIAGNOSTIC_SUMMARY = Symbol('webFileSystemDiagnosticSummary');
+const webFileSystemDiagnosticSummaries = new WeakMap<object, WebFileSystemWriteDiagnosticSummary>();
 
-type ErrorWithSummaryCarrier = {
-  [WEB_FILE_SYSTEM_DIAGNOSTIC_SUMMARY]?: WebFileSystemWriteDiagnosticSummary | undefined;
-};
-
-const isErrorWithSummaryCarrier = (value: unknown): value is ErrorWithSummaryCarrier =>
-  typeof value === 'object' && value !== null;
+const isObject = (value: unknown): value is object => typeof value === 'object' && value !== null;
 
 /**
- * Attaches a safe write-error summary to a thrown error without changing its identity.
- * @param error - Unknown thrown value to annotate in-place when possible.
+ * Attaches a safe write-error summary to a thrown object without changing its identity.
+ * Never throws, even for frozen or non-extensible objects.
+ * @param error - Unknown thrown value to annotate when it is an object.
  * @param summary - Safe summary to attach.
  */
 export const attachWebFileSystemWriteDiagnosticSummary = (
   error: unknown,
   summary: WebFileSystemWriteDiagnosticSummary,
 ): void => {
-  if (!isErrorWithSummaryCarrier(error)) {
+  if (!isObject(error)) {
     return;
   }
-
-  Object.defineProperty(error, WEB_FILE_SYSTEM_DIAGNOSTIC_SUMMARY, {
-    configurable: true,
-    enumerable: false,
-    value: summary,
-    writable: true,
-  });
+  webFileSystemDiagnosticSummaries.set(error, summary);
 };
 
 /**
@@ -77,9 +67,9 @@ export const attachWebFileSystemWriteDiagnosticSummary = (
 export const getWebFileSystemWriteDiagnosticSummary = (
   error: unknown,
 ): WebFileSystemWriteDiagnosticSummary | undefined => {
-  if (!isErrorWithSummaryCarrier(error)) {
+  if (!isObject(error)) {
     return undefined;
   }
 
-  return error[WEB_FILE_SYSTEM_DIAGNOSTIC_SUMMARY];
+  return webFileSystemDiagnosticSummaries.get(error);
 };

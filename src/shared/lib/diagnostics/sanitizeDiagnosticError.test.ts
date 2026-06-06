@@ -2,6 +2,7 @@ import { DomainError } from '@shared/lib/error';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 import { describe, expect, it } from 'vitest';
 import { sanitizeDiagnosticError } from './sanitizeDiagnosticError';
+import { attachWebFileSystemWriteDiagnosticSummary } from '@shared/lib/webFileSystemProvider/webFileSystemWriteDiagnosticSummary';
 
 describe('sanitizeDiagnosticError', () => {
   describe('DOMException', () => {
@@ -30,6 +31,29 @@ describe('sanitizeDiagnosticError', () => {
       const serialized = JSON.stringify(result);
       expect(serialized).not.toContain('user/path/secret.txt');
       expect(serialized).not.toContain('not found');
+    });
+
+    it('includes attached safe write phase and retry metadata', () => {
+      const error = new DOMException('state changed', 'InvalidStateError');
+      attachWebFileSystemWriteDiagnosticSummary(error, {
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+        errorClassification: 'browserFileStateChanged',
+        retryAttempted: 'true',
+        retryResult: 'failed',
+        writePhase: 'createWritable',
+      });
+
+      const result = sanitizeDiagnosticError(error);
+
+      expect(result).toMatchObject({
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+        errorClassification: 'browserFileStateChanged',
+        retryAttempted: 'true',
+        retryResult: 'failed',
+        writePhase: 'createWritable',
+      });
     });
   });
 

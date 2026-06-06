@@ -509,6 +509,216 @@ describe('WebFileSystemProvider', () => {
     expect(freshHandle.__writtenContent).toEqual(['fresh']);
   });
 
+  it('retries once after InvalidStateError during write and then succeeds', async () => {
+    const staleHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const freshHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    staleHandle.createWritable = vi.fn(async () => {
+      const writable = await createFileHandleMock({
+        name: 'stale.txt',
+        permissionState: 'granted',
+      }).createWritable();
+      writable.write = vi.fn(() =>
+        Promise.reject(new DOMException('state changed', 'InvalidStateError')),
+      );
+      return writable;
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [staleHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockResolvedValueOnce(staleHandle)
+      .mockResolvedValueOnce(freshHandle);
+    const onWriteRetry = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onWriteRetry,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+      result: 'started',
+      writePhase: 'writeContent',
+    });
+    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+      result: 'succeeded',
+      writePhase: 'writeContent',
+    });
+    expect(freshHandle.__writtenContent).toEqual(['fresh']);
+  });
+
+  it('retries once after InvalidStateError during close and then succeeds', async () => {
+    const staleHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const freshHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    staleHandle.createWritable = vi.fn(async () => {
+      const writable = await createFileHandleMock({
+        name: 'stale.txt',
+        permissionState: 'granted',
+      }).createWritable();
+      writable.close = vi.fn(() =>
+        Promise.reject(new DOMException('state changed', 'InvalidStateError')),
+      );
+      return writable;
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [staleHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockResolvedValueOnce(staleHandle)
+      .mockResolvedValueOnce(freshHandle);
+    const onWriteRetry = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onWriteRetry,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+      result: 'started',
+      writePhase: 'closeWritable',
+    });
+    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+      result: 'succeeded',
+      writePhase: 'closeWritable',
+    });
+  });
+
+  it('retries once after InvalidStateError during statAfterWrite and then succeeds', async () => {
+    const staleHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const freshHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    staleHandle.getFile = vi
+      .fn<() => Promise<File>>()
+      .mockRejectedValueOnce(new DOMException('state changed', 'InvalidStateError'));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [staleHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockResolvedValueOnce(staleHandle)
+      .mockResolvedValueOnce(freshHandle);
+    const onWriteRetry = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onWriteRetry,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+      result: 'started',
+      writePhase: 'statAfterWrite',
+    });
+    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+      result: 'succeeded',
+      writePhase: 'statAfterWrite',
+    });
+  });
+
+  it('reports retry failure metadata after InvalidStateError retry also fails', async () => {
+    const staleHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const freshHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    staleHandle.createWritable = vi.fn(() =>
+      Promise.reject(new DOMException('state changed', 'InvalidStateError')),
+    );
+    freshHandle.createWritable = vi.fn(() =>
+      Promise.reject(new DOMException('state changed again', 'InvalidStateError')),
+    );
+    const rootHandle = createDirectoryHandleMock({
+      entries: [staleHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockResolvedValueOnce(staleHandle)
+      .mockResolvedValueOnce(freshHandle);
+    const onWriteRetry = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onWriteRetry,
+    });
+
+    const thrownError = await provider
+      .writeFile('/note.txt', 'fresh', { create: true, overwrite: true })
+      .catch((error: unknown) => error);
+
+    expect(thrownError).toBeInstanceOf(DOMException);
+    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+      result: 'started',
+      writePhase: 'createWritable',
+    });
+    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+      result: 'failed',
+      writePhase: 'createWritable',
+      error: {
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+        errorClassification: 'browserFileStateChanged',
+      },
+    });
+  });
+
+  it('does not retry non-InvalidStateError write failures', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const storageError = new DOMException('quota', 'QuotaExceededError');
+    fileHandle.createWritable = vi.fn(() => Promise.reject(storageError));
+    const onWriteRetry = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onWriteRetry,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
+    ).rejects.toThrow(storageError);
+    expect(rootHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
+    expect(onWriteRetry).not.toHaveBeenCalled();
+  });
+
+  it('does not treat access-required failures as InvalidStateError retry cases', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const queryPermissionMock = vi
+      .fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>()
+      .mockResolvedValueOnce('granted')
+      .mockResolvedValueOnce('prompt');
+    Object.defineProperty(rootHandle, 'queryPermission', {
+      configurable: true,
+      value: queryPermissionMock,
+    });
+    fileHandle.createWritable = vi.fn(() =>
+      Promise.reject(new DOMException('Not allowed', 'NotAllowedError')),
+    );
+    const onWriteRetry = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+      onWriteRetry,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
+    ).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      name: 'WebFileSystemAccessRequiredError',
+    });
+    expect(onWriteRetry).not.toHaveBeenCalled();
+  });
+
   it('converts a removeEntry browser failure to WebFileSystemAccessRequiredError when readwrite is no longer granted', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const queryPermissionMock = vi

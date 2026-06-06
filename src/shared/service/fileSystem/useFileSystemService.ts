@@ -31,6 +31,7 @@ import {
 import {
   addWebFileSystemWriteRetryFailedBreadcrumb,
   addWebFileSystemWriteRetryStartedBreadcrumb,
+  reportWebFileSystemWriteRetrySucceededForPreview,
   addWebFileSystemWriteRetrySucceededBreadcrumb,
 } from './webFileSystemWriteDiagnostics';
 
@@ -91,6 +92,9 @@ const setupFileSystemService = () => {
               return;
             case 'succeeded':
               addWebFileSystemWriteRetrySucceededBreadcrumb({ writePhase: event.writePhase });
+              reportWebFileSystemWriteRetrySucceededForPreview({
+                writePhase: event.writePhase,
+              });
               return;
             case 'failed':
               addWebFileSystemWriteRetryFailedBreadcrumb({

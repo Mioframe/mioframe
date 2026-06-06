@@ -20,6 +20,7 @@ import {
   reportRepositoryDeleteCleanupFailed,
 } from './repositoriesDiagnostics';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   concat,
@@ -177,6 +178,23 @@ const setupRepositoriesService = () => {
               reportRepositorySaveFailed({ pendingCount, caughtError });
             }
           },
+          onFlushPendingSavesFailure: ({
+            caughtError,
+            failureClassification,
+            flushedCount,
+            pendingCount,
+          }) => {
+            if (failureClassification !== 'storageFailure' || caughtError === undefined) {
+              return;
+            }
+
+            reportWriteAccessReplayStorageFailure({
+              flushedCount,
+              pendingCount,
+              error: sanitizeDiagnosticError(caughtError),
+              failureClassification,
+            });
+          },
         });
         repoEntry = {
           repo: new Repo({
@@ -281,20 +299,15 @@ const setupRepositoriesService = () => {
       if (result.status !== 'flushed') {
         if (result.status === 'stillBlocked') {
           reportWriteAccessReplayStillBlocked({ flushedCount, pendingCount: result.pendingCount });
-        } else {
-          reportWriteAccessReplayStorageFailure({
-            flushedCount,
-            pendingCount: result.pendingCount,
-            error: result.error,
-            failureClassification: result.failureClassification,
-          });
         }
         return {
           status: result.status,
           replay: {
             flushedCount,
             pendingCount: result.pendingCount,
-            ...(result.error !== undefined ? { error: result.error } : {}),
+            ...(result.caughtError !== undefined
+              ? { error: sanitizeDiagnosticError(result.caughtError) }
+              : {}),
             ...(result.failureClassification !== undefined
               ? { failureClassification: result.failureClassification }
               : {}),
