@@ -1,5 +1,6 @@
 import { DomainError } from '@shared/lib/error';
 import { ensureSentry, getSentryReportingState, isSentryConfigured } from './setupSentry';
+import { registerDiagnosticsRuntimeEffects } from './diagnosticsRuntimeEffects';
 
 type ReportHandledErrorOptions = {
   feature: string;
@@ -102,6 +103,11 @@ export const flushQueuedHandledReports = () => {
     flushPromise = undefined;
   });
 };
+
+registerDiagnosticsRuntimeEffects({
+  flush: flushQueuedHandledReports,
+  clear: clearQueuedHandledReports,
+});
 
 /**
  * Reports a user-handled error to Sentry without rethrowing it. Domain errors with an `Error`

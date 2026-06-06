@@ -1,4 +1,5 @@
 import { ensureSentry, getSentryReportingState, isSentryConfigured } from '@shared/lib/setupSentry';
+import { registerDiagnosticsRuntimeEffects } from '@shared/lib/diagnosticsRuntimeEffects';
 import type { DiagnosticEvent } from './DiagnosticEvent';
 import { DiagnosticSeverity } from './diagnosticEnums';
 
@@ -191,6 +192,11 @@ const doFlush = (isAutoRetry: boolean): void => {
 export const flushQueuedDiagnosticEvents = (): void => {
   doFlush(false);
 };
+
+registerDiagnosticsRuntimeEffects({
+  flush: flushQueuedDiagnosticEvents,
+  clear: clearQueuedDiagnosticEvents,
+});
 
 /**
  * Reports a structured diagnostic event.

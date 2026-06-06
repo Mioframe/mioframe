@@ -10,6 +10,8 @@ Sentry is the observability backend. The project builds a thin privacy wrapper o
 
 There is one shared diagnostics/Sentry runtime: `src/shared/lib/setupSentry.ts`. Both main thread and worker initialize Sentry through this same module. The worker has a thin entry-point adapter that registers static config; all SDK state (facade, reporting state, session identity, beforeSend) is shared.
 
+Queue side effects (`flushQueuedDiagnosticEvents`, `clearQueuedDiagnosticEvents`, `flushQueuedHandledReports`, `clearQueuedHandledReports`) are registered with the neutral `src/shared/lib/diagnosticsRuntimeEffects.ts` registry at module import time. `setDiagnosticsRuntimeState` calls the registry's aggregate flush/clear — it does not import transport modules directly. This keeps the runtime foundation free of circular dependencies.
+
 Product code must never import `@sentry/vue` directly. Use project wrappers instead.
 
 ---
@@ -53,7 +55,7 @@ app.use(sentryPlugin, { dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release:
 registerSentryConfig({ dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release: ... });
 ```
 
-The worker uses the same shared runtime config shape as the main thread. Dynamic reporting state is what differs across runtimes, not a separate worker-only Sentry init policy.
+The worker uses the same shared config shape as the main thread — there is no worker-specific Sentry init policy and no `defaultIntegrations: false` override. Dynamic reporting state is the only thing that differs across runtimes, and it is synced from main via `sentryWorkerSync`.
 
 ### Dynamic state (synced from main to worker)
 
@@ -349,6 +351,9 @@ Configure these server-side settings in the Sentry project:
   - `setDiagnosticsRuntimeState` — applies dynamic session ID + reporting state
   - `useSentry` / `ensureSentry` — stable facade (both runtimes)
   - `sentryPlugin` — Vue plugin for main thread
+- Runtime-effects registry: `src/shared/lib/diagnosticsRuntimeEffects.ts`
+  - `registerDiagnosticsRuntimeEffects` — called at import time by transport modules
+  - `flushDiagnosticsRuntimeEffects` / `clearDiagnosticsRuntimeEffects` — called by `setDiagnosticsRuntimeState`
 - Worker state sync: `src/shared/service/sentryWorkerSync.ts`
 - Worker entry point: `src/shared/service/serviceWorker.ts`
 - Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`

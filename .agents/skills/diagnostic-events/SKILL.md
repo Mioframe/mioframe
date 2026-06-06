@@ -60,11 +60,13 @@ There is one shared diagnostics runtime (`src/shared/lib/setupSentry.ts`) used b
 
 **Main thread**: registers config via `sentryPlugin` at app startup.
 
-**Worker entry point**: calls `registerSentryConfig({ ..., defaultIntegrations: false })` — the only allowed runtime difference is `defaultIntegrations: false` which suppresses DOM integrations.
+**Worker entry point**: calls `registerSentryConfig` with the same shared config shape as the main thread — no worker-specific Sentry init policy and no `defaultIntegrations: false` exception.
 
-**Never do**: separate worker-local `sentryModule`, worker-local `reportingState`, or a duplicate `beforeSend` in the worker.
+**Never do**: separate worker-local `sentryModule`, worker-local `reportingState`, worker-local `beforeSend`, or any worker-only Sentry init override.
 
 Dynamic runtime state (session ID + reporting state) is synced from main to worker via `sentryWorkerSync`, which calls `setDiagnosticsRuntimeState` on the shared runtime. Static config (`SENTRY_DSN`, `APP_BUILD_ID`, `APP_VERSION`) is imported directly in both runtimes — never passed through proxy.
+
+Queue side effects (`flushQueuedDiagnosticEvents`, `clearQueuedDiagnosticEvents`, `flushQueuedHandledReports`, `clearQueuedHandledReports`) are registered with the neutral `diagnosticsRuntimeEffects` registry at module import time. `setDiagnosticsRuntimeState` calls the registry's aggregate `flushDiagnosticsRuntimeEffects` / `clearDiagnosticsRuntimeEffects` — it does not import transport modules directly. This prevents a circular dependency between the Sentry runtime foundation and diagnostics transport modules.
 
 Worker diagnostic events are delivered directly by the worker's shared Sentry facade. The worker starts with reporting state `unknown` and queues events until the first sync from main.
 
@@ -308,25 +310,33 @@ expect(JSON.stringify(sink[0])).not.toContain('Work');
 
 ## Test pattern — captureDiagnosticException
 
-Mock the Sentry facade; assert the safe context:
+Mock `@shared/lib/setupSentry` to provide a `captureException` spy; assert the safe capture context:
 
 ```ts
-import * as sentrySetup from '@shared/lib/setupSentry';
+const captureExceptionMock = vi.fn();
 
-vi.spyOn(sentrySetup, 'useSentry').mockReturnValue({
-  withScope: vi.fn((cb) => cb(mockScope)),
-} as unknown as ReturnType<typeof sentrySetup.useSentry>);
+vi.mock('@shared/lib/setupSentry', () => ({
+  useSentry: () => ({
+    captureException: captureExceptionMock,
+  }),
+}));
 
 // Assert:
-expect(mockScope.setContext).toHaveBeenCalledWith('diagnostic', {
-  operation: 'repositoryDeleteCleanup',
+expect(captureExceptionMock).toHaveBeenCalledWith(theError, {
+  tags: { handled: 'true', ...scopeTags },
+  contexts: {
+    diagnostic: {
+      operation: 'repositoryDeleteCleanup',
+    },
+  },
 });
-expect(mockScope.captureException).toHaveBeenCalledWith(theError);
 // Privacy:
-const ctx = mockScope.setContext.mock.calls[0][1];
-expect(JSON.stringify(ctx)).not.toContain('/');
-expect(JSON.stringify(ctx)).not.toContain('doc-');
+const captureContext = captureExceptionMock.mock.calls[0][1];
+expect(JSON.stringify(captureContext)).not.toContain('/');
+expect(JSON.stringify(captureContext)).not.toContain('doc-');
 ```
+
+`captureDiagnosticException` uses `captureException(error, captureContext)` directly — never `withScope`. Do not use `withScope` in mocks or assertions.
 
 ## Reference files
 

@@ -1,7 +1,9 @@
 import type { App, Plugin } from 'vue';
 import type { CaptureContext } from '@sentry/vue';
-import { clearQueuedDiagnosticEvents, flushQueuedDiagnosticEvents } from './diagnostics';
-import { clearQueuedHandledReports, flushQueuedHandledReports } from './reportHandledError';
+import {
+  clearDiagnosticsRuntimeEffects,
+  flushDiagnosticsRuntimeEffects,
+} from './diagnosticsRuntimeEffects';
 import type { SentryReportingState, SentryRuntimeState } from './sentry/sentryRuntimeState';
 import { createSentryOptions, getOrCreateSentrySessionId } from './sentry';
 
@@ -139,13 +141,11 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
   if (state.reportingState === 'enabled') {
     pendingSessionId = state.sessionId;
     sentryFacade.setUser({ id: state.sessionId });
-    flushQueuedHandledReports();
-    flushQueuedDiagnosticEvents();
+    flushDiagnosticsRuntimeEffects();
   } else if (state.reportingState === 'disabled') {
     pendingSessionId = undefined;
     sentryFacade.setUser(null);
-    clearQueuedHandledReports();
-    clearQueuedDiagnosticEvents();
+    clearDiagnosticsRuntimeEffects();
   } else {
     pendingSessionId = state.sessionId;
   }

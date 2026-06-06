@@ -5,36 +5,18 @@ const TestAppRoot = {
   template: '<div />',
 };
 
-const {
-  clearQueuedDiagnosticEventsMock,
-  flushQueuedDiagnosticEventsMock,
-  clearQueuedHandledReportsMock,
-  flushQueuedHandledReportsMock,
-} = vi.hoisted(() => ({
-  clearQueuedDiagnosticEventsMock: vi.fn(),
-  flushQueuedDiagnosticEventsMock: vi.fn(),
-  clearQueuedHandledReportsMock: vi.fn(),
-  flushQueuedHandledReportsMock: vi.fn(),
+const { flushDiagnosticsRuntimeEffectsMock, clearDiagnosticsRuntimeEffectsMock } = vi.hoisted(
+  () => ({
+    flushDiagnosticsRuntimeEffectsMock: vi.fn(),
+    clearDiagnosticsRuntimeEffectsMock: vi.fn(),
+  }),
+);
+
+vi.mock('./diagnosticsRuntimeEffects', () => ({
+  registerDiagnosticsRuntimeEffects: vi.fn(),
+  flushDiagnosticsRuntimeEffects: flushDiagnosticsRuntimeEffectsMock,
+  clearDiagnosticsRuntimeEffects: clearDiagnosticsRuntimeEffectsMock,
 }));
-
-vi.mock('./diagnostics', async () => {
-  const actual = await vi.importActual<typeof import('./diagnostics')>('./diagnostics');
-  return {
-    ...actual,
-    clearQueuedDiagnosticEvents: clearQueuedDiagnosticEventsMock,
-    flushQueuedDiagnosticEvents: flushQueuedDiagnosticEventsMock,
-  };
-});
-
-vi.mock('./reportHandledError', async () => {
-  const actual =
-    await vi.importActual<typeof import('./reportHandledError')>('./reportHandledError');
-  return {
-    ...actual,
-    clearQueuedHandledReports: clearQueuedHandledReportsMock,
-    flushQueuedHandledReports: flushQueuedHandledReportsMock,
-  };
-});
 
 const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   let importAttempts = 0;
@@ -75,10 +57,8 @@ describe('setupSentry', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
-    clearQueuedDiagnosticEventsMock.mockReset();
-    flushQueuedDiagnosticEventsMock.mockReset();
-    clearQueuedHandledReportsMock.mockReset();
-    flushQueuedHandledReportsMock.mockReset();
+    flushDiagnosticsRuntimeEffectsMock.mockReset();
+    clearDiagnosticsRuntimeEffectsMock.mockReset();
   });
 
   afterEach(() => {
@@ -1516,8 +1496,7 @@ describe('unified diagnostics runtime', () => {
     expect(setUserMock).toHaveBeenCalledWith({
       id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
     });
-    expect(flushQueuedHandledReportsMock).toHaveBeenCalledOnce();
-    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
+    expect(flushDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
   });
 
   it('setDiagnosticsRuntimeState enabled applies session id to already-loaded Sentry', async () => {
@@ -1543,8 +1522,7 @@ describe('unified diagnostics runtime', () => {
     expect(setUserMock).toHaveBeenCalledWith({
       id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
     });
-    expect(flushQueuedHandledReportsMock).toHaveBeenCalledOnce();
-    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
+    expect(flushDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
   });
 
   it('setDiagnosticsRuntimeState disabled clears Sentry user and sets state', async () => {
@@ -1570,8 +1548,7 @@ describe('unified diagnostics runtime', () => {
 
     expect(getSentryReportingState()).toBe('disabled');
     expect(setUserMock).toHaveBeenCalledWith(null);
-    expect(clearQueuedHandledReportsMock).toHaveBeenCalledOnce();
-    expect(clearQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
+    expect(clearDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
   });
 
   it('setDiagnosticsRuntimeState unknown updates state without touching Sentry user', async () => {
@@ -1597,10 +1574,8 @@ describe('unified diagnostics runtime', () => {
 
     expect(getSentryReportingState()).toBe('unknown');
     expect(setUserMock).not.toHaveBeenCalled();
-    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
-    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(clearQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
+    expect(flushDiagnosticsRuntimeEffectsMock).not.toHaveBeenCalled();
+    expect(clearDiagnosticsRuntimeEffectsMock).not.toHaveBeenCalled();
   });
 
   it('setDiagnosticsRuntimeState before init: pending session is applied when ensureSentry completes', async () => {
@@ -1623,8 +1598,7 @@ describe('unified diagnostics runtime', () => {
     expect(setUserMock).toHaveBeenCalledWith({
       id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
     });
-    expect(flushQueuedHandledReportsMock).toHaveBeenCalledOnce();
-    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
+    expect(flushDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
   });
 
   it('worker init uses same shared runtime as main: same facade, same beforeSend', async () => {
