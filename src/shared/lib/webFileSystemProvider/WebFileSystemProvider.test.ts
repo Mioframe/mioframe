@@ -500,6 +500,16 @@ describe('WebFileSystemProvider', () => {
     expect(getFileHandleSpy).toHaveBeenNthCalledWith(2, 'note.txt', { create: true });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
+      step: 'writableOpen',
+    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      result: 'failed',
+      step: 'writableOpen',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      result: 'started',
       step: 'freshHandleRetry',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
@@ -513,6 +523,7 @@ describe('WebFileSystemProvider', () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const writeError = new DOMException('quota exceeded', 'QuotaExceededError');
     const abortMock = vi.fn(() => Promise.resolve());
+    const onDiagnosticStep = vi.fn();
     fileHandle.createWritable = vi.fn(async () => {
       const writable = await createFileHandleMock({
         name: 'note.txt',
@@ -524,6 +535,7 @@ describe('WebFileSystemProvider', () => {
     });
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
     });
 
     await expect(
@@ -531,12 +543,25 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBe(writeError);
 
     expect(abortMock).toHaveBeenCalledTimes(1);
+    expect(onDiagnosticStep).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'failed',
+        step: 'writableOpen',
+      }),
+    );
+    expect(onDiagnosticStep).toHaveBeenCalledWith({
+      result: 'failed',
+      step: 'fileWrite',
+      errorClass: 'DOMException',
+      domExceptionName: 'QuotaExceededError',
+    });
   });
 
   it('aborts the writable and preserves the original error when close fails', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const closeError = new DOMException('quota exceeded', 'QuotaExceededError');
     const abortMock = vi.fn(() => Promise.resolve());
+    const onDiagnosticStep = vi.fn();
     fileHandle.createWritable = vi.fn(async () => {
       const writable = await createFileHandleMock({
         name: 'note.txt',
@@ -548,6 +573,7 @@ describe('WebFileSystemProvider', () => {
     });
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
     });
 
     await expect(
@@ -555,6 +581,18 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBe(closeError);
 
     expect(abortMock).toHaveBeenCalledTimes(1);
+    expect(onDiagnosticStep).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'failed',
+        step: 'writableOpen',
+      }),
+    );
+    expect(onDiagnosticStep).toHaveBeenCalledWith({
+      result: 'failed',
+      step: 'fileWrite',
+      errorClass: 'DOMException',
+      domExceptionName: 'QuotaExceededError',
+    });
   });
 
   it('re-resolves the parent directory before a fresh-handle retry after createWritable InvalidStateError', async () => {

@@ -11,10 +11,22 @@ describe('webFileSystemWriteDiagnostics', () => {
     vi.mocked(addTechnicalBreadcrumb).mockReset();
   });
 
-  it('adds safe breadcrumbs for writable open and fresh retry milestones', () => {
+  it('adds safe breadcrumbs for writable open, file write, and fresh retry milestones', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'writableOpen',
       result: 'started',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'writableOpen',
+      result: 'failed',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'fileWrite',
+      result: 'failed',
+      errorClass: 'DOMException',
+      domExceptionName: 'QuotaExceededError',
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'freshHandleRetry',
@@ -35,6 +47,32 @@ describe('webFileSystemWriteDiagnostics', () => {
       message: 'writable open started',
     });
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'openWritable',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'writableOpen',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+      },
+      level: 'warning',
+      message: 'writable open failed',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'writeFile',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'fileWrite',
+        errorClass: 'DOMException',
+        domExceptionName: 'QuotaExceededError',
+      },
+      level: 'warning',
+      message: 'file write failed',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
       category: 'webFileSystem.write',
       data: {
         operation: 'freshHandleRetry',

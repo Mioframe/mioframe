@@ -3,6 +3,7 @@ import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvi
 
 const operationByStep: Record<string, string> = {
   fileHandleCreate: 'createFileHandle',
+  fileWrite: 'writeFile',
   freshHandleRetry: 'freshHandleRetry',
   fileLookup: 'lookupExistingHandle',
   parentDirectoryLookup: 'lookupParentDirectory',
@@ -17,6 +18,9 @@ const messageByStepResult: Record<
     failed: 'file handle create failed',
     started: 'file handle create started',
     succeeded: 'file handle create succeeded',
+  },
+  fileWrite: {
+    failed: 'file write failed',
   },
   writableOpen: {
     failed: 'writable open failed',

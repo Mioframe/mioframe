@@ -196,7 +196,17 @@ export const WebFileSystemProvider = (
   ): Promise<void> => {
     await withWriteAccessRecovery(async () => {
       reportDiagnosticStep({ step: 'writableOpen', result: 'started' });
-      const writable = await handle.createWritable();
+      let writable: FileSystemWritableFileStream;
+      try {
+        writable = await handle.createWritable();
+      } catch (error) {
+        reportDiagnosticStep({
+          step: 'writableOpen',
+          result: 'failed',
+          ...describeError(error),
+        });
+        throw error;
+      }
       reportDiagnosticStep({ step: 'writableOpen', result: 'succeeded' });
       try {
         await writable.write(content);
@@ -208,7 +218,7 @@ export const WebFileSystemProvider = (
           // abort is cleanup only; diagnostics must not depend on its result
         }
         reportDiagnosticStep({
-          step: 'writableOpen',
+          step: 'fileWrite',
           result: 'failed',
           ...describeError(error),
         });
