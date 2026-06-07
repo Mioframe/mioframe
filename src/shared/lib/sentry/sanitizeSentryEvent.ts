@@ -77,16 +77,6 @@ const SAFE_STRING_EXTRA_KEYS = [
   'domExceptionName',
   'vfsErrorCode',
   'errorClassification',
-  'writePhase',
-  'attemptRole',
-  'retryKind',
-  'originalFailurePhase',
-  'handleSource',
-  'streamCreated',
-  'abortAttempted',
-  'abortResult',
-  'retryAttempted',
-  'retryResult',
   'attemptId',
 ] as const;
 const SAFE_EXTRA_STRING_MAX_LENGTH = 200;
@@ -146,15 +136,7 @@ const SAFE_CONTEXT_STRING_KEYS = [
   'domainErrorCode',
   'errorClassification',
   'writePhase',
-  'attemptRole',
-  'retryKind',
-  'originalFailurePhase',
-  'handleSource',
-  'streamCreated',
-  'abortAttempted',
-  'abortResult',
-  'retryAttempted',
-  'retryResult',
+  'step',
   'runtime',
 ] as const;
 const SAFE_CONTEXT_STRING_MAX_LENGTH = 200;

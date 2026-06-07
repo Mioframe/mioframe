@@ -15,7 +15,7 @@ const buildDedupeKey = (event: DiagnosticEvent): string => {
     ? JSON.stringify(Object.entries(event.safeTags).sort(([a], [b]) => a.localeCompare(b)))
     : '';
   const errKey = event.error
-    ? `${event.error.errorClass}|${event.error.errorClassification}|${event.error.domExceptionName ?? ''}|${event.error.vfsErrorCode ?? ''}|${event.error.domainErrorCode ?? ''}|${event.error.writePhase ?? ''}|${event.error.attemptRole ?? ''}|${event.error.retryKind ?? ''}|${event.error.originalFailurePhase ?? ''}|${event.error.handleSource ?? ''}|${event.error.streamCreated ?? ''}|${event.error.abortAttempted ?? ''}|${event.error.abortResult ?? ''}|${event.error.retryAttempted ?? ''}|${event.error.retryResult ?? ''}`
+    ? `${event.error.errorClass}|${event.error.errorClassification}|${event.error.domExceptionName ?? ''}|${event.error.vfsErrorCode ?? ''}|${event.error.domainErrorCode ?? ''}`
     : '';
   return `${event.name}|${event.severity}|${event.result}|${event.classification}|${tagsKey}|${errKey}`;
 };
@@ -113,19 +113,6 @@ const sendEntry = (
       if (entry.error.domainErrorCode !== undefined)
         extras.domainErrorCode = entry.error.domainErrorCode;
       extras.errorClassification = entry.error.errorClassification;
-      if (entry.error.writePhase !== undefined) extras.writePhase = entry.error.writePhase;
-      if (entry.error.attemptRole !== undefined) extras.attemptRole = entry.error.attemptRole;
-      if (entry.error.retryKind !== undefined) extras.retryKind = entry.error.retryKind;
-      if (entry.error.originalFailurePhase !== undefined)
-        extras.originalFailurePhase = entry.error.originalFailurePhase;
-      if (entry.error.handleSource !== undefined) extras.handleSource = entry.error.handleSource;
-      if (entry.error.streamCreated !== undefined) extras.streamCreated = entry.error.streamCreated;
-      if (entry.error.abortAttempted !== undefined)
-        extras.abortAttempted = entry.error.abortAttempted;
-      if (entry.error.abortResult !== undefined) extras.abortResult = entry.error.abortResult;
-      if (entry.error.retryAttempted !== undefined)
-        extras.retryAttempted = entry.error.retryAttempted;
-      if (entry.error.retryResult !== undefined) extras.retryResult = entry.error.retryResult;
     }
 
     const eventId = sentry.captureMessage(`[diagnostic] ${entry.name}`, {

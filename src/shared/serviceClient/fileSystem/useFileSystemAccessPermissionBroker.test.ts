@@ -506,7 +506,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
       scope.stop();
     });
 
-    it('emits a handleComparison diagnostic event with safe statuses after a granted write recovery', async () => {
+    it('does not emit a diagnostic event for handle comparison after a granted write recovery', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -533,23 +533,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
 
-      expect(diagnosticSink).toHaveLength(1);
-      expect(diagnosticSink[0]).toMatchObject({
-        name: 'writeAccessRecovery.handleComparison',
-        severity: DiagnosticSeverity.Info,
-        result: DiagnosticResult.Success,
-        classification: DiagnosticClassification.Access,
-        safeTags: {
-          provider: 'webFileSystem',
-          operation: 'resolveAccessRequest',
-          returnedHandleProvided: 'true',
-          returnedHandleSameEntry: 'false',
-          storedHandlePermission: 'prompt',
-          returnedHandlePermission: 'granted',
-          handleComparisonResult: 'differentEntry',
-        },
-      });
-      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+      expect(diagnosticSink).toHaveLength(0);
 
       scope.stop();
     });

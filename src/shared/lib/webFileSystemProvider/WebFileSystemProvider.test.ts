@@ -486,10 +486,10 @@ describe('WebFileSystemProvider', () => {
       .mockResolvedValueOnce(staleHandle)
       .mockResolvedValueOnce(freshHandle);
     rootHandle.getFileHandle = getFileHandleSpy;
-    const onWriteRetry = vi.fn();
+    const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onWriteRetry,
+      onDiagnosticStep,
     });
 
     await expect(
@@ -498,13 +498,15 @@ describe('WebFileSystemProvider', () => {
 
     expect(getFileHandleSpy).toHaveBeenNthCalledWith(1, 'note.txt', { create: false });
     expect(getFileHandleSpy).toHaveBeenNthCalledWith(2, 'note.txt', { create: true });
-    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'createWritableStarted',
     });
-    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'createWritableStarted',
     });
@@ -640,23 +642,25 @@ describe('WebFileSystemProvider', () => {
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
       .mockResolvedValueOnce(staleHandle)
       .mockResolvedValueOnce(freshHandle);
-    const onWriteRetry = vi.fn();
+    const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onWriteRetry,
+      onDiagnosticStep,
     });
 
     await expect(
       provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
     ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
 
-    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'writeStarted',
     });
-    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'writeStarted',
     });
@@ -685,23 +689,25 @@ describe('WebFileSystemProvider', () => {
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
       .mockResolvedValueOnce(staleHandle)
       .mockResolvedValueOnce(freshHandle);
-    const onWriteRetry = vi.fn();
+    const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onWriteRetry,
+      onDiagnosticStep,
     });
 
     await expect(
       provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
     ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
 
-    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'closeStarted',
     });
-    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'closeStarted',
     });
@@ -722,23 +728,25 @@ describe('WebFileSystemProvider', () => {
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
       .mockResolvedValueOnce(staleHandle)
       .mockResolvedValueOnce(freshHandle);
-    const onWriteRetry = vi.fn();
+    const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onWriteRetry,
+      onDiagnosticStep,
     });
 
     await expect(
       provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
     ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
 
-    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'statAfterWriteFailed',
     });
-    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'statAfterWriteFailed',
     });
@@ -762,10 +770,10 @@ describe('WebFileSystemProvider', () => {
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
       .mockResolvedValueOnce(staleHandle)
       .mockResolvedValueOnce(freshHandle);
-    const onWriteRetry = vi.fn();
+    const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onWriteRetry,
+      onDiagnosticStep,
     });
 
     const thrownError = await provider
@@ -773,30 +781,21 @@ describe('WebFileSystemProvider', () => {
       .catch((error: unknown) => error);
 
     expect(thrownError).toBeInstanceOf(DOMException);
-    expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'createWritableStarted',
     });
-    expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'failed',
+      step: 'freshHandleRetry',
       retryKind: 'freshHandle',
       writePhase: 'createWritableStarted',
       error: {
-        abortAttempted: 'false',
-        abortResult: 'notNeeded',
-        attemptRole: 'retry',
-        currentPhase: 'createWritableStarted',
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
-        failedPhase: 'createWritableStarted',
-        handleSource: 'createdHandle',
-        originalFailurePhase: 'createWritableStarted',
-        retryAttempted: 'true',
-        retryKind: 'freshHandle',
-        retryResult: 'failed',
-        streamCreated: 'false',
       },
     });
   });
@@ -805,17 +804,19 @@ describe('WebFileSystemProvider', () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const storageError = new DOMException('quota', 'QuotaExceededError');
     fileHandle.createWritable = vi.fn(() => Promise.reject(storageError));
-    const onWriteRetry = vi.fn();
+    const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onWriteRetry,
+      onDiagnosticStep,
     });
 
     await expect(
       provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
     ).rejects.toThrow(storageError);
     expect(rootHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
-    expect(onWriteRetry).not.toHaveBeenCalled();
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
+      expect.objectContaining({ step: 'freshHandleRetry' }),
+    );
   });
 
   it('does not treat access-required failures as InvalidStateError retry cases', async () => {
@@ -831,11 +832,11 @@ describe('WebFileSystemProvider', () => {
     fileHandle.createWritable = vi.fn(() =>
       Promise.reject(new DOMException('Not allowed', 'NotAllowedError')),
     );
-    const onWriteRetry = vi.fn();
+    const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
       onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
-      onWriteRetry,
+      onDiagnosticStep,
     });
 
     await expect(
@@ -844,7 +845,9 @@ describe('WebFileSystemProvider', () => {
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       name: 'WebFileSystemAccessRequiredError',
     });
-    expect(onWriteRetry).not.toHaveBeenCalled();
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
+      expect.objectContaining({ step: 'freshHandleRetry' }),
+    );
   });
 
   it('converts a removeEntry browser failure to WebFileSystemAccessRequiredError when readwrite is no longer granted', async () => {

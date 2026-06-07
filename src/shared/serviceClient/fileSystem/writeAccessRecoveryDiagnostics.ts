@@ -184,30 +184,28 @@ export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: st
 };
 
 /**
- * Emits a diagnostic event with safe handle comparison statuses after permission grant.
- * @param root0 - Event options (attemptId, comparison).
+ * Adds a breadcrumb with safe handle comparison statuses after permission grant.
+ * @param root0 - Safe comparison summary.
  */
-export const reportWriteAccessHandleComparison = ({
-  attemptId,
+export const addWriteAccessHandleComparisonBreadcrumb = ({
   comparison,
 }: {
-  attemptId: string;
   comparison: WriteAccessRecoveryHandleComparison;
 }): void => {
-  reportWebFsEvent({
-    name: 'writeAccessRecovery.handleComparison',
-    severity: DiagnosticSeverity.Info,
-    result: DiagnosticResult.Success,
-    classification: DiagnosticClassification.Access,
-    attemptId,
-    operation: 'resolveAccessRequest',
-    safeTags: {
+  addTechnicalBreadcrumb({
+    category: 'writeAccessRecovery',
+    data: {
+      operation: 'resolveAccessRequest',
+      provider: PROVIDER,
+      result: comparison.handleComparisonResult,
+      step: 'handleComparison',
       handleComparisonResult: comparison.handleComparisonResult,
       returnedHandlePermission: comparison.returnedHandlePermission,
       returnedHandleProvided: comparison.returnedHandleProvided,
       returnedHandleSameEntry: comparison.returnedHandleSameEntry,
       storedHandlePermission: comparison.storedHandlePermission,
     },
+    message: 'root handle comparison completed',
   });
 };
 

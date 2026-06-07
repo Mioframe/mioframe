@@ -2,10 +2,10 @@ import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
 import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
 import {
+  addWriteAccessHandleComparisonBreadcrumb,
   addWriteAccessPermissionPromptStartBreadcrumb,
   addWriteAccessPermissionResolvedBreadcrumb,
   addWriteAccessRequestStartBreadcrumb,
-  reportWriteAccessHandleComparison,
   reportWriteAccessMissingRequest,
   reportWriteAccessPermissionDenied,
   reportWriteAccessProviderFailure,
@@ -87,7 +87,7 @@ export const useFileSystemAccessPermissionBroker = () => {
         }
 
         if (permissionState === 'granted' && result.comparison !== undefined) {
-          reportWriteAccessHandleComparison({ attemptId, comparison: result.comparison });
+          addWriteAccessHandleComparisonBreadcrumb({ comparison: result.comparison });
         }
 
         if (result.status === 'denied' && key.operation === 'write') {

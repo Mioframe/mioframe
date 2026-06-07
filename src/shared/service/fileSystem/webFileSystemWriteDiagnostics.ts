@@ -1,40 +1,78 @@
-import { DIAGNOSTICS_MODE } from '@shared/config';
-import {
-  DiagnosticClassification,
-  DiagnosticResult,
-  DiagnosticSeverity,
-  addTechnicalBreadcrumb,
-  reportDiagnosticEvent,
-} from '@shared/lib/diagnostics';
-import type {
-  WebFileSystemWriteDiagnosticSummary,
-  WebFileSystemWritePhase,
-} from '@shared/lib/webFileSystemProvider/webFileSystemWriteDiagnosticSummary';
+import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
+import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
-type WebFileSystemWriteRetryResult = 'failed' | 'started' | 'succeeded';
-type WebFileSystemWriteRetryKind = 'freshHandle' | 'rootHandleRefresh';
+const operationByStep: Record<WebFileSystemDiagnosticStep['step'], string> = {
+  createFileHandle: 'createFileHandle',
+  createWritable: 'openWritable',
+  freshHandleRetry: 'freshHandleRetry',
+  lookupExistingHandle: 'lookupExistingHandle',
+  lookupParentDirectory: 'lookupParentDirectory',
+};
 
-const addWebFileWriteRetryBreadcrumb = ({
-  error,
-  result,
-  retryKind,
-  writePhase,
-}: {
-  error?: WebFileSystemWriteDiagnosticSummary | undefined;
-  result: WebFileSystemWriteRetryResult;
-  retryKind: WebFileSystemWriteRetryKind;
-  writePhase: WebFileSystemWritePhase;
-}): void => {
+const messageByStepResult: Record<
+  WebFileSystemDiagnosticStep['step'],
+  Record<WebFileSystemDiagnosticStep['result'], string | undefined>
+> = {
+  createFileHandle: {
+    attempted: 'file handle create attempted',
+    failed: 'file handle create failed',
+    missing: undefined,
+    started: undefined,
+    succeeded: 'file handle create succeeded',
+  },
+  createWritable: {
+    attempted: 'writable open attempted',
+    failed: 'writable open failed',
+    missing: undefined,
+    started: undefined,
+    succeeded: 'writable open succeeded',
+  },
+  freshHandleRetry: {
+    attempted: undefined,
+    failed: 'fresh handle retry failed',
+    missing: undefined,
+    started: 'fresh handle retry started',
+    succeeded: 'fresh handle retry succeeded',
+  },
+  lookupExistingHandle: {
+    attempted: undefined,
+    failed: undefined,
+    missing: 'file lookup missing',
+    started: undefined,
+    succeeded: 'file lookup succeeded',
+  },
+  lookupParentDirectory: {
+    attempted: undefined,
+    failed: undefined,
+    missing: undefined,
+    started: undefined,
+    succeeded: 'parent directory lookup succeeded',
+  },
+};
+
+/**
+ * Maps provider-owned write milestones to narrow technical breadcrumbs.
+ * @param event - Safe provider diagnostic step.
+ */
+export const addWebFileSystemDiagnosticStepBreadcrumb = (
+  event: WebFileSystemDiagnosticStep,
+): void => {
+  const message = messageByStepResult[event.step][event.result];
+  if (message === undefined) {
+    return;
+  }
+
+  const error = event.result === 'failed' ? event.error : undefined;
+
   addTechnicalBreadcrumb({
     category: 'writeAccessRecovery',
     data: {
-      operation:
-        retryKind === 'freshHandle' ? 'webFileSystemFreshHandleRetry' : 'webFileSystemWrite',
+      operation: operationByStep[event.step],
       provider: 'webFileSystem',
-      writePhase,
-      retryAttempted: 'true',
-      retryResult: result,
-      ...(error?.errorClass !== undefined ? { errorClass: error.errorClass } : {}),
+      result: event.result,
+      step: event.step,
+      ...(event.writePhase !== undefined ? { writePhase: event.writePhase } : {}),
+      ...(error !== undefined ? { errorClass: error.errorClass } : {}),
       ...(error?.domExceptionName !== undefined
         ? { domExceptionName: error.domExceptionName }
         : {}),
@@ -42,80 +80,7 @@ const addWebFileWriteRetryBreadcrumb = ({
         ? { errorClassification: error.errorClassification }
         : {}),
     },
-    level: result === 'failed' ? 'warning' : 'info',
-    message:
-      result === 'started'
-        ? 'web file write retry started'
-        : result === 'succeeded'
-          ? 'web file write retry succeeded'
-          : 'web file write retry failed',
+    level: event.result === 'failed' ? 'warning' : 'info',
+    message,
   });
-};
-
-/**
- * Adds a breadcrumb when a bounded fresh-handle retry starts.
- * @param params - Safe phase data for the retry.
- */
-export const addWebFileSystemWriteRetryStartedBreadcrumb = (params: {
-  retryKind: WebFileSystemWriteRetryKind;
-  writePhase: WebFileSystemWritePhase;
-}): void => {
-  addWebFileWriteRetryBreadcrumb({ result: 'started', ...params });
-};
-
-/**
- * Adds a breadcrumb when a bounded fresh-handle retry succeeds.
- * @param params - Safe phase data for the retry.
- */
-export const addWebFileSystemWriteRetrySucceededBreadcrumb = (params: {
-  retryKind: WebFileSystemWriteRetryKind;
-  writePhase: WebFileSystemWritePhase;
-}): void => {
-  addWebFileWriteRetryBreadcrumb({ result: 'succeeded', ...params });
-};
-
-/**
- * Emits a preview-only structured event for a successful bounded InvalidStateError retry.
- * Production keeps success visibility at breadcrumb level only.
- * @param params - Safe write phase for the successful retry.
- */
-export const reportWebFileSystemWriteRetrySucceededForPreview = (params: {
-  retryKind: WebFileSystemWriteRetryKind;
-  writePhase: WebFileSystemWritePhase;
-}): void => {
-  if (DIAGNOSTICS_MODE !== 'preview') {
-    return;
-  }
-
-  reportDiagnosticEvent({
-    name: 'writeAccessRecovery.webFileWriteRetrySucceeded',
-    severity: DiagnosticSeverity.Info,
-    result: DiagnosticResult.Success,
-    classification: DiagnosticClassification.Storage,
-    error: {
-      errorClass: 'DOMException',
-      domExceptionName: 'InvalidStateError',
-      errorClassification: 'browserFileStateChanged',
-      retryAttempted: 'true',
-      retryResult: 'succeeded',
-      writePhase: params.writePhase,
-    },
-    safeTags: {
-      operation:
-        params.retryKind === 'freshHandle' ? 'webFileSystemFreshHandleRetry' : 'webFileSystemWrite',
-      provider: 'webFileSystem',
-    },
-  });
-};
-
-/**
- * Adds a breadcrumb when a bounded fresh-handle retry fails.
- * @param params - Safe phase and error summary for the retry failure.
- */
-export const addWebFileSystemWriteRetryFailedBreadcrumb = (params: {
-  error: WebFileSystemWriteDiagnosticSummary;
-  retryKind: WebFileSystemWriteRetryKind;
-  writePhase: WebFileSystemWritePhase;
-}): void => {
-  addWebFileWriteRetryBreadcrumb({ result: 'failed', ...params });
 };

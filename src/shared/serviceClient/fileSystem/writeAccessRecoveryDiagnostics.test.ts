@@ -7,11 +7,11 @@ import {
 } from '@shared/lib/diagnostics';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  addWriteAccessHandleComparisonBreadcrumb,
   addWriteAccessPermissionPromptStartBreadcrumb,
   addWriteAccessPermissionResolvedBreadcrumb,
   addWriteAccessRequestStartBreadcrumb,
   reportWriteAccessMissingRequest,
-  reportWriteAccessHandleComparison,
   reportWriteAccessPermissionDenied,
   reportWriteAccessProviderFailure,
   reportWriteAccessReplayFailure,
@@ -97,10 +97,9 @@ describe('writeAccessRecoveryDiagnostics', () => {
     });
   });
 
-  describe('reportWriteAccessHandleComparison', () => {
-    it('emits an info event with only safe handle comparison statuses', () => {
-      reportWriteAccessHandleComparison({
-        attemptId: TEST_ATTEMPT_ID,
+  describe('addWriteAccessHandleComparisonBreadcrumb', () => {
+    it('adds a breadcrumb with only safe handle comparison statuses', () => {
+      addWriteAccessHandleComparisonBreadcrumb({
         comparison: {
           returnedHandleProvided: 'true',
           returnedHandleSameEntry: 'false',
@@ -110,28 +109,26 @@ describe('writeAccessRecoveryDiagnostics', () => {
         },
       });
 
-      expect(sink).toHaveLength(1);
-      expect(sink[0]).toMatchObject({
-        name: 'writeAccessRecovery.handleComparison',
-        severity: DiagnosticSeverity.Info,
-        result: DiagnosticResult.Success,
-        classification: DiagnosticClassification.Access,
-        attemptId: TEST_ATTEMPT_ID,
-        safeTags: {
-          provider: 'webFileSystem',
+      expect(sink).toHaveLength(0);
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith({
+        category: 'writeAccessRecovery',
+        data: {
           operation: 'resolveAccessRequest',
+          provider: 'webFileSystem',
+          result: 'differentEntry',
+          step: 'handleComparison',
           returnedHandleProvided: 'true',
           returnedHandleSameEntry: 'false',
           storedHandlePermission: 'prompt',
           returnedHandlePermission: 'granted',
           handleComparisonResult: 'differentEntry',
         },
+        message: 'root handle comparison completed',
       });
     });
 
     it('does not include user-controlled values in handle comparison diagnostics', () => {
-      reportWriteAccessHandleComparison({
-        attemptId: TEST_ATTEMPT_ID,
+      addWriteAccessHandleComparisonBreadcrumb({
         comparison: {
           returnedHandleProvided: 'true',
           returnedHandleSameEntry: 'false',
@@ -141,9 +138,8 @@ describe('writeAccessRecoveryDiagnostics', () => {
         },
       });
 
-      const serialized = JSON.stringify(sink[0]);
+      const serialized = JSON.stringify(addTechnicalBreadcrumbMock.mock.calls[0]?.[0]);
       expect(serialized).not.toContain('Work');
-      expect(serialized).not.toContain('spaceName');
       expect(serialized).not.toContain('path');
     });
   });
@@ -365,7 +361,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
       });
     });
 
-    it('includes sanitized write error summary when replay provides one', () => {
+    it('includes compact sanitized error when replay provides one', () => {
       reportWriteAccessStorageFailure({
         attemptId: TEST_ATTEMPT_ID,
         replay: {
@@ -376,9 +372,6 @@ describe('writeAccessRecoveryDiagnostics', () => {
             errorClass: 'DOMException',
             domExceptionName: 'InvalidStateError',
             errorClassification: 'browserFileStateChanged',
-            writePhase: 'createWritableStarted',
-            retryAttempted: 'true',
-            retryResult: 'failed',
           },
         },
       });
@@ -387,9 +380,6 @@ describe('writeAccessRecoveryDiagnostics', () => {
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
-        writePhase: 'createWritableStarted',
-        retryAttempted: 'true',
-        retryResult: 'failed',
       });
     });
 
@@ -403,8 +393,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
   it('all wrapper functions attach only project-controlled safe tags (no user data)', () => {
     reportWriteAccessMissingRequest({ attemptId: TEST_ATTEMPT_ID });
     reportWriteAccessStaleResolve({ attemptId: TEST_ATTEMPT_ID });
-    reportWriteAccessHandleComparison({
-      attemptId: TEST_ATTEMPT_ID,
+    addWriteAccessHandleComparisonBreadcrumb({
       comparison: {
         returnedHandleProvided: 'true',
         returnedHandleSameEntry: 'false',

@@ -141,7 +141,7 @@ describe('repositoriesDiagnostics', () => {
       expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
     });
 
-    it('includes sanitized write error summary when provided', () => {
+    it('includes compact sanitized error when provided', () => {
       reportWriteAccessReplayStorageFailure({
         flushedCount: 0,
         pendingCount: 1,
@@ -150,9 +150,6 @@ describe('repositoriesDiagnostics', () => {
           errorClass: 'DOMException',
           domExceptionName: 'InvalidStateError',
           errorClassification: 'browserFileStateChanged',
-          writePhase: 'createWritableStarted',
-          retryAttempted: 'true',
-          retryResult: 'failed',
         },
       });
 
@@ -160,9 +157,6 @@ describe('repositoriesDiagnostics', () => {
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
-        writePhase: 'createWritableStarted',
-        retryAttempted: 'true',
-        retryResult: 'failed',
       });
     });
 

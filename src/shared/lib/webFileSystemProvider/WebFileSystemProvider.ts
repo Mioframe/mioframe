@@ -22,14 +22,7 @@ import type {
   WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
-import {
-  attachWebFileSystemWriteDiagnosticSummary,
-  type WebFileSystemWriteDiagnosticSummary,
-  type WebFileSystemWriteAttemptRole,
-  type WebFileSystemWriteHandleSource,
-  type WebFileSystemWriteRetryKind,
-  type WebFileSystemWritePhase,
-} from './webFileSystemWriteDiagnosticSummary';
+import type { SanitizedDiagnosticError } from '../diagnostics';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -51,23 +44,59 @@ export interface WebFileSystemProviderOptions {
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
   ) => WebFileSystemAccessRequiredDetails;
-  /** Called with safe retry milestones for bounded InvalidStateError recovery. */
-  onWriteRetry?: (event: WebFileSystemWriteRetryEvent) => void;
+  /** Called with safe write-side milestones for diagnostics. */
+  onDiagnosticStep?: (event: WebFileSystemDiagnosticStep) => void;
 }
 
 /**
- * Safe retry milestone emitted by the provider for bounded InvalidStateError recovery.
+ * Safe write phase labels for provider diagnostics.
  */
-export type WebFileSystemWriteRetryEvent =
+export type WebFileSystemWritePhase =
+  | 'ensureAccess'
+  | 'lookupExistingHandle'
+  | 'lookupParentDirectory'
+  | 'createFileHandle'
+  | 'createWritableStarted'
+  | 'createWritableSucceeded'
+  | 'writeStarted'
+  | 'writeSucceeded'
+  | 'closeStarted'
+  | 'closeSucceeded'
+  | 'abortStarted'
+  | 'abortSucceeded'
+  | 'abortFailed'
+  | 'statAfterWriteStarted'
+  | 'statAfterWriteSucceeded'
+  | 'statAfterWriteFailed';
+
+type WebFileSystemWriteRetryKind = 'freshHandle' | 'rootHandleRefresh';
+type WebFileSystemWriteHandleSource =
+  | 'existingLookup'
+  | 'createdHandle'
+  | 'freshParentLookup'
+  | 'returnedGrantedRootHandle'
+  | 'storedRootHandle';
+
+/**
+ * Safe diagnostic milestone emitted by the provider.
+ */
+export type WebFileSystemDiagnosticStep =
   | {
-      result: 'started' | 'succeeded';
-      retryKind: 'freshHandle' | 'rootHandleRefresh';
-      writePhase: WebFileSystemWritePhase;
+      result: 'attempted' | 'missing' | 'started' | 'succeeded';
+      step:
+        | 'createFileHandle'
+        | 'createWritable'
+        | 'freshHandleRetry'
+        | 'lookupExistingHandle'
+        | 'lookupParentDirectory';
+      retryKind?: 'freshHandle' | 'rootHandleRefresh' | undefined;
+      writePhase?: WebFileSystemWritePhase | undefined;
     }
   | {
+      error: SanitizedDiagnosticError;
       result: 'failed';
-      error: WebFileSystemWriteDiagnosticSummary;
-      retryKind: 'freshHandle' | 'rootHandleRefresh';
+      step: 'createFileHandle' | 'createWritable' | 'freshHandleRetry';
+      retryKind?: 'freshHandle' | 'rootHandleRefresh' | undefined;
       writePhase: WebFileSystemWritePhase;
     };
 
@@ -81,7 +110,7 @@ export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
 ): IFileSystemProvider & { notifyAccessChanged(): Promise<void> } => {
-  const { onAccessRequired, onWriteRetry, permissionPolicy } = options;
+  const { onAccessRequired, onDiagnosticStep, permissionPolicy } = options;
   const events = new EventEmitter();
   let currentRootHandle = rootHandle;
 
@@ -219,9 +248,19 @@ export const WebFileSystemProvider = (
     await withWriteAccessRecovery(async () => {
       onPhaseChange('createWritableStarted');
       failedPhase = 'createWritableStarted';
+      reportDiagnosticStep({
+        step: 'createWritable',
+        result: 'attempted',
+        writePhase: 'createWritableStarted',
+      });
       const writable = await handle.createWritable();
       streamCreated = 'true';
       onPhaseChange('createWritableSucceeded');
+      reportDiagnosticStep({
+        step: 'createWritable',
+        result: 'succeeded',
+        writePhase: 'createWritableSucceeded',
+      });
       try {
         onPhaseChange('writeStarted');
         failedPhase = 'writeStarted';
@@ -243,6 +282,12 @@ export const WebFileSystemProvider = (
           abortResult = 'failed';
           onPhaseChange('abortFailed');
         }
+        reportDiagnosticStep({
+          step: 'createWritable',
+          result: 'failed',
+          writePhase: failedPhase ?? 'createWritableStarted',
+          error: classifyWriteError(error),
+        });
         throw error;
       }
     });
@@ -250,12 +295,7 @@ export const WebFileSystemProvider = (
     return { streamCreated, abortAttempted, abortResult, failedPhase };
   };
 
-  const classifyWriteError = (
-    error: unknown,
-  ): Pick<
-    WebFileSystemWriteDiagnosticSummary,
-    'domainErrorCode' | 'domExceptionName' | 'errorClass' | 'errorClassification' | 'vfsErrorCode'
-  > => {
+  const classifyWriteError = (error: unknown): SanitizedDiagnosticError => {
     if (error instanceof DOMException) {
       return {
         errorClass: 'DOMException',
@@ -303,52 +343,9 @@ export const WebFileSystemProvider = (
         };
   };
 
-  const annotateWriteError = ({
-    abortAttempted,
-    abortResult,
-    attemptRole,
-    error,
-    failedPhase,
-    handleSource,
-    originalFailurePhase,
-    retryKind,
-    retryAttempted,
-    retryResult,
-    streamCreated,
-    currentPhase,
-  }: {
-    abortAttempted: 'false' | 'true';
-    abortResult: 'failed' | 'notNeeded' | 'succeeded';
-    attemptRole: WebFileSystemWriteAttemptRole;
-    error: unknown;
-    failedPhase: WebFileSystemWritePhase | undefined;
-    handleSource: WebFileSystemWriteHandleSource;
-    originalFailurePhase?: WebFileSystemWritePhase | undefined;
-    retryKind: WebFileSystemWriteRetryKind;
-    retryAttempted: 'false' | 'true';
-    retryResult: 'failed' | 'notAttempted' | 'succeeded';
-    streamCreated: 'false' | 'true';
-    currentPhase: WebFileSystemWritePhase | undefined;
-  }): void => {
-    attachWebFileSystemWriteDiagnosticSummary(error, {
-      ...classifyWriteError(error),
-      abortAttempted,
-      abortResult,
-      attemptRole,
-      currentPhase,
-      failedPhase,
-      handleSource,
-      ...(originalFailurePhase !== undefined ? { originalFailurePhase } : {}),
-      retryKind,
-      retryAttempted,
-      retryResult,
-      streamCreated,
-    });
-  };
-
-  const reportWriteRetry = (event: WebFileSystemWriteRetryEvent) => {
+  const reportDiagnosticStep = (event: WebFileSystemDiagnosticStep) => {
     try {
-      onWriteRetry?.(event);
+      onDiagnosticStep?.(event);
     } catch {
       // diagnostics hooks must not affect provider behavior
     }
@@ -561,21 +558,35 @@ export const WebFileSystemProvider = (
         if (forceFreshHandle) {
           const normalized = PathUtils.normalize(path);
           setWritePhase('lookupParentDirectory');
+          reportDiagnosticStep({ step: 'lookupParentDirectory', result: 'started' });
           const parentDir = await withWriteAccessRecovery(() =>
             getHandle(PathUtils.dirname(normalized), false, 'directory'),
           );
+          reportDiagnosticStep({ step: 'lookupParentDirectory', result: 'succeeded' });
           handleSource = 'freshParentLookup';
           setWritePhase(create ? 'createFileHandle' : 'lookupExistingHandle');
+          reportDiagnosticStep({
+            step: create ? 'createFileHandle' : 'lookupExistingHandle',
+            result: create ? 'attempted' : 'started',
+            writePhase: create ? 'createFileHandle' : 'lookupExistingHandle',
+          });
           resolvedHandle = await withWriteAccessRecovery(() =>
             parentDir.getFileHandle(PathUtils.basename(normalized), {
               create,
             }),
           );
+          reportDiagnosticStep({
+            step: create ? 'createFileHandle' : 'lookupExistingHandle',
+            result: 'succeeded',
+            writePhase: create ? 'createFileHandle' : 'lookupExistingHandle',
+          });
           handleSource = create ? 'createdHandle' : 'existingLookup';
         } else {
           try {
             setWritePhase('lookupExistingHandle');
+            reportDiagnosticStep({ step: 'lookupExistingHandle', result: 'started' });
             resolvedHandle = await getHandle(path, false, 'file');
+            reportDiagnosticStep({ step: 'lookupExistingHandle', result: 'succeeded' });
             handleSource = 'existingLookup';
             if (!overwrite) {
               throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
@@ -589,16 +600,29 @@ export const WebFileSystemProvider = (
               throw lookupError;
             }
             if (!create) {
+              reportDiagnosticStep({ step: 'lookupExistingHandle', result: 'missing' });
               throw lookupError;
             }
             const normalized = PathUtils.normalize(path);
             setWritePhase('lookupParentDirectory');
+            reportDiagnosticStep({ step: 'lookupParentDirectory', result: 'started' });
             const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
+            reportDiagnosticStep({ step: 'lookupParentDirectory', result: 'succeeded' });
             setWritePhase('createFileHandle');
+            reportDiagnosticStep({
+              step: 'createFileHandle',
+              result: 'attempted',
+              writePhase: 'createFileHandle',
+            });
             resolvedHandle = await createFileHandleWithWriteRecovery(
               parentDir,
               PathUtils.basename(normalized),
             );
+            reportDiagnosticStep({
+              step: 'createFileHandle',
+              result: 'succeeded',
+              writePhase: 'createFileHandle',
+            });
             handleSource = 'createdHandle';
           }
         }
@@ -653,7 +677,7 @@ export const WebFileSystemProvider = (
 
     if (error instanceof DOMException && error.name === 'InvalidStateError' && writePhase) {
       const retryKind: WebFileSystemWriteRetryKind = 'freshHandle';
-      reportWriteRetry({ result: 'started', retryKind, writePhase });
+      reportDiagnosticStep({ step: 'freshHandleRetry', result: 'started', retryKind, writePhase });
 
       const retryResult = await runWriteAttempt({
         forceFreshHandle: true,
@@ -661,59 +685,24 @@ export const WebFileSystemProvider = (
       });
 
       if (retryResult.status === 'succeeded') {
-        reportWriteRetry({ result: 'succeeded', retryKind, writePhase });
+        reportDiagnosticStep({
+          step: 'freshHandleRetry',
+          result: 'succeeded',
+          retryKind,
+          writePhase,
+        });
         return retryResult.result;
       }
 
-      annotateWriteError({
-        error: retryResult.error,
-        abortAttempted: retryResult.abortAttempted,
-        abortResult: retryResult.abortResult,
-        attemptRole: 'retry',
-        currentPhase: retryResult.writePhase,
-        failedPhase: retryResult.writePhase,
-        handleSource: retryResult.handleSource,
-        originalFailurePhase: writePhase,
-        retryKind,
-        retryAttempted: 'true',
-        retryResult: 'failed',
-        streamCreated: retryResult.streamCreated,
-      });
-      reportWriteRetry({
+      reportDiagnosticStep({
+        step: 'freshHandleRetry',
         result: 'failed',
         retryKind,
         writePhase,
-        error: {
-          ...classifyWriteError(retryResult.error),
-          attemptRole: 'retry',
-          currentPhase: retryResult.writePhase,
-          failedPhase: retryResult.writePhase,
-          handleSource: retryResult.handleSource,
-          originalFailurePhase: writePhase,
-          retryKind,
-          abortAttempted: retryResult.abortAttempted,
-          abortResult: retryResult.abortResult,
-          retryAttempted: 'true',
-          retryResult: 'failed',
-          streamCreated: retryResult.streamCreated,
-        },
+        error: classifyWriteError(retryResult.error),
       });
       throw retryResult.error;
     }
-
-    annotateWriteError({
-      abortAttempted: attemptResult.abortAttempted,
-      abortResult: attemptResult.abortResult,
-      attemptRole: 'initial',
-      currentPhase: writePhase,
-      error,
-      failedPhase: writePhase,
-      handleSource: attemptResult.handleSource,
-      retryKind: 'none',
-      retryAttempted: 'false',
-      retryResult: 'notAttempted',
-      streamCreated: attemptResult.streamCreated,
-    });
     throw error;
   };
 

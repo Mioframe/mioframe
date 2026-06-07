@@ -26,8 +26,12 @@ export const TECHNICAL_BREADCRUMB_DATA_KEYS = [
   'domainErrorCode',
   'errorClassification',
   'writePhase',
-  'retryAttempted',
-  'retryResult',
+  'step',
+  'handleComparisonResult',
+  'returnedHandlePermission',
+  'returnedHandleProvided',
+  'returnedHandleSameEntry',
+  'storedHandlePermission',
   'runtime',
 ] as const;
 

@@ -28,12 +28,7 @@ import {
   createFileSystemAccessRequestRegistry,
   type WriteAccessRecoveryHandler,
 } from './fileSystemAccessRequestRegistry';
-import {
-  addWebFileSystemWriteRetryFailedBreadcrumb,
-  addWebFileSystemWriteRetryStartedBreadcrumb,
-  reportWebFileSystemWriteRetrySucceededForPreview,
-  addWebFileSystemWriteRetrySucceededBreadcrumb,
-} from './webFileSystemWriteDiagnostics';
+import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
 
 /**
  * UI-facing options for reading directory content through the shared file-system service.
@@ -85,32 +80,7 @@ const setupFileSystemService = () => {
             mode,
             refreshProvider: (nextRootHandle) => notifyHolder.fn(nextRootHandle),
           }),
-        onWriteRetry: (event) => {
-          switch (event.result) {
-            case 'started':
-              addWebFileSystemWriteRetryStartedBreadcrumb({
-                retryKind: event.retryKind,
-                writePhase: event.writePhase,
-              });
-              return;
-            case 'succeeded':
-              addWebFileSystemWriteRetrySucceededBreadcrumb({
-                retryKind: event.retryKind,
-                writePhase: event.writePhase,
-              });
-              reportWebFileSystemWriteRetrySucceededForPreview({
-                retryKind: event.retryKind,
-                writePhase: event.writePhase,
-              });
-              return;
-            case 'failed':
-              addWebFileSystemWriteRetryFailedBreadcrumb({
-                error: event.error,
-                retryKind: event.retryKind,
-                writePhase: event.writePhase,
-              });
-          }
-        },
+        onDiagnosticStep: addWebFileSystemDiagnosticStepBreadcrumb,
       });
 
       notifyHolder.fn = (nextRootHandle) => provider.notifyAccessChanged(nextRootHandle);

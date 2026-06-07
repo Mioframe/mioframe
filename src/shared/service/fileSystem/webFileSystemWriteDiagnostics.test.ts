@@ -1,117 +1,69 @@
-import { addTechnicalBreadcrumb, reportDiagnosticEvent } from '@shared/lib/diagnostics';
+import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  addWebFileSystemWriteRetryFailedBreadcrumb,
-  addWebFileSystemWriteRetryStartedBreadcrumb,
-  addWebFileSystemWriteRetrySucceededBreadcrumb,
-  reportWebFileSystemWriteRetrySucceededForPreview,
-} from './webFileSystemWriteDiagnostics';
-
-vi.mock('@shared/config', () => ({
-  DIAGNOSTICS_MODE: 'preview',
-}));
+import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
 
 vi.mock('@shared/lib/diagnostics', () => ({
   addTechnicalBreadcrumb: vi.fn(),
-  reportDiagnosticEvent: vi.fn(),
-  DiagnosticClassification: { Storage: 'storage' },
-  DiagnosticResult: { Success: 'success' },
-  DiagnosticSeverity: { Info: 'info' },
 }));
 
 describe('webFileSystemWriteDiagnostics', () => {
   beforeEach(() => {
-    vi.mocked(reportDiagnosticEvent).mockReset();
     vi.mocked(addTechnicalBreadcrumb).mockReset();
   });
 
-  it('adds retry started and succeeded breadcrumbs with safe write metadata', () => {
-    addWebFileSystemWriteRetryStartedBreadcrumb({
-      retryKind: 'freshHandle',
+  it('adds safe breadcrumbs for writable open and fresh retry milestones', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'createWritable',
+      result: 'attempted',
       writePhase: 'createWritableStarted',
     });
-    addWebFileSystemWriteRetrySucceededBreadcrumb({
-      retryKind: 'rootHandleRefresh',
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'freshHandleRetry',
+      result: 'failed',
+      retryKind: 'freshHandle',
       writePhase: 'createWritableStarted',
+      error: {
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+        errorClassification: 'browserFileStateChanged',
+      },
     });
 
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
       category: 'writeAccessRecovery',
       data: {
-        operation: 'webFileSystemFreshHandleRetry',
+        operation: 'openWritable',
         provider: 'webFileSystem',
-        retryAttempted: 'true',
-        retryResult: 'started',
+        result: 'attempted',
+        step: 'createWritable',
         writePhase: 'createWritableStarted',
       },
       level: 'info',
-      message: 'web file write retry started',
+      message: 'writable open attempted',
     });
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
       category: 'writeAccessRecovery',
       data: {
-        operation: 'webFileSystemWrite',
+        operation: 'freshHandleRetry',
         provider: 'webFileSystem',
-        retryAttempted: 'true',
-        retryResult: 'succeeded',
+        result: 'failed',
+        step: 'freshHandleRetry',
         writePhase: 'createWritableStarted',
-      },
-      level: 'info',
-      message: 'web file write retry succeeded',
-    });
-  });
-
-  it('adds retry failed breadcrumb with sanitized error summary', () => {
-    addWebFileSystemWriteRetryFailedBreadcrumb({
-      retryKind: 'freshHandle',
-      writePhase: 'createWritableStarted',
-      error: {
-        errorClass: 'DOMException',
-        domExceptionName: 'QuotaExceededError',
-        errorClassification: 'unknown',
-      },
-    });
-
-    expect(addTechnicalBreadcrumb).toHaveBeenCalledWith({
-      category: 'writeAccessRecovery',
-      data: {
-        operation: 'webFileSystemFreshHandleRetry',
-        provider: 'webFileSystem',
-        retryAttempted: 'true',
-        retryResult: 'failed',
-        writePhase: 'createWritableStarted',
-        errorClass: 'DOMException',
-        domExceptionName: 'QuotaExceededError',
-        errorClassification: 'unknown',
-      },
-      level: 'warning',
-      message: 'web file write retry failed',
-    });
-  });
-
-  it('emits a preview-only diagnostic event for a successful retry', () => {
-    reportWebFileSystemWriteRetrySucceededForPreview({
-      retryKind: 'freshHandle',
-      writePhase: 'createWritableStarted',
-    });
-
-    expect(reportDiagnosticEvent).toHaveBeenCalledWith({
-      name: 'writeAccessRecovery.webFileWriteRetrySucceeded',
-      severity: 'info',
-      result: 'success',
-      classification: 'storage',
-      error: {
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
-        retryAttempted: 'true',
-        retryResult: 'succeeded',
-        writePhase: 'createWritableStarted',
       },
-      safeTags: {
-        operation: 'webFileSystemFreshHandleRetry',
-        provider: 'webFileSystem',
-      },
+      level: 'warning',
+      message: 'fresh handle retry failed',
     });
+  });
+
+  it('drops milestones that should not become breadcrumbs', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'lookupParentDirectory',
+      result: 'started',
+    });
+
+    expect(addTechnicalBreadcrumb).not.toHaveBeenCalled();
   });
 });

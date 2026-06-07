@@ -1,6 +1,5 @@
 import { DomainError } from '@shared/lib/error';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
-import { getWebFileSystemWriteDiagnosticSummary } from '@shared/lib/webFileSystemProvider/webFileSystemWriteDiagnosticSummary';
 import type { SanitizedDiagnosticError } from './DiagnosticEvent';
 
 /**
@@ -18,55 +17,6 @@ import type { SanitizedDiagnosticError } from './DiagnosticEvent';
  * @returns Safe structured diagnostic data with no raw messages, paths, ids, or user data.
  */
 export const sanitizeDiagnosticError = (error: unknown): SanitizedDiagnosticError => {
-  const webFileSystemSummary = getWebFileSystemWriteDiagnosticSummary(error);
-  if (webFileSystemSummary !== undefined) {
-    return {
-      errorClass: webFileSystemSummary.errorClass,
-      errorClassification: webFileSystemSummary.errorClassification,
-      ...(webFileSystemSummary.domExceptionName !== undefined
-        ? { domExceptionName: webFileSystemSummary.domExceptionName }
-        : {}),
-      ...(webFileSystemSummary.vfsErrorCode !== undefined
-        ? { vfsErrorCode: webFileSystemSummary.vfsErrorCode }
-        : {}),
-      ...(webFileSystemSummary.domainErrorCode !== undefined
-        ? { domainErrorCode: webFileSystemSummary.domainErrorCode }
-        : {}),
-      ...(webFileSystemSummary.failedPhase !== undefined
-        ? { writePhase: webFileSystemSummary.failedPhase }
-        : webFileSystemSummary.currentPhase !== undefined
-          ? { writePhase: webFileSystemSummary.currentPhase }
-          : {}),
-      ...(webFileSystemSummary.attemptRole !== undefined
-        ? { attemptRole: webFileSystemSummary.attemptRole }
-        : {}),
-      ...(webFileSystemSummary.retryKind !== undefined
-        ? { retryKind: webFileSystemSummary.retryKind }
-        : {}),
-      ...(webFileSystemSummary.originalFailurePhase !== undefined
-        ? { originalFailurePhase: webFileSystemSummary.originalFailurePhase }
-        : {}),
-      ...(webFileSystemSummary.handleSource !== undefined
-        ? { handleSource: webFileSystemSummary.handleSource }
-        : {}),
-      ...(webFileSystemSummary.streamCreated !== undefined
-        ? { streamCreated: webFileSystemSummary.streamCreated }
-        : {}),
-      ...(webFileSystemSummary.abortAttempted !== undefined
-        ? { abortAttempted: webFileSystemSummary.abortAttempted }
-        : {}),
-      ...(webFileSystemSummary.abortResult !== undefined
-        ? { abortResult: webFileSystemSummary.abortResult }
-        : {}),
-      ...(webFileSystemSummary.retryAttempted !== undefined
-        ? { retryAttempted: webFileSystemSummary.retryAttempted }
-        : {}),
-      ...(webFileSystemSummary.retryResult !== undefined
-        ? { retryResult: webFileSystemSummary.retryResult }
-        : {}),
-    };
-  }
-
   if (error instanceof DOMException) {
     return {
       errorClass: 'DOMException',
