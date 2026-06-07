@@ -219,6 +219,20 @@ type BeforeSendFactory = (params: {
   getState: () => SentryReportingState;
 }) => (event: SentryErrorEvent) => SentryErrorEvent | null;
 
+const isUnhandledAccessRequiredEvent = (event: SentryErrorEvent): boolean => {
+  if (event.tags?.handled === 'true') {
+    return false;
+  }
+
+  return (
+    event.exception?.values?.some(
+      (value) =>
+        value.type === 'WebFileSystemAccessRequiredError' &&
+        (value.mechanism?.handled === false || value.mechanism?.type === 'onunhandledrejection'),
+    ) ?? false
+  );
+};
+
 /**
  * Shared `beforeBreadcrumb` callback for both main-thread and worker runtimes.
  * Keeps only sanitized project technical breadcrumbs.
@@ -244,6 +258,7 @@ export const createBeforeSend: BeforeSendFactory =
   ({ diagnosticsMode, getState }) =>
   (event) => {
     if (getState() !== 'enabled') return null;
+    if (isUnhandledAccessRequiredEvent(event)) return null;
 
     const sanitized: SentryErrorEvent = { ...event };
 

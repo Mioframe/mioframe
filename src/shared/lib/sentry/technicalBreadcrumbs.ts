@@ -36,6 +36,7 @@ export const TECHNICAL_BREADCRUMB_DATA_KEYS = [
   'returnedHandleSameEntry',
   'storedHandlePermission',
   'runtime',
+  'writeStrategy',
 ] as const;
 
 /** Project-controlled breadcrumb categories allowed through the shared Sentry runtime. */

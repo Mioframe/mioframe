@@ -1,4 +1,5 @@
 import type { IFileSystemProvider } from '../virtualFileSystem';
+import { DIAGNOSTICS_MODE, WEB_FILE_SYSTEM_WRITE_STRATEGY } from '@shared/config';
 import {
   WebFileSystemProvider,
   type WebFileSystemDiagnosticStep,
@@ -6,6 +7,10 @@ import {
   type WebFileSystemProviderOptions,
 } from './WebFileSystemProvider';
 import type { WebFileSystemAccessRequiredDetails } from './WebFileSystemAccessRequiredError';
+import {
+  resolveWebFileSystemWriteStrategy,
+  type WebFileSystemWriteStrategy,
+} from './writeStrategy';
 
 /** Provider instance with an internal access-refresh hook owned below the service boundary. */
 export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
@@ -21,6 +26,12 @@ type DiagnosticStepHandler = (event: WebFileSystemDiagnosticStep) => void;
 /** Mounted provider kind used by the provider-boundary factory mapping. */
 export type MountedWebFileSystemKind = 'browserStorage' | 'localDirectory';
 
+const resolveConfiguredWriteStrategy = (): WebFileSystemWriteStrategy =>
+  resolveWebFileSystemWriteStrategy({
+    configuredStrategy: WEB_FILE_SYSTEM_WRITE_STRATEGY,
+    diagnosticsMode: DIAGNOSTICS_MODE,
+  });
+
 const createProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
@@ -31,16 +42,19 @@ const createProvider = (
  * @param rootHandle - Mounted root directory handle.
  * @param onAccessRequired - Service-owned callback that records a pending access request.
  * @param onDiagnosticStep - Optional safe diagnostic milestone callback.
+ * @param writeStrategy - Internal diagnostic write-path strategy override.
  * @returns Refreshable provider instance for the selected directory.
  */
 export const createUserSelectedDirectoryProvider = (
   rootHandle: FileSystemDirectoryHandle,
   onAccessRequired: AccessRequiredHandler,
   onDiagnosticStep?: DiagnosticStepHandler,
+  writeStrategy: WebFileSystemWriteStrategy = resolveConfiguredWriteStrategy(),
 ): RefreshableWebFileSystemProvider =>
   createProvider(rootHandle, {
     permissionPolicy: 'userSelectedDirectory',
     onAccessRequired,
+    writeStrategy,
     ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
   });
 
@@ -73,10 +87,16 @@ export const createMountedWebFileSystemProvider = ({
   rootHandle: FileSystemDirectoryHandle;
 }): RefreshableWebFileSystemProvider =>
   kind === 'localDirectory' && onAccessRequired
-    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired, onDiagnosticStep)
+    ? createUserSelectedDirectoryProvider(
+        rootHandle,
+        onAccessRequired,
+        onDiagnosticStep,
+        resolveConfiguredWriteStrategy(),
+      )
     : kind === 'localDirectory'
       ? createProvider(rootHandle, {
           permissionPolicy: 'userSelectedDirectory',
+          writeStrategy: resolveConfiguredWriteStrategy(),
           ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
         })
       : createOriginPrivateStorageProvider(rootHandle);

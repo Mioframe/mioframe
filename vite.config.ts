@@ -17,6 +17,10 @@ export default defineConfig(({ mode, isPreview }) => {
   const isPreviewBuild = !!isPreview;
   const isStorybookBuild = process.env.APP_STORYBOOK === '1';
   const isDisablePwa = env.VITE_DISABLE_PWA === '1' || process.env.VITE_DISABLE_PWA === '1';
+  const configuredWebFileSystemWriteStrategy =
+    env.VITE_WEB_FILE_SYSTEM_WRITE_STRATEGY ||
+    process.env.VITE_WEB_FILE_SYSTEM_WRITE_STRATEGY ||
+    'safeCurrent';
 
   const buildId = env.VITE_BUILD_ID || process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || '';
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
@@ -106,6 +110,11 @@ export default defineConfig(({ mode, isPreview }) => {
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),
       __DIAGNOSTICS_MODE__: JSON.stringify(isPreviewBuild ? 'preview' : 'production'),
+      __WEB_FILE_SYSTEM_WRITE_STRATEGY__: JSON.stringify(
+        isPreviewBuild && configuredWebFileSystemWriteStrategy === 'directCreateWriteProbe'
+          ? 'directCreateWriteProbe'
+          : 'safeCurrent',
+      ),
     },
   };
 });

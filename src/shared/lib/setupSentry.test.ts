@@ -450,6 +450,43 @@ describe('setupSentry', () => {
     }
   });
 
+  it('beforeSend drops unhandled WebFileSystemAccessRequiredError events from repository save control flow', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      exception: {
+        values: [
+          {
+            mechanism: {
+              handled: false,
+              type: 'onunhandledrejection',
+            },
+            type: 'WebFileSystemAccessRequiredError',
+            value: 'Permission required to open this remembered local space',
+          },
+        ],
+      },
+      message: 'UnhandledRejection: WebFileSystemAccessRequiredError',
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toBeNull();
+    }
+  });
+
   it('beforeSend drops unsafe-only extra payloads', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =

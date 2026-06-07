@@ -4,6 +4,8 @@ import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvi
 const operationByStep: Record<string, string> = {
   createdFileCleanup: 'cleanupCreatedFile',
   directoryRead: 'readDirectory',
+  directCreateWrite: 'directCreateWrite',
+  directCreateWriteWritableOpen: 'directCreateWriteWritableOpen',
   fileHandleCreate: 'createFileHandle',
   fileHandleLookupAfterCreate: 'lookupHandleAfterCreate',
   fileRead: 'readFile',
@@ -12,6 +14,7 @@ const operationByStep: Record<string, string> = {
   freshHandleRetry: 'freshHandleRetry',
   fileLookup: 'lookupExistingHandle',
   parentDirectoryLookup: 'lookupParentDirectory',
+  writeStrategySelected: 'writeStrategySelected',
   writableCompatibilityOpen: 'openWritableCompatibility',
   writableOpen: 'openWritable',
 };
@@ -48,6 +51,16 @@ const messageByStepResult: Record<
     started: 'created file cleanup started',
     succeeded: 'created file cleanup succeeded',
   },
+  directCreateWrite: {
+    failed: 'direct create write failed',
+    started: 'direct create write started',
+    succeeded: 'direct create write succeeded',
+  },
+  directCreateWriteWritableOpen: {
+    failed: 'direct create write writable open failed',
+    started: 'direct create write writable open started',
+    succeeded: 'direct create write writable open succeeded',
+  },
   directoryRead: {
     failed: 'directory read failed',
     started: 'directory read started',
@@ -75,6 +88,10 @@ const messageByStepResult: Record<
   },
   parentDirectoryLookup: {
     succeeded: 'parent directory lookup succeeded',
+  },
+  writeStrategySelected: {
+    directCreateWriteProbe: 'write strategy selected',
+    safeCurrent: 'write strategy selected',
   },
 };
 
@@ -111,6 +128,7 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
       provider: 'webFileSystem',
       result: event.result,
       step: event.step,
+      ...(event.writeStrategy !== undefined ? { writeStrategy: event.writeStrategy } : {}),
       ...(event.errorClass !== undefined ? { errorClass: event.errorClass } : {}),
       ...(event.domExceptionName !== undefined ? { domExceptionName: event.domExceptionName } : {}),
     },

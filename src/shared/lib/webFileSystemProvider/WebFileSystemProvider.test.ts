@@ -498,14 +498,17 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'fileHandleLookupAfterCreate',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'fileHandleLookupAfterCreate',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'createdFileCleanup',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -581,6 +584,7 @@ describe('WebFileSystemProvider', () => {
       step: 'freshHandleRetry',
       errorClass: 'DOMException',
       domExceptionName: 'InvalidStateError',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -772,14 +776,17 @@ describe('WebFileSystemProvider', () => {
       step: 'writableOpen',
       errorClass: 'DOMException',
       domExceptionName: 'InvalidStateError',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'writableCompatibilityOpen',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'writableCompatibilityOpen',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -872,6 +879,7 @@ describe('WebFileSystemProvider', () => {
       step: 'writableCompatibilityOpen',
       errorClass: 'DOMException',
       domExceptionName: 'InvalidStateError',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -980,6 +988,7 @@ describe('WebFileSystemProvider', () => {
       step: 'createdFileCleanup',
       errorClass: 'DOMException',
       domExceptionName: 'InvalidModificationError',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -1027,20 +1036,24 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'writableOpen',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'failed',
       step: 'writableOpen',
       errorClass: 'DOMException',
       domExceptionName: 'InvalidStateError',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'freshHandleRetry',
+      writeStrategy: 'safeCurrent',
     });
     expect(freshHandle.__writtenContent).toEqual(['fresh']);
   });
@@ -1080,6 +1093,7 @@ describe('WebFileSystemProvider', () => {
       step: 'fileWrite',
       errorClass: 'DOMException',
       domExceptionName: 'QuotaExceededError',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -1118,6 +1132,7 @@ describe('WebFileSystemProvider', () => {
       step: 'fileWrite',
       errorClass: 'DOMException',
       domExceptionName: 'QuotaExceededError',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -1215,10 +1230,12 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'freshHandleRetry',
+      writeStrategy: 'safeCurrent',
     });
     expect(freshHandle.__writtenContent).toEqual(['fresh']);
   });
@@ -1258,10 +1275,12 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'freshHandleRetry',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -1333,12 +1352,14 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
+      writeStrategy: 'safeCurrent',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'failed',
       step: 'freshHandleRetry',
       errorClass: 'DOMException',
       domExceptionName: 'InvalidStateError',
+      writeStrategy: 'safeCurrent',
     });
   });
 
@@ -1850,5 +1871,183 @@ describe('WebFileSystemProvider', () => {
       code: 'EACCES',
       name: 'VfsError',
     });
+  });
+
+  it('uses the direct create/write probe sequence without lookup-after-create or compatibility open', async () => {
+    const directHandle = createFileHandleMock({
+      fileContent: [''],
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    const createWritableMock = vi.fn(directHandle.createWritable.bind(directHandle));
+    directHandle.createWritable = createWritableMock;
+    const getFileMock = directHandle.getFileMock;
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
+      if (options?.create) {
+        return Promise.resolve(directHandle);
+      }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    });
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(rootHandle.getFileHandleMock.mock.calls).toEqual([
+      ['probe.amrg', { create: false }],
+      ['probe.amrg', { create: true }],
+    ]);
+    expect(createWritableMock).toHaveBeenCalledTimes(1);
+    expect(createWritableMock).toHaveBeenCalledWith();
+    expect(getFileMock).toHaveBeenCalled();
+    expect(createWritableMock.mock.invocationCallOrder[0]).toBeLessThan(
+      getFileMock.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+    expect(onDiagnosticStep).toHaveBeenCalledWith({
+      result: 'directCreateWriteProbe',
+      step: 'writeStrategySelected',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    expect(onDiagnosticStep).toHaveBeenCalledWith({
+      result: 'started',
+      step: 'directCreateWriteWritableOpen',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    expect(onDiagnosticStep).toHaveBeenCalledWith({
+      result: 'succeeded',
+      step: 'directCreateWrite',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+  });
+
+  it('cleans up a newly created file when direct probe createWritable fails', async () => {
+    const directHandle = createFileHandleMock({
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    const openError = new DOMException('Invalid state', 'InvalidStateError');
+    directHandle.createWritable = vi.fn(() => Promise.reject(openError));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
+      if (options?.create) {
+        return Promise.resolve(directHandle);
+      }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).rejects.toThrow(openError);
+
+    expect(rootHandle.removeEntryMock).toHaveBeenCalledTimes(1);
+    expect(rootHandle.removeEntryMock).toHaveBeenCalledWith('probe.amrg', { recursive: false });
+  });
+
+  it('cleans up a newly created file when direct probe write fails after writable open', async () => {
+    const directHandle = createFileHandleMock({
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    const writeError = new DOMException('Quota exceeded', 'QuotaExceededError');
+    directHandle.createWritable = vi.fn(() =>
+      Promise.resolve({
+        locked: false,
+        abort: vi.fn(() => Promise.resolve()),
+        close: vi.fn(() => Promise.resolve(undefined)),
+        getWriter: () => new WritableStream().getWriter(),
+        seek: vi.fn(() => Promise.resolve(undefined)),
+        truncate: vi.fn(() => Promise.resolve(undefined)),
+        write: vi.fn(() => Promise.reject(writeError)),
+      }),
+    );
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
+      if (options?.create) {
+        return Promise.resolve(directHandle);
+      }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).rejects.toThrow(writeError);
+
+    expect(rootHandle.removeEntryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not clean up an existing file when direct probe write fails', async () => {
+    const existingHandle = createFileHandleMock({
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    const openError = new DOMException('Invalid state', 'InvalidStateError');
+    existingHandle.createWritable = vi.fn(() => Promise.reject(openError));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [existingHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).rejects.toThrow(openError);
+
+    expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
+  });
+
+  it('does not clean up after direct probe close succeeds even if post-write stat fails', async () => {
+    const directHandle = createFileHandleMock({
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    directHandle.getFile = vi.fn(() =>
+      Promise.reject(new DOMException('Not allowed', 'NotAllowedError')),
+    );
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 });

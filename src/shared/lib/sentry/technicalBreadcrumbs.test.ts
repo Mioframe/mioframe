@@ -65,6 +65,40 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
+  it('beforeBreadcrumb keeps writeStrategy and strips probe-private write data', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWrite',
+            provider: 'webFileSystem',
+            writeStrategy: 'directCreateWriteProbe',
+            path: '/secret',
+            filename: 'doc.amrg',
+            documentId: 'doc-123',
+            storageKey: 'secret-key',
+            bytes: '100',
+            pendingCount: 2,
+          },
+          message: 'direct create write failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWrite',
+        provider: 'webFileSystem',
+        writeStrategy: 'directCreateWriteProbe',
+        pendingCount: 2,
+      },
+      level: 'info',
+      message: 'direct create write failed',
+    });
+  });
+
   it('beforeBreadcrumb drops automatic navigation and fetch breadcrumbs', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 

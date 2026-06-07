@@ -13,6 +13,23 @@ describe('webFileSystemWriteDiagnostics', () => {
 
   it('adds safe breadcrumbs for create re-lookup, cleanup, writable open, file write, and fresh retry milestones', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'writeStrategySelected',
+      result: 'directCreateWriteProbe',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directCreateWriteWritableOpen',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directCreateWrite',
+      result: 'failed',
+      writeStrategy: 'directCreateWriteProbe',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'fileHandleLookupAfterCreate',
       result: 'started',
     });
@@ -52,6 +69,44 @@ describe('webFileSystemWriteDiagnostics', () => {
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
       category: 'webFileSystem.write',
       data: {
+        operation: 'writeStrategySelected',
+        provider: 'webFileSystem',
+        result: 'directCreateWriteProbe',
+        step: 'writeStrategySelected',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'write strategy selected',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWriteWritableOpen',
+        provider: 'webFileSystem',
+        result: 'started',
+        step: 'directCreateWriteWritableOpen',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'direct create write writable open started',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWrite',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'directCreateWrite',
+        writeStrategy: 'directCreateWriteProbe',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+      },
+      level: 'warning',
+      message: 'direct create write failed',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
+      category: 'webFileSystem.write',
+      data: {
         operation: 'lookupHandleAfterCreate',
         provider: 'webFileSystem',
         result: 'started',
@@ -60,7 +115,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'info',
       message: 'file handle lookup after create started',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(5, {
       category: 'webFileSystem.write',
       data: {
         operation: 'cleanupCreatedFile',
@@ -73,7 +128,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'warning',
       message: 'created file cleanup failed',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
       category: 'webFileSystem.write',
       data: {
         operation: 'openWritable',
@@ -84,7 +139,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'info',
       message: 'writable open started',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(7, {
       category: 'webFileSystem.write',
       data: {
         operation: 'openWritable',
@@ -97,7 +152,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'warning',
       message: 'writable open failed',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(5, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(8, {
       category: 'webFileSystem.write',
       data: {
         operation: 'openWritableCompatibility',
@@ -108,7 +163,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'info',
       message: 'writable compatibility open succeeded',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(9, {
       category: 'webFileSystem.write',
       data: {
         operation: 'writeFile',
@@ -121,7 +176,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'warning',
       message: 'file write failed',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(7, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(10, {
       category: 'webFileSystem.write',
       data: {
         operation: 'freshHandleRetry',
