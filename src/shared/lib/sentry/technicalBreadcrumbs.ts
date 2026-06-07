@@ -39,6 +39,7 @@ export const TECHNICAL_BREADCRUMB_DATA_KEYS = [
   'writeStrategy',
   // TODO(PR #85): temporary — basename fields for Android InvalidStateError filename-pattern diagnosis; remove after investigation
   'targetFileName',
+  'targetFileNameLength',
   'probeFileName',
 ] as const;
 
@@ -69,17 +70,26 @@ export type TechnicalBreadcrumbInput = {
 const CATEGORY_SET = new Set<string>(TECHNICAL_BREADCRUMB_CATEGORIES);
 const PRODUCTION_MAX_STRING_LENGTH = 80;
 const PREVIEW_MAX_STRING_LENGTH = 120;
+// TODO(PR #85): temporary — wider limit for basename diagnosis fields; remove with the fields
+const FILENAME_FIELD_MAX_LENGTH = 200;
+// TODO(PR #85): temporary — keys with a wider string limit; remove with the fields
+const FILENAME_FIELD_KEYS = new Set<TechnicalBreadcrumbDataKey>(['targetFileName']);
 
 const getMaxStringLength = (diagnosticsMode: DiagnosticsMode): number =>
   diagnosticsMode === 'preview' ? PREVIEW_MAX_STRING_LENGTH : PRODUCTION_MAX_STRING_LENGTH;
 
-const sanitizeString = (value: unknown, diagnosticsMode: DiagnosticsMode): string | undefined => {
+const sanitizeString = (
+  value: unknown,
+  diagnosticsMode: DiagnosticsMode,
+  maxLength?: number,
+): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;
   }
 
   const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > getMaxStringLength(diagnosticsMode)) {
+  const limit = maxLength ?? getMaxStringLength(diagnosticsMode);
+  if (trimmed.length === 0 || trimmed.length > limit) {
     return undefined;
   }
 
@@ -103,7 +113,8 @@ const sanitizeData = (
       continue;
     }
 
-    const safeString = sanitizeString(value, diagnosticsMode);
+    const maxLength = FILENAME_FIELD_KEYS.has(key) ? FILENAME_FIELD_MAX_LENGTH : undefined;
+    const safeString = sanitizeString(value, diagnosticsMode, maxLength);
     if (safeString !== undefined) {
       sanitized[key] = safeString;
     }

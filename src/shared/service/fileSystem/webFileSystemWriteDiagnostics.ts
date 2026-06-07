@@ -159,6 +159,9 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
       ...(event.domExceptionName !== undefined ? { domExceptionName: event.domExceptionName } : {}),
       // TODO(PR #85): temporary — basename fields for Android InvalidStateError filename-pattern diagnosis; remove after investigation
       ...(event.targetFileName !== undefined ? { targetFileName: event.targetFileName } : {}),
+      ...(event.targetFileNameLength !== undefined
+        ? { targetFileNameLength: event.targetFileNameLength }
+        : {}),
       ...(event.probeFileName !== undefined ? { probeFileName: event.probeFileName } : {}),
     },
     level: event.result === 'failed' ? 'warning' : 'info',

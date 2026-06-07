@@ -513,6 +513,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       'errorClass',
       'domExceptionName',
       'targetFileName',
+      'targetFileNameLength',
       'probeFileName',
     ]);
     for (const key of Object.keys(data)) {
@@ -646,6 +647,54 @@ describe('webFileSystemWriteDiagnostics', () => {
     expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledTimes(3);
     for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
       expect(call[0].data).toEqual(expect.objectContaining({ targetFileName: 'abc123.automerge' }));
+    }
+  });
+
+  it('directCreateWriteWritableOpen failed breadcrumb includes targetFileNameLength', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directCreateWriteWritableOpen',
+      result: 'failed',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+      targetFileNameLength: 16,
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          targetFileName: 'abc123.automerge',
+          targetFileNameLength: 16,
+          domExceptionName: 'InvalidStateError',
+        }),
+      }),
+    );
+  });
+
+  it('directCreateWrite breadcrumbs include targetFileNameLength', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directCreateWrite',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+      targetFileNameLength: 16,
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directCreateWrite',
+      result: 'failed',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+      targetFileNameLength: 16,
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledTimes(2);
+    for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
+      expect(call[0].data).toEqual(
+        expect.objectContaining({ targetFileName: 'abc123.automerge', targetFileNameLength: 16 }),
+      );
     }
   });
 });

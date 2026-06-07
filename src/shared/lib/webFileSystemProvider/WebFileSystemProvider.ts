@@ -76,6 +76,8 @@ export interface WebFileSystemDiagnosticStep {
   writeStrategy?: WebFileSystemWriteStrategy | undefined;
   /** TODO(PR #85): temporary — basename of the real write target file for Android InvalidStateError diagnosis; remove after investigation. */
   targetFileName?: string | undefined;
+  /** TODO(PR #85): temporary — character length of the real write target basename for Android InvalidStateError diagnosis; remove after investigation. */
+  targetFileNameLength?: number | undefined;
   /** TODO(PR #85): temporary — basename of the ASCII probe file for Android InvalidStateError diagnosis; remove after investigation. */
   probeFileName?: string | undefined;
 }
@@ -544,6 +546,8 @@ export const WebFileSystemProvider = (
       step: 'writeStrategySelected',
       result: selectedWriteStrategy,
       writeStrategy: selectedWriteStrategy,
+      targetFileName: fileName,
+      targetFileNameLength: fileName.length,
     });
 
     // TODO(PR #85): temporary ASCII write probe - remove after Android InvalidStateError investigation
@@ -663,6 +667,7 @@ export const WebFileSystemProvider = (
         result: 'started',
         writeStrategy: selectedWriteStrategy,
         targetFileName: name,
+        targetFileNameLength: name.length,
       });
       try {
         await withWriteAccessRecovery(() => parentDir.removeEntry(name, { recursive: false }));
@@ -671,6 +676,7 @@ export const WebFileSystemProvider = (
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
           targetFileName: name,
+          targetFileNameLength: name.length,
         });
       } catch (error) {
         reportDiagnosticStep({
@@ -678,6 +684,7 @@ export const WebFileSystemProvider = (
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
           targetFileName: name,
+          targetFileNameLength: name.length,
           ...describeError(error),
         });
       }
@@ -708,6 +715,7 @@ export const WebFileSystemProvider = (
         result: 'started',
         writeStrategy: selectedWriteStrategy,
         targetFileName: fileName,
+        targetFileNameLength: fileName.length,
       });
       try {
         const existingHandle = await withWriteAccessRecovery(() =>
@@ -718,6 +726,7 @@ export const WebFileSystemProvider = (
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
         });
         return {
           existedBeforeAttempt: true,
@@ -733,6 +742,7 @@ export const WebFileSystemProvider = (
           result: 'missing',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
         });
         return {
           existedBeforeAttempt: false,
@@ -750,6 +760,7 @@ export const WebFileSystemProvider = (
         result: 'started',
         writeStrategy: selectedWriteStrategy,
         targetFileName: fileName,
+        targetFileNameLength: fileName.length,
       });
       let writable: FileSystemWritableFileStream;
       let closedSuccessfully = false;
@@ -759,6 +770,7 @@ export const WebFileSystemProvider = (
           result: 'started',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
         });
         writable = await withWriteAccessRecovery(() => handle.createWritable());
         reportDiagnosticStep({
@@ -766,6 +778,7 @@ export const WebFileSystemProvider = (
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
         });
       } catch (error) {
         reportDiagnosticStep({
@@ -773,6 +786,7 @@ export const WebFileSystemProvider = (
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
           ...describeError(error),
         });
         reportDiagnosticStep({
@@ -780,6 +794,7 @@ export const WebFileSystemProvider = (
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
           ...describeError(error),
         });
         if (error instanceof DOMException && error.name === 'InvalidStateError') {
@@ -802,6 +817,7 @@ export const WebFileSystemProvider = (
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
         });
       } catch (error) {
         try {
@@ -814,6 +830,7 @@ export const WebFileSystemProvider = (
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
           targetFileName: fileName,
+          targetFileNameLength: fileName.length,
           ...describeError(error),
         });
         if (createdNewFile && !closedSuccessfully) {

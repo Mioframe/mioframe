@@ -242,6 +242,96 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
+  it('beforeBreadcrumb passes long Automerge-like targetFileName (>80 chars) through without truncation', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    // Realistic Automerge filename: {27-char-docId}_incremental_{64-char-hex-hash}.automerge (~114 chars)
+    const longFileName =
+      'vBfbhfCLoCspTDKPmaXkbk3Z7GH_incremental_4a8b2c9d3e1f7a5b0c2d4e6f8a1b3c5d7e9f1a2b3c4d5e6f7a8b9c0d.automerge';
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWriteWritableOpen',
+            provider: 'webFileSystem',
+            writeStrategy: 'directCreateWriteProbe',
+            targetFileName: longFileName,
+            targetFileNameLength: longFileName.length,
+          },
+          message: 'direct create write writable open failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWriteWritableOpen',
+        provider: 'webFileSystem',
+        writeStrategy: 'directCreateWriteProbe',
+        targetFileName: longFileName,
+        targetFileNameLength: longFileName.length,
+      },
+      level: 'info',
+      message: 'direct create write writable open failed',
+    });
+  });
+
+  it('beforeBreadcrumb passes targetFileNameLength through as a number', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWriteWritableOpen',
+            provider: 'webFileSystem',
+            writeStrategy: 'directCreateWriteProbe',
+            targetFileName: 'abc123.automerge',
+            targetFileNameLength: 16,
+          },
+          message: 'direct create write writable open failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWriteWritableOpen',
+        provider: 'webFileSystem',
+        writeStrategy: 'directCreateWriteProbe',
+        targetFileName: 'abc123.automerge',
+        targetFileNameLength: 16,
+      },
+      level: 'info',
+      message: 'direct create write writable open failed',
+    });
+  });
+
+  it('beforeBreadcrumb still applies the standard 80-char limit to non-filename fields', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const longOperation = 'a'.repeat(81);
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: longOperation,
+            provider: 'webFileSystem',
+          },
+          message: 'direct create write started',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        provider: 'webFileSystem',
+      },
+      level: 'info',
+      message: 'direct create write started',
+    });
+  });
+
   it('beforeBreadcrumb passes probeFileName through for ASCII probe write breadcrumbs', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
