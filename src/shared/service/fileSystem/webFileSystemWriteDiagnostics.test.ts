@@ -271,4 +271,249 @@ describe('webFileSystemWriteDiagnostics', () => {
       message: 'directory read failed',
     });
   });
+
+  it('adds safe breadcrumbs for ASCII write probe success path', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbe',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeWritableOpen',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeWritableOpen',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeWrite',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeClose',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbe',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeCleanup',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeCleanup',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbe',
+        provider: 'webFileSystem',
+        result: 'started',
+        step: 'asciiWriteProbe',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbe started',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeWritableOpen',
+        provider: 'webFileSystem',
+        result: 'started',
+        step: 'asciiWriteProbeWritableOpen',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbeWritableOpen started',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeWritableOpen',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'asciiWriteProbeWritableOpen',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbeWritableOpen succeeded',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeWrite',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'asciiWriteProbeWrite',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbeWrite succeeded',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(5, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeClose',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'asciiWriteProbeClose',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbeClose succeeded',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbe',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'asciiWriteProbe',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbe succeeded',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(7, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeCleanup',
+        provider: 'webFileSystem',
+        result: 'started',
+        step: 'asciiWriteProbeCleanup',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbeCleanup started',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(8, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeCleanup',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'asciiWriteProbeCleanup',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'asciiWriteProbeCleanup succeeded',
+    });
+  });
+
+  it('adds safe breadcrumbs for ASCII write probe writable-open failure path', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbe',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeWritableOpen',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeWritableOpen',
+      result: 'failed',
+      writeStrategy: 'directCreateWriteProbe',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbe',
+      result: 'failed',
+      writeStrategy: 'directCreateWriteProbe',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeCleanup',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeCleanup',
+      result: 'failed',
+      writeStrategy: 'directCreateWriteProbe',
+      errorClass: 'DOMException',
+      domExceptionName: 'NotFoundError',
+    });
+
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeWritableOpen',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'asciiWriteProbeWritableOpen',
+        writeStrategy: 'directCreateWriteProbe',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+      },
+      level: 'warning',
+      message: 'asciiWriteProbeWritableOpen failed',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbe',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'asciiWriteProbe',
+        writeStrategy: 'directCreateWriteProbe',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+      },
+      level: 'warning',
+      message: 'asciiWriteProbe failed',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbeCleanup',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'asciiWriteProbeCleanup',
+        writeStrategy: 'directCreateWriteProbe',
+        errorClass: 'DOMException',
+        domExceptionName: 'NotFoundError',
+      },
+      level: 'warning',
+      message: 'asciiWriteProbeCleanup failed',
+    });
+  });
+
+  it('breadcrumb data for probe steps contains only allowed fields', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbe',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
+    const data = call?.[0]?.data ?? {};
+    const allowedKeys = new Set([
+      'operation',
+      'provider',
+      'result',
+      'step',
+      'writeStrategy',
+      'errorClass',
+      'domExceptionName',
+    ]);
+    for (const key of Object.keys(data)) {
+      expect(allowedKeys).toContain(key);
+    }
+  });
 });

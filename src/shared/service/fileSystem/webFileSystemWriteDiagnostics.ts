@@ -2,6 +2,11 @@ import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 const operationByStep: Record<string, string> = {
+  asciiWriteProbe: 'asciiWriteProbe',
+  asciiWriteProbeCleanup: 'asciiWriteProbeCleanup',
+  asciiWriteProbeClose: 'asciiWriteProbeClose',
+  asciiWriteProbeWrite: 'asciiWriteProbeWrite',
+  asciiWriteProbeWritableOpen: 'asciiWriteProbeWritableOpen',
   createdFileCleanup: 'cleanupCreatedFile',
   directoryRead: 'readDirectory',
   directCreateWrite: 'directCreateWrite',
@@ -23,6 +28,27 @@ const messageByStepResult: Record<
   string,
   Partial<Record<WebFileSystemDiagnosticStep['result'], string>>
 > = {
+  asciiWriteProbe: {
+    failed: 'asciiWriteProbe failed',
+    started: 'asciiWriteProbe started',
+    succeeded: 'asciiWriteProbe succeeded',
+  },
+  asciiWriteProbeCleanup: {
+    failed: 'asciiWriteProbeCleanup failed',
+    started: 'asciiWriteProbeCleanup started',
+    succeeded: 'asciiWriteProbeCleanup succeeded',
+  },
+  asciiWriteProbeClose: {
+    succeeded: 'asciiWriteProbeClose succeeded',
+  },
+  asciiWriteProbeWrite: {
+    succeeded: 'asciiWriteProbeWrite succeeded',
+  },
+  asciiWriteProbeWritableOpen: {
+    failed: 'asciiWriteProbeWritableOpen failed',
+    started: 'asciiWriteProbeWritableOpen started',
+    succeeded: 'asciiWriteProbeWritableOpen succeeded',
+  },
   fileHandleCreate: {
     failed: 'file handle create failed',
     started: 'file handle create started',

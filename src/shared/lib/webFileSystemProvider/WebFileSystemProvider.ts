@@ -542,6 +542,104 @@ export const WebFileSystemProvider = (
       writeStrategy: selectedWriteStrategy,
     });
 
+    // TODO(PR #85): temporary ASCII write probe - remove after Android InvalidStateError investigation
+    const runAsciiWriteProbe = async (parentDir: FileSystemDirectoryHandle): Promise<void> => {
+      const PROBE_FILENAME = 'mioframe-write-probe.tmp';
+      reportDiagnosticStep({
+        step: 'asciiWriteProbe',
+        result: 'started',
+        writeStrategy: selectedWriteStrategy,
+      });
+
+      let probeFileHandle: FileSystemFileHandle | undefined;
+      try {
+        probeFileHandle = await parentDir.getFileHandle(PROBE_FILENAME, { create: true });
+      } catch (createError) {
+        reportDiagnosticStep({
+          step: 'asciiWriteProbe',
+          result: 'failed',
+          writeStrategy: selectedWriteStrategy,
+          ...describeError(createError),
+        });
+        return;
+      }
+
+      let probeWritable: FileSystemWritableFileStream | undefined;
+      try {
+        reportDiagnosticStep({
+          step: 'asciiWriteProbeWritableOpen',
+          result: 'started',
+          writeStrategy: selectedWriteStrategy,
+        });
+        probeWritable = await probeFileHandle.createWritable();
+        reportDiagnosticStep({
+          step: 'asciiWriteProbeWritableOpen',
+          result: 'succeeded',
+          writeStrategy: selectedWriteStrategy,
+        });
+        await probeWritable.write('ok');
+        reportDiagnosticStep({
+          step: 'asciiWriteProbeWrite',
+          result: 'succeeded',
+          writeStrategy: selectedWriteStrategy,
+        });
+        await probeWritable.close();
+        probeWritable = undefined;
+        reportDiagnosticStep({
+          step: 'asciiWriteProbeClose',
+          result: 'succeeded',
+          writeStrategy: selectedWriteStrategy,
+        });
+        reportDiagnosticStep({
+          step: 'asciiWriteProbe',
+          result: 'succeeded',
+          writeStrategy: selectedWriteStrategy,
+        });
+      } catch (probeError) {
+        if (probeWritable === undefined) {
+          reportDiagnosticStep({
+            step: 'asciiWriteProbeWritableOpen',
+            result: 'failed',
+            writeStrategy: selectedWriteStrategy,
+            ...describeError(probeError),
+          });
+        } else {
+          try {
+            await probeWritable.abort();
+          } catch {
+            // abort is cleanup only
+          }
+        }
+        reportDiagnosticStep({
+          step: 'asciiWriteProbe',
+          result: 'failed',
+          writeStrategy: selectedWriteStrategy,
+          ...describeError(probeError),
+        });
+      }
+
+      reportDiagnosticStep({
+        step: 'asciiWriteProbeCleanup',
+        result: 'started',
+        writeStrategy: selectedWriteStrategy,
+      });
+      try {
+        await parentDir.removeEntry(PROBE_FILENAME, { recursive: false });
+        reportDiagnosticStep({
+          step: 'asciiWriteProbeCleanup',
+          result: 'succeeded',
+          writeStrategy: selectedWriteStrategy,
+        });
+      } catch (cleanupError) {
+        reportDiagnosticStep({
+          step: 'asciiWriteProbeCleanup',
+          result: 'failed',
+          writeStrategy: selectedWriteStrategy,
+          ...describeError(cleanupError),
+        });
+      }
+    };
+
     const cleanupCreatedFile = async (
       parentDir: FileSystemDirectoryHandle,
       name: string,
@@ -659,6 +757,9 @@ export const WebFileSystemProvider = (
           writeStrategy: selectedWriteStrategy,
           ...describeError(error),
         });
+        if (error instanceof DOMException && error.name === 'InvalidStateError') {
+          await runAsciiWriteProbe(parentDir);
+        }
         if (createdNewFile) {
           await cleanupCreatedFile(parentDir, fileName);
         }
