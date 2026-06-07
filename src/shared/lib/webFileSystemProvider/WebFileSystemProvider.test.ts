@@ -501,14 +501,10 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'createWritableStarted',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'createWritableStarted',
     });
     expect(freshHandle.__writtenContent).toEqual(['fresh']);
   });
@@ -655,14 +651,10 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'writeStarted',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'writeStarted',
     });
     expect(freshHandle.__writtenContent).toEqual(['fresh']);
   });
@@ -702,14 +694,10 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'closeStarted',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'closeStarted',
     });
   });
 
@@ -741,14 +729,10 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'statAfterWriteFailed',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'succeeded',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'statAfterWriteFailed',
     });
   });
 
@@ -784,19 +768,12 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'started',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'createWritableStarted',
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       result: 'failed',
       step: 'freshHandleRetry',
-      retryKind: 'freshHandle',
-      writePhase: 'createWritableStarted',
-      error: {
-        errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
-        errorClassification: 'browserFileStateChanged',
-      },
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
     });
   });
 

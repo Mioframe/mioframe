@@ -1,51 +1,39 @@
 import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
-const operationByStep: Record<WebFileSystemDiagnosticStep['step'], string> = {
-  createFileHandle: 'createFileHandle',
-  createWritable: 'openWritable',
+const operationByStep: Record<string, string> = {
+  fileHandleCreate: 'createFileHandle',
   freshHandleRetry: 'freshHandleRetry',
-  lookupExistingHandle: 'lookupExistingHandle',
-  lookupParentDirectory: 'lookupParentDirectory',
+  fileLookup: 'lookupExistingHandle',
+  parentDirectoryLookup: 'lookupParentDirectory',
+  writableOpen: 'openWritable',
 };
 
 const messageByStepResult: Record<
-  WebFileSystemDiagnosticStep['step'],
-  Record<WebFileSystemDiagnosticStep['result'], string | undefined>
+  string,
+  Partial<Record<WebFileSystemDiagnosticStep['result'], string>>
 > = {
-  createFileHandle: {
-    attempted: 'file handle create attempted',
+  fileHandleCreate: {
     failed: 'file handle create failed',
-    missing: undefined,
-    started: undefined,
+    started: 'file handle create started',
     succeeded: 'file handle create succeeded',
   },
-  createWritable: {
-    attempted: 'writable open attempted',
+  writableOpen: {
     failed: 'writable open failed',
-    missing: undefined,
-    started: undefined,
+    started: 'writable open started',
     succeeded: 'writable open succeeded',
   },
   freshHandleRetry: {
-    attempted: undefined,
     failed: 'fresh handle retry failed',
-    missing: undefined,
     started: 'fresh handle retry started',
     succeeded: 'fresh handle retry succeeded',
   },
-  lookupExistingHandle: {
-    attempted: undefined,
-    failed: undefined,
+  fileLookup: {
     missing: 'file lookup missing',
-    started: undefined,
+    started: 'file lookup started',
     succeeded: 'file lookup succeeded',
   },
-  lookupParentDirectory: {
-    attempted: undefined,
-    failed: undefined,
-    missing: undefined,
-    started: undefined,
+  parentDirectoryLookup: {
     succeeded: 'parent directory lookup succeeded',
   },
 };
@@ -57,28 +45,20 @@ const messageByStepResult: Record<
 export const addWebFileSystemDiagnosticStepBreadcrumb = (
   event: WebFileSystemDiagnosticStep,
 ): void => {
-  const message = messageByStepResult[event.step][event.result];
+  const message = messageByStepResult[event.step]?.[event.result];
   if (message === undefined) {
     return;
   }
 
-  const error = event.result === 'failed' ? event.error : undefined;
-
   addTechnicalBreadcrumb({
-    category: 'writeAccessRecovery',
+    category: 'webFileSystem.write',
     data: {
-      operation: operationByStep[event.step],
+      operation: operationByStep[event.step] ?? event.step,
       provider: 'webFileSystem',
       result: event.result,
       step: event.step,
-      ...(event.writePhase !== undefined ? { writePhase: event.writePhase } : {}),
-      ...(error !== undefined ? { errorClass: error.errorClass } : {}),
-      ...(error?.domExceptionName !== undefined
-        ? { domExceptionName: error.domExceptionName }
-        : {}),
-      ...(error?.errorClassification !== undefined
-        ? { errorClassification: error.errorClassification }
-        : {}),
+      ...(event.errorClass !== undefined ? { errorClass: event.errorClass } : {}),
+      ...(event.domExceptionName !== undefined ? { domExceptionName: event.domExceptionName } : {}),
     },
     level: event.result === 'failed' ? 'warning' : 'info',
     message,

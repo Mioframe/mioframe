@@ -13,45 +13,36 @@ describe('webFileSystemWriteDiagnostics', () => {
 
   it('adds safe breadcrumbs for writable open and fresh retry milestones', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'createWritable',
-      result: 'attempted',
-      writePhase: 'createWritableStarted',
+      step: 'writableOpen',
+      result: 'started',
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'freshHandleRetry',
       result: 'failed',
-      retryKind: 'freshHandle',
-      writePhase: 'createWritableStarted',
-      error: {
-        errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
-        errorClassification: 'browserFileStateChanged',
-      },
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
     });
 
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
-      category: 'writeAccessRecovery',
+      category: 'webFileSystem.write',
       data: {
         operation: 'openWritable',
         provider: 'webFileSystem',
-        result: 'attempted',
-        step: 'createWritable',
-        writePhase: 'createWritableStarted',
+        result: 'started',
+        step: 'writableOpen',
       },
       level: 'info',
-      message: 'writable open attempted',
+      message: 'writable open started',
     });
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
-      category: 'writeAccessRecovery',
+      category: 'webFileSystem.write',
       data: {
         operation: 'freshHandleRetry',
         provider: 'webFileSystem',
         result: 'failed',
         step: 'freshHandleRetry',
-        writePhase: 'createWritableStarted',
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
-        errorClassification: 'browserFileStateChanged',
       },
       level: 'warning',
       message: 'fresh handle retry failed',
@@ -60,7 +51,7 @@ describe('webFileSystemWriteDiagnostics', () => {
 
   it('drops milestones that should not become breadcrumbs', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'lookupParentDirectory',
+      step: 'parentDirectoryLookup',
       result: 'started',
     });
 

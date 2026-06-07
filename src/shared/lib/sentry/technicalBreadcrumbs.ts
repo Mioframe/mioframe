@@ -4,6 +4,7 @@ import type { SentryReportingState } from './sentryRuntimeState';
 
 export const TECHNICAL_BREADCRUMB_CATEGORIES = [
   'repository.storage',
+  'webFileSystem.write',
   'writeAccessRecovery',
   'worker.runtime',
   'sentry.runtime',
@@ -25,7 +26,6 @@ export const TECHNICAL_BREADCRUMB_DATA_KEYS = [
   'vfsErrorCode',
   'domainErrorCode',
   'errorClassification',
-  'writePhase',
   'step',
   'handleComparisonResult',
   'returnedHandlePermission',

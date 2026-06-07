@@ -135,7 +135,6 @@ const SAFE_CONTEXT_STRING_KEYS = [
   'vfsErrorCode',
   'domainErrorCode',
   'errorClassification',
-  'writePhase',
   'step',
   'runtime',
 ] as const;
