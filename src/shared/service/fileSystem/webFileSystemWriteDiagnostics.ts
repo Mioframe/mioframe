@@ -12,20 +12,24 @@ import type {
 } from '@shared/lib/webFileSystemProvider/webFileSystemWriteDiagnosticSummary';
 
 type WebFileSystemWriteRetryResult = 'failed' | 'started' | 'succeeded';
+type WebFileSystemWriteRetryKind = 'freshHandle' | 'normalRetry';
 
 const addWebFileWriteRetryBreadcrumb = ({
   error,
   result,
+  retryKind,
   writePhase,
 }: {
   error?: WebFileSystemWriteDiagnosticSummary | undefined;
   result: WebFileSystemWriteRetryResult;
+  retryKind: WebFileSystemWriteRetryKind;
   writePhase: WebFileSystemWritePhase;
 }): void => {
   addTechnicalBreadcrumb({
     category: 'writeAccessRecovery',
     data: {
-      operation: 'webFileSystemWrite',
+      operation:
+        retryKind === 'freshHandle' ? 'webFileSystemFreshHandleRetry' : 'webFileSystemWrite',
       provider: 'webFileSystem',
       writePhase,
       retryAttempted: 'true',
@@ -53,6 +57,7 @@ const addWebFileWriteRetryBreadcrumb = ({
  * @param params - Safe phase data for the retry.
  */
 export const addWebFileSystemWriteRetryStartedBreadcrumb = (params: {
+  retryKind: WebFileSystemWriteRetryKind;
   writePhase: WebFileSystemWritePhase;
 }): void => {
   addWebFileWriteRetryBreadcrumb({ result: 'started', ...params });
@@ -63,6 +68,7 @@ export const addWebFileSystemWriteRetryStartedBreadcrumb = (params: {
  * @param params - Safe phase data for the retry.
  */
 export const addWebFileSystemWriteRetrySucceededBreadcrumb = (params: {
+  retryKind: WebFileSystemWriteRetryKind;
   writePhase: WebFileSystemWritePhase;
 }): void => {
   addWebFileWriteRetryBreadcrumb({ result: 'succeeded', ...params });
@@ -74,6 +80,7 @@ export const addWebFileSystemWriteRetrySucceededBreadcrumb = (params: {
  * @param params - Safe write phase for the successful retry.
  */
 export const reportWebFileSystemWriteRetrySucceededForPreview = (params: {
+  retryKind: WebFileSystemWriteRetryKind;
   writePhase: WebFileSystemWritePhase;
 }): void => {
   if (DIAGNOSTICS_MODE !== 'preview') {
@@ -94,7 +101,8 @@ export const reportWebFileSystemWriteRetrySucceededForPreview = (params: {
       writePhase: params.writePhase,
     },
     safeTags: {
-      operation: 'webFileSystemWrite',
+      operation:
+        params.retryKind === 'freshHandle' ? 'webFileSystemFreshHandleRetry' : 'webFileSystemWrite',
       provider: 'webFileSystem',
     },
   });
@@ -106,6 +114,7 @@ export const reportWebFileSystemWriteRetrySucceededForPreview = (params: {
  */
 export const addWebFileSystemWriteRetryFailedBreadcrumb = (params: {
   error: WebFileSystemWriteDiagnosticSummary;
+  retryKind: WebFileSystemWriteRetryKind;
   writePhase: WebFileSystemWritePhase;
 }): void => {
   addWebFileWriteRetryBreadcrumb({ result: 'failed', ...params });

@@ -95,6 +95,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     });
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'read' });
     expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith({
+      grantedHandle: handle,
       operation: 'read',
       permissionState: 'granted',
       spaceName: 'Work',
@@ -501,6 +502,54 @@ describe('useFileSystemAccessPermissionBroker', () => {
       await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
 
       expect(diagnosticSink).toHaveLength(0);
+
+      scope.stop();
+    });
+
+    it('emits a handleComparison diagnostic event with safe statuses after a granted write recovery', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work-returned',
+      });
+      handle.requestPermissionMock.mockResolvedValue('granted');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({
+        status: 'granted',
+        comparison: {
+          returnedHandleProvided: 'true',
+          returnedHandleSameEntry: 'false',
+          storedHandlePermission: 'prompt',
+          returnedHandlePermission: 'granted',
+          handleComparisonResult: 'differentEntry',
+        },
+      });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        name: 'writeAccessRecovery.handleComparison',
+        severity: DiagnosticSeverity.Info,
+        result: DiagnosticResult.Success,
+        classification: DiagnosticClassification.Access,
+        safeTags: {
+          provider: 'webFileSystem',
+          operation: 'resolveAccessRequest',
+          returnedHandleProvided: 'true',
+          returnedHandleSameEntry: 'false',
+          storedHandlePermission: 'prompt',
+          returnedHandlePermission: 'granted',
+          handleComparisonResult: 'differentEntry',
+        },
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
       scope.stop();
     });

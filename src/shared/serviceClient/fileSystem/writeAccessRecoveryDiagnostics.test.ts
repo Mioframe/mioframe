@@ -11,6 +11,7 @@ import {
   addWriteAccessPermissionResolvedBreadcrumb,
   addWriteAccessRequestStartBreadcrumb,
   reportWriteAccessMissingRequest,
+  reportWriteAccessHandleComparison,
   reportWriteAccessPermissionDenied,
   reportWriteAccessProviderFailure,
   reportWriteAccessReplayFailure,
@@ -93,6 +94,57 @@ describe('writeAccessRecoveryDiagnostics', () => {
         attemptId: TEST_ATTEMPT_ID,
         safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
+    });
+  });
+
+  describe('reportWriteAccessHandleComparison', () => {
+    it('emits an info event with only safe handle comparison statuses', () => {
+      reportWriteAccessHandleComparison({
+        attemptId: TEST_ATTEMPT_ID,
+        comparison: {
+          returnedHandleProvided: 'true',
+          returnedHandleSameEntry: 'false',
+          storedHandlePermission: 'prompt',
+          returnedHandlePermission: 'granted',
+          handleComparisonResult: 'differentEntry',
+        },
+      });
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toMatchObject({
+        name: 'writeAccessRecovery.handleComparison',
+        severity: DiagnosticSeverity.Info,
+        result: DiagnosticResult.Success,
+        classification: DiagnosticClassification.Access,
+        attemptId: TEST_ATTEMPT_ID,
+        safeTags: {
+          provider: 'webFileSystem',
+          operation: 'resolveAccessRequest',
+          returnedHandleProvided: 'true',
+          returnedHandleSameEntry: 'false',
+          storedHandlePermission: 'prompt',
+          returnedHandlePermission: 'granted',
+          handleComparisonResult: 'differentEntry',
+        },
+      });
+    });
+
+    it('does not include user-controlled values in handle comparison diagnostics', () => {
+      reportWriteAccessHandleComparison({
+        attemptId: TEST_ATTEMPT_ID,
+        comparison: {
+          returnedHandleProvided: 'true',
+          returnedHandleSameEntry: 'false',
+          storedHandlePermission: 'prompt',
+          returnedHandlePermission: 'granted',
+          handleComparisonResult: 'differentEntry',
+        },
+      });
+
+      const serialized = JSON.stringify(sink[0]);
+      expect(serialized).not.toContain('Work');
+      expect(serialized).not.toContain('spaceName');
+      expect(serialized).not.toContain('path');
     });
   });
 
@@ -331,6 +383,16 @@ describe('writeAccessRecoveryDiagnostics', () => {
   it('all wrapper functions attach only project-controlled safe tags (no user data)', () => {
     reportWriteAccessMissingRequest({ attemptId: TEST_ATTEMPT_ID });
     reportWriteAccessStaleResolve({ attemptId: TEST_ATTEMPT_ID });
+    reportWriteAccessHandleComparison({
+      attemptId: TEST_ATTEMPT_ID,
+      comparison: {
+        returnedHandleProvided: 'true',
+        returnedHandleSameEntry: 'false',
+        storedHandlePermission: 'prompt',
+        returnedHandlePermission: 'granted',
+        handleComparisonResult: 'differentEntry',
+      },
+    });
     reportWriteAccessPermissionDenied({ attemptId: TEST_ATTEMPT_ID });
     reportWriteAccessReplayFailure({ attemptId: TEST_ATTEMPT_ID });
     reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });

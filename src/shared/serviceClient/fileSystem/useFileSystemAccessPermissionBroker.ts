@@ -5,6 +5,7 @@ import {
   addWriteAccessPermissionPromptStartBreadcrumb,
   addWriteAccessPermissionResolvedBreadcrumb,
   addWriteAccessRequestStartBreadcrumb,
+  reportWriteAccessHandleComparison,
   reportWriteAccessMissingRequest,
   reportWriteAccessPermissionDenied,
   reportWriteAccessProviderFailure,
@@ -66,6 +67,7 @@ export const useFileSystemAccessPermissionBroker = () => {
         addWriteAccessPermissionResolvedBreadcrumb({ permissionState });
 
         const result = await resolveFileSystemAccessRequest({
+          ...(permissionState === 'granted' ? { grantedHandle: handle } : {}),
           operation: request.operation,
           permissionState,
           spaceName: request.spaceName,
@@ -82,6 +84,10 @@ export const useFileSystemAccessPermissionBroker = () => {
 
         if (result.status === 'grantedWithStorageFailures') {
           reportWriteAccessStorageFailure({ attemptId, replay: result.replay });
+        }
+
+        if (permissionState === 'granted' && result.comparison !== undefined) {
+          reportWriteAccessHandleComparison({ attemptId, comparison: result.comparison });
         }
 
         if (result.status === 'denied' && key.operation === 'write') {

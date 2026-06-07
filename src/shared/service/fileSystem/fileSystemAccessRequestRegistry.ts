@@ -13,6 +13,41 @@ type DeviceDirectoryAccessRequest = {
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
 
 /**
+ * Safe permission states used when comparing the stored and returned directory handles.
+ */
+export type WriteAccessRecoveryHandlePermissionState =
+  | 'denied'
+  | 'granted'
+  | 'prompt'
+  | 'queryFailed'
+  | 'unsupported';
+
+/**
+ * Safe outcome of comparing the stored directory handle with the granted handle.
+ */
+export type WriteAccessRecoveryHandleComparisonResult =
+  | 'differentEntry'
+  | 'notCompared'
+  | 'queryFailed'
+  | 'sameEntry';
+
+/**
+ * Safe handle comparison summary for write-access recovery diagnostics.
+ */
+export interface WriteAccessRecoveryHandleComparison {
+  /** Safe result of `isSameEntry()` when comparison was possible. */
+  handleComparisonResult: WriteAccessRecoveryHandleComparisonResult;
+  /** Safe readwrite permission query result for the returned main-thread handle. */
+  returnedHandlePermission: WriteAccessRecoveryHandlePermissionState;
+  /** Whether the broker supplied a granted handle back to the service. */
+  returnedHandleProvided: 'false' | 'true';
+  /** Safe same-entry status, or `unknown` when comparison failed. */
+  returnedHandleSameEntry: 'false' | 'true' | 'unknown';
+  /** Safe readwrite permission query result for the stored worker-side handle. */
+  storedHandlePermission: WriteAccessRecoveryHandlePermissionState;
+}
+
+/**
  * Safe classification of a write recovery replay failure.
  * - `accessRequired` – storage is still blocked by a missing browser permission.
  * - `storageFailure` – write access was available but the underlying adapter failed.
@@ -114,6 +149,7 @@ export type ResolveAccessRequestResult =
        * - `missing` – no pending request exists for the given key (stale or already resolved).
        */
       status: 'granted' | 'denied' | 'cancelled' | 'missing';
+      comparison?: WriteAccessRecoveryHandleComparison | undefined;
     }
   | {
       /**
@@ -126,6 +162,8 @@ export type ResolveAccessRequestResult =
       status: 'grantedWithReplayFailures' | 'grantedWithStorageFailures';
       /** Safe replay summary forwarded from the failing write recovery handler. */
       replay?: WriteAccessRecoveryReplaySummary | undefined;
+      /** Safe handle comparison summary when the main thread returned a granted handle. */
+      comparison?: WriteAccessRecoveryHandleComparison | undefined;
     };
 
 /**
@@ -215,7 +253,10 @@ export interface FileSystemAccessRequestRegistry {
    * @returns A promise resolving to a {@link ResolveAccessRequestResult}.
    */
   resolve: (
-    params: FileSystemAccessRequestKey & { permissionState: PermissionState },
+    params: FileSystemAccessRequestKey & {
+      grantedHandle?: FileSystemDirectoryHandle | undefined;
+      permissionState: PermissionState;
+    },
   ) => Promise<ResolveAccessRequestResult>;
 
   /**
@@ -307,11 +348,61 @@ export const createFileSystemAccessRequestRegistry = ({
     );
   };
 
+  const querySafePermissionState = async (
+    handle: FileSystemDirectoryHandle,
+  ): Promise<WriteAccessRecoveryHandlePermissionState> => {
+    if (handle.queryPermission === undefined) {
+      return 'unsupported';
+    }
+
+    try {
+      return await handle.queryPermission({ mode: 'readwrite' });
+    } catch {
+      return 'queryFailed';
+    }
+  };
+
+  const compareHandles = async ({
+    grantedHandle,
+    storedHandle,
+  }: {
+    grantedHandle: FileSystemDirectoryHandle | undefined;
+    storedHandle: FileSystemDirectoryHandle;
+  }): Promise<WriteAccessRecoveryHandleComparison | undefined> => {
+    if (grantedHandle === undefined) {
+      return undefined;
+    }
+
+    const storedHandlePermission = await querySafePermissionState(storedHandle);
+    const returnedHandlePermission = await querySafePermissionState(grantedHandle);
+
+    try {
+      const sameEntry = await storedHandle.isSameEntry(grantedHandle);
+      return {
+        returnedHandleProvided: 'true',
+        returnedHandleSameEntry: sameEntry ? 'true' : 'false',
+        storedHandlePermission,
+        returnedHandlePermission,
+        handleComparisonResult: sameEntry ? 'sameEntry' : 'differentEntry',
+      };
+    } catch {
+      return {
+        returnedHandleProvided: 'true',
+        returnedHandleSameEntry: 'unknown',
+        storedHandlePermission,
+        returnedHandlePermission,
+        handleComparisonResult: 'queryFailed',
+      };
+    }
+  };
+
   const resolve = async ({
+    grantedHandle,
     operation,
     permissionState,
     spaceName,
   }: FileSystemAccessRequestKey & {
+    grantedHandle?: FileSystemDirectoryHandle | undefined;
     permissionState: PermissionState;
   }): Promise<ResolveAccessRequestResult> => {
     const mode = operationToMode(operation);
@@ -326,11 +417,16 @@ export const createFileSystemAccessRequestRegistry = ({
       return { status: permissionState === 'denied' ? 'denied' : 'cancelled' };
     }
 
+    const comparison = await compareHandles({
+      grantedHandle,
+      storedHandle: request.handle,
+    });
+
     deleteRequest(requestKey);
     await request.refreshProvider();
 
     if (operation !== 'write') {
-      return { status: 'granted' };
+      return comparison === undefined ? { status: 'granted' } : { status: 'granted', comparison };
     }
 
     const mountPath = PathUtils.join(deviceFilesPath, spaceName);
@@ -340,15 +436,19 @@ export const createFileSystemAccessRequestRegistry = ({
       const result = await handler({ mountPath, operation: 'write', spaceName });
 
       if (result.status === 'stillBlocked') {
-        return { status: 'grantedWithReplayFailures', replay: result.replay };
+        return comparison === undefined
+          ? { status: 'grantedWithReplayFailures', replay: result.replay }
+          : { status: 'grantedWithReplayFailures', replay: result.replay, comparison };
       }
 
       if (result.status === 'failed') {
-        return { status: 'grantedWithStorageFailures', replay: result.replay };
+        return comparison === undefined
+          ? { status: 'grantedWithStorageFailures', replay: result.replay }
+          : { status: 'grantedWithStorageFailures', replay: result.replay, comparison };
       }
     }
 
-    return { status: 'granted' };
+    return comparison === undefined ? { status: 'granted' } : { status: 'granted', comparison };
   };
 
   const cancel = (key: FileSystemAccessRequestKey): Promise<boolean> =>

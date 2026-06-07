@@ -56,10 +56,15 @@ export interface WebFileSystemProviderOptions {
  * Safe retry milestone emitted by the provider for bounded InvalidStateError recovery.
  */
 export type WebFileSystemWriteRetryEvent =
-  | { result: 'started' | 'succeeded'; writePhase: WebFileSystemWritePhase }
+  | {
+      result: 'started' | 'succeeded';
+      retryKind: 'freshHandle' | 'normalRetry';
+      writePhase: WebFileSystemWritePhase;
+    }
   | {
       result: 'failed';
       error: WebFileSystemWriteDiagnosticSummary;
+      retryKind: 'freshHandle' | 'normalRetry';
       writePhase: WebFileSystemWritePhase;
     };
 
@@ -200,10 +205,19 @@ export const WebFileSystemProvider = (
     withWriteAccessRecovery(async () => {
       onPhaseChange('createWritable');
       const writable = await handle.createWritable();
-      onPhaseChange('writeContent');
-      await writable.write(content);
-      onPhaseChange('closeWritable');
-      await writable.close();
+      try {
+        onPhaseChange('writeContent');
+        await writable.write(content);
+        onPhaseChange('closeWritable');
+        await writable.close();
+      } catch (error) {
+        try {
+          await writable.abort();
+        } catch {
+          // abort cleanup is best-effort only; preserve the original write error
+        }
+        throw error;
+      }
     });
 
   const classifyWriteError = (
@@ -278,15 +292,7 @@ export const WebFileSystemProvider = (
     });
   };
 
-  const reportWriteRetry = (
-    event:
-      | { result: 'started' | 'succeeded'; writePhase: WebFileSystemWritePhase }
-      | {
-          result: 'failed';
-          error: WebFileSystemWriteDiagnosticSummary;
-          writePhase: WebFileSystemWritePhase;
-        },
-  ) => {
+  const reportWriteRetry = (event: WebFileSystemWriteRetryEvent) => {
     try {
       onWriteRetry?.(event);
     } catch {
@@ -463,7 +469,11 @@ export const WebFileSystemProvider = (
   ): Promise<WriteFileResult> => {
     await ensureAccess('readwrite');
 
-    const runWriteAttempt = async (): Promise<
+    const runWriteAttempt = async ({
+      forceFreshHandle = false,
+    }: {
+      forceFreshHandle?: boolean | undefined;
+    } = {}): Promise<
       | { result: WriteFileResult; status: 'succeeded' }
       | {
           error: unknown;
@@ -478,29 +488,41 @@ export const WebFileSystemProvider = (
 
       try {
         let resolvedHandle: FileSystemFileHandle;
-        try {
-          setWritePhase('lookupExistingHandle');
-          resolvedHandle = await getHandle(path, false, 'file');
-          if (!overwrite) {
-            throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
-          }
-        } catch (lookupError) {
-          if (
-            !(lookupError instanceof VfsError && lookupError.code === FileSystemError.FileNotFound)
-          ) {
-            throw lookupError;
-          }
-          if (!create) {
-            throw lookupError;
-          }
+        if (forceFreshHandle) {
           const normalized = PathUtils.normalize(path);
           setWritePhase('lookupParentDirectory');
           const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
-          setWritePhase('createFileHandle');
-          resolvedHandle = await createFileHandleWithWriteRecovery(
-            parentDir,
-            PathUtils.basename(normalized),
-          );
+          setWritePhase(create ? 'createFileHandle' : 'lookupExistingHandle');
+          resolvedHandle = await parentDir.getFileHandle(PathUtils.basename(normalized), {
+            create,
+          });
+        } else {
+          try {
+            setWritePhase('lookupExistingHandle');
+            resolvedHandle = await getHandle(path, false, 'file');
+            if (!overwrite) {
+              throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
+            }
+          } catch (lookupError) {
+            if (
+              !(
+                lookupError instanceof VfsError && lookupError.code === FileSystemError.FileNotFound
+              )
+            ) {
+              throw lookupError;
+            }
+            if (!create) {
+              throw lookupError;
+            }
+            const normalized = PathUtils.normalize(path);
+            setWritePhase('lookupParentDirectory');
+            const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
+            setWritePhase('createFileHandle');
+            resolvedHandle = await createFileHandleWithWriteRecovery(
+              parentDir,
+              PathUtils.basename(normalized),
+            );
+          }
         }
 
         await writeFileHandleContent(resolvedHandle, content, setWritePhase);
@@ -538,12 +560,15 @@ export const WebFileSystemProvider = (
     const { error, writePhase } = attemptResult;
 
     if (error instanceof DOMException && error.name === 'InvalidStateError' && writePhase) {
-      reportWriteRetry({ result: 'started', writePhase });
+      const retryKind = writePhase === 'createWritable' ? 'freshHandle' : 'normalRetry';
+      reportWriteRetry({ result: 'started', retryKind, writePhase });
 
-      const retryResult = await runWriteAttempt();
+      const retryResult = await runWriteAttempt({
+        forceFreshHandle: writePhase === 'createWritable',
+      });
 
       if (retryResult.status === 'succeeded') {
-        reportWriteRetry({ result: 'succeeded', writePhase });
+        reportWriteRetry({ result: 'succeeded', retryKind, writePhase });
         return retryResult.result;
       }
 
@@ -555,6 +580,7 @@ export const WebFileSystemProvider = (
       });
       reportWriteRetry({
         result: 'failed',
+        retryKind,
         writePhase,
         error: classifyWriteError(retryResult.error),
       });

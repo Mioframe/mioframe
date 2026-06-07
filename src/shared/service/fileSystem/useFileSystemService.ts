@@ -88,17 +88,25 @@ const setupFileSystemService = () => {
         onWriteRetry: (event) => {
           switch (event.result) {
             case 'started':
-              addWebFileSystemWriteRetryStartedBreadcrumb({ writePhase: event.writePhase });
+              addWebFileSystemWriteRetryStartedBreadcrumb({
+                retryKind: event.retryKind,
+                writePhase: event.writePhase,
+              });
               return;
             case 'succeeded':
-              addWebFileSystemWriteRetrySucceededBreadcrumb({ writePhase: event.writePhase });
+              addWebFileSystemWriteRetrySucceededBreadcrumb({
+                retryKind: event.retryKind,
+                writePhase: event.writePhase,
+              });
               reportWebFileSystemWriteRetrySucceededForPreview({
+                retryKind: event.retryKind,
                 writePhase: event.writePhase,
               });
               return;
             case 'failed':
               addWebFileSystemWriteRetryFailedBreadcrumb({
                 error: event.error,
+                retryKind: event.retryKind,
                 writePhase: event.writePhase,
               });
           }

@@ -26,13 +26,19 @@ describe('webFileSystemWriteDiagnostics', () => {
   });
 
   it('adds retry started and succeeded breadcrumbs with safe write metadata', () => {
-    addWebFileSystemWriteRetryStartedBreadcrumb({ writePhase: 'createWritable' });
-    addWebFileSystemWriteRetrySucceededBreadcrumb({ writePhase: 'createWritable' });
+    addWebFileSystemWriteRetryStartedBreadcrumb({
+      retryKind: 'freshHandle',
+      writePhase: 'createWritable',
+    });
+    addWebFileSystemWriteRetrySucceededBreadcrumb({
+      retryKind: 'normalRetry',
+      writePhase: 'createWritable',
+    });
 
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
       category: 'writeAccessRecovery',
       data: {
-        operation: 'webFileSystemWrite',
+        operation: 'webFileSystemFreshHandleRetry',
         provider: 'webFileSystem',
         retryAttempted: 'true',
         retryResult: 'started',
@@ -57,6 +63,7 @@ describe('webFileSystemWriteDiagnostics', () => {
 
   it('adds retry failed breadcrumb with sanitized error summary', () => {
     addWebFileSystemWriteRetryFailedBreadcrumb({
+      retryKind: 'freshHandle',
       writePhase: 'createWritable',
       error: {
         errorClass: 'DOMException',
@@ -68,7 +75,7 @@ describe('webFileSystemWriteDiagnostics', () => {
     expect(addTechnicalBreadcrumb).toHaveBeenCalledWith({
       category: 'writeAccessRecovery',
       data: {
-        operation: 'webFileSystemWrite',
+        operation: 'webFileSystemFreshHandleRetry',
         provider: 'webFileSystem',
         retryAttempted: 'true',
         retryResult: 'failed',
@@ -83,7 +90,10 @@ describe('webFileSystemWriteDiagnostics', () => {
   });
 
   it('emits a preview-only diagnostic event for a successful retry', () => {
-    reportWebFileSystemWriteRetrySucceededForPreview({ writePhase: 'createWritable' });
+    reportWebFileSystemWriteRetrySucceededForPreview({
+      retryKind: 'freshHandle',
+      writePhase: 'createWritable',
+    });
 
     expect(reportDiagnosticEvent).toHaveBeenCalledWith({
       name: 'writeAccessRecovery.webFileWriteRetrySucceeded',
@@ -99,7 +109,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         writePhase: 'createWritable',
       },
       safeTags: {
-        operation: 'webFileSystemWrite',
+        operation: 'webFileSystemFreshHandleRetry',
         provider: 'webFileSystem',
       },
     });

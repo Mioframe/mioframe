@@ -23,6 +23,11 @@ export const SAFE_EVENT_TAG_KEYS = [
   'provider',
   'operation',
   'failureClassification',
+  'returnedHandleProvided',
+  'returnedHandleSameEntry',
+  'storedHandlePermission',
+  'returnedHandlePermission',
+  'handleComparisonResult',
 ] as const;
 
 type SentryTagValue = boolean | number | string | null | undefined;
