@@ -7,6 +7,7 @@ import {
   reportDiagnosticEvent,
 } from '@shared/lib/diagnostics';
 import type { DiagnosticEvent } from '@shared/lib/diagnostics';
+import type { WriteAccessRecoveryFailureClassification } from '@shared/service/fileSystem/fileSystemAccessRequestRegistry';
 
 /**
  * Safe handle comparison summary forwarded from the service after permission grant.
@@ -35,12 +36,7 @@ export interface BrokerReplaySummary {
   /** Number of saves still queued after the replay attempt. */
   pendingCount: number;
   /** Safe classification of the first failure, when available. */
-  failureClassification?:
-    | 'accessRequired'
-    | 'browserFileStateChanged'
-    | 'storageFailure'
-    | 'unknown'
-    | undefined;
+  failureClassification?: WriteAccessRecoveryFailureClassification | undefined;
   /** Safe sanitized summary of the first replay failure when available. */
   error?: SanitizedDiagnosticError | undefined;
 }

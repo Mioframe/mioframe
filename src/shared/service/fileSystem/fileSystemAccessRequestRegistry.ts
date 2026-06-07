@@ -1,5 +1,6 @@
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import type { SanitizedDiagnosticError } from '@shared/lib/diagnostics';
+import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
 import type { WebFileSystemAccessMode } from '@shared/lib/webFileSystemProvider';
 import type { FileSystemAccessOperation } from '@shared/lib/fileSystem';
 
@@ -47,18 +48,8 @@ export interface WriteAccessRecoveryHandleComparison {
   storedHandlePermission: WriteAccessRecoveryHandlePermissionState;
 }
 
-/**
- * Safe classification of a write recovery replay failure.
- * - `accessRequired` – storage is still blocked by a missing browser permission.
- * - `browserFileStateChanged` – browser-backed file state changed after a handle became stale.
- * - `storageFailure` – write access was available but the underlying adapter failed.
- * - `unknown` – failure could not be classified.
- */
-export type WriteAccessRecoveryFailureClassification =
-  | 'accessRequired'
-  | 'browserFileStateChanged'
-  | 'storageFailure'
-  | 'unknown';
+/** Safe classification of a write recovery replay failure. */
+export type WriteAccessRecoveryFailureClassification = RetryingStorageAdapterFailureClassification;
 
 /**
  * Safe replay summary included in non-flushed {@link WriteAccessRecoveryResult} values.

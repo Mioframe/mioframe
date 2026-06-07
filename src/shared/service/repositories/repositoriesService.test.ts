@@ -388,6 +388,79 @@ describe('useRepositoriesService', () => {
     });
   });
 
+  it('preserves browserFileStateChanged for InvalidStateError replay failures in both diagnostics and recovery result', async () => {
+    let capturedOptions: RetryingStorageAdapterOptions | undefined;
+    const flushPendingSaves = vi.fn().mockResolvedValue({
+      caughtError: new DOMException('state changed', 'InvalidStateError'),
+      failureClassification: 'storageFailure' as const,
+      flushedCount: 0,
+      pendingCount: 1,
+      status: 'failed' as const,
+    });
+
+    createRetryingStorageAdapterMock.mockImplementation(
+      (adapter: unknown, options?: RetryingStorageAdapterOptions) => {
+        const path = getMockAdapterPath(adapter);
+        capturedOptions = options;
+
+        return {
+          ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+          flushPendingSaves,
+          hasPendingSaves: vi.fn(() => path === '/Device Files/Work/repo-a'),
+        };
+      },
+    );
+
+    createDirectoryContentSubject('/Device Files/Work/repo-a', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics');
+    const sink: DiagnosticEvent[] = [];
+    setDiagnosticEventSink(sink);
+
+    try {
+      const service = useRepositoriesService();
+      await service.initializeRepository('/Device Files/Work/repo-a');
+
+      const [handler] = registerWriteAccessRecoveryHandlerMock.mock.calls[0] ?? [];
+      capturedOptions?.onFlushPendingSavesFailure?.({
+        caughtError: new DOMException('state changed', 'InvalidStateError'),
+        failureClassification: 'storageFailure',
+        flushedCount: 0,
+        pendingCount: 1,
+      });
+
+      await expect(
+        handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
+      ).resolves.toMatchObject({
+        status: 'failed',
+        replay: {
+          flushedCount: 0,
+          pendingCount: 1,
+          failureClassification: 'browserFileStateChanged',
+          error: {
+            domExceptionName: 'InvalidStateError',
+            errorClassification: 'browserFileStateChanged',
+          },
+        },
+      });
+
+      expect(sink).toContainEqual(
+        expect.objectContaining({
+          name: 'writeAccessRecovery.repositoryReplayStorageFailure',
+          safeTags: expect.objectContaining({
+            failureClassification: 'browserFileStateChanged',
+          }),
+          error: expect.objectContaining({
+            domExceptionName: 'InvalidStateError',
+            errorClassification: 'browserFileStateChanged',
+          }),
+        }),
+      );
+    } finally {
+      setDiagnosticEventSink(undefined);
+    }
+  });
+
   it('deleteDocument removes all automerge files for target document id', async () => {
     const path = '/repo';
     const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;

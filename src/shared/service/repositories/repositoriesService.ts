@@ -310,6 +310,16 @@ const setupRepositoriesService = () => {
       flushedCount += result.flushedCount;
 
       if (result.status !== 'flushed') {
+        const sanitizedError =
+          result.caughtError !== undefined
+            ? sanitizeDiagnosticError(result.caughtError)
+            : undefined;
+        const failureClassification =
+          result.failureClassification === 'storageFailure' &&
+          sanitizedError?.errorClassification === 'browserFileStateChanged'
+            ? 'browserFileStateChanged'
+            : result.failureClassification;
+
         if (result.status === 'stillBlocked') {
           reportWriteAccessReplayStillBlocked({ flushedCount, pendingCount: result.pendingCount });
         }
@@ -318,12 +328,8 @@ const setupRepositoriesService = () => {
           replay: {
             flushedCount,
             pendingCount: result.pendingCount,
-            ...(result.caughtError !== undefined
-              ? { error: sanitizeDiagnosticError(result.caughtError) }
-              : {}),
-            ...(result.failureClassification !== undefined
-              ? { failureClassification: result.failureClassification }
-              : {}),
+            ...(sanitizedError !== undefined ? { error: sanitizedError } : {}),
+            ...(failureClassification !== undefined ? { failureClassification } : {}),
           },
         };
       }

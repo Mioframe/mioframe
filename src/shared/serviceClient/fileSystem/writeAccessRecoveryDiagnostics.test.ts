@@ -345,13 +345,33 @@ describe('writeAccessRecoveryDiagnostics', () => {
       expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
     });
 
+    it('keeps browserFileStateChanged as the main-side replay failure classification', () => {
+      reportWriteAccessStorageFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: {
+          flushedCount: 0,
+          pendingCount: 1,
+          failureClassification: 'browserFileStateChanged',
+        },
+      });
+
+      expect(sink[0]).toMatchObject({
+        classification: DiagnosticClassification.Storage,
+        safeTags: {
+          provider: 'webFileSystem',
+          operation: 'resolveAccessRequest',
+          failureClassification: 'browserFileStateChanged',
+        },
+      });
+    });
+
     it('includes sanitized write error summary when replay provides one', () => {
       reportWriteAccessStorageFailure({
         attemptId: TEST_ATTEMPT_ID,
         replay: {
           flushedCount: 0,
           pendingCount: 1,
-          failureClassification: 'storageFailure',
+          failureClassification: 'browserFileStateChanged',
           error: {
             errorClass: 'DOMException',
             domExceptionName: 'InvalidStateError',
