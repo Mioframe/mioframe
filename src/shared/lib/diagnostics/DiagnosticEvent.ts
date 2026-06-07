@@ -51,13 +51,22 @@ export interface SanitizedDiagnosticError {
     | 'unknown';
   /** Browser write phase that observed the failure when available. */
   writePhase?:
+    | 'ensureAccess'
     | 'lookupExistingHandle'
     | 'lookupParentDirectory'
     | 'createFileHandle'
-    | 'createWritable'
-    | 'writeContent'
-    | 'closeWritable'
-    | 'statAfterWrite';
+    | 'createWritableStarted'
+    | 'createWritableSucceeded'
+    | 'writeStarted'
+    | 'writeSucceeded'
+    | 'closeStarted'
+    | 'closeSucceeded'
+    | 'abortStarted'
+    | 'abortSucceeded'
+    | 'abortFailed'
+    | 'statAfterWriteStarted'
+    | 'statAfterWriteSucceeded'
+    | 'statAfterWriteFailed';
   /** Whether a fresh-handle retry was attempted. */
   retryAttempted?: 'false' | 'true';
   /** Outcome of the bounded retry decision. */

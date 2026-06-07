@@ -10,7 +10,7 @@ import type { WebFileSystemAccessRequiredDetails } from './WebFileSystemAccessRe
 /** Provider instance with an internal access-refresh hook owned below the service boundary. */
 export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
   /** Emits a provider-owned refresh event after access state changes for the mounted root. */
-  notifyAccessChanged(): Promise<void>;
+  notifyAccessChanged(nextRootHandle?: FileSystemDirectoryHandle): Promise<void>;
 }
 
 type AccessRequiredHandler = (

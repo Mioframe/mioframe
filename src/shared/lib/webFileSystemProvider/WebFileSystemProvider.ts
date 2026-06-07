@@ -25,6 +25,9 @@ import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredE
 import {
   attachWebFileSystemWriteDiagnosticSummary,
   type WebFileSystemWriteDiagnosticSummary,
+  type WebFileSystemWriteAttemptRole,
+  type WebFileSystemWriteHandleSource,
+  type WebFileSystemWriteRetryKind,
   type WebFileSystemWritePhase,
 } from './webFileSystemWriteDiagnosticSummary';
 
@@ -58,13 +61,13 @@ export interface WebFileSystemProviderOptions {
 export type WebFileSystemWriteRetryEvent =
   | {
       result: 'started' | 'succeeded';
-      retryKind: 'freshHandle' | 'normalRetry';
+      retryKind: 'freshHandle' | 'rootHandleRefresh';
       writePhase: WebFileSystemWritePhase;
     }
   | {
       result: 'failed';
       error: WebFileSystemWriteDiagnosticSummary;
-      retryKind: 'freshHandle' | 'normalRetry';
+      retryKind: 'freshHandle' | 'rootHandleRefresh';
       writePhase: WebFileSystemWritePhase;
     };
 
@@ -80,6 +83,7 @@ export const WebFileSystemProvider = (
 ): IFileSystemProvider & { notifyAccessChanged(): Promise<void> } => {
   const { onAccessRequired, onWriteRetry, permissionPolicy } = options;
   const events = new EventEmitter();
+  let currentRootHandle = rootHandle;
 
   const getWriteCapability = (
     permissionState: PermissionState | undefined,
@@ -115,11 +119,11 @@ export const WebFileSystemProvider = (
       return;
     }
 
-    const permissionState = await queryModePermission(rootHandle, mode);
+    const permissionState = await queryModePermission(currentRootHandle, mode);
 
     if (permissionState !== 'granted') {
       const accessRequiredDetails = onAccessRequired?.({
-        handle: rootHandle,
+        handle: currentRootHandle,
         mode,
       });
 
@@ -147,11 +151,11 @@ export const WebFileSystemProvider = (
     try {
       return await fn();
     } catch (error) {
-      const permissionState = await queryModePermission(rootHandle, 'readwrite');
+      const permissionState = await queryModePermission(currentRootHandle, 'readwrite');
 
       if (permissionState !== 'granted') {
         const accessRequiredDetails = onAccessRequired?.({
-          handle: rootHandle,
+          handle: currentRootHandle,
           mode: 'readwrite',
         });
 
@@ -197,28 +201,54 @@ export const WebFileSystemProvider = (
    * @param onPhaseChange - Safe phase observer for diagnostics.
    * @returns Promise that resolves when the write is complete.
    */
-  const writeFileHandleContent = (
+  const writeFileHandleContent = async (
     handle: FileSystemFileHandle,
     content: FileContent,
     onPhaseChange: (phase: WebFileSystemWritePhase) => void = () => {},
-  ): Promise<void> =>
-    withWriteAccessRecovery(async () => {
-      onPhaseChange('createWritable');
+  ): Promise<{
+    abortAttempted: 'false' | 'true';
+    abortResult: 'failed' | 'notNeeded' | 'succeeded';
+    failedPhase?: WebFileSystemWritePhase | undefined;
+    streamCreated: 'false' | 'true';
+  }> => {
+    let streamCreated: 'false' | 'true' = 'false';
+    let abortAttempted: 'false' | 'true' = 'false';
+    let abortResult: 'failed' | 'notNeeded' | 'succeeded' = 'notNeeded';
+    let failedPhase: WebFileSystemWritePhase | undefined;
+
+    await withWriteAccessRecovery(async () => {
+      onPhaseChange('createWritableStarted');
+      failedPhase = 'createWritableStarted';
       const writable = await handle.createWritable();
+      streamCreated = 'true';
+      onPhaseChange('createWritableSucceeded');
       try {
-        onPhaseChange('writeContent');
+        onPhaseChange('writeStarted');
+        failedPhase = 'writeStarted';
         await writable.write(content);
-        onPhaseChange('closeWritable');
+        onPhaseChange('writeSucceeded');
+        onPhaseChange('closeStarted');
+        failedPhase = 'closeStarted';
         await writable.close();
+        onPhaseChange('closeSucceeded');
+        failedPhase = undefined;
       } catch (error) {
+        abortAttempted = 'true';
         try {
+          onPhaseChange('abortStarted');
           await writable.abort();
+          abortResult = 'succeeded';
+          onPhaseChange('abortSucceeded');
         } catch {
-          // abort cleanup is best-effort only; preserve the original write error
+          abortResult = 'failed';
+          onPhaseChange('abortFailed');
         }
         throw error;
       }
     });
+
+    return { streamCreated, abortAttempted, abortResult, failedPhase };
+  };
 
   const classifyWriteError = (
     error: unknown,
@@ -274,21 +304,45 @@ export const WebFileSystemProvider = (
   };
 
   const annotateWriteError = ({
+    abortAttempted,
+    abortResult,
+    attemptRole,
     error,
+    failedPhase,
+    handleSource,
+    originalFailurePhase,
+    retryKind,
     retryAttempted,
     retryResult,
-    writePhase,
+    streamCreated,
+    currentPhase,
   }: {
+    abortAttempted: 'false' | 'true';
+    abortResult: 'failed' | 'notNeeded' | 'succeeded';
+    attemptRole: WebFileSystemWriteAttemptRole;
     error: unknown;
+    failedPhase: WebFileSystemWritePhase | undefined;
+    handleSource: WebFileSystemWriteHandleSource;
+    originalFailurePhase?: WebFileSystemWritePhase | undefined;
+    retryKind: WebFileSystemWriteRetryKind;
     retryAttempted: 'false' | 'true';
     retryResult: 'failed' | 'notAttempted' | 'succeeded';
-    writePhase: WebFileSystemWritePhase | undefined;
+    streamCreated: 'false' | 'true';
+    currentPhase: WebFileSystemWritePhase | undefined;
   }): void => {
     attachWebFileSystemWriteDiagnosticSummary(error, {
       ...classifyWriteError(error),
-      ...(writePhase !== undefined ? { writePhase } : {}),
+      abortAttempted,
+      abortResult,
+      attemptRole,
+      currentPhase,
+      failedPhase,
+      handleSource,
+      ...(originalFailurePhase !== undefined ? { originalFailurePhase } : {}),
+      retryKind,
       retryAttempted,
       retryResult,
+      streamCreated,
     });
   };
 
@@ -329,10 +383,10 @@ export const WebFileSystemProvider = (
     const name = parts.pop();
 
     if (!name) {
-      return rootHandle;
+      return currentRootHandle;
     }
 
-    let currentDir = rootHandle;
+    let currentDir = currentRootHandle;
 
     for (const part of parts) {
       try {
@@ -409,10 +463,10 @@ export const WebFileSystemProvider = (
   ): Promise<{ handle: FileSystemFileHandle | FileSystemDirectoryHandle; stat: FSNodeStat }> => {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
-      const canWriteRoot = getWriteCapability(await queryWritePermission(rootHandle));
+      const canWriteRoot = getWriteCapability(await queryWritePermission(currentRootHandle));
 
       return {
-        handle: rootHandle,
+        handle: currentRootHandle,
         stat: {
           type: FSNodeType.Directory,
           capabilities: {
@@ -470,20 +524,36 @@ export const WebFileSystemProvider = (
     await ensureAccess('readwrite');
 
     const runWriteAttempt = async ({
+      handleSource: initialHandleSource,
       forceFreshHandle = false,
     }: {
+      handleSource: WebFileSystemWriteHandleSource;
       forceFreshHandle?: boolean | undefined;
-    } = {}): Promise<
+    }): Promise<
       | { result: WriteFileResult; status: 'succeeded' }
       | {
+          abortAttempted: 'false' | 'true';
+          abortResult: 'failed' | 'notNeeded' | 'succeeded';
           error: unknown;
+          failedPhase?: WebFileSystemWritePhase | undefined;
+          handleSource: WebFileSystemWriteHandleSource;
+          streamCreated: 'false' | 'true';
           status: 'failed';
           writePhase: WebFileSystemWritePhase | undefined;
         }
     > => {
       let currentWritePhase: WebFileSystemWritePhase | undefined;
+      let streamCreated: 'false' | 'true' = 'false';
+      let abortAttempted: 'false' | 'true' = 'false';
+      let abortResult: 'failed' | 'notNeeded' | 'succeeded' = 'notNeeded';
+      let failedPhase: WebFileSystemWritePhase | undefined;
+      let handleSource = initialHandleSource;
+      let lastFailureCandidatePhase: WebFileSystemWritePhase | undefined;
       const setWritePhase = (phase: WebFileSystemWritePhase) => {
         currentWritePhase = phase;
+        if (!phase.startsWith('abort')) {
+          lastFailureCandidatePhase = phase;
+        }
       };
 
       try {
@@ -491,15 +561,22 @@ export const WebFileSystemProvider = (
         if (forceFreshHandle) {
           const normalized = PathUtils.normalize(path);
           setWritePhase('lookupParentDirectory');
-          const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
+          const parentDir = await withWriteAccessRecovery(() =>
+            getHandle(PathUtils.dirname(normalized), false, 'directory'),
+          );
+          handleSource = 'freshParentLookup';
           setWritePhase(create ? 'createFileHandle' : 'lookupExistingHandle');
-          resolvedHandle = await parentDir.getFileHandle(PathUtils.basename(normalized), {
-            create,
-          });
+          resolvedHandle = await withWriteAccessRecovery(() =>
+            parentDir.getFileHandle(PathUtils.basename(normalized), {
+              create,
+            }),
+          );
+          handleSource = create ? 'createdHandle' : 'existingLookup';
         } else {
           try {
             setWritePhase('lookupExistingHandle');
             resolvedHandle = await getHandle(path, false, 'file');
+            handleSource = 'existingLookup';
             if (!overwrite) {
               throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
             }
@@ -522,19 +599,27 @@ export const WebFileSystemProvider = (
               parentDir,
               PathUtils.basename(normalized),
             );
+            handleSource = 'createdHandle';
           }
         }
 
-        await writeFileHandleContent(resolvedHandle, content, setWritePhase);
+        ({ abortAttempted, abortResult, failedPhase, streamCreated } = await writeFileHandleContent(
+          resolvedHandle,
+          content,
+          setWritePhase,
+        ));
 
         try {
-          setWritePhase('statAfterWrite');
+          setWritePhase('statAfterWriteStarted');
+          const stat = await fileHandleStat(resolvedHandle);
+          setWritePhase('statAfterWriteSucceeded');
           return {
-            result: { stat: await fileHandleStat(resolvedHandle) },
+            result: { stat },
             status: 'succeeded',
           };
         } catch (error) {
           if (error instanceof DOMException && error.name === 'InvalidStateError') {
+            setWritePhase('statAfterWriteFailed');
             throw error;
           }
           return {
@@ -544,14 +629,21 @@ export const WebFileSystemProvider = (
         }
       } catch (error) {
         return {
+          abortAttempted,
+          abortResult,
           error,
+          failedPhase,
+          handleSource,
+          streamCreated,
           status: 'failed',
-          writePhase: currentWritePhase,
+          writePhase: failedPhase ?? lastFailureCandidatePhase ?? currentWritePhase,
         };
       }
     };
 
-    const attemptResult = await runWriteAttempt();
+    const attemptResult = await runWriteAttempt({
+      handleSource: 'storedRootHandle',
+    });
 
     if (attemptResult.status === 'succeeded') {
       return attemptResult.result;
@@ -560,11 +652,12 @@ export const WebFileSystemProvider = (
     const { error, writePhase } = attemptResult;
 
     if (error instanceof DOMException && error.name === 'InvalidStateError' && writePhase) {
-      const retryKind = writePhase === 'createWritable' ? 'freshHandle' : 'normalRetry';
+      const retryKind: WebFileSystemWriteRetryKind = 'freshHandle';
       reportWriteRetry({ result: 'started', retryKind, writePhase });
 
       const retryResult = await runWriteAttempt({
-        forceFreshHandle: writePhase === 'createWritable',
+        forceFreshHandle: true,
+        handleSource: 'freshParentLookup',
       });
 
       if (retryResult.status === 'succeeded') {
@@ -574,24 +667,52 @@ export const WebFileSystemProvider = (
 
       annotateWriteError({
         error: retryResult.error,
+        abortAttempted: retryResult.abortAttempted,
+        abortResult: retryResult.abortResult,
+        attemptRole: 'retry',
+        currentPhase: retryResult.writePhase,
+        failedPhase: retryResult.writePhase,
+        handleSource: retryResult.handleSource,
+        originalFailurePhase: writePhase,
+        retryKind,
         retryAttempted: 'true',
         retryResult: 'failed',
-        writePhase: retryResult.writePhase,
+        streamCreated: retryResult.streamCreated,
       });
       reportWriteRetry({
         result: 'failed',
         retryKind,
         writePhase,
-        error: classifyWriteError(retryResult.error),
+        error: {
+          ...classifyWriteError(retryResult.error),
+          attemptRole: 'retry',
+          currentPhase: retryResult.writePhase,
+          failedPhase: retryResult.writePhase,
+          handleSource: retryResult.handleSource,
+          originalFailurePhase: writePhase,
+          retryKind,
+          abortAttempted: retryResult.abortAttempted,
+          abortResult: retryResult.abortResult,
+          retryAttempted: 'true',
+          retryResult: 'failed',
+          streamCreated: retryResult.streamCreated,
+        },
       });
       throw retryResult.error;
     }
 
     annotateWriteError({
+      abortAttempted: attemptResult.abortAttempted,
+      abortResult: attemptResult.abortResult,
+      attemptRole: 'initial',
+      currentPhase: writePhase,
       error,
+      failedPhase: writePhase,
+      handleSource: attemptResult.handleSource,
+      retryKind: 'none',
       retryAttempted: 'false',
       retryResult: 'notAttempted',
-      writePhase,
+      streamCreated: attemptResult.streamCreated,
     });
     throw error;
   };
@@ -760,7 +881,10 @@ export const WebFileSystemProvider = (
     await remove(normalizedOld, true);
   };
 
-  const notifyAccessChanged = () => {
+  const notifyAccessChanged = (nextRootHandle?: FileSystemDirectoryHandle) => {
+    if (nextRootHandle !== undefined) {
+      currentRootHandle = nextRootHandle;
+    }
     events.emit({
       source: VfsEventSource.PROVIDER,
       type: VfsEventType.UPDATE,

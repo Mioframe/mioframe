@@ -6,12 +6,17 @@ import {
 } from './webFileSystemWriteDiagnosticSummary';
 
 const summary: WebFileSystemWriteDiagnosticSummary = {
+  attemptRole: 'retry',
+  currentPhase: 'createWritableStarted',
   errorClass: 'DOMException',
   domExceptionName: 'InvalidStateError',
   errorClassification: 'browserFileStateChanged',
+  failedPhase: 'createWritableStarted',
+  handleSource: 'freshParentLookup',
+  retryKind: 'freshHandle',
   retryAttempted: 'true',
   retryResult: 'failed',
-  writePhase: 'createWritable',
+  streamCreated: 'false',
 };
 
 describe('webFileSystemWriteDiagnosticSummary', () => {

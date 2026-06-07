@@ -28,11 +28,11 @@ describe('webFileSystemWriteDiagnostics', () => {
   it('adds retry started and succeeded breadcrumbs with safe write metadata', () => {
     addWebFileSystemWriteRetryStartedBreadcrumb({
       retryKind: 'freshHandle',
-      writePhase: 'createWritable',
+      writePhase: 'createWritableStarted',
     });
     addWebFileSystemWriteRetrySucceededBreadcrumb({
-      retryKind: 'normalRetry',
-      writePhase: 'createWritable',
+      retryKind: 'rootHandleRefresh',
+      writePhase: 'createWritableStarted',
     });
 
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
@@ -42,7 +42,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         provider: 'webFileSystem',
         retryAttempted: 'true',
         retryResult: 'started',
-        writePhase: 'createWritable',
+        writePhase: 'createWritableStarted',
       },
       level: 'info',
       message: 'web file write retry started',
@@ -54,7 +54,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         provider: 'webFileSystem',
         retryAttempted: 'true',
         retryResult: 'succeeded',
-        writePhase: 'createWritable',
+        writePhase: 'createWritableStarted',
       },
       level: 'info',
       message: 'web file write retry succeeded',
@@ -64,7 +64,7 @@ describe('webFileSystemWriteDiagnostics', () => {
   it('adds retry failed breadcrumb with sanitized error summary', () => {
     addWebFileSystemWriteRetryFailedBreadcrumb({
       retryKind: 'freshHandle',
-      writePhase: 'createWritable',
+      writePhase: 'createWritableStarted',
       error: {
         errorClass: 'DOMException',
         domExceptionName: 'QuotaExceededError',
@@ -79,7 +79,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         provider: 'webFileSystem',
         retryAttempted: 'true',
         retryResult: 'failed',
-        writePhase: 'createWritable',
+        writePhase: 'createWritableStarted',
         errorClass: 'DOMException',
         domExceptionName: 'QuotaExceededError',
         errorClassification: 'unknown',
@@ -92,7 +92,7 @@ describe('webFileSystemWriteDiagnostics', () => {
   it('emits a preview-only diagnostic event for a successful retry', () => {
     reportWebFileSystemWriteRetrySucceededForPreview({
       retryKind: 'freshHandle',
-      writePhase: 'createWritable',
+      writePhase: 'createWritableStarted',
     });
 
     expect(reportDiagnosticEvent).toHaveBeenCalledWith({
@@ -106,7 +106,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         errorClassification: 'browserFileStateChanged',
         retryAttempted: 'true',
         retryResult: 'succeeded',
-        writePhase: 'createWritable',
+        writePhase: 'createWritableStarted',
       },
       safeTags: {
         operation: 'webFileSystemFreshHandleRetry',

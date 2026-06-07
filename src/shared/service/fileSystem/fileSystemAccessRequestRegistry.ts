@@ -7,7 +7,7 @@ type DeviceDirectoryAccessRequest = {
   spaceName: string;
   handle: FileSystemDirectoryHandle;
   mode: WebFileSystemAccessMode;
-  refreshProvider: () => Promise<void>;
+  refreshProvider: (nextRootHandle?: FileSystemDirectoryHandle) => Promise<void>;
 };
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
@@ -207,7 +207,7 @@ export interface FileSystemAccessRequestRegistry {
   upsertRequest: (params: {
     handle: FileSystemDirectoryHandle;
     mode: WebFileSystemAccessMode;
-    refreshProvider: () => Promise<void>;
+    refreshProvider: (nextRootHandle?: FileSystemDirectoryHandle) => Promise<void>;
     spaceName: string;
   }) => { spaceName: string; mode: WebFileSystemAccessMode };
 
@@ -308,7 +308,7 @@ export const createFileSystemAccessRequestRegistry = ({
   }: {
     handle: FileSystemDirectoryHandle;
     mode: WebFileSystemAccessMode;
-    refreshProvider: () => Promise<void>;
+    refreshProvider: (nextRootHandle?: FileSystemDirectoryHandle) => Promise<void>;
     spaceName: string;
   }): DeviceDirectoryAccessRequestKey => {
     const key = makeRequestKey({ mode, spaceName });
@@ -423,7 +423,12 @@ export const createFileSystemAccessRequestRegistry = ({
     });
 
     deleteRequest(requestKey);
-    await request.refreshProvider();
+    const shouldReplaceStoredHandle =
+      comparison?.handleComparisonResult === 'sameEntry' &&
+      comparison.returnedHandlePermission === 'granted' &&
+      comparison.storedHandlePermission !== 'granted' &&
+      grantedHandle !== undefined;
+    await request.refreshProvider(shouldReplaceStoredHandle ? grantedHandle : undefined);
 
     if (operation !== 'write') {
       return comparison === undefined ? { status: 'granted' } : { status: 'granted', comparison };

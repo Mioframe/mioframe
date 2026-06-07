@@ -12,7 +12,7 @@ import type {
 } from '@shared/lib/webFileSystemProvider/webFileSystemWriteDiagnosticSummary';
 
 type WebFileSystemWriteRetryResult = 'failed' | 'started' | 'succeeded';
-type WebFileSystemWriteRetryKind = 'freshHandle' | 'normalRetry';
+type WebFileSystemWriteRetryKind = 'freshHandle' | 'rootHandleRefresh';
 
 const addWebFileWriteRetryBreadcrumb = ({
   error,

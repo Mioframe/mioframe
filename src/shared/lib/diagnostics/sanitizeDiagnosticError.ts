@@ -32,9 +32,11 @@ export const sanitizeDiagnosticError = (error: unknown): SanitizedDiagnosticErro
       ...(webFileSystemSummary.domainErrorCode !== undefined
         ? { domainErrorCode: webFileSystemSummary.domainErrorCode }
         : {}),
-      ...(webFileSystemSummary.writePhase !== undefined
-        ? { writePhase: webFileSystemSummary.writePhase }
-        : {}),
+      ...(webFileSystemSummary.failedPhase !== undefined
+        ? { writePhase: webFileSystemSummary.failedPhase }
+        : webFileSystemSummary.currentPhase !== undefined
+          ? { writePhase: webFileSystemSummary.currentPhase }
+          : {}),
       ...(webFileSystemSummary.retryAttempted !== undefined
         ? { retryAttempted: webFileSystemSummary.retryAttempted }
         : {}),

@@ -3,19 +3,46 @@
  * Never derive from paths, names, ids, or runtime messages.
  */
 export type WebFileSystemWritePhase =
+  | 'ensureAccess'
   | 'lookupExistingHandle'
   | 'lookupParentDirectory'
   | 'createFileHandle'
-  | 'createWritable'
-  | 'writeContent'
-  | 'closeWritable'
-  | 'statAfterWrite';
+  | 'createWritableStarted'
+  | 'createWritableSucceeded'
+  | 'writeStarted'
+  | 'writeSucceeded'
+  | 'closeStarted'
+  | 'closeSucceeded'
+  | 'abortStarted'
+  | 'abortSucceeded'
+  | 'abortFailed'
+  | 'statAfterWriteStarted'
+  | 'statAfterWriteSucceeded'
+  | 'statAfterWriteFailed';
+
+/** Safe attempt role for a browser-backed file write diagnostic summary. */
+export type WebFileSystemWriteAttemptRole = 'initial' | 'retry';
+/** Safe bounded retry strategy label for a browser-backed file write diagnostic summary. */
+export type WebFileSystemWriteRetryKind = 'none' | 'freshHandle' | 'rootHandleRefresh';
+/** Safe origin label for the handle used by a browser-backed file write attempt. */
+export type WebFileSystemWriteHandleSource =
+  | 'existingLookup'
+  | 'createdHandle'
+  | 'freshParentLookup'
+  | 'returnedGrantedRootHandle'
+  | 'storedRootHandle';
+/** Safe abort cleanup outcome for a browser-backed file write attempt. */
+export type WebFileSystemWriteAbortResult = 'notNeeded' | 'succeeded' | 'failed';
 
 /**
  * Safe sanitized write-error summary for browser-backed file writes.
  * Contains only project-controlled fields and browser enum names.
  */
 export interface WebFileSystemWriteDiagnosticSummary {
+  /** Whether this summary describes the initial write or the bounded retry attempt. */
+  attemptRole?: WebFileSystemWriteAttemptRole | undefined;
+  /** Retry strategy in effect for this attempt. */
+  retryKind?: WebFileSystemWriteRetryKind | undefined;
   /** Safe error class name derived from the thrown type. */
   errorClass: 'DOMException' | 'VfsError' | 'DomainError' | 'Error' | 'unknown';
   /** `DOMException.name` when the error is a `DOMException`. */
@@ -31,8 +58,20 @@ export interface WebFileSystemWriteDiagnosticSummary {
     | 'notFound'
     | 'storageFailure'
     | 'unknown';
-  /** Browser write phase that observed the failure. */
-  writePhase?: WebFileSystemWritePhase | undefined;
+  /** Current browser write phase when the summary was recorded. */
+  currentPhase?: WebFileSystemWritePhase | undefined;
+  /** Original failing phase from the initial attempt when this summary describes a retry. */
+  originalFailurePhase?: WebFileSystemWritePhase | undefined;
+  /** Failing phase for the current attempt. */
+  failedPhase?: WebFileSystemWritePhase | undefined;
+  /** Where the current file/root handle came from. */
+  handleSource?: WebFileSystemWriteHandleSource | undefined;
+  /** Whether `createWritable()` completed and produced a stream. */
+  streamCreated?: 'false' | 'true' | undefined;
+  /** Whether `abort()` was attempted for cleanup. */
+  abortAttempted?: 'false' | 'true' | undefined;
+  /** Outcome of the abort cleanup path. */
+  abortResult?: WebFileSystemWriteAbortResult | undefined;
   /** Whether a fresh-handle retry was attempted. */
   retryAttempted?: 'false' | 'true' | undefined;
   /** Outcome of the bounded retry decision. */

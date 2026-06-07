@@ -356,7 +356,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
             errorClass: 'DOMException',
             domExceptionName: 'InvalidStateError',
             errorClassification: 'browserFileStateChanged',
-            writePhase: 'createWritable',
+            writePhase: 'createWritableStarted',
             retryAttempted: 'true',
             retryResult: 'failed',
           },
@@ -367,7 +367,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
-        writePhase: 'createWritable',
+        writePhase: 'createWritableStarted',
         retryAttempted: 'true',
         retryResult: 'failed',
       });

@@ -36,12 +36,13 @@ describe('sanitizeDiagnosticError', () => {
     it('includes attached safe write phase and retry metadata', () => {
       const error = new DOMException('state changed', 'InvalidStateError');
       attachWebFileSystemWriteDiagnosticSummary(error, {
+        currentPhase: 'createWritableStarted',
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
+        failedPhase: 'createWritableStarted',
         retryAttempted: 'true',
         retryResult: 'failed',
-        writePhase: 'createWritable',
       });
 
       const result = sanitizeDiagnosticError(error);
@@ -52,7 +53,7 @@ describe('sanitizeDiagnosticError', () => {
         errorClassification: 'browserFileStateChanged',
         retryAttempted: 'true',
         retryResult: 'failed',
-        writePhase: 'createWritable',
+        writePhase: 'createWritableStarted',
       });
     });
   });

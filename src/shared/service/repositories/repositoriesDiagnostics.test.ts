@@ -135,7 +135,7 @@ describe('repositoriesDiagnostics', () => {
           errorClass: 'DOMException',
           domExceptionName: 'InvalidStateError',
           errorClassification: 'browserFileStateChanged',
-          writePhase: 'createWritable',
+          writePhase: 'createWritableStarted',
           retryAttempted: 'true',
           retryResult: 'failed',
         },
@@ -145,7 +145,7 @@ describe('repositoriesDiagnostics', () => {
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
-        writePhase: 'createWritable',
+        writePhase: 'createWritableStarted',
         retryAttempted: 'true',
         retryResult: 'failed',
       });

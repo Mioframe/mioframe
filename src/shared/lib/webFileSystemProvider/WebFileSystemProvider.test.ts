@@ -501,12 +501,12 @@ describe('WebFileSystemProvider', () => {
     expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
       result: 'started',
       retryKind: 'freshHandle',
-      writePhase: 'createWritable',
+      writePhase: 'createWritableStarted',
     });
     expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
       result: 'succeeded',
       retryKind: 'freshHandle',
-      writePhase: 'createWritable',
+      writePhase: 'createWritableStarted',
     });
     expect(freshHandle.__writtenContent).toEqual(['fresh']);
   });
@@ -652,13 +652,13 @@ describe('WebFileSystemProvider', () => {
 
     expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
       result: 'started',
-      retryKind: 'normalRetry',
-      writePhase: 'writeContent',
+      retryKind: 'freshHandle',
+      writePhase: 'writeStarted',
     });
     expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
       result: 'succeeded',
-      retryKind: 'normalRetry',
-      writePhase: 'writeContent',
+      retryKind: 'freshHandle',
+      writePhase: 'writeStarted',
     });
     expect(freshHandle.__writtenContent).toEqual(['fresh']);
   });
@@ -697,13 +697,13 @@ describe('WebFileSystemProvider', () => {
 
     expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
       result: 'started',
-      retryKind: 'normalRetry',
-      writePhase: 'closeWritable',
+      retryKind: 'freshHandle',
+      writePhase: 'closeStarted',
     });
     expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
       result: 'succeeded',
-      retryKind: 'normalRetry',
-      writePhase: 'closeWritable',
+      retryKind: 'freshHandle',
+      writePhase: 'closeStarted',
     });
   });
 
@@ -734,13 +734,13 @@ describe('WebFileSystemProvider', () => {
 
     expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
       result: 'started',
-      retryKind: 'normalRetry',
-      writePhase: 'statAfterWrite',
+      retryKind: 'freshHandle',
+      writePhase: 'statAfterWriteFailed',
     });
     expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
       result: 'succeeded',
-      retryKind: 'normalRetry',
-      writePhase: 'statAfterWrite',
+      retryKind: 'freshHandle',
+      writePhase: 'statAfterWriteFailed',
     });
   });
 
@@ -776,16 +776,27 @@ describe('WebFileSystemProvider', () => {
     expect(onWriteRetry).toHaveBeenNthCalledWith(1, {
       result: 'started',
       retryKind: 'freshHandle',
-      writePhase: 'createWritable',
+      writePhase: 'createWritableStarted',
     });
     expect(onWriteRetry).toHaveBeenNthCalledWith(2, {
       result: 'failed',
       retryKind: 'freshHandle',
-      writePhase: 'createWritable',
+      writePhase: 'createWritableStarted',
       error: {
+        abortAttempted: 'false',
+        abortResult: 'notNeeded',
+        attemptRole: 'retry',
+        currentPhase: 'createWritableStarted',
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
+        failedPhase: 'createWritableStarted',
+        handleSource: 'createdHandle',
+        originalFailurePhase: 'createWritableStarted',
+        retryAttempted: 'true',
+        retryKind: 'freshHandle',
+        retryResult: 'failed',
+        streamCreated: 'false',
       },
     });
   });
