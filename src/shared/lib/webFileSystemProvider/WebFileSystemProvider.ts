@@ -105,10 +105,14 @@ export const WebFileSystemProvider = (
     return queryModePermission(handle, 'readwrite');
   };
 
-  const ensureAccess = async (mode: WebFileSystemAccessMode): Promise<void> => {
+  const ensureAccess = async (mode2: WebFileSystemAccessMode): Promise<void> => {
     if (permissionPolicy === 'originPrivateStorage') {
       return;
     }
+
+    console.debug(`[WebFileSystemProvider] Ensuring ${mode2} access for root handle...`);
+
+    const mode = 'readwrite'; // todo: проверка гипотезы о том что надо сильно заранее запрашивать разрешение на запись для корректной записи файлов.
 
     const permissionState = await queryModePermission(currentRootHandle, mode);
 
@@ -199,7 +203,7 @@ export const WebFileSystemProvider = (
       reportDiagnosticStep({ step: 'writableOpen', result: 'started' });
       let writable: FileSystemWritableFileStream;
       try {
-        await delay(30 / 1e3);
+        await delay(100); // todo: проверка гипотезы о том что надо сильно заранее запрашивать разрешение на запись для корректной записи файлов, в рамках которой проверяется влияет ли задержка между запросом разрешения и фактическим использованием handle'а на успешность записи файлов.
         writable = await handle.createWritable();
       } catch (error) {
         reportDiagnosticStep({
