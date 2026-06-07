@@ -23,13 +23,13 @@ If diagnosing a flow requires many new fields in shared diagnostic interfaces, u
 
 ## Sentry primitives in this project
 
-| Need | Preferred primitive | Project wrapper |
-| --- | --- | --- |
-| Technical history before a later failure | Breadcrumb | `addTechnicalBreadcrumb` |
-| Terminal structured state without stack | Message event | `reportDiagnosticEvent` |
-| Caught `Error` where stack helps | Exception event | `captureDiagnosticException` |
-| Unexpected handled exception | Exception event | `reportHandledError` |
-| Searchable diagnostic journal in diagnostic mode | Sentry Logs | a small local wrapper only if explicitly introduced |
+| Need                                             | Preferred primitive | Project wrapper                                     |
+| ------------------------------------------------ | ------------------- | --------------------------------------------------- |
+| Technical history before a later failure         | Breadcrumb          | `addTechnicalBreadcrumb`                            |
+| Terminal structured state without stack          | Message event       | `reportDiagnosticEvent`                             |
+| Caught `Error` where stack helps                 | Exception event     | `captureDiagnosticException`                        |
+| Unexpected handled exception                     | Exception event     | `reportHandledError`                                |
+| Searchable diagnostic journal in diagnostic mode | Sentry Logs         | a small local wrapper only if explicitly introduced |
 
 Never import `@sentry/vue` directly in product code. Product code uses project wrappers only.
 
@@ -113,12 +113,12 @@ The diagnostics layer must behave correctly when Sentry is not configured, not l
 
 Expected behavior:
 
-| Runtime state | Breadcrumbs | Diagnostic events / exceptions | Logs |
-| --- | --- | --- | --- |
-| `enabled` | send through Sentry facade | send through Sentry facade | send only if logs are configured |
-| `unknown` | drop | bounded queue for terminal events only | drop |
-| `disabled` | drop | clear/drop | drop |
-| Sentry unconfigured | no-op except test sink | no-op except test sink | no-op |
+| Runtime state       | Breadcrumbs                | Diagnostic events / exceptions         | Logs                             |
+| ------------------- | -------------------------- | -------------------------------------- | -------------------------------- |
+| `enabled`           | send through Sentry facade | send through Sentry facade             | send only if logs are configured |
+| `unknown`           | drop                       | bounded queue for terminal events only | drop                             |
+| `disabled`          | drop                       | clear/drop                             | drop                             |
+| Sentry unconfigured | no-op except test sink     | no-op except test sink                 | no-op                            |
 
 Call sites must not branch on Sentry state or consent. The wrapper owns this behavior.
 
