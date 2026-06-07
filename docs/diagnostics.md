@@ -24,14 +24,14 @@ Sentry is the observability backend. The project keeps a thin privacy and consen
 
 The wrapper may use these Sentry primitives:
 
-| Sentry primitive | Project use |
-| --- | --- |
-| Breadcrumbs | Technical history before a later terminal event |
-| Message events | Compact structured diagnostic events without an `Error` stack |
-| Exception events | Caught `Error` objects where stack trace helps diagnosis |
-| Tags | Short searchable filters only |
-| Contexts / extra | Compact sanitized details for the terminal event |
-| Logs | Optional searchable diagnostic journal in diagnostic/preview mode only |
+| Sentry primitive | Project use                                                            |
+| ---------------- | ---------------------------------------------------------------------- |
+| Breadcrumbs      | Technical history before a later terminal event                        |
+| Message events   | Compact structured diagnostic events without an `Error` stack          |
+| Exception events | Caught `Error` objects where stack trace helps diagnosis               |
+| Tags             | Short searchable filters only                                          |
+| Contexts / extra | Compact sanitized details for the terminal event                       |
+| Logs             | Optional searchable diagnostic journal in diagnostic/preview mode only |
 
 Do not introduce a custom timeline object, custom tracing layer, or flow-specific diagnostic state machine when breadcrumbs, compact events, or logs are sufficient.
 
@@ -45,12 +45,12 @@ Sentry may be unconfigured, not loaded, disabled by user consent, or still waiti
 
 Expected behavior:
 
-| Runtime state | Breadcrumbs | Diagnostic events / exceptions | Logs |
-| --- | --- | --- | --- |
-| `enabled` | delivered through Sentry facade | delivered through Sentry facade | delivered only when logs are configured |
-| `unknown` | dropped | bounded queue for terminal events only | dropped |
-| `disabled` | dropped | clear/drop | dropped |
-| Sentry unconfigured | no-op except test sink | no-op except test sink | no-op |
+| Runtime state       | Breadcrumbs                     | Diagnostic events / exceptions         | Logs                                    |
+| ------------------- | ------------------------------- | -------------------------------------- | --------------------------------------- |
+| `enabled`           | delivered through Sentry facade | delivered through Sentry facade        | delivered only when logs are configured |
+| `unknown`           | dropped                         | bounded queue for terminal events only | dropped                                 |
+| `disabled`          | dropped                         | clear/drop                             | dropped                                 |
+| Sentry unconfigured | no-op except test sink          | no-op except test sink                 | no-op                                   |
 
 Breadcrumbs must not be accumulated before consent. They are short-lived context attached to an event, not a hidden pre-consent activity log.
 
@@ -62,12 +62,12 @@ Generic diagnostics infrastructure lives in `src/shared/lib/diagnostics` and the
 
 Use these project APIs instead of direct Sentry SDK calls:
 
-| Wrapper | Purpose |
-| --- | --- |
-| `addTechnicalBreadcrumb(breadcrumb)` | Adds a safe technical breadcrumb when reporting is enabled |
-| `reportDiagnosticEvent(event)` | Sends a compact structured terminal/status event through `captureMessage` |
+| Wrapper                                      | Purpose                                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `addTechnicalBreadcrumb(breadcrumb)`         | Adds a safe technical breadcrumb when reporting is enabled                            |
+| `reportDiagnosticEvent(event)`               | Sends a compact structured terminal/status event through `captureMessage`             |
 | `captureDiagnosticException(error, context)` | Sends a caught `Error` with a sanitized diagnostic context through `captureException` |
-| `reportHandledError(error, options)` | Reports unexpected handled exceptions |
+| `reportHandledError(error, options)`         | Reports unexpected handled exceptions                                                 |
 
 If Sentry Logs are introduced, they must be wrapped by a small project helper with the same consent and privacy rules. Do not import or call `Sentry.logger` outside that wrapper.
 
@@ -166,15 +166,15 @@ Introduce logs only when a task explicitly needs searchable diagnostic logs. If 
 
 ## Layer ownership
 
-| Layer | Observability responsibility |
-| --- | --- |
-| `src/shared/service/**` | May emit compact events/exceptions at service boundaries; use wrappers where available |
-| `src/shared/serviceClient/**` | May emit through flow-specific wrappers at main-thread broker boundaries |
+| Layer                                  | Observability responsibility                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/shared/service/**`                | May emit compact events/exceptions at service boundaries; use wrappers where available                 |
+| `src/shared/serviceClient/**`          | May emit through flow-specific wrappers at main-thread broker boundaries                               |
 | `src/shared/lib/**` adapters/providers | Must not call Sentry/event APIs; may return structured results or call an injected breadcrumb callback |
-| `src/entities/**` | Must not report; expose results to upper layers |
-| `src/features/**` | Must not report; use service client results |
-| `src/widgets/**` | Must not report |
-| `src/pages/**` | Must not report |
+| `src/entities/**`                      | Must not report; expose results to upper layers                                                        |
+| `src/features/**`                      | Must not report; use service client results                                                            |
+| `src/widgets/**`                       | Must not report                                                                                        |
+| `src/pages/**`                         | Must not report                                                                                        |
 
 Providers and adapters must not know Sentry event shape, issue grouping, tags, queues, consent state, or reporting runtime. They may expose typed failures or accept a narrow optional technical step callback supplied by their owner.
 
