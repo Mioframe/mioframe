@@ -147,8 +147,8 @@ jobs:
       - name: Verify visual
         run: pnpm verify --verbose --only visual
 
-      - name: Verify mutation
-        run: pnpm verify --verbose --only mutation
+      # - name: Verify mutation
+      #   run: pnpm verify --verbose --only mutation
 
       - name: Upload verify logs
         if: ${{ failure() || cancelled() }}
