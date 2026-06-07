@@ -22,6 +22,7 @@ import type {
   WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
+import { delay } from 'es-toolkit';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -198,6 +199,7 @@ export const WebFileSystemProvider = (
       reportDiagnosticStep({ step: 'writableOpen', result: 'started' });
       let writable: FileSystemWritableFileStream;
       try {
+        await delay(30 / 1e3);
         writable = await handle.createWritable();
       } catch (error) {
         reportDiagnosticStep({
