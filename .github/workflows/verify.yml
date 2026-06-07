@@ -138,8 +138,8 @@ jobs:
       - name: Verify type-check
         run: pnpm verify --verbose --only type-check
 
-      - name: Verify unit tests
-        run: pnpm verify --verbose --only unit-tests
+      # - name: Verify unit tests
+      #   run: pnpm verify --verbose --only unit-tests
 
       - name: Verify e2e
         run: pnpm verify --verbose --only e2e

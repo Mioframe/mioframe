@@ -62,7 +62,8 @@ export const useFileSystemAccessPermissionBroker = () => {
       try {
         addWriteAccessPermissionPromptStartBreadcrumb();
         const permissionState = await handle.requestPermission({
-          mode: operationToMode(request.operation),
+          // mode: operationToMode(request.operation),
+          mode: 'readwrite', //todo: временная проверка проблемы записи файлов в chrome android
         });
         addWriteAccessPermissionResolvedBreadcrumb({ permissionState });
 
