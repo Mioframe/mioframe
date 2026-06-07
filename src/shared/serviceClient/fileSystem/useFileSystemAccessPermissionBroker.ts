@@ -19,10 +19,6 @@ type FileSystemAccessRequestKey = {
   spaceName: string;
 };
 
-const operationToMode = (
-  operation: FileSystemAccessOperation,
-): FileSystemHandlePermissionDescriptor['mode'] => (operation === 'write' ? 'readwrite' : 'read');
-
 /**
  * Main-thread-only permission broker for remembered local spaces.
  * `requestPermission(descriptor?)` and `queryPermission(descriptor?)` accept an optional
@@ -62,7 +58,7 @@ export const useFileSystemAccessPermissionBroker = () => {
       try {
         addWriteAccessPermissionPromptStartBreadcrumb();
         const permissionState = await handle.requestPermission({
-          // mode: operationToMode(request.operation),
+          // mode: request.operation === 'write' ? 'readwrite' : 'read',
           mode: 'readwrite', //todo: временная проверка проблемы записи файлов в chrome android
         });
         addWriteAccessPermissionResolvedBreadcrumb({ permissionState });
