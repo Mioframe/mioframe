@@ -35,6 +35,36 @@ describe('technicalBreadcrumbs', () => {
     expect(beforeBreadcrumb(makeBreadcrumb({ category: 'ui.click' }))).toBeNull();
   });
 
+  it('beforeBreadcrumb keeps new web file system read categories and strips private fields', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.read',
+          data: {
+            operation: 'readFile',
+            provider: 'webFileSystem',
+            path: '/secret',
+            errorClass: 'DOMException',
+            domExceptionName: 'InvalidStateError',
+          },
+          message: 'file read failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.read',
+      data: {
+        operation: 'readFile',
+        provider: 'webFileSystem',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+      },
+      level: 'info',
+      message: 'file read failed',
+    });
+  });
+
   it('beforeBreadcrumb drops automatic navigation and fetch breadcrumbs', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 

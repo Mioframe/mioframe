@@ -4,6 +4,9 @@ import type { SentryReportingState } from './sentryRuntimeState';
 
 export const TECHNICAL_BREADCRUMB_CATEGORIES = [
   'repository.storage',
+  'webFileSystem.directory',
+  'webFileSystem.read',
+  'webFileSystem.stat',
   'webFileSystem.write',
   'writeAccessRecovery',
   'worker.runtime',

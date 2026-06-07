@@ -33,6 +33,10 @@ describe('webFileSystemWriteDiagnostics', () => {
       domExceptionName: 'InvalidStateError',
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'writableCompatibilityOpen',
+      result: 'succeeded',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'fileWrite',
       result: 'failed',
       errorClass: 'DOMException',
@@ -96,6 +100,17 @@ describe('webFileSystemWriteDiagnostics', () => {
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(5, {
       category: 'webFileSystem.write',
       data: {
+        operation: 'openWritableCompatibility',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'writableCompatibilityOpen',
+      },
+      level: 'info',
+      message: 'writable compatibility open succeeded',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
+      category: 'webFileSystem.write',
+      data: {
         operation: 'writeFile',
         provider: 'webFileSystem',
         result: 'failed',
@@ -106,7 +121,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'warning',
       message: 'file write failed',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(7, {
       category: 'webFileSystem.write',
       data: {
         operation: 'freshHandleRetry',
@@ -128,5 +143,77 @@ describe('webFileSystemWriteDiagnostics', () => {
     });
 
     expect(addTechnicalBreadcrumb).not.toHaveBeenCalled();
+  });
+
+  it('adds safe breadcrumbs for read, stat, and directory boundary operations only', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'fileRead',
+      result: 'started',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'fileRead',
+      result: 'failed',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'fileStat',
+      result: 'succeeded',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directoryRead',
+      result: 'failed',
+      errorClass: 'DOMException',
+      domExceptionName: 'NotAllowedError',
+    });
+
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
+      category: 'webFileSystem.read',
+      data: {
+        operation: 'readFile',
+        provider: 'webFileSystem',
+        result: 'started',
+        step: 'fileRead',
+      },
+      level: 'info',
+      message: 'file read started',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
+      category: 'webFileSystem.read',
+      data: {
+        operation: 'readFile',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'fileRead',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+      },
+      level: 'warning',
+      message: 'file read failed',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+      category: 'webFileSystem.stat',
+      data: {
+        operation: 'statFileHandle',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'fileStat',
+      },
+      level: 'info',
+      message: 'file stat succeeded',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
+      category: 'webFileSystem.directory',
+      data: {
+        operation: 'readDirectory',
+        provider: 'webFileSystem',
+        result: 'failed',
+        step: 'directoryRead',
+        errorClass: 'DOMException',
+        domExceptionName: 'NotAllowedError',
+      },
+      level: 'warning',
+      message: 'directory read failed',
+    });
   });
 });

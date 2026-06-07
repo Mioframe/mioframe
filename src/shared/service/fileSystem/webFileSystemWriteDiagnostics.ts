@@ -3,12 +3,16 @@ import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvi
 
 const operationByStep: Record<string, string> = {
   createdFileCleanup: 'cleanupCreatedFile',
+  directoryRead: 'readDirectory',
   fileHandleCreate: 'createFileHandle',
   fileHandleLookupAfterCreate: 'lookupHandleAfterCreate',
+  fileRead: 'readFile',
+  fileStat: 'statFileHandle',
   fileWrite: 'writeFile',
   freshHandleRetry: 'freshHandleRetry',
   fileLookup: 'lookupExistingHandle',
   parentDirectoryLookup: 'lookupParentDirectory',
+  writableCompatibilityOpen: 'openWritableCompatibility',
   writableOpen: 'openWritable',
 };
 
@@ -29,15 +33,35 @@ const messageByStepResult: Record<
   fileWrite: {
     failed: 'file write failed',
   },
+  fileRead: {
+    failed: 'file read failed',
+    started: 'file read started',
+    succeeded: 'file read succeeded',
+  },
+  fileStat: {
+    failed: 'file stat failed',
+    started: 'file stat started',
+    succeeded: 'file stat succeeded',
+  },
   createdFileCleanup: {
     failed: 'created file cleanup failed',
     started: 'created file cleanup started',
     succeeded: 'created file cleanup succeeded',
   },
+  directoryRead: {
+    failed: 'directory read failed',
+    started: 'directory read started',
+    succeeded: 'directory read succeeded',
+  },
   writableOpen: {
     failed: 'writable open failed',
     started: 'writable open started',
     succeeded: 'writable open succeeded',
+  },
+  writableCompatibilityOpen: {
+    failed: 'writable compatibility open failed',
+    started: 'writable compatibility open started',
+    succeeded: 'writable compatibility open succeeded',
   },
   freshHandleRetry: {
     failed: 'fresh handle retry failed',
@@ -66,8 +90,22 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
     return;
   }
 
+  const categoryByStep: Partial<
+    Record<
+      string,
+      | 'webFileSystem.directory'
+      | 'webFileSystem.read'
+      | 'webFileSystem.stat'
+      | 'webFileSystem.write'
+    >
+  > = {
+    directoryRead: 'webFileSystem.directory',
+    fileRead: 'webFileSystem.read',
+    fileStat: 'webFileSystem.stat',
+  };
+
   addTechnicalBreadcrumb({
-    category: 'webFileSystem.write',
+    category: categoryByStep[event.step] ?? 'webFileSystem.write',
     data: {
       operation: operationByStep[event.step] ?? event.step,
       provider: 'webFileSystem',

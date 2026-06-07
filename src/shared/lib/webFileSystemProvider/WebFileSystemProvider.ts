@@ -22,7 +22,6 @@ import type {
   WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
-import { delay } from 'es-toolkit';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -189,17 +188,20 @@ export const WebFileSystemProvider = (
    * Writes `content` to `handle` via createWritable, applying write access recovery once.
    * @param handle - File handle to write to.
    * @param content - Content to write.
+   * @param writableOpenOptions - Compatibility behavior for writable-open fallback.
    * @returns Promise that resolves when the write is complete.
    */
   const writeFileHandleContent = async (
     handle: FileSystemFileHandle,
     content: FileContent,
+    writableOpenOptions: {
+      allowKeepExistingDataFallback?: boolean | undefined;
+    } = {},
   ): Promise<void> => {
     await withWriteAccessRecovery(async () => {
       reportDiagnosticStep({ step: 'writableOpen', result: 'started' });
       let writable: FileSystemWritableFileStream;
       try {
-        await delay(500); // todo: проверка гипотезы о том что надо сильно заранее запрашивать разрешение на запись для корректной записи файлов, в рамках которой проверяется влияет ли задержка между запросом разрешения и фактическим использованием handle'а на успешность записи файлов.
         writable = await handle.createWritable();
       } catch (error) {
         reportDiagnosticStep({
@@ -207,7 +209,32 @@ export const WebFileSystemProvider = (
           result: 'failed',
           ...describeError(error),
         });
-        throw error;
+        if (
+          writableOpenOptions.allowKeepExistingDataFallback === true &&
+          error instanceof DOMException &&
+          error.name === 'InvalidStateError'
+        ) {
+          reportDiagnosticStep({
+            step: 'writableCompatibilityOpen',
+            result: 'started',
+          });
+          try {
+            writable = await handle.createWritable({ keepExistingData: true });
+            reportDiagnosticStep({
+              step: 'writableCompatibilityOpen',
+              result: 'succeeded',
+            });
+          } catch (compatibilityError) {
+            reportDiagnosticStep({
+              step: 'writableCompatibilityOpen',
+              result: 'failed',
+              ...describeError(compatibilityError),
+            });
+            throw compatibilityError;
+          }
+        } else {
+          throw error;
+        }
       }
       reportDiagnosticStep({ step: 'writableOpen', result: 'succeeded' });
       try {
@@ -342,18 +369,29 @@ export const WebFileSystemProvider = (
     const canWrite = getWriteCapability(await queryWritePermission(handle));
 
     if (handle.kind === 'file') {
-      const file = await handle.getFile();
+      reportDiagnosticStep({ step: 'fileStat', result: 'started' });
+      try {
+        const file = await handle.getFile();
 
-      return {
-        type: FSNodeType.File,
-        size: file.size,
-        creationTime: file.lastModified,
-        modificationTime: file.lastModified,
-        capabilities: {
-          canDelete: canWrite,
-          canChangePath: canWrite,
-        } satisfies FSNodeCapabilities,
-      };
+        reportDiagnosticStep({ step: 'fileStat', result: 'succeeded' });
+        return {
+          type: FSNodeType.File,
+          size: file.size,
+          creationTime: file.lastModified,
+          modificationTime: file.lastModified,
+          capabilities: {
+            canDelete: canWrite,
+            canChangePath: canWrite,
+          } satisfies FSNodeCapabilities,
+        };
+      } catch (error) {
+        reportDiagnosticStep({
+          step: 'fileStat',
+          result: 'failed',
+          ...describeError(error),
+        });
+        throw error;
+      }
     }
 
     return {
@@ -421,7 +459,19 @@ export const WebFileSystemProvider = (
   const readFile = async (path: string): Promise<File> => {
     await ensureAccess('read');
     const handle = await getHandle(path, false, 'file');
-    return handle.getFile();
+    reportDiagnosticStep({ step: 'fileRead', result: 'started' });
+    try {
+      const file = await handle.getFile();
+      reportDiagnosticStep({ step: 'fileRead', result: 'succeeded' });
+      return file;
+    } catch (error) {
+      reportDiagnosticStep({
+        step: 'fileRead',
+        result: 'failed',
+        ...describeError(error),
+      });
+      throw error;
+    }
   };
 
   const writeFileImpl = async (
@@ -460,6 +510,7 @@ export const WebFileSystemProvider = (
       | { error: unknown; retryWithFreshHandle: boolean; status: 'failed' }
     > => {
       let rollbackCreatedFile = async (): Promise<void> => Promise.resolve();
+      let createdNewFile = false;
       try {
         let resolvedHandle: FileSystemFileHandle;
         const resolveFreshHandle = async (): Promise<FileSystemFileHandle> => {
@@ -495,6 +546,7 @@ export const WebFileSystemProvider = (
               step: 'fileHandleCreate',
               result: 'succeeded',
             });
+            createdNewFile = true;
             rollbackCreatedFile = () => cleanupCreatedFile(parentDir, fileName);
             reportDiagnosticStep({
               step: 'fileHandleLookupAfterCreate',
@@ -542,7 +594,10 @@ export const WebFileSystemProvider = (
           }
         }
 
-        await writeFileHandleContent(resolvedHandle, content);
+        await writeFileHandleContent(resolvedHandle, content, {
+          allowKeepExistingDataFallback: createdNewFile,
+        });
+        rollbackCreatedFile = async (): Promise<void> => Promise.resolve();
 
         try {
           const fileStat = await fileHandleStat(resolvedHandle);
@@ -550,15 +605,7 @@ export const WebFileSystemProvider = (
             result: { stat: fileStat },
             status: 'succeeded',
           };
-        } catch (error) {
-          await rollbackCreatedFile();
-          if (error instanceof DOMException && error.name === 'InvalidStateError') {
-            return {
-              error,
-              retryWithFreshHandle: true,
-              status: 'failed',
-            };
-          }
+        } catch {
           return {
             result: { stat: { type: FSNodeType.File } },
             status: 'succeeded',
@@ -614,16 +661,27 @@ export const WebFileSystemProvider = (
   const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
     await ensureAccess('read');
     const directoryHandle = await getHandle(path, false, 'directory');
-    const entries: [string, FSNodeStat][] = [];
+    reportDiagnosticStep({ step: 'directoryRead', result: 'started' });
+    try {
+      const entries: [string, FSNodeStat][] = [];
 
-    for await (const [name, childHandle] of directoryHandle.entries()) {
-      entries.push([
-        name,
-        { type: childHandle.kind === 'file' ? FSNodeType.File : FSNodeType.Directory },
-      ]);
+      for await (const [name, childHandle] of directoryHandle.entries()) {
+        entries.push([
+          name,
+          { type: childHandle.kind === 'file' ? FSNodeType.File : FSNodeType.Directory },
+        ]);
+      }
+
+      reportDiagnosticStep({ step: 'directoryRead', result: 'succeeded' });
+      return entries;
+    } catch (error) {
+      reportDiagnosticStep({
+        step: 'directoryRead',
+        result: 'failed',
+        ...describeError(error),
+      });
+      throw error;
     }
-
-    return entries;
   };
 
   const createDirectory = async (path: string): Promise<void> => {

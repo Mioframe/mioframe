@@ -620,6 +620,47 @@ describe('WebFileSystemProvider', () => {
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 
+  it('does not clean up a newly created file after close succeeds and post-write stat fails', async () => {
+    const createdHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const reopenedHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    reopenedHandle.getFile = vi
+      .fn<() => Promise<File>>()
+      .mockRejectedValueOnce(new DOMException('state changed', 'InvalidStateError'));
+    const parentHandle = createDirectoryHandleMock({
+      name: 'docs',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [parentHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    parentHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockResolvedValueOnce(createdHandle)
+      .mockResolvedValueOnce(reopenedHandle)
+      .mockResolvedValueOnce(reopenedHandle);
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      result: 'failed',
+      step: 'fileStat',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+  });
+
   it('does not clean up an existing file after createWritable fails during overwrite', async () => {
     const existingHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
     const openError = new DOMException('quota exceeded', 'QuotaExceededError');
@@ -643,6 +684,195 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBe(openError);
 
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
+  });
+
+  it('does not use the compatibility writable open fallback for existing-file overwrite failures', async () => {
+    const existingHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const openError = new DOMException('state changed', 'InvalidStateError');
+    const createWritableMock = vi.fn(() => Promise.reject(openError));
+    existingHandle.createWritable = createWritableMock;
+    const parentHandle = createDirectoryHandleMock({
+      entries: [existingHandle],
+      name: 'docs',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [parentHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).rejects.toBe(openError);
+
+    expect(createWritableMock).toHaveBeenCalledTimes(2);
+    expect(createWritableMock).toHaveBeenNthCalledWith(1);
+    expect(createWritableMock).toHaveBeenNthCalledWith(2);
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
+      expect.objectContaining({ step: 'writableCompatibilityOpen' }),
+    );
+    expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
+  });
+
+  it('uses keepExistingData compatibility open for newly created files after InvalidStateError and skips cleanup on success', async () => {
+    const createdHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const reopenedHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const createWritableMock = vi
+      .fn<
+        (_: FileSystemCreateWritableOptions | undefined) => Promise<FileSystemWritableFileStream>
+      >()
+      .mockImplementationOnce(() =>
+        Promise.reject(new DOMException('state changed', 'InvalidStateError')),
+      )
+      .mockImplementationOnce(async () => {
+        const writable = await createFileHandleMock({
+          name: 'note.txt',
+          permissionState: 'granted',
+        }).createWritable();
+        return writable;
+      });
+    reopenedHandle.createWritable = createWritableMock;
+    const parentHandle = createDirectoryHandleMock({
+      name: 'docs',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [parentHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    parentHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockResolvedValueOnce(createdHandle)
+      .mockResolvedValueOnce(reopenedHandle);
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+
+    expect(createWritableMock).toHaveBeenCalledTimes(2);
+    expect(createWritableMock).toHaveBeenNthCalledWith(1);
+    expect(createWritableMock).toHaveBeenNthCalledWith(2, { keepExistingData: true });
+    expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      result: 'failed',
+      step: 'writableOpen',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      result: 'started',
+      step: 'writableCompatibilityOpen',
+    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      result: 'succeeded',
+      step: 'writableCompatibilityOpen',
+    });
+  });
+
+  it('cleans up a newly created file when both default and compatibility writable opens fail', async () => {
+    const firstCreatedHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const firstReopenedHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const retryCreatedHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const retryReopenedHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const firstError = new DOMException('state changed', 'InvalidStateError');
+    const secondError = new DOMException('still blocked', 'InvalidStateError');
+    const retryError = new DOMException('still blocked on retry', 'InvalidStateError');
+    const firstCreateWritableMock = vi
+      .fn<
+        (_: FileSystemCreateWritableOptions | undefined) => Promise<FileSystemWritableFileStream>
+      >()
+      .mockRejectedValueOnce(firstError)
+      .mockRejectedValueOnce(secondError);
+    firstReopenedHandle.createWritable = firstCreateWritableMock;
+    const retryCreateWritableMock = vi
+      .fn<
+        (_: FileSystemCreateWritableOptions | undefined) => Promise<FileSystemWritableFileStream>
+      >()
+      .mockRejectedValueOnce(firstError)
+      .mockRejectedValueOnce(retryError);
+    retryReopenedHandle.createWritable = retryCreateWritableMock;
+    const firstParentHandle = createDirectoryHandleMock({
+      name: 'docs',
+      permissionState: 'granted',
+    });
+    const retryParentHandle = createDirectoryHandleMock({
+      name: 'docs',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [firstParentHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getDirectoryHandle = vi
+      .fn<
+        (
+          directoryName: string,
+          options?: FileSystemGetDirectoryOptions,
+        ) => Promise<FileSystemDirectoryHandle>
+      >()
+      .mockResolvedValueOnce(firstParentHandle)
+      .mockResolvedValueOnce(firstParentHandle)
+      .mockResolvedValueOnce(retryParentHandle);
+    firstParentHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockResolvedValueOnce(firstCreatedHandle)
+      .mockResolvedValueOnce(firstReopenedHandle);
+    retryParentHandle.getFileHandle = vi
+      .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockResolvedValueOnce(retryCreatedHandle)
+      .mockResolvedValueOnce(retryReopenedHandle);
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).rejects.toBe(retryError);
+
+    expect(firstParentHandle.removeEntryMock).toHaveBeenCalledWith('note.txt', {
+      recursive: false,
+    });
+    expect(retryParentHandle.removeEntryMock).toHaveBeenCalledWith('note.txt', {
+      recursive: false,
+    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      result: 'failed',
+      step: 'writableCompatibilityOpen',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
   });
 
   it('cleans up a newly created file after write fails but does not clean up an existing file after write fails', async () => {
@@ -1035,7 +1265,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('retries once after InvalidStateError during statAfterWrite and then succeeds', async () => {
+  it('returns fallback stat without retry after InvalidStateError during statAfterWrite', async () => {
     const staleHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
     const freshHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
     staleHandle.getFile = vi
@@ -1061,13 +1291,14 @@ describe('WebFileSystemProvider', () => {
     ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
 
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
-      result: 'started',
-      step: 'freshHandleRetry',
+      result: 'failed',
+      step: 'fileStat',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
     });
-    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
-      result: 'succeeded',
-      step: 'freshHandleRetry',
-    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
+      expect.objectContaining({ step: 'freshHandleRetry' }),
+    );
   });
 
   it('reports retry failure metadata after InvalidStateError retry also fails', async () => {
