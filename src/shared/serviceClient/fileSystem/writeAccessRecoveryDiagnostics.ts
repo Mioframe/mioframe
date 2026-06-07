@@ -35,7 +35,12 @@ export interface BrokerReplaySummary {
   /** Number of saves still queued after the replay attempt. */
   pendingCount: number;
   /** Safe classification of the first failure, when available. */
-  failureClassification?: 'accessRequired' | 'storageFailure' | 'unknown' | undefined;
+  failureClassification?:
+    | 'accessRequired'
+    | 'browserFileStateChanged'
+    | 'storageFailure'
+    | 'unknown'
+    | undefined;
   /** Safe sanitized summary of the first replay failure when available. */
   error?: SanitizedDiagnosticError | undefined;
 }

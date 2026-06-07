@@ -36,25 +36,84 @@ describe('sanitizeDiagnosticError', () => {
     it('includes attached safe write phase and retry metadata', () => {
       const error = new DOMException('state changed', 'InvalidStateError');
       attachWebFileSystemWriteDiagnosticSummary(error, {
+        abortAttempted: 'true',
+        abortResult: 'failed',
+        attemptRole: 'retry',
         currentPhase: 'createWritableStarted',
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
         failedPhase: 'createWritableStarted',
+        handleSource: 'returnedGrantedRootHandle',
+        originalFailurePhase: 'writeStarted',
         retryAttempted: 'true',
+        retryKind: 'freshHandle',
         retryResult: 'failed',
+        streamCreated: 'true',
       });
 
       const result = sanitizeDiagnosticError(error);
 
       expect(result).toMatchObject({
+        abortAttempted: 'true',
+        abortResult: 'failed',
+        attemptRole: 'retry',
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
         errorClassification: 'browserFileStateChanged',
+        handleSource: 'returnedGrantedRootHandle',
+        originalFailurePhase: 'writeStarted',
         retryAttempted: 'true',
+        retryKind: 'freshHandle',
         retryResult: 'failed',
+        streamCreated: 'true',
         writePhase: 'createWritableStarted',
       });
+    });
+
+    it('keeps safe write summary fields without leaking raw messages, paths, ids, keys, or handles', () => {
+      const error = new DOMException(
+        'Invalid state for /secret/path/doc-123 with key=abc and handle=[object FileSystemDirectoryHandle]',
+        'InvalidStateError',
+      );
+      attachWebFileSystemWriteDiagnosticSummary(error, {
+        abortAttempted: 'true',
+        abortResult: 'failed',
+        attemptRole: 'retry',
+        currentPhase: 'abortFailed',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidStateError',
+        errorClassification: 'browserFileStateChanged',
+        failedPhase: 'abortFailed',
+        handleSource: 'freshParentLookup',
+        originalFailurePhase: 'closeStarted',
+        retryAttempted: 'true',
+        retryKind: 'freshHandle',
+        retryResult: 'failed',
+        streamCreated: 'true',
+      });
+
+      const result = sanitizeDiagnosticError(error);
+
+      expect(result).toMatchObject({
+        abortAttempted: 'true',
+        abortResult: 'failed',
+        attemptRole: 'retry',
+        handleSource: 'freshParentLookup',
+        originalFailurePhase: 'closeStarted',
+        retryAttempted: 'true',
+        retryKind: 'freshHandle',
+        retryResult: 'failed',
+        streamCreated: 'true',
+        writePhase: 'abortFailed',
+      });
+
+      const serialized = JSON.stringify(result);
+      expect(serialized).not.toContain('/secret/path');
+      expect(serialized).not.toContain('doc-123');
+      expect(serialized).not.toContain('key=abc');
+      expect(serialized).not.toContain('FileSystemDirectoryHandle');
+      expect(serialized).not.toContain('Invalid state for');
     });
   });
 

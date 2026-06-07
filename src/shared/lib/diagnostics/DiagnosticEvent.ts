@@ -67,6 +67,41 @@ export interface SanitizedDiagnosticError {
     | 'statAfterWriteStarted'
     | 'statAfterWriteSucceeded'
     | 'statAfterWriteFailed';
+  /** Whether the summary describes the initial attempt or a bounded retry attempt. */
+  attemptRole?: 'initial' | 'retry';
+  /** Safe bounded retry strategy label. */
+  retryKind?: 'none' | 'freshHandle' | 'rootHandleRefresh';
+  /** Original failing phase from the initial attempt when a retry was attempted. */
+  originalFailurePhase?:
+    | 'ensureAccess'
+    | 'lookupExistingHandle'
+    | 'lookupParentDirectory'
+    | 'createFileHandle'
+    | 'createWritableStarted'
+    | 'createWritableSucceeded'
+    | 'writeStarted'
+    | 'writeSucceeded'
+    | 'closeStarted'
+    | 'closeSucceeded'
+    | 'abortStarted'
+    | 'abortSucceeded'
+    | 'abortFailed'
+    | 'statAfterWriteStarted'
+    | 'statAfterWriteSucceeded'
+    | 'statAfterWriteFailed';
+  /** Safe origin label for the handle used by the write attempt. */
+  handleSource?:
+    | 'existingLookup'
+    | 'createdHandle'
+    | 'freshParentLookup'
+    | 'returnedGrantedRootHandle'
+    | 'storedRootHandle';
+  /** Whether `createWritable()` completed and produced a stream. */
+  streamCreated?: 'false' | 'true';
+  /** Whether `abort()` was attempted for cleanup. */
+  abortAttempted?: 'false' | 'true';
+  /** Safe abort cleanup outcome. */
+  abortResult?: 'notNeeded' | 'succeeded' | 'failed';
   /** Whether a fresh-handle retry was attempted. */
   retryAttempted?: 'false' | 'true';
   /** Outcome of the bounded retry decision. */

@@ -611,10 +611,10 @@ export const WebFileSystemProvider = (
 
         try {
           setWritePhase('statAfterWriteStarted');
-          const stat = await fileHandleStat(resolvedHandle);
+          const fileStat = await fileHandleStat(resolvedHandle);
           setWritePhase('statAfterWriteSucceeded');
           return {
-            result: { stat },
+            result: { stat: fileStat },
             status: 'succeeded',
           };
         } catch (error) {

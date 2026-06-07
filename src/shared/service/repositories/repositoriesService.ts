@@ -175,7 +175,15 @@ const setupRepositoriesService = () => {
             if (queued) {
               reportRepositorySaveQueued({ pendingCount });
             } else {
-              reportRepositorySaveFailed({ pendingCount, caughtError });
+              const error = sanitizeDiagnosticError(caughtError);
+              reportRepositorySaveFailed({
+                pendingCount,
+                caughtError,
+                failureClassification:
+                  error.errorClassification === 'browserFileStateChanged'
+                    ? 'browserFileStateChanged'
+                    : 'storageFailure',
+              });
             }
           },
           onFlushPendingSavesFailure: ({
@@ -188,11 +196,16 @@ const setupRepositoriesService = () => {
               return;
             }
 
+            const error = sanitizeDiagnosticError(caughtError);
+            const safeFailureClassification =
+              error.errorClassification === 'browserFileStateChanged'
+                ? 'browserFileStateChanged'
+                : 'storageFailure';
             reportWriteAccessReplayStorageFailure({
               flushedCount,
               pendingCount,
-              error: sanitizeDiagnosticError(caughtError),
-              failureClassification,
+              error,
+              failureClassification: safeFailureClassification,
             });
           },
         });

@@ -72,7 +72,7 @@ const setupFileSystemService = () => {
 
       // Use a holder so the refresh callback does not capture the provider variable
       // from the same expression that assigns it.
-      const notifyHolder: { fn: () => Promise<void> } = {
+      const notifyHolder: { fn: (nextRootHandle?: FileSystemDirectoryHandle) => Promise<void> } = {
         fn: () => Promise.resolve(),
       };
       const provider = createMountedWebFileSystemProvider({
@@ -83,7 +83,7 @@ const setupFileSystemService = () => {
             spaceName: record.name,
             handle,
             mode,
-            refreshProvider: () => notifyHolder.fn(),
+            refreshProvider: (nextRootHandle) => notifyHolder.fn(nextRootHandle),
           }),
         onWriteRetry: (event) => {
           switch (event.result) {
@@ -113,7 +113,7 @@ const setupFileSystemService = () => {
         },
       });
 
-      notifyHolder.fn = () => provider.notifyAccessChanged();
+      notifyHolder.fn = (nextRootHandle) => provider.notifyAccessChanged(nextRootHandle);
 
       return provider;
     },

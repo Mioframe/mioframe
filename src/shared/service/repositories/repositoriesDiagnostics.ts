@@ -64,6 +64,7 @@ const classificationFromSanitizedError = (
   switch (error.errorClassification) {
     case 'accessDenied':
       return DiagnosticClassification.Access;
+    case 'browserFileStateChanged':
     case 'storageFailure':
       return DiagnosticClassification.Storage;
     case 'notFound':
@@ -120,7 +121,8 @@ export const reportWriteAccessReplayStorageFailure = ({
     classification:
       safeClassification === 'accessRequired'
         ? DiagnosticClassification.Access
-        : safeClassification === 'storageFailure'
+        : safeClassification === 'storageFailure' ||
+            safeClassification === 'browserFileStateChanged'
           ? DiagnosticClassification.Storage
           : DiagnosticClassification.Unknown,
     counters: { flushedCount, pendingCount },
@@ -149,13 +151,20 @@ export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: num
  * @param root0 - Event options (pendingCount, caughtError).
  */
 export const reportRepositorySaveFailed = ({
+  failureClassification,
   pendingCount,
   caughtError,
 }: {
+  failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
   pendingCount: number;
   caughtError: unknown;
 }): void => {
   const error = sanitizeDiagnosticError(caughtError);
+  const safeFailureClassification =
+    failureClassification ??
+    (error.errorClassification === 'browserFileStateChanged'
+      ? 'browserFileStateChanged'
+      : 'storageFailure');
   reportDiagnosticEvent({
     name: 'repositoryStorage.saveFailed',
     severity: DiagnosticSeverity.Error,
@@ -163,7 +172,7 @@ export const reportRepositorySaveFailed = ({
     classification: DiagnosticClassification.Storage,
     counters: { pendingCount },
     error,
-    safeTags: { ...SAVE_TAGS, failureClassification: 'storageFailure' },
+    safeTags: { ...SAVE_TAGS, failureClassification: safeFailureClassification },
   });
 };
 

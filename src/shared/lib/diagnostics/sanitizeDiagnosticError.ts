@@ -37,6 +37,27 @@ export const sanitizeDiagnosticError = (error: unknown): SanitizedDiagnosticErro
         : webFileSystemSummary.currentPhase !== undefined
           ? { writePhase: webFileSystemSummary.currentPhase }
           : {}),
+      ...(webFileSystemSummary.attemptRole !== undefined
+        ? { attemptRole: webFileSystemSummary.attemptRole }
+        : {}),
+      ...(webFileSystemSummary.retryKind !== undefined
+        ? { retryKind: webFileSystemSummary.retryKind }
+        : {}),
+      ...(webFileSystemSummary.originalFailurePhase !== undefined
+        ? { originalFailurePhase: webFileSystemSummary.originalFailurePhase }
+        : {}),
+      ...(webFileSystemSummary.handleSource !== undefined
+        ? { handleSource: webFileSystemSummary.handleSource }
+        : {}),
+      ...(webFileSystemSummary.streamCreated !== undefined
+        ? { streamCreated: webFileSystemSummary.streamCreated }
+        : {}),
+      ...(webFileSystemSummary.abortAttempted !== undefined
+        ? { abortAttempted: webFileSystemSummary.abortAttempted }
+        : {}),
+      ...(webFileSystemSummary.abortResult !== undefined
+        ? { abortResult: webFileSystemSummary.abortResult }
+        : {}),
       ...(webFileSystemSummary.retryAttempted !== undefined
         ? { retryAttempted: webFileSystemSummary.retryAttempted }
         : {}),

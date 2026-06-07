@@ -4,11 +4,13 @@ import type { StorageAdapterInterface, StorageKey } from '@automerge/automerge-r
  * Safe classification of a flush failure exposed to service-layer recovery.
  * Never includes storage keys, document ids, paths, file names, or bytes.
  * - `accessRequired` – the provider still requires browser permission (write-access blocked).
+ * - `browserFileStateChanged` – browser-backed file state changed after a handle became stale.
  * - `storageFailure` – write access was available but the underlying adapter reported an error.
  * - `unknown` – the failure could not be classified against known patterns.
  */
 export type RetryingStorageAdapterFailureClassification =
   | 'accessRequired'
+  | 'browserFileStateChanged'
   | 'storageFailure'
   | 'unknown';
 

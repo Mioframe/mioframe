@@ -50,11 +50,13 @@ export interface WriteAccessRecoveryHandleComparison {
 /**
  * Safe classification of a write recovery replay failure.
  * - `accessRequired` – storage is still blocked by a missing browser permission.
+ * - `browserFileStateChanged` – browser-backed file state changed after a handle became stale.
  * - `storageFailure` – write access was available but the underlying adapter failed.
  * - `unknown` – failure could not be classified.
  */
 export type WriteAccessRecoveryFailureClassification =
   | 'accessRequired'
+  | 'browserFileStateChanged'
   | 'storageFailure'
   | 'unknown';
 

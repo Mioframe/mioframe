@@ -110,6 +110,21 @@ describe('repositoriesDiagnostics', () => {
       expect(sink[0]).toMatchObject({ classification: DiagnosticClassification.Unknown });
     });
 
+    it('maps browserFileStateChanged failureClassification to Storage classification', () => {
+      reportWriteAccessReplayStorageFailure({
+        flushedCount: 0,
+        pendingCount: 1,
+        failureClassification: 'browserFileStateChanged',
+      });
+
+      expect(sink[0]).toMatchObject({
+        classification: DiagnosticClassification.Storage,
+        safeTags: {
+          failureClassification: 'browserFileStateChanged',
+        },
+      });
+    });
+
     it('maps undefined failureClassification to Unknown classification', () => {
       reportWriteAccessReplayStorageFailure({ flushedCount: 0, pendingCount: 1 });
 
