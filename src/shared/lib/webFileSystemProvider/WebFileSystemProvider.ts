@@ -74,6 +74,10 @@ export interface WebFileSystemDiagnosticStep {
   step: string;
   /** Internal write-path strategy used for the current write attempt. */
   writeStrategy?: WebFileSystemWriteStrategy | undefined;
+  /** TODO(PR #85): temporary — basename of the real write target file for Android InvalidStateError diagnosis; remove after investigation. */
+  targetFileName?: string | undefined;
+  /** TODO(PR #85): temporary — basename of the ASCII probe file for Android InvalidStateError diagnosis; remove after investigation. */
+  probeFileName?: string | undefined;
 }
 
 /**
@@ -549,6 +553,7 @@ export const WebFileSystemProvider = (
         step: 'asciiWriteProbe',
         result: 'started',
         writeStrategy: selectedWriteStrategy,
+        probeFileName: PROBE_FILENAME,
       });
 
       let probeFileHandle: FileSystemFileHandle | undefined;
@@ -559,6 +564,7 @@ export const WebFileSystemProvider = (
           step: 'asciiWriteProbe',
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
+          probeFileName: PROBE_FILENAME,
           ...describeError(createError),
         });
         return;
@@ -570,12 +576,14 @@ export const WebFileSystemProvider = (
           step: 'asciiWriteProbeWritableOpen',
           result: 'started',
           writeStrategy: selectedWriteStrategy,
+          probeFileName: PROBE_FILENAME,
         });
         probeWritable = await probeFileHandle.createWritable();
         reportDiagnosticStep({
           step: 'asciiWriteProbeWritableOpen',
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
+          probeFileName: PROBE_FILENAME,
         });
         await probeWritable.write('ok');
         reportDiagnosticStep({
@@ -594,6 +602,7 @@ export const WebFileSystemProvider = (
           step: 'asciiWriteProbe',
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
+          probeFileName: PROBE_FILENAME,
         });
       } catch (probeError) {
         if (probeWritable === undefined) {
@@ -601,6 +610,7 @@ export const WebFileSystemProvider = (
             step: 'asciiWriteProbeWritableOpen',
             result: 'failed',
             writeStrategy: selectedWriteStrategy,
+            probeFileName: PROBE_FILENAME,
             ...describeError(probeError),
           });
         } else {
@@ -614,6 +624,7 @@ export const WebFileSystemProvider = (
           step: 'asciiWriteProbe',
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
+          probeFileName: PROBE_FILENAME,
           ...describeError(probeError),
         });
       }
@@ -622,6 +633,7 @@ export const WebFileSystemProvider = (
         step: 'asciiWriteProbeCleanup',
         result: 'started',
         writeStrategy: selectedWriteStrategy,
+        probeFileName: PROBE_FILENAME,
       });
       try {
         await parentDir.removeEntry(PROBE_FILENAME, { recursive: false });
@@ -629,12 +641,14 @@ export const WebFileSystemProvider = (
           step: 'asciiWriteProbeCleanup',
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
+          probeFileName: PROBE_FILENAME,
         });
       } catch (cleanupError) {
         reportDiagnosticStep({
           step: 'asciiWriteProbeCleanup',
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
+          probeFileName: PROBE_FILENAME,
           ...describeError(cleanupError),
         });
       }
@@ -648,6 +662,7 @@ export const WebFileSystemProvider = (
         step: 'createdFileCleanup',
         result: 'started',
         writeStrategy: selectedWriteStrategy,
+        targetFileName: name,
       });
       try {
         await withWriteAccessRecovery(() => parentDir.removeEntry(name, { recursive: false }));
@@ -655,12 +670,14 @@ export const WebFileSystemProvider = (
           step: 'createdFileCleanup',
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: name,
         });
       } catch (error) {
         reportDiagnosticStep({
           step: 'createdFileCleanup',
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: name,
           ...describeError(error),
         });
       }
@@ -690,6 +707,7 @@ export const WebFileSystemProvider = (
         step: 'fileLookup',
         result: 'started',
         writeStrategy: selectedWriteStrategy,
+        targetFileName: fileName,
       });
       try {
         const existingHandle = await withWriteAccessRecovery(() =>
@@ -699,6 +717,7 @@ export const WebFileSystemProvider = (
           step: 'fileLookup',
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
         });
         return {
           existedBeforeAttempt: true,
@@ -713,6 +732,7 @@ export const WebFileSystemProvider = (
           step: 'fileLookup',
           result: 'missing',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
         });
         return {
           existedBeforeAttempt: false,
@@ -729,6 +749,7 @@ export const WebFileSystemProvider = (
         step: 'directCreateWrite',
         result: 'started',
         writeStrategy: selectedWriteStrategy,
+        targetFileName: fileName,
       });
       let writable: FileSystemWritableFileStream;
       let closedSuccessfully = false;
@@ -737,24 +758,28 @@ export const WebFileSystemProvider = (
           step: 'directCreateWriteWritableOpen',
           result: 'started',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
         });
         writable = await withWriteAccessRecovery(() => handle.createWritable());
         reportDiagnosticStep({
           step: 'directCreateWriteWritableOpen',
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
         });
       } catch (error) {
         reportDiagnosticStep({
           step: 'directCreateWriteWritableOpen',
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
           ...describeError(error),
         });
         reportDiagnosticStep({
           step: 'directCreateWrite',
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
           ...describeError(error),
         });
         if (error instanceof DOMException && error.name === 'InvalidStateError') {
@@ -776,6 +801,7 @@ export const WebFileSystemProvider = (
           step: 'directCreateWrite',
           result: 'succeeded',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
         });
       } catch (error) {
         try {
@@ -787,6 +813,7 @@ export const WebFileSystemProvider = (
           step: 'directCreateWrite',
           result: 'failed',
           writeStrategy: selectedWriteStrategy,
+          targetFileName: fileName,
           ...describeError(error),
         });
         if (createdNewFile && !closedSuccessfully) {
@@ -909,12 +936,14 @@ export const WebFileSystemProvider = (
               step: 'fileLookup',
               result: 'started',
               writeStrategy: selectedWriteStrategy,
+              targetFileName: fileName,
             });
             resolvedHandle = await getHandle(path, false, 'file');
             reportDiagnosticStep({
               step: 'fileLookup',
               result: 'succeeded',
               writeStrategy: selectedWriteStrategy,
+              targetFileName: fileName,
             });
             if (!overwrite) {
               throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);

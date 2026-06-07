@@ -37,6 +37,9 @@ export const TECHNICAL_BREADCRUMB_DATA_KEYS = [
   'storedHandlePermission',
   'runtime',
   'writeStrategy',
+  // TODO(PR #85): temporary — basename fields for Android InvalidStateError filename-pattern diagnosis; remove after investigation
+  'targetFileName',
+  'probeFileName',
 ] as const;
 
 /** Project-controlled breadcrumb categories allowed through the shared Sentry runtime. */

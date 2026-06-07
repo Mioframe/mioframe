@@ -211,4 +211,93 @@ describe('technicalBreadcrumbs', () => {
 
     expect(beforeBreadcrumb(makeBreadcrumb())).toBeNull();
   });
+
+  // TODO(PR #85): these tests cover temporary basename fields; remove together with the fields after investigation
+  it('beforeBreadcrumb passes targetFileName and probeFileName through for write breadcrumbs', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWriteWritableOpen',
+            provider: 'webFileSystem',
+            writeStrategy: 'directCreateWriteProbe',
+            targetFileName: 'abc123.automerge',
+          },
+          message: 'direct create write writable open failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWriteWritableOpen',
+        provider: 'webFileSystem',
+        writeStrategy: 'directCreateWriteProbe',
+        targetFileName: 'abc123.automerge',
+      },
+      level: 'info',
+      message: 'direct create write writable open failed',
+    });
+  });
+
+  it('beforeBreadcrumb passes probeFileName through for ASCII probe write breadcrumbs', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'asciiWriteProbe',
+            provider: 'webFileSystem',
+            writeStrategy: 'directCreateWriteProbe',
+            probeFileName: 'mioframe-write-probe.tmp',
+          },
+          message: 'asciiWriteProbe succeeded',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'asciiWriteProbe',
+        provider: 'webFileSystem',
+        writeStrategy: 'directCreateWriteProbe',
+        probeFileName: 'mioframe-write-probe.tmp',
+      },
+      level: 'info',
+      message: 'asciiWriteProbe succeeded',
+    });
+  });
+
+  it('beforeBreadcrumb still strips full paths and directory names even when basename fields are present', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWrite',
+            provider: 'webFileSystem',
+            targetFileName: 'abc123.automerge',
+            path: '/user-dir/abc123.automerge',
+            directoryName: 'my-repository',
+            documentTitle: 'Secret Doc',
+          },
+          message: 'direct create write failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWrite',
+        provider: 'webFileSystem',
+        targetFileName: 'abc123.automerge',
+      },
+      level: 'info',
+      message: 'direct create write failed',
+    });
+  });
 });

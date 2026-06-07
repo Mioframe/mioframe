@@ -495,21 +495,27 @@ describe('WebFileSystemProvider', () => {
     expect(parentGetFileHandleMock).toHaveBeenNthCalledWith(3, 'note.txt', { create: true });
     expect(parentGetFileHandleMock).toHaveBeenNthCalledWith(4, 'note.txt', { create: false });
     expect(parentHandle.removeEntryMock).toHaveBeenCalledWith('note.txt', { recursive: false });
-    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
-      result: 'started',
-      step: 'fileHandleLookupAfterCreate',
-      writeStrategy: 'safeCurrent',
-    });
-    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
-      result: 'succeeded',
-      step: 'fileHandleLookupAfterCreate',
-      writeStrategy: 'safeCurrent',
-    });
-    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
-      result: 'started',
-      step: 'createdFileCleanup',
-      writeStrategy: 'safeCurrent',
-    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual(
+      expect.objectContaining({
+        result: 'started',
+        step: 'fileHandleLookupAfterCreate',
+        writeStrategy: 'safeCurrent',
+      }),
+    );
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual(
+      expect.objectContaining({
+        result: 'succeeded',
+        step: 'fileHandleLookupAfterCreate',
+        writeStrategy: 'safeCurrent',
+      }),
+    );
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual(
+      expect.objectContaining({
+        result: 'started',
+        step: 'createdFileCleanup',
+        writeStrategy: 'safeCurrent',
+      }),
+    );
   });
 
   it('cleans up both created files when the first and retry createWritable attempts fail', async () => {
@@ -983,13 +989,15 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toBe(writeError);
 
-    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
-      result: 'failed',
-      step: 'createdFileCleanup',
-      errorClass: 'DOMException',
-      domExceptionName: 'InvalidModificationError',
-      writeStrategy: 'safeCurrent',
-    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual(
+      expect.objectContaining({
+        result: 'failed',
+        step: 'createdFileCleanup',
+        errorClass: 'DOMException',
+        domExceptionName: 'InvalidModificationError',
+        writeStrategy: 'safeCurrent',
+      }),
+    );
   });
 
   it('retries once with a fresh handle after InvalidStateError during createWritable and then succeeds', async () => {
@@ -1914,21 +1922,27 @@ describe('WebFileSystemProvider', () => {
     expect(createWritableMock.mock.invocationCallOrder[0]).toBeLessThan(
       getFileMock.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
     );
-    expect(onDiagnosticStep).toHaveBeenCalledWith({
-      result: 'directCreateWriteProbe',
-      step: 'writeStrategySelected',
-      writeStrategy: 'directCreateWriteProbe',
-    });
-    expect(onDiagnosticStep).toHaveBeenCalledWith({
-      result: 'started',
-      step: 'directCreateWriteWritableOpen',
-      writeStrategy: 'directCreateWriteProbe',
-    });
-    expect(onDiagnosticStep).toHaveBeenCalledWith({
-      result: 'succeeded',
-      step: 'directCreateWrite',
-      writeStrategy: 'directCreateWriteProbe',
-    });
+    expect(onDiagnosticStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'directCreateWriteProbe',
+        step: 'writeStrategySelected',
+        writeStrategy: 'directCreateWriteProbe',
+      }),
+    );
+    expect(onDiagnosticStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'started',
+        step: 'directCreateWriteWritableOpen',
+        writeStrategy: 'directCreateWriteProbe',
+      }),
+    );
+    expect(onDiagnosticStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'succeeded',
+        step: 'directCreateWrite',
+        writeStrategy: 'directCreateWriteProbe',
+      }),
+    );
   });
 
   it('cleans up a newly created file when direct probe createWritable fails', async () => {
@@ -2550,9 +2564,15 @@ describe('WebFileSystemProvider', () => {
 
     for (const step of probeSteps) {
       const serialized = JSON.stringify(step);
-      expect(serialized).not.toContain('mioframe-write-probe');
+      // probeFileName when present must be only the basename (TODO(PR #85): remove after investigation)
+      if (step.probeFileName !== undefined) {
+        expect(step.probeFileName).toBe('mioframe-write-probe.tmp');
+      }
+      // real target file basename must not appear in probe steps
       expect(serialized).not.toContain('probe.amrg');
+      // no full paths allowed
       expect(serialized).not.toContain('/');
+      // no write content allowed
       expect(serialized).not.toContain('ok');
     }
   });

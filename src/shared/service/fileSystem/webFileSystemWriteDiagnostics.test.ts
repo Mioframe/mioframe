@@ -499,6 +499,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       step: 'asciiWriteProbe',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeFileName: 'mioframe-write-probe.tmp',
     });
 
     const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
@@ -511,9 +512,140 @@ describe('webFileSystemWriteDiagnostics', () => {
       'writeStrategy',
       'errorClass',
       'domExceptionName',
+      'targetFileName',
+      'probeFileName',
     ]);
     for (const key of Object.keys(data)) {
       expect(allowedKeys).toContain(key);
+    }
+  });
+
+  it('real write breadcrumbs include targetFileName basename', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directCreateWriteWritableOpen',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+    });
+
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ targetFileName: 'abc123.automerge' }),
+      }),
+    );
+  });
+
+  it('directCreateWriteWritableOpen failed breadcrumb includes targetFileName', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'directCreateWriteWritableOpen',
+      result: 'failed',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+      errorClass: 'DOMException',
+      domExceptionName: 'InvalidStateError',
+    });
+
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          targetFileName: 'abc123.automerge',
+          domExceptionName: 'InvalidStateError',
+        }),
+      }),
+    );
+  });
+
+  it('createdFileCleanup breadcrumbs include targetFileName', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'createdFileCleanup',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'createdFileCleanup',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+    });
+
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({ targetFileName: 'abc123.automerge' }),
+      }),
+    );
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({ targetFileName: 'abc123.automerge' }),
+      }),
+    );
+  });
+
+  it('ASCII probe breadcrumbs include probeFileName', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbe',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+      probeFileName: 'mioframe-write-probe.tmp',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeWritableOpen',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+      probeFileName: 'mioframe-write-probe.tmp',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'asciiWriteProbeCleanup',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+      probeFileName: 'mioframe-write-probe.tmp',
+    });
+
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledTimes(3);
+    for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
+      expect(call[0].data).toEqual(
+        expect.objectContaining({ probeFileName: 'mioframe-write-probe.tmp' }),
+      );
+    }
+  });
+
+  it('non-write breadcrumbs (read/stat/directory) do not include filename fields', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileRead', result: 'started' });
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileStat', result: 'succeeded' });
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'directoryRead', result: 'started' });
+
+    for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
+      expect(call[0].data).not.toHaveProperty('targetFileName');
+      expect(call[0].data).not.toHaveProperty('probeFileName');
+    }
+  });
+
+  it('fileLookup breadcrumbs include targetFileName', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'fileLookup',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'fileLookup',
+      result: 'missing',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'fileLookup',
+      result: 'succeeded',
+      writeStrategy: 'directCreateWriteProbe',
+      targetFileName: 'abc123.automerge',
+    });
+
+    expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledTimes(3);
+    for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
+      expect(call[0].data).toEqual(expect.objectContaining({ targetFileName: 'abc123.automerge' }));
     }
   });
 });
