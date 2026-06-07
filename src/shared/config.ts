@@ -5,8 +5,6 @@ export const APP_BUILD_ID = __BUILD_ID__ || undefined;
 /** Static diagnostics detail mode shared by main and worker Sentry runtimes. */
 export type DiagnosticsMode = 'preview' | 'production';
 export const DIAGNOSTICS_MODE = __DIAGNOSTICS_MODE__;
-/** Internal diagnostic write-path override for user-selected web file system providers. */
-export const WEB_FILE_SYSTEM_WRITE_STRATEGY = __WEB_FILE_SYSTEM_WRITE_STRATEGY__;
 
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 export const GOOGLE_DRIVE_INTEGRATION_AVAILABLE = Boolean(GOOGLE_CLIENT_ID);
