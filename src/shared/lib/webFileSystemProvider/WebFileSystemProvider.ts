@@ -428,6 +428,26 @@ export const WebFileSystemProvider = (
     { create, overwrite }: WriteOptions,
   ): Promise<WriteFileResult> => {
     await ensureAccess('readwrite');
+    const normalizedPath = PathUtils.normalize(path);
+    const parentPath = PathUtils.dirname(normalizedPath);
+    const fileName = PathUtils.basename(normalizedPath);
+
+    const cleanupCreatedFile = async (
+      parentDir: FileSystemDirectoryHandle,
+      name: string,
+    ): Promise<void> => {
+      reportDiagnosticStep({ step: 'createdFileCleanup', result: 'started' });
+      try {
+        await withWriteAccessRecovery(() => parentDir.removeEntry(name, { recursive: false }));
+        reportDiagnosticStep({ step: 'createdFileCleanup', result: 'succeeded' });
+      } catch (error) {
+        reportDiagnosticStep({
+          step: 'createdFileCleanup',
+          result: 'failed',
+          ...describeError(error),
+        });
+      }
+    };
 
     const runWriteAttempt = async ({
       forceFreshHandle = false,
@@ -437,28 +457,69 @@ export const WebFileSystemProvider = (
       | { result: WriteFileResult; status: 'succeeded' }
       | { error: unknown; retryWithFreshHandle: boolean; status: 'failed' }
     > => {
+      let rollbackCreatedFile = async (): Promise<void> => Promise.resolve();
       try {
         let resolvedHandle: FileSystemFileHandle;
-        if (forceFreshHandle) {
-          const normalized = PathUtils.normalize(path);
+        const resolveFreshHandle = async (): Promise<FileSystemFileHandle> => {
           reportDiagnosticStep({ step: 'parentDirectoryLookup', result: 'started' });
           const parentDir = await withWriteAccessRecovery(() =>
-            getHandle(PathUtils.dirname(normalized), false, 'directory'),
+            getHandle(parentPath, false, 'directory'),
           );
           reportDiagnosticStep({ step: 'parentDirectoryLookup', result: 'succeeded' });
-          reportDiagnosticStep({
-            step: create ? 'fileHandleCreate' : 'fileLookup',
-            result: create ? 'started' : 'started',
-          });
-          resolvedHandle = await withWriteAccessRecovery(() =>
-            parentDir.getFileHandle(PathUtils.basename(normalized), {
-              create,
-            }),
-          );
-          reportDiagnosticStep({
-            step: create ? 'fileHandleCreate' : 'fileLookup',
-            result: 'succeeded',
-          });
+
+          reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
+          try {
+            const existingHandle = await withWriteAccessRecovery(() =>
+              parentDir.getFileHandle(fileName, { create: false }),
+            );
+            reportDiagnosticStep({ step: 'fileLookup', result: 'succeeded' });
+            return existingHandle;
+          } catch (lookupError) {
+            if (!(lookupError instanceof DOMException && lookupError.name === 'NotFoundError')) {
+              throw lookupError;
+            }
+
+            reportDiagnosticStep({ step: 'fileLookup', result: 'missing' });
+            if (!create) {
+              throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${fileName}`);
+            }
+
+            reportDiagnosticStep({
+              step: 'fileHandleCreate',
+              result: 'started',
+            });
+            await createFileHandleWithWriteRecovery(parentDir, fileName);
+            reportDiagnosticStep({
+              step: 'fileHandleCreate',
+              result: 'succeeded',
+            });
+            rollbackCreatedFile = () => cleanupCreatedFile(parentDir, fileName);
+            reportDiagnosticStep({
+              step: 'fileHandleLookupAfterCreate',
+              result: 'started',
+            });
+            try {
+              const reopenedHandle = await withWriteAccessRecovery(() =>
+                parentDir.getFileHandle(fileName, { create: false }),
+              );
+              reportDiagnosticStep({
+                step: 'fileHandleLookupAfterCreate',
+                result: 'succeeded',
+              });
+              return reopenedHandle;
+            } catch (relookupError) {
+              reportDiagnosticStep({
+                step: 'fileHandleLookupAfterCreate',
+                result: 'failed',
+                ...describeError(relookupError),
+              });
+              throw relookupError;
+            }
+          }
+        };
+
+        if (forceFreshHandle) {
+          resolvedHandle = await resolveFreshHandle();
         } else {
           try {
             reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
@@ -475,26 +536,7 @@ export const WebFileSystemProvider = (
             ) {
               throw lookupError;
             }
-            if (!create) {
-              reportDiagnosticStep({ step: 'fileLookup', result: 'missing' });
-              throw lookupError;
-            }
-            const normalized = PathUtils.normalize(path);
-            reportDiagnosticStep({ step: 'parentDirectoryLookup', result: 'started' });
-            const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
-            reportDiagnosticStep({ step: 'parentDirectoryLookup', result: 'succeeded' });
-            reportDiagnosticStep({
-              step: 'fileHandleCreate',
-              result: 'started',
-            });
-            resolvedHandle = await createFileHandleWithWriteRecovery(
-              parentDir,
-              PathUtils.basename(normalized),
-            );
-            reportDiagnosticStep({
-              step: 'fileHandleCreate',
-              result: 'succeeded',
-            });
+            resolvedHandle = await resolveFreshHandle();
           }
         }
 
@@ -507,6 +549,7 @@ export const WebFileSystemProvider = (
             status: 'succeeded',
           };
         } catch (error) {
+          await rollbackCreatedFile();
           if (error instanceof DOMException && error.name === 'InvalidStateError') {
             return {
               error,
@@ -520,6 +563,7 @@ export const WebFileSystemProvider = (
           };
         }
       } catch (error) {
+        await rollbackCreatedFile();
         return {
           error,
           retryWithFreshHandle: error instanceof DOMException && error.name === 'InvalidStateError',

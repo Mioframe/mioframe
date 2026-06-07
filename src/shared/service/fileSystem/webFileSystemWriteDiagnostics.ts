@@ -2,7 +2,9 @@ import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 const operationByStep: Record<string, string> = {
+  createdFileCleanup: 'cleanupCreatedFile',
   fileHandleCreate: 'createFileHandle',
+  fileHandleLookupAfterCreate: 'lookupHandleAfterCreate',
   fileWrite: 'writeFile',
   freshHandleRetry: 'freshHandleRetry',
   fileLookup: 'lookupExistingHandle',
@@ -19,8 +21,18 @@ const messageByStepResult: Record<
     started: 'file handle create started',
     succeeded: 'file handle create succeeded',
   },
+  fileHandleLookupAfterCreate: {
+    failed: 'file handle lookup after create failed',
+    started: 'file handle lookup after create started',
+    succeeded: 'file handle lookup after create succeeded',
+  },
   fileWrite: {
     failed: 'file write failed',
+  },
+  createdFileCleanup: {
+    failed: 'created file cleanup failed',
+    started: 'created file cleanup started',
+    succeeded: 'created file cleanup succeeded',
   },
   writableOpen: {
     failed: 'writable open failed',
