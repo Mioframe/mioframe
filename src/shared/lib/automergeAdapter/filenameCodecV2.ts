@@ -32,12 +32,7 @@ const CODE_TO_KIND: Readonly<Record<string, ChangedType>> = {
 /** Regex that validates and captures a v2 filename's components. */
 const V2_FILENAME_RE = /^([^~_]+)~([si])~([A-Za-z0-9_-]{43})\.am$/;
 
-/**
- * Converts a 64-character lowercase hex string (32 bytes) to a 43-character base64url string (no padding).
- * @param hex - 64-char lowercase hex string.
- * @returns 43-char base64url string, or undefined when the input is invalid.
- */
-export const hexToBase64Url = (hex: string): string | undefined => {
+const hexToBase64Url = (hex: string): string | undefined => {
   if (hex.length !== 64 || !/^[0-9a-f]{64}$/.test(hex)) {
     return undefined;
   }
@@ -56,12 +51,7 @@ export const hexToBase64Url = (hex: string): string | undefined => {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 
-/**
- * Converts a 43-character base64url string (no padding, 32-byte payload) back to a 64-character lowercase hex string.
- * @param b64u - 43-char base64url string without padding.
- * @returns 64-char lowercase hex string, or undefined when the input is invalid.
- */
-export const base64UrlToHex = (b64u: string): string | undefined => {
+const base64UrlToHex = (b64u: string): string | undefined => {
   if (b64u.length !== 43 || !/^[A-Za-z0-9_-]{43}$/.test(b64u)) {
     return undefined;
   }

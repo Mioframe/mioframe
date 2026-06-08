@@ -12,8 +12,8 @@ import { toString } from 'es-toolkit/compat';
 import {
   listStorageFileEntries,
   selectReadableStorageEntries,
-  storageKeyEquals,
-  storageKeyStartsWith,
+  storageKeyHasPrefix,
+  storageKeyToId,
   toWritableStorageFileName,
 } from './storageKeyHelpers';
 
@@ -64,7 +64,7 @@ export const createFSStorageAdapter = (
 
   const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
     const allEntries = await listDeduplicatedEntries();
-    const matched = [...allEntries.values()].find((entry) => storageKeyEquals(entry.key, key));
+    const matched = allEntries.get(storageKeyToId(key));
 
     if (!matched) {
       return undefined;
@@ -93,8 +93,9 @@ export const createFSStorageAdapter = (
 
   const remove = async (key: StorageKey) => {
     const handles = await collectFileHandles();
-    const matching = listStorageFileEntries(handles.keys()).filter(({ key: entryKey }) =>
-      storageKeyEquals(entryKey, key),
+    const keyId = storageKeyToId(key);
+    const matching = listStorageFileEntries(handles.keys()).filter(
+      ({ key: entryKey }) => storageKeyToId(entryKey) === keyId,
     );
 
     await Promise.all(
@@ -114,7 +115,7 @@ export const createFSStorageAdapter = (
     const allEntries = await listDeduplicatedEntries();
 
     const matched = [...allEntries.values()].filter((entry) =>
-      storageKeyStartsWith(entry.key, keyPrefix),
+      storageKeyHasPrefix(entry.key, keyPrefix),
     );
 
     const chunkList: AMChunk[] = await toArray(
@@ -135,7 +136,7 @@ export const createFSStorageAdapter = (
   const removeRange = async (keyPrefix: PartialStorageKey) => {
     const handles = await collectFileHandles();
     const matching = listStorageFileEntries(handles.keys()).filter(({ key }) =>
-      storageKeyStartsWith(key, keyPrefix),
+      storageKeyHasPrefix(key, keyPrefix),
     );
 
     await Promise.all(

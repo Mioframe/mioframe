@@ -490,8 +490,7 @@ describe('WebFileSystemProvider', () => {
       expect.objectContaining({
         result: 'failed',
         step: 'writableOpen',
-        errorClass: 'DOMException',
-        domExceptionName: 'QuotaExceededError',
+        error: openError,
       }),
     );
   });
@@ -696,8 +695,7 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep).toHaveBeenCalledWith({
       result: 'failed',
       step: 'fileWrite',
-      errorClass: 'DOMException',
-      domExceptionName: 'QuotaExceededError',
+      error: writeError,
     });
   });
 
@@ -734,8 +732,7 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep).toHaveBeenCalledWith({
       result: 'failed',
       step: 'fileWrite',
-      errorClass: 'DOMException',
-      domExceptionName: 'QuotaExceededError',
+      error: closeError,
     });
   });
 

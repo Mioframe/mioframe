@@ -6,8 +6,8 @@ import type { PartialStorageKey, StorageKey } from './types';
 import {
   listStorageFileEntries,
   selectReadableStorageEntries,
-  storageKeyEquals,
-  storageKeyStartsWith,
+  storageKeyHasPrefix,
+  storageKeyToId,
   toWritableStorageFileName,
 } from './storageKeyHelpers';
 
@@ -29,7 +29,8 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
 
   const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
     const allEntries = await listDeduplicatedEntries();
-    const matched = [...allEntries.values()].find((entry) => storageKeyEquals(entry.key, key));
+    const keyId = storageKeyToId(key);
+    const matched = allEntries.get(keyId);
 
     if (!matched) {
       return undefined;
@@ -43,7 +44,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
     const allEntries = await listDeduplicatedEntries();
     const matched = [...allEntries.values()].filter((entry) =>
-      storageKeyStartsWith(entry.key, keyPrefix),
+      storageKeyHasPrefix(entry.key, keyPrefix),
     );
 
     const chunkList = await Promise.allSettled(
@@ -85,7 +86,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   const remove = async (key: StorageKey) => {
     const directoryContent = await vfs.readDirectory(path);
     const matching = listStorageFileEntries(directoryContent.map(([name]) => name))
-      .filter(({ key: entryKey }) => storageKeyEquals(entryKey, key))
+      .filter(({ key: entryKey }) => storageKeyToId(entryKey) === storageKeyToId(key))
       .map(({ name }) => name);
 
     await deleteMatchingFiles(matching);
@@ -94,7 +95,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   const removeRange = async (keyPrefix: PartialStorageKey) => {
     const directoryContent = await vfs.readDirectory(path);
     const matching = listStorageFileEntries(directoryContent.map(([name]) => name))
-      .filter(({ key }) => storageKeyStartsWith(key, keyPrefix))
+      .filter(({ key }) => storageKeyHasPrefix(key, keyPrefix))
       .map(({ name }) => name);
 
     await deleteMatchingFiles(matching);

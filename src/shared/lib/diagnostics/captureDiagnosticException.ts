@@ -1,4 +1,4 @@
-import { useSentry } from '@shared/lib/setupSentry';
+import { useSentry } from './sentryRuntime';
 import type { SanitizedDiagnosticError } from './DiagnosticEvent';
 
 /**

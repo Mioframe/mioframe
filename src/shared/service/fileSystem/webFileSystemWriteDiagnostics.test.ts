@@ -1,10 +1,14 @@
-import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
+import { addTechnicalBreadcrumb, sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
 
-vi.mock('@shared/lib/diagnostics', () => ({
-  addTechnicalBreadcrumb: vi.fn(),
-}));
+vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
+  return {
+    ...actual,
+    addTechnicalBreadcrumb: vi.fn(),
+  };
+});
 
 describe('webFileSystemWriteDiagnostics', () => {
   beforeEach(() => {
@@ -17,21 +21,18 @@ describe('webFileSystemWriteDiagnostics', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'fileHandleCreate',
       result: 'failed',
-      errorClass: 'DOMException',
-      domExceptionName: 'InvalidModificationError',
+      error: new DOMException('msg', 'InvalidModificationError'),
     });
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'writableOpen', result: 'started' });
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'writableOpen',
       result: 'failed',
-      errorClass: 'DOMException',
-      domExceptionName: 'InvalidStateError',
+      error: new DOMException('msg', 'InvalidStateError'),
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'fileWrite',
       result: 'failed',
-      errorClass: 'DOMException',
-      domExceptionName: 'QuotaExceededError',
+      error: new DOMException('msg', 'QuotaExceededError'),
     });
 
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
@@ -119,8 +120,7 @@ describe('webFileSystemWriteDiagnostics', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'writableOpen',
       result: 'failed',
-      errorClass: 'DOMException',
-      domExceptionName: 'InvalidStateError',
+      error: new DOMException('msg', 'InvalidStateError'),
     });
 
     const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
@@ -166,5 +166,21 @@ describe('webFileSystemWriteDiagnostics', () => {
     for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
       expect(call[0].category).toBe('webFileSystem.write');
     }
+  });
+
+  it('does not include errorClass or domExceptionName when no error is provided', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'failed' });
+
+    const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
+    const data = call?.[0]?.data ?? {};
+    expect(data).not.toHaveProperty('errorClass');
+    expect(data).not.toHaveProperty('domExceptionName');
+  });
+
+  it('sanitizeDiagnosticError is the real implementation', () => {
+    expect(sanitizeDiagnosticError(new DOMException('msg', 'AbortError'))).toMatchObject({
+      errorClass: 'DOMException',
+      domExceptionName: 'AbortError',
+    });
   });
 });

@@ -4,20 +4,12 @@ import { encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
 import type { PartialStorageKey, StorageKey } from './types';
 
 /**
- * Returns true when two partial storage keys have the same elements in the same order.
- * @param a - First key.
- * @param b - Second key.
- * @returns True when all elements match.
+ * Returns a stable string id for a partial storage key suitable for Map keys and deduplication.
+ * Uses NUL-separated elements so keys with different element counts never collide.
+ * @param key - Partial storage key to identify.
+ * @returns Canonical string id.
  */
-export const storageKeyEquals = (a: PartialStorageKey, b: PartialStorageKey): boolean => {
-  if (a.length !== b.length) return false;
-
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-
-  return true;
-};
+export const storageKeyToId = (key: PartialStorageKey): string => key.join('\x00');
 
 /**
  * Returns true when `key` begins with all elements of `prefix`.
@@ -25,10 +17,7 @@ export const storageKeyEquals = (a: PartialStorageKey, b: PartialStorageKey): bo
  * @param prefix - Required prefix.
  * @returns True when key starts with all prefix elements.
  */
-export const storageKeyStartsWith = (
-  key: PartialStorageKey,
-  prefix: PartialStorageKey,
-): boolean => {
+export const storageKeyHasPrefix = (key: PartialStorageKey, prefix: PartialStorageKey): boolean => {
   if (key.length < prefix.length) return false;
 
   for (let i = 0; i < prefix.length; i++) {
@@ -89,7 +78,7 @@ export const listStorageFileEntries = (
  * When both a legacy and a v2 file exist for the same logical key, the v2 entry
  * replaces the legacy one. Otherwise the first-seen entry wins.
  * @param names - Iterable of physical filenames in the storage directory.
- * @returns Map from `key.join('\x00')` to `{ name, key, isV2 }`.
+ * @returns Map from canonical key id to `{ name, key, isV2 }`.
  */
 export const selectReadableStorageEntries = (
   names: Iterable<string>,
@@ -101,12 +90,12 @@ export const selectReadableStorageEntries = (
 
     if (!key) continue;
 
-    const keyStr = key.join('\x00');
+    const keyId = storageKeyToId(key);
     const isV2 = isV2FileName(name);
-    const existing = seen.get(keyStr);
+    const existing = seen.get(keyId);
 
     if (!existing || (!existing.isV2 && isV2)) {
-      seen.set(keyStr, { name, key, isV2 });
+      seen.set(keyId, { name, key, isV2 });
     }
   }
 

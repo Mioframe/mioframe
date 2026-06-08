@@ -1,5 +1,5 @@
 import { DomainError } from '@shared/lib/error';
-import { ensureSentry, getSentryReportingState, isSentryConfigured } from './setupSentry';
+import { ensureSentry, getSentryReportingState, isSentryConfigured } from './diagnostics';
 import { registerDiagnosticsRuntimeEffects } from './diagnosticsRuntimeEffects';
 
 type ReportHandledErrorOptions = {

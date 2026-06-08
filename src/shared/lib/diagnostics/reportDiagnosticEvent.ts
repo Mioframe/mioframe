@@ -1,4 +1,4 @@
-import { ensureSentry, getSentryReportingState, isSentryConfigured } from '@shared/lib/setupSentry';
+import { ensureSentry, getSentryReportingState, isSentryConfigured } from './sentryRuntime';
 import { registerDiagnosticsRuntimeEffects } from '@shared/lib/diagnosticsRuntimeEffects';
 import type { DiagnosticEvent } from './DiagnosticEvent';
 import { DiagnosticSeverity } from './diagnosticEnums';

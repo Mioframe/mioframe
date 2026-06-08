@@ -1,4 +1,4 @@
-import type { SentryRuntimeState } from '@shared/lib/sentry';
+import type { SentryRuntimeState } from '@shared/lib/diagnostics';
 import type { Provider } from '@shared/lib/proxyService';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +17,7 @@ describe('sentryWorkerSync', () => {
       createClient: createClientMock,
       createService: createServiceMock,
     }));
-    vi.doMock('@shared/lib/setupSentry', () => ({
+    vi.doMock('@shared/lib/diagnostics', () => ({
       setDiagnosticsRuntimeState: setDiagnosticsRuntimeStateMock,
     }));
     vi.doMock('@shared/lib/wrapWorker/workerTransformerMap', () => ({

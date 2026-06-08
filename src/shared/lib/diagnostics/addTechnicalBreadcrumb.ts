@@ -1,9 +1,9 @@
-import { getSentryReportingState, useSentry } from '@shared/lib/setupSentry';
+import { getSentryReportingState, useSentry } from './sentryRuntime';
 import type {
   TechnicalBreadcrumbCategory,
   TechnicalBreadcrumbData,
   TechnicalBreadcrumbLevel,
-} from '@shared/lib/sentry/technicalBreadcrumbs';
+} from './technicalBreadcrumbs';
 
 /**
  * Safe product-owned breadcrumb payload for the shared diagnostics wrapper.
@@ -30,11 +30,12 @@ export const addTechnicalBreadcrumb = (breadcrumb: AddTechnicalBreadcrumbParams)
       return;
     }
 
+    const { category, data, level, message } = breadcrumb;
     useSentry().addBreadcrumb({
-      category: breadcrumb.category,
-      ...(breadcrumb.data !== undefined ? { data: breadcrumb.data } : {}),
-      ...(breadcrumb.level !== undefined ? { level: breadcrumb.level } : {}),
-      ...(breadcrumb.message !== undefined ? { message: breadcrumb.message } : {}),
+      category,
+      ...(data !== undefined ? { data } : {}),
+      ...(level !== undefined ? { level } : {}),
+      ...(message !== undefined ? { message } : {}),
       type: 'default',
     });
   } catch {

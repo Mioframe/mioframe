@@ -1,4 +1,4 @@
-import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
+import { addTechnicalBreadcrumb, sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 const operationByStep: Record<string, string> = {
@@ -48,6 +48,8 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
     return;
   }
 
+  const safeError = event.error !== undefined ? sanitizeDiagnosticError(event.error) : undefined;
+
   addTechnicalBreadcrumb({
     category: 'webFileSystem.write',
     data: {
@@ -55,8 +57,10 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
       provider: 'webFileSystem',
       result: event.result,
       step: event.step,
-      ...(event.errorClass !== undefined ? { errorClass: event.errorClass } : {}),
-      ...(event.domExceptionName !== undefined ? { domExceptionName: event.domExceptionName } : {}),
+      ...(safeError !== undefined ? { errorClass: safeError.errorClass } : {}),
+      ...(safeError?.domExceptionName !== undefined
+        ? { domExceptionName: safeError.domExceptionName }
+        : {}),
     },
     level: event.result === 'failed' ? 'warning' : 'info',
     message,

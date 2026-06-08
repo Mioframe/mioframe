@@ -3,10 +3,11 @@ import type { Breadcrumb, CaptureContext } from '@sentry/vue';
 import {
   clearDiagnosticsRuntimeEffects,
   flushDiagnosticsRuntimeEffects,
-} from './diagnosticsRuntimeEffects';
+} from '@shared/lib/diagnosticsRuntimeEffects';
 import type { DiagnosticsMode } from '@shared/config';
-import type { SentryReportingState, SentryRuntimeState } from './sentry/sentryRuntimeState';
-import { createSentryOptions, getOrCreateSentrySessionId, isSessionSentryUserId } from './sentry';
+import type { SentryReportingState, SentryRuntimeState } from './sentryRuntimeState';
+import { createSentryOptions } from './sentryOptions';
+import { getOrCreateSentrySessionId, isSessionSentryUserId } from './sentrySession';
 
 export type { SentryReportingState, SentryRuntimeState };
 

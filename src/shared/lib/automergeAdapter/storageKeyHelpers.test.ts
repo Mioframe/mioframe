@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   listStorageFileEntries,
   selectReadableStorageEntries,
-  storageKeyEquals,
-  storageKeyStartsWith,
+  storageKeyHasPrefix,
+  storageKeyToId,
 } from './storageKeyHelpers';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
 
@@ -23,47 +23,49 @@ const requireV2 = (docId: string, kind: 'snapshot' | 'incremental', hash: string
   return name;
 };
 
-describe('storageKeyEquals', () => {
-  it('returns true for identical keys', () => {
+describe('storageKeyToId', () => {
+  it('produces the same id for identical keys', () => {
     const docId = getDocumentId();
-    expect(storageKeyEquals([docId, 'snapshot', HASH_A], [docId, 'snapshot', HASH_A])).toBe(true);
-  });
-
-  it('returns false when kinds differ', () => {
-    const docId = getDocumentId();
-    expect(storageKeyEquals([docId, 'snapshot', HASH_A], [docId, 'incremental', HASH_A])).toBe(
-      false,
+    expect(storageKeyToId([docId, 'snapshot', HASH_A])).toBe(
+      storageKeyToId([docId, 'snapshot', HASH_A]),
     );
   });
 
-  it('returns false when lengths differ', () => {
+  it('produces different ids when kinds differ', () => {
     const docId = getDocumentId();
-    expect(storageKeyEquals([docId], [docId, 'snapshot', HASH_A])).toBe(false);
+    expect(storageKeyToId([docId, 'snapshot', HASH_A])).not.toBe(
+      storageKeyToId([docId, 'incremental', HASH_A]),
+    );
+  });
+
+  it('produces different ids when lengths differ', () => {
+    const docId = getDocumentId();
+    expect(storageKeyToId([docId])).not.toBe(storageKeyToId([docId, 'snapshot', HASH_A]));
   });
 });
 
-describe('storageKeyStartsWith', () => {
+describe('storageKeyHasPrefix', () => {
   it('returns true when key starts with prefix', () => {
     const docId = getDocumentId();
-    expect(storageKeyStartsWith([docId, 'snapshot', HASH_A], [docId])).toBe(true);
-    expect(storageKeyStartsWith([docId, 'snapshot', HASH_A], [docId, 'snapshot'])).toBe(true);
+    expect(storageKeyHasPrefix([docId, 'snapshot', HASH_A], [docId])).toBe(true);
+    expect(storageKeyHasPrefix([docId, 'snapshot', HASH_A], [docId, 'snapshot'])).toBe(true);
   });
 
   it('returns true for equal key and prefix', () => {
     const docId = getDocumentId();
-    expect(storageKeyStartsWith([docId, 'snapshot', HASH_A], [docId, 'snapshot', HASH_A])).toBe(
+    expect(storageKeyHasPrefix([docId, 'snapshot', HASH_A], [docId, 'snapshot', HASH_A])).toBe(
       true,
     );
   });
 
   it('returns false when prefix is longer than key', () => {
     const docId = getDocumentId();
-    expect(storageKeyStartsWith([docId], [docId, 'snapshot', HASH_A])).toBe(false);
+    expect(storageKeyHasPrefix([docId], [docId, 'snapshot', HASH_A])).toBe(false);
   });
 
   it('returns false when elements differ', () => {
     const docId = getDocumentId();
-    expect(storageKeyStartsWith([docId, 'incremental', HASH_A], [docId, 'snapshot'])).toBe(false);
+    expect(storageKeyHasPrefix([docId, 'incremental', HASH_A], [docId, 'snapshot'])).toBe(false);
   });
 });
 

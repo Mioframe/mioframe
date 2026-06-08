@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSentryOptions } from './createSentryOptions';
+import { createSentryOptions } from './sentryOptions';
 
 describe('createSentryOptions', () => {
   it('uses conservative production breadcrumb limits without tracing or replay options', () => {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const captureExceptionMock = vi.fn();
 
-vi.mock('@shared/lib/setupSentry', () => ({
+vi.mock('./sentryRuntime', () => ({
   useSentry: () => ({
     captureException: captureExceptionMock,
   }),

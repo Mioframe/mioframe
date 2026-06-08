@@ -1,4 +1,4 @@
-import type { SentryReportingState } from '@shared/lib/sentry';
+import type { SentryReportingState } from './sentryRuntimeState';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const addBreadcrumbMock = vi.fn();
@@ -6,7 +6,7 @@ const getSentryReportingStateMock = vi.hoisted(() =>
   vi.fn<() => SentryReportingState>(() => 'enabled'),
 );
 
-vi.mock('@shared/lib/setupSentry', () => ({
+vi.mock('./sentryRuntime', () => ({
   getSentryReportingState: getSentryReportingStateMock,
   useSentry: () => ({
     addBreadcrumb: addBreadcrumbMock,

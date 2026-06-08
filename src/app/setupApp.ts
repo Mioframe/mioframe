@@ -6,7 +6,7 @@ import { createHead } from '@unhead/vue/client';
 import { router } from './router';
 import { backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, DIAGNOSTICS_MODE } from '@shared/config';
-import { sentryPlugin } from '@shared/lib/setupSentry';
+import { sentryPlugin } from '@shared/lib/diagnostics';
 import { setupStackNavigation } from '@page/routes';
 
 /**

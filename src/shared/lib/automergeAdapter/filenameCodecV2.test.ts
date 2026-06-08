@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  base64UrlToHex,
-  decodeV2FileName,
-  encodeStorageKeyToV2FileName,
-  hexToBase64Url,
-  isV2FileName,
-} from './filenameCodecV2';
+import { decodeV2FileName, encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
 
 // Known failing legacy filename from PR #85 diagnostics.
@@ -19,55 +13,6 @@ const requireV2 = (docId: string, kind: 'snapshot' | 'incremental', hash: string
   if (!name) throw new Error('Expected v2 filename to be defined');
   return name;
 };
-
-const requireBase64Url = (hex: string): string => {
-  const b64u = hexToBase64Url(hex);
-  if (!b64u) throw new Error('Expected base64url result to be defined');
-  return b64u;
-};
-
-describe('hexToBase64Url', () => {
-  it('converts a 64-char hex string to a 43-char base64url string', () => {
-    const result = hexToBase64Url(KNOWN_HASH);
-    expect(result).toHaveLength(43);
-    expect(result).toMatch(/^[A-Za-z0-9_-]+$/);
-  });
-
-  it('produces no padding characters', () => {
-    const result = hexToBase64Url(KNOWN_HASH);
-    expect(result).not.toContain('=');
-  });
-
-  it('returns undefined for a non-hex string', () => {
-    expect(hexToBase64Url('not-hex')).toBeUndefined();
-  });
-
-  it('returns undefined for a string shorter than 64 chars', () => {
-    expect(hexToBase64Url(KNOWN_HASH.slice(0, 32))).toBeUndefined();
-  });
-
-  it('returns undefined for a string longer than 64 chars', () => {
-    expect(hexToBase64Url(KNOWN_HASH + 'aa')).toBeUndefined();
-  });
-});
-
-describe('base64UrlToHex', () => {
-  it('round-trips through hexToBase64Url', () => {
-    const b64u = requireBase64Url(KNOWN_HASH);
-    expect(base64UrlToHex(b64u)).toBe(KNOWN_HASH);
-  });
-
-  it('returns undefined for a string that is not 43 chars', () => {
-    expect(base64UrlToHex('abc')).toBeUndefined();
-    expect(base64UrlToHex('a'.repeat(44))).toBeUndefined();
-  });
-
-  it('returns undefined for a string with invalid base64url chars', () => {
-    const validB64u = requireBase64Url(KNOWN_HASH);
-    const invalid = validB64u.slice(0, 42) + '+';
-    expect(base64UrlToHex(invalid)).toBeUndefined();
-  });
-});
 
 describe('encodeStorageKeyToV2FileName', () => {
   it('produces a compact snapshot filename from the known-failing legacy key', () => {
@@ -109,6 +54,18 @@ describe('encodeStorageKeyToV2FileName', () => {
   it('returns undefined for a non-hex hash', () => {
     expect(encodeStorageKeyToV2FileName(KNOWN_DOC_ID, 'snapshot', 'not-hex')).toBeUndefined();
   });
+
+  it('returns undefined for a hash shorter than 64 chars', () => {
+    expect(
+      encodeStorageKeyToV2FileName(KNOWN_DOC_ID, 'snapshot', KNOWN_HASH.slice(0, 32)),
+    ).toBeUndefined();
+  });
+
+  it('returns undefined for a hash longer than 64 chars', () => {
+    expect(
+      encodeStorageKeyToV2FileName(KNOWN_DOC_ID, 'snapshot', KNOWN_HASH + 'aa'),
+    ).toBeUndefined();
+  });
 });
 
 describe('decodeV2FileName', () => {
@@ -129,6 +86,18 @@ describe('decodeV2FileName', () => {
     expect(decoded?.[1]).toBe('incremental');
   });
 
+  it('round-trips encode → decode for both kinds', () => {
+    for (const kind of ['snapshot', 'incremental'] as const) {
+      const v2 = requireV2(KNOWN_DOC_ID, kind, KNOWN_HASH);
+      const decoded = decodeV2FileName(v2);
+      expect(decoded).toBeDefined();
+      if (!decoded) return;
+      expect(decoded[0]).toBe(KNOWN_DOC_ID);
+      expect(decoded[1]).toBe(kind);
+      expect(decoded[2]).toBe(KNOWN_HASH);
+    }
+  });
+
   it('returns undefined for a legacy filename', () => {
     expect(decodeV2FileName(LEGACY_SNAPSHOT_FILENAME)).toBeUndefined();
   });
@@ -145,6 +114,11 @@ describe('decodeV2FileName', () => {
   it('returns undefined for a filename with invalid hash length', () => {
     const tooShort = `${KNOWN_DOC_ID}~s~${'a'.repeat(20)}.am`;
     expect(decodeV2FileName(tooShort)).toBeUndefined();
+  });
+
+  it('returns undefined for a filename with invalid base64url chars in hash', () => {
+    const withInvalidChar = `${KNOWN_DOC_ID}~s~${'a'.repeat(42)}+.am`;
+    expect(decodeV2FileName(withInvalidChar)).toBeUndefined();
   });
 });
 

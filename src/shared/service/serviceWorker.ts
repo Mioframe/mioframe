@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, DIAGNOSTICS_MODE } from '@shared/config';
-import { registerSentryConfig } from '@shared/lib/setupSentry';
+import { registerSentryConfig } from '@shared/lib/diagnostics';
 import { setupMainService, serviceId } from './setupMainService';
 import { defineWorkerService } from '@shared/lib/wrapWorker/defineWorkerService';
 import { registerWorkerSentrySyncService } from './sentryWorkerSync';

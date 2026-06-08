@@ -6,7 +6,6 @@ import type {
   VfsEvent,
   WriteFileResult,
 } from '../virtualFileSystem';
-import { DomainError } from '@shared/lib/error';
 import {
   EventEmitter,
   FileSystemError,
@@ -51,10 +50,8 @@ export interface WebFileSystemProviderOptions {
  * Safe diagnostic milestone emitted by the provider.
  */
 export interface WebFileSystemDiagnosticStep {
-  /** Safe browser exception name when the failing value is a DOMException. */
-  domExceptionName?: string | undefined;
-  /** Coarse project-controlled error class label. */
-  errorClass?: string | undefined;
+  /** Raw error value when the milestone failed. The caller is responsible for sanitization. */
+  error?: unknown;
   /** Technical milestone outcome. */
   result: 'failed' | 'missing' | 'started' | 'succeeded';
   /** Technical milestone name emitted by the provider. */
@@ -200,7 +197,7 @@ export const WebFileSystemProvider = (
       try {
         writable = await handle.createWritable();
       } catch (error) {
-        reportDiagnosticStep({ step: 'writableOpen', result: 'failed', ...describeError(error) });
+        reportDiagnosticStep({ step: 'writableOpen', result: 'failed', error });
         throw error;
       }
       reportDiagnosticStep({ step: 'writableOpen', result: 'succeeded' });
@@ -213,35 +210,10 @@ export const WebFileSystemProvider = (
         } catch {
           // abort is cleanup only; diagnostics must not depend on its result
         }
-        reportDiagnosticStep({ step: 'fileWrite', result: 'failed', ...describeError(error) });
+        reportDiagnosticStep({ step: 'fileWrite', result: 'failed', error });
         throw error;
       }
     });
-  };
-
-  const describeError = (
-    error: unknown,
-  ): Pick<WebFileSystemDiagnosticStep, 'domExceptionName' | 'errorClass'> => {
-    if (error instanceof DOMException) {
-      return {
-        domExceptionName: error.name,
-        errorClass: 'DOMException',
-      };
-    }
-
-    if (error instanceof VfsError) {
-      return {
-        errorClass: 'VfsError',
-      };
-    }
-
-    if (error instanceof DomainError) {
-      return {
-        errorClass: 'DomainError',
-      };
-    }
-
-    return error instanceof Error ? { errorClass: 'Error' } : { errorClass: 'unknown' };
   };
 
   const reportDiagnosticStep = (event: WebFileSystemDiagnosticStep) => {
@@ -495,7 +467,7 @@ export const WebFileSystemProvider = (
             reportDiagnosticStep({
               step: 'fileHandleCreate',
               result: 'failed',
-              ...describeError(createError),
+              error: createError,
             });
             throw createError;
           }

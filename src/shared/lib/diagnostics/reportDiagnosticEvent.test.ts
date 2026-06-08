@@ -31,7 +31,7 @@ const { ensureSentryMock, isSentryConfiguredMock, getSentryReportingStateMock, r
 
 const getLastCaptureContext = () => realFacade.captureMessage.mock.calls.at(-1)?.[1];
 
-vi.mock('@shared/lib/setupSentry', () => ({
+vi.mock('./sentryRuntime', () => ({
   ensureSentry: ensureSentryMock,
   isSentryConfigured: isSentryConfiguredMock,
   getSentryReportingState: getSentryReportingStateMock,

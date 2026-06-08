@@ -25,14 +25,12 @@ export {
   encodeStorageKeyToV2FileName,
   decodeV2FileName,
   isV2FileName,
-  hexToBase64Url,
-  base64UrlToHex,
   V2_FILE_EXTENSION,
   V2_SEPARATOR,
 } from './filenameCodecV2';
 export {
-  storageKeyEquals,
-  storageKeyStartsWith,
+  storageKeyToId,
+  storageKeyHasPrefix,
   toWritableStorageFileName,
   selectReadableStorageEntries,
 } from './storageKeyHelpers';

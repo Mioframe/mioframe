@@ -76,7 +76,7 @@ const {
 const getLastCaptureContext = (facade: MockSentryFacade) =>
   facade.captureException.mock.calls.at(-1)?.[1];
 
-vi.mock('./setupSentry', () => ({
+vi.mock('./diagnostics', () => ({
   ensureSentry: ensureSentryMock,
   isSentryConfigured: isSentryConfiguredMock,
   getSentryReportingState: getSentryReportingStateMock,
