@@ -1,10 +1,10 @@
 import { useLocalSettings } from '@entity/localSettings';
 import {
-  ensureSentry,
   getOrCreateSentrySessionId,
   isSentryConfigured,
   setDiagnosticsRuntimeState,
 } from '@shared/lib/diagnostics';
+import { ensureSentry } from '@shared/lib/diagnostics/sentryRuntime';
 import { syncSentryStateToWorker } from '@shared/service/sentryWorkerSync';
 import { watch } from 'vue';
 

@@ -1,5 +1,9 @@
 import { DomainError } from '@shared/lib/error';
-import { ensureSentry, getSentryReportingState, isSentryConfigured } from './diagnostics';
+import {
+  ensureSentry,
+  getSentryReportingState,
+  isSentryConfigured,
+} from './diagnostics/sentryRuntime';
 import { registerDiagnosticsRuntimeEffects } from './diagnosticsRuntimeEffects';
 
 type ReportHandledErrorOptions = {
@@ -121,13 +125,11 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
 
   if (error instanceof DomainError && error.cause instanceof Error) {
     reportedError = error.cause;
-    extras.userMessage = error.message;
     if (error.code !== undefined) {
       extras.domainErrorCode = error.code;
     }
   } else if (error instanceof DomainError) {
     reportedError = error;
-    extras.userMessage = error.message;
     if (error.code !== undefined) {
       extras.domainErrorCode = error.code;
     }

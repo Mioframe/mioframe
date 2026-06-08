@@ -56,7 +56,13 @@ Do not use breadcrumbs for:
 - paths, file names, document names, document ids, Automerge storage keys, URLs, bytes, handles, or user-entered text;
 - terminal failure details that are already captured by the terminal diagnostic event or exception.
 
-Breadcrumb data must be narrow and allowlisted. Prefer short scalar values such as `operation`, `provider`, `result`, `step`, `failureClassification`, `errorClass`, `domExceptionName`, `vfsErrorCode`, `pendingCount`, `flushedCount`, and `runtime`.
+Breadcrumb data must be narrow and scalar. Any string key that is not blocked by the case-insensitive key denylist will pass the sanitizer, provided its value is short and does not look like a path, URL, email, or storage key. Safe keys include `operation`, `provider`, `result`, `step`, `failureClassification`, `runtime`, `permission`, and numeric counters.
+
+The breadcrumb sanitizer uses a **case-insensitive key denylist** plus a **value sanitizer** — not a strict allowlist. Do not add new explicit allowlist entries for breadcrumb data keys; safe primitives on non-denylist keys pass automatically.
+
+Denylist catches key names containing: `path`, `file`, `filename`, `name`, `document`, `doc`, `storagekey`, `key`, `url`, `uri`, `href`, `email`, `user`, `username`, `account`, `token`, `secret`, `credential`, `cookie`, `content`, `body`, `bytes`, `handle`, `message`, `cause`, `stack`.
+
+Value sanitizer rejects: path-like strings, URL-like strings, email-like strings, storage-key-like identifiers, and strings exceeding the mode-specific length limit.
 
 Breadcrumbs are accepted only while reporting state is `enabled`. `unknown` and `disabled` states must not accumulate breadcrumbs for future delivery.
 
@@ -186,7 +192,22 @@ reportDiagnosticEvent({
 
 `sanitizeDiagnosticError` must not copy raw `error.message` from browser APIs, storage, network, Automerge, VFS, or other external sources.
 
-Use `captureDiagnosticException` only when the original value is an `Error` and stack trace is useful. Its context must remain compact and sanitized.
+Use `captureDiagnosticException` only for **undesirable or unexpected branches** where a stack trace helps diagnosis.
+
+Capture exceptions for:
+
+- unexpected caught errors at service or provider boundaries;
+- cleanup failures that imply a data-consistency risk;
+- service or provider failures that should not occur in normal operation.
+
+Do not capture exceptions for:
+
+- cancelled file picker or permission prompt;
+- validation failures that are normal UX;
+- expected `DomainError` states surfaced through recovery UI;
+- `FileNotFound` during optional cleanup with no consistency risk.
+
+Its context must remain compact and sanitized.
 
 ## Testing
 
@@ -203,8 +224,9 @@ For breadcrumbs, test the wrapper or sanitizer when new categories or data keys 
 
 - accepted technical breadcrumbs survive in `enabled` state;
 - breadcrumbs are dropped in `unknown` and `disabled` states;
-- unknown categories and data keys are dropped;
-- private-looking values are removed or the breadcrumb is dropped.
+- unknown categories are dropped;
+- denylist-matched data keys are dropped regardless of value;
+- path-like, URL-like, email-like, and storage-key-like values are dropped even on allowed keys.
 
 For `captureDiagnosticException`, mock the Sentry facade boundary and assert:
 
@@ -230,10 +252,9 @@ Do not introduce:
 
 ## Reference files
 
-- Generic core: `src/shared/lib/diagnostics/`
-- Sentry shared foundation: `src/shared/lib/sentry/`
-- Shared diagnostics runtime: `src/shared/lib/setupSentry.ts`
+- Diagnostics core (wrappers, sanitizers, event queue): `src/shared/lib/diagnostics/`
+- Sentry facade and runtime: `src/shared/lib/diagnostics/sentryRuntime.ts`
 - Runtime effects registry: `src/shared/lib/diagnosticsRuntimeEffects.ts`
 - Worker state sync: `src/shared/service/sentryWorkerSync.ts`
-- Consent lifecycle: `src/features/diagnosticsReporting/useDiagnosticsReporting.ts`
+- Consent lifecycle feature: `src/features/diagnosticsReporting/useDiagnosticsReporting.ts`
 - Policy doc: `docs/diagnostics.md`

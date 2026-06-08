@@ -76,7 +76,7 @@ const {
 const getLastCaptureContext = (facade: MockSentryFacade) =>
   facade.captureException.mock.calls.at(-1)?.[1];
 
-vi.mock('./diagnostics', () => ({
+vi.mock('./diagnostics/sentryRuntime', () => ({
   ensureSentry: ensureSentryMock,
   isSentryConfigured: isSentryConfiguredMock,
   getSentryReportingState: getSentryReportingStateMock,
@@ -100,7 +100,7 @@ describe('reportHandledError', () => {
     vi.clearAllMocks();
   });
 
-  it('reports the DomainError cause and stores the user-facing message and code after Sentry resolves', async () => {
+  it('reports the DomainError cause and stores the domain error code after Sentry resolves', async () => {
     const gate = createDeferred<MockSentryFacade>();
     ensureSentryMock.mockReturnValue(gate.promise);
 
@@ -128,7 +128,6 @@ describe('reportHandledError', () => {
     });
 
     expect(getLastCaptureContext(realFacade)?.extra).toEqual({
-      userMessage: 'Could not save',
       domainErrorCode: 'document-export-failed',
     });
   });
@@ -193,9 +192,7 @@ describe('reportHandledError', () => {
     await vi.waitFor(() => {
       expect(realFacade.captureException).toHaveBeenCalled();
     });
-    expect(getLastCaptureContext(realFacade)?.extra).toEqual({
-      userMessage: 'Could not save',
-    });
+    expect(getLastCaptureContext(realFacade)?.extra).toBeUndefined();
     expect(getLastCaptureContext(realFacade)?.extra).not.toEqual(
       expect.objectContaining({ path: '/docs/a' }),
     );

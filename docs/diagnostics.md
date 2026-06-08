@@ -39,7 +39,7 @@ Do not introduce a custom timeline object, custom tracing layer, or flow-specifi
 
 ## Shared runtime and consent
 
-There is one shared diagnostics/Sentry runtime: `src/shared/lib/setupSentry.ts`. Both main thread and worker initialize Sentry through this module. Static configuration is imported in both runtimes. Dynamic reporting state and the session-scoped user id are synced from main to worker through `sentryWorkerSync`.
+There is one shared diagnostics/Sentry runtime: `src/shared/lib/diagnostics/sentryRuntime.ts`. Both main thread and worker initialize Sentry through this module. Static configuration is imported in both runtimes. Dynamic reporting state and the session-scoped user id are synced from main to worker through `sentryWorkerSync`.
 
 Sentry may be unconfigured, not loaded, disabled by user consent, or still waiting for the consent state. Product code must not care. Wrapper calls are fire-and-forget and must never throw into product code.
 
@@ -58,16 +58,27 @@ Breadcrumbs must not be accumulated before consent. They are short-lived context
 
 ## Project wrappers
 
-Generic diagnostics infrastructure lives in `src/shared/lib/diagnostics` and the Sentry facade lives under `src/shared/lib/sentry` / `src/shared/lib/setupSentry.ts`.
+Generic diagnostics infrastructure lives in `src/shared/lib/diagnostics`. The Sentry facade and runtime live in `src/shared/lib/diagnostics/sentryRuntime.ts`.
 
 Use these project APIs instead of direct Sentry SDK calls:
 
-| Wrapper                                      | Purpose                                                                               |
-| -------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `addTechnicalBreadcrumb(breadcrumb)`         | Adds a safe technical breadcrumb when reporting is enabled                            |
-| `reportDiagnosticEvent(event)`               | Sends a compact structured terminal/status event through `captureMessage`             |
-| `captureDiagnosticException(error, context)` | Sends a caught `Error` with a sanitized diagnostic context through `captureException` |
-| `reportHandledError(error, options)`         | Reports unexpected handled exceptions                                                 |
+| Wrapper                                      | Purpose                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `addTechnicalBreadcrumb(breadcrumb)`         | Adds a safe technical breadcrumb when reporting is enabled                                 |
+| `reportDiagnosticEvent(event)`               | Sends a compact structured terminal/status event through `captureMessage`                  |
+| `captureDiagnosticException(error, context)` | Sends a caught `Error` with a sanitized diagnostic context through `captureException`      |
+| `reportHandledError(error, options)`         | Reports unexpected handled exceptions                                                      |
+| `toSentryDiagnosticCaptureContext(event)`    | Builds a Sentry capture context from a `DiagnosticEvent`; owned by `reportDiagnosticEvent` |
+
+App and worker bootstrap code also has access to:
+
+| Bootstrap API                       | Purpose                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| `sentryPlugin`                      | Vue plugin that registers runtime config and stores the app reference        |
+| `registerSentryConfig(config)`      | Registers Sentry runtime config without loading the SDK                      |
+| `setDiagnosticsRuntimeState(state)` | Applies dynamic consent + session state; used by main thread and worker sync |
+
+`sentryFacade`, `useSentry`, and `ensureSentry` are not product API. Import them directly from `src/shared/lib/diagnostics/sentryRuntime` when bootstrap code needs them.
 
 If Sentry Logs are introduced, they must be wrapped by a small project helper with the same consent and privacy rules. Do not import or call `Sentry.logger` outside that wrapper.
 
@@ -98,7 +109,15 @@ Do not use breadcrumbs for:
 - terminal failure details already represented by a terminal diagnostic event or exception;
 - private data listed in the privacy section.
 
-Breadcrumb data must be narrow and scalar. Use project-controlled strings, booleans, and small integers. Prefer keys such as `operation`, `provider`, `result`, `step`, `failureClassification`, `errorClass`, `domExceptionName`, `vfsErrorCode`, `pendingCount`, `flushedCount`, and `runtime`.
+Breadcrumb data must be narrow and scalar. Use project-controlled strings, booleans, and small integers. Any string key that does not appear in the case-insensitive denylist will pass the sanitizer, provided its value is short, free of path-like/URL-like/email-like patterns, and not a storage-key-like identifier. Good keys include `operation`, `provider`, `result`, `step`, `failureClassification`, `runtime`, `permission`, and safe counters such as `pendingCount`.
+
+The breadcrumb sanitizer enforces privacy through a **case-insensitive key denylist** plus a **value sanitizer**, not a strict allowlist:
+
+- The key denylist blocks keys containing `path`, `file`, `filename`, `name`, `document`, `doc`, `storagekey`, `key`, `url`, `uri`, `href`, `email`, `user`, `username`, `account`, `token`, `secret`, `credential`, `cookie`, `content`, `body`, `bytes`, `handle`, `message`, `cause`, or `stack`.
+- The value sanitizer rejects path-like strings, URL-like strings, email-like strings, storage-key-like identifiers, and strings exceeding the mode-specific length limit.
+- Objects, arrays, Error, DOMException, handles, and all non-scalar types are rejected.
+
+Safe primitive values on allowed keys pass automatically — do not add new explicit allowlist entries for breadcrumb data keys.
 
 ---
 
@@ -142,7 +161,21 @@ Do not encode an entire operation history as event fields. Put history in breadc
 
 ## Exceptions with context
 
-Use `captureDiagnosticException` only when a real `Error` object is available and stack trace helps diagnosis.
+Use `captureDiagnosticException` only for **undesirable or unexpected branches** where a stack trace helps diagnosis. Do not capture exceptions for expected user or domain states.
+
+Capture exceptions for:
+
+- unexpected caught errors at service or provider boundaries;
+- cleanup failures that imply a data-consistency risk;
+- service or provider failures that should not occur in normal operation;
+- global uncaught exceptions and unhandled rejections, handled automatically by Sentry runtime.
+
+Do not capture exceptions for:
+
+- cancelled file picker or permission prompt;
+- validation failures that are already normal UX;
+- expected `DomainError` states surfaced through recovery UI;
+- `FileNotFound` during optional cleanup that cannot reach a consistency risk.
 
 Pairing a compact diagnostic event with an exception is appropriate at storage or provider boundaries: the event describes the structured state, while the exception gives the stack.
 
@@ -255,8 +288,8 @@ The shared runtime uses `beforeBreadcrumb` and `beforeSend` as the final client-
 - keep only project-controlled technical breadcrumbs;
 - drop breadcrumbs while reporting state is `unknown` or `disabled`;
 - drop automatic UI, click, navigation, fetch, and network breadcrumbs;
-- drop unknown categories and unknown data keys;
-- drop private-looking values.
+- apply case-insensitive key denylist and value sanitizer to breadcrumb data;
+- drop non-scalar values (objects, arrays, Error, handles).
 
 `beforeSend` must:
 
@@ -342,10 +375,9 @@ Configure these server-side settings in the Sentry project:
 
 ## Reference files
 
-- Generic diagnostics core: `src/shared/lib/diagnostics/`
-- Sentry shared foundation: `src/shared/lib/sentry/`
-- Shared runtime: `src/shared/lib/setupSentry.ts`
+- Diagnostics core (wrappers, sanitizers, event queue): `src/shared/lib/diagnostics/`
+- Sentry facade and runtime: `src/shared/lib/diagnostics/sentryRuntime.ts`
 - Runtime-effects registry: `src/shared/lib/diagnosticsRuntimeEffects.ts`
 - Worker state sync: `src/shared/service/sentryWorkerSync.ts`
-- Consent lifecycle: `src/features/diagnosticsReporting/useDiagnosticsReporting.ts`
+- Consent lifecycle feature: `src/features/diagnosticsReporting/useDiagnosticsReporting.ts`
 - Diagnostic-events skill: `.agents/skills/diagnostic-events/SKILL.md`

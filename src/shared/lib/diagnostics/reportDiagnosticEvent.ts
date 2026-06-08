@@ -1,3 +1,4 @@
+import type { CaptureContext } from '@sentry/vue';
 import { ensureSentry, getSentryReportingState, isSentryConfigured } from './sentryRuntime';
 import { registerDiagnosticsRuntimeEffects } from '@shared/lib/diagnosticsRuntimeEffects';
 import type { DiagnosticEvent } from './DiagnosticEvent';
@@ -87,46 +88,58 @@ const severityToSentryLevel = (
   }
 };
 
+/**
+ * Builds a Sentry capture context from a structured diagnostic event.
+ * Owns tag projection, extra field projection, and safe error field normalization.
+ * @param entry - Structured diagnostic event.
+ * @returns Sentry-compatible capture context.
+ */
+export const toSentryDiagnosticCaptureContext = (entry: DiagnosticEvent): CaptureContext => {
+  const extras: Record<string, unknown> = {};
+
+  if (entry.attemptId !== undefined) {
+    extras.attemptId = entry.attemptId;
+  }
+
+  if (entry.counters) {
+    const { pendingCount, failedCount, flushedCount } = entry.counters;
+    if (pendingCount !== undefined) extras.pendingCount = pendingCount;
+    if (failedCount !== undefined) extras.failedCount = failedCount;
+    if (flushedCount !== undefined) extras.flushedCount = flushedCount;
+  }
+
+  if (entry.error) {
+    extras.errorClass = entry.error.errorClass;
+    if (entry.error.domExceptionName !== undefined)
+      extras.domExceptionName = entry.error.domExceptionName;
+    if (entry.error.vfsErrorCode !== undefined) extras.vfsErrorCode = entry.error.vfsErrorCode;
+    if (entry.error.domainErrorCode !== undefined)
+      extras.domainErrorCode = entry.error.domainErrorCode;
+    extras.errorClassification = entry.error.errorClassification;
+  }
+
+  return {
+    level: severityToSentryLevel(entry.severity),
+    tags: {
+      eventKind: 'diagnostic',
+      severity: entry.severity,
+      result: entry.result,
+      classification: entry.classification,
+      ...entry.safeTags,
+    },
+    ...(Object.keys(extras).length > 0 ? { extra: extras } : {}),
+  };
+};
+
 const sendEntry = (
   entry: DiagnosticEvent,
   sentry: Awaited<ReturnType<typeof ensureSentry>>,
 ): boolean => {
   try {
-    const extras: Record<string, unknown> = {};
-
-    if (entry.attemptId !== undefined) {
-      extras.attemptId = entry.attemptId;
-    }
-
-    if (entry.counters) {
-      const { pendingCount, failedCount, flushedCount } = entry.counters;
-      if (pendingCount !== undefined) extras.pendingCount = pendingCount;
-      if (failedCount !== undefined) extras.failedCount = failedCount;
-      if (flushedCount !== undefined) extras.flushedCount = flushedCount;
-    }
-
-    if (entry.error) {
-      extras.errorClass = entry.error.errorClass;
-      if (entry.error.domExceptionName !== undefined)
-        extras.domExceptionName = entry.error.domExceptionName;
-      if (entry.error.vfsErrorCode !== undefined) extras.vfsErrorCode = entry.error.vfsErrorCode;
-      if (entry.error.domainErrorCode !== undefined)
-        extras.domainErrorCode = entry.error.domainErrorCode;
-      extras.errorClassification = entry.error.errorClassification;
-    }
-
-    const eventId = sentry.captureMessage(`[diagnostic] ${entry.name}`, {
-      level: severityToSentryLevel(entry.severity),
-      tags: {
-        eventKind: 'diagnostic',
-        severity: entry.severity,
-        result: entry.result,
-        classification: entry.classification,
-        ...entry.safeTags,
-      },
-      ...(Object.keys(extras).length > 0 ? { extra: extras } : {}),
-    });
-
+    const eventId = sentry.captureMessage(
+      `[diagnostic] ${entry.name}`,
+      toSentryDiagnosticCaptureContext(entry),
+    );
     return eventId !== undefined;
   } catch {
     return false;

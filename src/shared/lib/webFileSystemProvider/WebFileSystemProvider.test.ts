@@ -473,7 +473,6 @@ describe('WebFileSystemProvider', () => {
     parentHandle.getFileHandle = vi
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
       .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
-      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockResolvedValueOnce(createdHandle);
     const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
@@ -511,7 +510,6 @@ describe('WebFileSystemProvider', () => {
     });
     parentHandle.getFileHandle = vi
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
-      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockResolvedValueOnce(createdHandle);
     const provider = WebFileSystemProvider(rootHandle, {
@@ -610,7 +608,6 @@ describe('WebFileSystemProvider', () => {
     parentHandle.getFileHandle = vi
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
       .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
-      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockResolvedValueOnce(createdHandle)
       .mockResolvedValueOnce(existingHandle);
     const rootHandle = createDirectoryHandleMock({
@@ -650,7 +647,6 @@ describe('WebFileSystemProvider', () => {
     });
     parentHandle.getFileHandle = vi
       .fn<(fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>>()
-      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockResolvedValueOnce(createdHandle);
     const provider = WebFileSystemProvider(rootHandle, {

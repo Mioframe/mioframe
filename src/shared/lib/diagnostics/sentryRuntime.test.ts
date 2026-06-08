@@ -438,7 +438,6 @@ describe('setupSentry', () => {
         extra: {
           domainErrorCode: 'document-export-failed',
           originalThrownType: 'string',
-          userMessage: 'Could not export the document',
         },
         message: 'test-event',
         tags: {
@@ -549,7 +548,6 @@ describe('setupSentry', () => {
         extra: {
           domainErrorCode: 'document-export-failed',
           originalThrownType: 'string',
-          userMessage: 'Could not export the document',
         },
         message: 'test-event',
       });
@@ -1096,7 +1094,7 @@ describe('setupSentry', () => {
       }
     });
 
-    it('raw paths, file names, document ids, and storage keys do not survive as extras', async () => {
+    it('raw paths, file names, document ids, storage keys, and user messages do not survive as extras', async () => {
       const beforeSend = await setupBeforeSend();
       const event = {
         message: 'test',
@@ -1112,7 +1110,6 @@ describe('setupSentry', () => {
       if (beforeSend instanceof Function) {
         expect(beforeSend(event)).toEqual({
           message: 'test',
-          extra: { userMessage: 'Could not save' },
         });
       }
     });
@@ -1623,7 +1620,7 @@ describe('unified diagnostics runtime', () => {
     expect(clearDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
   });
 
-  it('setDiagnosticsRuntimeState uses sentry.runtime for non-enabled runtime-state breadcrumbs', async () => {
+  it('setDiagnosticsRuntimeState does not add breadcrumbs for non-enabled transitions', async () => {
     const { addBreadcrumbMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./sentryRuntime');
@@ -1637,20 +1634,7 @@ describe('unified diagnostics runtime', () => {
     setDiagnosticsRuntimeState({ reportingState: 'unknown', sessionId: TEST_SESSION_ID });
     setDiagnosticsRuntimeState({ reportingState: 'disabled', sessionId: TEST_SESSION_ID });
 
-    expect(addBreadcrumbMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        category: 'sentry.runtime',
-        data: expect.objectContaining({ runtime: expect.any(String) }),
-      }),
-    );
-    expect(addBreadcrumbMock).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        category: 'sentry.runtime',
-        data: expect.objectContaining({ runtime: expect.any(String) }),
-      }),
-    );
+    expect(addBreadcrumbMock).not.toHaveBeenCalled();
   });
 
   it('setDiagnosticsRuntimeState before init: pending session is applied when ensureSentry completes', async () => {

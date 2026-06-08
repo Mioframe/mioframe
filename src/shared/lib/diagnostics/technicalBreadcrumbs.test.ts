@@ -69,7 +69,7 @@ describe('technicalBreadcrumbs', () => {
     ).toBeNull();
   });
 
-  it('beforeBreadcrumb strips sensitive write data while keeping safe primitive fields', () => {
+  it('beforeBreadcrumb strips sensitive write data, keeping only safe non-denylist fields', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(
@@ -80,10 +80,10 @@ describe('technicalBreadcrumbs', () => {
             operation: 'writeFile',
             provider: 'webFileSystem',
             path: '/secret',
-            filename: 'doc.amrg',
+            filename: 'doc.amrg', // 'filename' is in denylist
             documentId: 'doc-123',
             storageKey: 'secret-key',
-            bytes: '100',
+            bytes: '100', // 'bytes' is in denylist
             pendingCount: 2,
           },
           message: 'file write failed',
@@ -94,8 +94,6 @@ describe('technicalBreadcrumbs', () => {
       data: {
         operation: 'writeFile',
         provider: 'webFileSystem',
-        filename: 'doc.amrg',
-        bytes: '100',
         pendingCount: 2,
       },
       level: 'info',
@@ -319,6 +317,7 @@ describe('technicalBreadcrumbs', () => {
       category: 'repository.storage',
       data: {
         operation: 'repositorySave',
+        title: 'My Document',
       },
       level: 'info',
       message: 'repository save started',
@@ -480,6 +479,125 @@ describe('technicalBreadcrumbs', () => {
       },
       level: 'info',
       message: 'writable open started',
+    });
+  });
+
+  // Value sanitizer
+
+  it('drops string values that look like filesystem paths', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            result: '/home/user/documents/secret.txt',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  it('drops string values that look like URLs', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            result: 'https://example.com/secret',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  it('drops string values that look like email addresses', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            result: 'user@example.com',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  it('drops string values that look like Automerge storage keys', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            result: 'vBfbhfCLoCspTDKPmaXkbk3Z7GH~s~DfpDUK_a0N8aSEsAbkhUzshkDUFnRc4MyH.am',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  it('keeps safe short enum-like string values', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            result: 'succeeded',
+            provider: 'webFileSystem',
+            step: 'writableOpen',
+            runtime: 'worker',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+        result: 'succeeded',
+        provider: 'webFileSystem',
+        step: 'writableOpen',
+        runtime: 'worker',
+      },
+      level: 'info',
+      message: 'repository save started',
     });
   });
 });

@@ -134,18 +134,22 @@ export const isSentryReportingEnabled = () => reportingState === 'enabled';
  * @param state - Dynamic runtime state to apply.
  */
 export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
-  sentryFacade.addBreadcrumb({
-    category: 'sentry.runtime',
-    data: {
-      operation: 'applyRuntimeState',
-      runtime: getRuntimeLabel(),
-    },
-    level: state.reportingState === 'disabled' ? 'warning' : 'info',
-    message: `reporting state applied: ${state.reportingState}`,
-    type: 'default',
-  });
-
   reportingState = state.reportingState;
+
+  // Record the transition only when the new state is enabled so that transitioning
+  // into disabled/unknown does not add a breadcrumb through the still-active facade.
+  if (reportingState === 'enabled') {
+    sentryFacade.addBreadcrumb({
+      category: 'sentry.runtime',
+      data: {
+        operation: 'applyRuntimeState',
+        runtime: getRuntimeLabel(),
+      },
+      level: 'info',
+      message: `reporting state applied: ${state.reportingState}`,
+      type: 'default',
+    });
+  }
 
   if (state.reportingState === 'enabled') {
     if (!isSessionSentryUserId(state.sessionId)) {

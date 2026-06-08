@@ -10,6 +10,7 @@ export {
   flushQueuedDiagnosticEvents,
   reportDiagnosticEvent,
   setDiagnosticEventSink,
+  toSentryDiagnosticCaptureContext,
 } from './reportDiagnosticEvent';
 export { sanitizeDiagnosticError } from './sanitizeDiagnosticError';
 export { captureDiagnosticException } from './captureDiagnosticException';
@@ -17,17 +18,16 @@ export type { DiagnosticExceptionContext } from './captureDiagnosticException';
 export { addTechnicalBreadcrumb } from './addTechnicalBreadcrumb';
 export type { AddTechnicalBreadcrumbParams } from './addTechnicalBreadcrumb';
 
-// Diagnostics runtime setup — used by app bootstrap, features, and worker service only.
+// Diagnostics runtime public API — app and worker bootstrap only.
+// `sentryFacade`, `useSentry`, and `ensureSentry` are internal; import them
+// directly from `./sentryRuntime` when bootstrap code needs them.
 export {
-  ensureSentry,
   getSentryReportingState,
   isSentryConfigured,
   isSentryReportingEnabled,
   registerSentryConfig,
-  sentryFacade,
   sentryPlugin,
   setDiagnosticsRuntimeState,
-  useSentry,
 } from './sentryRuntime';
 export type { SentryConfig, SentryFacade } from './sentryRuntime';
 export type { SentryReportingState, SentryRuntimeState } from './sentryRuntimeState';

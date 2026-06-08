@@ -65,7 +65,6 @@ export const pickEventTags = (
 
 const SAFE_NUMERIC_EXTRA_KEYS = ['pendingCount', 'failedCount', 'flushedCount'] as const;
 const SAFE_STRING_EXTRA_KEYS = [
-  'userMessage',
   'domainErrorCode',
   'originalThrownType',
   'errorClass',

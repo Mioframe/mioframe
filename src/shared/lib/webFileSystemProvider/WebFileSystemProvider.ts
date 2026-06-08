@@ -395,98 +395,72 @@ export const WebFileSystemProvider = (
     const parentPath = PathUtils.dirname(normalizedPath);
     const fileName = PathUtils.basename(normalizedPath);
 
-    const cleanupCreatedFile = async (
-      parentDir: FileSystemDirectoryHandle,
-      name: string,
-    ): Promise<void> => {
-      try {
-        await withWriteAccessRecovery(() => parentDir.removeEntry(name, { recursive: false }));
-      } catch {
-        // cleanup is best-effort
-      }
-    };
+    const parentDir = await withWriteAccessRecovery(() =>
+      getHandle(parentPath, false, 'directory'),
+    );
 
-    const resolveParentDirectory = async (): Promise<FileSystemDirectoryHandle> => {
-      const parentDir = await withWriteAccessRecovery(() =>
-        getHandle(parentPath, false, 'directory'),
+    reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
+    let existingHandle: FileSystemFileHandle | undefined;
+    try {
+      existingHandle = await withWriteAccessRecovery(() =>
+        parentDir.getFileHandle(fileName, { create: false }),
       );
-      reportDiagnosticStep({ step: 'parentDirectoryLookup', result: 'succeeded' });
-      return parentDir;
-    };
-
-    const lookupExistingFileHandle = async (
-      parentDir: FileSystemDirectoryHandle,
-    ): Promise<FileSystemFileHandle | undefined> => {
-      reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
-      try {
-        const existingHandle = await withWriteAccessRecovery(() =>
-          parentDir.getFileHandle(fileName, { create: false }),
-        );
-        reportDiagnosticStep({ step: 'fileLookup', result: 'succeeded' });
-        return existingHandle;
-      } catch (lookupError) {
-        if (!(lookupError instanceof DOMException && lookupError.name === 'NotFoundError')) {
-          throw lookupError;
-        }
-        reportDiagnosticStep({ step: 'fileLookup', result: 'missing' });
-        return undefined;
+      reportDiagnosticStep({ step: 'fileLookup', result: 'succeeded' });
+    } catch (lookupError) {
+      if (!(lookupError instanceof DOMException && lookupError.name === 'NotFoundError')) {
+        throw lookupError;
       }
-    };
+      reportDiagnosticStep({ step: 'fileLookup', result: 'missing' });
+    }
 
-    let rollbackCreatedFile = async (): Promise<void> => Promise.resolve();
+    if (existingHandle !== undefined && !overwrite) {
+      throw new VfsError(FileSystemError.FileExists, `File already exists`);
+    }
+
+    if (existingHandle === undefined && !create) {
+      throw new VfsError(FileSystemError.FileNotFound, `File not found`);
+    }
+
+    let resolvedHandle: FileSystemFileHandle;
+    let rollbackCreatedFile: () => Promise<void> = () => Promise.resolve();
+
+    if (existingHandle !== undefined) {
+      resolvedHandle = existingHandle;
+    } else {
+      reportDiagnosticStep({ step: 'fileHandleCreate', result: 'started' });
+      try {
+        resolvedHandle = await createFileHandleWithWriteRecovery(parentDir, fileName);
+        reportDiagnosticStep({ step: 'fileHandleCreate', result: 'succeeded' });
+      } catch (createError) {
+        reportDiagnosticStep({ step: 'fileHandleCreate', result: 'failed', error: createError });
+        throw createError;
+      }
+      rollbackCreatedFile = async () => {
+        try {
+          await withWriteAccessRecovery(() =>
+            parentDir.removeEntry(fileName, { recursive: false }),
+          );
+        } catch {
+          // cleanup is best-effort
+        }
+      };
+    }
 
     try {
-      let resolvedHandle: FileSystemFileHandle;
-
-      reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
-      try {
-        resolvedHandle = await getHandle(path, false, 'file');
-        reportDiagnosticStep({ step: 'fileLookup', result: 'succeeded' });
-        if (!overwrite) {
-          throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
-        }
-      } catch (lookupError) {
-        if (
-          !(lookupError instanceof VfsError && lookupError.code === FileSystemError.FileNotFound)
-        ) {
-          throw lookupError;
-        }
-        const parentDir = await resolveParentDirectory();
-        const existingHandle = await lookupExistingFileHandle(parentDir);
-        if (existingHandle !== undefined) {
-          resolvedHandle = existingHandle;
-        } else {
-          if (!create) {
-            throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${fileName}`);
-          }
-          reportDiagnosticStep({ step: 'fileHandleCreate', result: 'started' });
-          try {
-            resolvedHandle = await createFileHandleWithWriteRecovery(parentDir, fileName);
-            reportDiagnosticStep({ step: 'fileHandleCreate', result: 'succeeded' });
-          } catch (createError) {
-            reportDiagnosticStep({
-              step: 'fileHandleCreate',
-              result: 'failed',
-              error: createError,
-            });
-            throw createError;
-          }
-          rollbackCreatedFile = () => cleanupCreatedFile(parentDir, fileName);
-        }
-      }
-
       await writeFileHandleContent(resolvedHandle, content);
-      rollbackCreatedFile = async (): Promise<void> => Promise.resolve();
-
-      try {
-        const fileStat = await fileHandleStat(resolvedHandle);
-        return { stat: fileStat };
-      } catch {
-        return { stat: { type: FSNodeType.File } };
-      }
-    } catch (error) {
+    } catch (writeError) {
+      reportDiagnosticStep({ step: 'fileWrite', result: 'failed', error: writeError });
       await rollbackCreatedFile();
-      throw error;
+      throw writeError;
+    }
+
+    rollbackCreatedFile = () => Promise.resolve();
+
+    try {
+      const fileStat = await fileHandleStat(resolvedHandle);
+      return { stat: fileStat };
+    } catch {
+      return { stat: { type: FSNodeType.File } };
     }
   };
 

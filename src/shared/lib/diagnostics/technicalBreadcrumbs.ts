@@ -36,42 +36,58 @@ const PRODUCTION_MAX_STRING_LENGTH = 80;
 const PREVIEW_MAX_STRING_LENGTH = 120;
 
 /**
- * Lowercase denylist of key names that are obviously unsafe for Sentry even when their value is
+ * Lowercase denylist of key-name substrings that are unsafe for Sentry even when their value is
  * a primitive. Prevents leaking paths, identifiers, credentials, or user-controlled content.
- * Keep this narrow; do not expand it into a per-field allowlist.
+ * Applied as a substring check so `storageKey`, `fileHandle`, `documentTitle`, etc. are caught.
  */
-const SENSITIVE_KEYS = new Set([
+const SENSITIVE_KEY_PARTS = [
   'path',
-  'fullpath',
-  'directory',
-  'directoryname',
-  'rootdirectory',
-  'documenttitle',
-  'title',
-  'content',
-  'payload',
-  'body',
-  'text',
-  'handle',
-  'filehandle',
-  'directoryhandle',
+  'file',
+  'filename',
+  'name',
+  'document',
+  'doc',
   'storagekey',
-  'documentid',
-  'userid',
-  'accountid',
+  'key',
+  'url',
+  'uri',
+  'href',
   'email',
+  'user',
   'username',
+  'account',
   'token',
-  'accesstoken',
-  'refreshtoken',
   'secret',
-  'password',
-  'rawmessage',
-  'errormessage',
+  'credential',
+  'cookie',
+  'content',
+  'body',
+  'bytes',
+  'handle',
   'message',
+  'cause',
   'stack',
-  'stacktrace',
-]);
+];
+
+const isSensitiveKey = (key: string): boolean => {
+  const lower = key.toLowerCase();
+  return SENSITIVE_KEY_PARTS.some((part) => lower.includes(part));
+};
+
+// Patterns that indicate a value contains private data even on an allowed key.
+const PATH_LIKE_RE = /(?:^|[\s"'`(])(?:\/[^/\s]{1,260}){2,}|^[a-zA-Z]:\\|^\.{1,2}[/\\]/;
+const URL_LIKE_RE = /^[a-z][a-z0-9+\-.]{1,20}:\/\//i;
+const EMAIL_LIKE_RE = /[^@\s]{1,64}@[^@\s]{1,255}\.[a-z]{2,}/i;
+// Storage-key-like: 20+ alphanumeric chars followed by _ or ~ separator (legacy and v2 automerge formats).
+const STORAGE_KEY_LIKE_RE = /^[A-Za-z0-9]{20,}[_~][A-Za-z0-9_~.-]{1,}/;
+
+const isSensitiveValue = (value: string): boolean => {
+  if (PATH_LIKE_RE.test(value)) return true;
+  if (URL_LIKE_RE.test(value)) return true;
+  if (EMAIL_LIKE_RE.test(value)) return true;
+  if (STORAGE_KEY_LIKE_RE.test(value)) return true;
+  return false;
+};
 
 const getMaxStringLength = (diagnosticsMode: DiagnosticsMode): number =>
   diagnosticsMode === 'preview' ? PREVIEW_MAX_STRING_LENGTH : PRODUCTION_MAX_STRING_LENGTH;
@@ -105,7 +121,7 @@ const sanitizeData = (
   const sanitized: TechnicalBreadcrumbData = {};
 
   for (const key of Object.keys(data)) {
-    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+    if (isSensitiveKey(key)) {
       continue;
     }
 
@@ -129,7 +145,7 @@ const sanitizeData = (
 
     if (typeof value === 'string') {
       const safeValue = sanitizeString(value, diagnosticsMode);
-      if (safeValue !== undefined) {
+      if (safeValue !== undefined && !isSensitiveValue(safeValue)) {
         sanitized[key] = safeValue;
       }
       continue;

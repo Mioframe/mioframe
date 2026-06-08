@@ -34,10 +34,13 @@ vi.mock('@entity/localSettings', () => ({
 }));
 
 vi.mock('@shared/lib/diagnostics', () => ({
-  ensureSentry: ensureSentryMock,
   isSentryConfigured: () => sentryConfigured,
   setDiagnosticsRuntimeState: setDiagnosticsRuntimeStateMock,
   getOrCreateSentrySessionId: () => 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+}));
+
+vi.mock('@shared/lib/diagnostics/sentryRuntime', () => ({
+  ensureSentry: ensureSentryMock,
 }));
 
 vi.mock('@shared/service/sentryWorkerSync', () => ({
