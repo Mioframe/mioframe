@@ -6,7 +6,6 @@ import {
   type WebFileSystemProviderOptions,
 } from './WebFileSystemProvider';
 import type { WebFileSystemAccessRequiredDetails } from './WebFileSystemAccessRequiredError';
-import type { WebFileSystemWriteStrategy } from './writeStrategy';
 
 /** Provider instance with an internal access-refresh hook owned below the service boundary. */
 export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
@@ -22,8 +21,6 @@ type DiagnosticStepHandler = (event: WebFileSystemDiagnosticStep) => void;
 /** Mounted provider kind used by the provider-boundary factory mapping. */
 export type MountedWebFileSystemKind = 'browserStorage' | 'localDirectory';
 
-const webFileSystemWriteStrategy: WebFileSystemWriteStrategy = 'directCreateWriteProbe';
-
 const createProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
@@ -34,19 +31,16 @@ const createProvider = (
  * @param rootHandle - Mounted root directory handle.
  * @param onAccessRequired - Service-owned callback that records a pending access request.
  * @param onDiagnosticStep - Optional safe diagnostic milestone callback.
- * @param writeStrategy - Internal diagnostic write-path strategy override.
  * @returns Refreshable provider instance for the selected directory.
  */
 export const createUserSelectedDirectoryProvider = (
   rootHandle: FileSystemDirectoryHandle,
   onAccessRequired: AccessRequiredHandler,
   onDiagnosticStep?: DiagnosticStepHandler,
-  writeStrategy: WebFileSystemWriteStrategy = webFileSystemWriteStrategy,
 ): RefreshableWebFileSystemProvider =>
   createProvider(rootHandle, {
     permissionPolicy: 'userSelectedDirectory',
     onAccessRequired,
-    writeStrategy,
     ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
   });
 
@@ -79,16 +73,10 @@ export const createMountedWebFileSystemProvider = ({
   rootHandle: FileSystemDirectoryHandle;
 }): RefreshableWebFileSystemProvider =>
   kind === 'localDirectory' && onAccessRequired
-    ? createUserSelectedDirectoryProvider(
-        rootHandle,
-        onAccessRequired,
-        onDiagnosticStep,
-        webFileSystemWriteStrategy,
-      )
+    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired, onDiagnosticStep)
     : kind === 'localDirectory'
       ? createProvider(rootHandle, {
           permissionPolicy: 'userSelectedDirectory',
-          writeStrategy: webFileSystemWriteStrategy,
           ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
         })
       : createOriginPrivateStorageProvider(rootHandle);

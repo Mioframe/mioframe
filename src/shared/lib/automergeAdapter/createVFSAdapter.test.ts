@@ -233,7 +233,7 @@ describe('createVFSAdapter – loadRange handles both legacy and v2 files', () =
   });
 });
 
-describe('createVFSAdapter – remove targets only the v2 file', () => {
+describe('createVFSAdapter – remove deletes matching legacy and v2 files', () => {
   it('removes an existing v2 snapshot file', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
@@ -247,7 +247,7 @@ describe('createVFSAdapter – remove targets only the v2 file', () => {
     expect(entries.map(([n]) => n)).not.toContain(v2Name);
   });
 
-  it('is a no-op when only a legacy file exists for the key', async () => {
+  it('removes an existing legacy file for the key', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
@@ -256,22 +256,25 @@ describe('createVFSAdapter – remove targets only the v2 file', () => {
     const adapter = createVFSAdapter(vfs, path);
     await adapter.remove([docId, 'snapshot', HASH_A]);
 
-    // Legacy file must survive.
     const entries = await vfs.readDirectory(path);
-    expect(entries.map(([n]) => n)).toContain(legacyName);
+    expect(entries.map(([n]) => n)).not.toContain(legacyName);
   });
 
-  it('legacy file remains readable after remove targets the same logical key', async () => {
+  it('removes both legacy and v2 files when both exist for the same key', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
     await vfs.writeFile(`${path}/${legacyName}`, DATA_A);
+    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
 
     const adapter = createVFSAdapter(vfs, path);
     await adapter.remove([docId, 'snapshot', HASH_A]);
 
-    const result = await adapter.load([docId, 'snapshot', HASH_A]);
-    expect(result).toEqual(DATA_A);
+    const entries = await vfs.readDirectory(path);
+    const names = entries.map(([n]) => n);
+    expect(names).not.toContain(legacyName);
+    expect(names).not.toContain(v2Name);
   });
 
   it('does not throw when the key is already absent', async () => {
@@ -281,9 +284,25 @@ describe('createVFSAdapter – remove targets only the v2 file', () => {
 
     await expect(adapter.remove([docId, 'snapshot', HASH_A])).resolves.toBeUndefined();
   });
+
+  it('leaves unrelated files untouched', async () => {
+    const { vfs, path } = await setupVfs();
+    const docA = getDocumentId();
+    const docB = getDocumentId();
+    const v2A = requireV2Name(docA, 'snapshot', HASH_A);
+    const v2B = requireV2Name(docB, 'snapshot', HASH_B);
+    await vfs.writeFile(`${path}/${v2A}`, DATA_A);
+    await vfs.writeFile(`${path}/${v2B}`, DATA_B);
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.remove([docA, 'snapshot', HASH_A]);
+
+    const entries = await vfs.readDirectory(path);
+    expect(entries.map(([n]) => n)).toContain(v2B);
+  });
 });
 
-describe('createVFSAdapter – removeRange targets only v2 files', () => {
+describe('createVFSAdapter – removeRange deletes matching legacy and v2 files', () => {
   it('deletes matching v2 files for the prefix', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
@@ -297,7 +316,7 @@ describe('createVFSAdapter – removeRange targets only v2 files', () => {
     expect(entries.map(([n]) => n)).not.toContain(v2Name);
   });
 
-  it('leaves legacy files untouched', async () => {
+  it('deletes matching legacy files for the prefix', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
@@ -307,30 +326,33 @@ describe('createVFSAdapter – removeRange targets only v2 files', () => {
     await adapter.removeRange([docId]);
 
     const entries = await vfs.readDirectory(path);
-    expect(entries.map(([n]) => n)).toContain(legacyName);
+    expect(entries.map(([n]) => n)).not.toContain(legacyName);
   });
 
-  it('legacy file remains readable after removeRange on the same doc', async () => {
+  it('deletes both legacy and v2 files within the prefix', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
     await vfs.writeFile(`${path}/${legacyName}`, DATA_A);
+    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
 
     const adapter = createVFSAdapter(vfs, path);
     await adapter.removeRange([docId]);
 
-    const chunks = await adapter.loadRange([docId]);
-    expect(chunks).toHaveLength(1);
-    expect(chunks[0]?.data).toEqual(DATA_A);
+    const entries = await vfs.readDirectory(path);
+    const names = entries.map(([n]) => n);
+    expect(names).not.toContain(legacyName);
+    expect(names).not.toContain(v2Name);
   });
 
-  it('deletes only v2 files within the prefix, leaves other docs untouched', async () => {
+  it('leaves unrelated doc files untouched', async () => {
     const { vfs, path } = await setupVfs();
     const docA = getDocumentId();
     const docB = getDocumentId();
-    const v2A = requireV2Name(docA, 'snapshot', HASH_A);
+    const legacyA = `${docA}_snapshot_${HASH_A}.automerge`;
     const v2B = requireV2Name(docB, 'snapshot', HASH_B);
-    await vfs.writeFile(`${path}/${v2A}`, DATA_A);
+    await vfs.writeFile(`${path}/${legacyA}`, DATA_A);
     await vfs.writeFile(`${path}/${v2B}`, DATA_B);
 
     const adapter = createVFSAdapter(vfs, path);
@@ -338,8 +360,24 @@ describe('createVFSAdapter – removeRange targets only v2 files', () => {
 
     const entries = await vfs.readDirectory(path);
     const names = entries.map(([n]) => n);
-    expect(names).not.toContain(v2A);
+    expect(names).not.toContain(legacyA);
     expect(names).toContain(v2B);
+  });
+
+  it('does not create, rename, migrate, or rewrite any file', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
+    await vfs.writeFile(`${path}/${legacyName}`, DATA_A);
+
+    const adapter = createVFSAdapter(vfs, path);
+    const entriesBefore = await vfs.readDirectory(path);
+    await adapter.removeRange([docId]);
+    const entriesAfter = await vfs.readDirectory(path);
+
+    // After removeRange the legacy file is gone, and no new files were created.
+    expect(entriesBefore).toHaveLength(1);
+    expect(entriesAfter).toHaveLength(0);
   });
 });
 

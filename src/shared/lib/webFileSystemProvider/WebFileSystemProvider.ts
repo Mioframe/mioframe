@@ -22,10 +22,6 @@ import type {
   WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
-import {
-  DEFAULT_WEB_FILE_SYSTEM_WRITE_STRATEGY,
-  type WebFileSystemWriteStrategy,
-} from './writeStrategy';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -49,8 +45,6 @@ export interface WebFileSystemProviderOptions {
   ) => WebFileSystemAccessRequiredDetails;
   /** Called with safe write-side milestones for diagnostics. */
   onDiagnosticStep?: (event: WebFileSystemDiagnosticStep) => void;
-  /** Internal diagnostic write-path strategy for user-selected directory writes. */
-  writeStrategy?: WebFileSystemWriteStrategy | undefined;
 }
 
 /**
@@ -62,29 +56,9 @@ export interface WebFileSystemDiagnosticStep {
   /** Coarse project-controlled error class label. */
   errorClass?: string | undefined;
   /** Technical milestone outcome. */
-  result:
-    | 'attempted'
-    | 'completed'
-    | 'directCreateWriteProbe'
-    | 'failed'
-    | 'missing'
-    | 'safeCurrent'
-    | 'started'
-    | 'succeeded';
+  result: 'failed' | 'missing' | 'started' | 'succeeded';
   /** Technical milestone name emitted by the provider. */
   step: string;
-  /** Internal write-path strategy used for the current write attempt. */
-  writeStrategy?: WebFileSystemWriteStrategy | undefined;
-  /** TODO(PR #85): temporary — basename of the real write target file for Android InvalidStateError diagnosis; remove after investigation. */
-  targetFileName?: string | undefined;
-  /** TODO(PR #85): temporary — character length of the real write target basename for Android InvalidStateError diagnosis; remove after investigation. */
-  targetFileNameLength?: number | undefined;
-  /** TODO(PR #85): temporary — basename of the matrix probe file; remove after investigation. */
-  probeFileName?: string | undefined;
-  /** TODO(PR #85): temporary — identifier for the probe case in the filename-matrix; remove after investigation. */
-  probeCase?: string | undefined;
-  /** TODO(PR #85): temporary — character length of the probe file basename; remove after investigation. */
-  probeFileNameLength?: number | undefined;
 }
 
 /**
@@ -97,12 +71,7 @@ export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
 ): IFileSystemProvider & { notifyAccessChanged(): Promise<void> } => {
-  const {
-    onAccessRequired,
-    onDiagnosticStep,
-    permissionPolicy,
-    writeStrategy = DEFAULT_WEB_FILE_SYSTEM_WRITE_STRATEGY,
-  } = options;
+  const { onAccessRequired, onDiagnosticStep, permissionPolicy } = options;
   const events = new EventEmitter();
   let currentRootHandle = rootHandle;
 
@@ -225,59 +194,28 @@ export const WebFileSystemProvider = (
   const writeFileHandleContent = async (
     handle: FileSystemFileHandle,
     content: FileContent,
-    writableOpenOptions: {
-      allowKeepExistingDataFallback?: boolean | undefined;
-      writeStrategy?: WebFileSystemWriteStrategy | undefined;
-    } = {},
+    writableOpenOptions: { allowKeepExistingDataFallback?: boolean | undefined } = {},
   ): Promise<void> => {
     await withWriteAccessRecovery(async () => {
-      reportDiagnosticStep({
-        step: 'writableOpen',
-        result: 'started',
-        ...(writableOpenOptions.writeStrategy !== undefined
-          ? { writeStrategy: writableOpenOptions.writeStrategy }
-          : {}),
-      });
+      reportDiagnosticStep({ step: 'writableOpen', result: 'started' });
       let writable: FileSystemWritableFileStream;
       try {
         writable = await handle.createWritable();
       } catch (error) {
-        reportDiagnosticStep({
-          step: 'writableOpen',
-          result: 'failed',
-          ...(writableOpenOptions.writeStrategy !== undefined
-            ? { writeStrategy: writableOpenOptions.writeStrategy }
-            : {}),
-          ...describeError(error),
-        });
+        reportDiagnosticStep({ step: 'writableOpen', result: 'failed', ...describeError(error) });
         if (
           writableOpenOptions.allowKeepExistingDataFallback === true &&
           error instanceof DOMException &&
           error.name === 'InvalidStateError'
         ) {
-          reportDiagnosticStep({
-            step: 'writableCompatibilityOpen',
-            result: 'started',
-            ...(writableOpenOptions.writeStrategy !== undefined
-              ? { writeStrategy: writableOpenOptions.writeStrategy }
-              : {}),
-          });
+          reportDiagnosticStep({ step: 'writableCompatibilityOpen', result: 'started' });
           try {
             writable = await handle.createWritable({ keepExistingData: true });
-            reportDiagnosticStep({
-              step: 'writableCompatibilityOpen',
-              result: 'succeeded',
-              ...(writableOpenOptions.writeStrategy !== undefined
-                ? { writeStrategy: writableOpenOptions.writeStrategy }
-                : {}),
-            });
+            reportDiagnosticStep({ step: 'writableCompatibilityOpen', result: 'succeeded' });
           } catch (compatibilityError) {
             reportDiagnosticStep({
               step: 'writableCompatibilityOpen',
               result: 'failed',
-              ...(writableOpenOptions.writeStrategy !== undefined
-                ? { writeStrategy: writableOpenOptions.writeStrategy }
-                : {}),
               ...describeError(compatibilityError),
             });
             throw compatibilityError;
@@ -286,13 +224,7 @@ export const WebFileSystemProvider = (
           throw error;
         }
       }
-      reportDiagnosticStep({
-        step: 'writableOpen',
-        result: 'succeeded',
-        ...(writableOpenOptions.writeStrategy !== undefined
-          ? { writeStrategy: writableOpenOptions.writeStrategy }
-          : {}),
-      });
+      reportDiagnosticStep({ step: 'writableOpen', result: 'succeeded' });
       try {
         await writable.write(content);
         await writable.close();
@@ -302,14 +234,7 @@ export const WebFileSystemProvider = (
         } catch {
           // abort is cleanup only; diagnostics must not depend on its result
         }
-        reportDiagnosticStep({
-          step: 'fileWrite',
-          result: 'failed',
-          ...(writableOpenOptions.writeStrategy !== undefined
-            ? { writeStrategy: writableOpenOptions.writeStrategy }
-            : {}),
-          ...describeError(error),
-        });
+        reportDiagnosticStep({ step: 'fileWrite', result: 'failed', ...describeError(error) });
         throw error;
       }
     });
@@ -542,227 +467,41 @@ export const WebFileSystemProvider = (
     const normalizedPath = PathUtils.normalize(path);
     const parentPath = PathUtils.dirname(normalizedPath);
     const fileName = PathUtils.basename(normalizedPath);
-    const selectedWriteStrategy =
-      permissionPolicy === 'userSelectedDirectory'
-        ? writeStrategy
-        : DEFAULT_WEB_FILE_SYSTEM_WRITE_STRATEGY;
-
-    reportDiagnosticStep({
-      step: 'writeStrategySelected',
-      result: selectedWriteStrategy,
-      writeStrategy: selectedWriteStrategy,
-      targetFileName: fileName,
-      targetFileNameLength: fileName.length,
-    });
-
-    // TODO(PR #85): temporary filename-matrix write probe — remove after Android InvalidStateError investigation
-    const runFilenameMatrixProbe = async (parentDir: FileSystemDirectoryHandle): Promise<void> => {
-      const PROBE_CASES = [
-        { probeCase: 'shortTmpBaseline', probeFileName: 'mioframe-write-probe.tmp' },
-        { probeCase: 'shortAutomerge', probeFileName: 'mioframe-write-probe.automerge' },
-        {
-          probeCase: 'longTmp',
-          probeFileName:
-            'mioframe-write-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tmp',
-        },
-        {
-          probeCase: 'longAutomerge',
-          probeFileName:
-            'mioframe-write-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.automerge',
-        },
-        {
-          probeCase: 'automergeLikeSnapshot',
-          probeFileName:
-            'mioframeProbeDocIdForAndroid_snapshot_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.automerge',
-        },
-      ] as const;
-
-      reportDiagnosticStep({
-        step: 'filenameMatrixProbe',
-        result: 'started',
-        writeStrategy: selectedWriteStrategy,
-      });
-
-      for (const { probeCase, probeFileName } of PROBE_CASES) {
-        const probeFileNameLength = probeFileName.length;
-        const probeMeta = {
-          writeStrategy: selectedWriteStrategy,
-          probeCase,
-          probeFileName,
-          probeFileNameLength,
-        };
-
-        reportDiagnosticStep({ step: 'filenameMatrixProbeCase', result: 'started', ...probeMeta });
-
-        let probeFileHandle: FileSystemFileHandle | undefined;
-        try {
-          // eslint-disable-next-line no-await-in-loop -- probe cases are independent; each must complete before the next
-          probeFileHandle = await parentDir.getFileHandle(probeFileName, { create: true });
-
-          let probeWritable: FileSystemWritableFileStream | undefined;
-          try {
-            reportDiagnosticStep({
-              step: 'filenameMatrixProbeWritableOpen',
-              result: 'started',
-              ...probeMeta,
-            });
-            // eslint-disable-next-line no-await-in-loop -- sequential per probe case
-            probeWritable = await probeFileHandle.createWritable();
-            reportDiagnosticStep({
-              step: 'filenameMatrixProbeWritableOpen',
-              result: 'succeeded',
-              ...probeMeta,
-            });
-            // eslint-disable-next-line no-await-in-loop -- sequential per probe case
-            await probeWritable.write('ok');
-            reportDiagnosticStep({
-              step: 'filenameMatrixProbeWrite',
-              result: 'succeeded',
-              ...probeMeta,
-            });
-            // eslint-disable-next-line no-await-in-loop -- sequential per probe case
-            await probeWritable.close();
-            probeWritable = undefined;
-            reportDiagnosticStep({
-              step: 'filenameMatrixProbeClose',
-              result: 'succeeded',
-              ...probeMeta,
-            });
-          } catch (writableError) {
-            if (probeWritable === undefined) {
-              reportDiagnosticStep({
-                step: 'filenameMatrixProbeWritableOpen',
-                result: 'failed',
-                ...probeMeta,
-                ...describeError(writableError),
-              });
-            } else {
-              try {
-                // eslint-disable-next-line no-await-in-loop -- cleanup only
-                await probeWritable.abort();
-              } catch {
-                // abort is cleanup only
-              }
-            }
-            throw writableError;
-          }
-
-          reportDiagnosticStep({
-            step: 'filenameMatrixProbeCase',
-            result: 'succeeded',
-            ...probeMeta,
-          });
-        } catch (caseError) {
-          reportDiagnosticStep({
-            step: 'filenameMatrixProbeCase',
-            result: 'failed',
-            ...probeMeta,
-            ...describeError(caseError),
-          });
-        }
-
-        if (probeFileHandle !== undefined) {
-          reportDiagnosticStep({
-            step: 'filenameMatrixProbeCleanup',
-            result: 'started',
-            ...probeMeta,
-          });
-          try {
-            // eslint-disable-next-line no-await-in-loop -- cleanup per probe case
-            await parentDir.removeEntry(probeFileName, { recursive: false });
-            reportDiagnosticStep({
-              step: 'filenameMatrixProbeCleanup',
-              result: 'succeeded',
-              ...probeMeta,
-            });
-          } catch (cleanupError) {
-            reportDiagnosticStep({
-              step: 'filenameMatrixProbeCleanup',
-              result: 'failed',
-              ...probeMeta,
-              ...describeError(cleanupError),
-            });
-          }
-        }
-      }
-
-      reportDiagnosticStep({
-        step: 'filenameMatrixProbe',
-        result: 'completed',
-        writeStrategy: selectedWriteStrategy,
-      });
-    };
 
     const cleanupCreatedFile = async (
       parentDir: FileSystemDirectoryHandle,
       name: string,
     ): Promise<void> => {
-      reportDiagnosticStep({
-        step: 'createdFileCleanup',
-        result: 'started',
-        writeStrategy: selectedWriteStrategy,
-        targetFileName: name,
-        targetFileNameLength: name.length,
-      });
+      reportDiagnosticStep({ step: 'createdFileCleanup', result: 'started' });
       try {
         await withWriteAccessRecovery(() => parentDir.removeEntry(name, { recursive: false }));
-        reportDiagnosticStep({
-          step: 'createdFileCleanup',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: name,
-          targetFileNameLength: name.length,
-        });
+        reportDiagnosticStep({ step: 'createdFileCleanup', result: 'succeeded' });
       } catch (error) {
         reportDiagnosticStep({
           step: 'createdFileCleanup',
           result: 'failed',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: name,
-          targetFileNameLength: name.length,
           ...describeError(error),
         });
       }
     };
 
     const resolveParentDirectory = async (): Promise<FileSystemDirectoryHandle> => {
-      reportDiagnosticStep({
-        step: 'parentDirectoryLookup',
-        result: 'started',
-        writeStrategy: selectedWriteStrategy,
-      });
       const parentDir = await withWriteAccessRecovery(() =>
         getHandle(parentPath, false, 'directory'),
       );
-      reportDiagnosticStep({
-        step: 'parentDirectoryLookup',
-        result: 'succeeded',
-        writeStrategy: selectedWriteStrategy,
-      });
+      reportDiagnosticStep({ step: 'parentDirectoryLookup', result: 'succeeded' });
       return parentDir;
     };
 
     const lookupExistingFileHandle = async (
       parentDir: FileSystemDirectoryHandle,
     ): Promise<{ existedBeforeAttempt: boolean; handle?: FileSystemFileHandle | undefined }> => {
-      reportDiagnosticStep({
-        step: 'fileLookup',
-        result: 'started',
-        writeStrategy: selectedWriteStrategy,
-        targetFileName: fileName,
-        targetFileNameLength: fileName.length,
-      });
+      reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
       try {
         const existingHandle = await withWriteAccessRecovery(() =>
           parentDir.getFileHandle(fileName, { create: false }),
         );
-        reportDiagnosticStep({
-          step: 'fileLookup',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-        });
+        reportDiagnosticStep({ step: 'fileLookup', result: 'succeeded' });
         return {
           existedBeforeAttempt: true,
           handle: existingHandle,
@@ -772,106 +511,10 @@ export const WebFileSystemProvider = (
           throw lookupError;
         }
 
-        reportDiagnosticStep({
-          step: 'fileLookup',
-          result: 'missing',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-        });
+        reportDiagnosticStep({ step: 'fileLookup', result: 'missing' });
         return {
           existedBeforeAttempt: false,
         };
-      }
-    };
-
-    const writeFileHandleContentDirectProbe = async (
-      handle: FileSystemFileHandle,
-      parentDir: FileSystemDirectoryHandle,
-      createdNewFile: boolean,
-    ): Promise<void> => {
-      reportDiagnosticStep({
-        step: 'directCreateWrite',
-        result: 'started',
-        writeStrategy: selectedWriteStrategy,
-        targetFileName: fileName,
-        targetFileNameLength: fileName.length,
-      });
-      let writable: FileSystemWritableFileStream;
-      let closedSuccessfully = false;
-      try {
-        reportDiagnosticStep({
-          step: 'directCreateWriteWritableOpen',
-          result: 'started',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-        });
-        writable = await withWriteAccessRecovery(() => handle.createWritable());
-        reportDiagnosticStep({
-          step: 'directCreateWriteWritableOpen',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-        });
-      } catch (error) {
-        reportDiagnosticStep({
-          step: 'directCreateWriteWritableOpen',
-          result: 'failed',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-          ...describeError(error),
-        });
-        reportDiagnosticStep({
-          step: 'directCreateWrite',
-          result: 'failed',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-          ...describeError(error),
-        });
-        if (error instanceof DOMException && error.name === 'InvalidStateError') {
-          await runFilenameMatrixProbe(parentDir);
-        }
-        if (createdNewFile) {
-          await cleanupCreatedFile(parentDir, fileName);
-        }
-        throw error;
-      }
-
-      try {
-        await withWriteAccessRecovery(async () => {
-          await writable.write(content);
-          await writable.close();
-        });
-        closedSuccessfully = true;
-        reportDiagnosticStep({
-          step: 'directCreateWrite',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-        });
-      } catch (error) {
-        try {
-          await writable.abort();
-        } catch {
-          // abort is cleanup only; diagnostics must not affect provider behavior
-        }
-        reportDiagnosticStep({
-          step: 'directCreateWrite',
-          result: 'failed',
-          writeStrategy: selectedWriteStrategy,
-          targetFileName: fileName,
-          targetFileNameLength: fileName.length,
-          ...describeError(error),
-        });
-        if (createdNewFile && !closedSuccessfully) {
-          await cleanupCreatedFile(parentDir, fileName);
-        }
-        throw error;
       }
     };
 
@@ -886,38 +529,6 @@ export const WebFileSystemProvider = (
       let rollbackCreatedFile = async (): Promise<void> => Promise.resolve();
       let createdNewFile = false;
       try {
-        if (selectedWriteStrategy === 'directCreateWriteProbe') {
-          const parentDir = await resolveParentDirectory();
-          const { existedBeforeAttempt } = await lookupExistingFileHandle(parentDir);
-
-          if (existedBeforeAttempt && !overwrite) {
-            throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
-          }
-
-          if (!existedBeforeAttempt && !create) {
-            throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${fileName}`);
-          }
-
-          createdNewFile = !existedBeforeAttempt;
-          const directHandle = await withWriteAccessRecovery(() =>
-            parentDir.getFileHandle(fileName, { create: true }),
-          );
-          await writeFileHandleContentDirectProbe(directHandle, parentDir, createdNewFile);
-
-          try {
-            const fileStat = await fileHandleStat(directHandle);
-            return {
-              result: { stat: fileStat },
-              status: 'succeeded',
-            };
-          } catch {
-            return {
-              result: { stat: { type: FSNodeType.File } },
-              status: 'succeeded',
-            };
-          }
-        }
-
         let resolvedHandle: FileSystemFileHandle;
         const resolveFreshHandle = async (): Promise<FileSystemFileHandle> => {
           const parentDir = await resolveParentDirectory();
@@ -940,39 +551,22 @@ export const WebFileSystemProvider = (
               throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${fileName}`);
             }
 
-            reportDiagnosticStep({
-              step: 'fileHandleCreate',
-              result: 'started',
-              writeStrategy: selectedWriteStrategy,
-            });
+            reportDiagnosticStep({ step: 'fileHandleCreate', result: 'started' });
             await createFileHandleWithWriteRecovery(parentDir, fileName);
-            reportDiagnosticStep({
-              step: 'fileHandleCreate',
-              result: 'succeeded',
-              writeStrategy: selectedWriteStrategy,
-            });
+            reportDiagnosticStep({ step: 'fileHandleCreate', result: 'succeeded' });
             createdNewFile = true;
             rollbackCreatedFile = () => cleanupCreatedFile(parentDir, fileName);
-            reportDiagnosticStep({
-              step: 'fileHandleLookupAfterCreate',
-              result: 'started',
-              writeStrategy: selectedWriteStrategy,
-            });
+            reportDiagnosticStep({ step: 'fileHandleLookupAfterCreate', result: 'started' });
             try {
               const reopenedHandle = await withWriteAccessRecovery(() =>
                 parentDir.getFileHandle(fileName, { create: false }),
               );
-              reportDiagnosticStep({
-                step: 'fileHandleLookupAfterCreate',
-                result: 'succeeded',
-                writeStrategy: selectedWriteStrategy,
-              });
+              reportDiagnosticStep({ step: 'fileHandleLookupAfterCreate', result: 'succeeded' });
               return reopenedHandle;
             } catch (relookupError) {
               reportDiagnosticStep({
                 step: 'fileHandleLookupAfterCreate',
                 result: 'failed',
-                writeStrategy: selectedWriteStrategy,
                 ...describeError(relookupError),
               });
               throw relookupError;
@@ -984,19 +578,9 @@ export const WebFileSystemProvider = (
           resolvedHandle = await resolveFreshHandle();
         } else {
           try {
-            reportDiagnosticStep({
-              step: 'fileLookup',
-              result: 'started',
-              writeStrategy: selectedWriteStrategy,
-              targetFileName: fileName,
-            });
+            reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
             resolvedHandle = await getHandle(path, false, 'file');
-            reportDiagnosticStep({
-              step: 'fileLookup',
-              result: 'succeeded',
-              writeStrategy: selectedWriteStrategy,
-              targetFileName: fileName,
-            });
+            reportDiagnosticStep({ step: 'fileLookup', result: 'succeeded' });
             if (!overwrite) {
               throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
             }
@@ -1014,7 +598,6 @@ export const WebFileSystemProvider = (
 
         await writeFileHandleContent(resolvedHandle, content, {
           allowKeepExistingDataFallback: createdNewFile,
-          writeStrategy: selectedWriteStrategy,
         });
         rollbackCreatedFile = async (): Promise<void> => Promise.resolve();
 
@@ -1034,10 +617,7 @@ export const WebFileSystemProvider = (
         await rollbackCreatedFile();
         return {
           error,
-          retryWithFreshHandle:
-            selectedWriteStrategy === 'safeCurrent' &&
-            error instanceof DOMException &&
-            error.name === 'InvalidStateError',
+          retryWithFreshHandle: error instanceof DOMException && error.name === 'InvalidStateError',
           status: 'failed',
         };
       }
@@ -1052,27 +632,18 @@ export const WebFileSystemProvider = (
     const { error } = attemptResult;
 
     if (attemptResult.retryWithFreshHandle) {
-      reportDiagnosticStep({
-        step: 'freshHandleRetry',
-        result: 'started',
-        writeStrategy: selectedWriteStrategy,
-      });
+      reportDiagnosticStep({ step: 'freshHandleRetry', result: 'started' });
 
       const retryResult = await runWriteAttempt({ forceFreshHandle: true });
 
       if (retryResult.status === 'succeeded') {
-        reportDiagnosticStep({
-          step: 'freshHandleRetry',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-        });
+        reportDiagnosticStep({ step: 'freshHandleRetry', result: 'succeeded' });
         return retryResult.result;
       }
 
       reportDiagnosticStep({
         step: 'freshHandleRetry',
         result: 'failed',
-        writeStrategy: selectedWriteStrategy,
         ...describeError(retryResult.error),
       });
       throw retryResult.error;

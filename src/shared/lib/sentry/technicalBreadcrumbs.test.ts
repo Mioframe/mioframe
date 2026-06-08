@@ -73,9 +73,8 @@ describe('technicalBreadcrumbs', () => {
         makeBreadcrumb({
           category: 'webFileSystem.write',
           data: {
-            operation: 'directCreateWrite',
+            operation: 'writeFile',
             provider: 'webFileSystem',
-            writeStrategy: 'directCreateWriteProbe',
             path: '/secret',
             filename: 'doc.amrg',
             documentId: 'doc-123',
@@ -83,21 +82,20 @@ describe('technicalBreadcrumbs', () => {
             bytes: '100',
             pendingCount: 2,
           },
-          message: 'direct create write failed',
+          message: 'file write failed',
         }),
       ),
     ).toEqual({
       category: 'webFileSystem.write',
       data: {
-        operation: 'directCreateWrite',
+        operation: 'writeFile',
         provider: 'webFileSystem',
-        writeStrategy: 'directCreateWriteProbe',
         filename: 'doc.amrg',
         bytes: '100',
         pendingCount: 2,
       },
       level: 'info',
-      message: 'direct create write failed',
+      message: 'file write failed',
     });
   });
 
@@ -214,100 +212,6 @@ describe('technicalBreadcrumbs', () => {
     expect(beforeBreadcrumb(makeBreadcrumb())).toBeNull();
   });
 
-  it('beforeBreadcrumb passes targetFileName and probeFileName through for write breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'directCreateWriteWritableOpen',
-            provider: 'webFileSystem',
-            writeStrategy: 'directCreateWriteProbe',
-            targetFileName: 'abc123.automerge',
-          },
-          message: 'direct create write writable open failed',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'directCreateWriteWritableOpen',
-        provider: 'webFileSystem',
-        writeStrategy: 'directCreateWriteProbe',
-        targetFileName: 'abc123.automerge',
-      },
-      level: 'info',
-      message: 'direct create write writable open failed',
-    });
-  });
-
-  it('beforeBreadcrumb passes long Automerge-like targetFileName (>80 chars) through without truncation', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-    // Realistic Automerge filename: {27-char-docId}_incremental_{64-char-hex-hash}.automerge (~114 chars)
-    const longFileName =
-      'vBfbhfCLoCspTDKPmaXkbk3Z7GH_incremental_4a8b2c9d3e1f7a5b0c2d4e6f8a1b3c5d7e9f1a2b3c4d5e6f7a8b9c0d.automerge';
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'directCreateWriteWritableOpen',
-            provider: 'webFileSystem',
-            writeStrategy: 'directCreateWriteProbe',
-            targetFileName: longFileName,
-            targetFileNameLength: longFileName.length,
-          },
-          message: 'direct create write writable open failed',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'directCreateWriteWritableOpen',
-        provider: 'webFileSystem',
-        writeStrategy: 'directCreateWriteProbe',
-        targetFileName: longFileName,
-        targetFileNameLength: longFileName.length,
-      },
-      level: 'info',
-      message: 'direct create write writable open failed',
-    });
-  });
-
-  it('beforeBreadcrumb passes targetFileNameLength through as a number', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'directCreateWriteWritableOpen',
-            provider: 'webFileSystem',
-            writeStrategy: 'directCreateWriteProbe',
-            targetFileName: 'abc123.automerge',
-            targetFileNameLength: 16,
-          },
-          message: 'direct create write writable open failed',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'directCreateWriteWritableOpen',
-        provider: 'webFileSystem',
-        writeStrategy: 'directCreateWriteProbe',
-        targetFileName: 'abc123.automerge',
-        targetFileNameLength: 16,
-      },
-      level: 'info',
-      message: 'direct create write writable open failed',
-    });
-  });
-
   it('beforeBreadcrumb still applies the standard 80-char limit to non-filename fields', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
     const longOperation = 'a'.repeat(81);
@@ -333,35 +237,6 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  it('beforeBreadcrumb passes probeFileName through for ASCII probe write breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'asciiWriteProbe',
-            provider: 'webFileSystem',
-            writeStrategy: 'directCreateWriteProbe',
-            probeFileName: 'mioframe-write-probe.tmp',
-          },
-          message: 'asciiWriteProbe succeeded',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbe',
-        provider: 'webFileSystem',
-        writeStrategy: 'directCreateWriteProbe',
-        probeFileName: 'mioframe-write-probe.tmp',
-      },
-      level: 'info',
-      message: 'asciiWriteProbe succeeded',
-    });
-  });
-
   it('beforeBreadcrumb still strips full paths and directory names even when basename fields are present', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
@@ -370,25 +245,25 @@ describe('technicalBreadcrumbs', () => {
         makeBreadcrumb({
           category: 'webFileSystem.write',
           data: {
-            operation: 'directCreateWrite',
+            operation: 'writeFile',
             provider: 'webFileSystem',
-            targetFileName: 'abc123.automerge',
+            someFileName: 'abc123.automerge',
             path: '/user-dir/abc123.automerge',
             directoryName: 'my-repository',
             documentTitle: 'Secret Doc',
           },
-          message: 'direct create write failed',
+          message: 'file write failed',
         }),
       ),
     ).toEqual({
       category: 'webFileSystem.write',
       data: {
-        operation: 'directCreateWrite',
+        operation: 'writeFile',
         provider: 'webFileSystem',
-        targetFileName: 'abc123.automerge',
+        someFileName: 'abc123.automerge',
       },
       level: 'info',
-      message: 'direct create write failed',
+      message: 'file write failed',
     });
   });
 
@@ -577,45 +452,6 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  // PR #85 matrix fields
-
-  it('probeCase and probeFileNameLength survive without per-field registration', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'filenameMatrixProbeCase',
-            provider: 'webFileSystem',
-            writeStrategy: 'directCreateWriteProbe',
-            probeCase: 'shortTmpBaseline',
-            probeFileName: 'mioframe-write-probe.tmp',
-            probeFileNameLength: 23,
-            targetFileName: 'abc123.automerge',
-            targetFileNameLength: 16,
-          },
-          message: 'filenameMatrixProbeCase started',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'filenameMatrixProbeCase',
-        provider: 'webFileSystem',
-        writeStrategy: 'directCreateWriteProbe',
-        probeCase: 'shortTmpBaseline',
-        probeFileName: 'mioframe-write-probe.tmp',
-        probeFileNameLength: 23,
-        targetFileName: 'abc123.automerge',
-        targetFileNameLength: 16,
-      },
-      level: 'info',
-      message: 'filenameMatrixProbeCase started',
-    });
-  });
-
   // Basename safety for filename-like fields
 
   it('filename-like key containing / is dropped', () => {
@@ -626,21 +462,21 @@ describe('technicalBreadcrumbs', () => {
         makeBreadcrumb({
           category: 'webFileSystem.write',
           data: {
-            operation: 'directCreateWrite',
+            operation: 'writeFile',
             provider: 'webFileSystem',
-            targetFileName: '/user-dir/abc123.automerge',
+            someFileName: '/user-dir/abc123.automerge',
           },
-          message: 'direct create write failed',
+          message: 'file write failed',
         }),
       ),
     ).toEqual({
       category: 'webFileSystem.write',
       data: {
-        operation: 'directCreateWrite',
+        operation: 'writeFile',
         provider: 'webFileSystem',
       },
       level: 'info',
-      message: 'direct create write failed',
+      message: 'file write failed',
     });
   });
 
@@ -652,21 +488,21 @@ describe('technicalBreadcrumbs', () => {
         makeBreadcrumb({
           category: 'webFileSystem.write',
           data: {
-            operation: 'directCreateWrite',
+            operation: 'writeFile',
             provider: 'webFileSystem',
-            targetFileName: 'folder\\abc123.automerge',
+            someFileName: 'folder\\abc123.automerge',
           },
-          message: 'direct create write failed',
+          message: 'file write failed',
         }),
       ),
     ).toEqual({
       category: 'webFileSystem.write',
       data: {
-        operation: 'directCreateWrite',
+        operation: 'writeFile',
         provider: 'webFileSystem',
       },
       level: 'info',
-      message: 'direct create write failed',
+      message: 'file write failed',
     });
   });
 
@@ -678,21 +514,21 @@ describe('technicalBreadcrumbs', () => {
         makeBreadcrumb({
           category: 'webFileSystem.write',
           data: {
-            operation: 'directCreateWrite',
+            operation: 'writeFile',
             provider: 'webFileSystem',
-            targetFileName: '../../etc/passwd',
+            someFileName: '../../etc/passwd',
           },
-          message: 'direct create write failed',
+          message: 'file write failed',
         }),
       ),
     ).toEqual({
       category: 'webFileSystem.write',
       data: {
-        operation: 'directCreateWrite',
+        operation: 'writeFile',
         provider: 'webFileSystem',
       },
       level: 'info',
-      message: 'direct create write failed',
+      message: 'file write failed',
     });
   });
 
@@ -707,22 +543,22 @@ describe('technicalBreadcrumbs', () => {
         makeBreadcrumb({
           category: 'webFileSystem.write',
           data: {
-            operation: 'directCreateWriteWritableOpen',
+            operation: 'writableOpen',
             provider: 'webFileSystem',
-            probeFileName: longFileName,
+            someFileName: longFileName,
           },
-          message: 'direct create write writable open started',
+          message: 'writable open started',
         }),
       ),
     ).toEqual({
       category: 'webFileSystem.write',
       data: {
-        operation: 'directCreateWriteWritableOpen',
+        operation: 'writableOpen',
         provider: 'webFileSystem',
-        probeFileName: longFileName,
+        someFileName: longFileName,
       },
       level: 'info',
-      message: 'direct create write writable open started',
+      message: 'writable open started',
     });
   });
 });

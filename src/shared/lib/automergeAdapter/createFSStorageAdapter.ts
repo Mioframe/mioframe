@@ -9,7 +9,6 @@ import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { isNil } from 'es-toolkit';
 import type { AMChunk, AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
-import { encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
 import {
   selectReadableStorageEntries,
@@ -91,25 +90,19 @@ export const createFSStorageAdapter = (
   };
 
   const remove = async (key: StorageKey) => {
-    const [part0, part1, part2] = key;
+    for await (const [rawName, entry] of directory.entries()) {
+      if (!('read' in entry)) continue;
 
-    if (part1 && part2) {
-      // Full chunk key: delete only the v2 file; legacy files are read-only compatibility.
-      const v2FileName = encodeStorageKeyToV2FileName(part0, part1, part2);
+      const name = toString(rawName);
+      const entryKey = fileNameToPartialKey(name);
 
-      if (v2FileName) {
-        await directory.removeByName?.(v2FileName);
+      if (entryKey && storageKeyEquals(entryKey, key)) {
+        if (entry.remove) {
+          await entry.remove();
+        } else {
+          await directory.removeByName?.(name);
+        }
       }
-
-      return;
-    }
-
-    // Non-chunk key (e.g. 'storage-adapter-id'): delete by lookup.
-    const allEntries = await listDeduplicatedEntries();
-    const matched = [...allEntries.values()].find((entry) => storageKeyEquals(entry.key, key));
-
-    if (matched?.entry.remove) {
-      await matched.entry.remove();
     }
   };
 
@@ -136,18 +129,18 @@ export const createFSStorageAdapter = (
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    // Only v2 files are deleted; legacy files are read-only compatibility.
     for await (const [rawName, entry] of directory.entries()) {
       if (!('read' in entry)) continue;
 
       const name = toString(rawName);
-
-      if (!isV2FileName(name)) continue;
-
       const key = fileNameToPartialKey(name);
 
       if (key && storageKeyStartsWith(key, keyPrefix)) {
-        await directory.removeByName?.(name);
+        if (entry.remove) {
+          await entry.remove();
+        } else {
+          await directory.removeByName?.(name);
+        }
       }
     }
   };

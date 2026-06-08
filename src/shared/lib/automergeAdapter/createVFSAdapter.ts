@@ -4,7 +4,6 @@ import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
-import { encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
 import {
   selectReadableStorageEntries,
   storageKeyEquals,
@@ -68,60 +67,38 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   };
 
   const remove = async (key: StorageKey) => {
-    const [part0, part1, part2] = key;
-
-    if (part1 && part2) {
-      // Full chunk key: delete only the v2 file; legacy files are read-only compatibility.
-      const v2FileName = encodeStorageKeyToV2FileName(part0, part1, part2);
-
-      if (!v2FileName) return;
-
-      try {
-        await vfs.delete(PathUtils.join(path, v2FileName));
-      } catch (error) {
-        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-          return;
-        }
-
-        throw error;
-      }
-
-      return;
-    }
-
-    // Non-chunk key (e.g. 'storage-adapter-id'): delete by lookup.
-    const allEntries = await listDeduplicatedEntries();
-    const matched = [...allEntries.values()].find((entry) => storageKeyEquals(entry.key, key));
-
-    if (!matched) {
-      return;
-    }
-
-    try {
-      await vfs.delete(PathUtils.join(path, matched.name));
-    } catch (error) {
-      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-        return;
-      }
-
-      throw error;
-    }
-  };
-
-  const removeRange = async (keyPrefix: PartialStorageKey) => {
-    // Only v2 files are deleted; legacy files are read-only compatibility.
     const directoryContent = await vfs.readDirectory(path);
 
     await Promise.allSettled(
-      directoryContent
-        .filter(([name]) => isV2FileName(name))
-        .map(async ([name]) => {
-          const key = fileNameToPartialKey(name);
+      directoryContent.map(async ([name]) => {
+        const entryKey = fileNameToPartialKey(name);
 
-          if (key && storageKeyStartsWith(key, keyPrefix)) {
+        if (entryKey && storageKeyEquals(entryKey, key)) {
+          try {
             await vfs.delete(PathUtils.join(path, name));
+          } catch (error) {
+            if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+              return;
+            }
+
+            throw error;
           }
-        }),
+        }
+      }),
+    );
+  };
+
+  const removeRange = async (keyPrefix: PartialStorageKey) => {
+    const directoryContent = await vfs.readDirectory(path);
+
+    await Promise.allSettled(
+      directoryContent.map(async ([name]) => {
+        const key = fileNameToPartialKey(name);
+
+        if (key && storageKeyStartsWith(key, keyPrefix)) {
+          await vfs.delete(PathUtils.join(path, name));
+        }
+      }),
     );
   };
 

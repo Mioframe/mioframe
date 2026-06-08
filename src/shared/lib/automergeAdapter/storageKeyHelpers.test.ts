@@ -86,7 +86,7 @@ describe('selectReadableStorageEntries', () => {
   });
 
   it('skips unrecognised filenames', () => {
-    const entries = selectReadableStorageEntries(['random.txt', 'mioframe-probe.automerge']);
+    const entries = selectReadableStorageEntries(['random.txt', 'not-a-valid-key.automerge']);
     expect(entries.size).toBe(0);
   });
 
