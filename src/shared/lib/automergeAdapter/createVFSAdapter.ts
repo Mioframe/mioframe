@@ -4,42 +4,13 @@ import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
-import { partialKeyToFileName } from './partialKeyToFileName';
 import { encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
-
-const keysEqual = (a: PartialStorageKey, b: PartialStorageKey): boolean => {
-  if (a.length !== b.length) return false;
-
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-
-  return true;
-};
-
-const keyStartsWith = (key: PartialStorageKey, prefix: PartialStorageKey): boolean => {
-  if (key.length < prefix.length) return false;
-
-  for (let i = 0; i < prefix.length; i++) {
-    if (key[i] !== prefix[i]) return false;
-  }
-
-  return true;
-};
-
-const toV2FileName = (key: StorageKey): string | undefined => {
-  const [part0, part1, part2] = key;
-
-  if (part1 && part2) {
-    const v2 = encodeStorageKeyToV2FileName(part0, part1, part2);
-
-    if (v2) {
-      return v2;
-    }
-  }
-
-  return partialKeyToFileName(key);
-};
+import {
+  selectReadableStorageEntries,
+  storageKeyEquals,
+  storageKeyStartsWith,
+  toWritableStorageFileName,
+} from './storageKeyHelpers';
 
 /**
  * Creates an Automerge storage adapter backed by a VirtualFileSystem path.
@@ -50,48 +21,35 @@ const toV2FileName = (key: StorageKey): string | undefined => {
  */
 export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageAdapterInterface => {
   const listDeduplicatedEntries = async (): Promise<
-    Map<string, { fileName: string; key: PartialStorageKey; isV2: boolean }>
+    Map<string, { name: string; key: PartialStorageKey; isV2: boolean }>
   > => {
     const directoryContent = await vfs.readDirectory(path);
-    const seen = new Map<string, { fileName: string; key: PartialStorageKey; isV2: boolean }>();
 
-    for (const [fileName] of directoryContent) {
-      const key = fileNameToPartialKey(fileName);
-
-      if (!key) continue;
-
-      const keyStr = key.join('\x00');
-      const isV2 = isV2FileName(fileName);
-      const existing = seen.get(keyStr);
-
-      if (!existing || (!existing.isV2 && isV2)) {
-        seen.set(keyStr, { fileName, key, isV2 });
-      }
-    }
-
-    return seen;
+    return selectReadableStorageEntries(directoryContent.map(([name]) => name));
   };
 
   const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
     const allEntries = await listDeduplicatedEntries();
-    const matched = [...allEntries.values()].find((entry) => keysEqual(entry.key, key));
+    const matched = [...allEntries.values()].find((entry) => storageKeyEquals(entry.key, key));
 
     if (!matched) {
       return undefined;
     }
 
-    const file = await vfs.readFile(PathUtils.join(path, matched.fileName));
+    const file = await vfs.readFile(PathUtils.join(path, matched.name));
 
     return new Uint8Array(await file.arrayBuffer());
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
     const allEntries = await listDeduplicatedEntries();
-    const matched = [...allEntries.values()].filter((entry) => keyStartsWith(entry.key, keyPrefix));
+    const matched = [...allEntries.values()].filter((entry) =>
+      storageKeyStartsWith(entry.key, keyPrefix),
+    );
 
     const chunkList = await Promise.allSettled(
-      matched.map(async ({ fileName, key }): Promise<AMChunk | undefined> => {
-        const file = await vfs.readFile(PathUtils.join(path, fileName));
+      matched.map(async ({ name, key }): Promise<AMChunk | undefined> => {
+        const file = await vfs.readFile(PathUtils.join(path, name));
 
         return {
           key,
@@ -110,15 +68,37 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   };
 
   const remove = async (key: StorageKey) => {
+    const [part0, part1, part2] = key;
+
+    if (part1 && part2) {
+      // Full chunk key: delete only the v2 file; legacy files are read-only compatibility.
+      const v2FileName = encodeStorageKeyToV2FileName(part0, part1, part2);
+
+      if (!v2FileName) return;
+
+      try {
+        await vfs.delete(PathUtils.join(path, v2FileName));
+      } catch (error) {
+        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+          return;
+        }
+
+        throw error;
+      }
+
+      return;
+    }
+
+    // Non-chunk key (e.g. 'storage-adapter-id'): delete by lookup.
     const allEntries = await listDeduplicatedEntries();
-    const matched = [...allEntries.values()].find((entry) => keysEqual(entry.key, key));
+    const matched = [...allEntries.values()].find((entry) => storageKeyEquals(entry.key, key));
 
     if (!matched) {
       return;
     }
 
     try {
-      await vfs.delete(PathUtils.join(path, matched.fileName));
+      await vfs.delete(PathUtils.join(path, matched.name));
     } catch (error) {
       if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
         return;
@@ -129,19 +109,24 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    const allEntries = await listDeduplicatedEntries();
+    // Only v2 files are deleted; legacy files are read-only compatibility.
+    const directoryContent = await vfs.readDirectory(path);
 
     await Promise.allSettled(
-      [...allEntries.values()]
-        .filter((entry) => keyStartsWith(entry.key, keyPrefix))
-        .map(async (entry) => {
-          await vfs.delete(PathUtils.join(path, entry.fileName));
+      directoryContent
+        .filter(([name]) => isV2FileName(name))
+        .map(async ([name]) => {
+          const key = fileNameToPartialKey(name);
+
+          if (key && storageKeyStartsWith(key, keyPrefix)) {
+            await vfs.delete(PathUtils.join(path, name));
+          }
         }),
     );
   };
 
   const save = async (key: StorageKey, data: Uint8Array): Promise<void> => {
-    const fileName = toV2FileName(key);
+    const fileName = toWritableStorageFileName(key);
 
     if (!fileName) {
       throw new Error('fileName is undefined');

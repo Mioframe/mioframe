@@ -30,3 +30,9 @@ export {
   V2_FILE_EXTENSION,
   V2_SEPARATOR,
 } from './filenameCodecV2';
+export {
+  storageKeyEquals,
+  storageKeyStartsWith,
+  toWritableStorageFileName,
+  selectReadableStorageEntries,
+} from './storageKeyHelpers';
