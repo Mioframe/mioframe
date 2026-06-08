@@ -64,6 +64,7 @@ export interface WebFileSystemDiagnosticStep {
   /** Technical milestone outcome. */
   result:
     | 'attempted'
+    | 'completed'
     | 'directCreateWriteProbe'
     | 'failed'
     | 'missing'
@@ -78,8 +79,12 @@ export interface WebFileSystemDiagnosticStep {
   targetFileName?: string | undefined;
   /** TODO(PR #85): temporary — character length of the real write target basename for Android InvalidStateError diagnosis; remove after investigation. */
   targetFileNameLength?: number | undefined;
-  /** TODO(PR #85): temporary — basename of the ASCII probe file for Android InvalidStateError diagnosis; remove after investigation. */
+  /** TODO(PR #85): temporary — basename of the matrix probe file; remove after investigation. */
   probeFileName?: string | undefined;
+  /** TODO(PR #85): temporary — identifier for the probe case in the filename-matrix; remove after investigation. */
+  probeCase?: string | undefined;
+  /** TODO(PR #85): temporary — character length of the probe file basename; remove after investigation. */
+  probeFileNameLength?: number | undefined;
 }
 
 /**
@@ -550,112 +555,142 @@ export const WebFileSystemProvider = (
       targetFileNameLength: fileName.length,
     });
 
-    // TODO(PR #85): temporary ASCII write probe - remove after Android InvalidStateError investigation
-    const runAsciiWriteProbe = async (parentDir: FileSystemDirectoryHandle): Promise<void> => {
-      const PROBE_FILENAME = 'mioframe-write-probe.tmp';
+    // TODO(PR #85): temporary filename-matrix write probe — remove after Android InvalidStateError investigation
+    const runFilenameMatrixProbe = async (parentDir: FileSystemDirectoryHandle): Promise<void> => {
+      const PROBE_CASES = [
+        { probeCase: 'shortTmpBaseline', probeFileName: 'mioframe-write-probe.tmp' },
+        { probeCase: 'shortAutomerge', probeFileName: 'mioframe-write-probe.automerge' },
+        {
+          probeCase: 'longTmp',
+          probeFileName:
+            'mioframe-write-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tmp',
+        },
+        {
+          probeCase: 'longAutomerge',
+          probeFileName:
+            'mioframe-write-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.automerge',
+        },
+        {
+          probeCase: 'automergeLikeSnapshot',
+          probeFileName:
+            'mioframeProbeDocIdForAndroid_snapshot_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.automerge',
+        },
+      ] as const;
+
       reportDiagnosticStep({
-        step: 'asciiWriteProbe',
+        step: 'filenameMatrixProbe',
         result: 'started',
         writeStrategy: selectedWriteStrategy,
-        probeFileName: PROBE_FILENAME,
       });
 
-      let probeFileHandle: FileSystemFileHandle | undefined;
-      try {
-        probeFileHandle = await parentDir.getFileHandle(PROBE_FILENAME, { create: true });
-      } catch (createError) {
-        reportDiagnosticStep({
-          step: 'asciiWriteProbe',
-          result: 'failed',
+      for (const { probeCase, probeFileName } of PROBE_CASES) {
+        const probeFileNameLength = probeFileName.length;
+        const probeMeta = {
           writeStrategy: selectedWriteStrategy,
-          probeFileName: PROBE_FILENAME,
-          ...describeError(createError),
-        });
-        return;
-      }
+          probeCase,
+          probeFileName,
+          probeFileNameLength,
+        };
 
-      let probeWritable: FileSystemWritableFileStream | undefined;
-      try {
-        reportDiagnosticStep({
-          step: 'asciiWriteProbeWritableOpen',
-          result: 'started',
-          writeStrategy: selectedWriteStrategy,
-          probeFileName: PROBE_FILENAME,
-        });
-        probeWritable = await probeFileHandle.createWritable();
-        reportDiagnosticStep({
-          step: 'asciiWriteProbeWritableOpen',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-          probeFileName: PROBE_FILENAME,
-        });
-        await probeWritable.write('ok');
-        reportDiagnosticStep({
-          step: 'asciiWriteProbeWrite',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-        });
-        await probeWritable.close();
-        probeWritable = undefined;
-        reportDiagnosticStep({
-          step: 'asciiWriteProbeClose',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-        });
-        reportDiagnosticStep({
-          step: 'asciiWriteProbe',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-          probeFileName: PROBE_FILENAME,
-        });
-      } catch (probeError) {
-        if (probeWritable === undefined) {
-          reportDiagnosticStep({
-            step: 'asciiWriteProbeWritableOpen',
-            result: 'failed',
-            writeStrategy: selectedWriteStrategy,
-            probeFileName: PROBE_FILENAME,
-            ...describeError(probeError),
-          });
-        } else {
+        reportDiagnosticStep({ step: 'filenameMatrixProbeCase', result: 'started', ...probeMeta });
+
+        let probeFileHandle: FileSystemFileHandle | undefined;
+        try {
+          // eslint-disable-next-line no-await-in-loop -- probe cases are independent; each must complete before the next
+          probeFileHandle = await parentDir.getFileHandle(probeFileName, { create: true });
+
+          let probeWritable: FileSystemWritableFileStream | undefined;
           try {
-            await probeWritable.abort();
-          } catch {
-            // abort is cleanup only
+            reportDiagnosticStep({
+              step: 'filenameMatrixProbeWritableOpen',
+              result: 'started',
+              ...probeMeta,
+            });
+            // eslint-disable-next-line no-await-in-loop -- sequential per probe case
+            probeWritable = await probeFileHandle.createWritable();
+            reportDiagnosticStep({
+              step: 'filenameMatrixProbeWritableOpen',
+              result: 'succeeded',
+              ...probeMeta,
+            });
+            // eslint-disable-next-line no-await-in-loop -- sequential per probe case
+            await probeWritable.write('ok');
+            reportDiagnosticStep({
+              step: 'filenameMatrixProbeWrite',
+              result: 'succeeded',
+              ...probeMeta,
+            });
+            // eslint-disable-next-line no-await-in-loop -- sequential per probe case
+            await probeWritable.close();
+            probeWritable = undefined;
+            reportDiagnosticStep({
+              step: 'filenameMatrixProbeClose',
+              result: 'succeeded',
+              ...probeMeta,
+            });
+          } catch (writableError) {
+            if (probeWritable === undefined) {
+              reportDiagnosticStep({
+                step: 'filenameMatrixProbeWritableOpen',
+                result: 'failed',
+                ...probeMeta,
+                ...describeError(writableError),
+              });
+            } else {
+              try {
+                // eslint-disable-next-line no-await-in-loop -- cleanup only
+                await probeWritable.abort();
+              } catch {
+                // abort is cleanup only
+              }
+            }
+            throw writableError;
+          }
+
+          reportDiagnosticStep({
+            step: 'filenameMatrixProbeCase',
+            result: 'succeeded',
+            ...probeMeta,
+          });
+        } catch (caseError) {
+          reportDiagnosticStep({
+            step: 'filenameMatrixProbeCase',
+            result: 'failed',
+            ...probeMeta,
+            ...describeError(caseError),
+          });
+        }
+
+        if (probeFileHandle !== undefined) {
+          reportDiagnosticStep({
+            step: 'filenameMatrixProbeCleanup',
+            result: 'started',
+            ...probeMeta,
+          });
+          try {
+            // eslint-disable-next-line no-await-in-loop -- cleanup per probe case
+            await parentDir.removeEntry(probeFileName, { recursive: false });
+            reportDiagnosticStep({
+              step: 'filenameMatrixProbeCleanup',
+              result: 'succeeded',
+              ...probeMeta,
+            });
+          } catch (cleanupError) {
+            reportDiagnosticStep({
+              step: 'filenameMatrixProbeCleanup',
+              result: 'failed',
+              ...probeMeta,
+              ...describeError(cleanupError),
+            });
           }
         }
-        reportDiagnosticStep({
-          step: 'asciiWriteProbe',
-          result: 'failed',
-          writeStrategy: selectedWriteStrategy,
-          probeFileName: PROBE_FILENAME,
-          ...describeError(probeError),
-        });
       }
 
       reportDiagnosticStep({
-        step: 'asciiWriteProbeCleanup',
-        result: 'started',
+        step: 'filenameMatrixProbe',
+        result: 'completed',
         writeStrategy: selectedWriteStrategy,
-        probeFileName: PROBE_FILENAME,
       });
-      try {
-        await parentDir.removeEntry(PROBE_FILENAME, { recursive: false });
-        reportDiagnosticStep({
-          step: 'asciiWriteProbeCleanup',
-          result: 'succeeded',
-          writeStrategy: selectedWriteStrategy,
-          probeFileName: PROBE_FILENAME,
-        });
-      } catch (cleanupError) {
-        reportDiagnosticStep({
-          step: 'asciiWriteProbeCleanup',
-          result: 'failed',
-          writeStrategy: selectedWriteStrategy,
-          probeFileName: PROBE_FILENAME,
-          ...describeError(cleanupError),
-        });
-      }
     };
 
     const cleanupCreatedFile = async (
@@ -798,7 +833,7 @@ export const WebFileSystemProvider = (
           ...describeError(error),
         });
         if (error instanceof DOMException && error.name === 'InvalidStateError') {
-          await runAsciiWriteProbe(parentDir);
+          await runFilenameMatrixProbe(parentDir);
         }
         if (createdNewFile) {
           await cleanupCreatedFile(parentDir, fileName);

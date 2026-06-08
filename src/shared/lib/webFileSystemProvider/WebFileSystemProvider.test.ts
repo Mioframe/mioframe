@@ -2064,7 +2064,7 @@ describe('WebFileSystemProvider', () => {
     expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 
-  it('runs the ASCII write probe after InvalidStateError at directCreateWriteWritableOpen', async () => {
+  it('runs the filename-matrix probe after InvalidStateError at directCreateWriteWritableOpen', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
@@ -2094,11 +2094,11 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toThrow(openError);
 
     expect(onDiagnosticStep).toHaveBeenCalledWith(
-      expect.objectContaining({ step: 'asciiWriteProbe', result: 'started' }),
+      expect.objectContaining({ step: 'filenameMatrixProbe', result: 'started' }),
     );
   });
 
-  it('does not run the ASCII write probe on successful directCreateWriteProbe write', async () => {
+  it('does not run the filename-matrix probe on successful directCreateWriteProbe write', async () => {
     const directHandle = createFileHandleMock({
       fileContent: [''],
       name: 'probe.amrg',
@@ -2127,11 +2127,11 @@ describe('WebFileSystemProvider', () => {
     ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
 
     expect(onDiagnosticStep).not.toHaveBeenCalledWith(
-      expect.objectContaining({ step: 'asciiWriteProbe' }),
+      expect.objectContaining({ step: 'filenameMatrixProbe' }),
     );
   });
 
-  it('does not run the ASCII write probe for non-InvalidStateError failures at writable open', async () => {
+  it('does not run the filename-matrix probe for non-InvalidStateError failures at writable open', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
@@ -2161,11 +2161,11 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toThrow(quotaError);
 
     expect(onDiagnosticStep).not.toHaveBeenCalledWith(
-      expect.objectContaining({ step: 'asciiWriteProbe' }),
+      expect.objectContaining({ step: 'filenameMatrixProbe' }),
     );
   });
 
-  it('does not run the ASCII write probe for OPFS (safeCurrent strategy)', async () => {
+  it('does not run the filename-matrix probe for OPFS (originPrivateStorage)', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     fileHandle.createWritable = vi.fn(() =>
       Promise.reject(new DOMException('Invalid state', 'InvalidStateError')),
@@ -2181,11 +2181,11 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toMatchObject({ name: 'InvalidStateError' });
 
     expect(onDiagnosticStep).not.toHaveBeenCalledWith(
-      expect.objectContaining({ step: 'asciiWriteProbe' }),
+      expect.objectContaining({ step: 'filenameMatrixProbe' }),
     );
   });
 
-  it('ASCII write probe uses the same parent directory handle', async () => {
+  it('filename-matrix probe uses the same parent directory handle', async () => {
     const directHandle = createFileHandleMock({
       name: 'data.amrg',
       permissionState: 'granted',
@@ -2221,7 +2221,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('ASCII write probe creates the fixed probe filename and writes the constant payload', async () => {
+  it('filename-matrix probe shortTmpBaseline creates mioframe-write-probe.tmp and writes ok', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
@@ -2241,8 +2241,7 @@ describe('WebFileSystemProvider', () => {
       truncate: vi.fn(() => Promise.resolve(undefined)),
       write: vi.fn(() => Promise.resolve(undefined)),
     } satisfies FileSystemWritableFileStream;
-    const probeCreateWritableMock = vi.fn(() => Promise.resolve(probeWritableMock));
-    probeHandle.createWritable = probeCreateWritableMock;
+    probeHandle.createWritable = vi.fn(() => Promise.resolve(probeWritableMock));
     const rootHandle = createDirectoryHandleMock({
       entries: [],
       name: '',
@@ -2266,31 +2265,23 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
     ).rejects.toThrow(openError);
 
-    expect(probeCreateWritableMock).toHaveBeenCalledTimes(1);
     expect(probeWritableMock.write).toHaveBeenCalledWith('ok');
     expect(probeWritableMock.close).toHaveBeenCalledTimes(1);
   });
 
-  it('ASCII write probe deletes the temporary file after a successful probe write', async () => {
+  it('filename-matrix probe deletes each probe file after successful probe write', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
     });
     const openError = new DOMException('Invalid state', 'InvalidStateError');
     directHandle.createWritable = vi.fn(() => Promise.reject(openError));
-    const probeHandle = createFileHandleMock({
-      name: 'mioframe-write-probe.tmp',
-      permissionState: 'granted',
-    });
     const rootHandle = createDirectoryHandleMock({
       entries: [],
       name: '',
       permissionState: 'granted',
     });
-    rootHandle.getFileHandleMock.mockImplementation((name, options) => {
-      if (name === 'mioframe-write-probe.tmp' && options?.create) {
-        return Promise.resolve(probeHandle);
-      }
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
       if (options?.create) {
         return Promise.resolve(directHandle);
       }
@@ -2310,7 +2301,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('ASCII write probe deletes the temporary file after a probe writable-open failure', async () => {
+  it('filename-matrix probe deletes probe file after a probe writable-open failure', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
@@ -2352,37 +2343,27 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('ASCII write probe cleanup failure does not mask the original Automerge write failure', async () => {
+  it('filename-matrix probe cleanup failure does not mask the original Automerge write failure', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
     });
     const originalError = new DOMException('Invalid state', 'InvalidStateError');
     directHandle.createWritable = vi.fn(() => Promise.reject(originalError));
-    const probeHandle = createFileHandleMock({
-      name: 'mioframe-write-probe.tmp',
-      permissionState: 'granted',
-    });
     const rootHandle = createDirectoryHandleMock({
       entries: [],
       name: '',
       permissionState: 'granted',
     });
-    rootHandle.getFileHandleMock.mockImplementation((name, options) => {
-      if (name === 'mioframe-write-probe.tmp' && options?.create) {
-        return Promise.resolve(probeHandle);
-      }
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
       if (options?.create) {
         return Promise.resolve(directHandle);
       }
       return Promise.reject(new DOMException('Not found', 'NotFoundError'));
     });
-    rootHandle.removeEntryMock.mockImplementation((name) => {
-      if (name === 'mioframe-write-probe.tmp') {
-        return Promise.reject(new DOMException('Cleanup failed', 'NotFoundError'));
-      }
-      return Promise.resolve(undefined);
-    });
+    rootHandle.removeEntryMock.mockRejectedValue(
+      new DOMException('Cleanup failed', 'NotFoundError'),
+    );
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
       writeStrategy: 'directCreateWriteProbe',
@@ -2393,26 +2374,19 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBe(originalError);
   });
 
-  it('ASCII write probe success does not turn a failed repository save into success', async () => {
+  it('filename-matrix probe success does not turn a failed repository save into success', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
     });
     const originalError = new DOMException('Invalid state', 'InvalidStateError');
     directHandle.createWritable = vi.fn(() => Promise.reject(originalError));
-    const probeHandle = createFileHandleMock({
-      name: 'mioframe-write-probe.tmp',
-      permissionState: 'granted',
-    });
     const rootHandle = createDirectoryHandleMock({
       entries: [],
       name: '',
       permissionState: 'granted',
     });
-    rootHandle.getFileHandleMock.mockImplementation((name, options) => {
-      if (name === 'mioframe-write-probe.tmp' && options?.create) {
-        return Promise.resolve(probeHandle);
-      }
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
       if (options?.create) {
         return Promise.resolve(directHandle);
       }
@@ -2428,7 +2402,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBe(originalError);
   });
 
-  it('ASCII write probe emits breadcrumb steps for probe start, succeeded, and cleanup', async () => {
+  it('filename-matrix probe emits started and completed steps and all 5 probe cases', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
@@ -2440,9 +2414,6 @@ describe('WebFileSystemProvider', () => {
       name: '',
       permissionState: 'granted',
     });
-    // First two calls handle probe.amrg (lookup → not found, create → directHandle).
-    // Subsequent calls use the default mock implementation, which adds mioframe-write-probe.tmp
-    // to the entry map so cleanup can find and delete it.
     rootHandle.getFileHandleMock
       .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockResolvedValueOnce(directHandle);
@@ -2461,17 +2432,124 @@ describe('WebFileSystemProvider', () => {
       step: event.step,
       result: event.result,
     }));
-    expect(steps).toContainEqual({ step: 'asciiWriteProbe', result: 'started' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeWritableOpen', result: 'started' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeWritableOpen', result: 'succeeded' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeWrite', result: 'succeeded' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeClose', result: 'succeeded' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbe', result: 'succeeded' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeCleanup', result: 'started' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeCleanup', result: 'succeeded' });
+    expect(steps).toContainEqual({ step: 'filenameMatrixProbe', result: 'started' });
+    expect(steps).toContainEqual({ step: 'filenameMatrixProbe', result: 'completed' });
+
+    const expectedCases = [
+      'shortTmpBaseline',
+      'shortAutomerge',
+      'longTmp',
+      'longAutomerge',
+      'automergeLikeSnapshot',
+    ];
+    for (const probeCase of expectedCases) {
+      expect(onDiagnosticStep).toHaveBeenCalledWith(
+        expect.objectContaining({ step: 'filenameMatrixProbeCase', probeCase }),
+      );
+    }
   });
 
-  it('ASCII write probe emits breadcrumb steps for probe writable-open failure and cleanup', async () => {
+  it('filename-matrix probe emits case steps with probeFileName and probeFileNameLength', async () => {
+    const directHandle = createFileHandleMock({
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    const openError = new DOMException('Invalid state', 'InvalidStateError');
+    directHandle.createWritable = vi.fn(() => Promise.reject(openError));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandleMock
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockResolvedValueOnce(directHandle);
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).rejects.toThrow(openError);
+
+    const caseSteps = onDiagnosticStep.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.step === 'filenameMatrixProbeCase' && event.result === 'started');
+
+    expect(caseSteps).toHaveLength(5);
+    for (const step of caseSteps) {
+      expect(step).toHaveProperty('probeFileName');
+      expect(step).toHaveProperty('probeFileNameLength');
+      expect(typeof step.probeFileNameLength).toBe('number');
+      const probeFileName: unknown = step.probeFileName;
+      expect(step.probeFileNameLength).toBe(
+        typeof probeFileName === 'string' ? probeFileName.length : undefined,
+      );
+    }
+  });
+
+  it('filename-matrix probe shortTmpBaseline emits full write path steps when successful', async () => {
+    const directHandle = createFileHandleMock({
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    const openError = new DOMException('Invalid state', 'InvalidStateError');
+    directHandle.createWritable = vi.fn(() => Promise.reject(openError));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandleMock
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockResolvedValueOnce(directHandle);
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).rejects.toThrow(openError);
+
+    const steps = onDiagnosticStep.mock.calls.map(([event]) => ({
+      step: event.step,
+      result: event.result,
+      probeCase: event.probeCase,
+    }));
+    const baselineCases = steps.filter((s) => s.probeCase === 'shortTmpBaseline');
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeCase', result: 'started' }),
+    );
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeWritableOpen', result: 'started' }),
+    );
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeWritableOpen', result: 'succeeded' }),
+    );
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeWrite', result: 'succeeded' }),
+    );
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeClose', result: 'succeeded' }),
+    );
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeCase', result: 'succeeded' }),
+    );
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeCleanup', result: 'started' }),
+    );
+    expect(baselineCases).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeCleanup', result: 'succeeded' }),
+    );
+  });
+
+  it('filename-matrix probe emits writable-open failed and case failed when createWritable fails for a case', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
@@ -2485,15 +2563,11 @@ describe('WebFileSystemProvider', () => {
     probeHandle.createWritable = vi.fn(() =>
       Promise.reject(new DOMException('Also invalid state', 'InvalidStateError')),
     );
-    // Pre-populate the probe handle so the default mock finds it in the entry map and
-    // cleanup (removeEntry) can succeed.
     const rootHandle = createDirectoryHandleMock({
       entries: [probeHandle],
       name: '',
       permissionState: 'granted',
     });
-    // First two calls handle probe.amrg (lookup → not found, create → directHandle).
-    // Subsequent calls use the default mock, which returns probeHandle for mioframe-write-probe.tmp.
     rootHandle.getFileHandleMock
       .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
       .mockResolvedValueOnce(directHandle);
@@ -2508,38 +2582,123 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
     ).rejects.toThrow(openError);
 
-    const steps = onDiagnosticStep.mock.calls.map(([event]) => ({
-      step: event.step,
-      result: event.result,
-    }));
-    expect(steps).toContainEqual({ step: 'asciiWriteProbe', result: 'started' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeWritableOpen', result: 'started' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeWritableOpen', result: 'failed' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbe', result: 'failed' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeCleanup', result: 'started' });
-    expect(steps).toContainEqual({ step: 'asciiWriteProbeCleanup', result: 'succeeded' });
+    const baselineSteps = onDiagnosticStep.mock.calls
+      .map(([event]) => ({ step: event.step, result: event.result, probeCase: event.probeCase }))
+      .filter((s) => s.probeCase === 'shortTmpBaseline');
+
+    expect(baselineSteps).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeWritableOpen', result: 'failed' }),
+    );
+    expect(baselineSteps).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeCase', result: 'failed' }),
+    );
+    expect(baselineSteps).toContainEqual(
+      expect.objectContaining({ step: 'filenameMatrixProbeCleanup', result: 'started' }),
+    );
   });
 
-  it('ASCII write probe breadcrumbs do not contain paths, filenames, document ids, or raw messages', async () => {
+  it('filename-matrix probe continues remaining cases when one case fails', async () => {
     const directHandle = createFileHandleMock({
       name: 'probe.amrg',
       permissionState: 'granted',
     });
     const openError = new DOMException('Invalid state', 'InvalidStateError');
     directHandle.createWritable = vi.fn(() => Promise.reject(openError));
-    const probeHandle = createFileHandleMock({
+    const failingProbeHandle = createFileHandleMock({
       name: 'mioframe-write-probe.tmp',
       permissionState: 'granted',
     });
+    failingProbeHandle.createWritable = vi.fn(() =>
+      Promise.reject(new DOMException('Probe failed', 'InvalidStateError')),
+    );
+    const rootHandle = createDirectoryHandleMock({
+      entries: [failingProbeHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandleMock
+      .mockRejectedValueOnce(new DOMException('Not found', 'NotFoundError'))
+      .mockResolvedValueOnce(directHandle);
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
+    ).rejects.toThrow(openError);
+
+    const probeCasesStarted = onDiagnosticStep.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.step === 'filenameMatrixProbeCase' && event.result === 'started')
+      .map((event) => event.probeCase);
+
+    expect(probeCasesStarted).toContain('shortTmpBaseline');
+    expect(probeCasesStarted).toContain('shortAutomerge');
+    expect(probeCasesStarted).toContain('longTmp');
+    expect(probeCasesStarted).toContain('longAutomerge');
+    expect(probeCasesStarted).toContain('automergeLikeSnapshot');
+    expect(onDiagnosticStep).toHaveBeenCalledWith(
+      expect.objectContaining({ step: 'filenameMatrixProbe', result: 'completed' }),
+    );
+  });
+
+  it('filename-matrix probe real-target breadcrumbs still include targetFileName and targetFileNameLength', async () => {
+    const directHandle = createFileHandleMock({
+      name: '3fcyXtkHJuChSw5T7wv3_snapshot_a8f2467389d298ac69e1d266d91e1fc140e24c98fb750a6e456.automerge',
+      permissionState: 'granted',
+    });
+    const openError = new DOMException('Invalid state', 'InvalidStateError');
+    directHandle.createWritable = vi.fn(() => Promise.reject(openError));
     const rootHandle = createDirectoryHandleMock({
       entries: [],
       name: '',
       permissionState: 'granted',
     });
-    rootHandle.getFileHandleMock.mockImplementation((name, options) => {
-      if (name === 'mioframe-write-probe.tmp' && options?.create) {
-        return Promise.resolve(probeHandle);
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
+      if (options?.create) {
+        return Promise.resolve(directHandle);
       }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    });
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      writeStrategy: 'directCreateWriteProbe',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile(
+        '/3fcyXtkHJuChSw5T7wv3_snapshot_a8f2467389d298ac69e1d266d91e1fc140e24c98fb750a6e456.automerge',
+        'x',
+        { create: true, overwrite: true },
+      ),
+    ).rejects.toThrow(openError);
+
+    const failedStep = onDiagnosticStep.mock.calls
+      .map(([event]) => event)
+      .find((event) => event.step === 'directCreateWriteWritableOpen' && event.result === 'failed');
+    expect(failedStep).toBeDefined();
+    expect(failedStep).toHaveProperty('targetFileName');
+    expect(failedStep).toHaveProperty('targetFileNameLength');
+  });
+
+  it('filename-matrix probe breadcrumb steps do not contain paths, write content, or real target filename', async () => {
+    const directHandle = createFileHandleMock({
+      name: 'probe.amrg',
+      permissionState: 'granted',
+    });
+    const openError = new DOMException('Invalid state', 'InvalidStateError');
+    directHandle.createWritable = vi.fn(() => Promise.reject(openError));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
       if (options?.create) {
         return Promise.resolve(directHandle);
       }
@@ -2556,24 +2715,18 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/probe.amrg', 'x', { create: true, overwrite: true }),
     ).rejects.toThrow(openError);
 
-    const probeSteps = onDiagnosticStep.mock.calls
+    const matrixSteps = onDiagnosticStep.mock.calls
       .map(([event]) => event)
-      .filter(
-        (event) => typeof event.step === 'string' && event.step.startsWith('asciiWriteProbe'),
-      );
+      .filter((event) => typeof event.step === 'string' && event.step.startsWith('filenameMatrix'));
 
-    for (const step of probeSteps) {
+    for (const step of matrixSteps) {
       const serialized = JSON.stringify(step);
-      // probeFileName when present must be only the basename (TODO(PR #85): remove after investigation)
-      if (step.probeFileName !== undefined) {
-        expect(step.probeFileName).toBe('mioframe-write-probe.tmp');
-      }
-      // real target file basename must not appear in probe steps
+      // real target basename must not appear in probe steps
       expect(serialized).not.toContain('probe.amrg');
       // no full paths allowed
-      expect(serialized).not.toContain('/');
-      // no write content allowed
-      expect(serialized).not.toContain('ok');
+      expect(serialized).not.toContain('/probe');
+      // no write content payload
+      expect(serialized).not.toContain('"ok"');
     }
   });
 });

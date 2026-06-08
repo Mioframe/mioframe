@@ -2,11 +2,12 @@ import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 const operationByStep: Record<string, string> = {
-  asciiWriteProbe: 'asciiWriteProbe',
-  asciiWriteProbeCleanup: 'asciiWriteProbeCleanup',
-  asciiWriteProbeClose: 'asciiWriteProbeClose',
-  asciiWriteProbeWrite: 'asciiWriteProbeWrite',
-  asciiWriteProbeWritableOpen: 'asciiWriteProbeWritableOpen',
+  filenameMatrixProbe: 'filenameMatrixProbe',
+  filenameMatrixProbeCase: 'filenameMatrixProbeCase',
+  filenameMatrixProbeWritableOpen: 'filenameMatrixProbeWritableOpen',
+  filenameMatrixProbeWrite: 'filenameMatrixProbeWrite',
+  filenameMatrixProbeClose: 'filenameMatrixProbeClose',
+  filenameMatrixProbeCleanup: 'filenameMatrixProbeCleanup',
   createdFileCleanup: 'cleanupCreatedFile',
   directoryRead: 'readDirectory',
   directCreateWrite: 'directCreateWrite',
@@ -28,26 +29,30 @@ const messageByStepResult: Record<
   string,
   Partial<Record<WebFileSystemDiagnosticStep['result'], string>>
 > = {
-  asciiWriteProbe: {
-    failed: 'asciiWriteProbe failed',
-    started: 'asciiWriteProbe started',
-    succeeded: 'asciiWriteProbe succeeded',
+  filenameMatrixProbe: {
+    started: 'filenameMatrixProbe started',
+    completed: 'filenameMatrixProbe completed',
   },
-  asciiWriteProbeCleanup: {
-    failed: 'asciiWriteProbeCleanup failed',
-    started: 'asciiWriteProbeCleanup started',
-    succeeded: 'asciiWriteProbeCleanup succeeded',
+  filenameMatrixProbeCase: {
+    started: 'filenameMatrixProbeCase started',
+    succeeded: 'filenameMatrixProbeCase succeeded',
+    failed: 'filenameMatrixProbeCase failed',
   },
-  asciiWriteProbeClose: {
-    succeeded: 'asciiWriteProbeClose succeeded',
+  filenameMatrixProbeWritableOpen: {
+    started: 'filenameMatrixProbeWritableOpen started',
+    succeeded: 'filenameMatrixProbeWritableOpen succeeded',
+    failed: 'filenameMatrixProbeWritableOpen failed',
   },
-  asciiWriteProbeWrite: {
-    succeeded: 'asciiWriteProbeWrite succeeded',
+  filenameMatrixProbeWrite: {
+    succeeded: 'filenameMatrixProbeWrite succeeded',
   },
-  asciiWriteProbeWritableOpen: {
-    failed: 'asciiWriteProbeWritableOpen failed',
-    started: 'asciiWriteProbeWritableOpen started',
-    succeeded: 'asciiWriteProbeWritableOpen succeeded',
+  filenameMatrixProbeClose: {
+    succeeded: 'filenameMatrixProbeClose succeeded',
+  },
+  filenameMatrixProbeCleanup: {
+    started: 'filenameMatrixProbeCleanup started',
+    succeeded: 'filenameMatrixProbeCleanup succeeded',
+    failed: 'filenameMatrixProbeCleanup failed',
   },
   fileHandleCreate: {
     failed: 'file handle create failed',
@@ -163,6 +168,10 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
         ? { targetFileNameLength: event.targetFileNameLength }
         : {}),
       ...(event.probeFileName !== undefined ? { probeFileName: event.probeFileName } : {}),
+      ...(event.probeCase !== undefined ? { probeCase: event.probeCase } : {}),
+      ...(event.probeFileNameLength !== undefined
+        ? { probeFileNameLength: event.probeFileNameLength }
+        : {}),
     },
     level: event.result === 'failed' ? 'warning' : 'info',
     message,

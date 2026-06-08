@@ -272,180 +272,174 @@ describe('webFileSystemWriteDiagnostics', () => {
     });
   });
 
-  it('adds safe breadcrumbs for ASCII write probe success path', () => {
+  it('adds safe breadcrumbs for filename-matrix probe case success path', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbe',
+      step: 'filenameMatrixProbeCase',
       result: 'started',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeWritableOpen',
+      step: 'filenameMatrixProbeWritableOpen',
       result: 'started',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeWritableOpen',
+      step: 'filenameMatrixProbeWritableOpen',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeWrite',
+      step: 'filenameMatrixProbeWrite',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeClose',
+      step: 'filenameMatrixProbeClose',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbe',
+      step: 'filenameMatrixProbeCase',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeCleanup',
+      step: 'filenameMatrixProbeCleanup',
       result: 'started',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeCleanup',
+      step: 'filenameMatrixProbeCleanup',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
+      probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
 
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbe',
-        provider: 'webFileSystem',
-        result: 'started',
-        step: 'asciiWriteProbe',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbe started',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbeWritableOpen',
-        provider: 'webFileSystem',
-        result: 'started',
-        step: 'asciiWriteProbeWritableOpen',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbeWritableOpen started',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbeWritableOpen',
-        provider: 'webFileSystem',
-        result: 'succeeded',
-        step: 'asciiWriteProbeWritableOpen',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbeWritableOpen succeeded',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbeWrite',
-        provider: 'webFileSystem',
-        result: 'succeeded',
-        step: 'asciiWriteProbeWrite',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbeWrite succeeded',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(5, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbeClose',
-        provider: 'webFileSystem',
-        result: 'succeeded',
-        step: 'asciiWriteProbeClose',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbeClose succeeded',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbe',
-        provider: 'webFileSystem',
-        result: 'succeeded',
-        step: 'asciiWriteProbe',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbe succeeded',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(7, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbeCleanup',
-        provider: 'webFileSystem',
-        result: 'started',
-        step: 'asciiWriteProbeCleanup',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbeCleanup started',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(8, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'asciiWriteProbeCleanup',
-        provider: 'webFileSystem',
-        result: 'succeeded',
-        step: 'asciiWriteProbeCleanup',
-        writeStrategy: 'directCreateWriteProbe',
-      },
-      level: 'info',
-      message: 'asciiWriteProbeCleanup succeeded',
-    });
+    const expectCrumb = (
+      n: number,
+      step: string,
+      result: string,
+      message: string,
+      extra: Record<string, unknown> = {},
+    ) => {
+      expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(n, {
+        category: 'webFileSystem.write',
+        data: {
+          operation: step,
+          provider: 'webFileSystem',
+          result,
+          step,
+          writeStrategy: 'directCreateWriteProbe',
+          probeCase: 'shortTmpBaseline',
+          probeFileName: 'mioframe-write-probe.tmp',
+          probeFileNameLength: 23,
+          ...extra,
+        },
+        level: result === 'failed' ? 'warning' : 'info',
+        message,
+      });
+    };
+
+    expectCrumb(1, 'filenameMatrixProbeCase', 'started', 'filenameMatrixProbeCase started');
+    expectCrumb(
+      2,
+      'filenameMatrixProbeWritableOpen',
+      'started',
+      'filenameMatrixProbeWritableOpen started',
+    );
+    expectCrumb(
+      3,
+      'filenameMatrixProbeWritableOpen',
+      'succeeded',
+      'filenameMatrixProbeWritableOpen succeeded',
+    );
+    expectCrumb(4, 'filenameMatrixProbeWrite', 'succeeded', 'filenameMatrixProbeWrite succeeded');
+    expectCrumb(5, 'filenameMatrixProbeClose', 'succeeded', 'filenameMatrixProbeClose succeeded');
+    expectCrumb(6, 'filenameMatrixProbeCase', 'succeeded', 'filenameMatrixProbeCase succeeded');
+    expectCrumb(7, 'filenameMatrixProbeCleanup', 'started', 'filenameMatrixProbeCleanup started');
+    expectCrumb(
+      8,
+      'filenameMatrixProbeCleanup',
+      'succeeded',
+      'filenameMatrixProbeCleanup succeeded',
+    );
   });
 
-  it('adds safe breadcrumbs for ASCII write probe writable-open failure path', () => {
+  it('adds safe breadcrumbs for filename-matrix probe case writable-open failure path', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbe',
+      step: 'filenameMatrixProbeCase',
       result: 'started',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortAutomerge',
+      probeFileName: 'mioframe-write-probe.automerge',
+      probeFileNameLength: 30,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeWritableOpen',
+      step: 'filenameMatrixProbeWritableOpen',
       result: 'started',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortAutomerge',
+      probeFileName: 'mioframe-write-probe.automerge',
+      probeFileNameLength: 30,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeWritableOpen',
+      step: 'filenameMatrixProbeWritableOpen',
       result: 'failed',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortAutomerge',
+      probeFileName: 'mioframe-write-probe.automerge',
+      probeFileNameLength: 30,
       errorClass: 'DOMException',
       domExceptionName: 'InvalidStateError',
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbe',
+      step: 'filenameMatrixProbeCase',
       result: 'failed',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortAutomerge',
+      probeFileName: 'mioframe-write-probe.automerge',
+      probeFileNameLength: 30,
       errorClass: 'DOMException',
       domExceptionName: 'InvalidStateError',
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeCleanup',
+      step: 'filenameMatrixProbeCleanup',
       result: 'started',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortAutomerge',
+      probeFileName: 'mioframe-write-probe.automerge',
+      probeFileNameLength: 30,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeCleanup',
+      step: 'filenameMatrixProbeCleanup',
       result: 'failed',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortAutomerge',
+      probeFileName: 'mioframe-write-probe.automerge',
+      probeFileNameLength: 30,
       errorClass: 'DOMException',
       domExceptionName: 'NotFoundError',
     });
@@ -453,53 +447,102 @@ describe('webFileSystemWriteDiagnostics', () => {
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
       category: 'webFileSystem.write',
       data: {
-        operation: 'asciiWriteProbeWritableOpen',
+        operation: 'filenameMatrixProbeWritableOpen',
         provider: 'webFileSystem',
         result: 'failed',
-        step: 'asciiWriteProbeWritableOpen',
+        step: 'filenameMatrixProbeWritableOpen',
         writeStrategy: 'directCreateWriteProbe',
+        probeCase: 'shortAutomerge',
+        probeFileName: 'mioframe-write-probe.automerge',
+        probeFileNameLength: 30,
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
       },
       level: 'warning',
-      message: 'asciiWriteProbeWritableOpen failed',
+      message: 'filenameMatrixProbeWritableOpen failed',
     });
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
       category: 'webFileSystem.write',
       data: {
-        operation: 'asciiWriteProbe',
+        operation: 'filenameMatrixProbeCase',
         provider: 'webFileSystem',
         result: 'failed',
-        step: 'asciiWriteProbe',
+        step: 'filenameMatrixProbeCase',
         writeStrategy: 'directCreateWriteProbe',
+        probeCase: 'shortAutomerge',
+        probeFileName: 'mioframe-write-probe.automerge',
+        probeFileNameLength: 30,
         errorClass: 'DOMException',
         domExceptionName: 'InvalidStateError',
       },
       level: 'warning',
-      message: 'asciiWriteProbe failed',
+      message: 'filenameMatrixProbeCase failed',
     });
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
       category: 'webFileSystem.write',
       data: {
-        operation: 'asciiWriteProbeCleanup',
+        operation: 'filenameMatrixProbeCleanup',
         provider: 'webFileSystem',
         result: 'failed',
-        step: 'asciiWriteProbeCleanup',
+        step: 'filenameMatrixProbeCleanup',
         writeStrategy: 'directCreateWriteProbe',
+        probeCase: 'shortAutomerge',
+        probeFileName: 'mioframe-write-probe.automerge',
+        probeFileNameLength: 30,
         errorClass: 'DOMException',
         domExceptionName: 'NotFoundError',
       },
       level: 'warning',
-      message: 'asciiWriteProbeCleanup failed',
+      message: 'filenameMatrixProbeCleanup failed',
     });
   });
 
-  it('breadcrumb data for probe steps contains only allowed fields', () => {
+  it('adds safe breadcrumbs for filenameMatrixProbe started and completed', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbe',
+      step: 'filenameMatrixProbe',
+      result: 'started',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'filenameMatrixProbe',
+      result: 'completed',
+      writeStrategy: 'directCreateWriteProbe',
+    });
+
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'filenameMatrixProbe',
+        provider: 'webFileSystem',
+        result: 'started',
+        step: 'filenameMatrixProbe',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'filenameMatrixProbe started',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'filenameMatrixProbe',
+        provider: 'webFileSystem',
+        result: 'completed',
+        step: 'filenameMatrixProbe',
+        writeStrategy: 'directCreateWriteProbe',
+      },
+      level: 'info',
+      message: 'filenameMatrixProbe completed',
+    });
+  });
+
+  it('breadcrumb data for matrix probe steps contains only allowed fields', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'filenameMatrixProbeCase',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
       probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
 
     const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
@@ -515,6 +558,8 @@ describe('webFileSystemWriteDiagnostics', () => {
       'targetFileName',
       'targetFileNameLength',
       'probeFileName',
+      'probeCase',
+      'probeFileNameLength',
     ]);
     for (const key of Object.keys(data)) {
       expect(allowedKeys).toContain(key);
@@ -585,24 +630,30 @@ describe('webFileSystemWriteDiagnostics', () => {
     );
   });
 
-  it('ASCII probe breadcrumbs include probeFileName', () => {
+  it('matrix probe breadcrumbs include probeFileName', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbe',
+      step: 'filenameMatrixProbeCase',
       result: 'started',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
       probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeWritableOpen',
+      step: 'filenameMatrixProbeWritableOpen',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
       probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'asciiWriteProbeCleanup',
+      step: 'filenameMatrixProbeCleanup',
       result: 'succeeded',
       writeStrategy: 'directCreateWriteProbe',
+      probeCase: 'shortTmpBaseline',
       probeFileName: 'mioframe-write-probe.tmp',
+      probeFileNameLength: 23,
     });
 
     expect(vi.mocked(addTechnicalBreadcrumb)).toHaveBeenCalledTimes(3);
