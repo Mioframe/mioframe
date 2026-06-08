@@ -14,12 +14,10 @@ export {
   sanitizeTechnicalBreadcrumb,
   sanitizeTechnicalBreadcrumbs,
   TECHNICAL_BREADCRUMB_CATEGORIES,
-  TECHNICAL_BREADCRUMB_DATA_KEYS,
 } from './technicalBreadcrumbs';
 export type {
   TechnicalBreadcrumbCategory,
   TechnicalBreadcrumbData,
-  TechnicalBreadcrumbDataKey,
   TechnicalBreadcrumbInput,
   TechnicalBreadcrumbLevel,
 } from './technicalBreadcrumbs';

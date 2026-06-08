@@ -65,7 +65,7 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  it('beforeBreadcrumb keeps writeStrategy and strips probe-private write data', () => {
+  it('beforeBreadcrumb strips sensitive write data while keeping safe primitive fields', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(
@@ -92,6 +92,8 @@ describe('technicalBreadcrumbs', () => {
         operation: 'directCreateWrite',
         provider: 'webFileSystem',
         writeStrategy: 'directCreateWriteProbe',
+        filename: 'doc.amrg',
+        bytes: '100',
         pendingCount: 2,
       },
       level: 'info',
@@ -212,7 +214,6 @@ describe('technicalBreadcrumbs', () => {
     expect(beforeBreadcrumb(makeBreadcrumb())).toBeNull();
   });
 
-  // TODO(PR #85): these tests cover temporary basename fields; remove together with the fields after investigation
   it('beforeBreadcrumb passes targetFileName and probeFileName through for write breadcrumbs', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
@@ -388,6 +389,340 @@ describe('technicalBreadcrumbs', () => {
       },
       level: 'info',
       message: 'direct create write failed',
+    });
+  });
+
+  // Shape-based sanitizer: unknown safe primitive keys
+
+  it('unknown safe primitive string key survives without registration', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            someNewDiagnosticField: 'safeValue',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+        someNewDiagnosticField: 'safeValue',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  // Sensitive key denylist
+
+  it('sensitive key names are dropped even when their values are primitive', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            title: 'My Document',
+            content: 'some text',
+            token: 'abc123',
+            secret: 'hunter2',
+            email: 'user@example.com',
+            stack: 'Error: boom\n  at foo.ts:1',
+            storageKey: 'sk-123',
+            documentId: 'doc-456',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  it('sensitive key denylist is case-insensitive', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            PATH: '/root',
+            Message: 'raw error text',
+            STACK: 'trace',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  // Unsafe value types
+
+  it('object, array, Error, and handle-like values are dropped', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            objectValue: { nested: true },
+            arrayValue: [1, 2, 3],
+            errorValue: new Error('boom'),
+            domExValue: new DOMException('fail'),
+            nullValue: null,
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  // Numbers
+
+  it('finite numbers survive', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            pendingCount: 5,
+            flushedCount: 0,
+          },
+          message: 'counts',
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        pendingCount: 5,
+        flushedCount: 0,
+      },
+      level: 'info',
+      message: 'counts',
+    });
+  });
+
+  it('NaN and infinities are dropped', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            nanValue: NaN,
+            infValue: Infinity,
+            negInfValue: -Infinity,
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  // Booleans
+
+  it('booleans survive', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'repositorySave',
+            succeeded: true,
+            retried: false,
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+        succeeded: true,
+        retried: false,
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  // PR #85 matrix fields
+
+  it('probeCase and probeFileNameLength survive without per-field registration', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'filenameMatrixProbeCase',
+            provider: 'webFileSystem',
+            writeStrategy: 'directCreateWriteProbe',
+            probeCase: 'shortTmpBaseline',
+            probeFileName: 'mioframe-write-probe.tmp',
+            probeFileNameLength: 23,
+            targetFileName: 'abc123.automerge',
+            targetFileNameLength: 16,
+          },
+          message: 'filenameMatrixProbeCase started',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'filenameMatrixProbeCase',
+        provider: 'webFileSystem',
+        writeStrategy: 'directCreateWriteProbe',
+        probeCase: 'shortTmpBaseline',
+        probeFileName: 'mioframe-write-probe.tmp',
+        probeFileNameLength: 23,
+        targetFileName: 'abc123.automerge',
+        targetFileNameLength: 16,
+      },
+      level: 'info',
+      message: 'filenameMatrixProbeCase started',
+    });
+  });
+
+  // Basename safety for filename-like fields
+
+  it('filename-like key containing / is dropped', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWrite',
+            provider: 'webFileSystem',
+            targetFileName: '/user-dir/abc123.automerge',
+          },
+          message: 'direct create write failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWrite',
+        provider: 'webFileSystem',
+      },
+      level: 'info',
+      message: 'direct create write failed',
+    });
+  });
+
+  it('filename-like key containing \\ is dropped', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWrite',
+            provider: 'webFileSystem',
+            targetFileName: 'folder\\abc123.automerge',
+          },
+          message: 'direct create write failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWrite',
+        provider: 'webFileSystem',
+      },
+      level: 'info',
+      message: 'direct create write failed',
+    });
+  });
+
+  it('filename-like key containing path traversal (..) is dropped', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWrite',
+            provider: 'webFileSystem',
+            targetFileName: '../../etc/passwd',
+          },
+          message: 'direct create write failed',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWrite',
+        provider: 'webFileSystem',
+      },
+      level: 'info',
+      message: 'direct create write failed',
+    });
+  });
+
+  it('filename-like key over the normal 80-char limit but under the 200-char filename limit survives', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    // 114 chars — above normal 80-char limit, below 200-char filename limit
+    const longFileName =
+      'vBfbhfCLoCspTDKPmaXkbk3Z7GH_incremental_4a8b2c9d3e1f7a5b0c2d4e6f8a1b3c5d7e9f1a2b3c4d5e6f7a8b9c0d.automerge';
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.write',
+          data: {
+            operation: 'directCreateWriteWritableOpen',
+            provider: 'webFileSystem',
+            probeFileName: longFileName,
+          },
+          message: 'direct create write writable open started',
+        }),
+      ),
+    ).toEqual({
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'directCreateWriteWritableOpen',
+        provider: 'webFileSystem',
+        probeFileName: longFileName,
+      },
+      level: 'info',
+      message: 'direct create write writable open started',
     });
   });
 });

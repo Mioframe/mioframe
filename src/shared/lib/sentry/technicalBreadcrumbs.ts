@@ -14,52 +14,19 @@ export const TECHNICAL_BREADCRUMB_CATEGORIES = [
   'webFileSystem.permission',
 ] as const;
 
-export const TECHNICAL_BREADCRUMB_DATA_KEYS = [
-  'operation',
-  'result',
-  'classification',
-  'failureClassification',
-  'provider',
-  'storageOperation',
-  'pendingCount',
-  'flushedCount',
-  'failedCount',
-  'errorClass',
-  'domExceptionName',
-  'vfsErrorCode',
-  'domainErrorCode',
-  'errorClassification',
-  'step',
-  'handleComparisonResult',
-  'returnedHandlePermission',
-  'returnedHandleProvided',
-  'returnedHandleSameEntry',
-  'storedHandlePermission',
-  'runtime',
-  'writeStrategy',
-  // TODO(PR #85): temporary — basename fields for Android InvalidStateError filename-pattern diagnosis; remove after investigation
-  'targetFileName',
-  'targetFileNameLength',
-  'probeFileName',
-] as const;
-
 /** Project-controlled breadcrumb categories allowed through the shared Sentry runtime. */
 export type TechnicalBreadcrumbCategory = (typeof TECHNICAL_BREADCRUMB_CATEGORIES)[number];
-/** Allowlisted breadcrumb data key. */
-export type TechnicalBreadcrumbDataKey = (typeof TECHNICAL_BREADCRUMB_DATA_KEYS)[number];
 /** Narrow project-owned breadcrumb level contract. */
 export type TechnicalBreadcrumbLevel = 'debug' | 'info' | 'warning' | 'error';
 
-/** Allowlisted project-owned breadcrumb data payload. */
-export type TechnicalBreadcrumbData = Partial<
-  Record<TechnicalBreadcrumbDataKey, number | string | undefined>
->;
+/** Safe primitive record for technical breadcrumb data. Any string key is allowed at the type level; the sanitizer enforces safety at runtime. */
+export type TechnicalBreadcrumbData = Record<string, string | number | boolean | undefined>;
 
 /** Shared project input shape for technical breadcrumbs. */
 export type TechnicalBreadcrumbInput = {
   /** Project technical breadcrumb category. */
   category: TechnicalBreadcrumbCategory;
-  /** Optional allowlisted technical metadata. */
+  /** Optional technical metadata. Each key-value pair is sanitized before reaching Sentry. */
   data?: TechnicalBreadcrumbData | undefined;
   /** Optional breadcrumb severity. */
   level?: TechnicalBreadcrumbLevel | undefined;
@@ -70,10 +37,46 @@ export type TechnicalBreadcrumbInput = {
 const CATEGORY_SET = new Set<string>(TECHNICAL_BREADCRUMB_CATEGORIES);
 const PRODUCTION_MAX_STRING_LENGTH = 80;
 const PREVIEW_MAX_STRING_LENGTH = 120;
-// TODO(PR #85): temporary — wider limit for basename diagnosis fields; remove with the fields
+// Wider limit for basename fields: covers long Automerge filenames used in PR #85 write-failure diagnosis.
 const FILENAME_FIELD_MAX_LENGTH = 200;
-// TODO(PR #85): temporary — keys with a wider string limit; remove with the fields
-const FILENAME_FIELD_KEYS = new Set<TechnicalBreadcrumbDataKey>(['targetFileName']);
+
+/**
+ * Lowercase denylist of key names that are obviously unsafe for Sentry even when their value is
+ * a primitive. Prevents leaking paths, identifiers, credentials, or user-controlled content.
+ * Keep this narrow; do not expand it into a per-field allowlist.
+ */
+const SENSITIVE_KEYS = new Set([
+  'path',
+  'fullpath',
+  'directory',
+  'directoryname',
+  'rootdirectory',
+  'documenttitle',
+  'title',
+  'content',
+  'payload',
+  'body',
+  'text',
+  'handle',
+  'filehandle',
+  'directoryhandle',
+  'storagekey',
+  'documentid',
+  'userid',
+  'accountid',
+  'email',
+  'username',
+  'token',
+  'accesstoken',
+  'refreshtoken',
+  'secret',
+  'password',
+  'rawmessage',
+  'errormessage',
+  'message',
+  'stack',
+  'stacktrace',
+]);
 
 const getMaxStringLength = (diagnosticsMode: DiagnosticsMode): number =>
   diagnosticsMode === 'preview' ? PREVIEW_MAX_STRING_LENGTH : PRODUCTION_MAX_STRING_LENGTH;
@@ -96,6 +99,19 @@ const sanitizeString = (
   return trimmed;
 };
 
+const isFilenameKey = (key: string): boolean => key.endsWith('FileName');
+
+const sanitizeBasename = (value: string): string | undefined => {
+  if (value.includes('/') || value.includes('\\') || value.includes('..')) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > FILENAME_FIELD_MAX_LENGTH) {
+    return undefined;
+  }
+  return trimmed;
+};
+
 const sanitizeData = (
   data: Breadcrumb['data'],
   diagnosticsMode: DiagnosticsMode,
@@ -106,18 +122,40 @@ const sanitizeData = (
 
   const sanitized: TechnicalBreadcrumbData = {};
 
-  for (const key of TECHNICAL_BREADCRUMB_DATA_KEYS) {
-    const value = data[key];
-    if (typeof value === 'number' && Number.isFinite(value)) {
+  for (const key of Object.keys(data)) {
+    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+      continue;
+    }
+
+    const value: unknown = data[key];
+
+    if (value === undefined) {
+      continue;
+    }
+
+    if (typeof value === 'boolean') {
       sanitized[key] = value;
       continue;
     }
 
-    const maxLength = FILENAME_FIELD_KEYS.has(key) ? FILENAME_FIELD_MAX_LENGTH : undefined;
-    const safeString = sanitizeString(value, diagnosticsMode, maxLength);
-    if (safeString !== undefined) {
-      sanitized[key] = safeString;
+    if (typeof value === 'number') {
+      if (Number.isFinite(value)) {
+        sanitized[key] = value;
+      }
+      continue;
     }
+
+    if (typeof value === 'string') {
+      const safeValue = isFilenameKey(key)
+        ? sanitizeBasename(value)
+        : sanitizeString(value, diagnosticsMode);
+      if (safeValue !== undefined) {
+        sanitized[key] = safeValue;
+      }
+      continue;
+    }
+
+    // Reject objects, arrays, Error, DOMException, File, Blob, FileSystemHandle, functions, symbols, and bigint.
   }
 
   return Object.keys(sanitized).length > 0 ? sanitized : undefined;
@@ -152,7 +190,8 @@ const sanitizeLevel = (
 
 /**
  * Sanitizes a Sentry breadcrumb down to the project's technical breadcrumb contract.
- * Unknown categories, unsafe data keys, overlong strings, and non-technical levels are removed.
+ * Unknown categories, sensitive data keys, unsafe value types, overlong strings, and non-technical
+ * levels are removed. Safe primitive fields pass automatically without per-key registration.
  * @param breadcrumb - Raw Sentry breadcrumb.
  * @param diagnosticsMode - Shared diagnostics detail mode.
  * @returns Sanitized technical breadcrumb, or `null` when it must be dropped.
