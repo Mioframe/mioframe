@@ -449,42 +449,4 @@ describe('createRetryingStorageAdapter', () => {
     await expect(wrapped.remove(key)).resolves.toBeUndefined();
     await expect(wrapped.removeRange(['doc-id'])).resolves.toBeUndefined();
   });
-
-  it('passes raw flush failures only to the local callback and result for service-layer sanitization', async () => {
-    const queuedError = new Error('permission blocked');
-    const flushError = new Error('disk full');
-    const onFlushPendingSavesFailure = vi.fn();
-    const adapter = {
-      load: vi.fn(),
-      loadRange: vi.fn(),
-      remove: vi.fn(),
-      removeRange: vi.fn(),
-      save: vi
-        .fn<StorageAdapterInterface['save']>()
-        .mockRejectedValueOnce(queuedError)
-        .mockRejectedValueOnce(flushError),
-    } satisfies StorageAdapterInterface;
-    const wrapped = createRetryingStorageAdapter(adapter, {
-      shouldQueueFailedSave: (candidate) => candidate === queuedError,
-      onFlushPendingSavesFailure,
-    });
-
-    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([7]))).rejects.toBe(
-      queuedError,
-    );
-
-    const result = await wrapped.flushPendingSaves();
-
-    expect(onFlushPendingSavesFailure).toHaveBeenCalledWith({
-      caughtError: flushError,
-      failureClassification: 'storageFailure',
-      flushedCount: 0,
-      pendingCount: 1,
-    });
-    expect(result).toMatchObject({
-      status: 'failed',
-      failureClassification: 'storageFailure',
-      caughtError: flushError,
-    });
-  });
 });

@@ -8,18 +8,11 @@ import type { WriteAccessRecoveryResult } from '../fileSystem/fileSystemAccessRe
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
-  addRepositoryRemoveStartBreadcrumb,
-  addRepositoryReplayCompletedBreadcrumb,
-  addRepositoryReplayStartedBreadcrumb,
-  addRepositorySaveAttemptBreadcrumb,
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
   reportRepositorySaveQueued,
   reportRepositorySaveFailed,
-  reportRepositoryRemoveFailed,
-  reportRepositoryDeleteCleanupFailed,
 } from './repositoriesDiagnostics';
-import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
@@ -155,22 +148,7 @@ const setupRepositoriesService = () => {
     return defer(() => {
       if (!repoEntry) {
         const storageRecovery = createRetryingStorageAdapter(createVFSAdapter(vfs, path), {
-          onFlushPendingSavesComplete: ({ flushedCount, pendingCount }) => {
-            addRepositoryReplayCompletedBreadcrumb({ flushedCount, pendingCount });
-          },
-          onFlushPendingSavesStart: ({ pendingCount }) => {
-            addRepositoryReplayStartedBreadcrumb({ pendingCount });
-          },
-          onRemoveRangeFailure: (caughtError) => {
-            reportRepositoryRemoveFailed({ caughtError });
-          },
-          onRemoveRangeStart: () => {
-            addRepositoryRemoveStartBreadcrumb();
-          },
           shouldQueueFailedSave,
-          onSaveStart: () => {
-            addRepositorySaveAttemptBreadcrumb();
-          },
           onSaveFailure: ({ queued, pendingCount, caughtError }) => {
             if (queued) {
               reportRepositorySaveQueued({ pendingCount });
@@ -185,28 +163,6 @@ const setupRepositoriesService = () => {
                     : 'storageFailure',
               });
             }
-          },
-          onFlushPendingSavesFailure: ({
-            caughtError,
-            failureClassification,
-            flushedCount,
-            pendingCount,
-          }) => {
-            if (failureClassification !== 'storageFailure' || caughtError === undefined) {
-              return;
-            }
-
-            const error = sanitizeDiagnosticError(caughtError);
-            const safeFailureClassification =
-              error.errorClassification === 'browserFileStateChanged'
-                ? 'browserFileStateChanged'
-                : 'storageFailure';
-            reportWriteAccessReplayStorageFailure({
-              flushedCount,
-              pendingCount,
-              error,
-              failureClassification: safeFailureClassification,
-            });
           },
         });
         repoEntry = {
@@ -322,6 +278,13 @@ const setupRepositoriesService = () => {
 
         if (result.status === 'stillBlocked') {
           reportWriteAccessReplayStillBlocked({ flushedCount, pendingCount: result.pendingCount });
+        } else {
+          reportWriteAccessReplayStorageFailure({
+            flushedCount,
+            pendingCount: result.pendingCount,
+            ...(sanitizedError !== undefined ? { error: sanitizedError } : {}),
+            ...(failureClassification !== undefined ? { failureClassification } : {}),
+          });
         }
         return {
           status: result.status,
@@ -355,19 +318,7 @@ const setupRepositoriesService = () => {
     // Failures surface in cleanupDeletedDocumentStorageFiles below.
     repo?.delete(id);
 
-    try {
-      await cleanupDeletedDocumentStorageFiles(vfs, path, id);
-    } catch (error) {
-      reportRepositoryDeleteCleanupFailed({ caughtError: error });
-
-      if (error instanceof Error) {
-        captureDiagnosticException(error, {
-          operation: 'repositoryDeleteCleanup',
-        });
-      }
-
-      throw error;
-    }
+    await cleanupDeletedDocumentStorageFiles(vfs, path, id);
   };
 
   const createDocument = async (path: string, initialValue: CFRDocumentContent) => {

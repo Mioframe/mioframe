@@ -2,7 +2,6 @@ import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
 import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
 import {
-  addWriteAccessHandleComparisonBreadcrumb,
   addWriteAccessPermissionPromptStartBreadcrumb,
   addWriteAccessPermissionResolvedBreadcrumb,
   addWriteAccessRequestStartBreadcrumb,
@@ -63,7 +62,6 @@ export const useFileSystemAccessPermissionBroker = () => {
         addWriteAccessPermissionResolvedBreadcrumb({ permissionState });
 
         const result = await resolveFileSystemAccessRequest({
-          ...(permissionState === 'granted' ? { grantedHandle: handle } : {}),
           operation: request.operation,
           permissionState,
           spaceName: request.spaceName,
@@ -80,10 +78,6 @@ export const useFileSystemAccessPermissionBroker = () => {
 
         if (result.status === 'grantedWithStorageFailures') {
           reportWriteAccessStorageFailure({ attemptId, replay: result.replay });
-        }
-
-        if (permissionState === 'granted' && result.comparison !== undefined) {
-          addWriteAccessHandleComparisonBreadcrumb({ comparison: result.comparison });
         }
 
         if (result.status === 'denied' && key.operation === 'write') {

@@ -7,7 +7,6 @@ import {
 } from '@shared/lib/diagnostics';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  addWriteAccessHandleComparisonBreadcrumb,
   addWriteAccessPermissionPromptStartBreadcrumb,
   addWriteAccessPermissionResolvedBreadcrumb,
   addWriteAccessRequestStartBreadcrumb,
@@ -94,53 +93,6 @@ describe('writeAccessRecoveryDiagnostics', () => {
         attemptId: TEST_ATTEMPT_ID,
         safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
-    });
-  });
-
-  describe('addWriteAccessHandleComparisonBreadcrumb', () => {
-    it('adds a breadcrumb with only safe handle comparison statuses', () => {
-      addWriteAccessHandleComparisonBreadcrumb({
-        comparison: {
-          returnedHandleProvided: 'true',
-          returnedHandleSameEntry: 'false',
-          storedHandlePermission: 'prompt',
-          returnedHandlePermission: 'granted',
-          handleComparisonResult: 'differentEntry',
-        },
-      });
-
-      expect(sink).toHaveLength(0);
-      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith({
-        category: 'writeAccessRecovery',
-        data: {
-          operation: 'resolveAccessRequest',
-          provider: 'webFileSystem',
-          result: 'differentEntry',
-          step: 'handleComparison',
-          returnedHandleProvided: 'true',
-          returnedHandleSameEntry: 'false',
-          storedHandlePermission: 'prompt',
-          returnedHandlePermission: 'granted',
-          handleComparisonResult: 'differentEntry',
-        },
-        message: 'root handle comparison completed',
-      });
-    });
-
-    it('does not include user-controlled values in handle comparison diagnostics', () => {
-      addWriteAccessHandleComparisonBreadcrumb({
-        comparison: {
-          returnedHandleProvided: 'true',
-          returnedHandleSameEntry: 'false',
-          storedHandlePermission: 'prompt',
-          returnedHandlePermission: 'granted',
-          handleComparisonResult: 'differentEntry',
-        },
-      });
-
-      const serialized = JSON.stringify(addTechnicalBreadcrumbMock.mock.calls[0]?.[0]);
-      expect(serialized).not.toContain('Work');
-      expect(serialized).not.toContain('path');
     });
   });
 
@@ -393,15 +345,6 @@ describe('writeAccessRecoveryDiagnostics', () => {
   it('all wrapper functions attach only project-controlled safe tags (no user data)', () => {
     reportWriteAccessMissingRequest({ attemptId: TEST_ATTEMPT_ID });
     reportWriteAccessStaleResolve({ attemptId: TEST_ATTEMPT_ID });
-    addWriteAccessHandleComparisonBreadcrumb({
-      comparison: {
-        returnedHandleProvided: 'true',
-        returnedHandleSameEntry: 'false',
-        storedHandlePermission: 'prompt',
-        returnedHandlePermission: 'granted',
-        handleComparisonResult: 'differentEntry',
-      },
-    });
     reportWriteAccessPermissionDenied({ attemptId: TEST_ATTEMPT_ID });
     reportWriteAccessReplayFailure({ attemptId: TEST_ATTEMPT_ID });
     reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });

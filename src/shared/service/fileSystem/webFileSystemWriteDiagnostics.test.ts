@@ -11,13 +11,11 @@ describe('webFileSystemWriteDiagnostics', () => {
     vi.mocked(addTechnicalBreadcrumb).mockReset();
   });
 
-  it('adds safe breadcrumbs for file handle create, lookup-after-create, cleanup, writable open, file write, and fresh retry', () => {
+  it('adds safe breadcrumbs for file handle create, file lookup, writable open, and file write steps', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'started' });
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'succeeded' });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'fileHandleLookupAfterCreate',
-      result: 'started',
-    });
-    addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'createdFileCleanup',
+      step: 'fileHandleCreate',
       result: 'failed',
       errorClass: 'DOMException',
       domExceptionName: 'InvalidModificationError',
@@ -30,47 +28,48 @@ describe('webFileSystemWriteDiagnostics', () => {
       domExceptionName: 'InvalidStateError',
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'writableCompatibilityOpen',
-      result: 'succeeded',
-    });
-    addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'fileWrite',
       result: 'failed',
       errorClass: 'DOMException',
       domExceptionName: 'QuotaExceededError',
     });
-    addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'freshHandleRetry',
-      result: 'failed',
-      errorClass: 'DOMException',
-      domExceptionName: 'InvalidStateError',
-    });
 
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
       category: 'webFileSystem.write',
       data: {
-        operation: 'lookupHandleAfterCreate',
+        operation: 'createFileHandle',
         provider: 'webFileSystem',
         result: 'started',
-        step: 'fileHandleLookupAfterCreate',
+        step: 'fileHandleCreate',
       },
       level: 'info',
-      message: 'file handle lookup after create started',
+      message: 'file handle create started',
     });
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
       category: 'webFileSystem.write',
       data: {
-        operation: 'cleanupCreatedFile',
+        operation: 'createFileHandle',
+        provider: 'webFileSystem',
+        result: 'succeeded',
+        step: 'fileHandleCreate',
+      },
+      level: 'info',
+      message: 'file handle create succeeded',
+    });
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+      category: 'webFileSystem.write',
+      data: {
+        operation: 'createFileHandle',
         provider: 'webFileSystem',
         result: 'failed',
-        step: 'createdFileCleanup',
+        step: 'fileHandleCreate',
         errorClass: 'DOMException',
         domExceptionName: 'InvalidModificationError',
       },
       level: 'warning',
-      message: 'created file cleanup failed',
+      message: 'file handle create failed',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
       category: 'webFileSystem.write',
       data: {
         operation: 'openWritable',
@@ -81,7 +80,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'info',
       message: 'writable open started',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
+    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(5, {
       category: 'webFileSystem.write',
       data: {
         operation: 'openWritable',
@@ -93,17 +92,6 @@ describe('webFileSystemWriteDiagnostics', () => {
       },
       level: 'warning',
       message: 'writable open failed',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(5, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'openWritableCompatibility',
-        provider: 'webFileSystem',
-        result: 'succeeded',
-        step: 'writableCompatibilityOpen',
-      },
-      level: 'info',
-      message: 'writable compatibility open succeeded',
     });
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(6, {
       category: 'webFileSystem.write',
@@ -118,19 +106,6 @@ describe('webFileSystemWriteDiagnostics', () => {
       level: 'warning',
       message: 'file write failed',
     });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(7, {
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'freshHandleRetry',
-        provider: 'webFileSystem',
-        result: 'failed',
-        step: 'freshHandleRetry',
-        errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
-      },
-      level: 'warning',
-      message: 'fresh handle retry failed',
-    });
   });
 
   it('drops milestones that should not become breadcrumbs', () => {
@@ -138,72 +113,6 @@ describe('webFileSystemWriteDiagnostics', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'unknownStep', result: 'succeeded' });
 
     expect(addTechnicalBreadcrumb).not.toHaveBeenCalled();
-  });
-
-  it('adds safe breadcrumbs for read, stat, and directory boundary operations only', () => {
-    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileRead', result: 'started' });
-    addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'fileRead',
-      result: 'failed',
-      errorClass: 'DOMException',
-      domExceptionName: 'InvalidStateError',
-    });
-    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileStat', result: 'succeeded' });
-    addWebFileSystemDiagnosticStepBreadcrumb({
-      step: 'directoryRead',
-      result: 'failed',
-      errorClass: 'DOMException',
-      domExceptionName: 'NotAllowedError',
-    });
-
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
-      category: 'webFileSystem.read',
-      data: {
-        operation: 'readFile',
-        provider: 'webFileSystem',
-        result: 'started',
-        step: 'fileRead',
-      },
-      level: 'info',
-      message: 'file read started',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(2, {
-      category: 'webFileSystem.read',
-      data: {
-        operation: 'readFile',
-        provider: 'webFileSystem',
-        result: 'failed',
-        step: 'fileRead',
-        errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
-      },
-      level: 'warning',
-      message: 'file read failed',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(3, {
-      category: 'webFileSystem.stat',
-      data: {
-        operation: 'statFileHandle',
-        provider: 'webFileSystem',
-        result: 'succeeded',
-        step: 'fileStat',
-      },
-      level: 'info',
-      message: 'file stat succeeded',
-    });
-    expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(4, {
-      category: 'webFileSystem.directory',
-      data: {
-        operation: 'readDirectory',
-        provider: 'webFileSystem',
-        result: 'failed',
-        step: 'directoryRead',
-        errorClass: 'DOMException',
-        domExceptionName: 'NotAllowedError',
-      },
-      level: 'warning',
-      message: 'directory read failed',
-    });
   });
 
   it('breadcrumb data contains only allowed fields', () => {
@@ -229,18 +138,6 @@ describe('webFileSystemWriteDiagnostics', () => {
     }
   });
 
-  it('non-write breadcrumbs do not include probe or filename fields', () => {
-    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileRead', result: 'started' });
-    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileStat', result: 'succeeded' });
-    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'directoryRead', result: 'started' });
-
-    for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
-      expect(call[0].data).not.toHaveProperty('writeStrategy');
-      expect(call[0].data).not.toHaveProperty('probeFileName');
-      expect(call[0].data).not.toHaveProperty('targetFileName');
-    }
-  });
-
   it('fileLookup breadcrumbs are emitted for started, missing, and succeeded', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileLookup', result: 'started' });
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileLookup', result: 'missing' });
@@ -259,5 +156,15 @@ describe('webFileSystemWriteDiagnostics', () => {
       3,
       expect.objectContaining({ message: 'file lookup succeeded' }),
     );
+  });
+
+  it('all emitted breadcrumbs use the webFileSystem.write category', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileLookup', result: 'started' });
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'started' });
+    addWebFileSystemDiagnosticStepBreadcrumb({ step: 'writableOpen', result: 'started' });
+
+    for (const call of vi.mocked(addTechnicalBreadcrumb).mock.calls) {
+      expect(call[0].category).toBe('webFileSystem.write');
+    }
   });
 });

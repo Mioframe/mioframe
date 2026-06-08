@@ -1000,67 +1000,6 @@ describe('useFileSystemService', () => {
     unregister();
   });
 
-  it('write access grant replaces the mounted root handle when the returned handle is the same entry with granted write access', async () => {
-    const storedHandle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'prompt',
-      readPermissionState: 'granted',
-      sameEntryKey: 'work',
-    });
-    const grantedHandle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'granted',
-      readPermissionState: 'granted',
-      sameEntryKey: 'work',
-    });
-    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: storedHandle }]);
-
-    const service = await createService();
-
-    await vi.waitFor(async () => {
-      await expect(service.deviceFiles.fetch()).resolves.toEqual([
-        { canDisconnect: true, name: 'Work' },
-      ]);
-    });
-
-    const createError = await service
-      .createDirectory('/Device Files/Work/new-directory')
-      .catch((error: unknown) => error);
-
-    if (!isAccessErrorWithRecoveryKey(createError)) {
-      throw new Error('Expected access error');
-    }
-
-    storedHandle.queryPermissionMock?.mockResolvedValue('prompt');
-    grantedHandle.queryPermissionMock?.mockResolvedValue('granted');
-
-    await expect(
-      service.resolveFileSystemAccessRequest({
-        operation: 'write',
-        permissionState: 'granted',
-        spaceName: createError.spaceName,
-        grantedHandle,
-      }),
-    ).resolves.toMatchObject({
-      status: 'granted',
-      comparison: {
-        handleComparisonResult: 'sameEntry',
-        returnedHandlePermission: 'granted',
-        storedHandlePermission: 'prompt',
-      },
-    });
-
-    await expect(
-      service.createDirectory('/Device Files/Work/new-directory'),
-    ).resolves.toBeUndefined();
-    expect(grantedHandle.getDirectoryHandleMock).toHaveBeenCalledWith('new-directory', {
-      create: true,
-    });
-    expect(storedHandle.getDirectoryHandleMock).not.toHaveBeenCalledWith('new-directory', {
-      create: true,
-    });
-  });
-
   it('write access grant returns grantedWithReplayFailures when a recovery handler remains permission-blocked', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',

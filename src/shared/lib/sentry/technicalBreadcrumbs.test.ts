@@ -35,34 +35,38 @@ describe('technicalBreadcrumbs', () => {
     expect(beforeBreadcrumb(makeBreadcrumb({ category: 'ui.click' }))).toBeNull();
   });
 
-  it('beforeBreadcrumb keeps new web file system read categories and strips private fields', () => {
+  it('beforeBreadcrumb drops removed webFileSystem.read/stat/directory categories', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(
       beforeBreadcrumb(
         makeBreadcrumb({
           category: 'webFileSystem.read',
-          data: {
-            operation: 'readFile',
-            provider: 'webFileSystem',
-            path: '/secret',
-            errorClass: 'DOMException',
-            domExceptionName: 'InvalidStateError',
-          },
+          data: { operation: 'readFile', provider: 'webFileSystem' },
           message: 'file read failed',
         }),
       ),
-    ).toEqual({
-      category: 'webFileSystem.read',
-      data: {
-        operation: 'readFile',
-        provider: 'webFileSystem',
-        errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
-      },
-      level: 'info',
-      message: 'file read failed',
-    });
+    ).toBeNull();
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.stat',
+          data: { operation: 'statFile', provider: 'webFileSystem' },
+          message: 'stat failed',
+        }),
+      ),
+    ).toBeNull();
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          category: 'webFileSystem.directory',
+          data: { operation: 'readDirectory', provider: 'webFileSystem' },
+          message: 'directory read failed',
+        }),
+      ),
+    ).toBeNull();
   });
 
   it('beforeBreadcrumb strips sensitive write data while keeping safe primitive fields', () => {
@@ -237,7 +241,7 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  it('beforeBreadcrumb still strips full paths and directory names even when basename fields are present', () => {
+  it('beforeBreadcrumb strips sensitive key names regardless of their values', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(
@@ -247,7 +251,6 @@ describe('technicalBreadcrumbs', () => {
           data: {
             operation: 'writeFile',
             provider: 'webFileSystem',
-            someFileName: 'abc123.automerge',
             path: '/user-dir/abc123.automerge',
             directoryName: 'my-repository',
             documentTitle: 'Secret Doc',
@@ -260,7 +263,6 @@ describe('technicalBreadcrumbs', () => {
       data: {
         operation: 'writeFile',
         provider: 'webFileSystem',
-        someFileName: 'abc123.automerge',
       },
       level: 'info',
       message: 'file write failed',
@@ -452,90 +454,10 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  // Basename safety for filename-like fields
-
-  it('filename-like key containing / is dropped', () => {
+  it('all string fields use the same 80-char limit regardless of key name', () => {
     const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'writeFile',
-            provider: 'webFileSystem',
-            someFileName: '/user-dir/abc123.automerge',
-          },
-          message: 'file write failed',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'writeFile',
-        provider: 'webFileSystem',
-      },
-      level: 'info',
-      message: 'file write failed',
-    });
-  });
-
-  it('filename-like key containing \\ is dropped', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'writeFile',
-            provider: 'webFileSystem',
-            someFileName: 'folder\\abc123.automerge',
-          },
-          message: 'file write failed',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'writeFile',
-        provider: 'webFileSystem',
-      },
-      level: 'info',
-      message: 'file write failed',
-    });
-  });
-
-  it('filename-like key containing path traversal (..) is dropped', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.write',
-          data: {
-            operation: 'writeFile',
-            provider: 'webFileSystem',
-            someFileName: '../../etc/passwd',
-          },
-          message: 'file write failed',
-        }),
-      ),
-    ).toEqual({
-      category: 'webFileSystem.write',
-      data: {
-        operation: 'writeFile',
-        provider: 'webFileSystem',
-      },
-      level: 'info',
-      message: 'file write failed',
-    });
-  });
-
-  it('filename-like key over the normal 80-char limit but under the 200-char filename limit survives', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-    // 114 chars — above normal 80-char limit, below 200-char filename limit
-    const longFileName =
+    // 114 chars — above the 80-char limit for all string fields
+    const longValue =
       'vBfbhfCLoCspTDKPmaXkbk3Z7GH_incremental_4a8b2c9d3e1f7a5b0c2d4e6f8a1b3c5d7e9f1a2b3c4d5e6f7a8b9c0d.automerge';
 
     expect(
@@ -545,7 +467,7 @@ describe('technicalBreadcrumbs', () => {
           data: {
             operation: 'writableOpen',
             provider: 'webFileSystem',
-            someFileName: longFileName,
+            someFileName: longValue,
           },
           message: 'writable open started',
         }),
@@ -555,7 +477,6 @@ describe('technicalBreadcrumbs', () => {
       data: {
         operation: 'writableOpen',
         provider: 'webFileSystem',
-        someFileName: longFileName,
       },
       level: 'info',
       message: 'writable open started',

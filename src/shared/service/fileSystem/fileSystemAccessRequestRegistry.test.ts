@@ -125,50 +125,6 @@ describe('fileSystemAccessRequestRegistry', () => {
     expect(callOrder).toEqual(['refresh', 'handler']);
   });
 
-  it('returns safe handle comparison statuses when a granted handle is provided', async () => {
-    const registry = createRegistry();
-    const storedHandle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'prompt',
-      sameEntryKey: 'stored-work',
-    });
-    const grantedHandle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'granted',
-      sameEntryKey: 'granted-work',
-    });
-    const refreshProvider = vi.fn().mockResolvedValue(undefined);
-
-    storedHandle.queryPermissionMock?.mockResolvedValue('prompt');
-    storedHandle.isSameEntryMock.mockResolvedValue(false);
-    grantedHandle.queryPermissionMock?.mockResolvedValue('granted');
-
-    registry.upsertRequest({
-      spaceName: 'Work',
-      handle: storedHandle,
-      mode: 'readwrite',
-      refreshProvider,
-    });
-
-    const result = await registry.resolve({
-      operation: 'write',
-      permissionState: 'granted',
-      spaceName: 'Work',
-      grantedHandle,
-    });
-
-    expect(result).toMatchObject({
-      status: 'granted',
-      comparison: {
-        returnedHandleProvided: 'true',
-        returnedHandleSameEntry: 'false',
-        storedHandlePermission: 'prompt',
-        returnedHandlePermission: 'granted',
-        handleComparisonResult: 'differentEntry',
-      },
-    });
-  });
-
   it('write recovery passes correct context to handler', async () => {
     const registry = createRegistry();
     const handle = createHandleMock();

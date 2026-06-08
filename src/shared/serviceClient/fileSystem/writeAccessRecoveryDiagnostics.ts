@@ -10,23 +10,6 @@ import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 import type { WriteAccessRecoveryFailureClassification } from '@shared/service/fileSystem/fileSystemAccessRequestRegistry';
 
 /**
- * Safe handle comparison summary forwarded from the service after permission grant.
- * Contains only booleans and project-controlled status enums.
- */
-export interface WriteAccessRecoveryHandleComparison {
-  /** Safe result of comparing stored and returned handles. */
-  handleComparisonResult: 'differentEntry' | 'notCompared' | 'queryFailed' | 'sameEntry';
-  /** Safe readwrite permission status of the returned main-thread handle. */
-  returnedHandlePermission: 'denied' | 'granted' | 'prompt' | 'queryFailed' | 'unsupported';
-  /** Whether the broker returned a granted handle to the service. */
-  returnedHandleProvided: 'false' | 'true';
-  /** Safe same-entry status, or `unknown` when `isSameEntry()` failed. */
-  returnedHandleSameEntry: 'false' | 'true' | 'unknown';
-  /** Safe readwrite permission status of the stored worker-side handle. */
-  storedHandlePermission: 'denied' | 'granted' | 'prompt' | 'queryFailed' | 'unsupported';
-}
-
-/**
  * Safe replay summary forwarded from a write recovery handler to broker-side diagnostics.
  * Only safe project-controlled counters and a classification enum — no paths, ids, or errors.
  */
@@ -180,32 +163,6 @@ export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: st
     classification: DiagnosticClassification.Access,
     attemptId,
     operation: 'resolveAccessRequest',
-  });
-};
-
-/**
- * Adds a breadcrumb with safe handle comparison statuses after permission grant.
- * @param root0 - Safe comparison summary.
- */
-export const addWriteAccessHandleComparisonBreadcrumb = ({
-  comparison,
-}: {
-  comparison: WriteAccessRecoveryHandleComparison;
-}): void => {
-  addTechnicalBreadcrumb({
-    category: 'writeAccessRecovery',
-    data: {
-      operation: 'resolveAccessRequest',
-      provider: PROVIDER,
-      result: comparison.handleComparisonResult,
-      step: 'handleComparison',
-      handleComparisonResult: comparison.handleComparisonResult,
-      returnedHandlePermission: comparison.returnedHandlePermission,
-      returnedHandleProvided: comparison.returnedHandleProvided,
-      returnedHandleSameEntry: comparison.returnedHandleSameEntry,
-      storedHandlePermission: comparison.storedHandlePermission,
-    },
-    message: 'root handle comparison completed',
   });
 };
 

@@ -389,7 +389,6 @@ describe('useRepositoriesService', () => {
   });
 
   it('preserves browserFileStateChanged for InvalidStateError replay failures in both diagnostics and recovery result', async () => {
-    let capturedOptions: RetryingStorageAdapterOptions | undefined;
     const flushPendingSaves = vi.fn().mockResolvedValue({
       caughtError: new DOMException('state changed', 'InvalidStateError'),
       failureClassification: 'storageFailure' as const,
@@ -398,18 +397,15 @@ describe('useRepositoriesService', () => {
       status: 'failed' as const,
     });
 
-    createRetryingStorageAdapterMock.mockImplementation(
-      (adapter: unknown, options?: RetryingStorageAdapterOptions) => {
-        const path = getMockAdapterPath(adapter);
-        capturedOptions = options;
+    createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => {
+      const path = getMockAdapterPath(adapter);
 
-        return {
-          ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
-          flushPendingSaves,
-          hasPendingSaves: vi.fn(() => path === '/Device Files/Work/repo-a'),
-        };
-      },
-    );
+      return {
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn(() => path === '/Device Files/Work/repo-a'),
+      };
+    });
 
     createDirectoryContentSubject('/Device Files/Work/repo-a', []);
     const { useRepositoriesService } = await import('./repositoriesService');
@@ -422,12 +418,6 @@ describe('useRepositoriesService', () => {
       await service.initializeRepository('/Device Files/Work/repo-a');
 
       const [handler] = registerWriteAccessRecoveryHandlerMock.mock.calls[0] ?? [];
-      capturedOptions?.onFlushPendingSavesFailure?.({
-        caughtError: new DOMException('state changed', 'InvalidStateError'),
-        failureClassification: 'storageFailure',
-        flushedCount: 0,
-        pendingCount: 1,
-      });
 
       await expect(
         handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),

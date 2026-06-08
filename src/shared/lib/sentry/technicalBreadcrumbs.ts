@@ -4,9 +4,6 @@ import type { SentryReportingState } from './sentryRuntimeState';
 
 export const TECHNICAL_BREADCRUMB_CATEGORIES = [
   'repository.storage',
-  'webFileSystem.directory',
-  'webFileSystem.read',
-  'webFileSystem.stat',
   'webFileSystem.write',
   'writeAccessRecovery',
   'worker.runtime',
@@ -37,8 +34,6 @@ export type TechnicalBreadcrumbInput = {
 const CATEGORY_SET = new Set<string>(TECHNICAL_BREADCRUMB_CATEGORIES);
 const PRODUCTION_MAX_STRING_LENGTH = 80;
 const PREVIEW_MAX_STRING_LENGTH = 120;
-// Wider limit for basename fields: covers long Automerge filenames used in PR #85 write-failure diagnosis.
-const FILENAME_FIELD_MAX_LENGTH = 200;
 
 /**
  * Lowercase denylist of key names that are obviously unsafe for Sentry even when their value is
@@ -99,19 +94,6 @@ const sanitizeString = (
   return trimmed;
 };
 
-const isFilenameKey = (key: string): boolean => key.endsWith('FileName');
-
-const sanitizeBasename = (value: string): string | undefined => {
-  if (value.includes('/') || value.includes('\\') || value.includes('..')) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > FILENAME_FIELD_MAX_LENGTH) {
-    return undefined;
-  }
-  return trimmed;
-};
-
 const sanitizeData = (
   data: Breadcrumb['data'],
   diagnosticsMode: DiagnosticsMode,
@@ -146,9 +128,7 @@ const sanitizeData = (
     }
 
     if (typeof value === 'string') {
-      const safeValue = isFilenameKey(key)
-        ? sanitizeBasename(value)
-        : sanitizeString(value, diagnosticsMode);
+      const safeValue = sanitizeString(value, diagnosticsMode);
       if (safeValue !== undefined) {
         sanitized[key] = safeValue;
       }

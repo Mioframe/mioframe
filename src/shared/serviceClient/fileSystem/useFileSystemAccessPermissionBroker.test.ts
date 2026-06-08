@@ -95,7 +95,6 @@ describe('useFileSystemAccessPermissionBroker', () => {
     });
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'read' });
     expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith({
-      grantedHandle: handle,
       operation: 'read',
       permissionState: 'granted',
       spaceName: 'Work',
