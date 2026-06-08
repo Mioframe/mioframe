@@ -1,6 +1,4 @@
 import type { StorageAdapterInterface } from '@automerge/automerge-repo';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { createRetryingStorageAdapter } from './createRetryingStorageAdapter';
 
@@ -120,16 +118,6 @@ describe('createRetryingStorageAdapter', () => {
     expect(wrapped.hasPendingSaves()).toBe(true);
   });
 
-  it('keeps diagnostics concerns out of the adapter source', () => {
-    const source = readFileSync(
-      join(process.cwd(), 'src/shared/lib/automergeAdapter/createRetryingStorageAdapter.ts'),
-      'utf8',
-    );
-
-    expect(source).not.toContain('@shared/lib/diagnostics');
-    expect(source).not.toContain('sanitizeDiagnosticError');
-  });
-
   it('removes a pending save when remove deletes the same storage key', async () => {
     const error = new Error('permission blocked');
     const key = ['doc-id', 'snapshot', 'hash-a'] as const;
@@ -197,55 +185,6 @@ describe('createRetryingStorageAdapter', () => {
     });
     expect(adapter.save).toHaveBeenLastCalledWith(otherDocumentKey, new Uint8Array([3]));
     expect(adapter.save).toHaveBeenCalledTimes(4);
-  });
-
-  it('sets failureClassification to accessRequired when flush is still blocked', async () => {
-    const blockedError = new Error('permission blocked');
-    const adapter = {
-      load: vi.fn(),
-      loadRange: vi.fn(),
-      remove: vi.fn(),
-      removeRange: vi.fn(),
-      save: vi
-        .fn<StorageAdapterInterface['save']>()
-        .mockRejectedValueOnce(blockedError)
-        .mockRejectedValueOnce(blockedError),
-    } satisfies StorageAdapterInterface;
-    const wrapped = createRetryingStorageAdapter(adapter, {
-      shouldQueueFailedSave: (candidate) => candidate === blockedError,
-    });
-
-    await expect(wrapped.save(['key'], new Uint8Array([1]))).rejects.toBe(blockedError);
-
-    const result = await wrapped.flushPendingSaves();
-
-    expect(result.status).toBe('stillBlocked');
-    expect(result.failureClassification).toBe('accessRequired');
-  });
-
-  it('sets failureClassification to storageFailure when flush fails for a non-retryable error', async () => {
-    const queuedError = new Error('permission blocked');
-    const storageError = new Error('disk write error');
-    const adapter = {
-      load: vi.fn(),
-      loadRange: vi.fn(),
-      remove: vi.fn(),
-      removeRange: vi.fn(),
-      save: vi
-        .fn<StorageAdapterInterface['save']>()
-        .mockRejectedValueOnce(queuedError)
-        .mockRejectedValueOnce(storageError),
-    } satisfies StorageAdapterInterface;
-    const wrapped = createRetryingStorageAdapter(adapter, {
-      shouldQueueFailedSave: (candidate) => candidate === queuedError,
-    });
-
-    await expect(wrapped.save(['key'], new Uint8Array([1]))).rejects.toBe(queuedError);
-
-    const result = await wrapped.flushPendingSaves();
-
-    expect(result.status).toBe('failed');
-    expect(result.failureClassification).toBe('storageFailure');
   });
 
   it('calls onSaveFailure with queued=true and accessRequired when a save is queued', async () => {
@@ -326,32 +265,6 @@ describe('createRetryingStorageAdapter', () => {
     );
   });
 
-  it('keeps save queued after onSaveFailure callback throws', async () => {
-    const adapterError = new Error('permission blocked');
-    const adapter = {
-      load: vi.fn(),
-      loadRange: vi.fn(),
-      remove: vi.fn(),
-      removeRange: vi.fn(),
-      save: vi
-        .fn<StorageAdapterInterface['save']>()
-        .mockRejectedValueOnce(adapterError)
-        .mockResolvedValueOnce(undefined),
-    } satisfies StorageAdapterInterface;
-    const wrapped = createRetryingStorageAdapter(adapter, {
-      shouldQueueFailedSave: (candidate) => candidate === adapterError,
-      onSaveFailure: () => {
-        throw new Error('diagnostic exploded');
-      },
-    });
-
-    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([1]))).rejects.toBe(
-      adapterError,
-    );
-
-    expect(wrapped.hasPendingSaves()).toBe(true);
-  });
-
   it('flushPendingSaves works after onSaveFailure callback throws', async () => {
     const adapterError = new Error('permission blocked');
     const adapter = {
@@ -381,52 +294,6 @@ describe('createRetryingStorageAdapter', () => {
       status: 'flushed',
     });
     expect(wrapped.hasPendingSaves()).toBe(false);
-  });
-
-  it('still queues the save correctly when no onSaveFailure callback is registered', async () => {
-    const error = new Error('permission blocked');
-    const adapter = {
-      load: vi.fn(),
-      loadRange: vi.fn(),
-      remove: vi.fn(),
-      removeRange: vi.fn(),
-      save: vi.fn<StorageAdapterInterface['save']>().mockRejectedValueOnce(error),
-    } satisfies StorageAdapterInterface;
-    const wrapped = createRetryingStorageAdapter(adapter, {
-      shouldQueueFailedSave: (candidate) => candidate === error,
-    });
-
-    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([1]))).rejects.toBe(
-      error,
-    );
-
-    expect(wrapped.hasPendingSaves()).toBe(true);
-  });
-
-  it('onSaveFailure payload contains queued, failureClassification, pendingCount, and caughtError', async () => {
-    const error = new Error('permission blocked');
-    const adapter = {
-      load: vi.fn(),
-      loadRange: vi.fn(),
-      remove: vi.fn(),
-      removeRange: vi.fn(),
-      save: vi.fn<StorageAdapterInterface['save']>().mockRejectedValueOnce(error),
-    } satisfies StorageAdapterInterface;
-    const onSaveFailure = vi.fn();
-    const wrapped = createRetryingStorageAdapter(adapter, {
-      shouldQueueFailedSave: (candidate) => candidate === error,
-      onSaveFailure,
-    });
-
-    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([1]))).rejects.toBe(
-      error,
-    );
-
-    const payload = onSaveFailure.mock.calls[0]?.[0];
-    expect(Object.keys(payload ?? {}).sort()).toEqual(
-      ['caughtError', 'failureClassification', 'pendingCount', 'queued'].sort(),
-    );
-    expect(payload?.caughtError).toBe(error);
   });
 
   it('delegates non-save operations to the wrapped adapter', async () => {

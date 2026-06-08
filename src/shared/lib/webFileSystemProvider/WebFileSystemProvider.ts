@@ -70,10 +70,10 @@ export interface WebFileSystemDiagnosticStep {
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
-): IFileSystemProvider & { notifyAccessChanged(): Promise<void> } => {
+): IFileSystemProvider & { notifyAccessChanged: () => Promise<void> } => {
   const { onAccessRequired, onDiagnosticStep, permissionPolicy } = options;
   const events = new EventEmitter();
-  let currentRootHandle = rootHandle;
+  const currentRootHandle = rootHandle;
 
   const getWriteCapability = (
     permissionState: PermissionState | undefined,
@@ -682,10 +682,7 @@ export const WebFileSystemProvider = (
     await remove(normalizedOld, true);
   };
 
-  const notifyAccessChanged = (nextRootHandle?: FileSystemDirectoryHandle) => {
-    if (nextRootHandle !== undefined) {
-      currentRootHandle = nextRootHandle;
-    }
+  const notifyAccessChanged = () => {
     events.emit({
       source: VfsEventSource.PROVIDER,
       type: VfsEventType.UPDATE,

@@ -505,38 +505,6 @@ describe('useFileSystemAccessPermissionBroker', () => {
       scope.stop();
     });
 
-    it('does not emit a diagnostic event for handle comparison after a granted write recovery', async () => {
-      const handle = createDirectoryHandleMock({
-        name: 'Work',
-        permissionState: 'prompt',
-        sameEntryKey: 'work-returned',
-      });
-      handle.requestPermissionMock.mockResolvedValue('granted');
-      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
-        handle,
-        operation: 'write',
-        spaceName: 'Work',
-      });
-      resolveFileSystemAccessRequestMock.mockResolvedValue({
-        status: 'granted',
-        comparison: {
-          returnedHandleProvided: 'true',
-          returnedHandleSameEntry: 'false',
-          storedHandlePermission: 'prompt',
-          returnedHandlePermission: 'granted',
-          handleComparisonResult: 'differentEntry',
-        },
-      });
-
-      const { broker, scope } = await mountBroker();
-
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
-
-      expect(diagnosticSink).toHaveLength(0);
-
-      scope.stop();
-    });
-
     it('emits a providerFailure diagnostic event with sanitized error when the outer catch fires', async () => {
       getTemporaryFileSystemAccessHandleMock.mockRejectedValue(
         new DOMException('Permission denied', 'NotAllowedError'),

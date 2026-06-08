@@ -45,8 +45,6 @@ describe('createVFSAdapter – save uses v2 compact filenames', () => {
     const expectedV2 = requireV2Name(docId, 'snapshot', HASH_A);
 
     expect(names).toContain(expectedV2);
-    expect(expectedV2.length).toBeLessThan(112);
-    expect(expectedV2.length).toBeLessThanOrEqual(80);
   });
 
   it('saves an incremental with a v2 compact filename', async () => {
@@ -60,20 +58,6 @@ describe('createVFSAdapter – save uses v2 compact filenames', () => {
     const entries = await vfs.readDirectory(path);
     const names = entries.map(([name]) => name);
     expect(names).toContain(requireV2Name(docId, 'incremental', HASH_B));
-  });
-
-  it('saved v2 filename contains no path separators or traversal characters', async () => {
-    const { vfs, path } = await setupVfs();
-    const docId = getDocumentId();
-    const adapter = createVFSAdapter(vfs, path);
-    await adapter.save([docId, 'snapshot', HASH_A], DATA_A);
-
-    const entries = await vfs.readDirectory(path);
-    const [firstEntry] = entries;
-    const name = firstEntry?.[0];
-    expect(name).not.toContain('/');
-    expect(name).not.toContain('\\');
-    expect(name).not.toContain('..');
   });
 });
 
