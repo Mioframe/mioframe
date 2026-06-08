@@ -21,3 +21,12 @@ export { fileNameToPartialKey } from './fileNameToPartialKey';
 export { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
 export { partialKeyToFileName } from './partialKeyToFileName';
 export { storageAdapterMarkerFileName } from './storageAdapterMarkerFileName';
+export {
+  encodeStorageKeyToV2FileName,
+  decodeV2FileName,
+  isV2FileName,
+  hexToBase64Url,
+  base64UrlToHex,
+  V2_FILE_EXTENSION,
+  V2_SEPARATOR,
+} from './filenameCodecV2';

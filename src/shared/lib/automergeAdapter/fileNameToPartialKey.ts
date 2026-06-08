@@ -6,8 +6,32 @@ import {
   KEY_SEPARATE,
   zodPartialStorageKey,
 } from './types';
+import { decodeV2FileName } from './filenameCodecV2';
 
+/**
+ * Converts a physical Automerge storage filename to a logical partial storage key.
+ * Recognises both the legacy `<docId>_<kind>_<hash>.automerge` format and the compact
+ * v2 `<docId>~<kindCode>~<compactHash>.am` format so that directories containing a mix
+ * of old and new files continue to work after the compact-filename migration.
+ * @param fileName - Physical filename to parse.
+ * @returns Logical partial storage key, or undefined when the filename is not a recognised format.
+ */
 export const fileNameToPartialKey = (fileName: unknown): PartialStorageKey | undefined => {
+  if (typeof fileName !== 'string') {
+    return undefined;
+  }
+
+  // Try v2 format first: <docId>~<s|i>~<compactHash>.am
+  const v2Parts = decodeV2FileName(fileName);
+
+  if (v2Parts) {
+    const [documentId, kind, hexHash] = v2Parts;
+    const key = [documentId, kind, hexHash];
+
+    return zodIs(key, zodPartialStorageKey) ? key : undefined;
+  }
+
+  // Fall back to legacy format: <docId>_<kind>_<hash>.automerge (or shorter prefix variants)
   const partialAutomergeFileName = zodIs(fileName, zodPartialAutomergeFileName)
     ? fileName
     : undefined;
