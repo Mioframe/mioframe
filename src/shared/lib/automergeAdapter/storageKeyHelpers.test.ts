@@ -1,6 +1,7 @@
 import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it } from 'vitest';
 import {
+  listStorageFileEntries,
   selectReadableStorageEntries,
   storageKeyEquals,
   storageKeyStartsWith,
@@ -63,6 +64,53 @@ describe('storageKeyStartsWith', () => {
   it('returns false when elements differ', () => {
     const docId = getDocumentId();
     expect(storageKeyStartsWith([docId, 'incremental', HASH_A], [docId, 'snapshot'])).toBe(false);
+  });
+});
+
+describe('listStorageFileEntries', () => {
+  it('parses a v2 filename to its logical key', () => {
+    const v2 = requireV2(DOC_ID_STR, 'snapshot', HASH_A);
+    const entries = listStorageFileEntries([v2]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.key).toEqual([DOC_ID_STR, 'snapshot', HASH_A]);
+    expect(entries[0]?.name).toBe(v2);
+  });
+
+  it('parses a legacy filename to its logical key', () => {
+    const legacy = `${DOC_ID_STR}_snapshot_${HASH_A}.automerge`;
+    const entries = listStorageFileEntries([legacy]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.key).toEqual([DOC_ID_STR, 'snapshot', HASH_A]);
+  });
+
+  it('skips unrecognised filenames', () => {
+    const entries = listStorageFileEntries(['random.txt', 'not-a-valid-key.automerge']);
+    expect(entries).toHaveLength(0);
+  });
+
+  it('returns both legacy and v2 entries when both exist for the same logical key (no dedup)', () => {
+    const legacy = `${DOC_ID_STR}_snapshot_${HASH_A}.automerge`;
+    const v2 = requireV2(DOC_ID_STR, 'snapshot', HASH_A);
+    const entries = listStorageFileEntries([legacy, v2]);
+    expect(entries).toHaveLength(2);
+    const names = entries.map((e) => e.name);
+    expect(names).toContain(legacy);
+    expect(names).toContain(v2);
+  });
+
+  it('preserves iteration order', () => {
+    const v2a = requireV2(DOC_ID_STR, 'snapshot', HASH_A);
+    const v2b = requireV2(DOC_ID_STR, 'incremental', HASH_B);
+    const entries = listStorageFileEntries([v2a, v2b]);
+    expect(entries).toHaveLength(2);
+    expect(entries[0]?.name).toBe(v2a);
+    expect(entries[1]?.name).toBe(v2b);
+  });
+
+  it('includes the marker file key', () => {
+    const entries = listStorageFileEntries(['storage-adapter-id.automerge']);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.key).toEqual(['storage-adapter-id']);
   });
 });
 

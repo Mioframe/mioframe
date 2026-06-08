@@ -1,6 +1,6 @@
 import { Repo } from '@automerge/automerge-repo';
-import { describe, expect, it } from 'vitest';
-import { VirtualFileSystem } from '../virtualFileSystem';
+import { describe, expect, it, vi } from 'vitest';
+import { FileSystemError, VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import { MemoryFileSystem } from '../virtualFileSystem/MemoryFileSystem';
 import { createVFSAdapter } from './createVFSAdapter';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
@@ -378,6 +378,60 @@ describe('createVFSAdapter – removeRange deletes matching legacy and v2 files'
     // After removeRange the legacy file is gone, and no new files were created.
     expect(entriesBefore).toHaveLength(1);
     expect(entriesAfter).toHaveLength(0);
+  });
+});
+
+describe('createVFSAdapter – remove error handling', () => {
+  it('throws when vfs.delete raises a non-FileNotFound error during remove', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
+
+    const permissionError = new VfsError(FileSystemError.NoPermissions, 'denied');
+    vi.spyOn(vfs, 'delete').mockRejectedValueOnce(permissionError);
+
+    const adapter = createVFSAdapter(vfs, path);
+    await expect(adapter.remove([docId, 'snapshot', HASH_A])).rejects.toThrow(permissionError);
+  });
+
+  it('ignores FileNotFound during remove (file already gone)', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
+
+    const notFoundError = new VfsError(FileSystemError.FileNotFound, 'gone');
+    vi.spyOn(vfs, 'delete').mockRejectedValueOnce(notFoundError);
+
+    const adapter = createVFSAdapter(vfs, path);
+    await expect(adapter.remove([docId, 'snapshot', HASH_A])).resolves.toBeUndefined();
+  });
+
+  it('throws when vfs.delete raises a non-FileNotFound error during removeRange', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
+
+    const permissionError = new VfsError(FileSystemError.NoPermissions, 'denied');
+    vi.spyOn(vfs, 'delete').mockRejectedValueOnce(permissionError);
+
+    const adapter = createVFSAdapter(vfs, path);
+    await expect(adapter.removeRange([docId])).rejects.toThrow(permissionError);
+  });
+
+  it('ignores FileNotFound during removeRange (file already gone)', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
+
+    const notFoundError = new VfsError(FileSystemError.FileNotFound, 'gone');
+    vi.spyOn(vfs, 'delete').mockRejectedValueOnce(notFoundError);
+
+    const adapter = createVFSAdapter(vfs, path);
+    await expect(adapter.removeRange([docId])).resolves.toBeUndefined();
   });
 });
 

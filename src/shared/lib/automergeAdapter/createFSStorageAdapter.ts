@@ -9,8 +9,8 @@ import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { isNil } from 'es-toolkit';
 import type { AMChunk, AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
-import { fileNameToPartialKey } from './fileNameToPartialKey';
 import {
+  listStorageFileEntries,
   selectReadableStorageEntries,
   storageKeyEquals,
   storageKeyStartsWith,
@@ -26,31 +26,33 @@ import {
 export const createFSStorageAdapter = (
   directory: DirectoryForStorageAdapter,
 ): AMStorageAdapterInterface => {
+  const collectFileHandles = async (): Promise<Map<string, FileForStorageAdapter>> => {
+    const handles = new Map<string, FileForStorageAdapter>();
+
+    for await (const [rawName, entry] of directory.entries()) {
+      if ('read' in entry) {
+        handles.set(toString(rawName), entry);
+      }
+    }
+
+    return handles;
+  };
+
   const listDeduplicatedEntries = async (): Promise<
     Map<
       string,
       { name: string; entry: FileForStorageAdapter; key: PartialStorageKey; isV2: boolean }
     >
   > => {
-    const entryHandles = new Map<string, FileForStorageAdapter>();
-    const names: string[] = [];
-
-    for await (const [rawName, entry] of directory.entries()) {
-      if (!('read' in entry)) continue;
-
-      const name = toString(rawName);
-      entryHandles.set(name, entry);
-      names.push(name);
-    }
-
-    const deduped = selectReadableStorageEntries(names);
+    const handles = await collectFileHandles();
+    const deduped = selectReadableStorageEntries(handles.keys());
     const result = new Map<
       string,
       { name: string; entry: FileForStorageAdapter; key: PartialStorageKey; isV2: boolean }
     >();
 
     for (const [keyStr, { name, key, isV2 }] of deduped) {
-      const entry = entryHandles.get(name);
+      const entry = handles.get(name);
 
       if (entry) {
         result.set(keyStr, { name, entry, key, isV2 });
@@ -90,20 +92,22 @@ export const createFSStorageAdapter = (
   };
 
   const remove = async (key: StorageKey) => {
-    for await (const [rawName, entry] of directory.entries()) {
-      if (!('read' in entry)) continue;
+    const handles = await collectFileHandles();
+    const matching = listStorageFileEntries(handles.keys()).filter(({ key: entryKey }) =>
+      storageKeyEquals(entryKey, key),
+    );
 
-      const name = toString(rawName);
-      const entryKey = fileNameToPartialKey(name);
+    await Promise.all(
+      matching.map(async ({ name }) => {
+        const entry = handles.get(name);
 
-      if (entryKey && storageKeyEquals(entryKey, key)) {
-        if (entry.remove) {
+        if (entry?.remove) {
           await entry.remove();
         } else {
           await directory.removeByName?.(name);
         }
-      }
-    }
+      }),
+    );
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
@@ -129,20 +133,22 @@ export const createFSStorageAdapter = (
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    for await (const [rawName, entry] of directory.entries()) {
-      if (!('read' in entry)) continue;
+    const handles = await collectFileHandles();
+    const matching = listStorageFileEntries(handles.keys()).filter(({ key }) =>
+      storageKeyStartsWith(key, keyPrefix),
+    );
 
-      const name = toString(rawName);
-      const key = fileNameToPartialKey(name);
+    await Promise.all(
+      matching.map(async ({ name }) => {
+        const entry = handles.get(name);
 
-      if (key && storageKeyStartsWith(key, keyPrefix)) {
-        if (entry.remove) {
+        if (entry?.remove) {
           await entry.remove();
         } else {
           await directory.removeByName?.(name);
         }
-      }
-    }
+      }),
+    );
   };
 
   const adapter: AMStorageAdapterInterface = {

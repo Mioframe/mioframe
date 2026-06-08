@@ -60,6 +60,30 @@ export const toWritableStorageFileName = (key: StorageKey): string | undefined =
 };
 
 /**
+ * Parses physical filenames into logical storage entries without deduplication.
+ *
+ * Unlike `selectReadableStorageEntries`, this returns ALL recognized entries so that
+ * delete paths can remove every matching physical file, including mixed legacy/v2 duplicates.
+ * @param names - Iterable of physical filenames.
+ * @returns Array of `{ name, key }` for every recognized filename, in iteration order.
+ */
+export const listStorageFileEntries = (
+  names: Iterable<string>,
+): { name: string; key: PartialStorageKey }[] => {
+  const result: { name: string; key: PartialStorageKey }[] = [];
+
+  for (const name of names) {
+    const key = fileNameToPartialKey(name);
+
+    if (key) {
+      result.push({ name, key });
+    }
+  }
+
+  return result;
+};
+
+/**
  * Deduplicates storage filename entries by logical key, preferring v2 over legacy.
  *
  * When both a legacy and a v2 file exist for the same logical key, the v2 entry

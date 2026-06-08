@@ -3,8 +3,8 @@ import type { AMChunk } from '@shared/lib/automerge';
 import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
-import { fileNameToPartialKey } from './fileNameToPartialKey';
 import {
+  listStorageFileEntries,
   selectReadableStorageEntries,
   storageKeyEquals,
   storageKeyStartsWith,
@@ -66,40 +66,38 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
     }, []);
   };
 
+  const deleteMatchingFiles = async (names: string[]): Promise<void> => {
+    const results = await Promise.allSettled(
+      names.map((name) => vfs.delete(PathUtils.join(path, name))),
+    );
+
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        const { reason } = result;
+
+        if (!(reason instanceof VfsError && reason.code === FileSystemError.FileNotFound)) {
+          throw reason;
+        }
+      }
+    }
+  };
+
   const remove = async (key: StorageKey) => {
     const directoryContent = await vfs.readDirectory(path);
+    const matching = listStorageFileEntries(directoryContent.map(([name]) => name))
+      .filter(({ key: entryKey }) => storageKeyEquals(entryKey, key))
+      .map(({ name }) => name);
 
-    await Promise.allSettled(
-      directoryContent.map(async ([name]) => {
-        const entryKey = fileNameToPartialKey(name);
-
-        if (entryKey && storageKeyEquals(entryKey, key)) {
-          try {
-            await vfs.delete(PathUtils.join(path, name));
-          } catch (error) {
-            if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-              return;
-            }
-
-            throw error;
-          }
-        }
-      }),
-    );
+    await deleteMatchingFiles(matching);
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
     const directoryContent = await vfs.readDirectory(path);
+    const matching = listStorageFileEntries(directoryContent.map(([name]) => name))
+      .filter(({ key }) => storageKeyStartsWith(key, keyPrefix))
+      .map(({ name }) => name);
 
-    await Promise.allSettled(
-      directoryContent.map(async ([name]) => {
-        const key = fileNameToPartialKey(name);
-
-        if (key && storageKeyStartsWith(key, keyPrefix)) {
-          await vfs.delete(PathUtils.join(path, name));
-        }
-      }),
-    );
+    await deleteMatchingFiles(matching);
   };
 
   const save = async (key: StorageKey, data: Uint8Array): Promise<void> => {
