@@ -42,3 +42,13 @@ export const fileNameToPartialKey = (fileName: unknown): PartialStorageKey | und
 
   return zodIs(maybePartialStorageKey, zodPartialStorageKey) ? maybePartialStorageKey : undefined;
 };
+
+/**
+ * Returns true when the given filename is a recognised Automerge storage file:
+ * either legacy `.automerge` or compact v2 `.am` format.
+ * Returns false for user `.am` files that do not match the exact v2 Automerge storage format.
+ * @param name - Filename to classify.
+ * @returns True when the file should be treated as an Automerge sidecar file.
+ */
+export const isAutomergeStorageFileName = (name: string): boolean =>
+  fileNameToPartialKey(name) !== undefined;

@@ -449,7 +449,6 @@ export const WebFileSystemProvider = (
     try {
       await writeFileHandleContent(resolvedHandle, content);
     } catch (writeError) {
-      reportDiagnosticStep({ step: 'fileWrite', result: 'failed', error: writeError });
       await rollbackCreatedFile();
       throw writeError;
     }

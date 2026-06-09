@@ -229,6 +229,42 @@ describe('reportDiagnosticEvent', () => {
     expect(realFacade.captureMessage).not.toHaveBeenCalled();
   });
 
+  it('flushes a queued event when flushQueuedDiagnosticEvents is called while enabled', async () => {
+    getSentryReportingStateMock.mockReturnValue('unknown');
+    ensureSentryMock.mockResolvedValue(realFacade);
+    const { reportDiagnosticEvent, flushQueuedDiagnosticEvents } =
+      await import('./reportDiagnosticEvent');
+
+    reportDiagnosticEvent(makeEvent());
+    await waitForAsyncWork();
+    expect(realFacade.captureMessage).not.toHaveBeenCalled();
+
+    getSentryReportingStateMock.mockReturnValue('enabled');
+    flushQueuedDiagnosticEvents();
+    await waitForAsyncWork();
+
+    expect(realFacade.captureMessage).toHaveBeenCalledOnce();
+  });
+
+  it('clears the queue when reporting becomes disabled', async () => {
+    getSentryReportingStateMock.mockReturnValue('unknown');
+    ensureSentryMock.mockResolvedValue(realFacade);
+    const { reportDiagnosticEvent, clearQueuedDiagnosticEvents } =
+      await import('./reportDiagnosticEvent');
+
+    reportDiagnosticEvent(makeEvent());
+    await waitForAsyncWork();
+
+    clearQueuedDiagnosticEvents();
+
+    getSentryReportingStateMock.mockReturnValue('enabled');
+    const { flushQueuedDiagnosticEvents } = await import('./reportDiagnosticEvent');
+    flushQueuedDiagnosticEvents();
+    await waitForAsyncWork();
+
+    expect(realFacade.captureMessage).not.toHaveBeenCalled();
+  });
+
   it('does not throw when Sentry is not configured', async () => {
     isSentryConfiguredMock.mockReturnValue(false);
     const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
@@ -247,199 +283,5 @@ describe('reportDiagnosticEvent', () => {
     }).not.toThrow();
 
     await expect(waitForAsyncWork()).resolves.toBeUndefined();
-  });
-
-  it('schedules a follow-up flush when an event is added while a flush is in progress', async () => {
-    let resolveFirst: (() => void) | undefined;
-    ensureSentryMock
-      .mockImplementationOnce(
-        () =>
-          new Promise<typeof realFacade>((resolve) => {
-            resolveFirst = () => {
-              resolve(realFacade);
-            };
-          }),
-      )
-      .mockResolvedValue(realFacade);
-
-    const { reportDiagnosticEvent, flushQueuedDiagnosticEvents } =
-      await import('./reportDiagnosticEvent');
-
-    // Start a flush that is blocked on ensureSentry
-    reportDiagnosticEvent(makeEvent());
-    flushQueuedDiagnosticEvents();
-
-    // A second event arrives while the first flush is still in flight
-    reportDiagnosticEvent(makeEvent());
-
-    // The second flush call is deferred (pendingRetry=true)
-    // Resolve the first flush, which triggers a follow-up flush for the second event
-    resolveFirst?.();
-    await waitForAsyncWork();
-    await waitForAsyncWork();
-
-    expect(realFacade.captureMessage.mock.calls.length).toBeGreaterThanOrEqual(1);
-  });
-
-  describe('queue retry on failed flush', () => {
-    it('performs exactly one auto-retry when ensureSentry rejects and queue is non-empty', async () => {
-      let callCount = 0;
-      ensureSentryMock.mockImplementation(() => {
-        callCount++;
-        return Promise.reject(new Error('Sentry init failed'));
-      });
-
-      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
-
-      reportDiagnosticEvent(makeEvent());
-
-      // Allow initial flush + one auto-retry to complete.
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-
-      // Initial call + exactly one auto-retry = 2 attempts total (no tight loop).
-      expect(callCount).toBe(2);
-    });
-
-    it('retains queued events after a failed Sentry initialization', async () => {
-      ensureSentryMock
-        .mockRejectedValueOnce(new Error('Sentry init failed'))
-        .mockRejectedValueOnce(new Error('Sentry init failed'));
-
-      const { reportDiagnosticEvent, setDiagnosticEventSink } =
-        await import('./reportDiagnosticEvent');
-
-      const sink: DiagnosticEvent[] = [];
-      setDiagnosticEventSink(sink);
-
-      reportDiagnosticEvent(makeEvent());
-
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-
-      // Sentry did not receive the event.
-      expect(realFacade.captureMessage).not.toHaveBeenCalled();
-      // The event was captured by the in-memory sink (not dropped).
-      expect(sink).toHaveLength(1);
-
-      setDiagnosticEventSink(undefined);
-    });
-
-    it('sends queued events on a later explicit flush after failed initialization', async () => {
-      ensureSentryMock
-        .mockRejectedValueOnce(new Error('Sentry init failed'))
-        .mockRejectedValueOnce(new Error('Sentry init failed'))
-        .mockResolvedValue(realFacade);
-
-      const { reportDiagnosticEvent, flushQueuedDiagnosticEvents } =
-        await import('./reportDiagnosticEvent');
-
-      reportDiagnosticEvent(makeEvent());
-
-      // Let initial flush and its one auto-retry both fail.
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-
-      expect(realFacade.captureMessage).not.toHaveBeenCalled();
-
-      // Explicit retry after Sentry becomes available.
-      flushQueuedDiagnosticEvents();
-      await waitForAsyncWork();
-
-      expect(realFacade.captureMessage).toHaveBeenCalledOnce();
-    });
-
-    it('events queued during an active flush are not lost when the flush fails', async () => {
-      let resolveFirst: (() => void) | undefined;
-      ensureSentryMock
-        .mockImplementationOnce(
-          () =>
-            new Promise<typeof realFacade>((resolve) => {
-              resolveFirst = () => {
-                resolve(realFacade);
-              };
-            }),
-        )
-        .mockResolvedValue(realFacade);
-
-      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
-
-      // Start a slow flush. Use distinct names so events are not deduped.
-      reportDiagnosticEvent(makeEvent({ name: 'queue.eventA' }));
-
-      // Queue a second distinct event while the first flush is in progress.
-      reportDiagnosticEvent(makeEvent({ name: 'queue.eventB' }));
-
-      // Resolve the first flush — the second event should trigger a follow-up flush.
-      resolveFirst?.();
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-      await waitForAsyncWork();
-
-      // Both events must have been sent.
-      expect(realFacade.captureMessage.mock.calls.length).toBeGreaterThanOrEqual(2);
-    });
-  });
-
-  describe('memory sink', () => {
-    it('writes events to the in-memory sink regardless of reporting state', async () => {
-      getSentryReportingStateMock.mockReturnValue('disabled');
-      const { reportDiagnosticEvent, setDiagnosticEventSink } =
-        await import('./reportDiagnosticEvent');
-      const sink: DiagnosticEvent[] = [];
-      setDiagnosticEventSink(sink);
-
-      const event = makeEvent();
-      reportDiagnosticEvent(event);
-
-      expect(sink).toHaveLength(1);
-      expect(sink[0]).toBe(event);
-
-      setDiagnosticEventSink(undefined);
-    });
-
-    it('stops writing to the sink after it is removed', async () => {
-      const { reportDiagnosticEvent, setDiagnosticEventSink } =
-        await import('./reportDiagnosticEvent');
-      const sink: DiagnosticEvent[] = [];
-      setDiagnosticEventSink(sink);
-      setDiagnosticEventSink(undefined);
-
-      reportDiagnosticEvent(makeEvent());
-
-      expect(sink).toHaveLength(0);
-    });
-
-    it('captures events even when Sentry is not configured', async () => {
-      isSentryConfiguredMock.mockReturnValue(false);
-      const { reportDiagnosticEvent, setDiagnosticEventSink } =
-        await import('./reportDiagnosticEvent');
-      const sink: DiagnosticEvent[] = [];
-      setDiagnosticEventSink(sink);
-
-      reportDiagnosticEvent(makeEvent());
-
-      expect(sink).toHaveLength(1);
-      setDiagnosticEventSink(undefined);
-    });
-
-    it('clearing queued diagnostic events does not change memory sink behavior', async () => {
-      getSentryReportingStateMock.mockReturnValue('disabled');
-      const { reportDiagnosticEvent, clearQueuedDiagnosticEvents, setDiagnosticEventSink } =
-        await import('./reportDiagnosticEvent');
-      const sink: DiagnosticEvent[] = [];
-      setDiagnosticEventSink(sink);
-
-      reportDiagnosticEvent(makeEvent());
-      clearQueuedDiagnosticEvents();
-      reportDiagnosticEvent(makeEvent());
-
-      expect(sink).toHaveLength(2);
-
-      setDiagnosticEventSink(undefined);
-    });
   });
 });

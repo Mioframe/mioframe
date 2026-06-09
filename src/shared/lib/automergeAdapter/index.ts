@@ -17,7 +17,7 @@ export {
   zodStorageKey,
 } from './types';
 export type * from './types';
-export { fileNameToPartialKey } from './fileNameToPartialKey';
+export { fileNameToPartialKey, isAutomergeStorageFileName } from './fileNameToPartialKey';
 export { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
 export { partialKeyToFileName } from './partialKeyToFileName';
 export { storageAdapterMarkerFileName } from './storageAdapterMarkerFileName';

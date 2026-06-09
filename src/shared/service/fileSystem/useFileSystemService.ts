@@ -1,11 +1,10 @@
-import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
+import { isAutomergeStorageFileName } from '@shared/lib/automergeAdapter';
 import {
   DEVICE_FILES_ROOT_NAME,
   DeviceFileSystemProvider,
   type DeviceFileDisplayRecord,
   type MountedDeviceFileRecord,
 } from '@shared/lib/deviceFileSystemProvider';
-import { zodIs } from '@shared/lib/validateZodScheme';
 import {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
@@ -140,7 +139,7 @@ const setupFileSystemService = () => {
             return payload;
           }
           if (hideAutomergeFiles) {
-            return payload.filter(([name]) => !zodIs(name, zodAutomergeFileName));
+            return payload.filter(([name]) => !isAutomergeStorageFileName(name));
           }
           return payload;
         }),

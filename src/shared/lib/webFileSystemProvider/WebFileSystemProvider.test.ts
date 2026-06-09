@@ -732,6 +732,33 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
+  it('emits the fileWrite failed diagnostic step exactly once per write failure', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const writeError = new DOMException('quota exceeded', 'QuotaExceededError');
+    const onDiagnosticStep = vi.fn();
+    fileHandle.createWritable = vi.fn(async () => {
+      const writable = await createFileHandleMock({
+        name: 'note.txt',
+        permissionState: 'granted',
+      }).createWritable();
+      writable.write = vi.fn(() => Promise.reject(writeError));
+      return writable;
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onDiagnosticStep,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'fresh', { create: true, overwrite: true }),
+    ).rejects.toBe(writeError);
+
+    const fileWriteFailedCalls = onDiagnosticStep.mock.calls.filter(
+      ([event]) => event.step === 'fileWrite' && event.result === 'failed',
+    );
+    expect(fileWriteFailedCalls).toHaveLength(1);
+  });
+
   it('returns fallback stat without retry after InvalidStateError during statAfterWrite', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     fileHandle.getFile = vi

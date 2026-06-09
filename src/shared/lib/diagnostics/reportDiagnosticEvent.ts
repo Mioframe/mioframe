@@ -14,8 +14,10 @@ let memorySink: DiagnosticEvent[] | undefined;
 /**
  * Sets an in-memory sink that receives every `reportDiagnosticEvent` call.
  * Pass `undefined` to remove the sink.
- * Intended for unit tests only — the sink bypasses Sentry consent so it works without
- * initializing the full reporting stack.
+ * Intended for integration tests only — exposed through diagnosticsTestUtils, not the
+ * production barrel. The sink bypasses Sentry consent so it works without initializing the
+ * full reporting stack.
+ * @internal
  * @param sink - The array to write events to, or `undefined` to clear the sink.
  */
 export const setDiagnosticEventSink = (sink: DiagnosticEvent[] | undefined): void => {
@@ -134,15 +136,8 @@ const flushOnce = async (): Promise<void> => {
   }
 };
 
-let pendingRetry = false;
-
-const doFlush = (isAutoRetry: boolean): void => {
-  if (flushPromise) {
-    pendingRetry = true;
-    return;
-  }
-
-  pendingRetry = false;
+const doFlush = (): void => {
+  if (flushPromise) return;
 
   flushPromise = flushOnce()
     .catch(() => {
@@ -150,22 +145,16 @@ const doFlush = (isAutoRetry: boolean): void => {
     })
     .finally(() => {
       flushPromise = undefined;
-      if (!isSentryConfigured() || getSentryReportingState() !== 'enabled') return;
-      if (pendingRetry) {
-        doFlush(true);
-      } else if (!isAutoRetry && diagnosticQueue.length > 0) {
-        doFlush(true);
-      }
     });
 };
 
 /**
  * Flushes queued diagnostic events when reporting is currently allowed.
  * Fire-and-forget: never throws into product code and never creates unhandled promise rejections.
- * Parallel flush cycles are collapsed into the active in-flight run.
+ * A concurrent flush cycle is a no-op; call again after the in-flight flush finishes.
  */
 export const flushQueuedDiagnosticEvents = (): void => {
-  doFlush(false);
+  doFlush();
 };
 
 registerDiagnosticsRuntimeEffects('diagnosticEvents', {
@@ -178,7 +167,6 @@ registerDiagnosticsRuntimeEffects('diagnosticEvents', {
  *
  * - Respects diagnostics consent/Sentry reporting state.
  * - Fire-and-forget: does not throw into product code.
- * - Writes to an optional in-memory test sink set by `setDiagnosticEventSink`.
  * - Uses Sentry as the transport backend; callers must not import Sentry directly.
  * - In the worker runtime, the worker's own Sentry instance delivers events directly.
  *
