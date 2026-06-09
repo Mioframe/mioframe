@@ -71,6 +71,26 @@ describe('addTechnicalBreadcrumb', () => {
     expect(addBreadcrumbMock).not.toHaveBeenCalled();
   });
 
+  it('strips sensitive data keys before passing breadcrumb to Sentry', async () => {
+    const { addTechnicalBreadcrumb } = await import('./addTechnicalBreadcrumb');
+
+    addTechnicalBreadcrumb({
+      category: 'repository.storage',
+      data: {
+        operation: 'repositorySave',
+        filePath: '/secret/path',
+        fileName: 'secret.am',
+      },
+      message: 'save attempt',
+    });
+
+    expect(addBreadcrumbMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { operation: 'repositorySave' },
+      }),
+    );
+  });
+
   it('does nothing when reporting state is disabled', async () => {
     getSentryReportingStateMock.mockReturnValue('disabled');
     const { addTechnicalBreadcrumb } = await import('./addTechnicalBreadcrumb');

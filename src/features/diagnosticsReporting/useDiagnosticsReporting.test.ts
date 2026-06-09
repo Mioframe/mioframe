@@ -10,7 +10,6 @@ const settings = ref<{
 });
 const isFinished = ref(false);
 const activeScopes: EffectScope[] = [];
-let sentryConfigured = true;
 const applyDiagnosticsRuntimeStateMock = vi.fn();
 const syncSentryStateToWorkerMock = vi.fn();
 
@@ -33,7 +32,6 @@ vi.mock('@entity/localSettings', () => ({
 }));
 
 vi.mock('@shared/lib/diagnostics', () => ({
-  isSentryConfigured: () => sentryConfigured,
   applyDiagnosticsRuntimeState: applyDiagnosticsRuntimeStateMock,
   getOrCreateSentrySessionId: () => 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
 }));
@@ -50,7 +48,6 @@ describe('useDiagnosticsReporting', () => {
       diagnosticsConsentRequested: false,
     };
     isFinished.value = false;
-    sentryConfigured = true;
     applyDiagnosticsRuntimeStateMock.mockReset();
     applyDiagnosticsRuntimeStateMock.mockResolvedValue(undefined);
     syncSentryStateToWorkerMock.mockReset();
@@ -167,28 +164,6 @@ describe('useDiagnosticsReporting', () => {
       sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'disabled',
     });
-  });
-
-  it('disables reporting and clears both queues when Sentry is unavailable', async () => {
-    settings.value = {
-      diagnosticsEnabled: true,
-      diagnosticsConsentRequested: true,
-    };
-    sentryConfigured = false;
-
-    const scope = createTrackedScope();
-    const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
-
-    scope.run(() => {
-      useDiagnosticsReporting();
-    });
-
-    isFinished.value = true;
-    await flushMicrotasks();
-
-    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith(
-      expect.objectContaining({ reportingState: 'disabled' }),
-    );
   });
 
   it('does not act after sequence changes when an older apply resolves after a fast true to false toggle', async () => {

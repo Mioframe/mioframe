@@ -409,7 +409,7 @@ describe('useRepositoriesService', () => {
 
     createDirectoryContentSubject('/Device Files/Work/repo-a', []);
     const { useRepositoriesService } = await import('./repositoriesService');
-    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics');
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics/diagnosticsTestUtils');
     const sink: DiagnosticEvent[] = [];
     setDiagnosticEventSink(sink);
 
@@ -975,7 +975,7 @@ describe('useRepositoriesService', () => {
     const { useRepositoriesService } = await import('./repositoriesService');
     // Import diagnostics from the same fresh module graph so setDiagnosticEventSink
     // targets the same instance that the service's diagnostics wrappers use.
-    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics');
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics/diagnosticsTestUtils');
     const sink: DiagnosticEvent[] = [];
     setDiagnosticEventSink(sink);
 
@@ -1016,7 +1016,7 @@ describe('useRepositoriesService', () => {
 
     createDirectoryContentSubject('/repo', []);
     const { useRepositoriesService } = await import('./repositoriesService');
-    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics');
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics/diagnosticsTestUtils');
     const sink: DiagnosticEvent[] = [];
     setDiagnosticEventSink(sink);
 

@@ -4,6 +4,7 @@ import type {
   TechnicalBreadcrumbData,
   TechnicalBreadcrumbLevel,
 } from './technicalBreadcrumbs';
+import { sanitizePublicBreadcrumbData } from './technicalBreadcrumbs';
 
 /**
  * Safe product-owned breadcrumb payload for the shared diagnostics wrapper.
@@ -31,9 +32,10 @@ export const addTechnicalBreadcrumb = (breadcrumb: AddTechnicalBreadcrumbParams)
     }
 
     const { category, data, level, message } = breadcrumb;
+    const safeData = sanitizePublicBreadcrumbData(data);
     useSentry().addBreadcrumb({
       category,
-      ...(data !== undefined ? { data } : {}),
+      ...(safeData !== undefined ? { data: safeData } : {}),
       ...(level !== undefined ? { level } : {}),
       ...(message !== undefined ? { message } : {}),
       type: 'default',

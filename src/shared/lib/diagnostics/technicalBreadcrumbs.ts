@@ -264,3 +264,14 @@ export const sanitizeTechnicalBreadcrumbs = (
 
   return sanitized.length > 0 ? sanitized : undefined;
 };
+
+/**
+ * Sanitizes breadcrumb data at the public wrapper boundary using production-mode settings.
+ * Removes sensitive keys and unsafe values so callers never accidentally forward private data.
+ * The `beforeBreadcrumb` hook provides a second pass as a defense-in-depth safeguard.
+ * @param data - Raw breadcrumb data from the public wrapper caller.
+ * @returns Sanitized data, or `undefined` when no safe fields remain.
+ */
+export const sanitizePublicBreadcrumbData = (
+  data: TechnicalBreadcrumbData | undefined,
+): TechnicalBreadcrumbData | undefined => sanitizeData(data, 'production');

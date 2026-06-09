@@ -3,8 +3,8 @@ import {
   DiagnosticClassification,
   DiagnosticResult,
   DiagnosticSeverity,
-  setDiagnosticEventSink,
 } from '@shared/lib/diagnostics';
+import { setDiagnosticEventSink } from '@shared/lib/diagnostics/diagnosticsTestUtils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addWriteAccessPermissionPromptStartBreadcrumb,

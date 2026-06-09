@@ -1,9 +1,5 @@
 import { useLocalSettings } from '@entity/localSettings';
-import {
-  applyDiagnosticsRuntimeState,
-  getOrCreateSentrySessionId,
-  isSentryConfigured,
-} from '@shared/lib/diagnostics';
+import { applyDiagnosticsRuntimeState, getOrCreateSentrySessionId } from '@shared/lib/diagnostics';
 import type { SentryRuntimeState } from '@shared/lib/diagnostics';
 import { syncSentryStateToWorker } from '@shared/service/sentryWorkerSync';
 import { watch } from 'vue';
@@ -33,13 +29,6 @@ export const useDiagnosticsReporting = () => {
       const currentSequence = ++sequence;
 
       if (!hydrated) {
-        return;
-      }
-
-      if (!isSentryConfigured()) {
-        const state = buildState('disabled');
-        syncSentryStateToWorker(state);
-        void applyDiagnosticsRuntimeState(state);
         return;
       }
 
