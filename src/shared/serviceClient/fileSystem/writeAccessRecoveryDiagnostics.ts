@@ -1,4 +1,3 @@
-import type { SanitizedDiagnosticError } from '@shared/lib/diagnostics';
 import {
   DiagnosticClassification,
   DiagnosticResult,
@@ -20,8 +19,6 @@ export interface BrokerReplaySummary {
   pendingCount: number;
   /** Safe classification of the first failure, when available. */
   failureClassification?: WriteAccessRecoveryFailureClassification | undefined;
-  /** Safe sanitized summary of the first replay failure when available. */
-  error?: SanitizedDiagnosticError | undefined;
 }
 
 const PROVIDER = 'webFileSystem' as const;
@@ -31,8 +28,6 @@ const addWriteAccessBreadcrumb = ({
   message,
   ...data
 }: {
-  errorClass?: string | undefined;
-  errorClassification?: string | undefined;
   failureClassification?: string | undefined;
   flushedCount?: number | undefined;
   level?: 'debug' | 'info' | 'warning' | 'error' | undefined;
@@ -50,10 +45,6 @@ const addWriteAccessBreadcrumb = ({
       ...(data.flushedCount !== undefined ? { flushedCount: data.flushedCount } : {}),
       ...(data.failureClassification !== undefined
         ? { failureClassification: data.failureClassification }
-        : {}),
-      ...(data.errorClass !== undefined ? { errorClass: data.errorClass } : {}),
-      ...(data.errorClassification !== undefined
-        ? { errorClassification: data.errorClassification }
         : {}),
       ...(data.result !== undefined ? { result: data.result } : {}),
     },
@@ -169,22 +160,16 @@ export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: st
 /**
  * Emits a diagnostic event when the provider (browser File System Access API) throws unexpectedly
  * during a write-access recovery attempt.
- * @param root0 - Event options (attemptId, error).
+ * For the actual exception with stack, call `captureDiagnosticException` at the catch site.
+ * @param root0 - Event options (attemptId).
  */
-export const reportWriteAccessProviderFailure = ({
-  attemptId,
-  error,
-}: {
-  attemptId: string;
-  error: SanitizedDiagnosticError;
-}): void => {
+export const reportWriteAccessProviderFailure = ({ attemptId }: { attemptId: string }): void => {
   reportWebFsEvent({
     name: 'writeAccessRecovery.providerFailure',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification: DiagnosticClassification.Provider,
     attemptId,
-    error,
     operation: 'requestAccess',
   });
 };
@@ -242,7 +227,6 @@ export const reportWriteAccessStorageFailure = ({
     result: DiagnosticResult.Failed,
     classification,
     attemptId,
-    ...(replay?.error !== undefined ? { error: replay.error } : {}),
     operation: 'resolveAccessRequest',
     safeTags: { failureClassification },
     ...(replay !== undefined

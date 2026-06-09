@@ -205,28 +205,20 @@ Examples of safe values:
 
 ## Error handling
 
-For diagnostic events, always sanitize boundary errors before attaching them:
+Do not attach error objects or raw error fields to `reportDiagnosticEvent`. Diagnostic events describe scenario milestones — use safe tags and counters only.
+
+When an actual error with a stack trace is useful, report it separately:
 
 ```ts
-reportDiagnosticEvent({
-  ...,
-  error: sanitizeDiagnosticError(caughtError),
+captureDiagnosticException(caughtError, {
+  operation: 'repositorySave',
+  failureClassification: 'browserFileStateChanged',
 });
 ```
 
-`sanitizeDiagnosticError` keeps safe structured error projections (class name, DOMException name, domain error code) and drops raw messages from external sources.
+For flow-specific classification (e.g. whether a `DOMException` means browser file state changed), use a local helper near the boundary that understands the operation. Do not create shared error registries.
 
-Allowed sanitized error fields:
-
-- errorClass;
-- domExceptionName;
-- domainErrorCode;
-- classification;
-- causeClass if safe and stable.
-
-For `captureDiagnosticException`, do not pass a sanitized error summary — pass the real error. Sentry extracts the stack and type natively.
-
-Forbidden error fields in any diagnostic:
+Forbidden error fields in any diagnostic event or breadcrumb data:
 
 - message;
 - stack;
@@ -244,7 +236,6 @@ Allowed application-facing wrappers:
 - `addTechnicalBreadcrumb` — technical breadcrumb;
 - `reportDiagnosticEvent` — compact terminal/status event;
 - `captureDiagnosticException` — caught error as Sentry exception;
-- `sanitizeDiagnosticError` — safe error projection for diagnostic events;
 - `applyDiagnosticsPolicy` — consent policy from service layer (feature code only);
 - diagnostics setup/runtime functions used by app or worker bootstrap only.
 

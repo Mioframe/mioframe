@@ -505,7 +505,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
       scope.stop();
     });
 
-    it('emits a providerFailure diagnostic event with sanitized error when the outer catch fires', async () => {
+    it('emits a providerFailure diagnostic event when the outer catch fires', async () => {
       getTemporaryFileSystemAccessHandleMock.mockRejectedValue(
         new DOMException('Permission denied', 'NotAllowedError'),
       );
@@ -521,12 +521,8 @@ describe('useFileSystemAccessPermissionBroker', () => {
         result: DiagnosticResult.Failed,
         classification: DiagnosticClassification.Provider,
         safeTags: { provider: 'webFileSystem', operation: 'requestAccess' },
-        error: {
-          errorClass: 'DOMException',
-          domExceptionName: 'NotAllowedError',
-          errorClassification: 'accessDenied',
-        },
       });
+      expect(diagnosticSink[0]).not.toHaveProperty('error');
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Permission denied');
 
@@ -557,8 +553,8 @@ describe('useFileSystemAccessPermissionBroker', () => {
         result: DiagnosticResult.Failed,
         classification: DiagnosticClassification.Provider,
         safeTags: { provider: 'webFileSystem' },
-        error: { errorClass: 'Error', errorClassification: 'unknown' },
       });
+      expect(diagnosticSink[0]).not.toHaveProperty('error');
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Unexpected internal error');
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 

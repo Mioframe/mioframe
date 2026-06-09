@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, DIAGNOSTICS_MODE } from '@shared/config';
+import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, IS_VERBOSE_DIAGNOSTICS } from '@shared/config';
 import { registerSentryConfig } from '@shared/lib/diagnostics';
 import { setupMainService, serviceId } from './setupMainService';
 import { defineWorkerService } from '@shared/lib/wrapWorker/defineWorkerService';
@@ -14,7 +14,7 @@ declare const self: DedicatedWorkerGlobalScope;
 // applies dynamic state via the sentryWorkerSync service.
 registerSentryConfig({
   ...(SENTRY_DSN !== undefined && { dsn: SENTRY_DSN }),
-  isVerbose: DIAGNOSTICS_MODE === 'preview',
+  isVerbose: IS_VERBOSE_DIAGNOSTICS,
   enabled: import.meta.env.PROD,
   release: APP_BUILD_ID || APP_VERSION,
 });

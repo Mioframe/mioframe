@@ -280,30 +280,9 @@ Allowed values:
 - project-controlled short strings;
 - booleans;
 - small integers;
-- known error class names;
-- DOMException names;
-- VFS error codes;
-- domain error codes;
 - generated attempt IDs.
 
 Session identity is memory-only and session-scoped. `beforeSend` must keep only a valid `session:<uuid>` user id and strip all other user fields.
-
----
-
-## Sanitized errors
-
-Always sanitize boundary errors before attaching them to diagnostic events:
-
-```ts
-reportDiagnosticEvent({
-  ...,
-  error: sanitizeDiagnosticError(caughtError),
-});
-```
-
-`sanitizeDiagnosticError` must not copy raw `error.message` from browser APIs, storage, network, Automerge, VFS, or other external sources.
-
-For `captureDiagnosticException`, do not pass a sanitized error summary — pass the real error. Sentry extracts the stack and type natively.
 
 ---
 

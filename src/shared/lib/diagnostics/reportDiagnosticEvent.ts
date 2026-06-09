@@ -72,16 +72,6 @@ export const toSentryDiagnosticCaptureContext = (entry: DiagnosticEvent): Captur
     if (flushedCount !== undefined) extras.flushedCount = flushedCount;
   }
 
-  if (entry.error) {
-    extras.errorClass = entry.error.errorClass;
-    if (entry.error.domExceptionName !== undefined)
-      extras.domExceptionName = entry.error.domExceptionName;
-    if (entry.error.vfsErrorCode !== undefined) extras.vfsErrorCode = entry.error.vfsErrorCode;
-    if (entry.error.domainErrorCode !== undefined)
-      extras.domainErrorCode = entry.error.domainErrorCode;
-    extras.errorClassification = entry.error.errorClassification;
-  }
-
   return {
     level: severityToSentryLevel(entry.severity),
     tags: {

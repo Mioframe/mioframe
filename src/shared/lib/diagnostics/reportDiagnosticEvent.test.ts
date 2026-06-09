@@ -183,30 +183,6 @@ describe('reportDiagnosticEvent', () => {
     );
   });
 
-  it('attaches sanitized error fields as extras when provided', async () => {
-    ensureSentryMock.mockResolvedValue(realFacade);
-    const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
-
-    reportDiagnosticEvent(
-      makeEvent({
-        error: {
-          errorClass: 'DOMException',
-          domExceptionName: 'NotAllowedError',
-          errorClassification: 'accessDenied',
-        },
-      }),
-    );
-    await waitForAsyncWork();
-
-    expect(getLastCaptureContext()?.extra).toEqual(
-      expect.objectContaining({
-        errorClass: 'DOMException',
-        domExceptionName: 'NotAllowedError',
-        errorClassification: 'accessDenied',
-      }),
-    );
-  });
-
   it('does not send when reporting state is disabled', async () => {
     getSentryReportingStateMock.mockReturnValue('disabled');
     ensureSentryMock.mockResolvedValue(realFacade);

@@ -1,5 +1,14 @@
-import { addTechnicalBreadcrumb, sanitizeDiagnosticError } from '@shared/lib/diagnostics';
+import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
+
+const getSafeErrorClass = (error: unknown): string => {
+  if (error instanceof DOMException) return 'DOMException';
+  if (error instanceof Error) return 'Error';
+  return 'unknown';
+};
+
+const getSafeDomExceptionName = (error: unknown): string | undefined =>
+  error instanceof DOMException ? error.name : undefined;
 
 const operationByStep: Record<string, string> = {
   fileHandleCreate: 'createFileHandle',
@@ -48,7 +57,9 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
     return;
   }
 
-  const safeError = event.error !== undefined ? sanitizeDiagnosticError(event.error) : undefined;
+  const errorClass = event.error !== undefined ? getSafeErrorClass(event.error) : undefined;
+  const domExceptionName =
+    event.error !== undefined ? getSafeDomExceptionName(event.error) : undefined;
 
   addTechnicalBreadcrumb({
     category: 'webFileSystem.write',
@@ -57,10 +68,8 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
       provider: 'webFileSystem',
       result: event.result,
       step: event.step,
-      ...(safeError !== undefined ? { errorClass: safeError.errorClass } : {}),
-      ...(safeError?.domExceptionName !== undefined
-        ? { domExceptionName: safeError.domExceptionName }
-        : {}),
+      ...(errorClass !== undefined ? { errorClass } : {}),
+      ...(domExceptionName !== undefined ? { domExceptionName } : {}),
     },
     level: event.result === 'failed' ? 'warning' : 'info',
     message,

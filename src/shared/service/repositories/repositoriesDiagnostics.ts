@@ -3,9 +3,7 @@ import {
   DiagnosticResult,
   DiagnosticSeverity,
   reportDiagnosticEvent,
-  sanitizeDiagnosticError,
 } from '@shared/lib/diagnostics';
-import type { SanitizedDiagnosticError } from '@shared/lib/diagnostics';
 import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
 
 const REPLAY_TAGS = { provider: 'webFileSystem', operation: 'flushPendingSaves' } as const;
@@ -39,12 +37,10 @@ export const reportWriteAccessReplayStillBlocked = ({
  * @param root0 - Event options (flushedCount, pendingCount, failureClassification).
  */
 export const reportWriteAccessReplayStorageFailure = ({
-  error,
   flushedCount,
   pendingCount,
   failureClassification,
 }: {
-  error?: SanitizedDiagnosticError | undefined;
   flushedCount: number;
   pendingCount: number;
   failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
@@ -63,7 +59,6 @@ export const reportWriteAccessReplayStorageFailure = ({
           ? DiagnosticClassification.Storage
           : DiagnosticClassification.Unknown,
     counters: { flushedCount, pendingCount },
-    ...(error !== undefined ? { error } : {}),
     safeTags: { ...REPLAY_TAGS, failureClassification: safeClassification },
   });
 };
@@ -85,30 +80,22 @@ export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: num
 
 /**
  * Emits a diagnostic event when a primary repository save fails and is NOT queued for retry.
- * @param root0 - Event options (pendingCount, caughtError).
+ * @param root0 - Event options (pendingCount, failureClassification).
  */
 export const reportRepositorySaveFailed = ({
   failureClassification,
   pendingCount,
-  caughtError,
 }: {
   failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
   pendingCount: number;
-  caughtError: unknown;
 }): void => {
-  const error = sanitizeDiagnosticError(caughtError);
-  const safeFailureClassification =
-    failureClassification ??
-    (error.errorClassification === 'browserFileStateChanged'
-      ? 'browserFileStateChanged'
-      : 'storageFailure');
+  const safeFailureClassification = failureClassification ?? 'storageFailure';
   reportDiagnosticEvent({
     name: 'repositoryStorage.saveFailed',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification: DiagnosticClassification.Storage,
     counters: { pendingCount },
-    error,
     safeTags: { ...SAVE_TAGS, failureClassification: safeFailureClassification },
   });
 };

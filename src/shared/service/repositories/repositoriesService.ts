@@ -13,7 +13,6 @@ import {
   reportRepositorySaveQueued,
   reportRepositorySaveFailed,
 } from './repositoriesDiagnostics';
-import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   concat,
@@ -40,6 +39,9 @@ import {
 } from './repositoryStorageFiles';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
+
+const isBrowserFileStateChangedError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'InvalidStateError';
 
 const setupRepositoriesService = () => {
   const { directoryContent$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
@@ -153,14 +155,11 @@ const setupRepositoriesService = () => {
             if (queued) {
               reportRepositorySaveQueued({ pendingCount });
             } else {
-              const error = sanitizeDiagnosticError(caughtError);
               reportRepositorySaveFailed({
                 pendingCount,
-                caughtError,
-                failureClassification:
-                  error.errorClassification === 'browserFileStateChanged'
-                    ? 'browserFileStateChanged'
-                    : 'storageFailure',
+                failureClassification: isBrowserFileStateChangedError(caughtError)
+                  ? 'browserFileStateChanged'
+                  : 'storageFailure',
               });
             }
           },
@@ -266,13 +265,10 @@ const setupRepositoriesService = () => {
       flushedCount += result.flushedCount;
 
       if (result.status !== 'flushed') {
-        const sanitizedError =
-          result.caughtError !== undefined
-            ? sanitizeDiagnosticError(result.caughtError)
-            : undefined;
         const failureClassification =
           result.failureClassification === 'storageFailure' &&
-          sanitizedError?.errorClassification === 'browserFileStateChanged'
+          result.caughtError !== undefined &&
+          isBrowserFileStateChangedError(result.caughtError)
             ? 'browserFileStateChanged'
             : result.failureClassification;
 
@@ -282,7 +278,6 @@ const setupRepositoriesService = () => {
           reportWriteAccessReplayStorageFailure({
             flushedCount,
             pendingCount: result.pendingCount,
-            ...(sanitizedError !== undefined ? { error: sanitizedError } : {}),
             ...(failureClassification !== undefined ? { failureClassification } : {}),
           });
         }
@@ -291,7 +286,6 @@ const setupRepositoriesService = () => {
           replay: {
             flushedCount,
             pendingCount: result.pendingCount,
-            ...(sanitizedError !== undefined ? { error: sanitizedError } : {}),
             ...(failureClassification !== undefined ? { failureClassification } : {}),
           },
         };

@@ -137,25 +137,6 @@ describe('repositoriesDiagnostics', () => {
       expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
     });
 
-    it('includes compact sanitized error when provided', () => {
-      reportWriteAccessReplayStorageFailure({
-        flushedCount: 0,
-        pendingCount: 1,
-        failureClassification: 'storageFailure',
-        error: {
-          errorClass: 'DOMException',
-          domExceptionName: 'InvalidStateError',
-          errorClassification: 'browserFileStateChanged',
-        },
-      });
-
-      expect(sink[0]?.error).toMatchObject({
-        errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
-        errorClassification: 'browserFileStateChanged',
-      });
-    });
-
     it('includes unknown failureClassification in safeTags when undefined', () => {
       reportWriteAccessReplayStorageFailure({ flushedCount: 0, pendingCount: 1 });
 
@@ -206,7 +187,7 @@ describe('repositoriesDiagnostics', () => {
 
   describe('reportRepositorySaveFailed', () => {
     it('emits saveFailed with Error severity, Failed result, and Storage classification', () => {
-      reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('disk full') });
+      reportRepositorySaveFailed({ pendingCount: 0 });
 
       expect(sink).toHaveLength(1);
       expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
@@ -220,38 +201,32 @@ describe('repositoriesDiagnostics', () => {
       });
     });
 
-    it('includes failureClassification: storageFailure in safeTags', () => {
-      reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('disk full') });
+    it('defaults failureClassification to storageFailure when not provided', () => {
+      reportRepositorySaveFailed({ pendingCount: 0 });
 
       expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
     });
 
-    it('includes sanitized error summary in the event', () => {
-      const error = new DOMException('disk full', 'QuotaExceededError');
-      reportRepositorySaveFailed({ pendingCount: 2, caughtError: error });
-
-      expect(sink[0]?.error).toMatchObject({
-        errorClass: 'DOMException',
-        domExceptionName: 'QuotaExceededError',
-        errorClassification: expect.any(String),
+    it('uses provided failureClassification in safeTags', () => {
+      reportRepositorySaveFailed({
+        pendingCount: 0,
+        failureClassification: 'browserFileStateChanged',
       });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('browserFileStateChanged');
     });
 
-    it('does not include raw error message or user-controlled values in the event', () => {
-      const error = new Error('path=/user/secret/doc.md quota exceeded');
-      reportRepositorySaveFailed({ pendingCount: 0, caughtError: error });
+    it('does not include an error field in the event', () => {
+      reportRepositorySaveFailed({ pendingCount: 0 });
+      expect(sink[0]).not.toHaveProperty('error');
+    });
+
+    it('does not include user-controlled values in the event', () => {
+      reportRepositorySaveFailed({ pendingCount: 0 });
       const serialized = JSON.stringify(sink[0]);
-      expect(serialized).not.toContain('/user/secret');
-      expect(serialized).not.toContain('quota exceeded');
       expect(serialized).not.toContain('path');
       expect(serialized).not.toContain('Work');
       expect(serialized).not.toContain('docId');
-    });
-
-    it('includes errorClass in the error summary', () => {
-      reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('boom') });
-
-      expect(sink[0]?.error?.errorClass).toBe('Error');
     });
   });
 
@@ -259,7 +234,7 @@ describe('repositoriesDiagnostics', () => {
     reportWriteAccessReplayStillBlocked({ flushedCount: 0, pendingCount: 1 });
     reportWriteAccessReplayStorageFailure({ flushedCount: 1, pendingCount: 0 });
     reportRepositorySaveQueued({ pendingCount: 1 });
-    reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('boom') });
+    reportRepositorySaveFailed({ pendingCount: 0 });
 
     for (const event of sink) {
       expect(event.safeTags?.provider).toBe('webFileSystem');

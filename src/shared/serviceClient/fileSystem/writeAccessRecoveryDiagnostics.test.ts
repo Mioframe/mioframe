@@ -134,13 +134,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
 
   describe('reportWriteAccessProviderFailure', () => {
     it('emits an error with Failed result and Provider classification', () => {
-      const error = {
-        errorClass: 'DOMException' as const,
-        domExceptionName: 'NotAllowedError',
-        errorClassification: 'accessDenied' as const,
-      };
-
-      reportWriteAccessProviderFailure({ attemptId: TEST_ATTEMPT_ID, error });
+      reportWriteAccessProviderFailure({ attemptId: TEST_ATTEMPT_ID });
 
       expect(sink).toHaveLength(1);
       expect(addTechnicalBreadcrumbMock).not.toHaveBeenCalled();
@@ -150,17 +144,13 @@ describe('writeAccessRecoveryDiagnostics', () => {
         result: DiagnosticResult.Failed,
         classification: DiagnosticClassification.Provider,
         attemptId: TEST_ATTEMPT_ID,
-        error,
         safeTags: { provider: 'webFileSystem', operation: 'requestAccess' },
       });
     });
 
-    it('does not include raw error message', () => {
-      reportWriteAccessProviderFailure({
-        attemptId: TEST_ATTEMPT_ID,
-        error: { errorClass: 'Error', errorClassification: 'unknown' },
-      });
-      expect(JSON.stringify(sink[0])).not.toContain('message');
+    it('does not include an error field in the event', () => {
+      reportWriteAccessProviderFailure({ attemptId: TEST_ATTEMPT_ID });
+      expect(sink[0]).not.toHaveProperty('error');
     });
   });
 
@@ -313,26 +303,17 @@ describe('writeAccessRecoveryDiagnostics', () => {
       });
     });
 
-    it('includes compact sanitized error when replay provides one', () => {
+    it('does not include an error field in the event', () => {
       reportWriteAccessStorageFailure({
         attemptId: TEST_ATTEMPT_ID,
         replay: {
           flushedCount: 0,
           pendingCount: 1,
           failureClassification: 'browserFileStateChanged',
-          error: {
-            errorClass: 'DOMException',
-            domExceptionName: 'InvalidStateError',
-            errorClassification: 'browserFileStateChanged',
-          },
         },
       });
 
-      expect(sink[0]?.error).toMatchObject({
-        errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
-        errorClassification: 'browserFileStateChanged',
-      });
+      expect(sink[0]).not.toHaveProperty('error');
     });
 
     it('includes unknown failureClassification in safeTags when no replay is provided', () => {

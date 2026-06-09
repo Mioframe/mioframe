@@ -1,5 +1,4 @@
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import type { SanitizedDiagnosticError } from '@shared/lib/diagnostics';
 import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
 import type { WebFileSystemAccessMode } from '@shared/lib/webFileSystemProvider';
 import type { FileSystemAccessOperation } from '@shared/lib/fileSystem';
@@ -27,8 +26,6 @@ export interface WriteAccessRecoveryReplaySummary {
   pendingCount: number;
   /** Safe classification of the first failure encountered, when available. */
   failureClassification?: WriteAccessRecoveryFailureClassification | undefined;
-  /** Safe sanitized summary of the first replay failure when available. */
-  error?: SanitizedDiagnosticError | undefined;
 }
 
 /**

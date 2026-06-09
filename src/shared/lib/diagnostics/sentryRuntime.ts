@@ -89,11 +89,6 @@ const warnInitFailureOnce = (error: unknown) => {
   );
 };
 
-const getRuntimeLabel = (): 'main' | 'worker' =>
-  typeof WorkerGlobalScope !== 'undefined' && globalThis instanceof WorkerGlobalScope
-    ? 'worker'
-    : 'main';
-
 const getSentryModule = async () => {
   sentryModulePromise ??= import('@sentry/vue');
   return await sentryModulePromise;
@@ -146,7 +141,6 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
       category: 'sentry.runtime',
       data: {
         operation: 'applyRuntimeState',
-        runtime: getRuntimeLabel(),
       },
       level: 'info',
       message: `reporting state applied: ${state.reportingState}`,
@@ -254,7 +248,6 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       category: 'sentry.runtime',
       data: {
         result: 'success',
-        runtime: getRuntimeLabel(),
       },
       level: 'info',
       message: 'Sentry runtime initialized',

@@ -427,10 +427,6 @@ describe('useRepositoriesService', () => {
           flushedCount: 0,
           pendingCount: 1,
           failureClassification: 'browserFileStateChanged',
-          error: {
-            domExceptionName: 'InvalidStateError',
-            errorClassification: 'browserFileStateChanged',
-          },
         },
       });
 
@@ -439,10 +435,6 @@ describe('useRepositoriesService', () => {
           name: 'writeAccessRecovery.repositoryReplayStorageFailure',
           safeTags: expect.objectContaining({
             failureClassification: 'browserFileStateChanged',
-          }),
-          error: expect.objectContaining({
-            domExceptionName: 'InvalidStateError',
-            errorClassification: 'browserFileStateChanged',
           }),
         }),
       );

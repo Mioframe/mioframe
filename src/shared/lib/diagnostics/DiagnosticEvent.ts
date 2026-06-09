@@ -24,34 +24,6 @@ export interface DiagnosticCounters {
 }
 
 /**
- * Safe sanitized representation of a boundary error.
- * Never contains raw error messages, paths, file names, document ids, storage keys, URLs,
- * handles, raw external messages, raw causes, document contents, or bytes.
- *
- * See `sanitizeDiagnosticError` for construction rules.
- */
-export interface SanitizedDiagnosticError {
-  /** Safe error class name derived from the thrown type. */
-  errorClass: 'DOMException' | 'VfsError' | 'DomainError' | 'Error' | 'unknown';
-  /** `DOMException.name` when the error is a `DOMException`. Always safe — browser-controlled. */
-  domExceptionName?: string;
-  /** `VfsError.code` when the error is a `VfsError`. Always safe — project-controlled enum. */
-  vfsErrorCode?: string;
-  /**
-   * `DomainError.code` when the error is a `DomainError`.
-   * Safe only when the code is a project-controlled enum value.
-   */
-  domainErrorCode?: string;
-  /** Safe classification derived from the error type and code. */
-  errorClassification:
-    | 'accessDenied'
-    | 'browserFileStateChanged'
-    | 'storageFailure'
-    | 'notFound'
-    | 'unknown';
-}
-
-/**
  * Typed structured diagnostic event.
  *
  * All fields must be safe to send to external diagnostics backends.
@@ -60,6 +32,7 @@ export interface SanitizedDiagnosticError {
  *
  * Use `name` to identify the event (e.g. `'writeAccessRecovery.permissionDenied'`).
  * Attach flow-specific context through `safeTags` with project-controlled primitive values only.
+ * For actual exceptions with stack traces, use `captureDiagnosticException` instead.
  */
 export interface DiagnosticEvent {
   /**
@@ -77,8 +50,6 @@ export interface DiagnosticEvent {
   attemptId?: string;
   /** Optional safe numeric counters. */
   counters?: DiagnosticCounters;
-  /** Optional sanitized error summary produced by `sanitizeDiagnosticError`. */
-  error?: SanitizedDiagnosticError;
   /**
    * Optional project-controlled primitive tags for additional safe context.
    * All keys and values must be project-controlled — no paths, ids, names, URLs, or user data.

@@ -1,4 +1,4 @@
-import { addTechnicalBreadcrumb, sanitizeDiagnosticError } from '@shared/lib/diagnostics';
+import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
 
@@ -175,12 +175,5 @@ describe('webFileSystemWriteDiagnostics', () => {
     const data = call?.[0]?.data ?? {};
     expect(data).not.toHaveProperty('errorClass');
     expect(data).not.toHaveProperty('domExceptionName');
-  });
-
-  it('sanitizeDiagnosticError is the real implementation', () => {
-    expect(sanitizeDiagnosticError(new DOMException('msg', 'AbortError'))).toMatchObject({
-      errorClass: 'DOMException',
-      domExceptionName: 'AbortError',
-    });
   });
 });

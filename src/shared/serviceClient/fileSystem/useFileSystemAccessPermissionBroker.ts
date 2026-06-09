@@ -1,5 +1,5 @@
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
-import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
 import {
   addWriteAccessPermissionPromptStartBreadcrumb,
@@ -89,7 +89,11 @@ export const useFileSystemAccessPermissionBroker = () => {
         handle = undefined;
       }
     } catch (error) {
-      reportWriteAccessProviderFailure({ attemptId, error: sanitizeDiagnosticError(error) });
+      captureDiagnosticException(error, {
+        operation: 'requestAccess',
+        feature: 'writeAccessRecovery',
+      });
+      reportWriteAccessProviderFailure({ attemptId });
       return { status: 'error' };
     }
   };

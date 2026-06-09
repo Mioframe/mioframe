@@ -1,16 +1,10 @@
-export type {
-  DiagnosticCounters,
-  DiagnosticEvent,
-  DiagnosticSafeTags,
-  SanitizedDiagnosticError,
-} from './DiagnosticEvent';
+export type { DiagnosticCounters, DiagnosticEvent, DiagnosticSafeTags } from './DiagnosticEvent';
 export { DiagnosticClassification, DiagnosticResult, DiagnosticSeverity } from './diagnosticEnums';
 export {
   clearQueuedDiagnosticEvents,
   flushQueuedDiagnosticEvents,
   reportDiagnosticEvent,
 } from './reportDiagnosticEvent';
-export { sanitizeDiagnosticError } from './sanitizeDiagnosticError';
 export { captureDiagnosticException } from './captureDiagnosticException';
 export type { DiagnosticExceptionContext } from './captureDiagnosticException';
 export { addTechnicalBreadcrumb } from './addTechnicalBreadcrumb';
