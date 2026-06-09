@@ -1,6 +1,6 @@
 ---
 name: diagnostic-events
-description: 'Use this skill when adding, reviewing, or testing project diagnostics.'
+description: 'Use this skill when adding or reviewing project diagnostics.'
 ---
 
 # Diagnostic Events Skill
