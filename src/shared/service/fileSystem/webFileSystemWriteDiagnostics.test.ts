@@ -65,7 +65,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         result: 'failed',
         step: 'fileHandleCreate',
         errorClass: 'DOMException',
-        domExceptionName: 'InvalidModificationError',
+        domException: 'InvalidModificationError',
       },
       level: 'warning',
       message: 'file handle create failed',
@@ -89,7 +89,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         result: 'failed',
         step: 'writableOpen',
         errorClass: 'DOMException',
-        domExceptionName: 'InvalidStateError',
+        domException: 'InvalidStateError',
       },
       level: 'warning',
       message: 'writable open failed',
@@ -102,7 +102,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         result: 'failed',
         step: 'fileWrite',
         errorClass: 'DOMException',
-        domExceptionName: 'QuotaExceededError',
+        domException: 'QuotaExceededError',
       },
       level: 'warning',
       message: 'file write failed',
@@ -131,7 +131,7 @@ describe('webFileSystemWriteDiagnostics', () => {
       'result',
       'step',
       'errorClass',
-      'domExceptionName',
+      'domException',
     ]);
     for (const key of Object.keys(data)) {
       expect(allowedKeys).toContain(key);
@@ -168,12 +168,12 @@ describe('webFileSystemWriteDiagnostics', () => {
     }
   });
 
-  it('does not include errorClass or domExceptionName when no error is provided', () => {
+  it('does not include errorClass or domException when no error is provided', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'failed' });
 
     const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
     const data = call?.[0]?.data ?? {};
     expect(data).not.toHaveProperty('errorClass');
-    expect(data).not.toHaveProperty('domExceptionName');
+    expect(data).not.toHaveProperty('domException');
   });
 });

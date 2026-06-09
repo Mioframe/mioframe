@@ -17,11 +17,10 @@ import {
 // Tag filtering — denylist approach
 // ---------------------------------------------------------------------------
 
-type SentryTagValue = boolean | number | string | null | undefined;
+type SentryTagValue = boolean | number | string | null;
 
 const isSentryTagValue = (value: unknown): value is SentryTagValue =>
   value === null ||
-  value === undefined ||
   typeof value === 'boolean' ||
   typeof value === 'number' ||
   typeof value === 'string';
@@ -45,7 +44,7 @@ export const sanitizeEventTags = (
   for (const [key, value] of Object.entries(source)) {
     if (isSensitiveKey(key)) continue;
     if (!isSentryTagValue(value)) continue;
-    if (value === null || value === undefined) continue;
+    if (value === null) continue;
     if (
       typeof value === 'string' &&
       (value.length > DEFAULT_MAX_STRING || isSensitiveValue(value))

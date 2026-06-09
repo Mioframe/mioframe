@@ -7,7 +7,7 @@ const getSafeErrorClass = (error: unknown): string => {
   return 'unknown';
 };
 
-const getSafeDomExceptionName = (error: unknown): string | undefined =>
+const getSafeDomException = (error: unknown): string | undefined =>
   error instanceof DOMException ? error.name : undefined;
 
 const operationByStep: Record<string, string> = {
@@ -58,8 +58,7 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
   }
 
   const errorClass = event.error !== undefined ? getSafeErrorClass(event.error) : undefined;
-  const domExceptionName =
-    event.error !== undefined ? getSafeDomExceptionName(event.error) : undefined;
+  const domException = event.error !== undefined ? getSafeDomException(event.error) : undefined;
 
   addTechnicalBreadcrumb({
     category: 'webFileSystem.write',
@@ -69,7 +68,7 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
       result: event.result,
       step: event.step,
       ...(errorClass !== undefined ? { errorClass } : {}),
-      ...(domExceptionName !== undefined ? { domExceptionName } : {}),
+      ...(domException !== undefined ? { domException } : {}),
     },
     level: event.result === 'failed' ? 'warning' : 'info',
     message,

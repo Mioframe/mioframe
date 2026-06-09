@@ -54,7 +54,7 @@ const severityToSentryLevel = (
 
 /**
  * Builds a Sentry capture context from a structured diagnostic event.
- * Owns tag projection, extra field projection, and safe error field normalization.
+ * Maps severity, tags, counters, and safe event metadata into Sentry capture context.
  * @param entry - Structured diagnostic event.
  * @returns Sentry-compatible capture context.
  */
