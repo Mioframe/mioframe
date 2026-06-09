@@ -1,17 +1,16 @@
 import { getSentryReportingState, useSentry } from './sentryRuntime';
-import type {
-  TechnicalBreadcrumbCategory,
-  TechnicalBreadcrumbData,
-  TechnicalBreadcrumbLevel,
-} from './technicalBreadcrumbs';
+import type { TechnicalBreadcrumbData, TechnicalBreadcrumbLevel } from './technicalBreadcrumbs';
 import { sanitizePublicBreadcrumbData } from './technicalBreadcrumbs';
 
 /**
  * Safe product-owned breadcrumb payload for the shared diagnostics wrapper.
  */
 export type AddTechnicalBreadcrumbParams = {
-  /** Technical breadcrumb category from the project-controlled category set. */
-  category: TechnicalBreadcrumbCategory;
+  /**
+   * Dot-separated technical breadcrumb category string. The `beforeBreadcrumb` sanitizer
+   * enforces the project category format at runtime; no fixed allowlist is required.
+   */
+  category: string;
   /** Optional technical data fields. Keys are checked against the case-insensitive denylist; values are sanitized. */
   data?: TechnicalBreadcrumbData | undefined;
   /** Optional breadcrumb severity. */

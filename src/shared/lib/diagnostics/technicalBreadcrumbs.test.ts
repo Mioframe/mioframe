@@ -16,8 +16,8 @@ const makeBreadcrumb = (overrides: Partial<Breadcrumb> = {}): Breadcrumb => ({
 });
 
 describe('technicalBreadcrumbs', () => {
-  it('beforeBreadcrumb keeps allowed technical breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+  it('beforeBreadcrumb keeps project technical breadcrumbs with dot-separated category', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(beforeBreadcrumb(makeBreadcrumb())).toEqual({
       category: 'repository.storage',
@@ -29,14 +29,8 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  it('beforeBreadcrumb drops unknown categories', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(beforeBreadcrumb(makeBreadcrumb({ category: 'ui.click' }))).toBeNull();
-  });
-
-  it('beforeBreadcrumb drops removed webFileSystem.read/stat/directory categories', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+  it('beforeBreadcrumb accepts formerly-removed webFileSystem categories (no fixed allowlist)', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -46,31 +40,40 @@ describe('technicalBreadcrumbs', () => {
           message: 'file read failed',
         }),
       ),
-    ).toBeNull();
+    ).toEqual({
+      category: 'webFileSystem.read',
+      data: { operation: 'readFile', provider: 'webFileSystem' },
+      level: 'info',
+      message: 'file read failed',
+    });
+  });
+
+  it('beforeBreadcrumb drops categories without a dot separator (Sentry auto-added)', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
+
+    expect(beforeBreadcrumb(makeBreadcrumb({ category: 'navigation', message: 'navigated' }))).toBe(
+      null,
+    );
+    expect(beforeBreadcrumb(makeBreadcrumb({ category: 'http', message: 'GET /secret' }))).toBe(
+      null,
+    );
+    expect(beforeBreadcrumb(makeBreadcrumb({ category: 'console', message: 'logged' }))).toBe(null);
+    expect(beforeBreadcrumb(makeBreadcrumb({ category: 'xhr', message: 'request' }))).toBe(null);
+  });
+
+  it('beforeBreadcrumb drops Sentry ui.click breadcrumbs when data has only sensitive target key', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.stat',
-          data: { operation: 'statFile', provider: 'webFileSystem' },
-          message: 'stat failed',
-        }),
-      ),
-    ).toBeNull();
-
-    expect(
-      beforeBreadcrumb(
-        makeBreadcrumb({
-          category: 'webFileSystem.directory',
-          data: { operation: 'readDirectory', provider: 'webFileSystem' },
-          message: 'directory read failed',
-        }),
-      ),
+      beforeBreadcrumb({
+        category: 'ui.click',
+        data: { target: 'button[data-testid="submit"]' },
+      }),
     ).toBeNull();
   });
 
   it('beforeBreadcrumb strips sensitive write data, keeping only safe non-denylist fields', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -80,10 +83,10 @@ describe('technicalBreadcrumbs', () => {
             operation: 'writeFile',
             provider: 'webFileSystem',
             path: '/secret',
-            filename: 'doc.amrg', // 'filename' is in denylist
+            filename: 'doc.amrg',
             documentId: 'doc-123',
             storageKey: 'secret-key',
-            bytes: '100', // 'bytes' is in denylist
+            bytes: '100',
             pendingCount: 2,
           },
           message: 'file write failed',
@@ -101,19 +104,8 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  it('beforeBreadcrumb drops automatic navigation and fetch breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-
-    expect(beforeBreadcrumb(makeBreadcrumb({ category: 'navigation', message: 'navigated' }))).toBe(
-      null,
-    );
-    expect(beforeBreadcrumb(makeBreadcrumb({ category: 'http', message: 'GET /secret' }))).toBe(
-      null,
-    );
-  });
-
   it('beforeBreadcrumb strips forbidden data fields', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -137,7 +129,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('beforeBreadcrumb drops empty breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -151,18 +143,18 @@ describe('technicalBreadcrumbs', () => {
     ).toBeNull();
   });
 
-  it('production drops debug technical breadcrumbs', () => {
+  it('non-verbose drops debug technical breadcrumbs', () => {
     expect(
       sanitizeTechnicalBreadcrumb(
         makeBreadcrumb({
           level: 'debug',
         }),
-        'production',
+        false,
       ),
     ).toBeNull();
   });
 
-  it('preview keeps debug technical breadcrumbs and still strips private fields', () => {
+  it('verbose keeps debug technical breadcrumbs and still strips private fields', () => {
     expect(
       sanitizeTechnicalBreadcrumb(
         makeBreadcrumb({
@@ -172,7 +164,7 @@ describe('technicalBreadcrumbs', () => {
           },
           level: 'debug',
         }),
-        'preview',
+        true,
       ),
     ).toEqual({
       category: 'repository.storage',
@@ -184,11 +176,15 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  it('sanitizes breadcrumb arrays for beforeSend defense in depth', () => {
+  it('sanitizes breadcrumb arrays for beforeSend defense in depth, dropping no-dot categories', () => {
     expect(
       sanitizeTechnicalBreadcrumbs(
-        [makeBreadcrumb(), makeBreadcrumb({ category: 'ui.click', message: 'clicked button' })],
-        'production',
+        [
+          makeBreadcrumb(),
+          makeBreadcrumb({ category: 'navigation', message: 'navigated' }),
+          makeBreadcrumb({ category: 'http', message: 'GET request' }),
+        ],
+        false,
       ),
     ).toEqual([
       {
@@ -203,20 +199,20 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('beforeBreadcrumb drops breadcrumbs when reporting state is unknown', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'unknown');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'unknown');
 
     expect(beforeBreadcrumb(makeBreadcrumb())).toBeNull();
   });
 
   it('beforeBreadcrumb drops breadcrumbs when reporting state is disabled', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'disabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'disabled');
 
     expect(beforeBreadcrumb(makeBreadcrumb())).toBeNull();
   });
 
-  it('beforeBreadcrumb still applies the standard 80-char limit to non-filename fields', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-    const longOperation = 'a'.repeat(81);
+  it('beforeBreadcrumb still applies the standard 200-char limit to string fields', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
+    const longOperation = 'a'.repeat(201);
 
     expect(
       beforeBreadcrumb(
@@ -240,7 +236,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('beforeBreadcrumb strips sensitive key names regardless of their values', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -270,7 +266,7 @@ describe('technicalBreadcrumbs', () => {
   // Shape-based sanitizer: unknown safe primitive keys
 
   it('unknown safe primitive string key survives without registration', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -295,14 +291,13 @@ describe('technicalBreadcrumbs', () => {
   // Sensitive key denylist
 
   it('sensitive key names are dropped even when their values are primitive', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
         makeBreadcrumb({
           data: {
             operation: 'repositorySave',
-            title: 'My Document',
             content: 'some text',
             token: 'abc123',
             secret: 'hunter2',
@@ -317,7 +312,6 @@ describe('technicalBreadcrumbs', () => {
       category: 'repository.storage',
       data: {
         operation: 'repositorySave',
-        title: 'My Document',
       },
       level: 'info',
       message: 'repository save started',
@@ -325,7 +319,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('sensitive key denylist is case-insensitive', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -351,7 +345,7 @@ describe('technicalBreadcrumbs', () => {
   // Unsafe value types
 
   it('object, array, Error, and handle-like values are dropped', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -379,7 +373,7 @@ describe('technicalBreadcrumbs', () => {
   // Numbers
 
   it('finite numbers survive', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -403,7 +397,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('NaN and infinities are dropped', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -429,7 +423,7 @@ describe('technicalBreadcrumbs', () => {
   // Booleans
 
   it('booleans survive', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -453,11 +447,9 @@ describe('technicalBreadcrumbs', () => {
     });
   });
 
-  it('all string fields use the same 80-char limit regardless of key name', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
-    // 114 chars — above the 80-char limit for all string fields
-    const longValue =
-      'vBfbhfCLoCspTDKPmaXkbk3Z7GH_incremental_4a8b2c9d3e1f7a5b0c2d4e6f8a1b3c5d7e9f1a2b3c4d5e6f7a8b9c0d.automerge';
+  it('all string fields use the same 200-char limit by default', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
+    const longValue = 'a'.repeat(201);
 
     expect(
       beforeBreadcrumb(
@@ -466,7 +458,7 @@ describe('technicalBreadcrumbs', () => {
           data: {
             operation: 'writableOpen',
             provider: 'webFileSystem',
-            someFileName: longValue,
+            someValue: longValue,
           },
           message: 'writable open started',
         }),
@@ -485,7 +477,7 @@ describe('technicalBreadcrumbs', () => {
   // Value sanitizer
 
   it('drops string values that look like filesystem paths', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -507,7 +499,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('drops string values that look like URLs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -529,7 +521,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('drops string values that look like email addresses', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -551,7 +543,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('drops string values that look like Automerge storage keys', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -573,7 +565,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('keeps safe short enum-like string values', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
 
     expect(
       beforeBreadcrumb(

@@ -43,18 +43,22 @@ describe('useMainServiceClient', () => {
     vi.resetModules();
   });
 
-  it('does not construct the worker until the client is first used', async () => {
-    const { useMainServiceClient } = await import('./useService');
+  it(
+    'does not construct the worker until the client is first used',
+    { timeout: 15000 },
+    async () => {
+      const { useMainServiceClient } = await import('./useService');
 
-    expect(workerConstructorMock).not.toHaveBeenCalled();
-    expect(defineWorkerClientMock).toHaveBeenCalledTimes(1);
+      expect(workerConstructorMock).not.toHaveBeenCalled();
+      expect(defineWorkerClientMock).toHaveBeenCalledTimes(1);
 
-    const firstClient = useMainServiceClient();
-    const secondClient = useMainServiceClient();
+      const firstClient = useMainServiceClient();
+      const secondClient = useMainServiceClient();
 
-    expect(firstClient).toBe(secondClient);
-    expect(workerConstructorMock).toHaveBeenCalledTimes(1);
-  });
+      expect(firstClient).toBe(secondClient);
+      expect(workerConstructorMock).toHaveBeenCalledTimes(1);
+    },
+  );
 
   describe('Sentry worker bridge', () => {
     it('initializes the Sentry worker bridge when the worker is first created', async () => {

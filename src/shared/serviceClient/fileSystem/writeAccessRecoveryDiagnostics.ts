@@ -42,7 +42,7 @@ const addWriteAccessBreadcrumb = ({
   result?: string | undefined;
 }): void => {
   addTechnicalBreadcrumb({
-    category: 'writeAccessRecovery',
+    category: 'writeAccess.recovery',
     data: {
       provider: PROVIDER,
       operation: data.operation,

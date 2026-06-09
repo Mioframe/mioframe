@@ -12,7 +12,7 @@ const {
   confirmMock,
   disconnectDeviceFileMock,
   initializeRepositoryMock,
-  reportHandledErrorMock,
+  captureDiagnosticExceptionMock,
   showDirectoryPickerMock,
 } = vi.hoisted(() => ({
   addDeviceDirectoryMock: vi.fn(),
@@ -20,7 +20,7 @@ const {
   confirmMock: vi.fn(),
   disconnectDeviceFileMock: vi.fn(),
   initializeRepositoryMock: vi.fn(),
-  reportHandledErrorMock: vi.fn(),
+  captureDiagnosticExceptionMock: vi.fn(),
   showDirectoryPickerMock: vi.fn(),
 }));
 
@@ -51,8 +51,8 @@ vi.mock('@shared/ui/Dialog', () => ({
   }),
 }));
 
-vi.mock('@shared/lib/reportHandledError', () => ({
-  reportHandledError: reportHandledErrorMock,
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: captureDiagnosticExceptionMock,
 }));
 
 type MockFileHandle = FileSystemFileHandle & {
@@ -184,7 +184,7 @@ describe('useMioframeSpaceParentPicker', () => {
     confirmMock.mockReset();
     disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
-    reportHandledErrorMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue(undefined);
     disconnectDeviceFileMock.mockResolvedValue(undefined);
@@ -223,7 +223,7 @@ describe('useMioframeSpaceParentPicker', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not create the Mioframe space',
         cause: expect.objectContaining({
@@ -245,7 +245,7 @@ describe('useCreateMioframeSpace', () => {
     confirmMock.mockReset();
     disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
-    reportHandledErrorMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue({
       name: 'Work Notes',
@@ -472,7 +472,7 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not open the Mioframe space',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not open the Mioframe space',
         cause: expect.objectContaining({
@@ -510,7 +510,7 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not create the Mioframe space',
         cause: expect.objectContaining({
@@ -522,7 +522,7 @@ describe('useCreateMioframeSpace', () => {
         action: 'createSpace',
       },
     );
-    expect(reportHandledErrorMock).not.toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         path: expect.anything(),
@@ -553,7 +553,7 @@ describe('useCreateMioframeSpace', () => {
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
 
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not roll back failed Mioframe space creation',
         cause: expect.objectContaining({
@@ -565,7 +565,7 @@ describe('useCreateMioframeSpace', () => {
         action: 'rollbackCreateSpaceMount',
       },
     );
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not create the Mioframe space',
         cause: expect.objectContaining({
@@ -600,7 +600,7 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not create the Mioframe space',
         cause: expect.objectContaining({
@@ -627,7 +627,7 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not create the Mioframe space',
         cause: expect.objectContaining({
@@ -649,7 +649,7 @@ describe('useOpenMioframeSpace', () => {
     confirmMock.mockReset();
     disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
-    reportHandledErrorMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue({
       name: 'Work Notes',
@@ -713,7 +713,7 @@ describe('useOpenMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not open the Mioframe space',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not open the Mioframe space',
         cause: expect.objectContaining({

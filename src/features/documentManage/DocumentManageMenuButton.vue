@@ -6,7 +6,7 @@ import { useExportDocument } from '@feature/exportDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { computed, shallowRef, toRefs } from 'vue';
@@ -68,7 +68,7 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
           text: error instanceof DomainError ? error.message : 'Could not export the document',
         });
         if (!isUserFileSelectionCancel(error)) {
-          reportHandledError(error, {
+          captureDiagnosticException(error, {
             feature: 'documentExport',
             action: 'exportDocumentJson',
           });

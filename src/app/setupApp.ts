@@ -17,7 +17,7 @@ import { setupStackNavigation } from '@page/routes';
 export const setupApp = async (app: App = createApp(MainApp)) => {
   app.use(sentryPlugin, {
     dsn: SENTRY_DSN,
-    diagnosticsMode: DIAGNOSTICS_MODE,
+    isVerbose: DIAGNOSTICS_MODE === 'preview',
     enabled: import.meta.env.PROD,
     release: APP_BUILD_ID || APP_VERSION,
   });

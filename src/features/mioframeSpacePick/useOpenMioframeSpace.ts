@@ -1,6 +1,6 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { DomainError } from '@shared/lib/error';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ref, toRef } from 'vue';
@@ -33,7 +33,7 @@ export const useOpenMioframeSpace = () => {
     addSnackbar({
       text: reportedError.message,
     });
-    reportHandledError(reportedError, {
+    captureDiagnosticException(reportedError, {
       feature: 'mioframeSpaceOpen',
       action: 'openSpace',
     });

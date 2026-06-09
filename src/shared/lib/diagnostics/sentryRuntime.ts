@@ -1,7 +1,6 @@
 import type { App, Plugin } from 'vue';
 import type { Breadcrumb, CaptureContext } from '@sentry/vue';
 import { clearDiagnosticsRuntimeEffects, flushDiagnosticsRuntimeEffects } from './runtimeEffects';
-import type { DiagnosticsMode } from '@shared/config';
 import type { SentryReportingState, SentryRuntimeState } from './sentryRuntimeState';
 import { createSentryOptions } from './sentryOptions';
 import { getOrCreateSentrySessionId, isSessionSentryUserId } from './sentrySession';
@@ -14,8 +13,8 @@ export type { SentryReportingState, SentryRuntimeState };
 export type SentryConfig = {
   /** Sentry DSN used for SDK initialization. */
   dsn?: string;
-  /** Shared static diagnostics detail mode used by main and worker runtimes. */
-  diagnosticsMode?: DiagnosticsMode | undefined;
+  /** When `true`, allows debug-level breadcrumbs and longer strings (preview builds). */
+  isVerbose?: boolean | undefined;
   /** Whether runtime configuration allows lazy Sentry initialization. */
   enabled?: boolean;
   /** Release string matched to uploaded source map artifacts. */
@@ -239,7 +238,7 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
     }
 
     const options = createSentryOptions({
-      diagnosticsMode: config.diagnosticsMode ?? 'production',
+      isVerbose: config.isVerbose ?? false,
       dsn,
       release: config.release,
       getReportingState: getSentryReportingState,

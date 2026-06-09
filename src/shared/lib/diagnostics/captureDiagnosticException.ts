@@ -1,80 +1,70 @@
 import { useSentry } from './sentryRuntime';
-import type { SanitizedDiagnosticError } from './DiagnosticEvent';
 
 /**
- * Safe technical context attached to a diagnostic exception.
- * All fields must be project-controlled — no paths, ids, names, URLs, or user data.
+ * Safe technical context for a captured diagnostic exception.
+ * All fields must be project-controlled strings — no paths, ids, names, URLs, or user data.
+ *
+ * Keep this minimal: Sentry's native exception info (type, stack, mechanism, source maps)
+ * already provides rich classification. Only add context that Sentry cannot derive itself.
  */
 export interface DiagnosticExceptionContext {
   /** The operation or flow that produced the exception. */
   operation?: string;
-  /** Safe error class derived from `sanitizeDiagnosticError`. */
-  errorClass?: SanitizedDiagnosticError['errorClass'];
-  /** `DOMException.name` when the error is a `DOMException`. */
-  domExceptionName?: string;
-  /** `VfsError.code` when the error is a `VfsError`. */
-  vfsErrorCode?: string;
-  /** `DomainError.code` when the error is a `DomainError`. */
-  domainErrorCode?: string;
-  /** Safe error classification. */
-  errorClassification?: SanitizedDiagnosticError['errorClassification'];
-  /** Safe failure classification for replay or recovery failures. */
+  /** Safe classification of how the failure was handled or recovered. */
   failureClassification?: string;
-  /** Runtime context: `'main'` or `'worker'`. */
-  runtime?: 'main' | 'worker';
+  /** Safe Sentry feature tag. */
+  feature?: string;
+  /** Safe Sentry action tag. */
+  action?: string;
 }
 
-/**
- * Normalizes a `DiagnosticExceptionContext` into a Sentry-compatible contexts object.
- * Drops `undefined` fields so the Sentry payload stays compact.
- * @param context - Safe technical context.
- * @returns Sentry `contexts` object, or `undefined` when all fields are absent.
- */
-export const toSentryDiagnosticExceptionContext = (
-  context: DiagnosticExceptionContext,
-): { diagnostic: Record<string, unknown> } | undefined => {
-  const diagnosticCtx: Record<string, unknown> = {};
-  if (context.operation !== undefined) diagnosticCtx.operation = context.operation;
-  if (context.errorClass !== undefined) diagnosticCtx.errorClass = context.errorClass;
-  if (context.domExceptionName !== undefined)
-    diagnosticCtx.domExceptionName = context.domExceptionName;
-  if (context.vfsErrorCode !== undefined) diagnosticCtx.vfsErrorCode = context.vfsErrorCode;
-  if (context.domainErrorCode !== undefined)
-    diagnosticCtx.domainErrorCode = context.domainErrorCode;
-  if (context.errorClassification !== undefined)
-    diagnosticCtx.errorClassification = context.errorClassification;
-  if (context.failureClassification !== undefined)
-    diagnosticCtx.failureClassification = context.failureClassification;
-  if (context.runtime !== undefined) diagnosticCtx.runtime = context.runtime;
-  return Object.keys(diagnosticCtx).length > 0 ? { diagnostic: diagnosticCtx } : undefined;
+const NON_ERROR_MESSAGE = 'Captured non-error value';
+
+const resolveError = (error: unknown): Error => {
+  if (error instanceof Error) return error;
+  return new Error(NON_ERROR_MESSAGE);
 };
 
 /**
- * Reports a caught Error to Sentry as a real exception (with stack trace).
- * Use this when a real `Error` object is available and the stack is useful for diagnosis.
+ * Reports a caught error to Sentry as a real exception (with stack trace and native grouping).
+ * Use this for user-handled errors that are already shown to the user, and for any caught
+ * Error where the stack is useful for diagnosis.
+ *
  * For structured state observations without an Error, use `reportDiagnosticEvent` instead.
  *
- * The context is attached via Sentry capture context and sanitized by `beforeSend`. Never pass paths,
- * document ids, file names, storage keys, raw error messages, or user-controlled values.
+ * The context is attached via Sentry capture context and sanitized by `beforeSend`.
+ * Never pass paths, document ids, file names, storage keys, raw error messages,
+ * or user-controlled values.
  *
  * Product code must not import `@sentry/vue` directly. Use this wrapper instead.
- * @param error - The caught Error to report. Must be a real Error with a useful stack.
- * @param context - Safe technical context for the `diagnostic` Sentry context key.
- * @param scopeTags - Optional additional safe tags to attach.
+ * @param error - The caught value to report. Non-Error values are wrapped in a synthetic Error.
+ * @param context - Safe technical context attached as a `diagnostic` Sentry context entry.
+ * @param scopeTags - Optional additional safe project-controlled tags.
  */
 export const captureDiagnosticException = (
-  error: Error,
-  context: DiagnosticExceptionContext,
+  error: unknown,
+  context?: DiagnosticExceptionContext,
   scopeTags?: Record<string, string>,
 ): void => {
   try {
-    const contexts = toSentryDiagnosticExceptionContext(context);
-    useSentry().captureException(error, {
-      tags: {
-        handled: 'true',
-        ...scopeTags,
-      },
-      ...(contexts !== undefined ? { contexts } : {}),
+    const resolvedError = resolveError(error);
+    const { operation, failureClassification, feature, action } = context ?? {};
+
+    const diagnosticCtx: Record<string, unknown> = {};
+    if (operation !== undefined) diagnosticCtx.operation = operation;
+    if (failureClassification !== undefined)
+      diagnosticCtx.failureClassification = failureClassification;
+
+    const tags: Record<string, string> = {
+      eventKind: 'handledException',
+      ...scopeTags,
+    };
+    if (feature !== undefined) tags.feature = feature;
+    if (action !== undefined) tags.action = action;
+
+    useSentry().captureException(resolvedError, {
+      tags,
+      ...(Object.keys(diagnosticCtx).length > 0 ? { contexts: { diagnostic: diagnosticCtx } } : {}),
     });
   } catch {
     // Fire-and-forget: must not propagate into product call stacks.

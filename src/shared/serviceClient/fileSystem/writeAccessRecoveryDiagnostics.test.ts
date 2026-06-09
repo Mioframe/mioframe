@@ -103,7 +103,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
       addWriteAccessPermissionResolvedBreadcrumb({ permissionState: 'denied' });
 
       expect(addTechnicalBreadcrumbMock).toHaveBeenNthCalledWith(1, {
-        category: 'writeAccessRecovery',
+        category: 'writeAccess.recovery',
         data: {
           operation: 'requestAccess',
           provider: 'webFileSystem',

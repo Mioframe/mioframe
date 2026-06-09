@@ -1,9 +1,8 @@
-import type { DiagnosticsMode } from '@shared/config';
 import type { SentryReportingState } from './sentryRuntimeState';
 import { createBeforeBreadcrumb, createBeforeSend } from './sanitizeSentryEvent';
 
 type SentryOptionsParams = {
-  diagnosticsMode: DiagnosticsMode;
+  isVerbose: boolean;
   dsn: string;
   release: string | undefined;
   getReportingState: () => SentryReportingState;
@@ -20,7 +19,7 @@ type SentryOptionsParams = {
  * @returns Sentry init options ready for `Sentry.init(...)`.
  */
 export const createSentryOptions = ({
-  diagnosticsMode,
+  isVerbose,
   dsn,
   release,
   getReportingState,
@@ -29,7 +28,7 @@ export const createSentryOptions = ({
   ...(release ? { release } : {}),
   tracesSampleRate: 0,
   sendDefaultPii: false as const,
-  maxBreadcrumbs: diagnosticsMode === 'preview' ? 50 : 25,
-  beforeBreadcrumb: createBeforeBreadcrumb(diagnosticsMode, getReportingState),
-  beforeSend: createBeforeSend({ diagnosticsMode, getState: getReportingState }),
+  maxBreadcrumbs: isVerbose ? 50 : 25,
+  beforeBreadcrumb: createBeforeBreadcrumb(isVerbose, getReportingState),
+  beforeSend: createBeforeSend({ isVerbose, getState: getReportingState }),
 });

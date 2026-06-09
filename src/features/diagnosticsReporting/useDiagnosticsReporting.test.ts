@@ -10,8 +10,7 @@ const settings = ref<{
 });
 const isFinished = ref(false);
 const activeScopes: EffectScope[] = [];
-const applyDiagnosticsRuntimeStateMock = vi.fn();
-const syncSentryStateToWorkerMock = vi.fn();
+const applyDiagnosticsPolicyMock = vi.fn();
 
 const flushMicrotasks = async () => {
   await nextTick();
@@ -31,13 +30,8 @@ vi.mock('@entity/localSettings', () => ({
   }),
 }));
 
-vi.mock('@shared/lib/diagnostics', () => ({
-  applyDiagnosticsRuntimeState: applyDiagnosticsRuntimeStateMock,
-  getOrCreateSentrySessionId: () => 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
-}));
-
-vi.mock('@shared/service/sentryWorkerSync', () => ({
-  syncSentryStateToWorker: syncSentryStateToWorkerMock,
+vi.mock('@shared/service/diagnosticsPolicy', () => ({
+  applyDiagnosticsPolicy: applyDiagnosticsPolicyMock,
 }));
 
 describe('useDiagnosticsReporting', () => {
@@ -48,9 +42,8 @@ describe('useDiagnosticsReporting', () => {
       diagnosticsConsentRequested: false,
     };
     isFinished.value = false;
-    applyDiagnosticsRuntimeStateMock.mockReset();
-    applyDiagnosticsRuntimeStateMock.mockResolvedValue(undefined);
-    syncSentryStateToWorkerMock.mockReset();
+    applyDiagnosticsPolicyMock.mockReset();
+    applyDiagnosticsPolicyMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -74,10 +67,10 @@ describe('useDiagnosticsReporting', () => {
 
     await flushMicrotasks();
 
-    expect(applyDiagnosticsRuntimeStateMock).not.toHaveBeenCalled();
+    expect(applyDiagnosticsPolicyMock).not.toHaveBeenCalled();
   });
 
-  it('enables reporting and applies enabled state after hydration', async () => {
+  it('applies enabled policy after hydration when diagnostics are enabled', async () => {
     settings.value = {
       diagnosticsEnabled: true,
       diagnosticsConsentRequested: true,
@@ -93,36 +86,11 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
-      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
-      reportingState: 'enabled',
-    });
-    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledTimes(1);
+    expect(applyDiagnosticsPolicyMock).toHaveBeenCalledWith('enabled');
+    expect(applyDiagnosticsPolicyMock).toHaveBeenCalledTimes(1);
   });
 
-  it('syncs runtime state to the worker with the same session ID and reporting state', async () => {
-    settings.value = {
-      diagnosticsEnabled: true,
-      diagnosticsConsentRequested: true,
-    };
-
-    const scope = createTrackedScope();
-    const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
-
-    scope.run(() => {
-      useDiagnosticsReporting();
-    });
-
-    isFinished.value = true;
-    await flushMicrotasks();
-
-    expect(syncSentryStateToWorkerMock).toHaveBeenCalledWith({
-      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
-      reportingState: 'enabled',
-    });
-  });
-
-  it('keeps reporting state unknown after hydration before diagnostics consent is answered', async () => {
+  it('applies unknown policy after hydration before consent is answered', async () => {
     settings.value = {
       diagnosticsEnabled: false,
       diagnosticsConsentRequested: false,
@@ -138,13 +106,10 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
-      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
-      reportingState: 'unknown',
-    });
+    expect(applyDiagnosticsPolicyMock).toHaveBeenCalledWith('unknown');
   });
 
-  it('disables reporting and clears both queues after hydration when diagnostics are disabled', async () => {
+  it('applies disabled policy after hydration when diagnostics are disabled', async () => {
     settings.value = {
       diagnosticsEnabled: false,
       diagnosticsConsentRequested: true,
@@ -160,16 +125,13 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
-      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
-      reportingState: 'disabled',
-    });
+    expect(applyDiagnosticsPolicyMock).toHaveBeenCalledWith('disabled');
   });
 
-  it('does not act after sequence changes when an older apply resolves after a fast true to false toggle', async () => {
+  it('does not act after sequence changes when an older apply resolves after a fast toggle', async () => {
     let resolveApply: (() => void) | undefined;
-    applyDiagnosticsRuntimeStateMock.mockImplementation((state: { reportingState: string }) =>
-      state.reportingState === 'enabled'
+    applyDiagnosticsPolicyMock.mockImplementation((policy: string) =>
+      policy === 'enabled'
         ? new Promise<void>((resolve) => {
             resolveApply = resolve;
           })
@@ -199,8 +161,6 @@ describe('useDiagnosticsReporting', () => {
     resolveApply?.();
     await flushMicrotasks();
 
-    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ reportingState: 'disabled' }),
-    );
+    expect(applyDiagnosticsPolicyMock).toHaveBeenLastCalledWith('disabled');
   });
 });

@@ -2,7 +2,7 @@ import { createClient, createService } from '@shared/lib/proxyService';
 import type { Provider } from '@shared/lib/proxyService';
 import { transformers } from '@shared/lib/wrapWorker/workerTransformerMap';
 import { setDiagnosticsRuntimeState } from '@shared/lib/diagnostics';
-import type { SentryRuntimeState } from '@shared/lib/diagnostics';
+import type { SentryRuntimeState } from '@shared/lib/diagnostics/sentryRuntimeState';
 
 export const SENTRY_SYNC_SERVICE_ID = 'sentrySyncService';
 

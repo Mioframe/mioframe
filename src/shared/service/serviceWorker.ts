@@ -14,7 +14,7 @@ declare const self: DedicatedWorkerGlobalScope;
 // applies dynamic state via the sentryWorkerSync service.
 registerSentryConfig({
   ...(SENTRY_DSN !== undefined && { dsn: SENTRY_DSN }),
-  diagnosticsMode: DIAGNOSTICS_MODE,
+  isVerbose: DIAGNOSTICS_MODE === 'preview',
   enabled: import.meta.env.PROD,
   release: APP_BUILD_ID || APP_VERSION,
 });

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createSentryOptions } from './sentryOptions';
 
 describe('createSentryOptions', () => {
-  it('uses conservative production breadcrumb limits without tracing or replay options', () => {
+  it('uses conservative breadcrumb limits without tracing or replay options', () => {
     const options = createSentryOptions({
-      diagnosticsMode: 'production',
+      isVerbose: false,
       dsn: 'https://example@sentry.io/123',
       getReportingState: () => 'enabled',
       release: 'build-1',
@@ -21,9 +21,9 @@ describe('createSentryOptions', () => {
     expect(options).not.toHaveProperty('profilesSampleRate');
   });
 
-  it('uses larger preview breadcrumb limits with the same privacy boundaries', () => {
+  it('uses larger breadcrumb limits in verbose mode', () => {
     const options = createSentryOptions({
-      diagnosticsMode: 'preview',
+      isVerbose: true,
       dsn: 'https://example@sentry.io/123',
       getReportingState: () => 'enabled',
       release: 'build-1',

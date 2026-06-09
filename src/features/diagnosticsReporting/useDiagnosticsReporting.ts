@@ -1,23 +1,14 @@
 import { useLocalSettings } from '@entity/localSettings';
-import { applyDiagnosticsRuntimeState, getOrCreateSentrySessionId } from '@shared/lib/diagnostics';
-import type { SentryRuntimeState } from '@shared/lib/diagnostics';
-import { syncSentryStateToWorker } from '@shared/service/sentryWorkerSync';
+import { applyDiagnosticsPolicy } from '@shared/service/diagnosticsPolicy';
 import { watch } from 'vue';
 
 /**
  * Keeps runtime diagnostics reporting aligned with the local diagnostics opt-in.
- * Syncs reporting state and session ID to the worker via sentryWorkerSync.
+ * Applies the derived policy to the main-thread runtime and worker via `applyDiagnosticsPolicy`.
  */
 export const useDiagnosticsReporting = () => {
   const { settings, isFinished } = useLocalSettings();
   let sequence = 0;
-
-  const buildState = (
-    reportingState: SentryRuntimeState['reportingState'],
-  ): SentryRuntimeState => ({
-    sessionId: getOrCreateSentrySessionId(),
-    reportingState,
-  });
 
   watch(
     [
@@ -33,9 +24,7 @@ export const useDiagnosticsReporting = () => {
       }
 
       if (diagnosticsEnabled) {
-        const state = buildState('enabled');
-        syncSentryStateToWorker(state);
-        await applyDiagnosticsRuntimeState(state);
+        await applyDiagnosticsPolicy('enabled');
 
         if (currentSequence !== sequence) {
           return;
@@ -45,15 +34,11 @@ export const useDiagnosticsReporting = () => {
 
       // oxlint-disable-next-line no-unnecessary-boolean-literal-compare -- strict boolean from watcher callback
       if (diagnosticsConsentRequested === true) {
-        const state = buildState('disabled');
-        syncSentryStateToWorker(state);
-        void applyDiagnosticsRuntimeState(state);
+        void applyDiagnosticsPolicy('disabled');
         return;
       }
 
-      const state = buildState('unknown');
-      syncSentryStateToWorker(state);
-      void applyDiagnosticsRuntimeState(state);
+      void applyDiagnosticsPolicy('unknown');
     },
     { immediate: true },
   );

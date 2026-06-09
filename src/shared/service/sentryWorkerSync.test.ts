@@ -1,4 +1,4 @@
-import type { SentryRuntimeState } from '@shared/lib/diagnostics';
+import type { SentryRuntimeState } from '@shared/lib/diagnostics/sentryRuntimeState';
 import type { Provider } from '@shared/lib/proxyService';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

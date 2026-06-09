@@ -27,5 +27,5 @@ export {
   setDiagnosticsRuntimeState,
 } from './sentryRuntime';
 export type { SentryConfig } from './sentryRuntime';
-export type { SentryReportingState, SentryRuntimeState } from './sentryRuntimeState';
+export type { SentryReportingState } from './sentryRuntimeState';
 export { getOrCreateSentrySessionId, isSessionSentryUserId } from './sentrySession';

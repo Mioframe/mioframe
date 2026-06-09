@@ -424,7 +424,7 @@ describe('setupSentry', () => {
       tags: {
         action: 'exportDocumentJson',
         feature: 'documentExport',
-        handled: 'true',
+        eventKind: 'handledException',
         path: '/docs/private',
       },
       user: {
@@ -443,7 +443,7 @@ describe('setupSentry', () => {
         tags: {
           action: 'exportDocumentJson',
           feature: 'documentExport',
-          handled: 'true',
+          eventKind: 'handledException',
         },
       });
     }
@@ -584,7 +584,7 @@ describe('setupSentry', () => {
     }
   });
 
-  it('beforeSend keeps only allowlisted tags from mixed payloads', async () => {
+  it('beforeSend keeps safe (non-denylist) tags and strips denylist tags', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./sentryRuntime');
@@ -604,7 +604,7 @@ describe('setupSentry', () => {
       tags: {
         action: 'exportDocumentJson',
         feature: 'documentExport',
-        handled: 'true',
+        eventKind: 'handledException',
         path: '/private',
       },
     };
@@ -616,7 +616,7 @@ describe('setupSentry', () => {
         tags: {
           action: 'exportDocumentJson',
           feature: 'documentExport',
-          handled: 'true',
+          eventKind: 'handledException',
         },
       });
     }
@@ -715,7 +715,7 @@ describe('setupSentry', () => {
     }
   });
 
-  it('beforeSend keeps whitelisted context names with safe fields', async () => {
+  it('beforeSend accepts all context names and strips only denylist keys within them', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./sentryRuntime');
@@ -736,9 +736,10 @@ describe('setupSentry', () => {
             diagnostic: {
               operation: 'repositorySave',
               errorClass: 'DOMException',
+              // domExceptionName: stripped — contains 'name' (denylist)
               domExceptionName: 'NotAllowedError',
               errorClassification: 'accessDenied',
-              // Forbidden field — stripped
+              // path: stripped — in denylist
               path: '/user/private/doc',
             },
             storage: {
@@ -754,7 +755,6 @@ describe('setupSentry', () => {
           diagnostic: {
             operation: 'repositorySave',
             errorClass: 'DOMException',
-            domExceptionName: 'NotAllowedError',
             errorClassification: 'accessDenied',
           },
           storage: {
@@ -767,7 +767,7 @@ describe('setupSentry', () => {
     }
   });
 
-  it('beforeSend strips unknown context names', async () => {
+  it('beforeSend strips contexts whose fields are all denylist-blocked', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
       await import('./sentryRuntime');
@@ -785,12 +785,15 @@ describe('setupSentry', () => {
         beforeSend({
           message: 'test',
           contexts: {
+            // browser.name is blocked (name is in denylist) — empty context stripped
             browser: { name: 'Chrome' },
+            // runtime.name is blocked — empty context stripped
             runtime: { name: 'node' },
+            // trace.trace_id survives (trace_id not in denylist)
             trace: { trace_id: 'abc' },
           },
         }),
-      ).toEqual({ message: 'test' });
+      ).toEqual({ message: 'test', contexts: { trace: { trace_id: 'abc' } } });
     }
   });
 
@@ -1035,7 +1038,7 @@ describe('setupSentry', () => {
       }
     });
 
-    it('unknown tags are removed by beforeSend', async () => {
+    it('non-denylist tags survive; only denylist-matching tags are removed', async () => {
       const beforeSend = await setupBeforeSend();
       const event = {
         message: 'test',
@@ -1050,7 +1053,7 @@ describe('setupSentry', () => {
       if (beforeSend instanceof Function) {
         expect(beforeSend(event)).toEqual({
           message: 'test',
-          tags: { eventKind: 'diagnostic' },
+          tags: { eventKind: 'diagnostic', customMetadata: 'some-value', internalFlag: 'true' },
         });
       }
     });
@@ -1074,7 +1077,7 @@ describe('setupSentry', () => {
       }
     });
 
-    it('stage and providerKind tags are removed by beforeSend', async () => {
+    it('stage and providerKind tags survive since they are not in the denylist', async () => {
       const beforeSend = await setupBeforeSend();
       const event = {
         message: 'test',
@@ -1089,7 +1092,7 @@ describe('setupSentry', () => {
       if (beforeSend instanceof Function) {
         expect(beforeSend(event)).toEqual({
           message: 'test',
-          tags: { result: 'failed' },
+          tags: { stage: 'flush', providerKind: 'webFileSystem', result: 'failed' },
         });
       }
     });
@@ -1251,7 +1254,8 @@ describe('setupSentry', () => {
               },
               message: 'repository save retry queued',
             },
-            { category: 'ui.click', message: 'button pressed' },
+            // ui.click with only target data: target is in denylist → data stripped → dropped
+            { category: 'ui.click', data: { target: 'button[data-testid="submit"]' } },
           ],
         }),
       ).toEqual({
@@ -1319,12 +1323,13 @@ describe('setupSentry', () => {
       }
     });
 
-    it('keeps valid string error summary and correlation extras', async () => {
+    it('keeps valid string error summary and correlation extras, drops denylist keys', async () => {
       const beforeSend = await setupBeforeSend();
       const event = {
         message: 'test',
         extra: {
           errorClass: 'DOMException',
+          // domExceptionName: stripped — contains 'name' (denylist)
           domExceptionName: 'NotAllowedError',
           errorClassification: 'access',
           attemptId: 'abc-def-123',
@@ -1337,7 +1342,6 @@ describe('setupSentry', () => {
           message: 'test',
           extra: {
             errorClass: 'DOMException',
-            domExceptionName: 'NotAllowedError',
             errorClassification: 'access',
             attemptId: 'abc-def-123',
           },

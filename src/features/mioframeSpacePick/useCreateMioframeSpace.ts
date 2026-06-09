@@ -1,7 +1,7 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { useMainServiceClient } from '@shared/service';
 import { createSafeErrorCause, DomainError } from '@shared/lib/error';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DEVICE_FILES_ROOT_NAME } from '@shared/service/fileSystem';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
@@ -62,14 +62,14 @@ export const useCreateMioframeSpace = (
     addSnackbar({
       text: reportedError.message,
     });
-    reportHandledError(reportedError, {
+    captureDiagnosticException(reportedError, {
       feature: 'mioframeSpaceCreate',
       action: options?.action ?? 'createSpace',
     });
   };
 
   const reportRollbackError = () => {
-    reportHandledError(
+    captureDiagnosticException(
       new DomainError('Could not roll back failed Mioframe space creation', {
         cause: createSafeErrorCause('Rolling back failed Mioframe space creation failed'),
       }),
