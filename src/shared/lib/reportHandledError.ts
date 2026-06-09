@@ -4,7 +4,7 @@ import {
   getSentryReportingState,
   isSentryConfigured,
 } from './diagnostics/sentryRuntime';
-import { registerDiagnosticsRuntimeEffects } from './diagnosticsRuntimeEffects';
+import { registerDiagnosticsRuntimeEffects } from './diagnostics/runtimeEffects';
 
 type ReportHandledErrorOptions = {
   feature: string;
@@ -108,7 +108,7 @@ export const flushQueuedHandledReports = () => {
   });
 };
 
-registerDiagnosticsRuntimeEffects({
+registerDiagnosticsRuntimeEffects('handledErrors', {
   flush: flushQueuedHandledReports,
   clear: clearQueuedHandledReports,
 });

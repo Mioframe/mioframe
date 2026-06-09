@@ -1,10 +1,10 @@
 import { useLocalSettings } from '@entity/localSettings';
 import {
+  applyDiagnosticsRuntimeState,
   getOrCreateSentrySessionId,
   isSentryConfigured,
-  setDiagnosticsRuntimeState,
 } from '@shared/lib/diagnostics';
-import { ensureSentry } from '@shared/lib/diagnostics/sentryRuntime';
+import type { SentryRuntimeState } from '@shared/lib/diagnostics';
 import { syncSentryStateToWorker } from '@shared/service/sentryWorkerSync';
 import { watch } from 'vue';
 
@@ -16,15 +16,12 @@ export const useDiagnosticsReporting = () => {
   const { settings, isFinished } = useLocalSettings();
   let sequence = 0;
 
-  const applyRuntimeState = (reportingState: 'unknown' | 'enabled' | 'disabled') => {
-    const state = {
-      sessionId: getOrCreateSentrySessionId(),
-      reportingState,
-    } as const;
-
-    setDiagnosticsRuntimeState(state);
-    syncSentryStateToWorker(state);
-  };
+  const buildState = (
+    reportingState: SentryRuntimeState['reportingState'],
+  ): SentryRuntimeState => ({
+    sessionId: getOrCreateSentrySessionId(),
+    reportingState,
+  });
 
   watch(
     [
@@ -40,13 +37,16 @@ export const useDiagnosticsReporting = () => {
       }
 
       if (!isSentryConfigured()) {
-        applyRuntimeState('disabled');
+        const state = buildState('disabled');
+        syncSentryStateToWorker(state);
+        void applyDiagnosticsRuntimeState(state);
         return;
       }
 
       if (diagnosticsEnabled) {
-        applyRuntimeState('enabled');
-        await ensureSentry();
+        const state = buildState('enabled');
+        syncSentryStateToWorker(state);
+        await applyDiagnosticsRuntimeState(state);
 
         if (currentSequence !== sequence) {
           return;
@@ -56,11 +56,15 @@ export const useDiagnosticsReporting = () => {
 
       // oxlint-disable-next-line no-unnecessary-boolean-literal-compare -- strict boolean from watcher callback
       if (diagnosticsConsentRequested === true) {
-        applyRuntimeState('disabled');
+        const state = buildState('disabled');
+        syncSentryStateToWorker(state);
+        void applyDiagnosticsRuntimeState(state);
         return;
       }
 
-      applyRuntimeState('unknown');
+      const state = buildState('unknown');
+      syncSentryStateToWorker(state);
+      void applyDiagnosticsRuntimeState(state);
     },
     { immediate: true },
   );

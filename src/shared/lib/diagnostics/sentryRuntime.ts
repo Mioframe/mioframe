@@ -1,9 +1,6 @@
 import type { App, Plugin } from 'vue';
 import type { Breadcrumb, CaptureContext } from '@sentry/vue';
-import {
-  clearDiagnosticsRuntimeEffects,
-  flushDiagnosticsRuntimeEffects,
-} from '@shared/lib/diagnosticsRuntimeEffects';
+import { clearDiagnosticsRuntimeEffects, flushDiagnosticsRuntimeEffects } from './runtimeEffects';
 import type { DiagnosticsMode } from '@shared/config';
 import type { SentryReportingState, SentryRuntimeState } from './sentryRuntimeState';
 import { createSentryOptions } from './sentryOptions';
@@ -134,11 +131,18 @@ export const isSentryReportingEnabled = () => reportingState === 'enabled';
  * @param state - Dynamic runtime state to apply.
  */
 export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
-  reportingState = state.reportingState;
+  if (state.reportingState === 'enabled') {
+    // Validate session id before committing to enabled state so that an invalid
+    // id never results in a breadcrumb or a flush on the wrong reporting state.
+    if (!isSessionSentryUserId(state.sessionId)) {
+      reportingState = 'disabled';
+      pendingSessionId = undefined;
+      sentryFacade.setUser(null);
+      clearDiagnosticsRuntimeEffects();
+      return;
+    }
 
-  // Record the transition only when the new state is enabled so that transitioning
-  // into disabled/unknown does not add a breadcrumb through the still-active facade.
-  if (reportingState === 'enabled') {
+    reportingState = 'enabled';
     sentryFacade.addBreadcrumb({
       category: 'sentry.runtime',
       data: {
@@ -149,17 +153,6 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
       message: `reporting state applied: ${state.reportingState}`,
       type: 'default',
     });
-  }
-
-  if (state.reportingState === 'enabled') {
-    if (!isSessionSentryUserId(state.sessionId)) {
-      pendingSessionId = undefined;
-      reportingState = 'disabled';
-      sentryFacade.setUser(null);
-      clearDiagnosticsRuntimeEffects();
-      return;
-    }
-
     pendingSessionId = state.sessionId;
     sentryFacade.setUser({ id: state.sessionId });
     flushDiagnosticsRuntimeEffects();
@@ -167,10 +160,12 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
       void ensureSentry();
     }
   } else if (state.reportingState === 'disabled') {
+    reportingState = 'disabled';
     pendingSessionId = undefined;
     sentryFacade.setUser(null);
     clearDiagnosticsRuntimeEffects();
   } else {
+    reportingState = state.reportingState;
     pendingSessionId = state.sessionId;
   }
 };
@@ -293,6 +288,21 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
  * @returns Stable Sentry facade.
  */
 export const useSentry = (): SentryFacade => sentryFacade;
+
+/**
+ * Applies diagnostics runtime state and lazily initializes Sentry when enabled.
+ * Use this from product and service code instead of calling `setDiagnosticsRuntimeState`
+ * and `ensureSentry` separately.
+ * @param state - Dynamic runtime state to apply.
+ * @returns Promise that resolves once Sentry initialization completes, or immediately when disabled.
+ */
+export const applyDiagnosticsRuntimeState = (state: SentryRuntimeState): Promise<void> => {
+  setDiagnosticsRuntimeState(state);
+  if (state.reportingState === 'enabled' && isSentryConfigured()) {
+    return ensureSentry().then(() => undefined);
+  }
+  return Promise.resolve();
+};
 
 /**
  * Vue plugin that registers optional Sentry runtime config and stores the Vue

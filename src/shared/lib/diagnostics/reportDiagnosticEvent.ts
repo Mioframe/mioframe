@@ -1,6 +1,6 @@
 import type { CaptureContext } from '@sentry/vue';
 import { ensureSentry, getSentryReportingState, isSentryConfigured } from './sentryRuntime';
-import { registerDiagnosticsRuntimeEffects } from '@shared/lib/diagnosticsRuntimeEffects';
+import { registerDiagnosticsRuntimeEffects } from './runtimeEffects';
 import type { DiagnosticEvent } from './DiagnosticEvent';
 import { DiagnosticSeverity } from './diagnosticEnums';
 
@@ -206,7 +206,7 @@ export const flushQueuedDiagnosticEvents = (): void => {
   doFlush(false);
 };
 
-registerDiagnosticsRuntimeEffects({
+registerDiagnosticsRuntimeEffects('diagnosticEvents', {
   flush: flushQueuedDiagnosticEvents,
   clear: clearQueuedDiagnosticEvents,
 });

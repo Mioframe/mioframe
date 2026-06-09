@@ -15,7 +15,7 @@ const { flushDiagnosticsRuntimeEffectsMock, clearDiagnosticsRuntimeEffectsMock }
   }),
 );
 
-vi.mock('@shared/lib/diagnosticsRuntimeEffects', () => ({
+vi.mock('./runtimeEffects', () => ({
   registerDiagnosticsRuntimeEffects: vi.fn(),
   flushDiagnosticsRuntimeEffects: flushDiagnosticsRuntimeEffectsMock,
   clearDiagnosticsRuntimeEffects: clearDiagnosticsRuntimeEffectsMock,

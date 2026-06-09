@@ -11,8 +11,7 @@ const settings = ref<{
 const isFinished = ref(false);
 const activeScopes: EffectScope[] = [];
 let sentryConfigured = true;
-const ensureSentryMock = vi.fn();
-const setDiagnosticsRuntimeStateMock = vi.fn();
+const applyDiagnosticsRuntimeStateMock = vi.fn();
 const syncSentryStateToWorkerMock = vi.fn();
 
 const flushMicrotasks = async () => {
@@ -35,12 +34,8 @@ vi.mock('@entity/localSettings', () => ({
 
 vi.mock('@shared/lib/diagnostics', () => ({
   isSentryConfigured: () => sentryConfigured,
-  setDiagnosticsRuntimeState: setDiagnosticsRuntimeStateMock,
+  applyDiagnosticsRuntimeState: applyDiagnosticsRuntimeStateMock,
   getOrCreateSentrySessionId: () => 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
-}));
-
-vi.mock('@shared/lib/diagnostics/sentryRuntime', () => ({
-  ensureSentry: ensureSentryMock,
 }));
 
 vi.mock('@shared/service/sentryWorkerSync', () => ({
@@ -56,9 +51,8 @@ describe('useDiagnosticsReporting', () => {
     };
     isFinished.value = false;
     sentryConfigured = true;
-    ensureSentryMock.mockReset();
-    ensureSentryMock.mockResolvedValue(undefined);
-    setDiagnosticsRuntimeStateMock.mockReset();
+    applyDiagnosticsRuntimeStateMock.mockReset();
+    applyDiagnosticsRuntimeStateMock.mockResolvedValue(undefined);
     syncSentryStateToWorkerMock.mockReset();
   });
 
@@ -83,11 +77,10 @@ describe('useDiagnosticsReporting', () => {
 
     await flushMicrotasks();
 
-    expect(setDiagnosticsRuntimeStateMock).not.toHaveBeenCalled();
-    expect(ensureSentryMock).not.toHaveBeenCalled();
+    expect(applyDiagnosticsRuntimeStateMock).not.toHaveBeenCalled();
   });
 
-  it('enables reporting, initializes Sentry, then flushes both queues after hydration', async () => {
+  it('enables reporting and applies enabled state after hydration', async () => {
     settings.value = {
       diagnosticsEnabled: true,
       diagnosticsConsentRequested: true,
@@ -103,14 +96,11 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
       sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'enabled',
     });
-    expect(ensureSentryMock).toHaveBeenCalledTimes(1);
-    expect(setDiagnosticsRuntimeStateMock.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
-      ensureSentryMock.mock.invocationCallOrder[0] ?? 0,
-    );
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledTimes(1);
   });
 
   it('syncs runtime state to the worker with the same session ID and reporting state', async () => {
@@ -151,11 +141,10 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
       sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'unknown',
     });
-    expect(ensureSentryMock).not.toHaveBeenCalled();
   });
 
   it('disables reporting and clears both queues after hydration when diagnostics are disabled', async () => {
@@ -174,11 +163,10 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
       sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'disabled',
     });
-    expect(ensureSentryMock).not.toHaveBeenCalled();
   });
 
   it('disables reporting and clears both queues when Sentry is unavailable', async () => {
@@ -198,19 +186,19 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith(
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith(
       expect.objectContaining({ reportingState: 'disabled' }),
     );
-    expect(ensureSentryMock).not.toHaveBeenCalled();
   });
 
-  it('does not flush when an older ensureSentry resolves after a fast true to false toggle', async () => {
-    let resolveEnsure: (() => void) | undefined;
-    ensureSentryMock.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveEnsure = resolve;
-        }),
+  it('does not act after sequence changes when an older apply resolves after a fast true to false toggle', async () => {
+    let resolveApply: (() => void) | undefined;
+    applyDiagnosticsRuntimeStateMock.mockImplementation((state: { reportingState: string }) =>
+      state.reportingState === 'enabled'
+        ? new Promise<void>((resolve) => {
+            resolveApply = resolve;
+          })
+        : Promise.resolve(),
     );
     settings.value = {
       diagnosticsEnabled: true,
@@ -233,10 +221,10 @@ describe('useDiagnosticsReporting', () => {
     };
     await flushMicrotasks();
 
-    resolveEnsure?.();
+    resolveApply?.();
     await flushMicrotasks();
 
-    expect(setDiagnosticsRuntimeStateMock).toHaveBeenLastCalledWith(
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ reportingState: 'disabled' }),
     );
   });

@@ -9,9 +9,9 @@ import type {
  * Safe product-owned breadcrumb payload for the shared diagnostics wrapper.
  */
 export type AddTechnicalBreadcrumbParams = {
-  /** Technical breadcrumb category allowlisted by the shared Sentry sanitizer. */
+  /** Technical breadcrumb category from the project-controlled category set. */
   category: TechnicalBreadcrumbCategory;
-  /** Optional allowlisted technical data fields. */
+  /** Optional technical data fields. Keys are checked against the case-insensitive denylist; values are sanitized. */
   data?: TechnicalBreadcrumbData | undefined;
   /** Optional breadcrumb severity. */
   level?: TechnicalBreadcrumbLevel | undefined;
