@@ -104,7 +104,7 @@ reason:
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
-- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
+- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention.
 
 ## Styling
 
@@ -130,3 +130,100 @@ reason:
 - Treat a failed final `pnpm verify` as a blocker. Do not present the task as complete, ready for merge, or acceptable when the final read-only verification failed, unless the user explicitly asked for a partial result.
 - Treat mutation-test failures in the touched scope as actionable quality failures. Strengthen tests, reduce the mutation scope by reverting unrelated changes, or fix the implementation before final handoff; do not use passing browser or visual checks to override a failing mutation gate.
 - Treat mutation timeouts on active progress as infrastructure failures, not test success. Prefer improving timeout/progress handling over excluding changed logic from mutation coverage.
+- Keep verification gates distinct. Browser and visual checks validate rendered behavior and appearance; unit, integration, and mutation checks validate logic robustness. Passing one gate does not excuse skipping or failing another gate that applies to the change.
+- Keep user-facing copy in the application's established UI language. Task descriptions, design notes, and review comments may use another language; do not copy their text into product UI unless that language already matches the surrounding UI.
+- After user-facing UI changes, perform a final copy-language scan of touched files and newly added UI surfaces. Remove mixed-language strings, stale task wording, and technical terms that are not already part of the surrounding product UI.
+- For user-visible UI tasks, verify the primary acceptance scenario in the rendered product or a representative Storybook/browser harness before final completion. Unit or component-contract tests may support this, but they must not replace browser verification for layout, scrolling, focus, overlays, touch, or Material visual states.
+- Before changing a shared UI primitive, perform a blast-radius check: inspect existing consumers, define the public API change, preserve existing behavior by default, update or add Storybook/visual/browser coverage when appearance or interaction changes, and avoid one-off props that only serve a single feature.
+- Keep high-risk cross-layer work incremental. Prefer committing or verifying pure read-model changes before feature sheets, widget composition, shared UI primitives, and visual behavior changes. Do not bundle unrelated architectural changes only because they are needed by the same screen.
+- Before final handoff after a refactor, scan for leftover artifacts from abandoned approaches: unused files, exports, stories, tests, feature modules, comments, and stale imports. Delete them or explain why they remain.
+- Treat later user clarifications as higher-priority than earlier task text. When a domain rule in the task conflicts with a later clarification or existing project invariant, stop and align the implementation with the latest confirmed rule instead of silently choosing one.
+
+## Testing UI and Components
+
+- Do not use unit tests as the default verification method for Vue UI components.
+- Component behavior that depends on real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, or Material state visuals must be verified with Playwright/e2e or a reproducible browser smoke check.
+- Use `@vue/test-utils` only for component contract tests: conditional rendering, props, emits, slots, simple child-component wiring, and connecting extracted composable or helper state to template output.
+- Use Storybook for manual component playground work and deterministic visual state coverage.
+- Do not hand-roll component mounting with repeated `createApp`, manual `document.body` cleanup, ad hoc inline stubs, and `querySelector`-driven assertions.
+- Prefer assertions against emitted events, props passed to stubs, slot content, and stable accessible text or labels when they are part of the component contract.
+- Avoid adding `data-testid` only for unit tests unless there is no stable user-visible or component-level contract to assert.
+- Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
+- Colocate test helpers as `*.testUtils.ts` next to the tested module or test files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not create ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
+- Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
+- The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
+
+## Visual regression testing
+
+- Use Playwright screenshot assertions for appearance regressions; do not use Vitest, happy-dom, or Vue Test Utils for visual appearance.
+- Use Storybook as the preferred visual harness. Render screenshots through isolated Storybook stories, not through `MainApp.vue` or the product `/playground`.
+- The Storybook runtime must not inherit product app effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or product router lifecycle behavior.
+- Keep stories deterministic and fixture-driven. They must not own business logic, storage orchestration, stores, or network behavior.
+- Use colocated CSF stories named `<Component>.stories.ts`, add the `visual` tag to stories that are intended for screenshot coverage, and keep fixtures small and local.
+- Existing product/dev playground is legacy manual-only. Do not add new visual regression surfaces there; migrate useful examples to Storybook gradually.
+- Place visual specs under `tests/e2e/visual/<surface>.spec.ts` so Playwright and focused verification can discover them.
+- Prefer locator screenshots of a single stable surface, component gallery, dialog, sheet, menu, or responsive layout region over full-page screenshots.
+- Add visual tests only for shared UI primitives, important Material states, mobile/desktop layout regressions, previously broken visual states, or CSS-heavy components where visual regressions are likely and costly.
+- Do not add visual snapshots for every component by default.
+- Keep visual tests deterministic: fixed viewport, fixed fixture data, no network, no random IDs, no live dates, no loading spinners, disabled animations/transitions, settled fonts/icons/rendering, and masked dynamic regions when needed.
+- Accept and update visual baselines only through the canonical stable Linux/Chromium container flow such as CI or `pnpm test:visual:update`, which runs a pinned Playwright image through Podman; treat local host-rendered diffs from other environments as advisory/debugging only.
+- Do not update visual baselines from headed mode, do not hide ordinary text in screenshots, and do not loosen screenshot thresholds only to suppress text anti-aliasing noise.
+- If a future test intentionally validates typography or text rendering, keep that coverage explicit and separate from generic component visual baselines.
+- Do not use Storybook as an e2e runner.
+- Update snapshots only after inspecting the visual diff and confirming the appearance change is intentional.
+
+## CRDT and lifecycle invariants
+
+- For CRDT-backed state, mutate live nested objects inside the owning change callback, never assign a live document object back into the same document, and prefer shared helpers such as `put`, `patch`, `deepPutJsonObject`, and `deepPatchJsonObject` when they match the write shape.
+- Treat subscriptions, listeners, workers, timers, caches, file handles, and blob URLs as lifecycle-managed resources.
+
+## Privacy-safe errors
+
+- Any error that can reach `reportHandledError` must be privacy-safe by construction.
+- Raw `Error` may be preserved in reportable flows only when its message is project-controlled and does not include user-controlled values.
+- Errors from browser APIs, storage, network, Google API, File API, Automerge/repo internals, Zod, or any external library are untrusted by default and must be wrapped with a safe project-controlled cause message before they can reach handled diagnostics.
+- Do not include local paths, virtual paths, file names, folder names, document names, document ids, file ids, Google Drive file ids, record values, document contents, or raw external error text in `Error.message`, `DomainError.message`, or `DomainError.cause.message` when the error may be reported.
+- Do not add path/name/id-bearing messages to reportable error flows. Avoid messages like `Failed for <path>` or `Could not remove <name>`.
+- Do not pass raw browser, filesystem, File API, File System API, Google API, IndexedDB, VFS, Automerge, Zod, or other low-level external errors as `cause` when the error may be reported. Wrap them in a project-controlled safe technical cause message instead.
+- Do not pass path, name, id, URL parameters, or other user-controlled values to `reportHandledError` options, Sentry `extra`, or Sentry `tags`.
+- Prefer stable domain error codes, safe user-facing messages, safe technical cause messages, and `feature` or `action` metadata.
+
+## Anti-patterns
+
+- Do not pull dependencies upward against the intended layer direction.
+- Do not bypass entity or service APIs with direct storage access or ad hoc document mutation.
+- Do not duplicate schemas, type aliases, or constants across layers.
+- Do not push orchestration complexity into component props.
+- Do not treat desktop performance, hover, or precise pointer input as the default interaction model.
+- Do not use `AGENTS.md` as an architecture essay, a file dump, or a place for temporary notes.
+
+## Constraints
+
+- `shared` must not import upper layers.
+- `entities` may import only `shared`.
+- `features` build on `entities` and `shared`.
+- `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
+- UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
+- Use `pnpm` for package management and project commands.
+- After edits, run the narrowest relevant verification for the touched scope. For TypeScript or other logic changes, run at least `pnpm type-check`; add the corresponding focused test or smoke check for changed tests, UI/e2e behavior, or schema, service, and storage behavior.
+- Run lint and format only for the touched scope with targeted `oxlint`, `eslint --fix`, and/or `oxfmt` as relevant. Use full e2e, full lint, or broad mutation checks only when explicitly requested or as final verification before a wide merge.
+- Use Conventional Commits.
+- `pages` and `widgets` directories use PascalCase. Other submodules use lower camel case.
+- Vue components and class-centric files use PascalCase. Other TypeScript files use lower camel case or lowercase.
+- Feature modules are named for user actions such as `<domain><Action>`. Entity modules are named for stable domain concepts.
+- Visual components are named for the rendered surface, using concrete suffixes such as `Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, or `State`, not vague roles such as `Manager` or `Helper`.
+- Use the `MD*` prefix only for shared Material-style primitives.
+- `use*` exposes reactive or lifecycle-managed capabilities. `setup*` wires dependencies and cleanup. `define*` stays side-effect-light and declarative. `create*` returns a fresh owned instance. `get*` is pure lookup or derivation. `is*` is boolean. `zod*` exports schemas. `*Service` is reserved for background-side infrastructure.
+- Use `on*` for component event handlers and callback bindings.
+- Reserve the `$` suffix for raw RxJS observables.
+- Add a child `AGENTS.md` only when a directory has local invariants, blast-radius rules, or reproducible verification guidance that the parent cannot express cleanly.
+- Child `AGENTS.md` files should refine the parent rather than repeat it, and their `Contains` sections should describe stable responsibilities instead of the current file list.
+- Update the `AGENTS.md` tree together with ownership, public API, dependency, or verification-boundary changes.
+
+## Agent environment compatibility
+
+`AGENTS.md` files and `.agents/skills/*/SKILL.md` are the canonical source of truth for agent instructions and project skills. Claude Code reads `CLAUDE.md` and `.claude/skills` instead; these are managed compatibility files generated from the canonical sources.
+
+- Do not duplicate project rules into `CLAUDE.md` files. Edit `AGENTS.md` or a skill `SKILL.md` instead.
+- Run `pnpm verify --fix` after adding, moving, or removing an `AGENTS.md` file or a skill to regenerate the compatibility layer.
+- `pnpm verify` fails when the compatibility layer is missing or stale.
