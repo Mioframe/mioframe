@@ -1,10 +1,13 @@
 ---
 name: diagnostic-events
-description: 'Use this skill when adding, reviewing, or testing project diagnostics: technical breadcrumbs, diagnostic events, captured exceptions, optional logs, sanitization, or diagnostics wrappers.'
+description: 'Use this skill when adding, reviewing, or testing project diagnostics.'
 ---
 
 # Diagnostic events skill
 
-Use this skill before adding, reviewing, or testing diagnostics code.
+Use this skill when adding or reviewing calls to the project diagnostics API.
 
-This skill is written for users of the project diagnostics API. It explains which diagnostic
+## Choose the primitive
+
+- Use a technical breadcrumb for an important system step that helps explain a later failure.
+- Use a diagnostic event for a compact terminal outcome that should appear in Sentry as a
