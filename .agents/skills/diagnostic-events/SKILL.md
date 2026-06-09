@@ -7,4 +7,4 @@ description: 'Use this skill when adding, reviewing, or testing project diagnost
 
 Use this skill before adding, reviewing, or testing diagnostics code.
 
-This skill
+This skill is written for users of the project diagnostics API. It explains which diagnostic
