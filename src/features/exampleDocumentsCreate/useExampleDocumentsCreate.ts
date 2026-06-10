@@ -16,6 +16,7 @@ import { createStarterExampleDocument } from './createStarterExampleDocument';
 
 const EXAMPLES_DIRECTORY_NAME = 'Examples';
 const EXAMPLE_CREATE_ERROR_MESSAGE = 'Could not create example';
+const MAX_EXAMPLE_DIRECTORY_ATTEMPTS = 100;
 
 type ExampleResult = {
   documentDirectory: string;
@@ -24,6 +25,22 @@ type ExampleResult = {
 
 const isAlreadyExistingDirectoryError = (error: unknown) =>
   error instanceof VfsError && error.code === FileSystemError.FileExists;
+
+const classifyExampleCreateError = (error: unknown): string => {
+  if (error instanceof VfsError) {
+    switch (error.code) {
+      case FileSystemError.FileExists:
+        return 'example-create-vfs-file-exists';
+      case FileSystemError.NoPermissions:
+        return 'example-create-vfs-permission-required';
+      case FileSystemError.Unknown:
+        return 'example-create-vfs-unknown';
+      default:
+        return 'example-create-vfs-access-denied';
+    }
+  }
+  return 'example-create-unexpected';
+};
 
 /**
  * Composable for creating starter example documents in the first available indexed OPFS directory.
@@ -58,6 +75,13 @@ export const useExampleDocumentsCreate = () => {
     let index = 1;
 
     for (;;) {
+      if (index > MAX_EXAMPLE_DIRECTORY_ATTEMPTS) {
+        throw new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+          cause: createSafeErrorCause('example-create-directory-limit-exceeded'),
+          code: 'example-create-failed',
+        });
+      }
+
       const directoryName =
         index === 1 ? EXAMPLES_DIRECTORY_NAME : `${EXAMPLES_DIRECTORY_NAME} ${index}`;
 
@@ -84,9 +108,9 @@ export const useExampleDocumentsCreate = () => {
     }
   };
 
-  const makeExampleCreateError = () =>
+  const makeExampleCreateError = (error: unknown) =>
     new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
-      cause: createSafeErrorCause('Starter example creation failed'),
+      cause: createSafeErrorCause(classifyExampleCreateError(error)),
       code: 'example-create-failed',
     });
 
@@ -113,9 +137,9 @@ export const useExampleDocumentsCreate = () => {
         documentDirectory,
         documentId,
       };
-    } catch {
+    } catch (error) {
       weeklyPlanErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
-      captureDiagnosticException(makeExampleCreateError(), {
+      captureDiagnosticException(makeExampleCreateError(error), {
         feature: 'exampleDocumentsCreate',
         action: 'createWeeklyPlanExample',
       });
@@ -148,9 +172,9 @@ export const useExampleDocumentsCreate = () => {
         documentDirectory,
         documentId,
       };
-    } catch {
+    } catch (error) {
       shoppingErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
-      captureDiagnosticException(makeExampleCreateError(), {
+      captureDiagnosticException(makeExampleCreateError(error), {
         feature: 'exampleDocumentsCreate',
         action: 'createShoppingExample',
       });

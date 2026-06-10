@@ -169,6 +169,10 @@ describe('useExampleDocumentsCreate', () => {
       feature: 'exampleDocumentsCreate',
       action: 'createWeeklyPlanExample',
     });
+    if (!(reportedError instanceof DomainError)) return;
+    expect(reportedError.cause).toBeInstanceOf(Error);
+    if (!(reportedError.cause instanceof Error)) return;
+    expect(reportedError.cause.message).toBe('example-create-unexpected');
   });
 
   it('does not include raw paths, directory names, or raw error messages in the reported diagnostic', async () => {
@@ -191,6 +195,7 @@ describe('useExampleDocumentsCreate', () => {
 
     expect(reportedError.cause).toBeInstanceOf(Error);
     if (!(reportedError.cause instanceof Error)) return;
+    expect(reportedError.cause.message).toBe('example-create-unexpected');
     expect(reportedError.cause.message).not.toContain('/');
     expect(reportedError.cause.message).not.toContain('Examples');
     expect(reportedError.cause.message).not.toContain('ENOENT');
@@ -210,6 +215,12 @@ describe('useExampleDocumentsCreate', () => {
     expect(result).toBeUndefined();
     expect(weeklyPlanErrorMessage.value).toBe('Could not create example');
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledOnce();
+    const [weeklyReportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(weeklyReportedError).toBeInstanceOf(DomainError);
+    if (!(weeklyReportedError instanceof DomainError)) return;
+    expect(weeklyReportedError.cause).toBeInstanceOf(Error);
+    if (!(weeklyReportedError.cause instanceof Error)) return;
+    expect(weeklyReportedError.cause.message).toBe('example-create-vfs-permission-required');
   });
 
   it('creates a shopping example and reports safe diagnostics when creation fails', async () => {
@@ -229,11 +240,64 @@ describe('useExampleDocumentsCreate', () => {
     expect(shoppingErrorMessage.value).toBe('Could not create example');
     expect(isCreatingShoppingExample.value).toBe(false);
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledOnce();
-    const [, context] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    const [shoppingReportedError, context] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     expect(context).toEqual({
       feature: 'exampleDocumentsCreate',
       action: 'createShoppingExample',
     });
+    expect(shoppingReportedError).toBeInstanceOf(DomainError);
+    if (!(shoppingReportedError instanceof DomainError)) return;
+    expect(shoppingReportedError.cause).toBeInstanceOf(Error);
+    if (!(shoppingReportedError.cause instanceof Error)) return;
+    expect(shoppingReportedError.cause.message).toBe('example-create-unexpected');
+  });
+
+  it('classifies a VfsError from shopping example directory creation as a safe vfs cause', async () => {
+    createDirectoryMock.mockRejectedValueOnce(
+      new VfsError(FileSystemError.NoPermissions, 'No permission to create directory'),
+    );
+
+    const { createShoppingExample, shoppingErrorMessage } = useExampleDocumentsCreate();
+
+    const result = await createShoppingExample();
+
+    expect(result).toBeUndefined();
+    expect(shoppingErrorMessage.value).toBe('Could not create example');
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledOnce();
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    if (!(reportedError instanceof DomainError)) return;
+    expect(reportedError.cause).toBeInstanceOf(Error);
+    if (!(reportedError.cause instanceof Error)) return;
+    expect(reportedError.cause.message).toBe('example-create-vfs-permission-required');
+  });
+
+  it('stops directory creation after the safety limit and reports a privacy-safe diagnostic', async () => {
+    createDirectoryMock.mockRejectedValue(
+      new VfsError(FileSystemError.FileExists, 'Directory already exists'),
+    );
+
+    const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
+
+    const result = await createWeeklyPlanExample();
+
+    expect(result).toBeUndefined();
+    expect(weeklyPlanErrorMessage.value).toBe('Could not create example');
+    expect(createDirectoryMock).toHaveBeenCalledTimes(100);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledOnce();
+
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    if (!(reportedError instanceof DomainError)) return;
+
+    expect(reportedError.message).not.toContain('/');
+    expect(reportedError.message).not.toContain('Examples');
+
+    expect(reportedError.cause).toBeInstanceOf(Error);
+    if (!(reportedError.cause instanceof Error)) return;
+    expect(reportedError.cause.message).not.toContain('/');
+    expect(reportedError.cause.message).not.toContain('Examples');
+    expect(reportedError.cause.message).not.toContain('already exists');
   });
 
   it('exposes weekly loading while creation is in flight and clears it after completion', async () => {
