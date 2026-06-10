@@ -10,21 +10,42 @@ import {
   purchaseTypesStarterExample,
   statusesStarterExample,
 } from '@entity/starterExample';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { createStarterExampleDocument } from './createStarterExampleDocument';
 
 const EXAMPLES_DIRECTORY_NAME = 'Examples';
+const EXAMPLE_CREATE_ERROR_MESSAGE = 'Could not create example';
+const MAX_EXAMPLE_DIRECTORY_ATTEMPTS = 100;
 
 type ExampleResult = {
   documentDirectory: string;
   documentId: AMDocumentId;
 };
 
+const DIRECTORY_LIMIT_ERROR_CODE = 'example-create-directory-limit-exceeded';
+
 const isAlreadyExistingDirectoryError = (error: unknown) =>
   error instanceof VfsError && error.code === FileSystemError.FileExists;
 
+const isDirectoryLimitError = (error: unknown) =>
+  error instanceof DomainError && error.code === DIRECTORY_LIMIT_ERROR_CODE;
+
+const buildExampleCreateCause = (error: unknown): string => {
+  if (isDirectoryLimitError(error)) return DIRECTORY_LIMIT_ERROR_CODE;
+  if (error instanceof VfsError) return `example-create-vfs-${error.code}`;
+  return 'example-create-unexpected';
+};
+
+/**
+ * Composable for creating starter example documents in the first available indexed OPFS directory.
+ * Pre-inspects existing entries before creating so that expected existing directories do not
+ * leave a VFS activity error. Falls back to `FileExists` retry only for race conditions.
+ * @returns Actions and reactive state for weekly plan and shopping starter example creation.
+ */
 export const useExampleDocumentsCreate = () => {
   const {
-    fileSystem: { createDirectory },
+    fileSystem: { createDirectory, directoryContent },
     repositories: { createDocument },
   } = useMainServiceClient();
 
@@ -34,12 +55,36 @@ export const useExampleDocumentsCreate = () => {
 
   const exampleRootPath = computed(() => PathUtils.join('/', DEVICE_FILES, OPFSName));
 
+  const listExistingNames = async (): Promise<Set<string>> => {
+    try {
+      const result = await directoryContent.fetch({ path: exampleRootPath.value });
+      if (!result || result instanceof Error) return new Set<string>();
+      return new Set(result.map(([name]) => name));
+    } catch {
+      return new Set<string>();
+    }
+  };
+
   const createIndexedExampleDirectory = async () => {
+    const existingNames = await listExistingNames();
     let index = 1;
 
     for (;;) {
+      if (index > MAX_EXAMPLE_DIRECTORY_ATTEMPTS) {
+        throw new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+          cause: createSafeErrorCause(DIRECTORY_LIMIT_ERROR_CODE),
+          code: DIRECTORY_LIMIT_ERROR_CODE,
+        });
+      }
+
       const directoryName =
         index === 1 ? EXAMPLES_DIRECTORY_NAME : `${EXAMPLES_DIRECTORY_NAME} ${index}`;
+
+      if (existingNames.has(directoryName)) {
+        index += 1;
+        continue;
+      }
+
       const nextDirectoryPath = PathUtils.join(exampleRootPath.value, directoryName);
 
       try {
@@ -48,6 +93,7 @@ export const useExampleDocumentsCreate = () => {
         return nextDirectoryPath;
       } catch (error) {
         if (isAlreadyExistingDirectoryError(error)) {
+          // Race condition: another operation created the directory between listing and creation
           index += 1;
           continue;
         }
@@ -56,6 +102,12 @@ export const useExampleDocumentsCreate = () => {
       }
     }
   };
+
+  const makeExampleCreateError = (error: unknown): DomainError =>
+    new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+      cause: createSafeErrorCause(buildExampleCreateCause(error)),
+      code: 'example-create-failed',
+    });
 
   const createWeeklyPlanExample = async (): Promise<ExampleResult | undefined> => {
     weeklyPlanErrorMessage.value = undefined;
@@ -81,8 +133,11 @@ export const useExampleDocumentsCreate = () => {
         documentId,
       };
     } catch (error) {
-      weeklyPlanErrorMessage.value =
-        error instanceof Error ? error.message : 'Failed to create example';
+      weeklyPlanErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
+      captureDiagnosticException(makeExampleCreateError(error), {
+        feature: 'exampleDocumentsCreate',
+        action: 'createWeeklyPlanExample',
+      });
       return undefined;
     } finally {
       activeExample.value = undefined;
@@ -113,8 +168,11 @@ export const useExampleDocumentsCreate = () => {
         documentId,
       };
     } catch (error) {
-      shoppingErrorMessage.value =
-        error instanceof Error ? error.message : 'Failed to create example';
+      shoppingErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
+      captureDiagnosticException(makeExampleCreateError(error), {
+        feature: 'exampleDocumentsCreate',
+        action: 'createShoppingExample',
+      });
       return undefined;
     } finally {
       activeExample.value = undefined;
