@@ -41,7 +41,7 @@ const COMMAND_TIMEOUT_MS_BY_LABEL = {
   'e2e-install': 10 * 60 * 1000,
   e2e: 12 * 60 * 1000,
   visual: 15 * 60 * 1000,
-  mutation: 12 * 60 * 1000,
+  mutation: 20 * 60 * 1000,
 };
 const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
 const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);

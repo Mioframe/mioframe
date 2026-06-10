@@ -1,7 +1,10 @@
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
-import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
 import {
+  addWriteAccessPermissionPromptStartBreadcrumb,
+  addWriteAccessPermissionResolvedBreadcrumb,
+  addWriteAccessRequestStartBreadcrumb,
   reportWriteAccessMissingRequest,
   reportWriteAccessPermissionDenied,
   reportWriteAccessProviderFailure,
@@ -14,10 +17,6 @@ type FileSystemAccessRequestKey = {
   operation: FileSystemAccessOperation;
   spaceName: string;
 };
-
-const operationToMode = (
-  operation: FileSystemAccessOperation,
-): FileSystemHandlePermissionDescriptor['mode'] => (operation === 'write' ? 'readwrite' : 'read');
 
 /**
  * Main-thread-only permission broker for remembered local spaces.
@@ -45,6 +44,7 @@ export const useFileSystemAccessPermissionBroker = () => {
     const attemptId = crypto.randomUUID();
 
     try {
+      addWriteAccessRequestStartBreadcrumb();
       const request = await getTemporaryFileSystemAccessHandle(key);
 
       if (!request) {
@@ -55,9 +55,11 @@ export const useFileSystemAccessPermissionBroker = () => {
       let handle: FileSystemDirectoryHandle | undefined = request.handle;
 
       try {
+        addWriteAccessPermissionPromptStartBreadcrumb();
         const permissionState = await handle.requestPermission({
-          mode: operationToMode(request.operation),
+          mode: request.operation === 'write' ? 'readwrite' : 'read',
         });
+        addWriteAccessPermissionResolvedBreadcrumb({ permissionState });
 
         const result = await resolveFileSystemAccessRequest({
           operation: request.operation,
@@ -71,11 +73,11 @@ export const useFileSystemAccessPermissionBroker = () => {
         }
 
         if (result.status === 'grantedWithReplayFailures') {
-          reportWriteAccessReplayFailure({ attemptId });
+          reportWriteAccessReplayFailure({ attemptId, replay: result.replay });
         }
 
         if (result.status === 'grantedWithStorageFailures') {
-          reportWriteAccessStorageFailure({ attemptId });
+          reportWriteAccessStorageFailure({ attemptId, replay: result.replay });
         }
 
         if (result.status === 'denied' && key.operation === 'write') {
@@ -87,7 +89,11 @@ export const useFileSystemAccessPermissionBroker = () => {
         handle = undefined;
       }
     } catch (error) {
-      reportWriteAccessProviderFailure({ attemptId, error: sanitizeDiagnosticError(error) });
+      captureDiagnosticException(error, {
+        operation: 'requestAccess',
+        feature: 'writeAccessRecovery',
+      });
+      reportWriteAccessProviderFailure({ attemptId });
       return { status: 'error' };
     }
   };

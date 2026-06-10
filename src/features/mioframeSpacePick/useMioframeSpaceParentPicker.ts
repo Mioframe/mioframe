@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { DomainError } from '@shared/lib/error';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import {
   isDirectoryPickerSupported,
@@ -25,7 +25,7 @@ export const useMioframeSpaceParentPicker = () => {
     addSnackbar({
       text: reportedError.message,
     });
-    reportHandledError(reportedError, {
+    captureDiagnosticException(reportedError, {
       feature: 'mioframeSpaceCreate',
       action: 'pickParentFolder',
     });

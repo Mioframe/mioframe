@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
-import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import {
+  encodeStorageKeyToV2FileName,
+  partialKeyToFileName,
+  storageAdapterMarkerFileName,
+} from '@shared/lib/automergeAdapter';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
 import {
   createDirectoryHandleMock,
@@ -45,6 +49,17 @@ const createDocumentStorageFileName = () => {
 
   if (!fileName) {
     throw new Error('Failed to create Automerge storage file fixture');
+  }
+
+  return fileName;
+};
+
+const createV2DocumentStorageFileName = () => {
+  const documentId = new Repo().create({}).documentId;
+  const fileName = encodeStorageKeyToV2FileName(documentId, 'snapshot', 'a'.repeat(64));
+
+  if (!fileName) {
+    throw new Error('Failed to create v2 Automerge storage file fixture');
   }
 
   return fileName;
@@ -1543,6 +1558,28 @@ describe('useFileSystemService', () => {
       ]),
     );
     expect(entriesWithAutomergeFiles).toHaveLength(3);
+  });
+
+  it('filters v2 compact .am automerge storage files and preserves unrelated .am files', async () => {
+    const v2StorageFileName = createV2DocumentStorageFileName();
+    const readDirectoryMock = vi
+      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
+      .mockResolvedValue([
+        [v2StorageFileName, fileStat],
+        ['user-notes.am', fileStat],
+      ]);
+    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
+    const service = await createService();
+
+    await service.createDirectory('/drive');
+    service.vfs.mount('/drive', provider);
+
+    await expect(
+      service.directoryContent.fetch({
+        path: '/drive/folder',
+        options: { hideAutomergeFiles: true },
+      }),
+    ).resolves.toEqual([['user-notes.am', fileStat]]);
   });
 
   it('emits errors as values for directoryContent$ and forwards non-Error failures to the observable error channel', async () => {

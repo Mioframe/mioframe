@@ -3,7 +3,7 @@ import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { isFunction } from 'es-toolkit';
 import { ref, toRef } from 'vue';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
@@ -67,7 +67,7 @@ export const usePickLocalDirectory = () => {
         addSnackbar({
           text: reportedError.message,
         });
-        reportHandledError(reportedError, {
+        captureDiagnosticException(reportedError, {
           feature: 'localDirectoryPick',
           action: 'pickLocalDirectory',
         });

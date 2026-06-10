@@ -7,6 +7,7 @@ import {
 import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
 
 const REPLAY_TAGS = { provider: 'webFileSystem', operation: 'flushPendingSaves' } as const;
+const SAVE_TAGS = { provider: 'webFileSystem', operation: 'repositorySave' } as const;
 
 /**
  * Emits a diagnostic event when pending repository saves remain blocked after a write-access
@@ -26,7 +27,7 @@ export const reportWriteAccessReplayStillBlocked = ({
     result: DiagnosticResult.Blocked,
     classification: DiagnosticClassification.Access,
     counters: { flushedCount, pendingCount },
-    safeTags: REPLAY_TAGS,
+    safeTags: { ...REPLAY_TAGS, failureClassification: 'accessRequired' },
   });
 };
 
@@ -44,17 +45,57 @@ export const reportWriteAccessReplayStorageFailure = ({
   pendingCount: number;
   failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
 }): void => {
+  const safeClassification: RetryingStorageAdapterFailureClassification =
+    failureClassification ?? 'unknown';
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification:
-      failureClassification === 'accessRequired'
+      safeClassification === 'accessRequired'
         ? DiagnosticClassification.Access
-        : failureClassification === 'storageFailure'
+        : safeClassification === 'storageFailure' ||
+            safeClassification === 'browserFileStateChanged'
           ? DiagnosticClassification.Storage
           : DiagnosticClassification.Unknown,
     counters: { flushedCount, pendingCount },
-    safeTags: REPLAY_TAGS,
+    safeTags: { ...REPLAY_TAGS, failureClassification: safeClassification },
+  });
+};
+
+/**
+ * Emits a diagnostic event when a primary repository save fails and is queued for retry.
+ * @param root0 - Event options (pendingCount).
+ */
+export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: number }): void => {
+  reportDiagnosticEvent({
+    name: 'repositoryStorage.saveQueued',
+    severity: DiagnosticSeverity.Warning,
+    result: DiagnosticResult.Blocked,
+    classification: DiagnosticClassification.Access,
+    counters: { pendingCount },
+    safeTags: { ...SAVE_TAGS, failureClassification: 'accessRequired' },
+  });
+};
+
+/**
+ * Emits a diagnostic event when a primary repository save fails and is NOT queued for retry.
+ * @param root0 - Event options (pendingCount, failureClassification).
+ */
+export const reportRepositorySaveFailed = ({
+  failureClassification,
+  pendingCount,
+}: {
+  failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
+  pendingCount: number;
+}): void => {
+  const safeFailureClassification = failureClassification ?? 'storageFailure';
+  reportDiagnosticEvent({
+    name: 'repositoryStorage.saveFailed',
+    severity: DiagnosticSeverity.Error,
+    result: DiagnosticResult.Failed,
+    classification: DiagnosticClassification.Storage,
+    counters: { pendingCount },
+    safeTags: { ...SAVE_TAGS, failureClassification: safeFailureClassification },
   });
 };

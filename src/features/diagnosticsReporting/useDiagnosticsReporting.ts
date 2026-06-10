@@ -1,14 +1,10 @@
 import { useLocalSettings } from '@entity/localSettings';
-import {
-  clearQueuedHandledReports,
-  flushQueuedHandledReports,
-} from '@shared/lib/reportHandledError';
-import { clearQueuedDiagnosticEvents, flushQueuedDiagnosticEvents } from '@shared/lib/diagnostics';
-import { ensureSentry, isSentryConfigured, setSentryReportingState } from '@shared/lib/setupSentry';
+import { applyDiagnosticsPolicy } from '@shared/service/diagnosticsPolicy';
 import { watch } from 'vue';
 
 /**
- * Keeps runtime Sentry reporting aligned with the local diagnostics opt-in.
+ * Keeps runtime diagnostics reporting aligned with the local diagnostics opt-in.
+ * Applies the derived policy to the main-thread runtime and worker via `applyDiagnosticsPolicy`.
  */
 export const useDiagnosticsReporting = () => {
   const { settings, isFinished } = useLocalSettings();
@@ -27,35 +23,22 @@ export const useDiagnosticsReporting = () => {
         return;
       }
 
-      if (!isSentryConfigured()) {
-        setSentryReportingState('disabled');
-        clearQueuedHandledReports();
-        clearQueuedDiagnosticEvents();
-        return;
-      }
-
       if (diagnosticsEnabled) {
-        setSentryReportingState('enabled');
-        await ensureSentry();
+        await applyDiagnosticsPolicy('enabled');
 
         if (currentSequence !== sequence) {
           return;
         }
-
-        flushQueuedHandledReports();
-        flushQueuedDiagnosticEvents();
         return;
       }
 
       // oxlint-disable-next-line no-unnecessary-boolean-literal-compare -- strict boolean from watcher callback
       if (diagnosticsConsentRequested === true) {
-        setSentryReportingState('disabled');
-        clearQueuedHandledReports();
-        clearQueuedDiagnosticEvents();
+        void applyDiagnosticsPolicy('disabled');
         return;
       }
 
-      setSentryReportingState('unknown');
+      void applyDiagnosticsPolicy('unknown');
     },
     { immediate: true },
   );

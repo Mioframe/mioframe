@@ -6,5 +6,5 @@
  */
 
 export { createClient, createService } from './proxyService';
-export type { ClientObject } from './types';
+export type { ClientObject, Provider } from './types';
 export { defineCustomErrorTransformer, defineTransformer } from './defineTransformer';

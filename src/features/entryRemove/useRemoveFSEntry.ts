@@ -1,6 +1,6 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { createSafeErrorCause, DomainError } from '@shared/lib/error';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -73,7 +73,7 @@ export const useRemoveFSEntry = () => {
               addSnackbar({
                 text: 'Could not remove the directory',
               });
-              reportHandledError(reportedError, {
+              captureDiagnosticException(reportedError, {
                 feature: 'entryRemove',
                 action: 'removeEntryRecursive',
               });
@@ -89,7 +89,7 @@ export const useRemoveFSEntry = () => {
           addSnackbar({
             text: 'Could not remove the item',
           });
-          reportHandledError(reportedError, {
+          captureDiagnosticException(reportedError, {
             feature: 'entryRemove',
             action: 'removeEntry',
           });

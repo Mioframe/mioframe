@@ -7,8 +7,10 @@ import { BehaviorSubject, firstValueFrom, Subscription } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { partialKeyToFileName } from '@shared/lib/automergeAdapter';
+import type { RetryingStorageAdapterOptions } from '@shared/lib/automergeAdapter';
 import { FSNodeType, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 
 type MockRepoInstance = {
   create: ReturnType<typeof vi.fn<(initialValue: CFRDocumentContent) => { documentId: string }>>;
@@ -28,7 +30,7 @@ const getMockAdapterPath = (adapter: unknown) =>
     ? adapter.path
     : undefined;
 const createRetryingStorageAdapterMock = vi.hoisted(() =>
-  vi.fn((adapter: unknown) => ({
+  vi.fn((adapter: unknown, _options?: RetryingStorageAdapterOptions) => ({
     ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
     flushPendingSaves: vi.fn().mockResolvedValue({
       flushedCount: 0,
@@ -348,11 +350,7 @@ describe('useRepositoriesService', () => {
 
     await expect(
       handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
-    ).resolves.toEqual({
-      flushedCount: 1,
-      pendingCount: 0,
-      status: 'flushed',
-    });
+    ).resolves.toEqual({ status: 'flushed' });
     expect(matchingFlushPendingSaves).toHaveBeenCalledTimes(1);
     expect(nonMatchingFlushPendingSaves).not.toHaveBeenCalled();
   });
@@ -385,10 +383,64 @@ describe('useRepositoriesService', () => {
     await expect(
       handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
     ).resolves.toEqual({
+      status: 'failed',
+      replay: { flushedCount: 0, pendingCount: 1 },
+    });
+  });
+
+  it('preserves browserFileStateChanged for InvalidStateError replay failures in both diagnostics and recovery result', async () => {
+    const flushPendingSaves = vi.fn().mockResolvedValue({
+      caughtError: new DOMException('state changed', 'InvalidStateError'),
+      failureClassification: 'storageFailure' as const,
       flushedCount: 0,
       pendingCount: 1,
-      status: 'failed',
+      status: 'failed' as const,
     });
+
+    createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => {
+      const path = getMockAdapterPath(adapter);
+
+      return {
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn(() => path === '/Device Files/Work/repo-a'),
+      };
+    });
+
+    createDirectoryContentSubject('/Device Files/Work/repo-a', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics/diagnosticsTestUtils');
+    const sink: DiagnosticEvent[] = [];
+    setDiagnosticEventSink(sink);
+
+    try {
+      const service = useRepositoriesService();
+      await service.initializeRepository('/Device Files/Work/repo-a');
+
+      const [handler] = registerWriteAccessRecoveryHandlerMock.mock.calls[0] ?? [];
+
+      await expect(
+        handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
+      ).resolves.toMatchObject({
+        status: 'failed',
+        replay: {
+          flushedCount: 0,
+          pendingCount: 1,
+          failureClassification: 'browserFileStateChanged',
+        },
+      });
+
+      expect(sink).toContainEqual(
+        expect.objectContaining({
+          name: 'writeAccessRecovery.repositoryReplayStorageFailure',
+          safeTags: expect.objectContaining({
+            failureClassification: 'browserFileStateChanged',
+          }),
+        }),
+      );
+    } finally {
+      setDiagnosticEventSink(undefined);
+    }
   });
 
   it('deleteDocument removes all automerge files for target document id', async () => {
@@ -896,5 +948,89 @@ describe('useRepositoriesService', () => {
 
     expect(repoInstances.get(path)).toHaveLength(2);
     expect(recreatedRepo).not.toBe(firstRepo);
+  });
+
+  it('wires onSaveFailure callback to emit repositoryStorage.saveQueued for queued failures', async () => {
+    let capturedOptions: RetryingStorageAdapterOptions | undefined;
+    createRetryingStorageAdapterMock.mockImplementationOnce(
+      (adapter: unknown, options?: RetryingStorageAdapterOptions) => {
+        capturedOptions = options;
+        return {
+          ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+          flushPendingSaves: vi.fn().mockResolvedValue({ status: 'flushed' as const }),
+          hasPendingSaves: vi.fn().mockReturnValue(false),
+        };
+      },
+    );
+
+    createDirectoryContentSubject('/repo', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    // Import diagnostics from the same fresh module graph so setDiagnosticEventSink
+    // targets the same instance that the service's diagnostics wrappers use.
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics/diagnosticsTestUtils');
+    const sink: DiagnosticEvent[] = [];
+    setDiagnosticEventSink(sink);
+
+    try {
+      const service = useRepositoriesService();
+      await service.initializeRepository('/repo');
+
+      capturedOptions?.onSaveFailure?.({
+        queued: true,
+        failureClassification: 'accessRequired',
+        pendingCount: 2,
+        caughtError: new Error('access blocked'),
+      });
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toMatchObject({
+        name: 'repositoryStorage.saveQueued',
+        counters: { pendingCount: 2 },
+        safeTags: { provider: 'webFileSystem', operation: 'repositorySave' },
+      });
+    } finally {
+      setDiagnosticEventSink(undefined);
+    }
+  });
+
+  it('wires onSaveFailure callback to emit repositoryStorage.saveFailed for non-queued failures', async () => {
+    let capturedOptions: RetryingStorageAdapterOptions | undefined;
+    createRetryingStorageAdapterMock.mockImplementationOnce(
+      (adapter: unknown, options?: RetryingStorageAdapterOptions) => {
+        capturedOptions = options;
+        return {
+          ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+          flushPendingSaves: vi.fn().mockResolvedValue({ status: 'flushed' as const }),
+          hasPendingSaves: vi.fn().mockReturnValue(false),
+        };
+      },
+    );
+
+    createDirectoryContentSubject('/repo', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics/diagnosticsTestUtils');
+    const sink: DiagnosticEvent[] = [];
+    setDiagnosticEventSink(sink);
+
+    try {
+      const service = useRepositoriesService();
+      await service.initializeRepository('/repo');
+
+      capturedOptions?.onSaveFailure?.({
+        queued: false,
+        failureClassification: 'storageFailure',
+        pendingCount: 0,
+        caughtError: new Error('disk full'),
+      });
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toMatchObject({
+        name: 'repositoryStorage.saveFailed',
+        counters: { pendingCount: 0 },
+        safeTags: { provider: 'webFileSystem', operation: 'repositorySave' },
+      });
+    } finally {
+      setDiagnosticEventSink(undefined);
+    }
   });
 });

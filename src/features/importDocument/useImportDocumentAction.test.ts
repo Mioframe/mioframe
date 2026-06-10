@@ -6,14 +6,14 @@ const {
   readImportDocumentDraftMock,
   addSnackbarMock,
   confirmMock,
-  reportHandledErrorMock,
+  captureDiagnosticExceptionMock,
 } = vi.hoisted(() => ({
   requestAccessMock: vi.fn(),
   createImportedDocumentMock: vi.fn(),
   readImportDocumentDraftMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
-  reportHandledErrorMock: vi.fn(),
+  captureDiagnosticExceptionMock: vi.fn(),
 }));
 
 const createSerializedRecoveryError = ({
@@ -43,8 +43,8 @@ vi.mock('@shared/ui/Snackbar', () => ({
   }),
 }));
 
-vi.mock('@shared/lib/reportHandledError', () => ({
-  reportHandledError: reportHandledErrorMock,
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: captureDiagnosticExceptionMock,
 }));
 
 vi.mock('@shared/ui/Dialog', () => ({
@@ -66,7 +66,7 @@ describe('useImportDocumentAction', () => {
     readImportDocumentDraftMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
-    reportHandledErrorMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
   });
 
   it('silently ignores file picker cancellation', async () => {
@@ -77,7 +77,7 @@ describe('useImportDocumentAction', () => {
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
     expect(addSnackbarMock).not.toHaveBeenCalled();
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('shows invalid JSON errors without reporting them', async () => {
@@ -97,7 +97,7 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'The selected file is not valid JSON',
     });
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('shows a success snackbar after a document is imported', async () => {
@@ -114,7 +114,7 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Document imported',
     });
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('shows invalid document format errors without reporting them', async () => {
@@ -134,7 +134,7 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'The selected JSON file is not a Beaver document',
     });
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('reports unexpected import failures with safe metadata', async () => {
@@ -152,7 +152,7 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not import the document',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
 
   it('does not report an inbound domain error with a private cause directly', async () => {
@@ -176,7 +176,7 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not import the document',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
 
   it('does not request permission and shows a safe message when user cancels the grant dialog', async () => {
@@ -229,7 +229,7 @@ describe('useImportDocumentAction', () => {
       text: 'Importing documents is not allowed in this remembered space because your browser denied write access.',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('shows a safe message when browser prompting fails and does not retry', async () => {
@@ -254,7 +254,7 @@ describe('useImportDocumentAction', () => {
       text: 'Could not request browser permission. Try again from this action.',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('reports retry failure through safe import error path without reopening the file picker', async () => {
@@ -282,7 +282,7 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not import the document',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
 
   it('requests write access after a write-required import failure and retries the repository write', async () => {
