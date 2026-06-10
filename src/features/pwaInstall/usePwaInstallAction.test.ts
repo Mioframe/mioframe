@@ -165,6 +165,27 @@ describe('usePwaInstallAction', () => {
     expect(isHomeWidgetVisible.value).toBe(true);
   });
 
+  it('isHomeWidgetVisible stays hidden across the MAX_TIMEOUT_MS boundary and becomes true after full expiration', async () => {
+    // setTimeout delay is a 32-bit signed integer; the scheduler must chain segments.
+    const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+    const extra = 1000;
+    vi.useFakeTimers();
+    const futureTimestamp = Date.now() + MAX_TIMEOUT_MS + extra;
+    setupSettings({ pwaInstallWidgetDismissedUntil: futureTimestamp });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+
+    vi.advanceTimersByTime(MAX_TIMEOUT_MS);
+    await nextTick();
+    expect(isHomeWidgetVisible.value).toBe(false);
+
+    vi.advanceTimersByTime(extra);
+    await nextTick();
+    expect(isHomeWidgetVisible.value).toBe(true);
+  });
+
   it('isSettingsEntryVisible is not affected by home widget dismissal (reactive check)', async () => {
     vi.useFakeTimers();
     const futureTimestamp = Date.now() + 1000;

@@ -25,6 +25,24 @@ export const usePwaInstallAction = () => {
   const dismissalNow = shallowRef(Date.now());
   let expirationTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Schedules the next expiration segment for dismissedUntil, handling delays longer than
+  // MAX_TIMEOUT_MS by chaining successive timer segments until the dismissal expires.
+  const scheduleExpirationCheck = (dismissedUntil: number): void => {
+    const remaining = dismissedUntil - Date.now();
+    if (remaining <= 0) {
+      dismissalNow.value = Date.now();
+      return;
+    }
+    expirationTimer = setTimeout(
+      () => {
+        dismissalNow.value = Date.now();
+        expirationTimer = null;
+        scheduleExpirationCheck(dismissedUntil);
+      },
+      Math.min(remaining, MAX_TIMEOUT_MS),
+    );
+  };
+
   watch(
     () => settings.value.pwaInstallWidgetDismissedUntil,
     (dismissedUntil) => {
@@ -33,15 +51,7 @@ export const usePwaInstallAction = () => {
         expirationTimer = null;
       }
       if (dismissedUntil === undefined) return;
-      const remaining = dismissedUntil - Date.now();
-      if (remaining <= 0) return;
-      expirationTimer = setTimeout(
-        () => {
-          dismissalNow.value = Date.now();
-          expirationTimer = null;
-        },
-        Math.min(remaining, MAX_TIMEOUT_MS),
-      );
+      scheduleExpirationCheck(dismissedUntil);
     },
     { immediate: true },
   );
