@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { ErrorEvent as SentryErrorEvent } from '@sentry/vue';
+import type { ErrorEvent as SentryErrorEvent, Exception as SentryException } from '@sentry/vue';
 import {
   sanitizeExceptionValue,
   sanitizeExceptionValues,
+  sanitizeMechanism,
+  sanitizeStacktrace,
   createBeforeSend,
 } from './sanitizeSentryEvent';
 
@@ -81,10 +83,154 @@ describe('sanitizeExceptionValue', () => {
     expect(result.stacktrace).toEqual({ frames: [{ filename: 'app.js' }] });
   });
 
-  it('returns entry unchanged when value is undefined', () => {
-    const entry = { type: 'Error' };
+  it('preserves type and omits value when value is undefined', () => {
+    const result = sanitizeExceptionValue({ type: 'Error' });
+    expect(result.type).toBe('Error');
+    expect(result).not.toHaveProperty('value');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeMechanism
+// ---------------------------------------------------------------------------
+
+describe('sanitizeMechanism', () => {
+  it('keeps type and handled while dropping data', () => {
+    const result = sanitizeMechanism({
+      type: 'generic',
+      handled: true,
+      data: { handler: 'onClick', target: '/home/user/Projects/app/src/handler.ts' },
+    });
+    expect(result.type).toBe('generic');
+    expect(result.handled).toBe(true);
+    expect(result).not.toHaveProperty('data');
+  });
+
+  it('removes mechanism.data with raw token-like values', () => {
+    const result = sanitizeMechanism({
+      type: 'instrument',
+      data: { authToken: 'Bearer sk-1234567890abcdef1234567890' },
+    });
+    expect(result).not.toHaveProperty('data');
+  });
+
+  it('removes mechanism.meta', () => {
+    const result = sanitizeMechanism({
+      type: 'onerror',
+      // @ts-expect-error testing runtime sanitization of unknown meta field
+      meta: { signal: 'unhandledrejection', extra: 'raw-payload' },
+    });
+    expect(result).not.toHaveProperty('meta');
+  });
+
+  it('preserves source, synthetic, exception_id, parent_id, is_exception_group', () => {
+    const result = sanitizeMechanism({
+      type: 'chained',
+      synthetic: false,
+      source: 'cause',
+      exception_id: 1,
+      parent_id: 0,
+      is_exception_group: false,
+    });
+    expect(result.source).toBe('cause');
+    expect(result.synthetic).toBe(false);
+    expect(result.exception_id).toBe(1);
+    expect(result.parent_id).toBe(0);
+    expect(result.is_exception_group).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeStacktrace
+// ---------------------------------------------------------------------------
+
+describe('sanitizeStacktrace', () => {
+  it('removes vars from all frames', () => {
+    const result = sanitizeStacktrace({
+      frames: [
+        {
+          filename: 'useExampleDocumentsCreate.ts',
+          lineno: 42,
+          vars: {
+            path: '/home/developer/projects/beaver/src/config/secrets.json',
+            authToken: 'sk-secret-token',
+          },
+        },
+        { filename: 'main.ts', lineno: 1 },
+      ],
+    });
+    expect(result.frames?.[0]).not.toHaveProperty('vars');
+    expect(result.frames?.[1]).not.toHaveProperty('vars');
+  });
+
+  it('preserves filename, function, lineno, colno, in_app', () => {
+    const result = sanitizeStacktrace({
+      frames: [
+        { filename: 'app.ts', function: 'createExample', lineno: 10, colno: 5, in_app: true },
+      ],
+    });
+    expect(result.frames?.[0]).toEqual(
+      expect.objectContaining({ filename: 'app.ts', function: 'createExample', lineno: 10 }),
+    );
+  });
+
+  it('returns stacktrace unchanged when no frames', () => {
+    const st = {};
+    expect(sanitizeStacktrace(st)).toBe(st);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeExceptionValue — full entry sanitization
+// ---------------------------------------------------------------------------
+
+describe('sanitizeExceptionValue — full entry sanitization', () => {
+  it('drops custom enumerable fields not in the standard exception interface', () => {
+    const entry: SentryException = { value: 'Something failed', type: 'DomainError' };
+    Object.assign(entry, {
+      rawFilePath: '/home/user/projects/secret.json',
+      providerPayload: 'Bearer abc123',
+    });
     const result = sanitizeExceptionValue(entry);
-    expect(result).toBe(entry);
+    expect(result).not.toHaveProperty('rawFilePath');
+    expect(result).not.toHaveProperty('providerPayload');
+    expect(result.type).toBe('DomainError');
+    expect(result.value).toBe('Something failed');
+  });
+
+  it('sanitizes mechanism.data containing raw path values while keeping mechanism type and handled', () => {
+    const result = sanitizeExceptionValue({
+      value: 'Could not create example',
+      type: 'DomainError',
+      mechanism: {
+        type: 'generic',
+        handled: true,
+        data: { errorPath: '/home/developer/projects/beaver/private/doc.json' },
+      },
+    });
+    expect(result.value).toBe('Could not create example');
+    expect(result.mechanism?.type).toBe('generic');
+    expect(result.mechanism?.handled).toBe(true);
+    expect(result.mechanism).not.toHaveProperty('data');
+  });
+
+  it('removes vars from stacktrace frames while keeping frame metadata', () => {
+    const result = sanitizeExceptionValue({
+      value: 'Path not found.',
+      type: 'VfsError',
+      stacktrace: {
+        frames: [
+          {
+            filename: 'MemoryFileSystem.ts',
+            lineno: 70,
+            vars: { path: '/Users/developer/Documents/repos/beaver/secret.json' },
+          },
+        ],
+      },
+    });
+    expect(result.stacktrace?.frames?.[0]).not.toHaveProperty('vars');
+    expect(result.stacktrace?.frames?.[0]?.filename).toBe('MemoryFileSystem.ts');
+    expect(result.stacktrace?.frames?.[0]?.lineno).toBe(70);
   });
 });
 
@@ -309,6 +455,77 @@ describe('createBeforeSend exception value sanitization', () => {
 
     expect(result?.extra?.['operation']).toBe('save');
     expect(result?.extra?.['authToken']).toBeUndefined();
+  });
+
+  it('removes mechanism.data with a raw document path from the exception entry', () => {
+    const beforeSend = makeEnabledBeforeSend();
+    const event: SentryErrorEvent = {
+      type: undefined,
+      exception: {
+        values: [
+          {
+            value: 'Could not create example',
+            type: 'DomainError',
+            mechanism: {
+              type: 'generic',
+              handled: true,
+              data: {
+                documentPath:
+                  '/home/matdr/Documents/repos/beaver/src/private/doc_ABCDEFGHIJ_12345.json',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const result = beforeSend(event);
+
+    expect(result?.exception?.values?.[0]?.value).toBe('Could not create example');
+    expect(result?.exception?.values?.[0]?.mechanism?.type).toBe('generic');
+    expect(result?.exception?.values?.[0]?.mechanism?.handled).toBe(true);
+    expect(result?.exception?.values?.[0]?.mechanism).not.toHaveProperty('data');
+  });
+
+  it('removes frame vars containing absolute paths, repo IDs, and auth tokens', () => {
+    const beforeSend = makeEnabledBeforeSend();
+    const DANGEROUS_VALUES = {
+      localPath: '/home/matdr/Projects/beaver/src/config/secrets.json',
+      repoId: 'repo_ABCDE12345_xyz789',
+      authHeader: 'Authorization: Bearer ghp_secret1234567890abcdef',
+      docName: 'My confidential budget 2025',
+      urlWithQuery: 'https://api.example.com/v1/resource?token=abc&user=matdr',
+    };
+
+    const event: SentryErrorEvent = {
+      type: undefined,
+      exception: {
+        values: [
+          {
+            value: 'Directory not found.',
+            type: 'VfsError',
+            stacktrace: {
+              frames: [
+                {
+                  filename: 'VirtualFileSystem.ts',
+                  function: 'resolve',
+                  lineno: 42,
+                  vars: DANGEROUS_VALUES,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    const result = beforeSend(event);
+
+    const frame = result?.exception?.values?.[0]?.stacktrace?.frames?.[0];
+    expect(frame).not.toHaveProperty('vars');
+    expect(frame?.filename).toBe('VirtualFileSystem.ts');
+    expect(frame?.function).toBe('resolve');
+    expect(frame?.lineno).toBe(42);
   });
 
   it('drops events when reporting state is not enabled', () => {

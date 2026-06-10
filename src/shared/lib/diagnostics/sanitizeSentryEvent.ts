@@ -4,6 +4,9 @@ import type {
   User as SentryUser,
   Exception as SentryException,
 } from '@sentry/vue';
+
+type SentryMechanism = NonNullable<SentryException['mechanism']>;
+type SentryStacktrace = NonNullable<SentryException['stacktrace']>;
 import { isSessionSentryUserId } from './sentrySession';
 import type { SentryReportingState } from './sentryRuntimeState';
 import { createBeforeBreadcrumb, sanitizeTechnicalBreadcrumbs } from './technicalBreadcrumbs';
@@ -130,26 +133,77 @@ export const sanitizeUser = (user: SentryUser | undefined): { id: string } | und
 };
 
 // ---------------------------------------------------------------------------
-// Exception value sanitization — scrubs sensitive messages from exception chain
+// Exception entry sanitization — scrubs sensitive data from full exception entries
 // ---------------------------------------------------------------------------
 
 const SANITIZED_PLACEHOLDER = '[sanitized]';
 
 /**
- * Sanitizes a single exception entry's `value` (the error message).
- * Replaces values that look like paths, URLs, emails, or storage keys with a placeholder.
- * Keeps short safe strings such as user-facing `DomainError.message`.
- * Preserves all other exception fields (type, stacktrace, mechanism).
+ * Sanitizes mechanism fields, keeping structural metadata and dropping variable data.
+ * Preserves: type, handled, synthetic, source, exception_id, parent_id, is_exception_group.
+ * Drops: data and meta (may contain raw event targets, handler names, or provider details).
+ * @param mechanism - Sentry mechanism object.
+ * @returns Sanitized mechanism.
+ */
+export const sanitizeMechanism = (mechanism: SentryMechanism): SentryMechanism => {
+  const { type, handled, synthetic, source, exception_id, parent_id, is_exception_group } =
+    mechanism;
+  const safe: SentryMechanism = { type };
+  if (handled !== undefined) safe.handled = handled;
+  if (synthetic !== undefined) safe.synthetic = synthetic;
+  if (source !== undefined) safe.source = source;
+  if (exception_id !== undefined) safe.exception_id = exception_id;
+  if (parent_id !== undefined) safe.parent_id = parent_id;
+  if (is_exception_group !== undefined) safe.is_exception_group = is_exception_group;
+  return safe;
+};
+
+/**
+ * Sanitizes stacktrace by stripping per-frame variable bindings (`vars`), which may contain
+ * local variable values captured at throw time. Keeps all other frame fields intact.
+ * @param stacktrace - Sentry stacktrace object.
+ * @returns Sanitized stacktrace with `vars` removed from every frame.
+ */
+export const sanitizeStacktrace = (stacktrace: SentryStacktrace): SentryStacktrace => {
+  if (!stacktrace.frames) return stacktrace;
+  return {
+    ...stacktrace,
+    frames: stacktrace.frames.map(({ vars: _vars, ...rest }) => rest),
+  };
+};
+
+/**
+ * Sanitizes a single exception entry.
+ * - Replaces `value` (error message) when it looks like a path, URL, email, or storage key.
+ * - Strips `mechanism.data` and `mechanism.meta` (may carry raw event targets or provider text).
+ * - Strips `stacktrace.frames[].vars` (per-frame local variable bindings).
+ * - Drops custom enumerable exception fields not part of the standard interface.
+ * - Preserves: type, stacktrace frames (filename/function/lineno/colno), mechanism type/handled.
  * @param excValue - Sentry exception entry.
- * @returns Exception entry with sanitized `value`.
+ * @returns Sanitized exception entry.
  */
 export const sanitizeExceptionValue = (excValue: SentryException): SentryException => {
-  if (excValue.value === undefined) return excValue;
-  const safe = sanitizePrimitiveString(excValue.value, DEFAULT_MAX_STRING);
-  if (safe === undefined) {
-    return { ...excValue, value: SANITIZED_PLACEHOLDER };
+  const { value, type, mechanism, module, thread_id, stacktrace } = excValue;
+
+  const safe: SentryException = {};
+  if (type !== undefined) safe.type = type;
+  if (module !== undefined) safe.module = module;
+  if (thread_id !== undefined) safe.thread_id = thread_id;
+
+  if (value !== undefined) {
+    const safeValue = sanitizePrimitiveString(value, DEFAULT_MAX_STRING);
+    safe.value = safeValue !== undefined ? safeValue : SANITIZED_PLACEHOLDER;
   }
-  return { ...excValue, value: safe };
+
+  if (mechanism !== undefined) {
+    safe.mechanism = sanitizeMechanism(mechanism);
+  }
+
+  if (stacktrace !== undefined) {
+    safe.stacktrace = sanitizeStacktrace(stacktrace);
+  }
+
+  return safe;
 };
 
 /**
