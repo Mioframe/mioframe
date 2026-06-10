@@ -1,4 +1,4 @@
-import { createGlobalState } from '@vueuse/core';
+import { createGlobalState, useEventListener } from '@vueuse/core';
 import { shallowRef } from 'vue';
 import { isStandaloneMode } from '@shared/lib/pwaInstall';
 
@@ -12,34 +12,29 @@ export const usePwaInstallRuntime = createGlobalState(() => {
   return { retainedPrompt, isInstalledForSession };
 });
 
-// Module-level references so repeated setup calls can remove previous listeners.
-let registeredBeforeInstallPrompt: ((event: BeforeInstallPromptEvent) => void) | null = null;
-let registeredAppInstalled: (() => void) | null = null;
+let stopListeners: (() => void) | null = null;
 
 /**
  * Subscribes to browser install events. Safe to call more than once —
  * previous listeners are removed before new ones are added.
  */
 export const setupPwaInstallRuntime = (): void => {
-  if (registeredBeforeInstallPrompt) {
-    window.removeEventListener('beforeinstallprompt', registeredBeforeInstallPrompt);
-  }
-  if (registeredAppInstalled) {
-    window.removeEventListener('appinstalled', registeredAppInstalled);
-  }
+  stopListeners?.();
 
   const { retainedPrompt, isInstalledForSession } = usePwaInstallRuntime();
 
-  registeredBeforeInstallPrompt = (event: BeforeInstallPromptEvent) => {
+  const stopBefore = useEventListener(window, 'beforeinstallprompt', (event) => {
     event.preventDefault();
     retainedPrompt.value = event;
-  };
+  });
 
-  registeredAppInstalled = () => {
+  const stopApp = useEventListener(window, 'appinstalled', () => {
     retainedPrompt.value = null;
     isInstalledForSession.value = true;
-  };
+  });
 
-  window.addEventListener('beforeinstallprompt', registeredBeforeInstallPrompt);
-  window.addEventListener('appinstalled', registeredAppInstalled);
+  stopListeners = () => {
+    stopBefore();
+    stopApp();
+  };
 };
