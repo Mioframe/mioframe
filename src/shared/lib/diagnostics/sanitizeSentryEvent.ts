@@ -2,6 +2,7 @@ import type {
   ErrorEvent as SentryErrorEvent,
   Contexts as SentryContexts,
   User as SentryUser,
+  Exception as SentryException,
 } from '@sentry/vue';
 import { isSessionSentryUserId } from './sentrySession';
 import type { SentryReportingState } from './sentryRuntimeState';
@@ -11,6 +12,7 @@ import {
   isSensitiveValue,
   DEFAULT_MAX_STRING,
   sanitizeFlatRecord,
+  sanitizePrimitiveString,
 } from './privacySanitizer';
 
 // ---------------------------------------------------------------------------
@@ -128,6 +130,46 @@ export const sanitizeUser = (user: SentryUser | undefined): { id: string } | und
 };
 
 // ---------------------------------------------------------------------------
+// Exception value sanitization — scrubs sensitive messages from exception chain
+// ---------------------------------------------------------------------------
+
+const SANITIZED_PLACEHOLDER = '[sanitized]';
+
+/**
+ * Sanitizes a single exception entry's `value` (the error message).
+ * Replaces values that look like paths, URLs, emails, or storage keys with a placeholder.
+ * Keeps short safe strings such as user-facing `DomainError.message`.
+ * Preserves all other exception fields (type, stacktrace, mechanism).
+ * @param excValue - Sentry exception entry.
+ * @returns Exception entry with sanitized `value`.
+ */
+export const sanitizeExceptionValue = (excValue: SentryException): SentryException => {
+  if (excValue.value === undefined) return excValue;
+  const safe = sanitizePrimitiveString(excValue.value, DEFAULT_MAX_STRING);
+  if (safe === undefined) {
+    return { ...excValue, value: SANITIZED_PLACEHOLDER };
+  }
+  return { ...excValue, value: safe };
+};
+
+/**
+ * Sanitizes all exception values in the exception chain.
+ * Sentry serializes `error.cause` chains as additional linked exception entries.
+ * This ensures sensitive messages in nested causes are also scrubbed.
+ * @param exception - Sentry event exception container.
+ * @returns Exception container with sanitized values, or `undefined` when absent.
+ */
+export const sanitizeExceptionValues = (
+  exception: SentryErrorEvent['exception'],
+): SentryErrorEvent['exception'] => {
+  if (!exception?.values) return exception;
+  return {
+    ...exception,
+    values: exception.values.map(sanitizeExceptionValue),
+  };
+};
+
+// ---------------------------------------------------------------------------
 // Main sanitizer — used as Sentry beforeSend callback
 // ---------------------------------------------------------------------------
 
@@ -162,6 +204,7 @@ export { createBeforeBreadcrumb };
  * - Drops events when reporting is not enabled.
  * - Drops unhandled `WebFileSystemAccessRequiredError` events (surfaced separately as recovery UI).
  * - Strips `request` entirely.
+ * - Sanitizes exception value messages (the error message in Sentry's exception chain).
  * - Sanitizes breadcrumbs, contexts, user, tags, and extras using denylist-based filtering.
  * - Keeps a session-scoped `user.id`; strips all other user fields.
  * @param root0 - Factory parameters (`isVerbose` and `getState`).
@@ -176,6 +219,11 @@ export const createBeforeSend: BeforeSendFactory =
     const sanitized: SentryErrorEvent = { ...event };
 
     delete sanitized.request;
+
+    const safeException = sanitizeExceptionValues(event.exception);
+    if (safeException !== undefined) {
+      sanitized.exception = safeException;
+    }
 
     const safeBreadcrumbs = sanitizeTechnicalBreadcrumbs(event.breadcrumbs, isVerbose);
     if (safeBreadcrumbs !== undefined) {

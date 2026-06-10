@@ -1,6 +1,6 @@
 ---
 name: privacy-safe-errors
-description: 'Use this skill when adding or reviewing error handling that can show user-facing messages, create DomainError instances, preserve error causes, call reportHandledError, send diagnostics, or handle browser, storage, network, File API, Google API, Automerge, Zod, VFS, or other external errors.'
+description: 'Use this skill when adding or reviewing error handling that can show user-facing messages, create DomainError instances, preserve error causes, call captureDiagnosticException, send diagnostics, or handle browser, storage, network, File API, Google API, Automerge, Zod, VFS, or other external errors.'
 ---
 
 # Privacy-safe errors
@@ -13,39 +13,68 @@ This skill does not require masking every unexpected error. Sentry must still re
 
 Use this skill when code does any of the following:
 
-- calls `reportHandledError`;
+- calls `captureDiagnosticException`;
 - creates or rethrows `DomainError` in a flow that may later be reported;
 - preserves an unknown, boundary, or external `error` as `cause`;
 - handles browser APIs, File API, File System API, Google API, network, IndexedDB, VFS, Automerge/repo internals, Zod, or other external libraries;
 - builds user-facing error messages, snackbar text, details panels, or copyable diagnostic text.
 
-## Core rule
+## Two concerns — keep them distinct
 
-Errors that can reach handled diagnostics must be privacy-safe by construction.
+**Trusted in-app runtime and proxy transfer**
 
-Decide safety at the boundary where an error is created or converted. Do not rely on later callers, `reportHandledError`, or Sentry `beforeSend` to make arbitrary exception messages and stacks privacy-safe.
+`DomainError.cause` may hold the original raw runtime error inside the app and across trusted proxy boundaries. Preserving the raw cause is correct and intended for runtime debugging. Do not sanitize it at the error-creation site.
 
-Privacy-safe does not mean low-information. Internal programmer errors and project-controlled invariant failures may keep their original `Error` object when their message is stable and does not contain user-controlled values.
+**External diagnostics export**
 
-## Classify the error source first
+The Sentry `beforeSend` sanitizer scrubs outgoing events: exception value messages (including linked cause chains), tags, extras, contexts, breadcrumbs, and user fields. Sensitive data is removed before reaching Sentry.
+
+## Error construction rules
+
+Wrap boundary failures using this pattern:
+
+```ts
+throw new DomainError('Could not save changes.', {
+  code: RepositoryErrorCode.SaveFailed,
+  cause: error,
+});
+```
+
+- `DomainError.message` — user-safe short string; no paths, names, ids, URLs, or raw external text.
+- `DomainError.code` — stable string enum value defined close to the error's source. Do not create a global registry.
+- `DomainError.cause` — raw runtime cause preserved for debugging; the sanitizer handles Sentry export.
+
+## Error code rules
+
+Define each string enum close to the boundary where the error originates:
+
+```ts
+export enum RepositoryErrorCode {
+  SaveFailed = 'repository.saveFailed',
+  ReplayFailed = 'repository.replayFailed',
+}
+
+export enum ExampleDocumentsCreateErrorCode {
+  CreateFailed = 'exampleDocumentsCreate.createFailed',
+  DirectoryLimitExceeded = 'exampleDocumentsCreate.directoryLimitExceeded',
+}
+```
+
+Do not create a global error-code registry. Do not create feature-local classifiers or manual VFS-to-feature error mappings.
+
+## Classify the error source
 
 ### External or user-data boundary errors
 
-Sanitize these before they can reach `reportHandledError`:
+These must be wrapped before `captureDiagnosticException`:
 
-- browser APIs;
-- File API;
-- File System Access API;
-- IndexedDB;
-- Google APIs;
-- storage adapters;
-- Automerge/repo internals;
-- VFS;
-- Zod parsing of user-controlled payloads;
-- network responses;
-- any library error that may include paths, file names, ids, URLs, document contents, record values, or raw user data.
+- browser APIs, File API, File System Access API;
+- IndexedDB, storage adapters, Automerge/repo internals;
+- Google APIs, network responses;
+- VFS, Zod parsing of user-controlled payloads;
+- any library error that may include paths, names, ids, URLs, contents, or raw user data.
 
-Use a project-controlled `DomainError.message`, a safe technical cause such as `createSafeErrorCause`, stable domain codes, and safe metadata only.
+Wrap with a project-controlled `DomainError.message`, stable enum `code`, and preserve raw `cause`. Sentry sanitizes the cause chain on export.
 
 ### Internal programmer errors
 
@@ -55,13 +84,6 @@ Internal programmer errors and project-controlled invariant failures may be repo
 - the message does not include user-controlled paths, names, ids, URLs, contents, payloads, or raw external text.
 
 Do not wrap these errors only to satisfy privacy wording. Losing the original message or stack makes Sentry less useful.
-
-Examples that may remain raw when their message is stable:
-
-- unreachable state assertions;
-- unknown enum or action key errors;
-- project invariant failures;
-- component contract violations generated by project code.
 
 ### Expected user outcomes
 
@@ -74,18 +96,6 @@ Expected user outcomes usually should not be reported:
 
 ## Reporting pattern
 
-When reporting from a feature-level helper:
-
-1. Separate expected user outcomes from failures.
-2. Identify whether the failure came from a privacy-risk boundary or from project-controlled internal logic.
-3. Do not report expected outcomes such as user cancellation, invalid user input, unsupported user-selected file format, or validation failures that are part of normal UX.
-4. Convert boundary errors into a project-controlled safe `DomainError` or safe `Error` before reporting.
-5. Keep project-controlled internal programmer errors raw when their message and stack are safe and useful.
-6. Pass only stable metadata to `reportHandledError`, such as `feature` and `action`.
-7. Do not pass path, name, id, URL, file content, raw external message, or raw error object if it may contain private data.
-
-Example shape:
-
 ```ts
 try {
   await runAction();
@@ -95,41 +105,47 @@ try {
     return;
   }
 
-  reportHandledError(toReportableErrorBySource(error), {
-    feature: 'featureName',
-    action: 'actionName',
-  });
+  captureDiagnosticException(
+    new DomainError('Safe user message.', {
+      code: MyErrorCode.ActionFailed,
+      cause: error,
+    }),
+    { feature: 'featureName', action: 'actionName' },
+  );
 }
 ```
 
+Do not:
+
+- create local classifiers or safe-cause builders for each error type;
+- pass path, name, id, URL, or user-controlled values in context, tags, or extras.
+
 ## DomainError rules
 
-- `DomainError.message` may be user-facing. Keep it safe and avoid paths, names, ids, URLs, record values, or raw external text.
-- `DomainError.cause` may be reported later. Use `createSafeErrorCause` or another project-controlled safe cause for external/browser/storage/network/Zod errors.
-- `reportHandledError` reports an `Error` cause from a `DomainError` instead of the wrapper error. Passing a `DomainError` directly is safe only when its cause is also privacy-safe or absent.
-- Raw `Error` may be preserved only when the message is project-controlled and cannot contain user-controlled values.
-- Expected user-input errors can keep detailed causes only when the flow guarantees they will not be reported. Prefer safe causes anyway if future reuse is likely.
+- `DomainError.message` — user-facing; keep it safe.
+- `DomainError.code` — stable enum value; define near the source.
+- `DomainError.cause` — may hold the raw runtime cause; `beforeSend` sanitizes Sentry export.
+- Do not create a synthetic safe cause via `createSafeErrorCause` in feature code. Use raw cause and rely on the sanitizer.
+- `createSafeErrorCause` remains valid at shared lib adapter boundaries (e.g. `googleDriveFileSystemProvider`) where the cause goes into shared diagnostics infrastructure that does not yet benefit from the outgoing sanitizer.
 
 ## Review checklist
 
 Before final handoff, check touched error flows:
 
-- Can this error reach `reportHandledError` now or through an existing helper?
-- Is the error from a privacy-risk boundary or from project-controlled internal logic?
-- Does any `Error.message`, `DomainError.message`, or `cause.message` include path, name, id, URL, content, raw external text, or validation payload?
-- If a `DomainError` reaches `reportHandledError`, is its `cause` either absent or privacy-safe by construction?
+- Can this error reach `captureDiagnosticException` now or through an existing helper?
+- Is `DomainError.message` free of paths, names, ids, URLs, content, and raw external text?
+- Is `DomainError.code` a stable string enum value defined near the source?
+- Is `DomainError.cause` the raw runtime cause (not a synthetic safe wrapper)?
 - Are expected user outcomes excluded from reporting?
-- Are boundary errors converted to safe reportable errors before reporting?
-- Are internal programmer errors preserved when their original message/stack is safe and useful?
-- Are `reportHandledError` options limited to stable safe metadata?
-- Are tests covering cancellation, expected invalid input, and reportable unexpected failure when the flow is user-facing or security-sensitive?
+- Are internal programmer errors kept raw when their message and stack are safe?
+- Is `captureDiagnosticException` context limited to stable safe metadata (`feature`, `action`, `operation`)?
+- Are tests covering raw cause preservation and the sanitizer scrubbing sensitive values from Sentry events?
 
 ## Final reporting
 
 When this skill applies, include a short note in the final summary:
 
 - which expected errors are not reported;
-- how boundary errors are made reportable safely;
+- how boundary errors are wrapped (message, code, raw cause);
 - which internal errors remain raw and why their messages are safe;
-- how unexpected errors are made reportable safely;
 - which focused tests or checks cover the flow.
