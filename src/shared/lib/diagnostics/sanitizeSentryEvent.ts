@@ -186,8 +186,13 @@ export const sanitizeExceptionValue = (excValue: SentryException): SentryExcepti
   const { value, type, mechanism, module, thread_id, stacktrace } = excValue;
 
   const safe: SentryException = {};
-  if (type !== undefined) safe.type = type;
-  if (module !== undefined) safe.module = module;
+  if (type !== undefined) {
+    safe.type = sanitizePrimitiveString(type, DEFAULT_MAX_STRING) ?? 'Error';
+  }
+  if (module !== undefined) {
+    const safeModule = sanitizePrimitiveString(module, DEFAULT_MAX_STRING);
+    if (safeModule !== undefined) safe.module = safeModule;
+  }
   if (thread_id !== undefined) safe.thread_id = thread_id;
 
   if (value !== undefined) {

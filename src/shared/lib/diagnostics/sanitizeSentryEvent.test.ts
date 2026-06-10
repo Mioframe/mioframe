@@ -88,6 +88,54 @@ describe('sanitizeExceptionValue', () => {
     expect(result.type).toBe('Error');
     expect(result).not.toHaveProperty('value');
   });
+
+  it('preserves safe well-known error type names unchanged', () => {
+    expect(sanitizeExceptionValue({ type: 'VfsError' }).type).toBe('VfsError');
+    expect(sanitizeExceptionValue({ type: 'DomainError' }).type).toBe('DomainError');
+    expect(sanitizeExceptionValue({ type: 'WebFileSystemAccessRequiredError' }).type).toBe(
+      'WebFileSystemAccessRequiredError',
+    );
+    expect(sanitizeExceptionValue({ type: 'TypeError' }).type).toBe('TypeError');
+  });
+
+  it('replaces an unsafe path-like exception type with Error', () => {
+    const result = sanitizeExceptionValue({ type: '/home/user/inject/CustomError', value: 'oops' });
+    expect(result.type).toBe('Error');
+  });
+
+  it('replaces an unsafe URL-like exception type with Error', () => {
+    const result = sanitizeExceptionValue({ type: 'http://evil.com/Error', value: 'oops' });
+    expect(result.type).toBe('Error');
+  });
+
+  it('keeps a safe short exception module', () => {
+    const result = sanitizeExceptionValue({ type: 'Error', module: 'diagnostics' });
+    expect(result.module).toBe('diagnostics');
+  });
+
+  it('drops an unsafe URL-like exception module', () => {
+    const result = sanitizeExceptionValue({
+      type: 'Error',
+      module: 'app://localhost/src/shared/lib/diagnostics',
+    });
+    expect(result).not.toHaveProperty('module');
+  });
+
+  it('drops an unsafe path-like exception module', () => {
+    const result = sanitizeExceptionValue({ type: 'Error', module: '/home/user/projects/app' });
+    expect(result).not.toHaveProperty('module');
+  });
+
+  it('preserves stack frames when sanitizing unsafe type and module', () => {
+    const result = sanitizeExceptionValue({
+      type: '/injected/path/Error',
+      module: 'app://localhost/bundle.js',
+      stacktrace: { frames: [{ filename: 'app.ts', lineno: 1 }] },
+    });
+    expect(result.type).toBe('Error');
+    expect(result).not.toHaveProperty('module');
+    expect(result.stacktrace?.frames?.[0]?.filename).toBe('app.ts');
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -296,7 +296,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
               );
             }
 
-            toDelete.add(path);
+            toDelete.add(storedPath);
           }
         }
         toDelete.forEach((key) => this.store.delete(key));

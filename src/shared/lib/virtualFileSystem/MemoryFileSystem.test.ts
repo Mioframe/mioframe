@@ -174,7 +174,38 @@ describe('MemoryFileSystem', () => {
     await expect(memoryFS.stat('/docs')).rejects.toMatchObject({
       code: FileSystemError.FileNotFound,
     });
+    await expect(memoryFS.stat('/docs/nested')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    await expect(memoryFS.stat('/docs/nested/file.txt')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
     await expect(memoryFS.readFile('/keep.txt').then((file) => file.text())).resolves.toBe('safe');
+  });
+
+  it('recursive delete removes all deeply nested files and directories', async () => {
+    await memoryFS.createDirectory('/root');
+    await memoryFS.createDirectory('/root/a');
+    await memoryFS.createDirectory('/root/a/b');
+    await memoryFS.writeFile('/root/a/b/deep.txt', 'deep', { create: true, overwrite: true });
+    await memoryFS.writeFile('/root/a/shallow.txt', 'shallow', { create: true, overwrite: true });
+    await memoryFS.writeFile('/root/top.txt', 'top', { create: true, overwrite: true });
+
+    await memoryFS.delete('/root', true);
+
+    for (const path of [
+      '/root',
+      '/root/a',
+      '/root/a/b',
+      '/root/a/b/deep.txt',
+      '/root/a/shallow.txt',
+      '/root/top.txt',
+    ]) {
+      // eslint-disable-next-line no-await-in-loop -- sequential to get distinct error per case
+      await expect(memoryFS.stat(path)).rejects.toMatchObject({
+        code: FileSystemError.FileNotFound,
+      });
+    }
   });
 
   it('rejects deletion of non-empty directories without recursive mode', async () => {
