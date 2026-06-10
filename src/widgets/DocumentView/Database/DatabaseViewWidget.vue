@@ -207,6 +207,7 @@ const onUpdatedEditItemDialog = () => {
   flex: 1 0;
   overflow: auto;
   padding: 0 4step 0;
+  gap: 2step;
 
   &__success-card {
     flex-shrink: 0;
