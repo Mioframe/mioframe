@@ -575,7 +575,7 @@ describe('technicalBreadcrumbs', () => {
             result: 'succeeded',
             provider: 'webFileSystem',
             step: 'writableOpen',
-            runtime: 'worker',
+            phase: 'replay',
           },
         }),
       ),
@@ -586,7 +586,33 @@ describe('technicalBreadcrumbs', () => {
         result: 'succeeded',
         provider: 'webFileSystem',
         step: 'writableOpen',
-        runtime: 'worker',
+        phase: 'replay',
+      },
+      level: 'info',
+      message: 'repository save started',
+    });
+  });
+
+  // domException renamed key
+
+  it('domException survives sanitizer but domExceptionName is dropped by name denylist', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb(false, () => 'enabled');
+
+    expect(
+      beforeBreadcrumb(
+        makeBreadcrumb({
+          data: {
+            operation: 'writableOpen',
+            domException: 'InvalidStateError',
+            domExceptionName: 'InvalidStateError',
+          },
+        }),
+      ),
+    ).toEqual({
+      category: 'repository.storage',
+      data: {
+        operation: 'writableOpen',
+        domException: 'InvalidStateError',
       },
       level: 'info',
       message: 'repository save started',
