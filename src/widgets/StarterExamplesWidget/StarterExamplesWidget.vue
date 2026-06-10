@@ -25,10 +25,6 @@ const {
 
 const isBusy = computed(() => isCreatingWeeklyPlanExample.value || isCreatingShoppingExample.value);
 
-const onOpenDocument = (payload: { documentDirectory: string; documentId: AMDocumentId }) => {
-  emit('createdDocument', payload);
-};
-
 const onCreateExample = async (exampleId: StarterExampleId) => {
   const createdExample =
     exampleId === 'weeklyPlan' ? await createWeeklyPlanExample() : await createShoppingExample();
@@ -38,7 +34,7 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
       createdExample.documentDirectory,
       createdExample.documentId,
     );
-    onOpenDocument(createdExample);
+    emit('createdDocument', createdExample);
   }
 };
 </script>
