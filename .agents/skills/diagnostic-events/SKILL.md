@@ -216,7 +216,18 @@ captureDiagnosticException(caughtError, {
 });
 ```
 
-For flow-specific classification (e.g. whether a `DOMException` means browser file state changed), use a local helper near the boundary that understands the operation. Do not create shared error registries.
+Pass the **real error object** to `captureDiagnosticException`. The Sentry `beforeSend` sanitizer scrubs exception messages, linked cause messages, tags, extras, contexts, breadcrumbs, and user fields at the outgoing event boundary — feature code does not need to pre-sanitize cause messages.
+
+**Forbidden in feature, entity, widget, and page code:**
+
+- `createSafeErrorCause` — do not create synthetic safe-cause objects; pass the raw caught error as `DomainError.cause` instead.
+- `buildSafeCause`, `buildReportedError`, `toReportedError`, or similar wrappers that replace the raw cause with a synthetic plain Error.
+- `classify*Error`, `map*ErrorToCause`, `toSafe*Error`, or any local helper that inspects the caught error and produces a new synthetic error for the sole purpose of safe reporting. The Sentry sanitizer owns that responsibility.
+- Feature-local VFS-to-feature error mappings or error classifiers added only to control what Sentry receives.
+
+A local helper is acceptable only when it centralizes a user-facing message, a stable enum code, and the raw cause — without inspecting or transforming the caught error's contents.
+
+For flow-specific decisions (e.g. whether to skip reporting user cancellation, or whether a `DOMException` means a specific browser condition), a local boolean helper near the boundary is acceptable. It must control flow, not build synthetic diagnostic errors.
 
 Forbidden error fields in any diagnostic event or breadcrumb data:
 

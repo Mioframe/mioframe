@@ -66,7 +66,7 @@ reason:
 - Pages may compose panes and own route navigation state, but must not orchestrate provider/service recovery flows, permission or auth prompts, pending request registries, or duplicate entity data reads. Put provider recovery state and user actions in entities/features/widgets.
 - Errors must be defined next to the boundary that owns and detects the failure. Provider failures belong next to the provider; service failures belong next to the service. Do not define a provider error in a service module only because the service supplies surrounding context.
 - UI-facing display records must not expose capabilities, credentials, clients, adapters, provider instances, callbacks, or service bags. Expose these only through explicit action or recovery APIs.
-- Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern and contain only safe serializable metadata. Do not place capabilities, clients, callbacks, provider objects, or raw external errors in `message`, `cause`, `toJSON`, diagnostics, or user-facing payloads.
+- Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern. Raw `cause` may be preserved in trusted in-app proxy transfer. Do not place capabilities, clients, callbacks, or provider objects in `message`, `cause`, `toJSON`, or user-facing payloads.
 - Keep files small enough for agents to reason about locally. Prefer 100-300 lines for new production implementation files, treat 300-500 lines as acceptable only when the file is cohesive, and avoid growing ordinary implementation files beyond 500 lines without a clear reason.
 - Treat 500+ line implementation files as an extraction review trigger, not an automatic rewrite trigger. Before adding logic to such a file, identify its current responsibilities and extract the smallest stable unit that matches the change.
 - Avoid keeping 700+ line implementation files unless they are linear, generated-like, schema-heavy, registry-like, or mostly repetitive config/test data.
@@ -179,14 +179,21 @@ reason:
 
 ## Privacy-safe errors
 
-- Any error that can reach `reportHandledError` must be privacy-safe by construction.
-- Raw `Error` may be preserved in reportable flows only when its message is project-controlled and does not include user-controlled values.
-- Errors from browser APIs, storage, network, Google API, File API, Automerge/repo internals, Zod, or any external library are untrusted by default and must be wrapped with a safe project-controlled cause message before they can reach handled diagnostics.
-- Do not include local paths, virtual paths, file names, folder names, document names, document ids, file ids, Google Drive file ids, record values, document contents, or raw external error text in `Error.message`, `DomainError.message`, or `DomainError.cause.message` when the error may be reported.
-- Do not add path/name/id-bearing messages to reportable error flows. Avoid messages like `Failed for <path>` or `Could not remove <name>`.
-- Do not pass raw browser, filesystem, File API, File System API, Google API, IndexedDB, VFS, Automerge, Zod, or other low-level external errors as `cause` when the error may be reported. Wrap them in a project-controlled safe technical cause message instead.
-- Do not pass path, name, id, URL parameters, or other user-controlled values to `reportHandledError` options, Sentry `extra`, or Sentry `tags`.
-- Prefer stable domain error codes, safe user-facing messages, safe technical cause messages, and `feature` or `action` metadata.
+Two concerns are distinct and must not be conflated:
+
+1. **Trusted in-app runtime and proxy transfer**: `DomainError.cause` may hold raw runtime errors inside the app and across trusted proxy boundaries. This preserves debuggability and does not require sanitization.
+2. **External diagnostics export**: Sensitive values must not leave the app via Sentry, logs, or copied diagnostic payloads. The `beforeSend` sanitizer enforces this at the outgoing event boundary by scrubbing exception messages, tags, extras, contexts, and breadcrumbs.
+
+Rules:
+
+- `DomainError.message` is a safe user-facing message. Do not put paths, names, ids, URLs, or raw external text in it.
+- `DomainError.code` is a stable string enum value defined close to the error's source. Do not create a global error-code registry.
+- `DomainError.cause` may hold the original runtime cause. Raw `cause` is allowed inside the app and in trusted proxy transfer.
+- Sentry `beforeSend` sanitizes outgoing events: exception messages, linked cause messages, tags, extras, contexts, breadcrumbs, and user fields.
+- Do not create feature-local error classifiers or manual VFS-to-feature error mappings. Use enum codes and raw cause instead.
+- Do not pass path, name, id, URL, or other user-controlled values to `captureDiagnosticException` context, Sentry `extra`, or Sentry `tags`.
+- Do not replace real Sentry exceptions with synthetic masked errors. Pass the original error object so native stack and grouping work correctly.
+- Do not send raw paths, names, ids, URLs with secrets, provider payloads, document content, or raw external messages to Sentry.
 
 ## Anti-patterns
 

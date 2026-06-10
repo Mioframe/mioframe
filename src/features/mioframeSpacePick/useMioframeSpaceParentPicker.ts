@@ -7,7 +7,7 @@ import {
   pickWritableDirectory,
   showDirectoryPickerUnsupportedMessage,
 } from './directoryPickerSupport';
-import { buildCreateSpaceError } from './mioframeSpacePick.errors';
+import { MioframeSpacePickErrorCode } from './mioframeSpacePick.errors';
 
 /**
  * Owns the parent-directory picker state for creating a Mioframe space.
@@ -20,7 +20,13 @@ export const useMioframeSpaceParentPicker = () => {
   const isSupported = computed(() => isDirectoryPickerSupported());
 
   const reportPickerFailure = (error: unknown) => {
-    const reportedError = error instanceof DomainError ? error : buildCreateSpaceError();
+    const reportedError =
+      error instanceof DomainError
+        ? error
+        : new DomainError('Could not create the Mioframe space', {
+            cause: error,
+            code: MioframeSpacePickErrorCode.createFailed,
+          });
 
     addSnackbar({
       text: reportedError.message,

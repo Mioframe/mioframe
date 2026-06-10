@@ -121,7 +121,7 @@ describe('useImportDocumentAction', () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
     readImportDocumentDraftMock.mockRejectedValue(
-      new DomainError('The selected JSON file is not a Beaver document', {
+      new DomainError('The selected JSON file is not a Mioframe document', {
         cause: new Error('zod'),
         code: ImportDocumentErrorCode.invalidDocumentFormat,
       }),
@@ -132,12 +132,12 @@ describe('useImportDocumentAction', () => {
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'The selected JSON file is not a Beaver document',
+      text: 'The selected JSON file is not a Mioframe document',
     });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('reports unexpected import failures with safe metadata', async () => {
+  it('reports unexpected import failures and preserves raw error as cause', async () => {
     const error = new Error('unexpected failure at /private/path/notes.json');
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
@@ -153,9 +153,14 @@ describe('useImportDocumentAction', () => {
       text: 'Could not import the document',
     });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    const { DomainError } = await import('@shared/lib/error');
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError.cause).toBe(error);
+    expect(reportedError.message).not.toContain('/private/path');
   });
 
-  it('does not report an inbound domain error with a private cause directly', async () => {
+  it('passes original DomainError directly to diagnostics without wrapping', async () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
     const rawCause = new Error('failed to import /Users/alice/Documents/private.json');
@@ -177,6 +182,8 @@ describe('useImportDocumentAction', () => {
       text: 'Could not import the document',
     });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).toBe(error);
   });
 
   it('does not request permission and shows a safe message when user cancels the grant dialog', async () => {
@@ -257,7 +264,8 @@ describe('useImportDocumentAction', () => {
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('reports retry failure through safe import error path without reopening the file picker', async () => {
+  it('reports retry failure through import error path without reopening the file picker', async () => {
+    const retryError = new Error('disk full');
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
@@ -269,7 +277,7 @@ describe('useImportDocumentAction', () => {
           spaceName: 'Work',
         }),
       )
-      .mockRejectedValueOnce(new Error('disk full'));
+      .mockRejectedValueOnce(retryError);
     confirmMock.mockResolvedValue(true);
     requestAccessMock.mockResolvedValue({ status: 'granted' });
 
@@ -283,6 +291,10 @@ describe('useImportDocumentAction', () => {
       text: 'Could not import the document',
     });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    const { DomainError } = await import('@shared/lib/error');
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError.cause).toBe(retryError);
   });
 
   it('requests write access after a write-required import failure and retries the repository write', async () => {

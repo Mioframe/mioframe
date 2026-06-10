@@ -926,7 +926,7 @@ describe('WebFileSystemProvider', () => {
 
     await expect(provider.move('/missing.txt', '/Archive/missing.txt')).rejects.toMatchObject({
       code: 'ENOENT',
-      message: 'Source not found: /missing.txt',
+      message: 'Source not found.',
       name: 'VfsError',
     });
   });

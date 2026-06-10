@@ -266,10 +266,7 @@ export const WebFileSystemProvider = (
         });
       } catch (error) {
         if (error instanceof DOMException && error.name === 'NotFoundError') {
-          throw new VfsError(
-            FileSystemError.FileNotFound,
-            `Directory not found: ${part} in ${path}`,
-          );
+          throw new VfsError(FileSystemError.FileNotFound, 'Directory not found.');
         }
         throw error;
       }
@@ -284,12 +281,12 @@ export const WebFileSystemProvider = (
     } catch (error) {
       if (error instanceof DOMException) {
         if (error.name === 'NotFoundError') {
-          throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${name}`, error);
+          throw new VfsError(FileSystemError.FileNotFound, 'Entry not found.', error);
         }
         if (error.name === 'TypeMismatchError') {
           throw new VfsError(
             type === 'file' ? FileSystemError.FileIsADirectory : FileSystemError.FileNotADirectory,
-            `Type mismatch for: ${name}`,
+            'Type mismatch.',
             error,
           );
         }
@@ -366,7 +363,7 @@ export const WebFileSystemProvider = (
         };
       } catch (directoryError) {
         if (isLookupMiss(directoryError, FileSystemError.FileNotADirectory)) {
-          throw new VfsError(FileSystemError.FileNotFound, `Path not found: ${path}`);
+          throw new VfsError(FileSystemError.FileNotFound, 'Path not found.');
         }
         throw directoryError;
       }
@@ -488,7 +485,7 @@ export const WebFileSystemProvider = (
     await ensureAccess('readwrite');
     try {
       await getHandle(path, false, 'directory');
-      throw new VfsError(FileSystemError.FileExists, `Directory already exists: ${path}`);
+      throw new VfsError(FileSystemError.FileExists, 'Directory already exists.');
     } catch (error) {
       if (!(error instanceof VfsError && error.code === FileSystemError.FileNotFound)) {
         throw error;
@@ -505,10 +502,7 @@ export const WebFileSystemProvider = (
     const { stat: nodeStat } = await lookupPath(normalized);
 
     if (nodeStat.capabilities?.canDelete === false) {
-      throw new VfsError(
-        FileSystemError.NoPermissions,
-        `Deletion is not allowed for path: ${path}`,
-      );
+      throw new VfsError(FileSystemError.NoPermissions, 'Deletion is not allowed.');
     }
 
     const parts = normalized.split('/').filter((part) => part.length > 0);
@@ -526,7 +520,7 @@ export const WebFileSystemProvider = (
     } catch (error) {
       if (error instanceof DOMException) {
         if (error.name === 'NotFoundError') {
-          throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${path}`);
+          throw new VfsError(FileSystemError.FileNotFound, 'Entry not found.');
         }
         if (error.name === 'InvalidModificationError') {
           throw new VfsError(
@@ -554,16 +548,13 @@ export const WebFileSystemProvider = (
       ({ handle: sourceHandle, stat: sourceStat } = await lookupPath(normalizedOld));
     } catch (error) {
       if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-        throw new VfsError(FileSystemError.FileNotFound, `Source not found: ${oldPath}`);
+        throw new VfsError(FileSystemError.FileNotFound, 'Source not found.');
       }
       throw error;
     }
 
     if (sourceStat.capabilities?.canChangePath === false) {
-      throw new VfsError(
-        FileSystemError.NoPermissions,
-        `Path change is not allowed for path: ${oldPath}`,
-      );
+      throw new VfsError(FileSystemError.NoPermissions, 'Path change is not allowed.');
     }
 
     const newName = PathUtils.basename(normalizedNew);
@@ -571,17 +562,11 @@ export const WebFileSystemProvider = (
     const { handle: destinationHandle, stat: destinationStat } = await lookupPath(newDirName);
 
     if (destinationHandle.kind !== 'directory') {
-      throw new VfsError(
-        FileSystemError.FileNotADirectory,
-        `Type mismatch for: ${PathUtils.basename(newDirName)}`,
-      );
+      throw new VfsError(FileSystemError.FileNotADirectory, 'Type mismatch.');
     }
 
     if (destinationStat.capabilities?.canEditChildren === false) {
-      throw new VfsError(
-        FileSystemError.NoPermissions,
-        `Path change is not allowed inside directory: ${newDirName}`,
-      );
+      throw new VfsError(FileSystemError.NoPermissions, 'Path change is not allowed.');
     }
 
     const destinationDirHandle = destinationHandle;

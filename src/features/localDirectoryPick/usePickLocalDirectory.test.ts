@@ -53,7 +53,7 @@ describe('usePickLocalDirectory', () => {
     });
   });
 
-  it('reports a privacy-safe DomainError when the directory picker fails with a raw path message', async () => {
+  it('reports a DomainError preserving the raw picker failure as cause', async () => {
     const rawCause = new DOMException(
       'Could not access /Device files/Private/Taxes 2025',
       'NotAllowedError',
@@ -76,15 +76,10 @@ describe('usePickLocalDirectory', () => {
     expect(reportedError).toBeInstanceOf(DomainError);
     expect(reportedError).toMatchObject({
       message: 'Could not add the folder',
-      cause: expect.objectContaining({
-        message: 'Directory picker operation failed',
-      }),
+      code: 'localDirectoryPick.pickFailed',
     });
-    if (!(reportedError instanceof DomainError)) {
-      throw new Error('Expected DomainError');
-    }
-    expect(reportedError.cause).not.toMatchObject({
-      message: rawCause.message,
-    });
+    expect(reportedError.cause).toBe(rawCause);
+    expect(reportedError.message).not.toContain('/Device files');
+    expect(reportedError.message).not.toContain('Taxes 2025');
   });
 });

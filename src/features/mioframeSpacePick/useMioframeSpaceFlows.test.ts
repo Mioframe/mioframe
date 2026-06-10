@@ -213,8 +213,9 @@ describe('useMioframeSpaceParentPicker', () => {
     expect(parentPicker.parentHandle.value).toBeUndefined();
   });
 
-  it('reports a privacy-safe error when parent-folder picking fails unexpectedly', async () => {
-    showDirectoryPickerMock.mockRejectedValueOnce(new Error('raw picker detail'));
+  it('reports a DomainError preserving raw picker failure as cause when parent-folder picking fails', async () => {
+    const rawPickerError = new Error('raw picker detail');
+    showDirectoryPickerMock.mockRejectedValueOnce(rawPickerError);
     const parentPicker = useMioframeSpaceParentPicker();
 
     await parentPicker.pickParentDirectory();
@@ -223,18 +224,13 @@ describe('useMioframeSpaceParentPicker', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not create the Mioframe space',
-        cause: expect.objectContaining({
-          message: 'Creating the Mioframe space failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceCreate',
-        action: 'pickParentFolder',
-      },
-    );
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({ feature: 'mioframeSpaceCreate', action: 'pickParentFolder' });
+    expect(reportedError).toMatchObject({
+      message: 'Could not create the Mioframe space',
+      code: 'mioframeSpacePick.createFailed',
+    });
+    expect(reportedError.cause).toBe(rawPickerError);
   });
 });
 
@@ -448,7 +444,7 @@ describe('useCreateMioframeSpace', () => {
     expect(initializeRepositoryMock).not.toHaveBeenCalled();
   });
 
-  it('reports a privacy-safe error when opening an existing conflicted space fails', async () => {
+  it('reports a DomainError preserving raw mount failure as cause when opening an existing conflicted space fails', async () => {
     const existingSpaceHandle = createDirectoryHandle({
       name: 'Work Notes',
       entries: [[markerFileName, createFileHandle(markerFileName)]],
@@ -457,7 +453,8 @@ describe('useCreateMioframeSpace', () => {
       name: 'Documents',
       subdirectoryFactory: () => existingSpaceHandle,
     });
-    addDeviceDirectoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
+    const rawMountError = new Error('raw filesystem detail');
+    addDeviceDirectoryMock.mockRejectedValueOnce(rawMountError);
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.checkCreateSpaceNameAvailability('Work Notes')).resolves.toEqual({
@@ -472,18 +469,13 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not open the Mioframe space',
     });
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not open the Mioframe space',
-        cause: expect.objectContaining({
-          message: 'Opening the Mioframe space failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceCreate',
-        action: 'openExistingSpace',
-      },
-    );
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({ feature: 'mioframeSpaceCreate', action: 'openExistingSpace' });
+    expect(reportedError).toMatchObject({
+      message: 'Could not open the Mioframe space',
+      code: 'mioframeSpacePick.openFailed',
+    });
+    expect(reportedError.cause).toBe(rawMountError);
   });
 
   it('rolls back the mounted record when repository initialization fails after mounting', async () => {
@@ -502,7 +494,8 @@ describe('useCreateMioframeSpace', () => {
       name: 'Work Notes',
       handle: createdSpaceHandle,
     });
-    initializeRepositoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
+    const rawInitError = new Error('raw filesystem detail');
+    initializeRepositoryMock.mockRejectedValueOnce(rawInitError);
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
@@ -510,18 +503,13 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not create the Mioframe space',
-        cause: expect.objectContaining({
-          message: 'Creating the Mioframe space failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceCreate',
-        action: 'createSpace',
-      },
-    );
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({ feature: 'mioframeSpaceCreate', action: 'createSpace' });
+    expect(reportedError).toMatchObject({
+      message: 'Could not create the Mioframe space',
+      code: 'mioframeSpacePick.createFailed',
+    });
+    expect(reportedError.cause).toBe(rawInitError);
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -531,7 +519,7 @@ describe('useCreateMioframeSpace', () => {
     );
   });
 
-  it('reports a privacy-safe error when rollback after repository initialization failure fails', async () => {
+  it('preserves raw rollback and init errors as causes when rollback after repository initialization failure also fails', async () => {
     const createdSpaceHandle = createDirectoryHandle({ name: 'Work Notes' });
     const parentHandle = createDirectoryHandle({
       name: 'Documents',
@@ -547,39 +535,36 @@ describe('useCreateMioframeSpace', () => {
       name: 'Work Notes',
       handle: createdSpaceHandle,
     });
-    initializeRepositoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
-    disconnectDeviceFileMock.mockRejectedValueOnce(new Error('raw rollback detail'));
+    const rawInitError = new Error('raw filesystem detail');
+    const rawRollbackError = new Error('raw rollback detail');
+    initializeRepositoryMock.mockRejectedValueOnce(rawInitError);
+    disconnectDeviceFileMock.mockRejectedValueOnce(rawRollbackError);
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
 
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not roll back failed Mioframe space creation',
-        cause: expect.objectContaining({
-          message: 'Rolling back failed Mioframe space creation failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceCreate',
-        action: 'rollbackCreateSpaceMount',
-      },
+    const rollbackCall = captureDiagnosticExceptionMock.mock.calls.find(
+      ([, opts]) => opts?.action === 'rollbackCreateSpaceMount',
     );
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not create the Mioframe space',
-        cause: expect.objectContaining({
-          message: 'Creating the Mioframe space failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceCreate',
-        action: 'createSpace',
-      },
+    expect(rollbackCall).toBeDefined();
+    expect(rollbackCall?.[0]).toMatchObject({
+      message: 'Could not roll back failed Mioframe space creation',
+      code: 'mioframeSpacePick.rollbackFailed',
+    });
+    expect(rollbackCall?.[0].cause).toBe(rawRollbackError);
+
+    const createCall = captureDiagnosticExceptionMock.mock.calls.find(
+      ([, opts]) => opts?.action === 'createSpace',
     );
+    expect(createCall).toBeDefined();
+    expect(createCall?.[0]).toMatchObject({
+      message: 'Could not create the Mioframe space',
+      code: 'mioframeSpacePick.createFailed',
+    });
+    expect(createCall?.[0].cause).toBe(rawInitError);
   });
 
-  it('reports a privacy-safe error when create mounting fails', async () => {
+  it('reports a DomainError preserving raw mount error as cause when create mounting fails', async () => {
     const createdSpaceHandle = createDirectoryHandle({ name: 'Work Notes' });
     const parentHandle = createDirectoryHandle({
       name: 'Documents',
@@ -591,7 +576,8 @@ describe('useCreateMioframeSpace', () => {
         throw new DOMException('Missing directory', 'NotFoundError');
       },
     });
-    addDeviceDirectoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
+    const rawMountError = new Error('raw filesystem detail');
+    addDeviceDirectoryMock.mockRejectedValueOnce(rawMountError);
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
@@ -600,21 +586,16 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not create the Mioframe space',
-        cause: expect.objectContaining({
-          message: 'Creating the Mioframe space failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceCreate',
-        action: 'createSpace',
-      },
-    );
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({ feature: 'mioframeSpaceCreate', action: 'createSpace' });
+    expect(reportedError).toMatchObject({
+      message: 'Could not create the Mioframe space',
+      code: 'mioframeSpacePick.createFailed',
+    });
+    expect(reportedError.cause).toBe(rawMountError);
   });
 
-  it('returns false after reporting a privacy-safe error when availability inspection fails unexpectedly', async () => {
+  it('returns false after reporting a DomainError with raw filesystem error as cause when availability inspection fails unexpectedly', async () => {
     const parentHandle = createDirectoryHandle({
       name: 'Documents',
       subdirectoryFactory: () => {
@@ -627,18 +608,13 @@ describe('useCreateMioframeSpace', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not create the Mioframe space',
-        cause: expect.objectContaining({
-          message: 'Creating the Mioframe space failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceCreate',
-        action: 'createSpace',
-      },
-    );
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({ feature: 'mioframeSpaceCreate', action: 'createSpace' });
+    expect(reportedError).toMatchObject({
+      message: 'Could not create the Mioframe space',
+      code: 'mioframeSpacePick.createFailed',
+    });
+    expect(reportedError.cause).toMatchObject({ message: 'raw filesystem detail' });
   });
 });
 
@@ -705,26 +681,22 @@ describe('useOpenMioframeSpace', () => {
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
-  it('reports a privacy-safe error when open flow hits an unexpected picker failure', async () => {
-    showDirectoryPickerMock.mockRejectedValueOnce(new Error('raw picker detail'));
+  it('reports a DomainError preserving raw picker error as cause when open flow hits an unexpected picker failure', async () => {
+    const rawPickerError = new Error('raw picker detail');
+    showDirectoryPickerMock.mockRejectedValueOnce(rawPickerError);
 
     await useOpenMioframeSpace().openSpace();
 
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not open the Mioframe space',
     });
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Could not open the Mioframe space',
-        cause: expect.objectContaining({
-          message: 'Opening the Mioframe space failed',
-        }),
-      }),
-      {
-        feature: 'mioframeSpaceOpen',
-        action: 'openSpace',
-      },
-    );
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({ feature: 'mioframeSpaceOpen', action: 'openSpace' });
+    expect(reportedError).toMatchObject({
+      message: 'Could not open the Mioframe space',
+      code: 'mioframeSpacePick.openFailed',
+    });
+    expect(reportedError.cause).toBe(rawPickerError);
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/require-await -- Re-enable after DOM File System Access API test mocks. */

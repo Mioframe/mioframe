@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRemoveFSEntry } from './useRemoveFSEntry';
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { DomainError } from '@shared/lib/error';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 
 const { addSnackbarMock, confirmMock, removeEntryMock, captureDiagnosticExceptionMock } =
@@ -41,52 +41,6 @@ describe('useRemoveFSEntry', () => {
     captureDiagnosticExceptionMock.mockReset();
   });
 
-  const expectSafeReportedDomainError = ({
-    action,
-    code,
-    message,
-    causeMessage,
-  }: {
-    action: 'removeEntry' | 'removeEntryRecursive';
-    code: 'remove-failed' | 'recursive-remove-failed';
-    message: string;
-    causeMessage: string;
-  }) => {
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message,
-        code,
-        cause: expect.objectContaining({
-          message: causeMessage,
-        }),
-      }),
-      {
-        feature: 'entryRemove',
-        action,
-      },
-    );
-
-    const [reportedError] = captureDiagnosticExceptionMock.mock.calls.at(-1) ?? [];
-    expect(reportedError).toBeInstanceOf(DomainError);
-    expect(reportedError).not.toBeInstanceOf(VfsError);
-    if (!(reportedError instanceof DomainError)) {
-      throw new Error('Expected a DomainError to be reported');
-    }
-    expect(reportedError.message).not.toContain('/docs/file.json');
-    expect(reportedError.message).not.toContain('/docs/folder/private');
-    expect(reportedError.message).not.toContain('file.json');
-    expect(reportedError.message).not.toContain('gd-123');
-    expect(reportedError.cause).toBeInstanceOf(Error);
-    if (!(reportedError.cause instanceof Error)) {
-      throw new Error('Expected a safe Error cause to be reported');
-    }
-    expect(reportedError.cause.message).toBe(causeMessage);
-    expect(reportedError.cause.message).not.toContain('/docs');
-    expect(reportedError.cause.message).not.toContain('file.json');
-    expect(reportedError.cause.message).not.toContain('gd-');
-    expect(reportedError.cause.message).not.toContain('provider');
-  };
-
   it('uses basename-only confirmation copy for removal', async () => {
     confirmMock.mockResolvedValueOnce(false);
 
@@ -115,15 +69,19 @@ describe('useRemoveFSEntry', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not remove the item',
     });
-    expectSafeReportedDomainError({
-      action: 'removeEntry',
-      code: 'remove-failed',
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls.at(-1) ?? [];
+    expect(options).toEqual({ feature: 'entryRemove', action: 'removeEntry' });
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError).toMatchObject({
       message: 'Could not remove the item',
-      causeMessage: 'File system remove operation failed',
+      code: 'entryRemove.removeFailed',
     });
+    expect(reportedError.cause).toBe(error);
+    expect(reportedError.message).not.toContain('/docs');
+    expect(reportedError.message).not.toContain('gd-123');
   });
 
-  it('wraps VfsError removal failures into a safe reportable DomainError', async () => {
+  it('preserves VfsError as raw cause for non-recursive remove failures', async () => {
     const error = new VfsError(
       FileSystemError.NoPermissions,
       'File system delete operation is not allowed for /docs/file.json in provider gd-123',
@@ -138,19 +96,20 @@ describe('useRemoveFSEntry', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not remove the item',
     });
-    expectSafeReportedDomainError({
-      action: 'removeEntry',
-      code: 'remove-failed',
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls.at(-1) ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError).toMatchObject({
       message: 'Could not remove the item',
-      causeMessage: 'File system remove operation failed',
+      code: 'entryRemove.removeFailed',
     });
+    expect(reportedError.cause).toBe(error);
+    expect(reportedError.message).not.toContain('/docs');
+    expect(reportedError.message).not.toContain('gd-123');
   });
 
   it('shows a snackbar, reports, and does not rethrow when recursive remove fails', async () => {
     const directoryNotEmptyError = new VfsError(FileSystemError.DirectoryNotEmpty);
-    const recursiveError = new DomainError('Could not remove the directory', {
-      cause: createSafeErrorCause('Unexpected storage backend detail for /docs/folder/private'),
-    });
+    const recursiveError = new Error('Failed to remove /docs/folder/private recursively');
     confirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
     removeEntryMock
       .mockRejectedValueOnce(directoryNotEmptyError)
@@ -168,15 +127,18 @@ describe('useRemoveFSEntry', () => {
     expect(addSnackbarMock).toHaveBeenNthCalledWith(2, {
       text: 'Could not remove the directory',
     });
-    expectSafeReportedDomainError({
-      action: 'removeEntryRecursive',
-      code: 'recursive-remove-failed',
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls.at(-1) ?? [];
+    expect(options).toEqual({ feature: 'entryRemove', action: 'removeEntryRecursive' });
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError).toMatchObject({
       message: 'Could not remove the directory',
-      causeMessage: 'File system recursive remove operation failed',
+      code: 'entryRemove.recursiveRemoveFailed',
     });
+    expect(reportedError.cause).toBe(recursiveError);
+    expect(reportedError.message).not.toContain('/docs');
   });
 
-  it('wraps untrusted recursive removal errors before reporting', async () => {
+  it('preserves upstream error as raw cause for recursive removal failures', async () => {
     const directoryNotEmptyError = new VfsError(FileSystemError.DirectoryNotEmpty);
     const recursiveError = new Error('Failed to remove /docs/folder/private for gd-456');
     confirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
@@ -188,17 +150,19 @@ describe('useRemoveFSEntry', () => {
 
     await expect(remove('/docs/folder')).resolves.toBeUndefined();
 
-    expectSafeReportedDomainError({
-      action: 'removeEntryRecursive',
-      code: 'recursive-remove-failed',
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls.at(-1) ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError).toMatchObject({
       message: 'Could not remove the directory',
-      causeMessage: 'File system recursive remove operation failed',
+      code: 'entryRemove.recursiveRemoveFailed',
     });
+    expect(reportedError.cause).toBe(recursiveError);
+    expect(reportedError.message).not.toContain('/docs');
+    expect(reportedError.message).not.toContain('gd-456');
   });
 
-  it('does not forward arbitrary DomainError message or cause text into remove diagnostics', async () => {
+  it('preserves upstream DomainError as raw cause for non-recursive remove failures', async () => {
     const error = new DomainError('Could not remove /docs/file.json for gd-123', {
-      cause: createSafeErrorCause('Provider error for storage key gd-123 at /docs/file.json'),
       code: 'upstream-remove-failed',
     });
     confirmMock.mockResolvedValueOnce(true);
@@ -211,12 +175,15 @@ describe('useRemoveFSEntry', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not remove the item',
     });
-    expectSafeReportedDomainError({
-      action: 'removeEntry',
-      code: 'remove-failed',
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls.at(-1) ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError).toMatchObject({
       message: 'Could not remove the item',
-      causeMessage: 'File system remove operation failed',
+      code: 'entryRemove.removeFailed',
     });
+    expect(reportedError.cause).toBe(error);
+    expect(reportedError.message).not.toContain('/docs');
+    expect(reportedError.message).not.toContain('gd-123');
   });
 
   it('does not remove or report when the user cancels confirmation', async () => {

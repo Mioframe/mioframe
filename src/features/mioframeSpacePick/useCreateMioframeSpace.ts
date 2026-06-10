@@ -1,12 +1,12 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { useMainServiceClient } from '@shared/service';
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { DomainError } from '@shared/lib/error';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DEVICE_FILES_ROOT_NAME } from '@shared/service/fileSystem';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { ref, toValue, type MaybeRefOrGetter } from 'vue';
-import { buildCreateSpaceError, buildOpenSpaceError } from './mioframeSpacePick.errors';
+import { MioframeSpacePickErrorCode } from './mioframeSpacePick.errors';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 
 const EXISTING_ORDINARY_FOLDER_ERROR =
@@ -52,12 +52,18 @@ export const useCreateMioframeSpace = (
   const handleUnexpectedError = (
     error: unknown,
     options?: {
-      fallbackError?: DomainError;
+      message?: string;
+      code?: MioframeSpacePickErrorCode;
       action?: 'createSpace' | 'openExistingSpace';
     },
   ) => {
     const reportedError =
-      error instanceof DomainError ? error : (options?.fallbackError ?? buildCreateSpaceError());
+      error instanceof DomainError
+        ? error
+        : new DomainError(options?.message ?? 'Could not create the Mioframe space', {
+            cause: error,
+            code: options?.code ?? MioframeSpacePickErrorCode.createFailed,
+          });
 
     addSnackbar({
       text: reportedError.message,
@@ -68,10 +74,11 @@ export const useCreateMioframeSpace = (
     });
   };
 
-  const reportRollbackError = () => {
+  const reportRollbackError = (rollbackError: unknown) => {
     captureDiagnosticException(
       new DomainError('Could not roll back failed Mioframe space creation', {
-        cause: createSafeErrorCause('Rolling back failed Mioframe space creation failed'),
+        cause: rollbackError,
+        code: MioframeSpacePickErrorCode.rollbackFailed,
       }),
       {
         feature: 'mioframeSpaceCreate',
@@ -186,8 +193,8 @@ export const useCreateMioframeSpace = (
       if (mountedRecord) {
         try {
           await disconnectDeviceFile(mountedRecord.name);
-        } catch {
-          reportRollbackError();
+        } catch (rollbackError) {
+          reportRollbackError(rollbackError);
         }
       }
 
@@ -217,7 +224,8 @@ export const useCreateMioframeSpace = (
       return true;
     } catch (error) {
       handleUnexpectedError(error, {
-        fallbackError: buildOpenSpaceError(),
+        message: 'Could not open the Mioframe space',
+        code: MioframeSpacePickErrorCode.openFailed,
         action: 'openExistingSpace',
       });
       return false;

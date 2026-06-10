@@ -558,7 +558,9 @@ describe('VirtualFileSystem', () => {
       vfs.mount('/mnt/test', memoryFS);
 
       // This should fail
-      await expect(vfs.delete('/mnt/test/testdir', false)).rejects.toThrow(/Directory not empty/);
+      await expect(vfs.delete('/mnt/test/testdir', false)).rejects.toMatchObject({
+        code: FileSystemError.DirectoryNotEmpty,
+      });
     });
 
     it('should handle delete with invalid paths gracefully', async () => {

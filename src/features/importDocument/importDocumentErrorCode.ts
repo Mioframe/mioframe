@@ -1,10 +1,10 @@
 /**
- * Stable error codes for Beaver document import failures.
+ * Stable error codes for Mioframe document import failures.
  */
 export enum ImportDocumentErrorCode {
-  fileOpenFailed = 'file-open-failed',
-  fileReadFailed = 'file-read-failed',
-  invalidJson = 'invalid-json',
-  invalidDocumentFormat = 'invalid-document-format',
-  documentImportFailed = 'document-import-failed',
+  fileOpenFailed = 'importDocument.fileOpenFailed',
+  fileReadFailed = 'importDocument.fileReadFailed',
+  invalidJson = 'importDocument.invalidJson',
+  invalidDocumentFormat = 'importDocument.invalidDocumentFormat',
+  documentImportFailed = 'importDocument.documentImportFailed',
 }

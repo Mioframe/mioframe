@@ -6,7 +6,9 @@ import {
   WebFileSystemAccessRequiredError,
 } from '@shared/lib/webFileSystemProvider';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 import type { VfsActivityState } from '@shared/lib/virtualFileSystem';
+import { DomainError } from '@shared/lib/error';
 import { transformers } from './workerTransformerMap';
 
 class MockProvider {
@@ -62,6 +64,10 @@ const createChannel = (clientId: string, serviceId: string) => {
   return { clientProvider, serviceProvider };
 };
 
+enum TestErrorCode {
+  TestFailure = 'test.failure',
+}
+
 describe('workerTransformerMap', () => {
   it('reconstructs WebFileSystemAccessRequiredError across the service boundary', async () => {
     const serviceId = uid();
@@ -93,6 +99,71 @@ describe('workerTransformerMap', () => {
       expect(getFileSystemAccessRecovery(error, { operation: 'write' })).toEqual({
         operation: 'write',
         spaceName: 'Work',
+      });
+      return true;
+    });
+  });
+
+  it('reconstructs DomainError across the service boundary with message, code, cause, and name intact', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+
+    const originalCause = new Error('ENOENT: no such file or directory, mkdir /private/Examples');
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      fail: () => {
+        throw new DomainError('Could not create example', {
+          code: TestErrorCode.TestFailure,
+          cause: originalCause,
+        });
+      },
+    }));
+
+    const client = createClient<{ fail: () => Promise<void> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    await expect(client.fail()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        name: 'DomainError',
+        message: 'Could not create example',
+        code: TestErrorCode.TestFailure,
+      });
+      if (!(error instanceof DomainError)) return true;
+      expect(error.cause).toMatchObject({ message: originalCause.message });
+      return true;
+    });
+  });
+
+  it('reconstructs VfsError with code, message, and cause across the service boundary', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+
+    const rawCause = new DOMException('NotFoundError');
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      fail: () => {
+        throw new VfsError(FileSystemError.FileNotFound, 'Entry not found.', rawCause);
+      },
+    }));
+
+    const client = createClient<{ fail: () => Promise<void> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    await expect(client.fail()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(VfsError);
+      expect(error).toMatchObject({
+        name: 'VfsError',
+        message: 'Entry not found.',
+        code: FileSystemError.FileNotFound,
       });
       return true;
     });
