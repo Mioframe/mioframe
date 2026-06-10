@@ -7,8 +7,10 @@ import { GOOGLE_DRIVE_ROOT_NAME } from '@shared/service/google';
 import { GoogleDriveWidget } from '@widget/GoogleDriveWidget';
 import { LocalFSWidget } from '@widget/LocalFSWidget';
 import { StarterExamplesWidget } from '@widget/StarterExamplesWidget';
+import { PwaInstallWidget } from '@widget/PwaInstallWidget';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useLocalSettings } from '@entity/localSettings';
+import { usePwaInstallAction } from '@feature/pwaInstall';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE } from '@shared/config';
 
 defineSlots<{
@@ -18,6 +20,7 @@ defineSlots<{
 
 const { open } = useStackNavigation();
 const { settings } = useLocalSettings();
+const { isHomeWidgetVisible } = usePwaInstallAction();
 
 const onClickGoogleDriveUser = async (email: string) => {
   await open(
@@ -64,6 +67,8 @@ const onCreatedStarterExampleDocument = ({
         <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
+
+    <PwaInstallWidget v-if="isHomeWidgetVisible" />
 
     <StarterExamplesWidget
       v-if="!settings.hideStarterWidget"

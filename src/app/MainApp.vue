@@ -13,6 +13,7 @@ import { usePreventUnloadDuringActiveWrites } from '@feature/preventUnloadDuring
 import { useOptionalGoogleDriveIntegration } from '@feature/googleDriveIntegration';
 import { useDiagnosticsConsentRequest } from '@feature/diagnosticsConsentRequest';
 import { useDiagnosticsReporting } from '@feature/diagnosticsReporting';
+import { setupPwaInstallRuntime } from '@feature/pwaInstall';
 
 const { addSnackbar } = useSnackbar();
 
@@ -37,6 +38,7 @@ useDiagnosticsConsentRequest();
 useOptionalGoogleDriveIntegration();
 
 setupMetaThemeColor();
+setupPwaInstallRuntime();
 </script>
 
 <template>

@@ -1,0 +1,194 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions -- BeforeInstallPromptEvent mocks require structural casting since the interface is non-standard and cannot be instantiated directly in tests. */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref, shallowRef } from 'vue';
+
+const useIDBKeyvalMock = vi.fn();
+vi.mock('@vueuse/integrations/useIDBKeyval', () => ({
+  useIDBKeyval: (...args: unknown[]) => useIDBKeyvalMock(...args),
+}));
+
+const retainedPromptRef = shallowRef<BeforeInstallPromptEvent | null>(null);
+const isInstalledForSessionRef = shallowRef(false);
+
+vi.mock('./pwaInstallRuntime', () => ({
+  usePwaInstallRuntime: () => ({
+    retainedPrompt: retainedPromptRef,
+    isInstalledForSession: isInstalledForSessionRef,
+  }),
+}));
+
+describe('usePwaInstallAction', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    useIDBKeyvalMock.mockReset();
+    retainedPromptRef.value = null;
+    isInstalledForSessionRef.value = false;
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.stubGlobal('navigator', { userAgent: '' });
+  });
+
+  const setupSettings = (overrides: Record<string, unknown> = {}) => {
+    const defaultValue = {
+      diagnosticsEnabled: false,
+      diagnosticsConsentRequested: false,
+      panesWidth: [],
+      ...overrides,
+    };
+    useIDBKeyvalMock.mockImplementation((_key: unknown, _default: unknown) => ({
+      data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
+    }));
+  };
+
+  it('hasRetainedPrompt is true when a prompt is retained', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { hasRetainedPrompt } = usePwaInstallAction();
+
+    retainedPromptRef.value = {
+      prompt: vi.fn().mockResolvedValue({ outcome: 'accepted' }),
+    } as unknown as BeforeInstallPromptEvent;
+
+    expect(hasRetainedPrompt.value).toBe(true);
+  });
+
+  it('hasRetainedPrompt is false when no prompt is retained', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { hasRetainedPrompt } = usePwaInstallAction();
+
+    expect(hasRetainedPrompt.value).toBe(false);
+  });
+
+  it('isHomeWidgetVisible is false when standalone', async () => {
+    setupSettings();
+    isInstalledForSessionRef.value = true;
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+  });
+
+  it('isSettingsEntryVisible is false when standalone', async () => {
+    setupSettings();
+    isInstalledForSessionRef.value = true;
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isSettingsEntryVisible } = usePwaInstallAction();
+
+    expect(isSettingsEntryVisible.value).toBe(false);
+  });
+
+  it('isHomeWidgetVisible is true when not standalone and not dismissed', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(true);
+  });
+
+  it('isSettingsEntryVisible is true when not standalone', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isSettingsEntryVisible } = usePwaInstallAction();
+
+    expect(isSettingsEntryVisible.value).toBe(true);
+  });
+
+  it('dismissHomeWidget stores dismissedUntil approximately 30 days from now', async () => {
+    const settings = {
+      diagnosticsEnabled: false,
+      diagnosticsConsentRequested: false,
+      panesWidth: [],
+      pwaInstallWidgetDismissedUntil: undefined as number | undefined,
+    };
+    useIDBKeyvalMock.mockImplementation(() => ({
+      data: ref(settings),
+      isFinished: ref(true),
+    }));
+
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { dismissHomeWidget } = usePwaInstallAction();
+
+    const before = Date.now();
+    dismissHomeWidget();
+    const after = Date.now();
+
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    expect(settings.pwaInstallWidgetDismissedUntil).toBeGreaterThanOrEqual(before + thirtyDaysMs);
+    expect(settings.pwaInstallWidgetDismissedUntil).toBeLessThanOrEqual(after + thirtyDaysMs);
+  });
+
+  it('isHomeWidgetVisible is false after dismissing (dismissedUntil in future)', async () => {
+    const futureTimestamp = Date.now() + 10_000;
+    setupSettings({ pwaInstallWidgetDismissedUntil: futureTimestamp });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+  });
+
+  it('isSettingsEntryVisible is true even when home widget is dismissed', async () => {
+    const futureTimestamp = Date.now() + 10_000;
+    setupSettings({ pwaInstallWidgetDismissedUntil: futureTimestamp });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isSettingsEntryVisible } = usePwaInstallAction();
+
+    expect(isSettingsEntryVisible.value).toBe(true);
+  });
+
+  it('isHomeWidgetVisible is true when dismissedUntil has expired', async () => {
+    const pastTimestamp = Date.now() - 1000;
+    setupSettings({ pwaInstallWidgetDismissedUntil: pastTimestamp });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(true);
+  });
+
+  it('runInstallAction calls prompt() when a prompt is retained', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { runInstallAction } = usePwaInstallAction();
+
+    const mockPrompt = vi.fn().mockResolvedValue({ outcome: 'accepted' });
+    retainedPromptRef.value = { prompt: mockPrompt } as unknown as BeforeInstallPromptEvent;
+
+    await runInstallAction();
+
+    expect(mockPrompt).toHaveBeenCalledOnce();
+    expect(retainedPromptRef.value).toBeNull();
+  });
+
+  it('runInstallAction clears the retained prompt before calling it', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { runInstallAction } = usePwaInstallAction();
+
+    retainedPromptRef.value = {
+      prompt: vi.fn().mockResolvedValue({ outcome: 'dismissed' }),
+    } as unknown as BeforeInstallPromptEvent;
+
+    await runInstallAction();
+
+    expect(retainedPromptRef.value).toBeNull();
+  });
+
+  it('runInstallAction opens install guide when no prompt is retained', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { runInstallAction } = usePwaInstallAction();
+
+    await runInstallAction();
+
+    expect(window.open).toHaveBeenCalledOnce();
+    const [url, target, features] = vi.mocked(window.open).mock.calls[0] as [
+      string,
+      string,
+      string,
+    ];
+    expect(url).toContain('mozilla.org');
+    expect(target).toBe('_blank');
+    expect(features).toContain('noopener');
+  });
+});
+/* eslint-enable @typescript-eslint/consistent-type-assertions -- Re-enable after BeforeInstallPromptEvent test mocks. */
