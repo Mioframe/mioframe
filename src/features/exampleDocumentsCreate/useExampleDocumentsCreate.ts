@@ -23,10 +23,16 @@ type ExampleResult = {
   documentId: AMDocumentId;
 };
 
+const DIRECTORY_LIMIT_ERROR_CODE = 'example-create-directory-limit-exceeded';
+
 const isAlreadyExistingDirectoryError = (error: unknown) =>
   error instanceof VfsError && error.code === FileSystemError.FileExists;
 
+const isDirectoryLimitError = (error: unknown) =>
+  error instanceof DomainError && error.code === DIRECTORY_LIMIT_ERROR_CODE;
+
 const buildExampleCreateCause = (error: unknown): string => {
+  if (isDirectoryLimitError(error)) return DIRECTORY_LIMIT_ERROR_CODE;
   if (error instanceof VfsError) return `example-create-vfs-${error.code}`;
   return 'example-create-unexpected';
 };
@@ -66,8 +72,8 @@ export const useExampleDocumentsCreate = () => {
     for (;;) {
       if (index > MAX_EXAMPLE_DIRECTORY_ATTEMPTS) {
         throw new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
-          cause: createSafeErrorCause('example-create-directory-limit-exceeded'),
-          code: 'example-create-failed',
+          cause: createSafeErrorCause(DIRECTORY_LIMIT_ERROR_CODE),
+          code: DIRECTORY_LIMIT_ERROR_CODE,
         });
       }
 
@@ -97,13 +103,11 @@ export const useExampleDocumentsCreate = () => {
     }
   };
 
-  const makeExampleCreateError = (error: unknown): DomainError => {
-    if (error instanceof DomainError) return error;
-    return new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+  const makeExampleCreateError = (error: unknown): DomainError =>
+    new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
       cause: createSafeErrorCause(buildExampleCreateCause(error)),
       code: 'example-create-failed',
     });
-  };
 
   const createWeeklyPlanExample = async (): Promise<ExampleResult | undefined> => {
     weeklyPlanErrorMessage.value = undefined;

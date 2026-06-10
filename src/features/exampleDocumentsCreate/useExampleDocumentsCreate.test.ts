@@ -201,6 +201,26 @@ describe('useExampleDocumentsCreate', () => {
     expect(reportedError.cause.message).not.toContain('ENOENT');
   });
 
+  it('does not pass an arbitrary lower-layer DomainError as-is to diagnostics', async () => {
+    const lowerLayerDomainError = new DomainError('Internal storage failure', {
+      code: 'storage-internal',
+    });
+    createDirectoryMock.mockRejectedValueOnce(lowerLayerDomainError);
+
+    const { createWeeklyPlanExample } = useExampleDocumentsCreate();
+
+    await createWeeklyPlanExample();
+
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).not.toBe(lowerLayerDomainError);
+    expect(reportedError).toBeInstanceOf(DomainError);
+    if (!(reportedError instanceof DomainError)) return;
+    expect(reportedError.message).toBe('Could not create example');
+    expect(reportedError.cause).toBeInstanceOf(Error);
+    if (!(reportedError.cause instanceof Error)) return;
+    expect(reportedError.cause.message).toBe('example-create-unexpected');
+  });
+
   it('does not retry directory creation for VfsError codes other than FileExists', async () => {
     createDirectoryMock.mockRejectedValueOnce(
       new VfsError(FileSystemError.NoPermissions, 'No permission to create directory'),
