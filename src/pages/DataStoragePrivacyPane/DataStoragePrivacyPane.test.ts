@@ -81,8 +81,8 @@ it('renders the local-first and privacy help content in-app', async () => {
     'You can enable or disable error diagnostics at any time in Settings under Error diagnostics.',
   );
   expect(root.textContent).toContain('Mioframe 0.1 does not use Sentry Session Replay.');
-  expect(root.textContent).toContain('https://github.com/Vyachean/Mioframe/discussions');
-  expect(root.textContent).toContain('https://github.com/Vyachean/Mioframe/issues');
+  expect(root.textContent).toContain('https://github.com/Vyachean/mioframe/discussions');
+  expect(root.textContent).toContain('https://github.com/Vyachean/mioframe/issues');
 
   app.unmount();
   root.remove();
@@ -109,10 +109,10 @@ it('renders privacy markdown structure and safe external links', async () => {
 
   const links = Array.from(root.querySelectorAll('a'));
   expect(links).toHaveLength(2);
-  expect(links[0]?.getAttribute('href')).toBe('https://github.com/Vyachean/Mioframe/discussions');
+  expect(links[0]?.getAttribute('href')).toBe('https://github.com/Vyachean/mioframe/discussions');
   expect(links[0]?.getAttribute('target')).toBe('_blank');
   expect(links[0]?.getAttribute('rel')).toBe('noopener noreferrer');
-  expect(links[1]?.getAttribute('href')).toBe('https://github.com/Vyachean/Mioframe/issues');
+  expect(links[1]?.getAttribute('href')).toBe('https://github.com/Vyachean/mioframe/issues');
   expect(links[1]?.getAttribute('target')).toBe('_blank');
   expect(links[1]?.getAttribute('rel')).toBe('noopener noreferrer');
 

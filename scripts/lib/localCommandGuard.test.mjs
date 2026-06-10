@@ -209,7 +209,7 @@ describe('runGuardedExpensiveLocalCommand', () => {
       env: {
         ...process.env,
         MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1',
-        MIOFRAME_VERIFY_LOCK_HELD: '1',
+        MIOFRAME_MACHINE_LOCK_HELD: '1',
       },
     });
   });
