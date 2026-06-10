@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { starterExampleDefinitions, type StarterExampleId } from '@entity/starterExample';
 import {
   ExampleDocumentCreateCard,
+  markDatabaseExampleDocumentCreateSuccess,
   useExampleDocumentsCreate,
 } from '@feature/exampleDocumentsCreate';
 import { StarterExamplesDismissButton } from '@feature/starterExamplesDismiss';
@@ -10,7 +11,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDCard } from '@shared/ui/Card';
 
 const emit = defineEmits<{
-  openDocument: [payload: { documentDirectory: string; documentId: AMDocumentId }];
+  createdDocument: [payload: { documentDirectory: string; documentId: AMDocumentId }];
 }>();
 
 const {
@@ -25,7 +26,7 @@ const {
 const isBusy = computed(() => isCreatingWeeklyPlanExample.value || isCreatingShoppingExample.value);
 
 const onOpenDocument = (payload: { documentDirectory: string; documentId: AMDocumentId }) => {
-  emit('openDocument', payload);
+  emit('createdDocument', payload);
 };
 
 const onCreateExample = async (exampleId: StarterExampleId) => {
@@ -33,6 +34,10 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
     exampleId === 'weeklyPlan' ? await createWeeklyPlanExample() : await createShoppingExample();
 
   if (createdExample) {
+    markDatabaseExampleDocumentCreateSuccess(
+      createdExample.documentDirectory,
+      createdExample.documentId,
+    );
     onOpenDocument(createdExample);
   }
 };
