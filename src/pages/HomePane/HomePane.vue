@@ -46,7 +46,7 @@ const openDocument = async (documentDirectory: string, documentId: AMDocumentId)
   );
 };
 
-const onOpenStarterExampleDocument = ({
+const onCreatedStarterExampleDocument = ({
   documentDirectory,
   documentId,
 }: {
@@ -67,7 +67,7 @@ const onOpenStarterExampleDocument = ({
 
     <StarterExamplesWidget
       v-if="!settings.hideStarterWidget"
-      @open-document="onOpenStarterExampleDocument"
+      @created-document="onCreatedStarterExampleDocument"
     />
 
     <LocalFSWidget @click-path="onClickLocalPath" />
