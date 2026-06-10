@@ -280,7 +280,9 @@ export class MemoryFileSystem implements IFileSystemProvider {
       }
 
       if (hasChildren && !recursive) {
-        return Promise.reject(new Error('Directory not empty'));
+        return Promise.reject(
+          new VfsError(FileSystemError.DirectoryNotEmpty, 'Directory is not empty.'),
+        );
       }
 
       if (hasChildren && recursive) {
@@ -294,7 +296,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
               );
             }
 
-            toDelete.add(path);
+            toDelete.add(storedPath);
           }
         }
         toDelete.forEach((key) => this.store.delete(key));

@@ -108,7 +108,7 @@ const resolveRecordForWrite = (path: string, records: Map<string, ActiveDeviceFi
   const record = rootName ? records.get(rootName) : undefined;
 
   if (!record) {
-    throw new VfsError(FileSystemError.FileNotFound, `Directory not found: ${path}`);
+    throw new VfsError(FileSystemError.FileNotFound, 'Directory not found.');
   }
 
   return {
@@ -205,7 +205,7 @@ export const DeviceFileSystemProvider = (
       const record = records.get(rootName);
 
       if (!record) {
-        throw new VfsError(FileSystemError.FileNotFound, `Directory not found: ${path}`);
+        throw new VfsError(FileSystemError.FileNotFound, 'Directory not found.');
       }
 
       const rootStat = await record.provider.stat('/');
@@ -223,10 +223,7 @@ export const DeviceFileSystemProvider = (
     const normalizedPath = PathUtils.normalize(path);
 
     if (isMountedRootPath(normalizedPath)) {
-      throw new VfsError(
-        FileSystemError.FileIsADirectory,
-        `Cannot read directory: ${normalizedPath}`,
-      );
+      throw new VfsError(FileSystemError.FileIsADirectory, 'Cannot read a mounted root as a file.');
     }
 
     return vfs.readFile(normalizedPath);
@@ -240,10 +237,7 @@ export const DeviceFileSystemProvider = (
     const normalizedPath = PathUtils.normalize(path);
 
     if (isMountedRootPath(normalizedPath)) {
-      throw new VfsError(
-        FileSystemError.NotSupported,
-        `Cannot create files at root path: ${normalizedPath}`,
-      );
+      throw new VfsError(FileSystemError.NotSupported, 'Cannot create files at the mounted root.');
     }
 
     const { record, relativePath } = resolveRecordForWrite(normalizedPath, records);
@@ -268,10 +262,7 @@ export const DeviceFileSystemProvider = (
     const normalizedPath = PathUtils.normalize(path);
 
     if (isMountedRootPath(normalizedPath)) {
-      throw new VfsError(
-        FileSystemError.NotSupported,
-        `Cannot create mounted roots at: ${normalizedPath}`,
-      );
+      throw new VfsError(FileSystemError.NotSupported, 'Cannot create mounted roots.');
     }
 
     return vfs.createDirectory(normalizedPath);
@@ -292,10 +283,7 @@ export const DeviceFileSystemProvider = (
     const normalizedNewPath = PathUtils.normalize(newPath);
 
     if (isMountedRootPath(normalizedOldPath) || isMountedRootPath(normalizedNewPath)) {
-      throw new VfsError(
-        FileSystemError.NotSupported,
-        `Cannot move mounted roots: ${oldPath} -> ${newPath}`,
-      );
+      throw new VfsError(FileSystemError.NotSupported, 'Cannot move mounted roots.');
     }
 
     return vfs.move(normalizedOldPath, normalizedNewPath);

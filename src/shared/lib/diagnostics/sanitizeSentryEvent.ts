@@ -2,7 +2,11 @@ import type {
   ErrorEvent as SentryErrorEvent,
   Contexts as SentryContexts,
   User as SentryUser,
+  Exception as SentryException,
 } from '@sentry/vue';
+
+type SentryMechanism = NonNullable<SentryException['mechanism']>;
+type SentryStacktrace = NonNullable<SentryException['stacktrace']>;
 import { isSessionSentryUserId } from './sentrySession';
 import type { SentryReportingState } from './sentryRuntimeState';
 import { createBeforeBreadcrumb, sanitizeTechnicalBreadcrumbs } from './technicalBreadcrumbs';
@@ -11,6 +15,7 @@ import {
   isSensitiveValue,
   DEFAULT_MAX_STRING,
   sanitizeFlatRecord,
+  sanitizePrimitiveString,
 } from './privacySanitizer';
 
 // ---------------------------------------------------------------------------
@@ -128,6 +133,102 @@ export const sanitizeUser = (user: SentryUser | undefined): { id: string } | und
 };
 
 // ---------------------------------------------------------------------------
+// Exception entry sanitization — scrubs sensitive data from full exception entries
+// ---------------------------------------------------------------------------
+
+const SANITIZED_PLACEHOLDER = '[sanitized]';
+
+/**
+ * Sanitizes mechanism fields, keeping structural metadata and dropping variable data.
+ * Preserves: type, handled, synthetic, source, exception_id, parent_id, is_exception_group.
+ * Drops: data and meta (may contain raw event targets, handler names, or provider details).
+ * @param mechanism - Sentry mechanism object.
+ * @returns Sanitized mechanism.
+ */
+export const sanitizeMechanism = (mechanism: SentryMechanism): SentryMechanism => {
+  const { type, handled, synthetic, source, exception_id, parent_id, is_exception_group } =
+    mechanism;
+  const safe: SentryMechanism = { type };
+  if (handled !== undefined) safe.handled = handled;
+  if (synthetic !== undefined) safe.synthetic = synthetic;
+  if (source !== undefined) safe.source = source;
+  if (exception_id !== undefined) safe.exception_id = exception_id;
+  if (parent_id !== undefined) safe.parent_id = parent_id;
+  if (is_exception_group !== undefined) safe.is_exception_group = is_exception_group;
+  return safe;
+};
+
+/**
+ * Sanitizes stacktrace by stripping per-frame variable bindings (`vars`), which may contain
+ * local variable values captured at throw time. Keeps all other frame fields intact.
+ * @param stacktrace - Sentry stacktrace object.
+ * @returns Sanitized stacktrace with `vars` removed from every frame.
+ */
+export const sanitizeStacktrace = (stacktrace: SentryStacktrace): SentryStacktrace => {
+  if (!stacktrace.frames) return stacktrace;
+  return {
+    ...stacktrace,
+    frames: stacktrace.frames.map(({ vars: _vars, ...rest }) => rest),
+  };
+};
+
+/**
+ * Sanitizes a single exception entry.
+ * - Replaces `value` (error message) when it looks like a path, URL, email, or storage key.
+ * - Strips `mechanism.data` and `mechanism.meta` (may carry raw event targets or provider text).
+ * - Strips `stacktrace.frames[].vars` (per-frame local variable bindings).
+ * - Drops custom enumerable exception fields not part of the standard interface.
+ * - Preserves: type, stacktrace frames (filename/function/lineno/colno), mechanism type/handled.
+ * @param excValue - Sentry exception entry.
+ * @returns Sanitized exception entry.
+ */
+export const sanitizeExceptionValue = (excValue: SentryException): SentryException => {
+  const { value, type, mechanism, module, thread_id, stacktrace } = excValue;
+
+  const safe: SentryException = {};
+  if (type !== undefined) {
+    safe.type = sanitizePrimitiveString(type, DEFAULT_MAX_STRING) ?? 'Error';
+  }
+  if (module !== undefined) {
+    const safeModule = sanitizePrimitiveString(module, DEFAULT_MAX_STRING);
+    if (safeModule !== undefined) safe.module = safeModule;
+  }
+  if (thread_id !== undefined) safe.thread_id = thread_id;
+
+  if (value !== undefined) {
+    const safeValue = sanitizePrimitiveString(value, DEFAULT_MAX_STRING);
+    safe.value = safeValue !== undefined ? safeValue : SANITIZED_PLACEHOLDER;
+  }
+
+  if (mechanism !== undefined) {
+    safe.mechanism = sanitizeMechanism(mechanism);
+  }
+
+  if (stacktrace !== undefined) {
+    safe.stacktrace = sanitizeStacktrace(stacktrace);
+  }
+
+  return safe;
+};
+
+/**
+ * Sanitizes all exception values in the exception chain.
+ * Sentry serializes `error.cause` chains as additional linked exception entries.
+ * This ensures sensitive messages in nested causes are also scrubbed.
+ * @param exception - Sentry event exception container.
+ * @returns Exception container with sanitized values, or `undefined` when absent.
+ */
+export const sanitizeExceptionValues = (
+  exception: SentryErrorEvent['exception'],
+): SentryErrorEvent['exception'] => {
+  if (!exception?.values) return exception;
+  return {
+    ...exception,
+    values: exception.values.map(sanitizeExceptionValue),
+  };
+};
+
+// ---------------------------------------------------------------------------
 // Main sanitizer — used as Sentry beforeSend callback
 // ---------------------------------------------------------------------------
 
@@ -162,6 +263,7 @@ export { createBeforeBreadcrumb };
  * - Drops events when reporting is not enabled.
  * - Drops unhandled `WebFileSystemAccessRequiredError` events (surfaced separately as recovery UI).
  * - Strips `request` entirely.
+ * - Sanitizes exception value messages (the error message in Sentry's exception chain).
  * - Sanitizes breadcrumbs, contexts, user, tags, and extras using denylist-based filtering.
  * - Keeps a session-scoped `user.id`; strips all other user fields.
  * @param root0 - Factory parameters (`isVerbose` and `getState`).
@@ -176,6 +278,11 @@ export const createBeforeSend: BeforeSendFactory =
     const sanitized: SentryErrorEvent = { ...event };
 
     delete sanitized.request;
+
+    const safeException = sanitizeExceptionValues(event.exception);
+    if (safeException !== undefined) {
+      sanitized.exception = safeException;
+    }
 
     const safeBreadcrumbs = sanitizeTechnicalBreadcrumbs(event.breadcrumbs, isVerbose);
     if (safeBreadcrumbs !== undefined) {

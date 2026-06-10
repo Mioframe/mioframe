@@ -11,31 +11,26 @@ import {
   statusesStarterExample,
 } from '@entity/starterExample';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { DomainError } from '@shared/lib/error';
 import { createStarterExampleDocument } from './createStarterExampleDocument';
 
 const EXAMPLES_DIRECTORY_NAME = 'Examples';
 const EXAMPLE_CREATE_ERROR_MESSAGE = 'Could not create example';
 const MAX_EXAMPLE_DIRECTORY_ATTEMPTS = 100;
 
+/** Stable error codes for example document creation failures. */
+export enum ExampleDocumentsCreateErrorCode {
+  CreateFailed = 'exampleDocumentsCreate.createFailed',
+  DirectoryLimitExceeded = 'exampleDocumentsCreate.directoryLimitExceeded',
+}
+
 type ExampleResult = {
   documentDirectory: string;
   documentId: AMDocumentId;
 };
 
-const DIRECTORY_LIMIT_ERROR_CODE = 'example-create-directory-limit-exceeded';
-
 const isAlreadyExistingDirectoryError = (error: unknown) =>
   error instanceof VfsError && error.code === FileSystemError.FileExists;
-
-const isDirectoryLimitError = (error: unknown) =>
-  error instanceof DomainError && error.code === DIRECTORY_LIMIT_ERROR_CODE;
-
-const buildExampleCreateCause = (error: unknown): string => {
-  if (isDirectoryLimitError(error)) return DIRECTORY_LIMIT_ERROR_CODE;
-  if (error instanceof VfsError) return `example-create-vfs-${error.code}`;
-  return 'example-create-unexpected';
-};
 
 /**
  * Composable for creating starter example documents in the first available indexed OPFS directory.
@@ -72,8 +67,7 @@ export const useExampleDocumentsCreate = () => {
     for (;;) {
       if (index > MAX_EXAMPLE_DIRECTORY_ATTEMPTS) {
         throw new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
-          cause: createSafeErrorCause(DIRECTORY_LIMIT_ERROR_CODE),
-          code: DIRECTORY_LIMIT_ERROR_CODE,
+          code: ExampleDocumentsCreateErrorCode.DirectoryLimitExceeded,
         });
       }
 
@@ -103,12 +97,6 @@ export const useExampleDocumentsCreate = () => {
     }
   };
 
-  const makeExampleCreateError = (error: unknown): DomainError =>
-    new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
-      cause: createSafeErrorCause(buildExampleCreateCause(error)),
-      code: 'example-create-failed',
-    });
-
   const createWeeklyPlanExample = async (): Promise<ExampleResult | undefined> => {
     weeklyPlanErrorMessage.value = undefined;
     activeExample.value = 'weekly';
@@ -134,10 +122,13 @@ export const useExampleDocumentsCreate = () => {
       };
     } catch (error) {
       weeklyPlanErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
-      captureDiagnosticException(makeExampleCreateError(error), {
-        feature: 'exampleDocumentsCreate',
-        action: 'createWeeklyPlanExample',
-      });
+      captureDiagnosticException(
+        new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+          code: ExampleDocumentsCreateErrorCode.CreateFailed,
+          cause: error,
+        }),
+        { feature: 'exampleDocumentsCreate', action: 'createWeeklyPlanExample' },
+      );
       return undefined;
     } finally {
       activeExample.value = undefined;
@@ -169,10 +160,13 @@ export const useExampleDocumentsCreate = () => {
       };
     } catch (error) {
       shoppingErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
-      captureDiagnosticException(makeExampleCreateError(error), {
-        feature: 'exampleDocumentsCreate',
-        action: 'createShoppingExample',
-      });
+      captureDiagnosticException(
+        new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+          code: ExampleDocumentsCreateErrorCode.CreateFailed,
+          cause: error,
+        }),
+        { feature: 'exampleDocumentsCreate', action: 'createShoppingExample' },
+      );
       return undefined;
     } finally {
       activeExample.value = undefined;

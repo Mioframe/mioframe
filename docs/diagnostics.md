@@ -258,9 +258,30 @@ Adding a new diagnostic step should not require editing global interfaces.
 
 ---
 
+## Error construction
+
+Wrap boundary failures using `DomainError` with a safe message, a stable enum code, and the raw runtime cause:
+
+```ts
+throw new DomainError('Could not save changes.', {
+  code: RepositoryErrorCode.SaveFailed,
+  cause: error,
+});
+```
+
+- `DomainError.message` — user-safe short string; no paths, names, ids, URLs, or raw external text.
+- `DomainError.code` — stable string enum value defined close to the error's source; no global registry.
+- `DomainError.cause` — raw runtime cause preserved for in-app debugging; `beforeSend` scrubs it from Sentry export.
+
+Do not create feature-local classifiers or manual VFS-to-feature error mappings. Use enum codes and raw cause.
+
+Raw `cause` is allowed inside the app and in trusted in-app proxy transfer. It must not reach Sentry, logs, or external reports without going through the sanitizer.
+
+---
+
 ## Privacy boundary
 
-Forbidden everywhere in diagnostics, breadcrumbs, logs, tags, contexts, extras, and test sinks:
+Forbidden in Sentry outgoing events, breadcrumbs, logs, tags, contexts, extras, and test sinks:
 
 - absolute or relative paths;
 - file names;
@@ -268,19 +289,21 @@ Forbidden everywhere in diagnostics, breadcrumbs, logs, tags, contexts, extras, 
 - document ids;
 - Automerge storage keys;
 - URLs;
-- raw external/browser error messages;
-- raw causes;
+- raw external/browser error messages in exception values, linked causes, or breadcrumb data;
 - file contents or bytes;
 - handles, provider objects, callbacks, capabilities, credentials, clients;
 - user-entered text;
 - long-term user/device/account identifiers.
 
-Allowed values:
+`DomainError.cause` may hold raw runtime errors inside the app. The `beforeSend` sanitizer removes sensitive content from outgoing Sentry events.
+
+Allowed values in Sentry events:
 
 - project-controlled short strings;
 - booleans;
 - small integers;
-- generated attempt IDs.
+- generated attempt IDs;
+- stable error codes and exception types.
 
 Session identity is memory-only and session-scoped. `beforeSend` must keep only a valid `session:<uuid>` user id and strip all other user fields.
 
@@ -301,6 +324,7 @@ The shared runtime uses `beforeBreadcrumb` and `beforeSend` as the final client-
 `beforeSend` must:
 
 - strip `request` entirely;
+- sanitize exception value messages for all entries in the exception chain (including linked `cause` exceptions);
 - sanitize breadcrumbs again;
 - sanitize contexts, tags, extras, and user fields using denylist-based filtering (no fixed allowlists);
 - drop contexts and extras whose keys or values fail the denylist check;
@@ -358,7 +382,10 @@ Do not introduce:
 - breadcrumbs or logs that track user behavior;
 - event fields that duplicate a breadcrumb history;
 - allowlists that must be expanded for every new operation, provider, or breadcrumb category;
-- rewritten/classified error summaries passed to `captureDiagnosticException` — pass the real error.
+- rewritten/classified error summaries passed to `captureDiagnosticException` — pass the real error;
+- feature-local error classifiers or manual VFS-to-feature error mappings — use enum codes and raw cause;
+- `createSafeErrorCause` in feature code to paper over raw causes — keep raw cause and rely on `beforeSend` sanitization;
+- a global error-code registry — define each string enum close to its source boundary.
 
 ---
 

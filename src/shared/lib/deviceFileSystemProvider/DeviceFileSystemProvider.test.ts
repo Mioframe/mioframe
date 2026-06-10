@@ -286,6 +286,55 @@ describe('DeviceFileSystemProvider', () => {
     });
   });
 
+  it('VfsError messages from mounted-root operations do not contain raw paths or root names', async () => {
+    const secretName = 'SecretProjectName';
+    mountRecord(secretName);
+
+    const errors: Error[] = [];
+    const collect = (p: Promise<unknown>) =>
+      p.catch((e: unknown) => {
+        if (e instanceof Error) errors.push(e);
+      });
+
+    await collect(provider.stat('/NonExistentRoot'));
+    await collect(provider.readFile('/'));
+    await collect(provider.readFile(`/${secretName}`));
+    await collect(provider.writeFile(`/${secretName}`, 'x', { create: true, overwrite: true }));
+    await collect(provider.createDirectory(`/${secretName}`));
+    await collect(provider.move(`/${secretName}`, '/Other'));
+    await collect(provider.move('/Other', `/${secretName}`));
+    await collect(
+      provider.writeFile('/NonExistentRoot/file.txt', 'x', { create: true, overwrite: true }),
+    );
+
+    expect(errors.length).toBeGreaterThan(0);
+    for (const error of errors) {
+      expect(error.message).not.toContain(secretName);
+      expect(error.message).not.toContain('SecretProject');
+      expect(error.message).not.toContain('/Non');
+    }
+  });
+
+  it('VfsError codes from mounted-root boundary operations remain correct', async () => {
+    mountRecord('Projects');
+
+    await expect(provider.stat('/Missing')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    await expect(provider.readFile('/Projects')).rejects.toMatchObject({
+      code: FileSystemError.FileIsADirectory,
+    });
+    await expect(
+      provider.writeFile('/Projects', 'x', { create: true, overwrite: true }),
+    ).rejects.toMatchObject({ code: FileSystemError.NotSupported });
+    await expect(provider.createDirectory('/Projects')).rejects.toMatchObject({
+      code: FileSystemError.NotSupported,
+    });
+    await expect(provider.move('/Projects', '/Other')).rejects.toMatchObject({
+      code: FileSystemError.NotSupported,
+    });
+  });
+
   it('should rely on VFS delete semantics for mounted roots', async () => {
     const vfs = new VirtualFileSystem();
 

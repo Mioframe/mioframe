@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 import { DomainError } from '@shared/lib/error';
-import { useExampleDocumentsCreate } from './useExampleDocumentsCreate';
+import {
+  ExampleDocumentsCreateErrorCode,
+  useExampleDocumentsCreate,
+} from './useExampleDocumentsCreate';
 
 const {
   createDirectoryMock,
@@ -151,7 +154,8 @@ describe('useExampleDocumentsCreate', () => {
   });
 
   it('reports a safe handled diagnostic and sets a safe error message on final failure', async () => {
-    createDirectoryMock.mockRejectedValueOnce(new Error('No permission to create directory'));
+    const originalError = new Error('No permission to create directory');
+    createDirectoryMock.mockRejectedValueOnce(originalError);
 
     const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
 
@@ -170,15 +174,14 @@ describe('useExampleDocumentsCreate', () => {
       action: 'createWeeklyPlanExample',
     });
     if (!(reportedError instanceof DomainError)) return;
-    expect(reportedError.cause).toBeInstanceOf(Error);
-    if (!(reportedError.cause instanceof Error)) return;
-    expect(reportedError.cause.message).toBe('example-create-unexpected');
+    expect(reportedError.message).toBe('Could not create example');
+    expect(reportedError.code).toBe(ExampleDocumentsCreateErrorCode.CreateFailed);
+    expect(reportedError.cause).toBe(originalError);
   });
 
-  it('does not include raw paths, directory names, or raw error messages in the reported diagnostic', async () => {
-    createDirectoryMock.mockRejectedValueOnce(
-      new Error('ENOENT: no such file or directory, mkdir /private/Examples'),
-    );
+  it('wraps the raw cause in a DomainError with safe message and enum code — raw cause preserved for runtime debugging', async () => {
+    const rawError = new Error('ENOENT: no such file or directory, mkdir /private/Examples');
+    createDirectoryMock.mockRejectedValueOnce(rawError);
 
     const { createWeeklyPlanExample } = useExampleDocumentsCreate();
 
@@ -188,20 +191,16 @@ describe('useExampleDocumentsCreate', () => {
     expect(reportedError).toBeInstanceOf(DomainError);
     if (!(reportedError instanceof DomainError)) return;
 
+    expect(reportedError.message).toBe('Could not create example');
     expect(reportedError.message).not.toContain('/');
     expect(reportedError.message).not.toContain('Examples');
     expect(reportedError.message).not.toContain('ENOENT');
-    expect(reportedError.message).not.toContain('mkdir');
+    expect(reportedError.code).toBe(ExampleDocumentsCreateErrorCode.CreateFailed);
 
-    expect(reportedError.cause).toBeInstanceOf(Error);
-    if (!(reportedError.cause instanceof Error)) return;
-    expect(reportedError.cause.message).toBe('example-create-unexpected');
-    expect(reportedError.cause.message).not.toContain('/');
-    expect(reportedError.cause.message).not.toContain('Examples');
-    expect(reportedError.cause.message).not.toContain('ENOENT');
+    expect(reportedError.cause).toBe(rawError);
   });
 
-  it('does not pass an arbitrary lower-layer DomainError as-is to diagnostics', async () => {
+  it('wraps a lower-layer DomainError as the raw cause, not by re-using it as the reported error', async () => {
     const lowerLayerDomainError = new DomainError('Internal storage failure', {
       code: 'storage-internal',
     });
@@ -216,15 +215,16 @@ describe('useExampleDocumentsCreate', () => {
     expect(reportedError).toBeInstanceOf(DomainError);
     if (!(reportedError instanceof DomainError)) return;
     expect(reportedError.message).toBe('Could not create example');
-    expect(reportedError.cause).toBeInstanceOf(Error);
-    if (!(reportedError.cause instanceof Error)) return;
-    expect(reportedError.cause.message).toBe('example-create-unexpected');
+    expect(reportedError.code).toBe(ExampleDocumentsCreateErrorCode.CreateFailed);
+    expect(reportedError.cause).toBe(lowerLayerDomainError);
   });
 
   it('does not retry directory creation for VfsError codes other than FileExists', async () => {
-    createDirectoryMock.mockRejectedValueOnce(
-      new VfsError(FileSystemError.NoPermissions, 'No permission to create directory'),
+    const vfsError = new VfsError(
+      FileSystemError.NoPermissions,
+      'No permission to create directory',
     );
+    createDirectoryMock.mockRejectedValueOnce(vfsError);
 
     const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
 
@@ -238,16 +238,17 @@ describe('useExampleDocumentsCreate', () => {
     const [weeklyReportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     expect(weeklyReportedError).toBeInstanceOf(DomainError);
     if (!(weeklyReportedError instanceof DomainError)) return;
-    expect(weeklyReportedError.cause).toBeInstanceOf(Error);
-    if (!(weeklyReportedError.cause instanceof Error)) return;
-    expect(weeklyReportedError.cause.message).toBe('example-create-vfs-EACCES');
+    expect(weeklyReportedError.code).toBe(ExampleDocumentsCreateErrorCode.CreateFailed);
+    expect(weeklyReportedError.cause).toBe(vfsError);
+    expect(vfsError.code).toBe(FileSystemError.NoPermissions);
   });
 
-  it('creates a shopping example and reports safe diagnostics when creation fails', async () => {
+  it('creates a shopping example and reports raw cause wrapped in DomainError when creation fails', async () => {
+    const writeError = new Error('Cannot write document');
     createDocumentMock
       .mockReset()
       .mockResolvedValueOnce('purchase-types-doc-id')
-      .mockRejectedValueOnce(new Error('Cannot write document'));
+      .mockRejectedValueOnce(writeError);
 
     const { createShoppingExample, shoppingErrorMessage, isCreatingShoppingExample } =
       useExampleDocumentsCreate();
@@ -267,15 +268,17 @@ describe('useExampleDocumentsCreate', () => {
     });
     expect(shoppingReportedError).toBeInstanceOf(DomainError);
     if (!(shoppingReportedError instanceof DomainError)) return;
-    expect(shoppingReportedError.cause).toBeInstanceOf(Error);
-    if (!(shoppingReportedError.cause instanceof Error)) return;
-    expect(shoppingReportedError.cause.message).toBe('example-create-unexpected');
+    expect(shoppingReportedError.message).toBe('Could not create example');
+    expect(shoppingReportedError.code).toBe(ExampleDocumentsCreateErrorCode.CreateFailed);
+    expect(shoppingReportedError.cause).toBe(writeError);
   });
 
-  it('classifies a VfsError from shopping example directory creation as a safe vfs cause', async () => {
-    createDirectoryMock.mockRejectedValueOnce(
-      new VfsError(FileSystemError.NoPermissions, 'No permission to create directory'),
+  it('preserves a VfsError from shopping example directory creation as the raw cause', async () => {
+    const vfsError = new VfsError(
+      FileSystemError.NoPermissions,
+      'No permission to create directory',
     );
+    createDirectoryMock.mockRejectedValueOnce(vfsError);
 
     const { createShoppingExample, shoppingErrorMessage } = useExampleDocumentsCreate();
 
@@ -287,12 +290,12 @@ describe('useExampleDocumentsCreate', () => {
     const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     expect(reportedError).toBeInstanceOf(DomainError);
     if (!(reportedError instanceof DomainError)) return;
-    expect(reportedError.cause).toBeInstanceOf(Error);
-    if (!(reportedError.cause instanceof Error)) return;
-    expect(reportedError.cause.message).toBe('example-create-vfs-EACCES');
+    expect(reportedError.code).toBe(ExampleDocumentsCreateErrorCode.CreateFailed);
+    expect(reportedError.cause).toBe(vfsError);
+    expect(vfsError.code).toBe(FileSystemError.NoPermissions);
   });
 
-  it('stops directory creation after the safety limit and reports a privacy-safe diagnostic', async () => {
+  it('stops directory creation after the safety limit and reports using DirectoryLimitExceeded cause', async () => {
     createDirectoryMock.mockRejectedValue(
       new VfsError(FileSystemError.FileExists, 'Directory already exists'),
     );
@@ -310,15 +313,14 @@ describe('useExampleDocumentsCreate', () => {
     expect(reportedError).toBeInstanceOf(DomainError);
     if (!(reportedError instanceof DomainError)) return;
 
+    expect(reportedError.message).toBe('Could not create example');
     expect(reportedError.message).not.toContain('/');
     expect(reportedError.message).not.toContain('Examples');
+    expect(reportedError.code).toBe(ExampleDocumentsCreateErrorCode.CreateFailed);
 
-    expect(reportedError.cause).toBeInstanceOf(Error);
-    if (!(reportedError.cause instanceof Error)) return;
-    expect(reportedError.cause.message).toBe('example-create-directory-limit-exceeded');
-    expect(reportedError.cause.message).not.toContain('/');
-    expect(reportedError.cause.message).not.toContain('Examples');
-    expect(reportedError.cause.message).not.toContain('already exists');
+    expect(reportedError.cause).toBeInstanceOf(DomainError);
+    if (!(reportedError.cause instanceof DomainError)) return;
+    expect(reportedError.cause.code).toBe(ExampleDocumentsCreateErrorCode.DirectoryLimitExceeded);
   });
 
   it('exposes weekly loading while creation is in flight and clears it after completion', async () => {

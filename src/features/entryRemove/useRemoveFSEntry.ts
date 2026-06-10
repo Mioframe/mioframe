@@ -1,20 +1,14 @@
 import { useFileSystem } from '@entity/mountedDirectories';
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { DomainError } from '@shared/lib/error';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
 enum EntryRemoveErrorCode {
-  removeFailed = 'remove-failed',
-  recursiveRemoveFailed = 'recursive-remove-failed',
+  removeFailed = 'entryRemove.removeFailed',
+  recursiveRemoveFailed = 'entryRemove.recursiveRemoveFailed',
 }
-
-const toReportedRemoveError = (message: string, causeMessage: string, code: EntryRemoveErrorCode) =>
-  new DomainError(message, {
-    cause: createSafeErrorCause(causeMessage),
-    code,
-  });
 
 /**
  * Creates a user-triggered remove action for file-system entries.
@@ -63,12 +57,11 @@ export const useRemoveFSEntry = () => {
             });
             try {
               await removeEntry(path, true);
-            } catch {
-              const reportedError = toReportedRemoveError(
-                'Could not remove the directory',
-                'File system recursive remove operation failed',
-                EntryRemoveErrorCode.recursiveRemoveFailed,
-              );
+            } catch (recursiveError) {
+              const reportedError = new DomainError('Could not remove the directory', {
+                cause: recursiveError,
+                code: EntryRemoveErrorCode.recursiveRemoveFailed,
+              });
 
               addSnackbar({
                 text: 'Could not remove the directory',
@@ -80,11 +73,10 @@ export const useRemoveFSEntry = () => {
             }
           }
         } else {
-          const reportedError = toReportedRemoveError(
-            'Could not remove the item',
-            'File system remove operation failed',
-            EntryRemoveErrorCode.removeFailed,
-          );
+          const reportedError = new DomainError('Could not remove the item', {
+            cause: error,
+            code: EntryRemoveErrorCode.removeFailed,
+          });
 
           addSnackbar({
             text: 'Could not remove the item',
