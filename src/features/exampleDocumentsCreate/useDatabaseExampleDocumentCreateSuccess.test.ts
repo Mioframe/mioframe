@@ -1,5 +1,5 @@
 import { Repo } from '@automerge/automerge-repo';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { describe, expect, it } from 'vitest';
 import {
   markDatabaseExampleDocumentCreateSuccess,
@@ -72,5 +72,80 @@ describe('useDatabaseExampleDocumentCreateSuccess', () => {
     const docId = createDocumentId();
     const { isVisible } = useDatabaseExampleDocumentCreateSuccess(ref(DIR), ref(docId));
     expect(isVisible.value).toBe(false);
+  });
+
+  describe('reactive identity changes', () => {
+    it('shows card when refs change from unmatched doc A to marked doc B', async () => {
+      const docA = createDocumentId();
+      const docB = createDocumentId();
+      markDatabaseExampleDocumentCreateSuccess(DIR, docB);
+
+      const dirRef = ref(DIR);
+      const idRef = ref(docA);
+      const { isVisible } = useDatabaseExampleDocumentCreateSuccess(dirRef, idRef);
+      expect(isVisible.value).toBe(false);
+
+      idRef.value = docB;
+      await nextTick();
+
+      expect(isVisible.value).toBe(true);
+    });
+
+    it('hides card when refs change away from consumed doc B to doc C', async () => {
+      const docB = createDocumentId();
+      const docC = createDocumentId();
+      markDatabaseExampleDocumentCreateSuccess(DIR, docB);
+
+      const dirRef = ref(DIR);
+      const idRef = ref(docB);
+      const { isVisible } = useDatabaseExampleDocumentCreateSuccess(dirRef, idRef);
+      expect(isVisible.value).toBe(true);
+
+      idRef.value = docC;
+      await nextTick();
+
+      expect(isVisible.value).toBe(false);
+    });
+
+    it('remains hidden when refs change back to already-consumed doc B', async () => {
+      const docB = createDocumentId();
+      const docC = createDocumentId();
+      markDatabaseExampleDocumentCreateSuccess(DIR, docB);
+
+      const dirRef = ref(DIR);
+      const idRef = ref(docB);
+      const { isVisible } = useDatabaseExampleDocumentCreateSuccess(dirRef, idRef);
+      expect(isVisible.value).toBe(true);
+
+      idRef.value = docC;
+      await nextTick();
+      expect(isVisible.value).toBe(false);
+
+      idRef.value = docB;
+      await nextTick();
+
+      expect(isVisible.value).toBe(false);
+    });
+
+    it('second composable for already-consumed doc B does not show the card', async () => {
+      const docA = createDocumentId();
+      const docB = createDocumentId();
+      markDatabaseExampleDocumentCreateSuccess(DIR, docB);
+
+      const dirRef = ref(DIR);
+      const idRef = ref(docA);
+      const first = useDatabaseExampleDocumentCreateSuccess(dirRef, idRef);
+      expect(first.isVisible.value).toBe(false);
+
+      idRef.value = docB;
+      await nextTick();
+      expect(first.isVisible.value).toBe(true);
+
+      const { isVisible: secondVisible } = useDatabaseExampleDocumentCreateSuccess(
+        ref(DIR),
+        ref(docB),
+      );
+      expect(secondVisible.value).toBe(false);
+    });
   });
 });
