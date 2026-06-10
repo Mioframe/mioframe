@@ -8,6 +8,14 @@ const makeKey = (documentDirectory: string, documentId: AMDocumentId): string =>
   JSON.stringify([documentDirectory, documentId]);
 
 /**
+ * Clears all pending markers to prevent state leakage between test cases.
+ * @internal
+ */
+export const resetDatabaseExampleDocumentCreateSuccessForTest = (): void => {
+  pendingKeys.clear();
+};
+
+/**
  * Marks a database document as having just been created from a starter example.
  * The state is in-memory only and is consumed on the first matching render.
  * @param documentDirectory - Directory path of the created document

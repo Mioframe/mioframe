@@ -1,8 +1,9 @@
 import { Repo } from '@automerge/automerge-repo';
 import { nextTick, ref } from 'vue';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   markDatabaseExampleDocumentCreateSuccess,
+  resetDatabaseExampleDocumentCreateSuccessForTest,
   useDatabaseExampleDocumentCreateSuccess,
 } from './useDatabaseExampleDocumentCreateSuccess';
 
@@ -12,6 +13,10 @@ const OTHER_DIR = '/Device Files/Browser Storage/Examples 2';
 const createDocumentId = () => new Repo().create({}).documentId;
 
 describe('useDatabaseExampleDocumentCreateSuccess', () => {
+  afterEach(() => {
+    resetDatabaseExampleDocumentCreateSuccessForTest();
+  });
+
   it('is not visible when no mark has been set', () => {
     const docId = createDocumentId();
     const { isVisible } = useDatabaseExampleDocumentCreateSuccess(ref(DIR), ref(docId));
