@@ -1,6 +1,7 @@
 import type { IFileSystemProvider } from '../virtualFileSystem';
 import {
   WebFileSystemProvider,
+  type WebFileSystemDiagnosticStep,
   type WebFileSystemProviderAccessRequiredContext,
   type WebFileSystemProviderOptions,
 } from './WebFileSystemProvider';
@@ -15,6 +16,7 @@ export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
 type AccessRequiredHandler = (
   context: WebFileSystemProviderAccessRequiredContext,
 ) => WebFileSystemAccessRequiredDetails;
+type DiagnosticStepHandler = (event: WebFileSystemDiagnosticStep) => void;
 
 /** Mounted provider kind used by the provider-boundary factory mapping. */
 export type MountedWebFileSystemKind = 'browserStorage' | 'localDirectory';
@@ -28,15 +30,18 @@ const createProvider = (
  * Creates a provider for a user-selected directory that may need permission recovery.
  * @param rootHandle - Mounted root directory handle.
  * @param onAccessRequired - Service-owned callback that records a pending access request.
+ * @param onDiagnosticStep - Optional safe diagnostic milestone callback.
  * @returns Refreshable provider instance for the selected directory.
  */
 export const createUserSelectedDirectoryProvider = (
   rootHandle: FileSystemDirectoryHandle,
   onAccessRequired: AccessRequiredHandler,
+  onDiagnosticStep?: DiagnosticStepHandler,
 ): RefreshableWebFileSystemProvider =>
   createProvider(rootHandle, {
     permissionPolicy: 'userSelectedDirectory',
     onAccessRequired,
+    ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
   });
 
 /**
@@ -59,16 +64,19 @@ export const createOriginPrivateStorageProvider = (
 export const createMountedWebFileSystemProvider = ({
   kind,
   onAccessRequired,
+  onDiagnosticStep,
   rootHandle,
 }: {
   kind: MountedWebFileSystemKind;
   onAccessRequired?: AccessRequiredHandler | undefined;
+  onDiagnosticStep?: DiagnosticStepHandler | undefined;
   rootHandle: FileSystemDirectoryHandle;
 }): RefreshableWebFileSystemProvider =>
   kind === 'localDirectory' && onAccessRequired
-    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired)
+    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired, onDiagnosticStep)
     : kind === 'localDirectory'
       ? createProvider(rootHandle, {
           permissionPolicy: 'userSelectedDirectory',
+          ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
         })
       : createOriginPrivateStorageProvider(rootHandle);

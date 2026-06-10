@@ -1,232 +1,353 @@
 ---
 name: diagnostic-events
-description: 'Use this skill when adding, reviewing, or testing structured diagnostic events via reportDiagnosticEvent. Covers: two-layer model, when to emit events, generic event contract, enum selection, wrapper creation, sanitizeDiagnosticError, test sink usage, reporting layer policy, and privacy rules. Applies to writeAccessRecovery flows, save-replay failures, access-recovery flows, and any future instrumented operation.'
+description: 'Use this skill when adding or reviewing project diagnostics.'
 ---
 
-# Diagnostic events skill
+# Diagnostic Events Skill
 
-Use this skill before adding, reviewing, or testing any `reportDiagnosticEvent` call, new wrapper module, enum value, or `sanitizeDiagnosticError` usage.
+Use this skill when adding or reviewing diagnostics in the application.
 
-## Activation check
+Diagnostics must help explain technical failures without exposing user data.
 
-Use this skill when:
+## Design principles
 
-- Adding a new `reportDiagnosticEvent(...)` call or wrapper function.
-- Reviewing existing diagnostic event coverage.
-- Adding test coverage for a flow that emits a diagnostic event.
-- Deciding whether `reportHandledError` or `reportDiagnosticEvent` is the right call.
-- Checking which layer is allowed to emit diagnostic events.
-- Creating a new flow-specific diagnostics module.
+Keep the diagnostics layer **thin**:
 
-## Two-layer model
+- Do not build custom error classification models for Sentry. Pass the real `Error` object so native stack, mechanism, type, source maps, and Sentry grouping work correctly.
+- Do not introduce allowlists that must be expanded for every new operation, provider, or diagnostic field.
+- Do not add a parallel telemetry framework on top of Sentry.
+- Do not let UI or feature layers know about main/worker runtime details.
 
-**Generic core** (`src/shared/lib/diagnostics`):
+Worker sync and session ID management are infrastructure. Feature code calls `applyDiagnosticsPolicy` and the service layer handles the rest.
 
-- `reportDiagnosticEvent`, queue, flush, Sentry transport;
-- `sanitizeDiagnosticError`;
-- `setDiagnosticEventSink`;
-- generic enums: `DiagnosticSeverity`, `DiagnosticResult`, `DiagnosticClassification`;
-- `DiagnosticSafeTags` type.
+## Goal
 
-**Flow-specific wrappers** (next to the flow):
+Use one of three diagnostics primitives:
 
-- `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts` — current example.
+- technical breadcrumb: record an important system step before a later failure;
+- diagnostic event: report a compact terminal outcome or important failure state;
+- diagnostic exception: report an undesirable or unexpected error branch where a stack trace is useful.
 
-**Rule**: Do NOT add flow-specific feature/operation/stage/provider enum values to the shared core. Create a local `*Diagnostics.ts` module near the flow instead. The wrapper calls `reportDiagnosticEvent` internally and exposes short named functions.
+Do not use diagnostics as general logging, analytics, tracing, or product telemetry.
 
-## Key rule: which API to use
+## Choose the right primitive
 
-| Situation                                                   | Correct API             |
-| ----------------------------------------------------------- | ----------------------- |
-| Unexpected exception (programmer error or external failure) | `reportHandledError`    |
-| Structured async/status/recovery observation                | `reportDiagnosticEvent` |
-| Access recovery flow outcome                                | `reportDiagnosticEvent` |
-| Save-replay result                                          | `reportDiagnosticEvent` |
+| Need                                                                     | Use                    |
+| ------------------------------------------------------------------------ | ---------------------- |
+| Show what technical steps happened before a failure                      | technical breadcrumb   |
+| Report a terminal failure or important blocked state                     | diagnostic event       |
+| Report an unexpected or undesirable caught error where stack trace helps | diagnostic exception   |
+| Normal user cancellation or expected domain state                        | no exception           |
+| User behavior analytics                                                  | do not add diagnostics |
 
-`reportHandledError` accepts only `{ feature, action }` — there is no generic `metadata` field. Do not add it.
+## Technical breadcrumbs
 
-## String enums — use PascalCase members
+Use breadcrumbs for important system steps that explain a later failure.
 
-All diagnostic enums are TypeScript string enums with PascalCase member names and stable lowercase wire values. Always use the member form in product code:
+Good breadcrumb examples:
 
-```ts
-// Correct
-severity: DiagnosticSeverity.Error,
-result: DiagnosticResult.Stale,
-classification: DiagnosticClassification.Access,
+- permission prompt started;
+- permission prompt resolved;
+- repository save started;
+- pending save replay started;
+- file lookup started/succeeded/missing/failed;
+- file handle create started/succeeded/failed;
+- writable open started/succeeded/failed;
+- file write failed;
+- cleanup started/succeeded/failed;
+- worker diagnostics state applied.
 
-// Wrong — the old const-object pattern no longer exists
-severity: 'error',
-```
+Breadcrumbs should be technical, compact, and state-oriented.
 
-Do not use `const enum`.
+Breadcrumbs must not contain user text, file contents, raw paths, raw filenames, document ids, storage keys, URLs, emails, tokens, handles, raw browser messages, or stack traces.
 
-## Generic event contract
+Use project wrappers only. Do not call Sentry SDK directly from product code.
 
-```ts
-interface DiagnosticEvent {
-  name: string; // project-controlled dot-namespaced string constant
-  severity: DiagnosticSeverity; // Info | Warning | Error | Fatal
-  result: DiagnosticResult; // Success | Failed | Blocked | Denied | Stale | Unknown
-  classification: DiagnosticClassification; // Access | Storage | Provider | Consistency | Unexpected | Unknown
-  attemptId?: string; // crypto.randomUUID() — never user data
-  counters?: DiagnosticCounters; // safe integers only
-  error?: SanitizedDiagnosticError; // output of sanitizeDiagnosticError
-  safeTags?: DiagnosticSafeTags; // Record<string, string> — project-controlled only
-}
-```
+### Breadcrumb categories
 
-The `name` field replaces the old `feature/operation/stage` triplet. Flow-specific context goes in `safeTags`.
+Use dot-separated camelCase categories such as `repository.storage`, `webFileSystem.write`, `writeAccess.recovery`. At least one dot is required — the sanitizer rejects flat single-segment categories, overlong strings, and empty categories.
 
-## Creating a flow-specific wrapper
+### Breadcrumb data sanitization
 
-1. Create `src/shared/<area>/<flow>Diagnostics.ts` next to the flow.
-2. Define stable event names as string constants: `'flowName.eventType'`.
-3. Expose short named functions, e.g. `reportFlowNameFailure({ attemptId, error })`.
-4. Map flow outcomes to generic `DiagnosticResult` and `DiagnosticClassification`.
-5. Add `safeTags` with project-controlled values for flow context (provider, operation, etc.).
-6. **For any new `safeTags` key used:** also add that key to `SAFE_EVENT_TAG_KEYS` in `src/shared/lib/setupSentry.ts` and add a `beforeSend` survival test in `setupSentry.test.ts`. Tags not in the whitelist are silently dropped by Sentry's `beforeSend`.
-7. Add a sibling `<flow>Diagnostics.test.ts` with full coverage.
+The breadcrumb sanitizer enforces privacy through a **case-insensitive key denylist** plus a **value sanitizer**:
 
-## Dedupe/rate-limit
+- The key denylist blocks keys containing: `path`, `file`, `filename`, `name`, `document`, `doc`, `storagekey`, `key`, `url`, `uri`, `href`, `email`, `user`, `username`, `account`, `token`, `secret`, `credential`, `cookie`, `content`, `body`, `bytes`, `handle`, `message`, `cause`, `stack`, or `target`.
+- The value sanitizer rejects path-like strings, URL-like strings, email-like strings, storage-key-like identifiers, and strings exceeding the length limit.
+- Objects, arrays, Error, DOMException, handles, and all non-scalar types are rejected.
 
-`reportDiagnosticEvent` deduplicates delivery to Sentry: identical events (matching `name`, `result`, `classification`, `safeTags`, and error summary) are sent at most once per 30 seconds.
+Safe primitive values on allowed keys pass automatically — do not add new explicit allowlist entries for breadcrumb data keys.
 
-- `attemptId` is excluded from the dedupe key — loop failures with different attempt IDs are still correctly deduplicated.
-- The memory sink (`setDiagnosticEventSink`) receives every event regardless of dedupe state.
-- Dedupe is session-local and in-memory; it resets on page reload.
-- Emit diagnostic events only at terminal/abnormal states, not as progress logs. The dedupe window protects against retry loops but is not a substitute for emitting at the right moment.
+Good safe keys: `operation`, `provider`, `result`, `step`, `failureClassification`, `runtime`, `permission`, `pendingCount`.
 
-Example (from write-access recovery wrapper):
+## Diagnostic events
 
-```ts
-export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: string }): void => {
-  reportDiagnosticEvent({
-    name: 'writeAccessRecovery.permissionDenied',
-    severity: DiagnosticSeverity.Warning,
-    result: DiagnosticResult.Denied,
-    classification: DiagnosticClassification.Access,
-    attemptId,
-    safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
-  });
-};
-```
+Use diagnostic events for compact terminal or important states.
 
-## Allowed reporting layers
+Good event examples:
 
-Only these layers may call `reportDiagnosticEvent` (always through wrappers when one exists):
+- save queued because write access is missing;
+- replay failed after permission grant;
+- repository save failed;
+- pending save flush failed;
+- cleanup failed in a way that can affect data consistency;
+- unexpected provider/service boundary failure.
 
-- `src/shared/service/**` — at service boundary after recovery/flush results are known.
-- `src/shared/serviceClient/**` — main-thread broker boundary, through flow-specific wrappers.
+Do not emit diagnostic events for every step. Use breadcrumbs for step history.
 
-The following layers must never call `reportDiagnosticEvent` or Sentry directly:
+A diagnostic event should include stable enums and counters, not raw details.
 
-- `src/shared/lib/**` adapters and providers — return structured results instead.
-- `src/entities/**`, `src/features/**`, `src/widgets/**`, `src/pages/**`.
+Good fields:
 
-## Must-report policy
+- operation;
+- provider;
+- result;
+- classification;
+- failureClassification;
+- severity;
+- pendingCount;
+- flushedCount;
+- attemptId.
 
-Emit a diagnostic event for:
+Bad fields:
 
-- Stale or missing access request when recovery is attempted.
-- Permission denied after a write-access permission prompt (saves remain blocked).
-- Still-blocked state after recovery flush.
-- Storage failure after a grant.
-- Replay failures after a grant (`grantedWithReplayFailures`).
-- Failed flush with non-zero pending count.
-- Unexpected provider errors caught at the outer boundary (use `sanitizeDiagnosticError`).
+- path;
+- fileName;
+- documentId;
+- storageKey;
+- raw error message;
+- stack;
+- user text;
+- file content;
+- URL;
+- email;
+- token.
 
-Do NOT emit for:
+## Diagnostic exceptions
 
-- Cancelled file picker.
-- Cancelled permission prompt where the app remains in a valid state (`cancelled` status).
-- Ordinary validation errors or unsupported input handled by UX.
+Use `captureDiagnosticException` for unexpected or undesirable branches where a stack trace helps.
 
-## Event contract checklist
+Allowed examples:
 
-Before submitting a diagnostic event call, verify:
+- unexpected caught error at service or provider boundaries;
+- user-handled errors already shown to the user;
+- cleanup failure that may affect data consistency;
+- provider/service failure that should not happen;
+- uncaught global errors and unhandled rejections through diagnostics runtime.
 
-1. `name` is a stable project-controlled dot-separated string constant.
-2. `result` is from `DiagnosticResult` enum (PascalCase member).
-3. `classification` is from `DiagnosticClassification` enum (PascalCase member).
-4. `counters` fields are project-controlled integers only — no keys, ids, paths, or names.
-5. `error` is the output of `sanitizeDiagnosticError`, not a raw error or message.
-6. `safeTags` values are project-controlled strings — no paths, ids, names, URLs, or user data.
-7. `attemptId` is set to `crypto.randomUUID()` generated at the start of the operation — never derived from user data.
-8. No path, file name, document name, document id, storage key, URL, raw external message, or bytes appear anywhere.
+Pass the **real error object** to preserve native Sentry stack, mechanism, type, source maps, and grouping. Do not rewrite or classify the error into a custom diagnostic format.
 
-## sanitizeDiagnosticError usage
-
-Always wrap boundary errors before attaching them:
+Context fields are minimal — only what Sentry cannot derive from the error itself:
 
 ```ts
-import { sanitizeDiagnosticError, reportDiagnosticEvent } from '@shared/lib/diagnostics';
-
-reportDiagnosticEvent({
-  ...,
-  error: sanitizeDiagnosticError(caughtError),
+captureDiagnosticException(error, {
+  operation: 'repositorySave',
+  failureClassification: 'accessRequired',
+  feature: 'entryRemove', // for user-handled errors
+  action: 'removeEntry', // for user-handled errors
 });
 ```
 
-Never pass `error.message` from browser APIs, storage, network, VFS, Automerge, or other external sources to any diagnostic field.
+`eventKind: 'handledException'` is added automatically. Do not add `handled: 'true'` manually.
 
-## Attempt ID rules
+Do not pass derived fields: `errorClass`, `domExceptionName`, `vfsErrorCode`, `domainErrorCode`, `errorClassification`, or `runtime`. Sentry derives equivalent information from the native exception.
 
-- Generate at the start of one operation call: `const attemptId = crypto.randomUUID();`
-- Pass to all events within that call so they can be correlated in Sentry.
-- Must never contain or be derived from path, space name, document id, storage key, handle, or any user data.
-- Do not introduce a global tracer or span context.
+Do not manually capture exceptions for expected states:
 
-## Consent lifecycle
+- cancelled picker;
+- cancelled permission prompt;
+- expected FileNotFound during optional cleanup;
+- validation failure;
+- normal DomainError UX state;
+- user cancellation.
 
-`useDiagnosticsReporting` manages both the handled-error queue and the diagnostic event queue:
+If the error is expected and useful for context, record a breadcrumb or diagnostic event with sanitized classification instead.
 
-- When reporting becomes **enabled**: calls `flushQueuedDiagnosticEvents()` after `flushQueuedHandledReports()`.
-- When reporting becomes **disabled** or Sentry is not configured: calls `clearQueuedDiagnosticEvents()`.
+## Privacy rules
 
-The diagnostic queue flush is fire-and-forget and never produces unhandled promise rejections.
+Diagnostics must never include:
 
-## Test pattern
+- full paths;
+- directory names;
+- raw filenames;
+- document ids;
+- storage keys;
+- file handles;
+- raw browser messages;
+- stack traces in breadcrumbs/events;
+- document titles;
+- user text;
+- file contents;
+- account identifiers;
+- emails;
+- usernames;
+- tokens;
+- secrets;
+- cookies;
+- credentials.
 
-Use the in-memory sink — do not mock Sentry:
+Allowed breadcrumb values are short scalar technical markers:
+
+- enum-like strings;
+- booleans;
+- small numbers;
+- null.
+
+Examples of safe values:
+
+- operation: repositorySave;
+- provider: webFileSystem;
+- result: failed;
+- step: writableOpen;
+- permissionState: granted;
+- pendingCount: 1;
+- flushedCount: 0;
+- createdFile: true.
+
+## Error handling
+
+Do not attach error objects or raw error fields to `reportDiagnosticEvent`. Diagnostic events describe scenario milestones — use safe tags and counters only.
+
+When an actual error with a stack trace is useful, report it separately:
 
 ```ts
-import { setDiagnosticEventSink } from '@shared/lib/diagnostics';
-import type { DiagnosticEvent } from '@shared/lib/diagnostics';
-
-// In beforeEach:
-const sink: DiagnosticEvent[] = [];
-setDiagnosticEventSink(sink);
-
-// In afterEach:
-setDiagnosticEventSink(undefined);
-
-// Assert:
-expect(sink).toHaveLength(1);
-expect(sink[0]).toMatchObject({
-  name: 'writeAccessRecovery.permissionDenied',
-  result: DiagnosticResult.Denied,
-  classification: DiagnosticClassification.Access,
-  safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
+captureDiagnosticException(caughtError, {
+  operation: 'repositorySave',
+  failureClassification: 'browserFileStateChanged',
 });
-
-// Attempt ID assertion:
-expect(typeof sink[0]?.attemptId).toBe('string');
-expect(sink[0]?.attemptId).toMatch(
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-);
-
-// Privacy assertion:
-expect(JSON.stringify(sink[0])).not.toContain('/user/path');
-expect(JSON.stringify(sink[0])).not.toContain('Work');
 ```
 
-## Reference files
+For flow-specific classification (e.g. whether a `DOMException` means browser file state changed), use a local helper near the boundary that understands the operation. Do not create shared error registries.
 
-- Generic core: `src/shared/lib/diagnostics/`
-- Core tests: `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts`, `sanitizeDiagnosticError.test.ts`
-- Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`
-- Wrapper tests: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.test.ts`
-- Broker call sites: `src/shared/serviceClient/fileSystem/useFileSystemAccessPermissionBroker.ts`
-- Service boundary call: `src/shared/service/repositories/repositoriesService.ts`
-- Policy doc: `docs/diagnostics.md`
+Forbidden error fields in any diagnostic event or breadcrumb data:
+
+- message;
+- stack;
+- cause message;
+- serialized error object;
+- browser-specific raw message;
+- path-like details.
+
+## Placement rules
+
+Application code should use the public diagnostics API only.
+
+Allowed application-facing wrappers:
+
+- `addTechnicalBreadcrumb` — technical breadcrumb;
+- `reportDiagnosticEvent` — compact terminal/status event;
+- `captureDiagnosticException` — caught error as Sentry exception;
+- `applyDiagnosticsPolicy` — consent policy from service layer (feature code only);
+- diagnostics setup/runtime functions used by app or worker bootstrap only.
+
+Do not import or use raw Sentry internals from feature, entity, widget, page, service, provider, or adapter code.
+
+Forbidden application-facing imports:
+
+- raw Sentry SDK;
+- Sentry facade;
+- useSentry;
+- ensureSentry;
+- internal queues;
+- internal runtime effects registry;
+- `syncSentryStateToWorker` from feature code (use `applyDiagnosticsPolicy` instead).
+
+Providers and low-level adapters should not report Sentry events directly.
+
+If a low-level provider needs step diagnostics, inject a narrow breadcrumb callback from the owning service or factory.
+
+Service and service-client layers may emit terminal diagnostic events when they own the operation and can classify the outcome.
+
+Features, widgets, pages, and entities should not add low-level diagnostics unless they own a technical boundary being diagnosed.
+
+## Runtime behavior
+
+Call sites must not branch on Sentry state.
+
+Use project wrappers. The diagnostics runtime owns:
+
+- user consent;
+- enabled/disabled state;
+- Sentry availability;
+- sanitization;
+- queue/flush behavior;
+- worker-local runtime setup;
+- worker state synchronization.
+
+Feature code uses `applyDiagnosticsPolicy('enabled' | 'disabled' | 'unknown')`. It does not manage session IDs or worker sync directly.
+
+Public setup functions are allowed for app and worker bootstrap.
+
+Raw Sentry facade/runtime internals are implementation details.
+
+## Breadcrumb policy
+
+Breadcrumbs should be useful enough to reconstruct the technical path to a failure.
+
+Do not remove important breadcrumbs just because they are not terminal failures.
+
+Do not add noisy breadcrumbs for every small operation.
+
+Prefer milestones at boundaries:
+
+- before prompting;
+- after prompt result;
+- before replay;
+- after replay failure;
+- before write;
+- after write/open failure;
+- before cleanup;
+- after cleanup failure.
+
+## Event policy
+
+Diagnostic events should be sparse.
+
+Emit an event when the system reaches an important state that should be visible even without an exception.
+
+Examples:
+
+- save queued;
+- save failed;
+- replay failed;
+- write access recovery failed;
+- cleanup failed with data consistency risk.
+
+Do not emit events for ordinary successful steps when a breadcrumb is enough.
+
+## Testing
+
+When adding diagnostics, test behavior at the wrapper boundary.
+
+Tests should verify:
+
+- useful technical fields survive sanitization;
+- forbidden keys are removed case-insensitively;
+- unsafe values are removed or sanitized;
+- errors are projected without raw messages or stacks;
+- expected user/domain states do not capture exceptions;
+- unexpected branches capture exceptions only through project wrappers.
+
+For captured exceptions:
+
+- mock the Sentry facade boundary;
+- assert the original `Error` is passed (not a rewritten format);
+- assert `eventKind: 'handledException'` tag is present;
+- assert `contexts.diagnostic` contains only `operation` and `failureClassification`;
+- assert no private data appears.
+
+Do not add brittle tests that assert exact Sentry SDK internals unless testing diagnostics infrastructure itself.
+
+## Review checklist
+
+Before accepting diagnostic changes, check:
+
+- Does the diagnostic answer a concrete debugging question?
+- Is the primitive correct: breadcrumb, event, or exception?
+- Is the data technical and compact?
+- Are paths, filenames, ids, storage keys, user text, raw messages, and stacks excluded?
+- Is the call site using the public diagnostics API?
+- Is Sentry kept as an implementation detail?
+- Are expected user/domain states not reported as exceptions?
+- Are tests focused on behavior and privacy?
+- Is the layer thin? No derived classification models, no allowlists, no parallel frameworks?
+- Does feature code use `applyDiagnosticsPolicy` rather than calling `syncSentryStateToWorker` directly?

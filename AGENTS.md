@@ -92,7 +92,7 @@ reason:
 - Use Storybook as the preferred component playground and visual state harness.
 - Do not use Vitest, happy-dom, or Vue Test Utils for visual appearance; use Playwright screenshots against Storybook stories.
 - Use the `crdt-storage` skill for Automerge/CRDT changes, repo or document handle lifecycle, storage helpers, VFS behavior, subscriptions, listeners, workers, timers, caches, file handles, or blob URLs.
-- Use the `diagnostic-events` skill when adding, reviewing, or testing structured diagnostic events via `reportDiagnosticEvent`, adding enum values to `diagnosticEnums.ts`, using `sanitizeDiagnosticError`, or deciding whether `reportHandledError` or `reportDiagnosticEvent` is the right API. See also `docs/diagnostics.md`.
+- Use the `diagnostic-events` skill when adding, reviewing, or testing Sentry-backed observability: technical breadcrumbs, compact diagnostic events, captured exceptions, optional logs, sanitizer rules, consent-aware delivery, or diagnostic wrappers. Keep the layer thin; do not add flow-specific telemetry protocols or large diagnostic summary interfaces. See also `docs/diagnostics.md`.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
 - Keep provider adapters focused on storage operations and typed access failures. Delayed Automerge save replay belongs to Automerge persistence and repository-service coordination, while `serviceClient` keeps browser user-activation permission prompts on the main thread.
@@ -104,7 +104,7 @@ reason:
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
-- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
+- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention.
 
 ## Styling
 
@@ -129,6 +129,7 @@ reason:
 - Do not treat a green `pnpm verify` as architectural approval. Verification proves that automated checks passed; it does not prove FSD ownership, Material correctness, browser behavior, accessibility, or UX acceptance unless those checks were actually covered.
 - Treat a failed final `pnpm verify` as a blocker. Do not present the task as complete, ready for merge, or acceptable when the final read-only verification failed, unless the user explicitly asked for a partial result.
 - Treat mutation-test failures in the touched scope as actionable quality failures. Strengthen tests, reduce the mutation scope by reverting unrelated changes, or fix the implementation before final handoff; do not use passing browser or visual checks to override a failing mutation gate.
+- Treat mutation timeouts on active progress as infrastructure failures, not test success. Prefer improving timeout/progress handling over excluding changed logic from mutation coverage.
 - Keep verification gates distinct. Browser and visual checks validate rendered behavior and appearance; unit, integration, and mutation checks validate logic robustness. Passing one gate does not excuse skipping or failing another gate that applies to the change.
 - Keep user-facing copy in the application's established UI language. Task descriptions, design notes, and review comments may use another language; do not copy their text into product UI unless that language already matches the surrounding UI.
 - After user-facing UI changes, perform a final copy-language scan of touched files and newly added UI surfaces. Remove mixed-language strings, stale task wording, and technical terms that are not already part of the surrounding product UI.

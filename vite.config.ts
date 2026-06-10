@@ -17,7 +17,7 @@ export default defineConfig(({ mode, isPreview }) => {
   const isPreviewBuild = !!isPreview;
   const isStorybookBuild = process.env.APP_STORYBOOK === '1';
   const isDisablePwa = env.VITE_DISABLE_PWA === '1' || process.env.VITE_DISABLE_PWA === '1';
-
+  const buildId = env.VITE_BUILD_ID || process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || '';
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
   const pwaPlugins = isStorybookBuild
     ? []
@@ -33,12 +33,12 @@ export default defineConfig(({ mode, isPreview }) => {
         mode,
         isPreview: isPreviewBuild,
         authToken: env.SENTRY_AUTH_TOKEN,
+        release: buildId || undefined,
       });
 
   const buildDate = isStorybookBuild
     ? toolingConfig.storybook.deterministicBuildDate
     : new Date().toISOString();
-  const buildId = env.VITE_BUILD_ID || process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || '';
   const dependencyNames = Object.keys({
     ...dependencies,
     ...devDependencies,
@@ -77,7 +77,7 @@ export default defineConfig(({ mode, isPreview }) => {
       alias: getResolveAlias(),
     },
     build: {
-      sourcemap: !!sentryPlugins.length,
+      sourcemap: sentryPlugins.length ? 'hidden' : false,
       assetsDir: 'assets',
       minify: mode === 'production' || isPreviewBuild ? 'terser' : false,
       terserOptions: {
@@ -104,6 +104,7 @@ export default defineConfig(({ mode, isPreview }) => {
       __APP_VERSION__: JSON.stringify(version),
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),
+      __DIAGNOSTICS_MODE__: JSON.stringify(isPreviewBuild ? 'preview' : 'production'),
     },
   };
 });

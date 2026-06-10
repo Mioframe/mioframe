@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
-import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import {
+  encodeStorageKeyToV2FileName,
+  partialKeyToFileName,
+  storageAdapterMarkerFileName,
+} from '@shared/lib/automergeAdapter';
 import { FSNodeType, type FSNodeStat, VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import {
@@ -23,6 +27,19 @@ const createDocumentStorageFileName = () => {
 
   if (!fileName) {
     throw new Error(`Failed to create repository storage file for "${documentId}"`);
+  }
+
+  return { documentId, fileName };
+};
+
+const SAMPLE_HEX_HASH = 'a'.repeat(64);
+
+const createV2DocumentStorageFileName = () => {
+  const documentId = new Repo().create({}).documentId;
+  const fileName = encodeStorageKeyToV2FileName(documentId, 'snapshot', SAMPLE_HEX_HASH);
+
+  if (!fileName) {
+    throw new Error(`Failed to create v2 storage filename for "${documentId}"`);
   }
 
   return { documentId, fileName };
@@ -117,6 +134,58 @@ describe('repository storage file classifiers', () => {
     expect(shouldHideRepositoryStorageFile(fileName, true)).toBe(true);
     expect(shouldHideRepositoryStorageFile(fileName, false)).toBe(false);
     expect(shouldHideRepositoryStorageFile('plain.json', true)).toBe(false);
+  });
+});
+
+describe('v2 compact .am filename filtering', () => {
+  it('classifies v2 .am storage files as Automerge document files', () => {
+    const { fileName } = createV2DocumentStorageFileName();
+
+    expect(isAutomergeDocumentFileName(fileName)).toBe(true);
+  });
+
+  it('hides v2 .am storage files when hideAutomergeFiles is true', () => {
+    const { fileName } = createV2DocumentStorageFileName();
+
+    expect(shouldHideRepositoryStorageFile(fileName, true)).toBe(true);
+  });
+
+  it('keeps v2 .am storage files visible when hideAutomergeFiles is false', () => {
+    const { fileName } = createV2DocumentStorageFileName();
+
+    expect(shouldHideRepositoryStorageFile(fileName, false)).toBe(false);
+  });
+
+  it('does not classify unrelated .am files as Automerge storage', () => {
+    expect(isAutomergeDocumentFileName('notes.am')).toBe(false);
+    expect(isAutomergeDocumentFileName('attachment.am')).toBe(false);
+  });
+
+  it('filters out both legacy and v2 storage files from visible entries', () => {
+    const { fileName: legacyFileName } = createDocumentStorageFileName();
+    const { fileName: v2FileName } = createV2DocumentStorageFileName();
+
+    const result = getRegularDirectoryEntries(
+      [
+        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
+        [legacyFileName, createStat(FSNodeType.File)],
+        [v2FileName, createStat(FSNodeType.File)],
+        ['notes.txt', createStat(FSNodeType.File)],
+        ['attachment.am', createStat(FSNodeType.File)],
+      ],
+      true,
+    );
+
+    expect(result.map(([name]) => name)).toEqual(['notes.txt', 'attachment.am']);
+  });
+
+  it('extracts document ids from v2 storage filenames for repository facts', () => {
+    const { documentId, fileName } = createV2DocumentStorageFileName();
+
+    const facts = getRepositoryFacts([[fileName, createStat(FSNodeType.File)]]);
+
+    expect(facts.isInitialized).toBe(true);
+    expect(facts.documentIds).toContain(documentId);
   });
 });
 

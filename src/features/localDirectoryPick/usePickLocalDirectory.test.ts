@@ -6,13 +6,13 @@ const {
   addDeviceDirectoryMock,
   addSnackbarMock,
   alertMock,
-  reportHandledErrorMock,
+  captureDiagnosticExceptionMock,
   showDirectoryPickerMock,
 } = vi.hoisted(() => ({
   addDeviceDirectoryMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   alertMock: vi.fn(),
-  reportHandledErrorMock: vi.fn(),
+  captureDiagnosticExceptionMock: vi.fn(),
   showDirectoryPickerMock: vi.fn(),
 }));
 
@@ -34,8 +34,8 @@ vi.mock('@shared/ui/Snackbar', () => ({
   }),
 }));
 
-vi.mock('@shared/lib/reportHandledError', () => ({
-  reportHandledError: reportHandledErrorMock,
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: captureDiagnosticExceptionMock,
 }));
 
 describe('usePickLocalDirectory', () => {
@@ -43,7 +43,7 @@ describe('usePickLocalDirectory', () => {
     addDeviceDirectoryMock.mockReset();
     addSnackbarMock.mockReset();
     alertMock.mockReset();
-    reportHandledErrorMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
     showDirectoryPickerMock.mockReset();
     alertMock.mockResolvedValue(undefined);
     addDeviceDirectoryMock.mockResolvedValue(undefined);
@@ -67,8 +67,8 @@ describe('usePickLocalDirectory', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not add the folder',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
-    const [reportedError, options] = reportHandledErrorMock.mock.calls[0] ?? [];
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     expect(options).toEqual({
       feature: 'localDirectoryPick',
       action: 'pickLocalDirectory',

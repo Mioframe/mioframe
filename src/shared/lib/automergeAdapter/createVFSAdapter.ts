@@ -3,102 +3,106 @@ import type { AMChunk } from '@shared/lib/automerge';
 import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
-import { fileNameToPartialKey } from './fileNameToPartialKey';
-import { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
-import { partialKeyToFileName } from './partialKeyToFileName';
+import {
+  listStorageFileEntries,
+  selectReadableStorageEntries,
+  storageKeyHasPrefix,
+  storageKeyToId,
+  toWritableStorageFileName,
+} from './storageKeyHelpers';
 
+/**
+ * Creates an Automerge storage adapter backed by a VirtualFileSystem path.
+ * New writes use v2 compact filenames. Reads and listings recognise both legacy and v2 files.
+ * @param vfs - Mounted virtual file system.
+ * @param path - Absolute path of the repository directory inside the VFS.
+ * @returns Automerge storage adapter interface.
+ */
 export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageAdapterInterface => {
-  const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
-    const fileName = partialKeyToFileName(key, { withExtension: false });
-
+  const listDeduplicatedEntries = async (): Promise<
+    Map<string, { name: string; key: PartialStorageKey; isV2: boolean }>
+  > => {
     const directoryContent = await vfs.readDirectory(path);
 
-    if (fileName) {
-      const [matchedName] =
-        directoryContent.find(([directoryEntryName]) => directoryEntryName.startsWith(fileName)) ??
-        [];
+    return selectReadableStorageEntries(directoryContent.map(([name]) => name));
+  };
 
-      if (matchedName) {
-        const filePath = PathUtils.join(path, matchedName);
+  const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
+    const allEntries = await listDeduplicatedEntries();
+    const keyId = storageKeyToId(key);
+    const matched = allEntries.get(keyId);
 
-        const file = await vfs.readFile(filePath);
-
-        return new Uint8Array(await file.arrayBuffer());
-      }
+    if (!matched) {
+      return undefined;
     }
 
-    return undefined;
+    const file = await vfs.readFile(PathUtils.join(path, matched.name));
+
+    return new Uint8Array(await file.arrayBuffer());
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
-    const keyPrefixString = getPartialStorageKeyFileNamePrefix(keyPrefix);
+    const allEntries = await listDeduplicatedEntries();
+    const matched = [...allEntries.values()].filter((entry) =>
+      storageKeyHasPrefix(entry.key, keyPrefix),
+    );
 
-    if (keyPrefixString) {
-      const directoryContent = await vfs.readDirectory(path);
+    const chunkList = await Promise.allSettled(
+      matched.map(async ({ name, key }): Promise<AMChunk | undefined> => {
+        const file = await vfs.readFile(PathUtils.join(path, name));
 
-      const rangeContent = directoryContent.filter(([name]) => name.startsWith(keyPrefixString));
+        return {
+          key,
+          data: new Uint8Array(await file.arrayBuffer()),
+        };
+      }),
+    );
 
-      const chunkList = await Promise.allSettled(
-        rangeContent.map(async ([fileName]): Promise<AMChunk | undefined> => {
-          const file = await vfs.readFile(PathUtils.join(path, fileName));
+    return chunkList.reduce((acc: AMChunk[], value) => {
+      if (value.status === 'fulfilled' && value.value) {
+        acc.push(value.value);
+      }
 
-          const key = fileNameToPartialKey(fileName);
-
-          if (key) {
-            return {
-              key,
-              data: new Uint8Array(await file.arrayBuffer()),
-            };
-          }
-          return undefined;
-        }),
-      );
-
-      return chunkList.reduce((acc: AMChunk[], value) => {
-        if (value.status === 'fulfilled' && value.value) {
-          acc.push(value.value);
-        }
-        return acc;
-      }, []);
-    }
-
-    return [];
+      return acc;
+    }, []);
   };
 
-  const remove = async (key: StorageKey) => {
-    const fileName = partialKeyToFileName(key);
+  const deleteMatchingFiles = async (names: string[]): Promise<void> => {
+    const results = await Promise.allSettled(
+      names.map((name) => vfs.delete(PathUtils.join(path, name))),
+    );
 
-    if (fileName) {
-      try {
-        await vfs.delete(PathUtils.join(path, fileName));
-      } catch (error) {
-        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-          return;
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        const { reason } = result;
+
+        if (!(reason instanceof VfsError && reason.code === FileSystemError.FileNotFound)) {
+          throw reason;
         }
-
-        throw error;
       }
     }
   };
 
+  const remove = async (key: StorageKey) => {
+    const directoryContent = await vfs.readDirectory(path);
+    const matching = listStorageFileEntries(directoryContent.map(([name]) => name))
+      .filter(({ key: entryKey }) => storageKeyToId(entryKey) === storageKeyToId(key))
+      .map(({ name }) => name);
+
+    await deleteMatchingFiles(matching);
+  };
+
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    const keyPrefixString = getPartialStorageKeyFileNamePrefix(keyPrefix);
+    const directoryContent = await vfs.readDirectory(path);
+    const matching = listStorageFileEntries(directoryContent.map(([name]) => name))
+      .filter(({ key }) => storageKeyHasPrefix(key, keyPrefix))
+      .map(({ name }) => name);
 
-    if (keyPrefixString) {
-      const directoryContent = await vfs.readDirectory(path);
-
-      const rangeContent = directoryContent.filter(([name]) => name.startsWith(keyPrefixString));
-
-      await Promise.allSettled(
-        rangeContent.map(async ([name]) => {
-          await vfs.delete(PathUtils.join(path, name));
-        }),
-      );
-    }
+    await deleteMatchingFiles(matching);
   };
 
   const save = async (key: StorageKey, data: Uint8Array): Promise<void> => {
-    const fileName = partialKeyToFileName(key);
+    const fileName = toWritableStorageFileName(key);
 
     if (!fileName) {
       throw new Error('fileName is undefined');

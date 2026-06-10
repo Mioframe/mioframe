@@ -3,14 +3,13 @@ import { useRemoveFSEntry } from './useRemoveFSEntry';
 import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 
-const { addSnackbarMock, confirmMock, removeEntryMock, reportHandledErrorMock } = vi.hoisted(
-  () => ({
+const { addSnackbarMock, confirmMock, removeEntryMock, captureDiagnosticExceptionMock } =
+  vi.hoisted(() => ({
     addSnackbarMock: vi.fn(),
     confirmMock: vi.fn(),
     removeEntryMock: vi.fn(),
-    reportHandledErrorMock: vi.fn(),
-  }),
-);
+    captureDiagnosticExceptionMock: vi.fn(),
+  }));
 
 vi.mock('@entity/mountedDirectories', () => ({
   useFileSystem: () => ({
@@ -30,8 +29,8 @@ vi.mock('@shared/ui/Snackbar', () => ({
   }),
 }));
 
-vi.mock('@shared/lib/reportHandledError', () => ({
-  reportHandledError: reportHandledErrorMock,
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: captureDiagnosticExceptionMock,
 }));
 
 describe('useRemoveFSEntry', () => {
@@ -39,7 +38,7 @@ describe('useRemoveFSEntry', () => {
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
     removeEntryMock.mockReset();
-    reportHandledErrorMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
   });
 
   const expectSafeReportedDomainError = ({
@@ -53,7 +52,7 @@ describe('useRemoveFSEntry', () => {
     message: string;
     causeMessage: string;
   }) => {
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message,
         code,
@@ -67,7 +66,7 @@ describe('useRemoveFSEntry', () => {
       },
     );
 
-    const [reportedError] = reportHandledErrorMock.mock.calls.at(-1) ?? [];
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls.at(-1) ?? [];
     expect(reportedError).toBeInstanceOf(DomainError);
     expect(reportedError).not.toBeInstanceOf(VfsError);
     if (!(reportedError instanceof DomainError)) {
@@ -229,7 +228,7 @@ describe('useRemoveFSEntry', () => {
 
     expect(removeEntryMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).not.toHaveBeenCalled();
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('does not report when the directory is not empty and the user declines recursive removal', async () => {
@@ -243,6 +242,6 @@ describe('useRemoveFSEntry', () => {
     expect(removeEntryMock).toHaveBeenCalledTimes(1);
     expect(removeEntryMock).toHaveBeenCalledWith('/docs/folder');
     expect(addSnackbarMock).not.toHaveBeenCalled();
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 });

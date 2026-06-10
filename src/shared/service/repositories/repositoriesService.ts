@@ -3,15 +3,15 @@ import { useFileSystemService } from '../fileSystem';
 import { Repo } from '@automerge/automerge-repo';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
-import {
-  createRetryingStorageAdapter,
-  type RetryingStorageAdapterFlushResult,
-} from '@shared/lib/automergeAdapter';
+import { createRetryingStorageAdapter } from '@shared/lib/automergeAdapter';
+import type { WriteAccessRecoveryResult } from '../fileSystem/fileSystemAccessRequestRegistry';
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
+  reportRepositorySaveQueued,
+  reportRepositorySaveFailed,
 } from './repositoriesDiagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
@@ -39,6 +39,9 @@ import {
 } from './repositoryStorageFiles';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
+
+const isBrowserFileStateChangedError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'InvalidStateError';
 
 const setupRepositoriesService = () => {
   const { directoryContent$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
@@ -148,6 +151,18 @@ const setupRepositoriesService = () => {
       if (!repoEntry) {
         const storageRecovery = createRetryingStorageAdapter(createVFSAdapter(vfs, path), {
           shouldQueueFailedSave,
+          onSaveFailure: ({ queued, pendingCount, caughtError }) => {
+            if (queued) {
+              reportRepositorySaveQueued({ pendingCount });
+            } else {
+              reportRepositorySaveFailed({
+                pendingCount,
+                failureClassification: isBrowserFileStateChangedError(caughtError)
+                  ? 'browserFileStateChanged'
+                  : 'storageFailure',
+              });
+            }
+          },
         });
         repoEntry = {
           repo: new Repo({
@@ -230,9 +245,8 @@ const setupRepositoriesService = () => {
 
   const flushPendingRepositoryStorageSaves = async (
     mountPath: string,
-  ): Promise<RetryingStorageAdapterFlushResult> => {
+  ): Promise<WriteAccessRecoveryResult> => {
     let flushedCount = 0;
-    let pendingCount = 0;
 
     for (const [repoPath, cachedRepoEntry$] of repoObservableCache.entries()) {
       if (!PathUtils.isSameOrDescendantOf(repoPath, mountPath)) {
@@ -249,34 +263,36 @@ const setupRepositoriesService = () => {
       // eslint-disable-next-line no-await-in-loop -- preserve stable service-layer retry ordering
       const result = await storageRecovery.flushPendingSaves();
       flushedCount += result.flushedCount;
-      pendingCount += result.pendingCount;
 
       if (result.status !== 'flushed') {
+        const failureClassification =
+          result.failureClassification === 'storageFailure' &&
+          result.caughtError !== undefined &&
+          isBrowserFileStateChangedError(result.caughtError)
+            ? 'browserFileStateChanged'
+            : result.failureClassification;
+
         if (result.status === 'stillBlocked') {
           reportWriteAccessReplayStillBlocked({ flushedCount, pendingCount: result.pendingCount });
         } else {
           reportWriteAccessReplayStorageFailure({
             flushedCount,
             pendingCount: result.pendingCount,
-            failureClassification: result.failureClassification,
+            ...(failureClassification !== undefined ? { failureClassification } : {}),
           });
         }
         return {
           status: result.status,
-          flushedCount,
-          pendingCount,
-          ...(result.failureClassification !== undefined
-            ? { failureClassification: result.failureClassification }
-            : {}),
+          replay: {
+            flushedCount,
+            pendingCount: result.pendingCount,
+            ...(failureClassification !== undefined ? { failureClassification } : {}),
+          },
         };
       }
     }
 
-    return {
-      status: 'flushed',
-      flushedCount,
-      pendingCount,
-    };
+    return { status: 'flushed' };
   };
 
   registerWriteAccessRecoveryHandler(({ mountPath }) =>
@@ -292,6 +308,8 @@ const setupRepositoriesService = () => {
 
     const repo = await getRepo(path);
 
+    // repo.delete is fire-and-forget — Automerge calls adapter.removeRange internally.
+    // Failures surface in cleanupDeletedDocumentStorageFiles below.
     repo?.delete(id);
 
     await cleanupDeletedDocumentStorageFiles(vfs, path, id);

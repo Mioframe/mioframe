@@ -1,11 +1,15 @@
 import { defineWorkerClient } from '@shared/lib/wrapWorker';
 import { setupMainService, serviceId } from './setupMainService';
+import { initSentryWorkerBridge } from './sentryWorkerSync';
 import Worker from './serviceWorker.ts?worker';
 
 let worker: Worker | undefined;
 
 const getWorker = () => {
-  worker ??= new Worker();
+  if (!worker) {
+    worker = new Worker();
+    initSentryWorkerBridge(worker);
+  }
   return worker;
 };
 

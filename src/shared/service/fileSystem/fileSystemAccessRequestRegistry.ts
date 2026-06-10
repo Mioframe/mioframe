@@ -1,4 +1,5 @@
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
 import type { WebFileSystemAccessMode } from '@shared/lib/webFileSystemProvider';
 import type { FileSystemAccessOperation } from '@shared/lib/fileSystem';
 
@@ -11,21 +12,46 @@ type DeviceDirectoryAccessRequest = {
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
 
+/** Safe classification of a write recovery replay failure. */
+export type WriteAccessRecoveryFailureClassification = RetryingStorageAdapterFailureClassification;
+
+/**
+ * Safe replay summary included in non-flushed {@link WriteAccessRecoveryResult} values.
+ * Must never expose storage keys, document ids, file names, paths, or raw errors.
+ */
+export interface WriteAccessRecoveryReplaySummary {
+  /** Number of queued saves written successfully during this flush attempt. */
+  flushedCount: number;
+  /** Number of saves still queued after the flush attempt. */
+  pendingCount: number;
+  /** Safe classification of the first failure encountered, when available. */
+  failureClassification?: WriteAccessRecoveryFailureClassification | undefined;
+}
+
 /**
  * Result returned by a {@link WriteAccessRecoveryHandler} after a write recovery attempt.
  *
  * Indicates whether pending writes were flushed, are still blocked, or failed due to
  * a storage error. Must never expose handles, raw errors, document ids, file names, or bytes.
  */
-export type WriteAccessRecoveryResult = {
-  /**
-   * Outcome of the write recovery attempt:
-   * - `flushed` – all pending writes were replayed and stored successfully.
-   * - `stillBlocked` – writes could not be replayed; the provider access is still blocked.
-   * - `failed` – write replay was attempted but storage reported a failure.
-   */
-  status: 'failed' | 'flushed' | 'stillBlocked';
-};
+export type WriteAccessRecoveryResult =
+  | {
+      /**
+       * Outcome of the write recovery attempt:
+       * - `flushed` – all pending writes were replayed and stored successfully.
+       */
+      status: 'flushed';
+    }
+  | {
+      /**
+       * Outcome of the write recovery attempt:
+       * - `stillBlocked` – writes could not be replayed; the provider access is still blocked.
+       * - `failed` – write replay was attempted but storage reported a failure.
+       */
+      status: 'failed' | 'stillBlocked';
+      /** Safe counters and classification for the replay failure. */
+      replay?: WriteAccessRecoveryReplaySummary | undefined;
+    };
 
 type WriteAccessRecoveryContext = {
   mountPath: string;
@@ -67,27 +93,30 @@ export type FileSystemAccessRequestKey = {
  * Returned statuses never expose handles, raw errors, document ids, file names,
  * or bytes.
  */
-export type ResolveAccessRequestResult = {
-  /**
-   * Outcome of the resolved request:
-   * - `granted` – permission was granted and all applicable recovery handlers succeeded.
-   * - `denied` – the browser denied permission; the pending request remains in the registry.
-   * - `cancelled` – the prompt was dismissed or permission was non-granted and non-denied;
-   *   the pending request remains in the registry for retry.
-   * - `missing` – no pending request exists for the given key (stale or already resolved).
-   * - `grantedWithReplayFailures` – permission granted but a write recovery handler
-   *   returned `stillBlocked`.
-   * - `grantedWithStorageFailures` – permission granted but a write recovery handler
-   *   returned `failed`.
-   */
-  status:
-    | 'granted'
-    | 'denied'
-    | 'cancelled'
-    | 'missing'
-    | 'grantedWithReplayFailures'
-    | 'grantedWithStorageFailures';
-};
+export type ResolveAccessRequestResult =
+  | {
+      /**
+       * Outcome of the resolved request:
+       * - `granted` – permission was granted and all applicable recovery handlers succeeded.
+       * - `denied` – the browser denied permission; the pending request remains in the registry.
+       * - `cancelled` – the prompt was dismissed or permission was non-granted and non-denied;
+       *   the pending request remains in the registry for retry.
+       * - `missing` – no pending request exists for the given key (stale or already resolved).
+       */
+      status: 'granted' | 'denied' | 'cancelled' | 'missing';
+    }
+  | {
+      /**
+       * Outcome of the resolved request:
+       * - `grantedWithReplayFailures` – permission granted but a write recovery handler
+       *   returned `stillBlocked`.
+       * - `grantedWithStorageFailures` – permission granted but a write recovery handler
+       *   returned `failed`.
+       */
+      status: 'grantedWithReplayFailures' | 'grantedWithStorageFailures';
+      /** Safe replay summary forwarded from the failing write recovery handler. */
+      replay?: WriteAccessRecoveryReplaySummary | undefined;
+    };
 
 /**
  * Options passed to {@link createFileSystemAccessRequestRegistry}.
@@ -176,7 +205,9 @@ export interface FileSystemAccessRequestRegistry {
    * @returns A promise resolving to a {@link ResolveAccessRequestResult}.
    */
   resolve: (
-    params: FileSystemAccessRequestKey & { permissionState: PermissionState },
+    params: FileSystemAccessRequestKey & {
+      permissionState: PermissionState;
+    },
   ) => Promise<ResolveAccessRequestResult>;
 
   /**
@@ -301,11 +332,11 @@ export const createFileSystemAccessRequestRegistry = ({
       const result = await handler({ mountPath, operation: 'write', spaceName });
 
       if (result.status === 'stillBlocked') {
-        return { status: 'grantedWithReplayFailures' };
+        return { status: 'grantedWithReplayFailures', replay: result.replay };
       }
 
       if (result.status === 'failed') {
-        return { status: 'grantedWithStorageFailures' };
+        return { status: 'grantedWithStorageFailures', replay: result.replay };
       }
     }
 

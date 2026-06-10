@@ -1,7 +1,7 @@
 import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -102,7 +102,7 @@ export const useImportDocumentAction = () => {
       });
 
       if (!shouldSkipImportErrorReport(error)) {
-        reportHandledError(toSafeImportReportError(), {
+        captureDiagnosticException(toSafeImportReportError(), {
           feature: 'documentImport',
           action: 'importDocumentJson',
         });

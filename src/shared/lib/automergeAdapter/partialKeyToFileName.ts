@@ -8,6 +8,12 @@ import {
   zodPartialAutomergeFileName,
 } from './types';
 
+/**
+ * Converts a partial storage key to its legacy Automerge filename.
+ * @param key - Partial storage key to encode.
+ * @param options - Whether to include the file extension in the result.
+ * @returns Legacy Automerge filename, or undefined when the key is invalid.
+ */
 export const partialKeyToFileName = (
   key: PartialStorageKey,
   { withExtension = true }: { withExtension?: boolean } = {

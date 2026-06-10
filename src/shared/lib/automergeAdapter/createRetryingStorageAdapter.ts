@@ -4,11 +4,13 @@ import type { StorageAdapterInterface, StorageKey } from '@automerge/automerge-r
  * Safe classification of a flush failure exposed to service-layer recovery.
  * Never includes storage keys, document ids, paths, file names, or bytes.
  * - `accessRequired` – the provider still requires browser permission (write-access blocked).
+ * - `browserFileStateChanged` – browser-backed file state changed after a handle became stale.
  * - `storageFailure` – write access was available but the underlying adapter reported an error.
  * - `unknown` – the failure could not be classified against known patterns.
  */
 export type RetryingStorageAdapterFailureClassification =
   | 'accessRequired'
+  | 'browserFileStateChanged'
   | 'storageFailure'
   | 'unknown';
 
@@ -27,6 +29,36 @@ export interface RetryingStorageAdapterFlushResult {
    * Present only when `status` is `'failed'` or `'stillBlocked'`.
    */
   failureClassification?: RetryingStorageAdapterFailureClassification;
+  /**
+   * Raw error from the first failure encountered during this flush attempt.
+   * The receiver must sanitize it immediately before any diagnostics use.
+   */
+  caughtError?: unknown;
+}
+
+/**
+ * Safe summary passed to the {@link RetryingStorageAdapterOptions.onSaveFailure} callback.
+ * Contains project-controlled classification values plus the raw caught error.
+ * The raw `caughtError` stays within the same runtime/call-stack boundary.
+ * The receiver must sanitize it immediately before any diagnostics use.
+ * Never serialize, queue, store, or send `caughtError` directly.
+ */
+export interface RetryingStorageAdapterSaveFailureInfo {
+  /** Whether the failed save was queued for a later retry. */
+  queued: boolean;
+  /**
+   * Safe classification of the failure.
+   * - `accessRequired` – save was queued because write access was blocked.
+   * - `storageFailure` – save was not queued because the underlying adapter reported a hard error.
+   */
+  failureClassification: 'accessRequired' | 'storageFailure';
+  /** Number of saves currently queued after this failure. */
+  pendingCount: number;
+  /**
+   * Raw error from the underlying adapter save call.
+   * Must be sanitized by the receiver before any diagnostics use.
+   */
+  caughtError: unknown;
 }
 
 /**
@@ -39,6 +71,13 @@ export interface RetryingStorageAdapterOptions {
    * @returns Whether the failed save should be queued.
    */
   shouldQueueFailedSave: (error: unknown) => boolean;
+  /**
+   * Optional callback invoked on every primary save failure — both queued and non-queued.
+   * Receives only safe project-controlled data plus a raw same-runtime `caughtError`.
+   * Throwing inside this callback does not affect save or queue semantics.
+   * @param info - Safe summary with queued status, classification, pending count, and raw error.
+   */
+  onSaveFailure?: ((info: RetryingStorageAdapterSaveFailureInfo) => void) | undefined;
 }
 
 type PendingSave = {
@@ -60,7 +99,7 @@ const keyStartsWith = (key: StorageKey, prefix: StorageKey) =>
  */
 export const createRetryingStorageAdapter = (
   adapter: StorageAdapterInterface,
-  options: RetryingStorageAdapterOptions,
+  { shouldQueueFailedSave, onSaveFailure }: RetryingStorageAdapterOptions,
 ) => {
   const pendingSaves = new Map<string, PendingSave>();
 
@@ -101,10 +140,20 @@ export const createRetryingStorageAdapter = (
       try {
         await adapter.save(key, data);
       } catch (error) {
-        if (options.shouldQueueFailedSave(error)) {
+        const shouldQueue = shouldQueueFailedSave(error);
+        if (shouldQueue) {
           queuePendingSave(key, data);
         }
-
+        try {
+          onSaveFailure?.({
+            queued: shouldQueue,
+            failureClassification: shouldQueue ? 'accessRequired' : 'storageFailure',
+            pendingCount: pendingSaves.size,
+            caughtError: error,
+          });
+        } catch {
+          // diagnostic callbacks must not affect adapter behavior
+        }
         throw error;
       }
     },
@@ -119,7 +168,7 @@ export const createRetryingStorageAdapter = (
           pendingSaves.delete(pendingKey);
           flushedCount += 1;
         } catch (error) {
-          if (options.shouldQueueFailedSave(error)) {
+          if (shouldQueueFailedSave(error)) {
             return {
               status: 'stillBlocked',
               flushedCount,
@@ -133,6 +182,7 @@ export const createRetryingStorageAdapter = (
             flushedCount,
             pendingCount: pendingSaves.size,
             failureClassification: 'storageFailure',
+            caughtError: error,
           };
         }
       }
