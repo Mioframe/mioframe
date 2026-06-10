@@ -12,20 +12,34 @@ export const usePwaInstallRuntime = createGlobalState(() => {
   return { retainedPrompt, isInstalledForSession };
 });
 
+// Module-level references so repeated setup calls can remove previous listeners.
+let registeredBeforeInstallPrompt: ((event: BeforeInstallPromptEvent) => void) | null = null;
+let registeredAppInstalled: (() => void) | null = null;
+
 /**
- * Subscribes to browser install events once at app startup.
- * Call this once from the root app component.
+ * Subscribes to browser install events. Safe to call more than once —
+ * previous listeners are removed before new ones are added.
  */
 export const setupPwaInstallRuntime = (): void => {
+  if (registeredBeforeInstallPrompt) {
+    window.removeEventListener('beforeinstallprompt', registeredBeforeInstallPrompt);
+  }
+  if (registeredAppInstalled) {
+    window.removeEventListener('appinstalled', registeredAppInstalled);
+  }
+
   const { retainedPrompt, isInstalledForSession } = usePwaInstallRuntime();
 
-  window.addEventListener('beforeinstallprompt', (event) => {
+  registeredBeforeInstallPrompt = (event: BeforeInstallPromptEvent) => {
     event.preventDefault();
     retainedPrompt.value = event;
-  });
+  };
 
-  window.addEventListener('appinstalled', () => {
+  registeredAppInstalled = () => {
     retainedPrompt.value = null;
     isInstalledForSession.value = true;
-  });
+  };
+
+  window.addEventListener('beforeinstallprompt', registeredBeforeInstallPrompt);
+  window.addEventListener('appinstalled', registeredAppInstalled);
 };

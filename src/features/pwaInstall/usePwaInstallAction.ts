@@ -1,9 +1,12 @@
-import { computed } from 'vue';
+import { tryOnScopeDispose } from '@vueuse/core';
+import { computed, shallowRef, watch } from 'vue';
 import { useLocalSettings } from '@entity/localSettings';
 import { detectBrowserPlatform, selectInstallGuideUrl } from '@shared/lib/pwaInstall';
 import { usePwaInstallRuntime } from './pwaInstallRuntime';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+// setTimeout delay is a 32-bit signed integer; clamp to ~24.8 days to avoid overflow.
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 /**
  * Exposes the current PWA install action state and user actions.
@@ -17,11 +20,44 @@ export const usePwaInstallAction = () => {
   /** Whether the browser has provided a retained install prompt. */
   const hasRetainedPrompt = computed(() => retainedPrompt.value !== null);
 
+  // Reactive time reference updated by a scheduled timeout when dismissedUntil is active.
+  // Prevents stale Date.now() inside computed from hiding a re-eligible widget.
+  const dismissalNow = shallowRef(Date.now());
+  let expirationTimer: ReturnType<typeof setTimeout> | null = null;
+
+  watch(
+    () => settings.value.pwaInstallWidgetDismissedUntil,
+    (dismissedUntil) => {
+      if (expirationTimer !== null) {
+        clearTimeout(expirationTimer);
+        expirationTimer = null;
+      }
+      if (dismissedUntil === undefined) return;
+      const remaining = dismissedUntil - Date.now();
+      if (remaining <= 0) return;
+      expirationTimer = setTimeout(
+        () => {
+          dismissalNow.value = Date.now();
+          expirationTimer = null;
+        },
+        Math.min(remaining, MAX_TIMEOUT_MS),
+      );
+    },
+    { immediate: true },
+  );
+
+  tryOnScopeDispose(() => {
+    if (expirationTimer !== null) {
+      clearTimeout(expirationTimer);
+      expirationTimer = null;
+    }
+  });
+
   /** Whether the home install widget should be visible. */
   const isHomeWidgetVisible = computed(() => {
     if (isInstalledForSession.value) return false;
     const dismissedUntil = settings.value.pwaInstallWidgetDismissedUntil;
-    if (dismissedUntil !== undefined && Date.now() < dismissedUntil) return false;
+    if (dismissedUntil !== undefined && dismissalNow.value < dismissedUntil) return false;
     return true;
   });
 
@@ -36,8 +72,11 @@ export const usePwaInstallAction = () => {
   const runInstallAction = async (): Promise<void> => {
     const prompt = retainedPrompt.value;
     if (prompt) {
-      retainedPrompt.value = null;
-      await prompt.prompt();
+      try {
+        await prompt.prompt();
+      } finally {
+        retainedPrompt.value = null;
+      }
       return;
     }
     const url = selectInstallGuideUrl(detectBrowserPlatform(navigator.userAgent));

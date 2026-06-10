@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/consistent-type-assertions -- BeforeInstallPromptEvent mocks require structural casting since the interface is non-standard and cannot be instantiated directly in tests. */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref, shallowRef } from 'vue';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref, shallowRef } from 'vue';
 
 const useIDBKeyvalMock = vi.fn();
 vi.mock('@vueuse/integrations/useIDBKeyval', () => ({
@@ -25,6 +25,10 @@ describe('usePwaInstallAction', () => {
     isInstalledForSessionRef.value = false;
     vi.spyOn(window, 'open').mockReturnValue(null);
     vi.stubGlobal('navigator', { userAgent: '' });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   const setupSettings = (overrides: Record<string, unknown> = {}) => {
@@ -145,6 +149,39 @@ describe('usePwaInstallAction', () => {
     expect(isHomeWidgetVisible.value).toBe(true);
   });
 
+  it('isHomeWidgetVisible becomes true reactively after dismissedUntil expires', async () => {
+    vi.useFakeTimers();
+    const remaining = 1000;
+    const futureTimestamp = Date.now() + remaining;
+    setupSettings({ pwaInstallWidgetDismissedUntil: futureTimestamp });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+
+    vi.advanceTimersByTime(remaining + 1);
+    await nextTick();
+
+    expect(isHomeWidgetVisible.value).toBe(true);
+  });
+
+  it('isSettingsEntryVisible is not affected by home widget dismissal (reactive check)', async () => {
+    vi.useFakeTimers();
+    const futureTimestamp = Date.now() + 1000;
+    setupSettings({ pwaInstallWidgetDismissedUntil: futureTimestamp });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isSettingsEntryVisible, isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+    expect(isSettingsEntryVisible.value).toBe(true);
+
+    vi.advanceTimersByTime(1001);
+    await nextTick();
+
+    expect(isHomeWidgetVisible.value).toBe(true);
+    expect(isSettingsEntryVisible.value).toBe(true);
+  });
+
   it('runInstallAction calls prompt() when a prompt is retained', async () => {
     setupSettings();
     const { usePwaInstallAction } = await import('./usePwaInstallAction');
@@ -159,7 +196,7 @@ describe('usePwaInstallAction', () => {
     expect(retainedPromptRef.value).toBeNull();
   });
 
-  it('runInstallAction clears the retained prompt before calling it', async () => {
+  it('runInstallAction clears the retained prompt after calling it (in finally)', async () => {
     setupSettings();
     const { usePwaInstallAction } = await import('./usePwaInstallAction');
     const { runInstallAction } = usePwaInstallAction();
@@ -170,6 +207,19 @@ describe('usePwaInstallAction', () => {
 
     await runInstallAction();
 
+    expect(retainedPromptRef.value).toBeNull();
+  });
+
+  it('runInstallAction clears the retained prompt even when prompt() throws', async () => {
+    setupSettings();
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { runInstallAction } = usePwaInstallAction();
+
+    retainedPromptRef.value = {
+      prompt: vi.fn().mockRejectedValue(new Error('prompt rejected')),
+    } as unknown as BeforeInstallPromptEvent;
+
+    await expect(runInstallAction()).rejects.toThrow('prompt rejected');
     expect(retainedPromptRef.value).toBeNull();
   });
 
