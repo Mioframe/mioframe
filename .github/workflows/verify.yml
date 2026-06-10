@@ -147,11 +147,8 @@ jobs:
       - name: Verify visual
         run: pnpm verify --verbose --only visual
 
-      # Mutation tests are disabled in CI: the suite is slow and the coverage
-      # threshold is still being tuned for the current test corpus. Run locally
-      # with `pnpm verify --only mutation` when touching pure logic or storage helpers.
-      # - name: Verify mutation
-      #   run: pnpm verify --verbose --only mutation
+      - name: Verify mutation
+        run: pnpm verify --verbose --only mutation
 
       - name: Upload verify logs
         if: ${{ failure() || cancelled() }}
