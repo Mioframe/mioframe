@@ -538,11 +538,11 @@ describe('createBeforeSend exception value sanitization', () => {
   it('removes frame vars containing absolute paths, repo IDs, and auth tokens', () => {
     const beforeSend = makeEnabledBeforeSend();
     const DANGEROUS_VALUES = {
-      localPath: '/home/matdr/Projects/beaver/src/config/secrets.json',
+      localPath: '/home/usr/Projects/beaver/src/config/secrets.json',
       repoId: 'repo_ABCDE12345_xyz789',
       authHeader: 'Authorization: Bearer ghp_secret1234567890abcdef',
       docName: 'My confidential budget 2025',
-      urlWithQuery: 'https://api.example.com/v1/resource?token=abc&user=matdr',
+      urlWithQuery: 'https://api.example.com/v1/resource?token=abc&user=usr',
     };
 
     const event: SentryErrorEvent = {

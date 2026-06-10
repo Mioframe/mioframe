@@ -1,5 +1,5 @@
 /**
- * Stable error codes for Beaver document import failures.
+ * Stable error codes for Mioframe document import failures.
  */
 export enum ImportDocumentErrorCode {
   fileOpenFailed = 'importDocument.fileOpenFailed',

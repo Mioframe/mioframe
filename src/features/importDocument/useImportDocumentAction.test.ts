@@ -121,7 +121,7 @@ describe('useImportDocumentAction', () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
     readImportDocumentDraftMock.mockRejectedValue(
-      new DomainError('The selected JSON file is not a Beaver document', {
+      new DomainError('The selected JSON file is not a Mioframe document', {
         cause: new Error('zod'),
         code: ImportDocumentErrorCode.invalidDocumentFormat,
       }),
@@ -132,7 +132,7 @@ describe('useImportDocumentAction', () => {
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'The selected JSON file is not a Beaver document',
+      text: 'The selected JSON file is not a Mioframe document',
     });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
