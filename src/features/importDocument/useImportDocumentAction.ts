@@ -1,4 +1,4 @@
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
@@ -13,13 +13,6 @@ const shouldSkipImportErrorReport = (error: unknown) =>
   (error instanceof DomainError &&
     (error.code === ImportDocumentErrorCode.invalidJson ||
       error.code === ImportDocumentErrorCode.invalidDocumentFormat));
-
-const toSafeImportReportError = () => {
-  return new DomainError('Could not import the document', {
-    cause: createSafeErrorCause('Document JSON import failed'),
-    code: ImportDocumentErrorCode.documentImportFailed,
-  });
-};
 
 /**
  * Runs the document JSON import flow with shared snackbar and diagnostics behavior.
@@ -102,7 +95,14 @@ export const useImportDocumentAction = () => {
       });
 
       if (!shouldSkipImportErrorReport(error)) {
-        captureDiagnosticException(toSafeImportReportError(), {
+        const reportError =
+          error instanceof DomainError
+            ? error
+            : new DomainError('Could not import the document', {
+                cause: error,
+                code: ImportDocumentErrorCode.documentImportFailed,
+              });
+        captureDiagnosticException(reportError, {
           feature: 'documentImport',
           action: 'importDocumentJson',
         });

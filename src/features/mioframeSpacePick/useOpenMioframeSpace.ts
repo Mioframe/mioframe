@@ -10,7 +10,7 @@ import {
   pickWritableDirectory,
   showDirectoryPickerUnsupportedMessage,
 } from './directoryPickerSupport';
-import { buildOpenSpaceError } from './mioframeSpacePick.errors';
+import { MioframeSpacePickErrorCode } from './mioframeSpacePick.errors';
 
 const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
 const OPEN_GUARDRAIL_TEXT = 'Choose a folder where a Mioframe space has already been created.';
@@ -28,7 +28,13 @@ export const useOpenMioframeSpace = () => {
   const isSupported = toRef(isDirectoryPickerSupported);
 
   const handleUnexpectedError = (error: unknown) => {
-    const reportedError = error instanceof DomainError ? error : buildOpenSpaceError();
+    const reportedError =
+      error instanceof DomainError
+        ? error
+        : new DomainError('Could not open the Mioframe space', {
+            cause: error,
+            code: MioframeSpacePickErrorCode.openFailed,
+          });
 
     addSnackbar({
       text: reportedError.message,
@@ -60,8 +66,11 @@ export const useOpenMioframeSpace = () => {
 
       try {
         inspection = await inspectMioframeSpaceDirectory(selectedHandle);
-      } catch {
-        throw buildOpenSpaceError();
+      } catch (error) {
+        throw new DomainError('Could not open the Mioframe space', {
+          cause: error,
+          code: MioframeSpacePickErrorCode.openFailed,
+        });
       }
 
       if (inspection.looksLikeExistingSpace) {

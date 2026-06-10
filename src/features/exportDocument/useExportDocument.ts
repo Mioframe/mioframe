@@ -1,5 +1,5 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
 import { stringify } from 'safe-stable-stringify';
@@ -35,7 +35,7 @@ export const useExportDocument = () => {
       }
 
       throw new DomainError('Could not export the document', {
-        cause: createSafeErrorCause('Document repository read operation failed'),
+        cause: error,
         code: ExportDocumentErrorCode.documentExportFailed,
       });
     }
@@ -70,7 +70,7 @@ export const useExportDocument = () => {
       }
 
       throw new DomainError('Could not export the document', {
-        cause: createSafeErrorCause('Selected file save operation failed'),
+        cause: error,
         code: ExportDocumentErrorCode.documentExportFailed,
       });
     }

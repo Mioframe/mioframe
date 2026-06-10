@@ -1,11 +1,15 @@
 import { useFileSystem } from '@entity/mountedDirectories';
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { isFunction } from 'es-toolkit';
 import { ref, toRef } from 'vue';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
+
+enum LocalDirectoryPickErrorCode {
+  pickFailed = 'localDirectoryPick.pickFailed',
+}
 
 /**
  * Creates a directory picker flow for mounting a local folder into the app.
@@ -61,7 +65,8 @@ export const usePickLocalDirectory = () => {
           error instanceof DomainError
             ? error
             : new DomainError('Could not add the folder', {
-                cause: createSafeErrorCause('Directory picker operation failed'),
+                cause: error,
+                code: LocalDirectoryPickErrorCode.pickFailed,
               });
 
         addSnackbar({
