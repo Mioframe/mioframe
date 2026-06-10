@@ -10,9 +10,12 @@ import {
   purchaseTypesStarterExample,
   statusesStarterExample,
 } from '@entity/starterExample';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { createStarterExampleDocument } from './createStarterExampleDocument';
 
 const EXAMPLES_DIRECTORY_NAME = 'Examples';
+const EXAMPLE_CREATE_ERROR_MESSAGE = 'Could not create example';
 
 type ExampleResult = {
   documentDirectory: string;
@@ -22,9 +25,15 @@ type ExampleResult = {
 const isAlreadyExistingDirectoryError = (error: unknown) =>
   error instanceof VfsError && error.code === FileSystemError.FileExists;
 
+/**
+ * Composable for creating starter example documents in the first available indexed OPFS directory.
+ * Pre-inspects existing entries before creating so that expected existing directories do not
+ * leave a VFS activity error. Falls back to `FileExists` retry only for race conditions.
+ * @returns Actions and reactive state for weekly plan and shopping starter example creation.
+ */
 export const useExampleDocumentsCreate = () => {
   const {
-    fileSystem: { createDirectory },
+    fileSystem: { createDirectory, directoryContent },
     repositories: { createDocument },
   } = useMainServiceClient();
 
@@ -34,12 +43,29 @@ export const useExampleDocumentsCreate = () => {
 
   const exampleRootPath = computed(() => PathUtils.join('/', DEVICE_FILES, OPFSName));
 
+  const listExistingNames = async (): Promise<Set<string>> => {
+    try {
+      const result = await directoryContent.fetch({ path: exampleRootPath.value });
+      if (!result || result instanceof Error) return new Set<string>();
+      return new Set(result.map(([name]) => name));
+    } catch {
+      return new Set<string>();
+    }
+  };
+
   const createIndexedExampleDirectory = async () => {
+    const existingNames = await listExistingNames();
     let index = 1;
 
     for (;;) {
       const directoryName =
         index === 1 ? EXAMPLES_DIRECTORY_NAME : `${EXAMPLES_DIRECTORY_NAME} ${index}`;
+
+      if (existingNames.has(directoryName)) {
+        index += 1;
+        continue;
+      }
+
       const nextDirectoryPath = PathUtils.join(exampleRootPath.value, directoryName);
 
       try {
@@ -48,6 +74,7 @@ export const useExampleDocumentsCreate = () => {
         return nextDirectoryPath;
       } catch (error) {
         if (isAlreadyExistingDirectoryError(error)) {
+          // Race condition: another operation created the directory between listing and creation
           index += 1;
           continue;
         }
@@ -56,6 +83,12 @@ export const useExampleDocumentsCreate = () => {
       }
     }
   };
+
+  const makeExampleCreateError = () =>
+    new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+      cause: createSafeErrorCause('Starter example creation failed'),
+      code: 'example-create-failed',
+    });
 
   const createWeeklyPlanExample = async (): Promise<ExampleResult | undefined> => {
     weeklyPlanErrorMessage.value = undefined;
@@ -80,9 +113,12 @@ export const useExampleDocumentsCreate = () => {
         documentDirectory,
         documentId,
       };
-    } catch (error) {
-      weeklyPlanErrorMessage.value =
-        error instanceof Error ? error.message : 'Failed to create example';
+    } catch {
+      weeklyPlanErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
+      captureDiagnosticException(makeExampleCreateError(), {
+        feature: 'exampleDocumentsCreate',
+        action: 'createWeeklyPlanExample',
+      });
       return undefined;
     } finally {
       activeExample.value = undefined;
@@ -112,9 +148,12 @@ export const useExampleDocumentsCreate = () => {
         documentDirectory,
         documentId,
       };
-    } catch (error) {
-      shoppingErrorMessage.value =
-        error instanceof Error ? error.message : 'Failed to create example';
+    } catch {
+      shoppingErrorMessage.value = EXAMPLE_CREATE_ERROR_MESSAGE;
+      captureDiagnosticException(makeExampleCreateError(), {
+        feature: 'exampleDocumentsCreate',
+        action: 'createShoppingExample',
+      });
       return undefined;
     } finally {
       activeExample.value = undefined;

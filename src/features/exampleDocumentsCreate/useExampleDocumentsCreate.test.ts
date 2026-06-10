@@ -1,19 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
+import { DomainError } from '@shared/lib/error';
 import { useExampleDocumentsCreate } from './useExampleDocumentsCreate';
 
-const createDirectoryMock = vi.fn();
-const createDocumentMock = vi.fn();
+const {
+  createDirectoryMock,
+  createDocumentMock,
+  directoryContentFetchMock,
+  captureDiagnosticExceptionMock,
+} = vi.hoisted(() => ({
+  createDirectoryMock: vi.fn(),
+  createDocumentMock: vi.fn(),
+  directoryContentFetchMock: vi.fn(),
+  captureDiagnosticExceptionMock: vi.fn(),
+}));
 
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
       createDirectory: createDirectoryMock,
+      directoryContent: {
+        fetch: directoryContentFetchMock,
+      },
     },
     repositories: {
       createDocument: createDocumentMock,
     },
   }),
+}));
+
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: captureDiagnosticExceptionMock,
 }));
 
 const getCreatedDocumentName = (callIndex: number) => {
@@ -51,6 +68,10 @@ describe('useExampleDocumentsCreate', () => {
   beforeEach(() => {
     createDirectoryMock.mockReset();
     createDocumentMock.mockReset();
+    directoryContentFetchMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
+
+    directoryContentFetchMock.mockResolvedValue([]);
     createDirectoryMock.mockResolvedValue(undefined);
     createDocumentMock
       .mockResolvedValueOnce('related-doc-id')
@@ -59,24 +80,17 @@ describe('useExampleDocumentsCreate', () => {
       .mockResolvedValueOnce('primary-doc-id');
   });
 
-  it('creates a weekly plan example pair in the first available indexed OPFS directory', async () => {
-    createDirectoryMock.mockRejectedValueOnce(
-      new VfsError(FileSystemError.FileExists, 'Directory already exists'),
-    );
+  it('selects Examples 2 without calling createDirectory for Examples when Examples already exists in the listing', async () => {
+    directoryContentFetchMock.mockResolvedValueOnce([['Examples', { type: 'directory' }]]);
 
     const { createWeeklyPlanExample, weeklyPlanErrorMessage, isCreatingWeeklyPlanExample } =
       useExampleDocumentsCreate();
 
     const result = await createWeeklyPlanExample();
 
-    expect(createDirectoryMock).toHaveBeenNthCalledWith(
-      1,
-      '/Device Files/Browser Storage/Examples',
-    );
-    expect(createDirectoryMock).toHaveBeenNthCalledWith(
-      2,
-      '/Device Files/Browser Storage/Examples 2',
-    );
+    expect(createDirectoryMock).toHaveBeenCalledTimes(1);
+    expect(createDirectoryMock).toHaveBeenCalledWith('/Device Files/Browser Storage/Examples 2');
+    expect(createDirectoryMock).not.toHaveBeenCalledWith('/Device Files/Browser Storage/Examples');
     expect(createDocumentMock).toHaveBeenCalledTimes(2);
     expect(createDocumentMock.mock.calls[0]?.[0]).toBe('/Device Files/Browser Storage/Examples 2');
     expect(getCreatedDocumentName(0)).toBe('Statuses');
@@ -89,26 +103,54 @@ describe('useExampleDocumentsCreate', () => {
     expect(isCreatingWeeklyPlanExample.value).toBe(false);
   });
 
-  it('creates a shopping example pair and reports errors when creation fails', async () => {
-    createDocumentMock
-      .mockReset()
-      .mockResolvedValueOnce('purchase-types-doc-id')
-      .mockRejectedValueOnce(new Error('Cannot write document'));
+  it('does not leave VFS activity in an error state when Examples already exists — no FileExists createDirectory attempt is made', async () => {
+    directoryContentFetchMock.mockResolvedValueOnce([
+      ['Examples', { type: 'directory' }],
+      ['Examples 2', { type: 'directory' }],
+    ]);
 
-    const { createShoppingExample, shoppingErrorMessage, isCreatingShoppingExample } =
-      useExampleDocumentsCreate();
+    const { createWeeklyPlanExample } = useExampleDocumentsCreate();
 
-    const result = await createShoppingExample();
+    const result = await createWeeklyPlanExample();
 
-    expect(createDirectoryMock).toHaveBeenCalledWith('/Device Files/Browser Storage/Examples');
-    expect(getCreatedDocumentName(0)).toBe('Purchase Types');
-    expect(getCreatedDocumentName(1)).toBe('Shopping List');
-    expect(result).toBeUndefined();
-    expect(shoppingErrorMessage.value).toBe('Cannot write document');
-    expect(isCreatingShoppingExample.value).toBe(false);
+    expect(createDirectoryMock).toHaveBeenCalledTimes(1);
+    expect(createDirectoryMock).toHaveBeenCalledWith('/Device Files/Browser Storage/Examples 3');
+    expect(createDirectoryMock).not.toHaveBeenCalledWith('/Device Files/Browser Storage/Examples');
+    expect(createDirectoryMock).not.toHaveBeenCalledWith(
+      '/Device Files/Browser Storage/Examples 2',
+    );
+    expect(result).toEqual({
+      documentDirectory: '/Device Files/Browser Storage/Examples 3',
+      documentId: 'primary-doc-id',
+    });
   });
 
-  it('reports weekly plan errors when creating the example directory fails for a non-existing-directory reason', async () => {
+  it('retries to the next available name when a race-condition FileExists occurs on the selected name', async () => {
+    directoryContentFetchMock.mockResolvedValueOnce([]);
+    createDirectoryMock
+      .mockRejectedValueOnce(new VfsError(FileSystemError.FileExists, 'Directory already exists'))
+      .mockResolvedValueOnce(undefined);
+
+    const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
+
+    const result = await createWeeklyPlanExample();
+
+    expect(createDirectoryMock).toHaveBeenNthCalledWith(
+      1,
+      '/Device Files/Browser Storage/Examples',
+    );
+    expect(createDirectoryMock).toHaveBeenNthCalledWith(
+      2,
+      '/Device Files/Browser Storage/Examples 2',
+    );
+    expect(result).toEqual({
+      documentDirectory: '/Device Files/Browser Storage/Examples 2',
+      documentId: 'primary-doc-id',
+    });
+    expect(weeklyPlanErrorMessage.value).toBeUndefined();
+  });
+
+  it('reports a safe handled diagnostic and sets a safe error message on final failure', async () => {
     createDirectoryMock.mockRejectedValueOnce(new Error('No permission to create directory'));
 
     const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
@@ -118,7 +160,40 @@ describe('useExampleDocumentsCreate', () => {
     expect(createDirectoryMock).toHaveBeenCalledTimes(1);
     expect(createDocumentMock).not.toHaveBeenCalled();
     expect(result).toBeUndefined();
-    expect(weeklyPlanErrorMessage.value).toBe('No permission to create directory');
+    expect(weeklyPlanErrorMessage.value).toBe('Could not create example');
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledOnce();
+    const [reportedError, context] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(context).toEqual({
+      feature: 'exampleDocumentsCreate',
+      action: 'createWeeklyPlanExample',
+    });
+  });
+
+  it('does not include raw paths, directory names, or raw error messages in the reported diagnostic', async () => {
+    createDirectoryMock.mockRejectedValueOnce(
+      new Error('ENOENT: no such file or directory, mkdir /private/Examples'),
+    );
+
+    const { createWeeklyPlanExample } = useExampleDocumentsCreate();
+
+    await createWeeklyPlanExample();
+
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    if (!(reportedError instanceof DomainError)) return;
+
+    expect(reportedError.message).not.toContain('/');
+    expect(reportedError.message).not.toContain('Examples');
+    expect(reportedError.message).not.toContain('ENOENT');
+    expect(reportedError.message).not.toContain('mkdir');
+
+    expect(reportedError.cause).toBeInstanceOf(Error);
+    if (!(reportedError.cause instanceof Error)) return;
+    expect(reportedError.cause.message).not.toContain('/');
+    expect(reportedError.cause.message).not.toContain('Examples');
+    expect(reportedError.cause.message).not.toContain('ENOENT');
   });
 
   it('does not retry directory creation for VfsError codes other than FileExists', async () => {
@@ -133,7 +208,32 @@ describe('useExampleDocumentsCreate', () => {
     expect(createDirectoryMock).toHaveBeenCalledTimes(1);
     expect(createDocumentMock).not.toHaveBeenCalled();
     expect(result).toBeUndefined();
-    expect(weeklyPlanErrorMessage.value).toBe('No permission to create directory');
+    expect(weeklyPlanErrorMessage.value).toBe('Could not create example');
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledOnce();
+  });
+
+  it('creates a shopping example and reports safe diagnostics when creation fails', async () => {
+    createDocumentMock
+      .mockReset()
+      .mockResolvedValueOnce('purchase-types-doc-id')
+      .mockRejectedValueOnce(new Error('Cannot write document'));
+
+    const { createShoppingExample, shoppingErrorMessage, isCreatingShoppingExample } =
+      useExampleDocumentsCreate();
+
+    const result = await createShoppingExample();
+
+    expect(createDirectoryMock).toHaveBeenCalledWith('/Device Files/Browser Storage/Examples');
+    expect(getCreatedDocumentName(0)).toBe('Purchase Types');
+    expect(result).toBeUndefined();
+    expect(shoppingErrorMessage.value).toBe('Could not create example');
+    expect(isCreatingShoppingExample.value).toBe(false);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledOnce();
+    const [, context] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(context).toEqual({
+      feature: 'exampleDocumentsCreate',
+      action: 'createShoppingExample',
+    });
   });
 
   it('exposes weekly loading while creation is in flight and clears it after completion', async () => {
