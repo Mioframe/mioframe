@@ -1,6 +1,9 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
+
+const openMock = vi.hoisted(() => vi.fn());
 
 const settings = ref<{ googleDriveIntegrationEnabled?: boolean }>({});
 let googleDriveIntegrationAvailable = true;
@@ -13,7 +16,7 @@ vi.mock('@entity/localSettings', () => ({
 
 vi.mock('@page/routes', () => ({
   useStackNavigation: () => ({
-    open: vi.fn(),
+    open: openMock,
   }),
 }));
 
@@ -96,6 +99,7 @@ describe('HomePane', () => {
     googleDriveIntegrationAvailable = true;
     settings.value = {};
     document.body.innerHTML = '';
+    openMock.mockReset();
   });
 
   it('hides the Google Drive widget when integration is not explicitly enabled', async () => {
@@ -131,6 +135,48 @@ describe('HomePane', () => {
     expect(root.querySelector('[data-testid="google-drive-widget"]')).toBeNull();
 
     unmount();
+  });
+
+  it('navigates to the document when StarterExamplesWidget emits createdDocument', async () => {
+    const { default: HomePane } = await import('./HomePane.vue');
+    const wrapper = mount(HomePane);
+
+    await wrapper.findComponent({ name: 'StarterExamplesWidgetStub' }).vm.$emit('createdDocument', {
+      documentDirectory: '/Examples',
+      documentId: 'doc-1',
+    });
+
+    expect(openMock).toHaveBeenCalledWith(
+      'document',
+      { documentDirectory: '/Examples', documentId: 'doc-1' },
+      { target: 'document' },
+    );
+  });
+
+  it('navigates to the repo when LocalFSWidget emits click-path', async () => {
+    const { default: HomePane } = await import('./HomePane.vue');
+    const wrapper = mount(HomePane);
+
+    await wrapper.findComponent({ name: 'LocalFSWidgetStub' }).vm.$emit('clickPath', '/my/path');
+
+    expect(openMock).toHaveBeenCalledWith('repo', { repoPath: '/my/path' }, { target: 'repo' });
+  });
+
+  it('navigates to the repo when GoogleDriveWidget emits click-user', async () => {
+    settings.value = { googleDriveIntegrationEnabled: true };
+    googleDriveIntegrationAvailable = true;
+    const { default: HomePane } = await import('./HomePane.vue');
+    const wrapper = mount(HomePane);
+
+    await wrapper
+      .findComponent({ name: 'GoogleDriveWidgetStub' })
+      .vm.$emit('clickUser', 'user@example.com');
+
+    expect(openMock).toHaveBeenCalledWith(
+      'repo',
+      { repoPath: '/Google Drive/user@example.com' },
+      { target: 'repo' },
+    );
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

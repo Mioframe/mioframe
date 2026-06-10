@@ -20,6 +20,10 @@ import { useDatabaseProperties } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
 import { useDatabaseViewSelection } from '@entity/databaseView';
 import { useDatabaseData } from '@entity/databaseData/useDatabaseData';
+import {
+  DatabaseExampleDocumentCreateSuccessCard,
+  useDatabaseExampleDocumentCreateSuccess,
+} from '@feature/exampleDocumentsCreate';
 
 const props = defineProps<{
   documentId: AMDocumentId;
@@ -27,6 +31,8 @@ const props = defineProps<{
 }>();
 
 const { directoryPath: path, documentId } = toRefs(props);
+const { isVisible: isSuccessCardVisible, dismiss: dismissSuccessCard } =
+  useDatabaseExampleDocumentCreateSuccess(path, documentId);
 const stateExplicitViewId = shallowRef<DatabaseViewId>();
 const {
   viewList: databaseViewList,
@@ -111,6 +117,12 @@ const onUpdatedEditItemDialog = () => {
 
 <template>
   <div ref="databaseViewRef" class="database-view">
+    <DatabaseExampleDocumentCreateSuccessCard
+      v-if="isSuccessCardVisible"
+      class="database-view__success-card"
+      @dismiss="dismissSuccessCard"
+    />
+
     <div v-if="documentError" class="database-view__error">
       <pre>{{ documentError }}</pre>
     </div>
@@ -195,6 +207,11 @@ const onUpdatedEditItemDialog = () => {
   flex: 1 0;
   overflow: auto;
   padding: 0 4step 0;
+  gap: 2step;
+
+  &__success-card {
+    flex-shrink: 0;
+  }
 
   &__controls {
     margin-top: auto;
