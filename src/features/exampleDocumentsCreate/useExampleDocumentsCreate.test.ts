@@ -220,7 +220,7 @@ describe('useExampleDocumentsCreate', () => {
     if (!(weeklyReportedError instanceof DomainError)) return;
     expect(weeklyReportedError.cause).toBeInstanceOf(Error);
     if (!(weeklyReportedError.cause instanceof Error)) return;
-    expect(weeklyReportedError.cause.message).toBe('example-create-vfs-permission-required');
+    expect(weeklyReportedError.cause.message).toBe('example-create-vfs-EACCES');
   });
 
   it('creates a shopping example and reports safe diagnostics when creation fails', async () => {
@@ -269,7 +269,7 @@ describe('useExampleDocumentsCreate', () => {
     if (!(reportedError instanceof DomainError)) return;
     expect(reportedError.cause).toBeInstanceOf(Error);
     if (!(reportedError.cause instanceof Error)) return;
-    expect(reportedError.cause.message).toBe('example-create-vfs-permission-required');
+    expect(reportedError.cause.message).toBe('example-create-vfs-EACCES');
   });
 
   it('stops directory creation after the safety limit and reports a privacy-safe diagnostic', async () => {
@@ -295,6 +295,7 @@ describe('useExampleDocumentsCreate', () => {
 
     expect(reportedError.cause).toBeInstanceOf(Error);
     if (!(reportedError.cause instanceof Error)) return;
+    expect(reportedError.cause.message).toBe('example-create-directory-limit-exceeded');
     expect(reportedError.cause.message).not.toContain('/');
     expect(reportedError.cause.message).not.toContain('Examples');
     expect(reportedError.cause.message).not.toContain('already exists');

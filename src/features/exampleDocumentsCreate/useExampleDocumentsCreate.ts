@@ -26,19 +26,8 @@ type ExampleResult = {
 const isAlreadyExistingDirectoryError = (error: unknown) =>
   error instanceof VfsError && error.code === FileSystemError.FileExists;
 
-const classifyExampleCreateError = (error: unknown): string => {
-  if (error instanceof VfsError) {
-    switch (error.code) {
-      case FileSystemError.FileExists:
-        return 'example-create-vfs-file-exists';
-      case FileSystemError.NoPermissions:
-        return 'example-create-vfs-permission-required';
-      case FileSystemError.Unknown:
-        return 'example-create-vfs-unknown';
-      default:
-        return 'example-create-vfs-access-denied';
-    }
-  }
+const buildExampleCreateCause = (error: unknown): string => {
+  if (error instanceof VfsError) return `example-create-vfs-${error.code}`;
   return 'example-create-unexpected';
 };
 
@@ -108,11 +97,13 @@ export const useExampleDocumentsCreate = () => {
     }
   };
 
-  const makeExampleCreateError = (error: unknown) =>
-    new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
-      cause: createSafeErrorCause(classifyExampleCreateError(error)),
+  const makeExampleCreateError = (error: unknown): DomainError => {
+    if (error instanceof DomainError) return error;
+    return new DomainError(EXAMPLE_CREATE_ERROR_MESSAGE, {
+      cause: createSafeErrorCause(buildExampleCreateCause(error)),
       code: 'example-create-failed',
     });
+  };
 
   const createWeeklyPlanExample = async (): Promise<ExampleResult | undefined> => {
     weeklyPlanErrorMessage.value = undefined;
