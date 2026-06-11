@@ -1,6 +1,6 @@
 # src/shared/service
 
-Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from src/shared/AGENTS.md. Applies to src/shared/service and its descendants until a deeper AGENTS.md overrides it.
 
 ## Contains
 
@@ -9,4 +9,4 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` 
 ## Patterns
 
 - Services expose infrastructural capabilities and contracts, not screen-specific UI logic.
-- Keep `*
+- Keep service
