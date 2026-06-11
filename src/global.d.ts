@@ -7,6 +7,9 @@ declare global {
   interface Navigator {
     // for WebKitGTK
     readonly storage?: undefined | StorageManager;
+    // Non-standard iOS Safari property indicating standalone (installed PWA) mode.
+    // https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariHTMLRef/Articles/MetaTags.html
+    readonly standalone?: boolean;
   }
 
   interface FileSystemHandle {
