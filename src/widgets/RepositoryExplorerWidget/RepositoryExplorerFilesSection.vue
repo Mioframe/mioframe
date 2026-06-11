@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { FSEntryMDListItem } from '@entity/fsEntry';
 import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { MDListContainer } from '@shared/ui/Lists';
 import { computed } from 'vue';
-import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
+import RepositoryExplorerFileListItem from './RepositoryExplorerFileListItem.vue';
 
 type RepositoryExplorerFileEntry = readonly [name: string, stat: FSNodeStat];
 
@@ -63,24 +62,16 @@ const emptyText = computed(() =>
       v-if="hasRegularFiles"
       class="repository-explorer-files-section__list"
     >
-      <FSEntryMDListItem
+      <RepositoryExplorerFileListItem
         v-for="[name, { description, type: nodeType }] in regularFileEntries"
-        :key="name"
-        :is-button="nodeType === FSNodeType.Directory"
+        :key="PathUtils.join(directoryPath, name)"
+        :directory-path="directoryPath"
         :name="name"
-        :supporting-text="description"
-        :type="nodeType"
+        :description="description"
+        :entry-type="nodeType"
         class="repository-explorer-files-section__list-item"
         @click="onClickEntry"
-      >
-        <template #trailingIcon>
-          <RepositoryExplorerEntryManageButton
-            :path="PathUtils.join(directoryPath, name)"
-            :entry-type="nodeType"
-            :show-document-actions="nodeType === FSNodeType.Directory"
-          />
-        </template>
-      </FSEntryMDListItem>
+      />
     </MDListContainer>
 
     <p v-else class="repository-explorer-files-section__empty-text">{{ emptyText }}</p>

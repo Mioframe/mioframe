@@ -143,7 +143,7 @@ describe('RepositoryExplorerEntryManageButton', () => {
     document.body.innerHTML = '';
   });
 
-  it('does not render the menu button when all capabilities are absent', async () => {
+  it('always renders the menu button — parent composition is responsible for the hasActions guard', async () => {
     fsEntryStatRef.value = {
       capabilities: {
         canEditChildren: false,
@@ -151,28 +151,6 @@ describe('RepositoryExplorerEntryManageButton', () => {
         canDelete: false,
       },
     };
-
-    const wrapper = await mountButton();
-
-    expect(wrapper.find('[data-testid="entry-manage-menu-button"]').exists()).toBe(false);
-  });
-
-  it('renders the menu button when at least one capability is present', async () => {
-    fsEntryStatRef.value = {
-      capabilities: {
-        canEditChildren: false,
-        canChangePath: true,
-        canDelete: false,
-      },
-    };
-
-    const wrapper = await mountButton();
-
-    expect(wrapper.find('[data-testid="entry-manage-menu-button"]').exists()).toBe(true);
-  });
-
-  it('renders the menu button when stat is not yet loaded (capabilities unknown)', async () => {
-    fsEntryStatRef.value = undefined;
 
     const wrapper = await mountButton();
 

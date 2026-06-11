@@ -4,8 +4,13 @@ import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 
 const canEditDirectoryContents = ref<boolean | undefined>(true);
+const hasDirectoryManageActionsRef = ref(true);
 const openMock = vi.fn();
 const importDocumentMock = vi.fn();
+
+vi.mock('@feature/entryManage', () => ({
+  useEntryManageAvailability: () => ({ hasActions: hasDirectoryManageActionsRef }),
+}));
 
 vi.mock('@page/routes', () => ({
   useStackNavigation: () => ({
@@ -208,6 +213,7 @@ const mountPane = async () => {
 describe('RepoExplorerPane', () => {
   afterEach(() => {
     canEditDirectoryContents.value = true;
+    hasDirectoryManageActionsRef.value = true;
     openMock.mockReset();
     importDocumentMock.mockReset();
     document.body.innerHTML = '';
@@ -275,6 +281,27 @@ describe('RepoExplorerPane', () => {
     await wrapper.findAll('[data-testid="entry-add-sheet"] button')[2]?.trigger('click');
 
     expect(importDocumentMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
+  });
+
+  it('hides the directory manage button when no actions are available', async () => {
+    hasDirectoryManageActionsRef.value = false;
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.text()).not.toContain('Current directory actions: Create directory');
+  });
+
+  it('closes pane-owned transient surfaces when directoryPath changes', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').exists()).toBe(true);
+
+    await wrapper.setProps({ repoPath: '/Google Drive/My Drive/Other' });
+
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
   });
 
   it('routes breadcrumb, home, and document selection through stack navigation', async () => {

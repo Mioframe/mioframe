@@ -4,33 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 
-vi.mock('@entity/fsEntry', () => ({
-  FSEntryMDListItem: defineComponent({
-    name: 'FSEntryMDListItemStub',
-    props: {
-      name: { type: String, required: true },
-      isButton: { type: Boolean, default: false },
-    },
-    emits: ['click'],
-    setup(props, { emit, slots }) {
-      return () =>
-        h(
-          props.isButton ? 'button' : 'div',
-          {
-            ...(props.isButton
-              ? {
-                  type: 'button',
-                  onClick: () => {
-                    emit('click', props.name);
-                  },
-                }
-              : {}),
-          },
-          [props.name, slots.trailingIcon?.()],
-        );
-    },
-  }),
-}));
+const directoryNodeType: number = FSNodeType.Directory;
 
 vi.mock('@shared/ui/Lists', () => ({
   MDListContainer: defineComponent({
@@ -41,51 +15,37 @@ vi.mock('@shared/ui/Lists', () => ({
   }),
 }));
 
-vi.mock('./RepositoryExplorerEntryManageButton.vue', () => ({
+vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
   default: defineComponent({
-    name: 'RepositoryExplorerEntryManageButtonStub',
+    name: 'RepositoryExplorerFileListItemStub',
     props: {
-      showDocumentActions: {
-        type: Boolean,
-        default: false,
-      },
-      entryType: {
-        type: Number,
-        required: true,
-      },
+      directoryPath: { type: String, required: true },
+      name: { type: String, required: true },
+      entryType: { type: Number, required: true },
+      description: { type: String, default: undefined },
     },
-    setup(props) {
+    emits: ['click'],
+    setup(props, { emit }) {
       return () =>
         h(
-          'span',
-          props.showDocumentActions
-            ? `dir-actions-${props.entryType}`
-            : `file-actions-${props.entryType}`,
+          props.entryType === directoryNodeType ? 'button' : 'div',
+          {
+            ...(props.entryType === directoryNodeType
+              ? {
+                  type: 'button',
+                  onClick: () => {
+                    emit('click', props.name);
+                  },
+                }
+              : {}),
+          },
+          props.name,
         );
     },
   }),
 }));
 
 describe('RepositoryExplorerFilesSection', () => {
-  it('keeps nested directory document actions reachable while files stay file-only', async () => {
-    const { default: RepositoryExplorerFilesSection } =
-      await import('./RepositoryExplorerFilesSection.vue');
-
-    const wrapper = mount(RepositoryExplorerFilesSection, {
-      props: {
-        directoryPath: '/repo',
-        hideAutomergeFiles: true,
-        regularFileEntries: [
-          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
-          ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
-        ],
-      },
-    });
-
-    expect(wrapper.text()).toContain(`dir-actions-${FSNodeType.Directory}`);
-    expect(wrapper.text()).toContain(`file-actions-${FSNodeType.File}`);
-  });
-
   it('renders only directories as interactive and emits selectPath only for them', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');
@@ -109,9 +69,6 @@ describe('RepositoryExplorerFilesSection', () => {
     await buttons[0]?.trigger('click');
 
     expect(wrapper.emitted('selectPath')).toEqual([['/repo/Nested']]);
-    expect(wrapper.findAll('div').some((element) => element.text().includes('note.txt'))).toBe(
-      true,
-    );
   });
 
   it('matches the supporting copy to whether Automerge files are hidden', async () => {

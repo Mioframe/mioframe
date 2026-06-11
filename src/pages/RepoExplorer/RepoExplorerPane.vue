@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, toRefs } from 'vue';
+import { computed, nextTick, ref, toRefs, watch } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
+import { useEntryManageAvailability } from '@feature/entryManage';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
@@ -39,6 +40,18 @@ const showEntryAddSheet = ref(false);
 const showCreateDirectoryDialog = ref(false);
 const showCreateDocumentDialog = ref(false);
 const { importDocument } = useImportDocumentAction();
+
+const { hasActions: hasDirectoryManageActions } = useEntryManageAvailability(
+  directoryPath,
+  ref(FSNodeType.Directory),
+  ref(false),
+);
+
+watch(directoryPath, () => {
+  showEntryAddSheet.value = false;
+  showCreateDirectoryDialog.value = false;
+  showCreateDocumentDialog.value = false;
+});
 
 const onClickAdd = () => {
   showEntryAddSheet.value = true;
@@ -100,6 +113,8 @@ const onClickReturnHome = async () => {
 
       <template #trailingElements>
         <RepositoryExplorerEntryManageButton
+          v-if="hasDirectoryManageActions"
+          :key="directoryPath"
           :path="directoryPath"
           :entry-type="FSNodeType.Directory"
         />
