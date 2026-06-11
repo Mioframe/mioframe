@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { onUnmounted } from 'vue';
 import PwaInstallWidget from './PwaInstallWidget.vue';
-import { usePwaInstallRuntime } from '@feature/pwaInstall';
+import { usePwaInstallRuntime } from '@feature/pwaInstall/pwaInstallRuntime';
 
 const meta = {
   title: 'widgets/PwaInstallWidget/PwaInstallWidget',
