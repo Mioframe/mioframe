@@ -1,19 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { MDListItem } from '@shared/ui/Lists';
+import { usePwaInstallAction } from './usePwaInstallAction';
 
-const props = defineProps<{
-  hasRetainedPrompt: boolean;
-}>();
+const { hasRetainedPrompt, runInstallAction } = usePwaInstallAction();
 
-const emit = defineEmits<{
-  install: [];
-}>();
-
-const actionLabel = computed(() => (props.hasRetainedPrompt ? 'Install' : 'How to install'));
+const actionLabel = computed(() => (hasRetainedPrompt.value ? 'Install' : 'How to install'));
 
 const onClickInstall = () => {
-  emit('install');
+  void runInstallAction();
 };
 </script>
 

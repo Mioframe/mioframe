@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
-import { usePwaInstallAction } from '@feature/pwaInstall';
+import { PwaInstallSettingsListItem, usePwaInstallAction } from '@feature/pwaInstall';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 import StorageSettingsSection from './StorageSettingsSection.vue';
-import PwaInstallSettingsListItem from './PwaInstallSettingsListItem.vue';
 
 const emit = defineEmits<{
   selectPrivacyPolicy: [];
@@ -16,7 +15,7 @@ const emit = defineEmits<{
 
 const { settings } = useLocalSettings();
 const { diagnosticsEnabled, setDiagnosticsEnabledByUser } = useDiagnosticsSettings();
-const { hasRetainedPrompt, isSettingsEntryVisible, runInstallAction } = usePwaInstallAction();
+const { isSettingsEntryVisible } = usePwaInstallAction();
 
 const onToggleStarterExamples = () => {
   settings.value.hideStarterWidget = settings.value.hideStarterWidget === true ? undefined : true;
@@ -50,10 +49,6 @@ const onClickHelp = () => {
 const onClickAboutMioframe = () => {
   emit('selectAboutMioframe');
 };
-
-const onInstallApp = () => {
-  void runInstallAction();
-};
 </script>
 
 <template>
@@ -62,10 +57,7 @@ const onInstallApp = () => {
 
     <SettingsSection v-if="isSettingsEntryVisible" title="App">
       <MDListContainer is="div">
-        <PwaInstallSettingsListItem
-          :has-retained-prompt="hasRetainedPrompt"
-          @install="onInstallApp"
-        />
+        <PwaInstallSettingsListItem />
       </MDListContainer>
     </SettingsSection>
 
