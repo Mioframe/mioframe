@@ -110,7 +110,9 @@ reason:
 
 - Use component-scoped styles for Vue component implementation styles. Put global CSS only in app-level style modules or explicitly documented design-token/theme files.
 - The root class of a Vue component must match the component name in kebab-case, for example `MDFab` -> `md-fab` and `RepositoryExplorerWidget` -> `repository-explorer-widget`.
-- New Vue components must render one stable root DOM element with the component block class. Do not use a child component as the only conditional root, and do not render an empty `<template>` branch as a component root. Parent components own conditional rendering.
+- New Vue components must render a single stable root. Fragments (multiple root nodes), conditional root shape changes, and empty `<template>` branches as a component root are not allowed. Parent components own conditional rendering.
+- A root child component is allowed when it renders a stable single root and forwards attributes and classes as expected. Do not add a wrapper element only to satisfy block-class naming.
+- Add a wrapper element only when the component owns layout, spacing, semantic grouping, or integration styling that cannot live on the root child component. Components that only compose or forward another presentational component do not need an extra block wrapper unless they own local styles.
 - When a component renders a placeholder plus teleported or floating content, keep the root class on the root DOM element and model the teleported/floating surface as a BEM element, for example `md-fab-container` with `md-fab-container__surface`.
 - Use classic BEM syntax: block `block`, element `block__element`, boolean modifier `block_modifier`, key-value modifier `block_modifier_value`, element modifier `block__element_modifier`, and element key-value modifier `block__element_modifier_value`.
 - Do not introduce `block--modifier` or `block__element--modifier` naming unless a local legacy component already uses that style and the task is only preserving untouched code.

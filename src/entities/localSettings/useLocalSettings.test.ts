@@ -7,6 +7,7 @@ type DiagnosticsSerializerOptions = {
     read: (value: unknown) => {
       diagnosticsEnabled: boolean;
       diagnosticsConsentRequested: boolean;
+      pwaInstallWidgetDismissedUntil?: number | undefined;
     };
   };
 };
@@ -145,5 +146,50 @@ describe('useLocalSettings', () => {
 
     expect(migrated.diagnosticsEnabled).toBe(false);
     expect(migrated.diagnosticsConsentRequested).toBe(false);
+  });
+
+  it('defaults pwaInstallWidgetDismissedUntil to undefined', async () => {
+    useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
+      data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
+    }));
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    const { settings } = useLocalSettings();
+
+    expect(settings.value.pwaInstallWidgetDismissedUntil).toBeUndefined();
+  });
+
+  it('persists a numeric pwaInstallWidgetDismissedUntil without coercing it', async () => {
+    useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
+      data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
+    }));
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    const { settings } = useLocalSettings();
+
+    const timestamp = Date.now() + 86_400_000;
+    settings.value.pwaInstallWidgetDismissedUntil = timestamp;
+    expect(settings.value.pwaInstallWidgetDismissedUntil).toBe(timestamp);
+  });
+
+  it('migrates missing pwaInstallWidgetDismissedUntil to undefined when reading existing settings', async () => {
+    let capturedOptions: DiagnosticsSerializerOptions | undefined;
+
+    useIDBKeyvalMock.mockImplementation(
+      (_key, defaultValue: object, options?: DiagnosticsSerializerOptions) => {
+        capturedOptions = options;
+        return { data: ref(structuredClone(defaultValue)), isFinished: ref(true) };
+      },
+    );
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    useLocalSettings();
+
+    if (!capturedOptions) throw new Error('Expected useIDBKeyval options to be captured');
+
+    const migrated = capturedOptions.serializer.read({});
+    expect(migrated.pwaInstallWidgetDismissedUntil).toBeUndefined();
   });
 });
