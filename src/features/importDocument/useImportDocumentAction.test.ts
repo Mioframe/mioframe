@@ -218,7 +218,7 @@ describe('useImportDocumentAction', () => {
     const rawCause = new Error('file read failed');
     const error = new DomainError('Could not import the document', {
       cause: rawCause,
-      code: ImportDocumentErrorCode.fileReadFailed,
+      code: ImportDocumentErrorCode.documentImportFailed,
     });
     const file = makeFile();
     pickJsonFileMock.mockResolvedValue(file);

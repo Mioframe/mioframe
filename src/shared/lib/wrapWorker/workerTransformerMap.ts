@@ -6,7 +6,7 @@ import { VfsError } from '../virtualFileSystem';
 import { GoogleDriveError } from '../googleDrive';
 import { GoogleClientConfigError } from '../googleApi';
 import { WebFileSystemAccessRequiredError } from '../webFileSystemProvider';
-import { GoogleAuthError } from '@shared/service/google/errors';
+import { GoogleAuthError } from '../googleAuth';
 
 /** Shared worker/client transformer registry for service transport. */
 export const transformers = [
