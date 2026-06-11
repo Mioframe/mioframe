@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   requestAccessMock,
-  readJsonFileTextMock,
-  importDocumentFromJsonTextMock,
+  pickJsonFileMock,
+  importDocumentFromJsonFileMock,
   importDocumentFromJsonPathMock,
   addSnackbarMock,
   confirmMock,
   captureDiagnosticExceptionMock,
 } = vi.hoisted(() => ({
   requestAccessMock: vi.fn(),
-  readJsonFileTextMock: vi.fn(),
-  importDocumentFromJsonTextMock: vi.fn(),
+  pickJsonFileMock: vi.fn(),
+  importDocumentFromJsonFileMock: vi.fn(),
   importDocumentFromJsonPathMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
@@ -34,7 +34,7 @@ const createSerializedRecoveryError = ({
 
 vi.mock('./useImportDocument', () => ({
   useImportDocument: () => ({
-    readJsonFileText: readJsonFileTextMock,
+    pickJsonFile: pickJsonFileMock,
   }),
 }));
 
@@ -69,18 +69,18 @@ vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     repositories: {
       importDocumentFromJsonPath: importDocumentFromJsonPathMock,
-      importDocumentFromJsonText: importDocumentFromJsonTextMock,
+      importDocumentFromJsonFile: importDocumentFromJsonFileMock,
     },
   }),
 }));
 
-const validJsonText = JSON.stringify({ name: 'Doc', type: 'note', version: 1, body: {} });
+const makeFile = (content = '{}') => new File([content], 'doc.json', { type: 'application/json' });
 
 describe('useImportDocumentAction', () => {
   beforeEach(() => {
     requestAccessMock.mockReset();
-    readJsonFileTextMock.mockReset();
-    importDocumentFromJsonTextMock.mockReset();
+    pickJsonFileMock.mockReset();
+    importDocumentFromJsonFileMock.mockReset();
     importDocumentFromJsonPathMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
@@ -88,7 +88,7 @@ describe('useImportDocumentAction', () => {
   });
 
   it('silently ignores file picker cancellation', async () => {
-    readJsonFileTextMock.mockResolvedValue(undefined);
+    pickJsonFileMock.mockResolvedValue(undefined);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -101,7 +101,7 @@ describe('useImportDocumentAction', () => {
   it('shows a file open error and reports it to diagnostics', async () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
-    readJsonFileTextMock.mockRejectedValue(
+    pickJsonFileMock.mockRejectedValue(
       new DomainError('Could not open the selected file', {
         cause: new Error('access denied'),
         code: ImportDocumentErrorCode.fileOpenFailed,
@@ -118,30 +118,26 @@ describe('useImportDocumentAction', () => {
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a file read error and reports it to diagnostics', async () => {
-    const { DomainError } = await import('@shared/lib/error');
-    const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
-    readJsonFileTextMock.mockRejectedValue(
-      new DomainError('Could not import the document', {
-        cause: new Error('read failed'),
-        code: ImportDocumentErrorCode.fileReadFailed,
-      }),
-    );
+  it('does not read file text in the feature — passes the File to the worker service', async () => {
+    const file = makeFile();
+    const textSpy = vi.spyOn(file, 'text');
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockResolvedValue('document-id');
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
-    await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Could not import the document',
-    });
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    await importDocument('/documents');
+
+    expect(textSpy).not.toHaveBeenCalled();
+    expect(importDocumentFromJsonFileMock).toHaveBeenCalledWith('/documents', file);
   });
 
   it('shows invalid JSON errors from service without reporting them', async () => {
     const { DomainError } = await import('@shared/lib/error');
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockRejectedValue(
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockRejectedValue(
       new DomainError('The selected file is not valid JSON', {
         cause: new Error('parse'),
         code: 'repositories.importInvalidJson',
@@ -160,8 +156,9 @@ describe('useImportDocumentAction', () => {
 
   it('shows invalid document format errors from service without reporting them', async () => {
     const { DomainError } = await import('@shared/lib/error');
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockRejectedValue(
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockRejectedValue(
       new DomainError('The selected JSON file is not a Mioframe document', {
         cause: new Error('zod'),
         code: 'repositories.importInvalidDocumentFormat',
@@ -179,14 +176,15 @@ describe('useImportDocumentAction', () => {
   });
 
   it('shows a success snackbar after a document is imported', async () => {
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockResolvedValue('document-id');
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockResolvedValue('document-id');
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBe('document-id');
-    expect(importDocumentFromJsonTextMock).toHaveBeenCalledWith('/documents', validJsonText);
+    expect(importDocumentFromJsonFileMock).toHaveBeenCalledWith('/documents', file);
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Document imported into this Mioframe folder',
     });
@@ -194,9 +192,10 @@ describe('useImportDocumentAction', () => {
   });
 
   it('reports unexpected import failures and preserves raw error as cause', async () => {
-    const error = new Error('unexpected failure at /private/path/notes.json');
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockRejectedValue(error);
+    const error = new Error('unexpected failure');
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockRejectedValue(error);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -210,19 +209,20 @@ describe('useImportDocumentAction', () => {
     const { DomainError } = await import('@shared/lib/error');
     expect(reportedError).toBeInstanceOf(DomainError);
     expect(reportedError.cause).toBe(error);
-    expect(reportedError.message).not.toContain('/private/path');
+    expect(reportedError.message).not.toContain('unexpected failure');
   });
 
   it('passes original DomainError directly to diagnostics without wrapping', async () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
-    const rawCause = new Error('failed to import /Users/alice/Documents/private.json');
+    const rawCause = new Error('file read failed');
     const error = new DomainError('Could not import the document', {
       cause: rawCause,
       code: ImportDocumentErrorCode.fileReadFailed,
     });
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockRejectedValue(error);
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockRejectedValue(error);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -234,8 +234,9 @@ describe('useImportDocumentAction', () => {
   });
 
   it('does not request permission and shows a safe message when user cancels the grant dialog', async () => {
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockRejectedValueOnce(
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockRejectedValueOnce(
       createSerializedRecoveryError({
         mode: 'readwrite',
         spaceName: 'Work',
@@ -251,12 +252,13 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Grant write access to import documents into this remembered space.',
     });
-    expect(importDocumentFromJsonTextMock).toHaveBeenCalledTimes(1);
+    expect(importDocumentFromJsonFileMock).toHaveBeenCalledTimes(1);
   });
 
   it('shows denied write-access message when broker returns denied', async () => {
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockRejectedValueOnce(
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockRejectedValueOnce(
       createSerializedRecoveryError({
         mode: 'readwrite',
         spaceName: 'Work',
@@ -276,13 +278,14 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Importing documents is not allowed in this remembered space because your browser denied write access.',
     });
-    expect(importDocumentFromJsonTextMock).toHaveBeenCalledTimes(1);
+    expect(importDocumentFromJsonFileMock).toHaveBeenCalledTimes(1);
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('shows a safe message when browser prompting fails and does not retry', async () => {
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock.mockRejectedValueOnce(
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock.mockRejectedValueOnce(
       createSerializedRecoveryError({
         mode: 'readwrite',
         spaceName: 'Work',
@@ -298,14 +301,15 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not request browser permission. Try again from this action.',
     });
-    expect(importDocumentFromJsonTextMock).toHaveBeenCalledTimes(1);
+    expect(importDocumentFromJsonFileMock).toHaveBeenCalledTimes(1);
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('reports retry failure through import error path without reopening the file picker', async () => {
     const retryError = new Error('disk full');
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock
       .mockRejectedValueOnce(
         createSerializedRecoveryError({
           mode: 'readwrite',
@@ -320,8 +324,8 @@ describe('useImportDocumentAction', () => {
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(importDocumentFromJsonTextMock).toHaveBeenCalledTimes(2);
-    expect(readJsonFileTextMock).toHaveBeenCalledTimes(1);
+    expect(importDocumentFromJsonFileMock).toHaveBeenCalledTimes(2);
+    expect(pickJsonFileMock).toHaveBeenCalledTimes(1);
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not import the document',
     });
@@ -332,9 +336,10 @@ describe('useImportDocumentAction', () => {
     expect(reportedError.cause).toBe(retryError);
   });
 
-  it('requests write access after a write-required import failure and retries the worker service command', async () => {
-    readJsonFileTextMock.mockResolvedValue(validJsonText);
-    importDocumentFromJsonTextMock
+  it('requests write access after a write-required import failure and retries with same File without reopening picker', async () => {
+    const file = makeFile();
+    pickJsonFileMock.mockResolvedValue(file);
+    importDocumentFromJsonFileMock
       .mockRejectedValueOnce(
         createSerializedRecoveryError({
           mode: 'readwrite',
@@ -360,7 +365,10 @@ describe('useImportDocumentAction', () => {
       operation: 'write',
       spaceName: 'Work',
     });
-    expect(importDocumentFromJsonTextMock).toHaveBeenCalledTimes(2);
+    expect(importDocumentFromJsonFileMock).toHaveBeenCalledTimes(2);
+    expect(importDocumentFromJsonFileMock).toHaveBeenNthCalledWith(1, '/documents', file);
+    expect(importDocumentFromJsonFileMock).toHaveBeenNthCalledWith(2, '/documents', file);
+    expect(pickJsonFileMock).toHaveBeenCalledTimes(1);
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Document imported into this Mioframe folder',
     });

@@ -382,17 +382,29 @@ const setupRepositoriesService = () => {
   };
 
   /**
-   * Parses and validates a JSON text string as a Mioframe CFR document and creates a new document
-   * in the target repository directory. Use this when the caller already holds the file text,
-   * such as after reading a user-selected file on the main thread.
+   * Reads text from a user-selected `File`, validates it as a Mioframe CFR document, and creates a
+   * new document in the target repository directory.
    * @param targetDirectoryPath - Absolute path to the repository directory to create the document in.
-   * @param jsonText - Raw JSON text content of the source file.
+   * @param file - The user-selected JSON file received via the file picker.
    * @returns The created document identifier.
    */
-  const importDocumentFromJsonText = async (
+  const importDocumentFromJsonFile = async (
     targetDirectoryPath: string,
-    jsonText: string,
-  ): Promise<AMDocumentId> => importDocumentFromText(targetDirectoryPath, jsonText);
+    file: File,
+  ): Promise<AMDocumentId> => {
+    let text: string;
+
+    try {
+      text = await file.text();
+    } catch (error) {
+      throw new DomainError('Could not import the document', {
+        cause: error,
+        code: RepositoryImportErrorCode.fileReadFailed,
+      });
+    }
+
+    return importDocumentFromText(targetDirectoryPath, text);
+  };
 
   /**
    * Initializes repository storage for an empty mounted directory through the shared repo cache.
@@ -447,14 +459,13 @@ const setupRepositoriesService = () => {
      */
     importDocumentFromJsonPath,
     /**
-     * Parses and validates a JSON text string as a Mioframe CFR document and creates a new
-     * document in the target repository directory. Use this when the caller already holds the file
-     * text, such as after reading a user-selected file on the main thread.
+     * Reads text from a user-selected `File`, validates it as a Mioframe CFR document, and creates
+     * a new document in the target repository directory.
      * @param targetDirectoryPath - Absolute path to the repository directory.
-     * @param jsonText - Raw JSON text content of the source file.
+     * @param file - The user-selected JSON file received via the file picker.
      * @returns The created document identifier.
      */
-    importDocumentFromJsonText,
+    importDocumentFromJsonFile,
   };
 };
 

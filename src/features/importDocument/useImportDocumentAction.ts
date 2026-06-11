@@ -21,9 +21,9 @@ const shouldSkipImportErrorReport = (error: unknown) =>
  * @returns Shared import action for feature callers that import a document into a directory.
  */
 export const useImportDocumentAction = () => {
-  const { readJsonFileText } = useImportDocument();
+  const { pickJsonFile } = useImportDocument();
   const {
-    repositories: { importDocumentFromJsonPath, importDocumentFromJsonText },
+    repositories: { importDocumentFromJsonPath, importDocumentFromJsonFile },
   } = useMainServiceClient();
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
@@ -107,17 +107,17 @@ export const useImportDocumentAction = () => {
   };
 
   const importDocument = async (path: string): Promise<string | undefined> => {
-    // Read text ONCE outside the retry — the file picker must not reopen on write-access retry.
-    let text: string | undefined;
+    // Pick the file ONCE outside the retry — the file picker must not reopen on write-access retry.
+    let file: File | undefined;
 
     try {
-      text = await readJsonFileText();
+      file = await pickJsonFile();
     } catch (error) {
       reportImportError(error, 'importDocumentJson');
       return undefined;
     }
 
-    if (text === undefined) {
+    if (file === undefined) {
       return undefined;
     }
 
@@ -125,10 +125,10 @@ export const useImportDocumentAction = () => {
       let documentId: string | undefined;
 
       try {
-        documentId = await importDocumentFromJsonText(path, text);
+        documentId = await importDocumentFromJsonFile(path, file);
       } catch (error) {
         documentId = await withWriteAccessRecovery(error, () =>
-          importDocumentFromJsonText(path, text),
+          importDocumentFromJsonFile(path, file),
         );
       }
 

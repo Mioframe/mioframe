@@ -26,6 +26,18 @@ export const transformers = [
     deserialize: (_p, v) => v,
   }),
 
+  defineTransformer('Blob', {
+    isApplicable: (v): v is Blob => {
+      try {
+        return v instanceof Blob;
+      } catch {
+        return false;
+      }
+    },
+    serialize: (_p, v) => v,
+    deserialize: (_p, v) => v,
+  }),
+
   defineCustomErrorTransformer('GoogleAuthError', GoogleAuthError),
   defineCustomErrorTransformer('GoogleClientConfigError', GoogleClientConfigError),
   defineCustomErrorTransformer(
