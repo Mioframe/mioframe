@@ -3,9 +3,9 @@ import { useMainServiceClient } from '@shared/service';
 import { computed, toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
-import { DEVICE_FILES_ROOT_NAME, type DeviceFileDisplayRecord } from '@shared/service/fileSystem';
+import { DEVICE_FILES_ROOT_NAME, type DeviceFileDisplayRecord } from '@shared/service';
 import { useObservable } from '@shared/lib/useObservable';
-import { OPFSName } from '@shared/service/directories';
+import { OPFSName } from '@shared/service';
 
 /** Root directory label used for mounted device-backed Mioframe spaces. */
 export const DEVICE_FILES = DEVICE_FILES_ROOT_NAME;

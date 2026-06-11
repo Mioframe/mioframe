@@ -2,7 +2,7 @@ import { useFileSystem } from '@entity/mountedDirectories';
 import { useMainServiceClient } from '@shared/service';
 import { DomainError } from '@shared/lib/error';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
-import { DEVICE_FILES_ROOT_NAME } from '@shared/service/fileSystem';
+import { DEVICE_FILES_ROOT_NAME } from '@shared/service';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { ref, toValue, type MaybeRefOrGetter } from 'vue';

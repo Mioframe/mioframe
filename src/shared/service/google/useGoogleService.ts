@@ -17,34 +17,17 @@ import { keys } from '@shared/lib/objectKeys';
 import type { GoogleSessionProfile } from './googleSessionProfile';
 import type { IFileSystemProvider } from '@shared/lib/virtualFileSystem';
 import pLimit from 'p-limit';
+import {
+  GOOGLE_DRIVE_ROOT_NAME,
+  type GoogleApi,
+  type GoogleSessionDisplay,
+} from './googleContracts';
+
+export { GOOGLE_DRIVE_ROOT_NAME, type GoogleApi, type GoogleSessionDisplay };
+export const GOOGLE_DRIVE_ROOT_DESCRIPTION = 'Cloud storage from Google Drive';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 type UserinfoResult = Awaited<ReturnType<GoogleApi['userinfoGet']>>['result'];
-
-type RequestAccessToken = (scopes: GOOGLE_SCOPE[], email?: string) => Promise<TokenResponse>;
-
-/** Lazy Google API adapter used by the shared Google service. */
-export interface GoogleApi {
-  /** Requests an access token for the requested scopes and optional expected account. */
-  requestAccessToken: RequestAccessToken;
-  /** Reads the Google userinfo profile for the active token. */
-  userinfoGet: (p: {
-    oauth_token?: string | undefined;
-  }) => Promise<{ result: { email?: string; name?: string; picture?: string } }>;
-  /** Revokes an existing Google access token. */
-  revoke: (accessToken: string) => Promise<void>;
-}
-
-export const GOOGLE_DRIVE_ROOT_NAME = 'Google Drive';
-export const GOOGLE_DRIVE_ROOT_DESCRIPTION = 'Cloud storage from Google Drive';
-
-/** Session record exposed to UI layers. */
-export type GoogleSessionDisplay = {
-  /** Stable Google account email. */
-  email: string;
-  /** Cached profile snapshot for the account. */
-  profile: GoogleSessionProfile;
-};
 
 /** Shared Google integration contract used by the app service facade. */
 export type GoogleService = {

@@ -68,6 +68,60 @@ enum TestErrorCode {
   TestFailure = 'test.failure',
 }
 
+/**
+ * Mock provider that passes messages by reference without JSON serialization.
+ * Used to test Blob/File transformer behavior through the SuperJSON layer, since
+ * Blob/File objects are preserved by real worker postMessage via structured clone
+ * but do not survive JSON.parse/JSON.stringify in the default MockProvider.
+ */
+class ReferencePassingProvider {
+  private listeners = new Set<(payload: { data: unknown }) => void>();
+  peer: ReferencePassingProvider | null = null;
+
+  constructor(
+    private readonly myId: string,
+    private readonly peerId: string,
+  ) {}
+
+  postMessage(data: unknown) {
+    if (!this.peer) return;
+    // Patch the serviceId for routing without cloning the payload.
+    // This simulates real worker postMessage for non-serializable types like Blob/File.
+    let payload = data;
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'serviceId' in data &&
+      typeof data.serviceId === 'string' &&
+      data.serviceId === this.myId
+    ) {
+      payload = { ...data, serviceId: this.peerId };
+    }
+    queueMicrotask(() => {
+      if (!this.peer) return;
+      for (const listener of this.peer.listeners) {
+        listener({ data: payload });
+      }
+    });
+  }
+
+  addEventListener(_type: 'message', handler: (payload: { data: unknown }) => void) {
+    this.listeners.add(handler);
+  }
+
+  removeEventListener(_type: 'message', handler: (payload: { data: unknown }) => void) {
+    this.listeners.delete(handler);
+  }
+}
+
+const createReferenceChannel = (clientId: string, serviceId: string) => {
+  const clientProvider = new ReferencePassingProvider(clientId, serviceId);
+  const serviceProvider = new ReferencePassingProvider(serviceId, clientId);
+  clientProvider.peer = serviceProvider;
+  serviceProvider.peer = clientProvider;
+  return { clientProvider, serviceProvider };
+};
+
 describe('workerTransformerMap', () => {
   it('reconstructs WebFileSystemAccessRequiredError across the service boundary', async () => {
     const serviceId = uid();
@@ -215,5 +269,87 @@ describe('workerTransformerMap', () => {
     });
     expect(state.lastError?.cause).not.toHaveProperty('handle');
     expect(state.lastError?.cause).not.toHaveProperty('provider');
+  });
+
+  it('passes a File through the proxy and the service can read its text', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    // Uses reference-passing (no JSON cloning) to simulate worker postMessage structured clone
+    // semantics for Blob/File, which are not JSON-serializable but are structured-cloneable.
+    const { clientProvider, serviceProvider } = createReferenceChannel(clientId, serviceId);
+
+    const jsonContent = JSON.stringify({ name: 'Doc', type: 'note', version: 1, body: {} });
+
+    let capturedFile: File | undefined;
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      importFile: async (file: File) => {
+        capturedFile = file;
+        return file.text();
+      },
+    }));
+
+    const client = createClient<{ importFile: (file: File) => Promise<string> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    const selectedFile = new File([jsonContent], 'doc.json', { type: 'application/json' });
+    const result = await client.importFile(selectedFile);
+
+    expect(result).toBe(jsonContent);
+    expect(capturedFile).toBeInstanceOf(File);
+    expect(await capturedFile?.text()).toBe(jsonContent);
+  });
+
+  it('passes a Blob through the proxy and the service can read its text', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createReferenceChannel(clientId, serviceId);
+
+    const content = 'hello from blob';
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      readBlob: async (blob: Blob) => blob.text(),
+    }));
+
+    const client = createClient<{ readBlob: (blob: Blob) => Promise<string> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const result = await client.readBlob(blob);
+
+    expect(result).toBe(content);
+  });
+
+  it('existing error transformers still work when Blob transformer is registered', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createReferenceChannel(clientId, serviceId);
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      fail: () => {
+        throw new DomainError('still works', {
+          code: TestErrorCode.TestFailure,
+          cause: new Error('root cause'),
+        });
+      },
+    }));
+
+    const client = createClient<{ fail: () => Promise<void> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    await expect(client.fail()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ message: 'still works', code: TestErrorCode.TestFailure });
+      return true;
+    });
   });
 });

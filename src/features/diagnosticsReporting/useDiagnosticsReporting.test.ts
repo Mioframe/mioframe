@@ -30,7 +30,7 @@ vi.mock('@entity/localSettings', () => ({
   }),
 }));
 
-vi.mock('@shared/service/diagnosticsPolicy', () => ({
+vi.mock('@shared/serviceClient/diagnostics/applyDiagnosticsPolicy', () => ({
   applyDiagnosticsPolicy: applyDiagnosticsPolicyMock,
 }));
 

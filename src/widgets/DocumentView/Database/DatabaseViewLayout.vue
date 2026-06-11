@@ -5,7 +5,7 @@ import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { computed, toRefs, useTemplateRef } from 'vue';
 import ValueInline from './ValueInline.vue';
 import { DatabaseDataTable } from '@entity/databaseData';
-import type { ItemIdQuery } from '@shared/service/databaseDocument/data/queryTypes';
+import type { ItemIdQuery } from '@shared/service';
 import { unrefElement, useScroll } from '@vueuse/core';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import DatabasePropertyBlock from '@entity/databaseProperty/DatabasePropertyBlock.vue';

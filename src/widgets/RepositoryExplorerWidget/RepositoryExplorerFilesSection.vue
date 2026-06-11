@@ -15,27 +15,26 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectPath: [path: string];
+  selectJsonFile: [path: string];
 }>();
 
 const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
 
-const visibleDirectoryNames = computed(
-  () =>
-    new Set(
-      props.regularFileEntries.flatMap(([name, { type }]) =>
-        type === FSNodeType.Directory ? [name] : [],
-      ),
-    ),
-);
+const isJsonFileEntry = (name: string, type: FSNodeType) =>
+  type === FSNodeType.File && name.toLowerCase().endsWith('.json');
 
-const isDirectoryEntry = (name: string) => visibleDirectoryNames.value.has(name);
+const isInteractiveEntry = (name: string, type: FSNodeType) =>
+  type === FSNodeType.Directory || isJsonFileEntry(name, type);
 
-const onClickEntry = (name: string) => {
-  if (!isDirectoryEntry(name)) {
+const onClickEntry = (name: string, type: FSNodeType) => {
+  if (type === FSNodeType.Directory) {
+    emit('selectPath', PathUtils.join(props.directoryPath, name));
     return;
   }
 
-  emit('selectPath', PathUtils.join(props.directoryPath, name));
+  if (isJsonFileEntry(name, type)) {
+    emit('selectJsonFile', PathUtils.join(props.directoryPath, name));
+  }
 };
 
 const supportingText = computed(() =>
@@ -66,12 +65,12 @@ const emptyText = computed(() =>
       <FSEntryMDListItem
         v-for="[name, { description, type: nodeType }] in regularFileEntries"
         :key="name"
-        :is-button="nodeType === FSNodeType.Directory"
+        :is-button="isInteractiveEntry(name, nodeType)"
         :name="name"
         :supporting-text="description"
         :type="nodeType"
         class="repository-explorer-files-section__list-item"
-        @click="onClickEntry"
+        @click="(clickedName) => onClickEntry(clickedName, nodeType)"
       >
         <template #trailingIcon>
           <RepositoryExplorerEntryManageButton

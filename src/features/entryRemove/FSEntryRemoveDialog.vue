@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
-import { stringPath } from '@shared/service/directories';
+import { stringPath } from '@shared/service';
 
 const { path } = defineProps<{
   path: string;

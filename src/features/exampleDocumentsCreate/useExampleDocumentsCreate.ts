@@ -1,4 +1,4 @@
-import { OPFSName } from '@shared/service/directories';
+import { OPFSName } from '@shared/service';
 import { useMainServiceClient } from '@shared/service';
 import { computed, ref } from 'vue';
 import { DEVICE_FILES } from '@entity/mountedDirectories';

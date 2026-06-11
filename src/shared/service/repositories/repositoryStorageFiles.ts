@@ -4,14 +4,11 @@ import {
   FileSystemError,
   FSNodeType,
   PathUtils,
-  type FSNodeStat,
   type VirtualFileSystem,
   VfsError,
 } from '@shared/lib/virtualFileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
-
-/** Directory entry contract used for repository storage inspection and file-list filtering. */
-export type RepositoryDirectoryEntry = readonly [name: string, stat: FSNodeStat];
+import type { RepositoryDirectoryEntry } from './repositoryContracts';
 
 /** Low-level repository facts derived from one directory listing. */
 export type RepositoryFacts = {
