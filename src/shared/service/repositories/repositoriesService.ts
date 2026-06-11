@@ -7,6 +7,9 @@ import { createRetryingStorageAdapter } from '@shared/lib/automergeAdapter';
 import type { WriteAccessRecoveryResult } from '../fileSystem/fileSystemAccessRequestRegistry';
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
+import { DomainError } from '@shared/lib/error';
+import { RepositoryImportErrorCode } from './repositoryImportErrorCode';
 import {
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
@@ -323,6 +326,86 @@ const setupRepositoriesService = () => {
     return documentId;
   };
 
+  const importDocumentFromText = async (
+    targetDirectoryPath: string,
+    text: string,
+  ): Promise<AMDocumentId> => {
+    let data: unknown;
+
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      throw new DomainError('The selected file is not valid JSON', {
+        cause: error,
+        code: RepositoryImportErrorCode.invalidJson,
+      });
+    }
+
+    let parsed: CFRDocumentContent;
+
+    try {
+      parsed = zodCFRDocumentContent.parse(data);
+    } catch (error) {
+      throw new DomainError('The selected JSON file is not a Mioframe document', {
+        cause: error,
+        code: RepositoryImportErrorCode.invalidDocumentFormat,
+      });
+    }
+
+    return createDocument(targetDirectoryPath, parsed);
+  };
+
+  /**
+   * Reads a JSON file from the VFS, validates it as a Mioframe CFR document, and creates a new
+   * document in the target repository directory.
+   * @param targetDirectoryPath - Absolute path to the repository directory to create the document in.
+   * @param sourceFilePath - Absolute VFS path to the source JSON file.
+   * @returns The created document identifier.
+   */
+  const importDocumentFromJsonPath = async (
+    targetDirectoryPath: string,
+    sourceFilePath: string,
+  ): Promise<AMDocumentId> => {
+    let text: string;
+
+    try {
+      const file = await vfs.readFile(sourceFilePath);
+      text = await file.text();
+    } catch (error) {
+      throw new DomainError('Could not import the document', {
+        cause: error,
+        code: RepositoryImportErrorCode.fileReadFailed,
+      });
+    }
+
+    return importDocumentFromText(targetDirectoryPath, text);
+  };
+
+  /**
+   * Reads text from a user-selected `File`, validates it as a Mioframe CFR document, and creates a
+   * new document in the target repository directory.
+   * @param targetDirectoryPath - Absolute path to the repository directory to create the document in.
+   * @param file - The user-selected JSON file received via the file picker.
+   * @returns The created document identifier.
+   */
+  const importDocumentFromJsonFile = async (
+    targetDirectoryPath: string,
+    file: File,
+  ): Promise<AMDocumentId> => {
+    let text: string;
+
+    try {
+      text = await file.text();
+    } catch (error) {
+      throw new DomainError('Could not import the document', {
+        cause: error,
+        code: RepositoryImportErrorCode.fileReadFailed,
+      });
+    }
+
+    return importDocumentFromText(targetDirectoryPath, text);
+  };
+
   /**
    * Initializes repository storage for an empty mounted directory through the shared repo cache.
    * @param path - Absolute path to the repository root.
@@ -367,6 +450,22 @@ const setupRepositoriesService = () => {
      * @param id - Document identifier.
      */
     deleteDocument,
+    /**
+     * Reads a JSON file from the VFS, validates it as a Mioframe CFR document, and creates a new
+     * document in the target repository directory.
+     * @param targetDirectoryPath - Absolute path to the repository directory.
+     * @param sourceFilePath - Absolute VFS path to the source JSON file.
+     * @returns The created document identifier.
+     */
+    importDocumentFromJsonPath,
+    /**
+     * Reads text from a user-selected `File`, validates it as a Mioframe CFR document, and creates
+     * a new document in the target repository directory.
+     * @param targetDirectoryPath - Absolute path to the repository directory.
+     * @param file - The user-selected JSON file received via the file picker.
+     * @returns The created document identifier.
+     */
+    importDocumentFromJsonFile,
   };
 };
 

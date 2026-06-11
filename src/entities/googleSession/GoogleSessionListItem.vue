@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs } from 'vue';
-import type { GoogleSessionDisplay } from '@shared/service/google';
+import type { GoogleSessionDisplay } from '@shared/service';
 import GoogleSessionAvatar from './GoogleSessionAvatar.vue';
 
 const props = defineProps<{

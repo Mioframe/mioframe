@@ -1,5 +1,5 @@
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
-import { useMainServiceClient } from '@shared/service/useService';
+import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 

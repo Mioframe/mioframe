@@ -31,13 +31,17 @@ vi.mock('@entity/mountedDirectories', () => ({
   }),
 }));
 
-vi.mock('@shared/service', () => ({
-  useMainServiceClient: () => ({
-    repositories: {
-      initializeRepository: initializeRepositoryMock,
-    },
-  }),
-}));
+vi.mock('@shared/service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/service')>();
+  return {
+    ...actual,
+    useMainServiceClient: () => ({
+      repositories: {
+        initializeRepository: initializeRepositoryMock,
+      },
+    }),
+  };
+});
 
 vi.mock('@shared/ui/Snackbar', () => ({
   useSnackbar: () => ({

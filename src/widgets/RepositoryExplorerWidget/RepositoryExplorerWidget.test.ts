@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
-import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google';
+import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service';
 
 const directoryStatRef = ref<{
   capabilities?: {
@@ -23,6 +23,7 @@ const regularFileEntriesRef = ref<unknown[] | undefined>([]);
 const repositoryRecoveryErrorsRef = ref<unknown[]>([]);
 const requestAccessMock = vi.fn();
 const requestTokenMock = vi.fn();
+const importDocumentFromPathMock = vi.fn();
 
 const createSerializedRecoveryError = ({
   mode,
@@ -51,11 +52,22 @@ vi.mock('@shared/serviceClient/fileSystem', () => ({
   }),
 }));
 
-vi.mock('@shared/service', () => ({
-  useMainServiceClient: () => ({
-    google: {
-      requestToken: requestTokenMock,
-    },
+vi.mock('@shared/service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/service')>();
+  return {
+    ...actual,
+    useMainServiceClient: () => ({
+      google: {
+        requestToken: requestTokenMock,
+      },
+    }),
+  };
+});
+
+vi.mock('@feature/importDocument', () => ({
+  useImportDocumentAction: () => ({
+    importDocument: vi.fn(),
+    importDocumentFromPath: importDocumentFromPathMock,
   }),
 }));
 
@@ -207,18 +219,31 @@ vi.mock('./RepositoryExplorerDocumentsSection.vue', () => ({
 vi.mock('./RepositoryExplorerFilesSection.vue', () => ({
   default: defineComponent({
     name: 'RepositoryExplorerFilesSectionStub',
-    emits: ['selectPath'],
+    emits: ['selectPath', 'selectJsonFile'],
     setup(_props, { emit }) {
       return () =>
-        h(
-          'button',
-          {
-            onClick: () => {
-              emit('selectPath', '/child');
+        h('div', [
+          h(
+            'button',
+            {
+              'data-testid': 'select-path-btn',
+              onClick: () => {
+                emit('selectPath', '/child');
+              },
             },
-          },
-          'File',
-        );
+            'File',
+          ),
+          h(
+            'button',
+            {
+              'data-testid': 'select-json-file-btn',
+              onClick: () => {
+                emit('selectJsonFile', '/child/doc.json');
+              },
+            },
+            'JSON file',
+          ),
+        ]);
     },
   }),
 }));
@@ -276,6 +301,7 @@ describe('RepositoryExplorerWidget', () => {
     repositoryRecoveryErrorsRef.value = [];
     requestAccessMock.mockReset();
     requestTokenMock.mockReset();
+    importDocumentFromPathMock.mockReset();
     document.body.innerHTML = '';
   });
 
@@ -485,6 +511,31 @@ describe('RepositoryExplorerWidget', () => {
     expect(requestAccessMock).not.toHaveBeenCalled();
     expect(wrapper.text()).not.toContain('Grant access');
     expect(wrapper.text()).not.toContain('Permission required');
+  });
+
+  it('calls importDocumentFromPath with the current directory path when a JSON file is selected', async () => {
+    importDocumentFromPathMock.mockResolvedValue(undefined);
+
+    const wrapper = await mountWidget();
+
+    const jsonFileButton = wrapper.get('[data-testid="select-json-file-btn"]');
+    await jsonFileButton.trigger('click');
+
+    expect(importDocumentFromPathMock).toHaveBeenCalledWith(
+      '/Device Files/Work',
+      '/child/doc.json',
+    );
+    expect(wrapper.emitted('clickPath')).toBeUndefined();
+  });
+
+  it('does not emit clickPath when a JSON file is selected', async () => {
+    importDocumentFromPathMock.mockResolvedValue(undefined);
+
+    const wrapper = await mountWidget();
+
+    await wrapper.get('[data-testid="select-json-file-btn"]').trigger('click');
+
+    expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

@@ -8,6 +8,7 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { useImportDocumentAction } from '@feature/importDocument';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
 import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
@@ -28,6 +29,7 @@ defineSlots<{
 }>();
 
 const { directoryPath } = toRefs(props);
+const { importDocumentFromPath } = useImportDocumentAction();
 const { data: directoryStat, error: directoryStatError } = useFSNodeStat(directoryPath);
 const repositoryExplorerDirectoryState = useRepositoryExplorerDirectoryState(directoryPath);
 const {
@@ -67,6 +69,10 @@ const onClickDocument = (documentId: AMDocumentId) => {
 
 const onReturnHomeClick = () => {
   emit('clickReturnHome');
+};
+
+const onSelectJsonFile = (filePath: string) => {
+  void importDocumentFromPath(directoryPath.value, filePath);
 };
 </script>
 
@@ -149,6 +155,7 @@ const onReturnHomeClick = () => {
           :hide-automerge-files="hideAutomergeFiles"
           :regular-file-entries="regularFileEntries ?? []"
           @select-path="onClickPath"
+          @select-json-file="onSelectJsonFile"
         />
       </div>
 

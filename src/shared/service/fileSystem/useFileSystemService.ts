@@ -5,6 +5,7 @@ import {
   type DeviceFileDisplayRecord,
   type MountedDeviceFileRecord,
 } from '@shared/lib/deviceFileSystemProvider';
+import type { ReadDirectoryOptions } from './fileSystemContracts';
 import {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
@@ -29,16 +30,8 @@ import {
 } from './fileSystemAccessRequestRegistry';
 import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
 
-/**
- * UI-facing options for reading directory content through the shared file-system service.
- */
-export interface ReadDirectoryOptions {
-  /** Hides Automerge sidecar files from the returned listing. */
-  hideAutomergeFiles?: boolean;
-}
-
 export { DEVICE_FILES_ROOT_NAME };
-export type { DeviceFileDisplayRecord, WriteAccessRecoveryHandler };
+export type { DeviceFileDisplayRecord, ReadDirectoryOptions, WriteAccessRecoveryHandler };
 
 const didPersistedDeviceDirectoryRecordsChange = (
   nextRecords: PersistedDeviceDirectoryRecord[],

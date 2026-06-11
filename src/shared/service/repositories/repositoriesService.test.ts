@@ -57,6 +57,7 @@ const vfsReadDirectory = vi.hoisted(() =>
     return currentValue;
   }),
 );
+const vfsReadFile = vi.hoisted(() => vi.fn<(path: string) => Promise<File>>());
 const vfsDelete = vi.hoisted(() =>
   vi.fn((filePath: string) => {
     const slashIndex = filePath.lastIndexOf('/');
@@ -128,6 +129,7 @@ vi.mock('../fileSystem', () => ({
     vfs: {
       kind: 'mock-vfs',
       readDirectory: vfsReadDirectory,
+      readFile: vfsReadFile,
       delete: vfsDelete,
     },
     registerWriteAccessRecoveryHandler: registerWriteAccessRecoveryHandlerMock,
@@ -184,6 +186,7 @@ describe('useRepositoriesService', () => {
     registerWriteAccessRecoveryHandlerMock.mockReturnValue(() => undefined);
     createRetryingStorageAdapterMock.mockClear();
     vfsReadDirectory.mockClear();
+    vfsReadFile.mockClear();
     vfsDelete.mockClear();
   });
 
@@ -1032,5 +1035,250 @@ describe('useRepositoriesService', () => {
     } finally {
       setDiagnosticEventSink(undefined);
     }
+  });
+
+  describe('importDocumentFromJsonPath', () => {
+    const validDocument: CFRDocumentContent = {
+      body: {},
+      name: 'Imported',
+      type: 'note',
+      version: 1,
+    };
+
+    it('creates a document from a valid JSON file and returns its id', async () => {
+      const targetPath = '/repo-import';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      vfsReadFile.mockResolvedValue(new File([JSON.stringify(validDocument)], 'doc.json'));
+
+      const id = await service.importDocumentFromJsonPath(targetPath, '/files/doc.json');
+
+      expect(typeof id).toBe('string');
+      expect(id).toBeTruthy();
+      const repo = repoInstances.get(targetPath)?.[0];
+      expect(repo?.create).toHaveBeenCalledWith(validDocument);
+    });
+
+    it('does not modify the source JSON file', async () => {
+      const targetPath = '/repo-no-modify';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      vfsReadFile.mockResolvedValue(new File([JSON.stringify(validDocument)], 'doc.json'));
+
+      await service.importDocumentFromJsonPath(targetPath, '/files/doc.json');
+
+      expect(vfsDelete).not.toHaveBeenCalled();
+    });
+
+    it('allows duplicate document names in the same directory', async () => {
+      const targetPath = '/repo-dup';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      vfsReadFile.mockResolvedValue(new File([JSON.stringify(validDocument)], 'doc.json'));
+
+      const id1 = await service.importDocumentFromJsonPath(targetPath, '/files/doc.json');
+      const id2 = await service.importDocumentFromJsonPath(targetPath, '/files/doc.json');
+
+      expect(id1).not.toBe(id2);
+    });
+
+    it('rejects with a safe DomainError when the file cannot be read', async () => {
+      const targetPath = '/repo-read-fail';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+      const rawCause = new Error('disk error at /private/path/doc.json');
+      vfsReadFile.mockRejectedValue(rawCause);
+
+      const error = await service
+        .importDocumentFromJsonPath(targetPath, '/files/doc.json')
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'Could not import the document',
+        code: RepositoryImportErrorCode.fileReadFailed,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBe(rawCause);
+      expect(error.message).not.toContain('/private/path');
+    });
+
+    it('rejects with a safe DomainError when the file contains invalid JSON', async () => {
+      const targetPath = '/repo-invalid-json';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+      vfsReadFile.mockResolvedValue(new File(['{'], 'bad.json'));
+
+      const error = await service
+        .importDocumentFromJsonPath(targetPath, '/files/bad.json')
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected file is not valid JSON',
+        code: RepositoryImportErrorCode.invalidJson,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBeInstanceOf(SyntaxError);
+    });
+
+    it('rejects with a safe DomainError when the JSON is not a Mioframe document', async () => {
+      const targetPath = '/repo-invalid-doc';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+      vfsReadFile.mockResolvedValue(new File([JSON.stringify({ name: 'Doc' })], 'bad.json'));
+
+      const error = await service
+        .importDocumentFromJsonPath(targetPath, '/files/bad.json')
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected JSON file is not a Mioframe document',
+        code: RepositoryImportErrorCode.invalidDocumentFormat,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBeDefined();
+    });
+  });
+
+  describe('importDocumentFromJsonFile', () => {
+    const validDocument: CFRDocumentContent = {
+      body: {},
+      name: 'Imported',
+      type: 'note',
+      version: 1,
+    };
+
+    it('creates a document from a valid selected File and returns its id', async () => {
+      const targetPath = '/repo-import-file';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      const file = new File([JSON.stringify(validDocument)], 'doc.json', {
+        type: 'application/json',
+      });
+
+      const id = await service.importDocumentFromJsonFile(targetPath, file);
+
+      expect(typeof id).toBe('string');
+      expect(id).toBeTruthy();
+      const repo = repoInstances.get(targetPath)?.[0];
+      expect(repo?.create).toHaveBeenCalledWith(validDocument);
+    });
+
+    it('does not call vfsDelete (source file is caller-owned, not VFS)', async () => {
+      const targetPath = '/repo-file-no-modify';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      const file = new File([JSON.stringify(validDocument)], 'doc.json');
+
+      await service.importDocumentFromJsonFile(targetPath, file);
+
+      expect(vfsDelete).not.toHaveBeenCalled();
+    });
+
+    it('allows duplicate document names in the same directory', async () => {
+      const targetPath = '/repo-file-dup';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      const file = new File([JSON.stringify(validDocument)], 'doc.json');
+
+      const id1 = await service.importDocumentFromJsonFile(targetPath, file);
+      const id2 = await service.importDocumentFromJsonFile(targetPath, file);
+
+      expect(id1).not.toBe(id2);
+    });
+
+    it('rejects with a safe DomainError when file.text() fails', async () => {
+      const targetPath = '/repo-file-read-fail';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+      const rawCause = new Error('I/O read failed');
+      const file = new File([''], 'doc.json');
+      vi.spyOn(file, 'text').mockRejectedValue(rawCause);
+
+      const error = await service
+        .importDocumentFromJsonFile(targetPath, file)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'Could not import the document',
+        code: RepositoryImportErrorCode.fileReadFailed,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBe(rawCause);
+    });
+
+    it('rejects with a safe DomainError when the file contains invalid JSON', async () => {
+      const targetPath = '/repo-file-invalid-json';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+      const file = new File(['{'], 'bad.json');
+
+      const error = await service
+        .importDocumentFromJsonFile(targetPath, file)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected file is not valid JSON',
+        code: RepositoryImportErrorCode.invalidJson,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBeInstanceOf(SyntaxError);
+    });
+
+    it('rejects with a safe DomainError when the JSON is not a Mioframe document', async () => {
+      const targetPath = '/repo-file-invalid-doc';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+      const file = new File([JSON.stringify({ name: 'Doc' })], 'bad.json');
+
+      const error = await service
+        .importDocumentFromJsonFile(targetPath, file)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected JSON file is not a Mioframe document',
+        code: RepositoryImportErrorCode.invalidDocumentFormat,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBeDefined();
+    });
+
+    it('does not expose importDocumentFromJsonText on the public service API', async () => {
+      const targetPath = '/repo-no-text-api';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      expect(service).not.toHaveProperty('importDocumentFromJsonText');
+    });
   });
 });

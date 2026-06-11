@@ -6,7 +6,7 @@ import { VfsError } from '../virtualFileSystem';
 import { GoogleDriveError } from '../googleDrive';
 import { GoogleClientConfigError } from '../googleApi';
 import { WebFileSystemAccessRequiredError } from '../webFileSystemProvider';
-import { GoogleAuthError } from '@shared/service/google';
+import { GoogleAuthError } from '../googleAuth';
 
 /** Shared worker/client transformer registry for service transport. */
 export const transformers = [
@@ -21,6 +21,18 @@ export const transformers = [
       }
 
       return false;
+    },
+    serialize: (_p, v) => v,
+    deserialize: (_p, v) => v,
+  }),
+
+  defineTransformer('Blob', {
+    isApplicable: (v): v is Blob => {
+      try {
+        return v instanceof Blob;
+      } catch {
+        return false;
+      }
     },
     serialize: (_p, v) => v,
     deserialize: (_p, v) => v,

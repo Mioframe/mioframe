@@ -1,5 +1,5 @@
 import { applyDiagnosticsRuntimeState, getOrCreateSentrySessionId } from '@shared/lib/diagnostics';
-import { syncSentryStateToWorker } from './sentryWorkerSync';
+import { syncSentryStateToWorker } from '@shared/service/sentryWorkerSync';
 
 /** App-level diagnostics reporting policy derived from user consent. */
 export type DiagnosticsPolicy = 'enabled' | 'disabled' | 'unknown';
