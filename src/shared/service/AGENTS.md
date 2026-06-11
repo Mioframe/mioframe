@@ -1,80 +1,37 @@
 # src/shared/service
 
-## Purpose
+Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` and its descendants until a deeper `AGENTS.md` overrides it.
 
-This directory contains background-side service implementations, worker service setup, and public service contracts.
+## Contains
 
-## Public boundary
+- Background-side service contracts, worker wiring, cache-aware queries, mutations, and service proxy implementation.
 
-UI and FSD layers (`app`, `pages`, `widgets`, `features`, `entities`) must access background services only through `@shared/service` and `useMainServiceClient`.
+## Patterns
 
-They must not import service implementation modules directly or through relative paths.
+- Services expose infrastructural capabilities and contracts, not screen-specific UI logic.
+- Keep `*Service` modules free of DOM APIs, layout, focus, and other main-thread-only behavior.
+- Browser-only user-activation adapters belong in `src/shared/serviceClient/**`, not in this tree.
+- Treat a direct `*Service` import as service-layer membership unless the module crosses the boundary through an approved proxy client.
+- Keep query and mutation contracts deterministic about parameters, invalidation, and missing-data behavior.
+- Normalize errors and other side effects here so upper layers see a stable contract.
+- Build parameterized observable queries in the service layer itself instead of leaking store internals upward.
+- For document and CRDT services, route nested writes through `put`, `patch`, or change helpers before reaching for whole-object replacement.
+- Keep `@shared/service` as a narrow public worker-service client contract.
+- Export public service DTOs, enums, constants, and error contracts from contract-only modules, not from `use*Service` implementation files.
+- Service implementations may import contract-only modules, but contract-only modules must not import service implementations.
+- Do not re-export implementation barrels from `@shared/service`.
 
-Forbidden from UI/FSD layers:
+## Anti-patterns
 
-- `@shared/service/*`
-- relative imports into `src/shared/service/**`
-- `useFileSystemService`
-- `useRepositoriesService`
-- `useGoogleService`
-- any other background-side `use*Service`
+- Do not import Vue UI components here.
+- Do not duplicate domain derivations that belong in `entities`.
+- Do not add wrapper services that add no contract, invariant, or normalization.
+- Do not leave data-changing flows without cache or event invalidation.
+- Do not make `@shared/service` expose `useFileSystemService`, `useRepositoriesService`, `useGoogleService`, or other background-side `use*Service` implementations.
+- Do not make contract-only modules depend on `use*Service`, `setup*Service`, implementation barrels, provider setup, VFS setup, repository setup, or runtime side effects.
 
-## Public service contracts
+## Constraints
 
-`@shared/service` is the public worker-service client contract.
-
-It may export:
-
-- `useMainServiceClient`
-- `MainServiceClient`
-- service DTOs
-- method parameter/result types
-- stable error codes
-- public service constants
-- public service error classes that cross the worker boundary
-
-It must not export:
-
-- `use*Service` implementation functions
-- service setup functions
-- implementation barrels
-- runtime helpers unrelated to the worker-service client contract
-
-## Contract-only modules
-
-Public contracts should live in contract-only modules near the owning service.
-
-Examples:
-
-- `fileSystemContracts.ts`
-- `googleContracts.ts`
-- `repositoryContracts.ts`
-- `directoriesContracts.ts`
-
-Contract-only modules must not import from service implementation files.
-
-Correct direction:
-
-- `@shared/service` imports contract-only modules
-- service implementations import contract-only modules
-
-Incorrect direction:
-
-- contract-only modules import `use*Service`
-- `@shared/service` re-exports implementation barrels
-
-## Main-thread bridges
-
-Main-thread helpers that support service flows but require browser runtime APIs belong outside `src/shared/service`.
-
-Use `src/shared/serviceClient/**` for browser permission prompts, File System Access recovery, and similar client-side bridges.
-
-## Verification
-
-When changing this directory, check:
-
-- `@shared/service` does not export service implementations
-- contract-only modules do not import implementation files
-- UI/FSD layers do not import `@shared/service/*`
-- UI/FSD layers do not import relative `shared/service/**`
-- `pnpm lint:oxlint` passes
+- Service changes often affect every caller above this layer.
+- Minimum verification: `pnpm type-check`, then focused tests or reproducible checks for the touched contract, including invalidation and reload behavior after a mutation.
+- When changing public service exports, also run `pnpm lint:oxlint` and check that UI/FSD layers import only from `@shared/service`, not from `@shared/service/*` or relative `shared/service/**` paths.
