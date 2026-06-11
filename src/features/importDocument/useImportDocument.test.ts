@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '@shared/lib/error';
 import { useImportDocument } from './useImportDocument';
 
-const { createDocumentMock, fileOpenMock } = vi.hoisted(() => ({
+const { createDocumentMock, fileOpenMock, readTextMock } = vi.hoisted(() => ({
   createDocumentMock: vi.fn(),
   fileOpenMock: vi.fn(),
+  readTextMock: vi.fn(),
 }));
 
 vi.mock('@shared/service', () => ({
@@ -12,6 +13,12 @@ vi.mock('@shared/service', () => ({
     repositories: {
       createDocument: createDocumentMock,
     },
+  }),
+}));
+
+vi.mock('@shared/service/fileSystem', () => ({
+  useFileSystemService: () => ({
+    readText: readTextMock,
   }),
 }));
 
@@ -30,6 +37,7 @@ describe('useImportDocument', () => {
   beforeEach(() => {
     createDocumentMock.mockReset();
     fileOpenMock.mockReset();
+    readTextMock.mockReset();
     createDocumentMock.mockResolvedValue('document-id');
   });
 
@@ -195,5 +203,85 @@ describe('useImportDocument', () => {
     expect(error.cause).toBe(rawCause);
     expect(error.message).not.toContain('/Device files');
     expect(createDocumentMock).not.toHaveBeenCalled();
+  });
+
+  describe('readImportDocumentDraftFromPath', () => {
+    it('returns a valid draft from a VFS path', async () => {
+      readTextMock.mockResolvedValue(JSON.stringify(validDocument));
+
+      const { readImportDocumentDraftFromPath } = useImportDocument();
+
+      await expect(readImportDocumentDraftFromPath('/repo/doc.json')).resolves.toEqual({
+        fileName: 'doc.json',
+        initialValue: validDocument,
+      });
+      expect(readTextMock).toHaveBeenCalledWith('/repo/doc.json');
+      expect(createDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('wraps VFS read failure with a safe DomainError without exposing the path', async () => {
+      const rawCause = new Error('disk error at /private/path/doc.json');
+      readTextMock.mockRejectedValue(rawCause);
+
+      const { readImportDocumentDraftFromPath } = useImportDocument();
+
+      const error = await readImportDocumentDraftFromPath('/repo/doc.json').catch(
+        (caughtError: unknown) => caughtError,
+      );
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'Could not import the document',
+        code: 'importDocument.fileReadFailed',
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBe(rawCause);
+      expect(error.message).not.toContain('/private/path');
+      expect(createDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('wraps invalid JSON from VFS path with a user-facing DomainError', async () => {
+      readTextMock.mockResolvedValue('{');
+
+      const { readImportDocumentDraftFromPath } = useImportDocument();
+
+      const error = await readImportDocumentDraftFromPath('/repo/doc.json').catch(
+        (caughtError: unknown) => caughtError,
+      );
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected file is not valid JSON',
+        code: 'importDocument.invalidJson',
+      });
+      expect(createDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('wraps non-Mioframe JSON from VFS path with a user-facing DomainError', async () => {
+      readTextMock.mockResolvedValue(JSON.stringify({ name: 'Doc' }));
+
+      const { readImportDocumentDraftFromPath } = useImportDocument();
+
+      const error = await readImportDocumentDraftFromPath('/repo/doc.json').catch(
+        (caughtError: unknown) => caughtError,
+      );
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected JSON file is not a Mioframe document',
+        code: 'importDocument.invalidDocumentFormat',
+      });
+      expect(createDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('uses the last path segment as the file name', async () => {
+      readTextMock.mockResolvedValue(JSON.stringify(validDocument));
+
+      const { readImportDocumentDraftFromPath } = useImportDocument();
+
+      const draft = await readImportDocumentDraftFromPath('/a/b/c/my-notes.json');
+
+      expect(draft.fileName).toBe('my-notes.json');
+    });
   });
 });

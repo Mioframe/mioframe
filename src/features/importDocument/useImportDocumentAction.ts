@@ -19,7 +19,8 @@ const shouldSkipImportErrorReport = (error: unknown) =>
  * @returns Shared import action for feature callers that import a document into a directory.
  */
 export const useImportDocumentAction = () => {
-  const { createImportedDocument, readImportDocumentDraft } = useImportDocument();
+  const { createImportedDocument, readImportDocumentDraft, readImportDocumentDraftFromPath } =
+    useImportDocument();
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
   const { requestAccess } = useFileSystemAccessPermissionBroker();
@@ -112,7 +113,106 @@ export const useImportDocumentAction = () => {
     }
   };
 
+  const importDocumentFromPath = async (
+    targetDirectoryPath: string,
+    sourceFilePath: string,
+  ): Promise<string | undefined> => {
+    try {
+      const shouldImport = await confirm({
+        headline: 'Import document',
+        supportingText: 'Import this JSON file as a new Mioframe document in the current folder?',
+        confirmLabel: 'Import',
+        cancelLabel: 'Cancel',
+      });
+
+      if (!shouldImport) {
+        return undefined;
+      }
+
+      const draft = await readImportDocumentDraftFromPath(sourceFilePath);
+
+      let documentId: string | undefined;
+
+      try {
+        documentId = await createImportedDocument(targetDirectoryPath, draft);
+      } catch (error) {
+        const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
+
+        if (!recovery) {
+          throw error;
+        }
+
+        const shouldGrantAccess = await confirm({
+          headline: 'Grant write access',
+          supportingText: `Mioframe remembers "${recovery.spaceName}", but your browser requires write access before importing a document into it.`,
+          confirmLabel: 'Grant access',
+          cancelLabel: 'Not now',
+        });
+
+        if (!shouldGrantAccess) {
+          addSnackbar({
+            text: 'Grant write access to import documents into this remembered space.',
+          });
+          return undefined;
+        }
+
+        const result = await requestAccess(recovery);
+
+        if (
+          result.status !== 'granted' &&
+          result.status !== 'grantedWithReplayFailures' &&
+          result.status !== 'grantedWithStorageFailures'
+        ) {
+          addSnackbar({
+            text:
+              result.status === 'denied'
+                ? 'Importing documents is not allowed in this remembered space because your browser denied write access.'
+                : 'Could not request browser permission. Try again from this action.',
+          });
+          return undefined;
+        }
+
+        documentId = await createImportedDocument(targetDirectoryPath, draft);
+      }
+
+      if (!documentId) {
+        return undefined;
+      }
+
+      addSnackbar({ text: 'Document imported' });
+
+      return documentId;
+    } catch (error) {
+      const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
+
+      addSnackbar({
+        text: recovery
+          ? 'Grant write access to import documents into this remembered space.'
+          : error instanceof DomainError
+            ? error.message
+            : 'Could not import the document',
+      });
+
+      if (!shouldSkipImportErrorReport(error)) {
+        const reportError =
+          error instanceof DomainError
+            ? error
+            : new DomainError('Could not import the document', {
+                cause: error,
+                code: ImportDocumentErrorCode.documentImportFailed,
+              });
+        captureDiagnosticException(reportError, {
+          feature: 'documentImport',
+          action: 'importDocumentFromPath',
+        });
+      }
+
+      return undefined;
+    }
+  };
+
   return {
     importDocument,
+    importDocumentFromPath,
   };
 };

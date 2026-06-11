@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectPath: [path: string];
+  selectJsonFile: [path: string];
 }>();
 
 const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
@@ -30,12 +31,29 @@ const visibleDirectoryNames = computed(
 
 const isDirectoryEntry = (name: string) => visibleDirectoryNames.value.has(name);
 
+const isJsonFileEntry = (name: string, type: FSNodeType) =>
+  type === FSNodeType.File && name.toLowerCase().endsWith('.json');
+
+const isInteractiveEntry = (name: string, type: FSNodeType) =>
+  isDirectoryEntry(name) || isJsonFileEntry(name, type);
+
 const onClickEntry = (name: string) => {
-  if (!isDirectoryEntry(name)) {
+  const entry = props.regularFileEntries.find(([entryName]) => entryName === name);
+
+  if (!entry) {
     return;
   }
 
-  emit('selectPath', PathUtils.join(props.directoryPath, name));
+  const [, { type }] = entry;
+
+  if (isDirectoryEntry(name)) {
+    emit('selectPath', PathUtils.join(props.directoryPath, name));
+    return;
+  }
+
+  if (isJsonFileEntry(name, type)) {
+    emit('selectJsonFile', PathUtils.join(props.directoryPath, name));
+  }
 };
 
 const supportingText = computed(() =>
@@ -66,7 +84,7 @@ const emptyText = computed(() =>
       <FSEntryMDListItem
         v-for="[name, { description, type: nodeType }] in regularFileEntries"
         :key="name"
-        :is-button="nodeType === FSNodeType.Directory"
+        :is-button="isInteractiveEntry(name, nodeType)"
         :name="name"
         :supporting-text="description"
         :type="nodeType"

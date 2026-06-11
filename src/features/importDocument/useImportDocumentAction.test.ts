@@ -4,6 +4,7 @@ const {
   requestAccessMock,
   createImportedDocumentMock,
   readImportDocumentDraftMock,
+  readImportDocumentDraftFromPathMock,
   addSnackbarMock,
   confirmMock,
   captureDiagnosticExceptionMock,
@@ -11,6 +12,7 @@ const {
   requestAccessMock: vi.fn(),
   createImportedDocumentMock: vi.fn(),
   readImportDocumentDraftMock: vi.fn(),
+  readImportDocumentDraftFromPathMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock('./useImportDocument', () => ({
   useImportDocument: () => ({
     createImportedDocument: createImportedDocumentMock,
     readImportDocumentDraft: readImportDocumentDraftMock,
+    readImportDocumentDraftFromPath: readImportDocumentDraftFromPathMock,
   }),
 }));
 
@@ -64,6 +67,7 @@ describe('useImportDocumentAction', () => {
     requestAccessMock.mockReset();
     createImportedDocumentMock.mockReset();
     readImportDocumentDraftMock.mockReset();
+    readImportDocumentDraftFromPathMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
@@ -331,6 +335,140 @@ describe('useImportDocumentAction', () => {
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(2);
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Document imported',
+    });
+  });
+
+  describe('importDocumentFromPath', () => {
+    it('shows a confirmation dialog before reading or creating', async () => {
+      confirmMock.mockResolvedValue(false);
+
+      const { useImportDocumentAction } = await import('./useImportDocumentAction');
+      const { importDocumentFromPath } = useImportDocumentAction();
+
+      await expect(
+        importDocumentFromPath('/documents', '/folder/doc.json'),
+      ).resolves.toBeUndefined();
+      expect(confirmMock).toHaveBeenCalledWith({
+        headline: 'Import document',
+        supportingText: 'Import this JSON file as a new Mioframe document in the current folder?',
+        confirmLabel: 'Import',
+        cancelLabel: 'Cancel',
+      });
+      expect(readImportDocumentDraftFromPathMock).not.toHaveBeenCalled();
+      expect(createImportedDocumentMock).not.toHaveBeenCalled();
+      expect(addSnackbarMock).not.toHaveBeenCalled();
+    });
+
+    it('reads, validates, and creates a document after confirmation', async () => {
+      confirmMock.mockResolvedValue(true);
+      readImportDocumentDraftFromPathMock.mockResolvedValue({
+        fileName: 'doc.json',
+        initialValue: {},
+      });
+      createImportedDocumentMock.mockResolvedValue('new-id');
+
+      const { useImportDocumentAction } = await import('./useImportDocumentAction');
+      const { importDocumentFromPath } = useImportDocumentAction();
+
+      await expect(importDocumentFromPath('/documents', '/folder/doc.json')).resolves.toBe(
+        'new-id',
+      );
+      expect(readImportDocumentDraftFromPathMock).toHaveBeenCalledWith('/folder/doc.json');
+      expect(createImportedDocumentMock).toHaveBeenCalledWith('/documents', {
+        fileName: 'doc.json',
+        initialValue: {},
+      });
+      expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Document imported' });
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    });
+
+    it('shows invalid JSON error without reporting it to diagnostics', async () => {
+      const { DomainError } = await import('@shared/lib/error');
+      const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
+      confirmMock.mockResolvedValue(true);
+      readImportDocumentDraftFromPathMock.mockRejectedValue(
+        new DomainError('The selected file is not valid JSON', {
+          cause: new Error('parse'),
+          code: ImportDocumentErrorCode.invalidJson,
+        }),
+      );
+
+      const { useImportDocumentAction } = await import('./useImportDocumentAction');
+      const { importDocumentFromPath } = useImportDocumentAction();
+
+      await expect(
+        importDocumentFromPath('/documents', '/folder/doc.json'),
+      ).resolves.toBeUndefined();
+      expect(addSnackbarMock).toHaveBeenCalledWith({
+        text: 'The selected file is not valid JSON',
+      });
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+      expect(createImportedDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('shows invalid document format error without reporting it to diagnostics', async () => {
+      const { DomainError } = await import('@shared/lib/error');
+      const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
+      confirmMock.mockResolvedValue(true);
+      readImportDocumentDraftFromPathMock.mockRejectedValue(
+        new DomainError('The selected JSON file is not a Mioframe document', {
+          cause: new Error('zod'),
+          code: ImportDocumentErrorCode.invalidDocumentFormat,
+        }),
+      );
+
+      const { useImportDocumentAction } = await import('./useImportDocumentAction');
+      const { importDocumentFromPath } = useImportDocumentAction();
+
+      await expect(
+        importDocumentFromPath('/documents', '/folder/doc.json'),
+      ).resolves.toBeUndefined();
+      expect(addSnackbarMock).toHaveBeenCalledWith({
+        text: 'The selected JSON file is not a Mioframe document',
+      });
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+      expect(createImportedDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('allows duplicate document names and creates the document without rejection', async () => {
+      confirmMock.mockResolvedValue(true);
+      readImportDocumentDraftFromPathMock.mockResolvedValue({
+        fileName: 'existing-name.json',
+        initialValue: {},
+      });
+      createImportedDocumentMock.mockResolvedValue('dup-id');
+
+      const { useImportDocumentAction } = await import('./useImportDocumentAction');
+      const { importDocumentFromPath } = useImportDocumentAction();
+
+      await expect(
+        importDocumentFromPath('/documents', '/folder/existing-name.json'),
+      ).resolves.toBe('dup-id');
+      expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
+      expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Document imported' });
+    });
+
+    it('requests write access after a write-required failure and retries the repository write', async () => {
+      confirmMock.mockResolvedValue(true);
+      readImportDocumentDraftFromPathMock.mockResolvedValue({
+        fileName: 'doc.json',
+        initialValue: {},
+      });
+      createImportedDocumentMock
+        .mockRejectedValueOnce(
+          createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
+        )
+        .mockResolvedValueOnce('new-id');
+      requestAccessMock.mockResolvedValue({ status: 'granted' });
+
+      const { useImportDocumentAction } = await import('./useImportDocumentAction');
+      const { importDocumentFromPath } = useImportDocumentAction();
+
+      await expect(importDocumentFromPath('/documents', '/folder/doc.json')).resolves.toBe(
+        'new-id',
+      );
+      expect(createImportedDocumentMock).toHaveBeenCalledTimes(2);
+      expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Document imported' });
     });
   });
 });

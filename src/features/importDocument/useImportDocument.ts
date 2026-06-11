@@ -1,6 +1,7 @@
 import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
+import { useFileSystemService } from '@shared/service/fileSystem';
 import { fileOpen } from 'browser-fs-access';
 import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
@@ -15,6 +16,28 @@ export interface ImportedDocumentDraft {
   initialValue: ReturnType<typeof zodCFRDocumentContent.parse>;
 }
 
+const parseDocumentDraftText = (text: string): ReturnType<typeof zodCFRDocumentContent.parse> => {
+  let data: unknown;
+
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    throw new DomainError('The selected file is not valid JSON', {
+      cause: error,
+      code: ImportDocumentErrorCode.invalidJson,
+    });
+  }
+
+  try {
+    return zodCFRDocumentContent.parse(data);
+  } catch (error) {
+    throw new DomainError('The selected JSON file is not a Mioframe document', {
+      cause: error,
+      code: ImportDocumentErrorCode.invalidDocumentFormat,
+    });
+  }
+};
+
 /**
  * Creates JSON document import actions for a target directory.
  * @returns Import actions for Mioframe JSON documents.
@@ -23,6 +46,7 @@ export const useImportDocument = () => {
   const {
     repositories: { createDocument },
   } = useMainServiceClient();
+  const { readText } = useFileSystemService();
 
   /**
    * Reads and validates a selected Mioframe JSON document before repository creation.
@@ -63,31 +87,36 @@ export const useImportDocument = () => {
       });
     }
 
-    let data: unknown;
-
-    try {
-      data = JSON.parse(text);
-    } catch (error) {
-      throw new DomainError('The selected file is not valid JSON', {
-        cause: error,
-        code: ImportDocumentErrorCode.invalidJson,
-      });
-    }
-
-    let initialValue: ReturnType<typeof zodCFRDocumentContent.parse>;
-
-    try {
-      initialValue = zodCFRDocumentContent.parse(data);
-    } catch (error) {
-      throw new DomainError('The selected JSON file is not a Mioframe document', {
-        cause: error,
-        code: ImportDocumentErrorCode.invalidDocumentFormat,
-      });
-    }
-
     return {
       fileName: file.name,
-      initialValue,
+      initialValue: parseDocumentDraftText(text),
+    };
+  };
+
+  /**
+   * Reads and validates a Mioframe JSON document from an existing VFS path before repository creation.
+   * @param filePath - The VFS path to the JSON file.
+   * @returns The parsed draft.
+   */
+  const readImportDocumentDraftFromPath = async (
+    filePath: string,
+  ): Promise<ImportedDocumentDraft> => {
+    let text: string;
+
+    try {
+      text = await readText(filePath);
+    } catch (error) {
+      throw new DomainError('Could not import the document', {
+        cause: error,
+        code: ImportDocumentErrorCode.fileReadFailed,
+      });
+    }
+
+    const fileName = filePath.split('/').at(-1) ?? filePath;
+
+    return {
+      fileName,
+      initialValue: parseDocumentDraftText(text),
     };
   };
 
@@ -117,5 +146,6 @@ export const useImportDocument = () => {
   return {
     createImportedDocument,
     readImportDocumentDraft,
+    readImportDocumentDraftFromPath,
   };
 };
