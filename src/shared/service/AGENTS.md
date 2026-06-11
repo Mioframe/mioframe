@@ -8,5 +8,4 @@ Inherits the rules from src/shared/AGENTS.md. Applies to src/shared/service and 
 
 ## Patterns
 
-- Services expose infrastructural capabilities and contracts, not screen-specific UI logic.
-- Keep service
+- Services expose infrastructural capabilities and contracts, not screen-specific
