@@ -8,7 +8,7 @@ import type {
 import { MDTable } from '@shared/ui/Table';
 import type { EmptyObject } from 'type-fest';
 import { toRefs } from 'vue';
-import type { ItemIdQuery } from '@shared/service/databaseDocument/data/queryTypes';
+import type { ItemIdQuery } from '@shared/service';
 import { useDatabaseData } from './useDatabaseData';
 
 const props = defineProps<{

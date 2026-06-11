@@ -4,8 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 
-const directoryNodeType: number = FSNodeType.Directory;
-
 vi.mock('@shared/ui/Lists', () => ({
   MDListContainer: defineComponent({
     name: 'MDListContainerStub',
@@ -26,11 +24,14 @@ vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
     },
     emits: ['click'],
     setup(props, { emit }) {
-      return () =>
-        h(
-          props.entryType === directoryNodeType ? 'button' : 'div',
+      return () => {
+        const isInteractive =
+          props.entryType === FSNodeType.Directory ||
+          (props.entryType === FSNodeType.File && props.name.toLowerCase().endsWith('.json'));
+        return h(
+          isInteractive ? 'button' : 'div',
           {
-            ...(props.entryType === directoryNodeType
+            ...(isInteractive
               ? {
                   type: 'button',
                   onClick: () => {
@@ -41,12 +42,13 @@ vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
           },
           props.name,
         );
+      };
     },
   }),
 }));
 
 describe('RepositoryExplorerFilesSection', () => {
-  it('renders only directories as interactive and emits selectPath only for them', async () => {
+  it('renders directories as interactive and emits selectPath for them', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');
 
@@ -69,6 +71,99 @@ describe('RepositoryExplorerFilesSection', () => {
     await buttons[0]?.trigger('click');
 
     expect(wrapper.emitted('selectPath')).toEqual([['/repo/Nested']]);
+    expect(wrapper.emitted('selectJsonFile')).toBeUndefined();
+    expect(wrapper.findAll('div').some((element) => element.text().includes('note.txt'))).toBe(
+      true,
+    );
+  });
+
+  it('renders .json regular files as interactive and emits selectJsonFile for them', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['doc.json', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+          ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+        ],
+      },
+    });
+
+    const buttons = wrapper.findAll('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]?.text()).toContain('doc.json');
+
+    await buttons[0]?.trigger('click');
+
+    expect(wrapper.emitted('selectJsonFile')).toEqual([['/repo/doc.json']]);
+    expect(wrapper.emitted('selectPath')).toBeUndefined();
+  });
+
+  it('keeps non-JSON regular files non-interactive', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+          ['image.png', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+        ],
+      },
+    });
+
+    expect(wrapper.findAll('button')).toHaveLength(0);
+  });
+
+  it('detects .json extension case-insensitively', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['DATA.JSON', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+          ['mixed.Json', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+          ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+        ],
+      },
+    });
+
+    const buttons = wrapper.findAll('button');
+    expect(buttons).toHaveLength(2);
+    const buttonTexts = buttons.map((b) => b.text());
+    expect(buttonTexts.some((t) => t.includes('DATA.JSON'))).toBe(true);
+    expect(buttonTexts.some((t) => t.includes('mixed.Json'))).toBe(true);
+  });
+
+  it('does not treat a directory named something.json as a json file entry', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['backup.json', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
+        ],
+      },
+    });
+
+    const buttons = wrapper.findAll('button');
+    expect(buttons).toHaveLength(1);
+
+    await buttons[0]?.trigger('click');
+
+    expect(wrapper.emitted('selectPath')).toEqual([['/repo/backup.json']]);
+    expect(wrapper.emitted('selectJsonFile')).toBeUndefined();
   });
 
   it('matches the supporting copy to whether Automerge files are hidden', async () => {

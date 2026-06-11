@@ -3,7 +3,7 @@ import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useStackNavigation } from '@page/routes';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { GOOGLE_DRIVE_ROOT_NAME } from '@shared/service/google';
+import { GOOGLE_DRIVE_ROOT_NAME } from '@shared/service';
 import { GoogleDriveWidget } from '@widget/GoogleDriveWidget';
 import { LocalFSWidget } from '@widget/LocalFSWidget';
 import { StarterExamplesWidget } from '@widget/StarterExamplesWidget';

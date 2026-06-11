@@ -32,7 +32,10 @@ const onClickEntry = (name: string) => {
 
 <template>
   <FSEntryMDListItem
-    :is-button="entryType === FSNodeType.Directory"
+    :is-button="
+      entryType === FSNodeType.Directory ||
+      (entryType === FSNodeType.File && name.toLowerCase().endsWith('.json'))
+    "
     :name="name"
     :supporting-text="description"
     :type="entryType"
