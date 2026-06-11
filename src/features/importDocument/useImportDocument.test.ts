@@ -95,7 +95,6 @@ describe('useImportDocument', () => {
     const { readImportDocumentDraft } = useImportDocument();
 
     await expect(readImportDocumentDraft()).resolves.toEqual({
-      fileName: 'Doc.json',
       initialValue: validDocument,
     });
     expect(createDocumentMock).not.toHaveBeenCalled();
@@ -110,7 +109,6 @@ describe('useImportDocument', () => {
     const { createImportedDocument } = useImportDocument();
 
     const error = await createImportedDocument('/documents', {
-      fileName: 'Doc.json',
       initialValue: validDocument,
     }).catch((caughtError: unknown) => caughtError);
 
@@ -131,7 +129,6 @@ describe('useImportDocument', () => {
 
     await expect(
       createImportedDocument('/documents', {
-        fileName: 'Doc.json',
         initialValue: validDocument,
       }),
     ).resolves.toBe('document-id');
@@ -146,7 +143,6 @@ describe('useImportDocument', () => {
 
     await expect(
       createImportedDocument('/documents', {
-        fileName: 'Doc.json',
         initialValue: validDocument,
       }),
     ).rejects.toBe(cause);
@@ -212,7 +208,6 @@ describe('useImportDocument', () => {
       const { readImportDocumentDraftFromPath } = useImportDocument();
 
       await expect(readImportDocumentDraftFromPath('/repo/doc.json')).resolves.toEqual({
-        fileName: 'doc.json',
         initialValue: validDocument,
       });
       expect(readTextMock).toHaveBeenCalledWith('/repo/doc.json');
@@ -272,16 +267,6 @@ describe('useImportDocument', () => {
         code: 'importDocument.invalidDocumentFormat',
       });
       expect(createDocumentMock).not.toHaveBeenCalled();
-    });
-
-    it('uses the last path segment as the file name', async () => {
-      readTextMock.mockResolvedValue(JSON.stringify(validDocument));
-
-      const { readImportDocumentDraftFromPath } = useImportDocument();
-
-      const draft = await readImportDocumentDraftFromPath('/a/b/c/my-notes.json');
-
-      expect(draft.fileName).toBe('my-notes.json');
     });
   });
 });

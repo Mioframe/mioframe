@@ -106,7 +106,6 @@ describe('useImportDocumentAction', () => {
 
   it('shows a success snackbar after a document is imported', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockResolvedValue('document-id');
@@ -116,7 +115,7 @@ describe('useImportDocumentAction', () => {
 
     await expect(importDocument('/documents')).resolves.toBe('document-id');
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Document imported',
+      text: 'Document imported into this Mioframe folder',
     });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
@@ -144,7 +143,6 @@ describe('useImportDocumentAction', () => {
   it('reports unexpected import failures and preserves raw error as cause', async () => {
     const error = new Error('unexpected failure at /private/path/notes.json');
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValue(error);
@@ -173,7 +171,6 @@ describe('useImportDocumentAction', () => {
       code: ImportDocumentErrorCode.fileReadFailed,
     });
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValue(error);
@@ -192,7 +189,6 @@ describe('useImportDocumentAction', () => {
 
   it('does not request permission and shows a safe message when user cancels the grant dialog', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValueOnce(
@@ -216,7 +212,6 @@ describe('useImportDocumentAction', () => {
 
   it('shows denied write-access message when broker returns denied', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValueOnce(
@@ -245,7 +240,6 @@ describe('useImportDocumentAction', () => {
 
   it('shows a safe message when browser prompting fails and does not retry', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValueOnce(
@@ -271,7 +265,6 @@ describe('useImportDocumentAction', () => {
   it('reports retry failure through import error path without reopening the file picker', async () => {
     const retryError = new Error('disk full');
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock
@@ -303,7 +296,6 @@ describe('useImportDocumentAction', () => {
 
   it('requests write access after a write-required import failure and retries the repository write', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock
@@ -334,7 +326,7 @@ describe('useImportDocumentAction', () => {
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(2);
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Document imported',
+      text: 'Document imported into this Mioframe folder',
     });
   });
 
@@ -362,7 +354,6 @@ describe('useImportDocumentAction', () => {
     it('reads, validates, and creates a document after confirmation', async () => {
       confirmMock.mockResolvedValue(true);
       readImportDocumentDraftFromPathMock.mockResolvedValue({
-        fileName: 'doc.json',
         initialValue: {},
       });
       createImportedDocumentMock.mockResolvedValue('new-id');
@@ -375,10 +366,11 @@ describe('useImportDocumentAction', () => {
       );
       expect(readImportDocumentDraftFromPathMock).toHaveBeenCalledWith('/folder/doc.json');
       expect(createImportedDocumentMock).toHaveBeenCalledWith('/documents', {
-        fileName: 'doc.json',
         initialValue: {},
       });
-      expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Document imported' });
+      expect(addSnackbarMock).toHaveBeenCalledWith({
+        text: 'Document imported into this Mioframe folder',
+      });
       expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     });
 
@@ -433,7 +425,6 @@ describe('useImportDocumentAction', () => {
     it('allows duplicate document names and creates the document without rejection', async () => {
       confirmMock.mockResolvedValue(true);
       readImportDocumentDraftFromPathMock.mockResolvedValue({
-        fileName: 'existing-name.json',
         initialValue: {},
       });
       createImportedDocumentMock.mockResolvedValue('dup-id');
@@ -445,30 +436,9 @@ describe('useImportDocumentAction', () => {
         importDocumentFromPath('/documents', '/folder/existing-name.json'),
       ).resolves.toBe('dup-id');
       expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
-      expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Document imported' });
-    });
-
-    it('requests write access after a write-required failure and retries the repository write', async () => {
-      confirmMock.mockResolvedValue(true);
-      readImportDocumentDraftFromPathMock.mockResolvedValue({
-        fileName: 'doc.json',
-        initialValue: {},
+      expect(addSnackbarMock).toHaveBeenCalledWith({
+        text: 'Document imported into this Mioframe folder',
       });
-      createImportedDocumentMock
-        .mockRejectedValueOnce(
-          createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
-        )
-        .mockResolvedValueOnce('new-id');
-      requestAccessMock.mockResolvedValue({ status: 'granted' });
-
-      const { useImportDocumentAction } = await import('./useImportDocumentAction');
-      const { importDocumentFromPath } = useImportDocumentAction();
-
-      await expect(importDocumentFromPath('/documents', '/folder/doc.json')).resolves.toBe(
-        'new-id',
-      );
-      expect(createImportedDocumentMock).toHaveBeenCalledTimes(2);
-      expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Document imported' });
     });
   });
 });

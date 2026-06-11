@@ -10,8 +10,6 @@ import { ImportDocumentErrorCode } from './importDocumentErrorCode';
  * Parsed import payload ready for repository creation.
  */
 export interface ImportedDocumentDraft {
-  /** Selected file name retained within the feature boundary for retry flows. */
-  fileName: string;
   /** Parsed Mioframe document content ready for repository creation. */
   initialValue: ReturnType<typeof zodCFRDocumentContent.parse>;
 }
@@ -88,7 +86,6 @@ export const useImportDocument = () => {
     }
 
     return {
-      fileName: file.name,
       initialValue: parseDocumentDraftText(text),
     };
   };
@@ -112,10 +109,7 @@ export const useImportDocument = () => {
       });
     }
 
-    const fileName = filePath.split('/').at(-1) ?? filePath;
-
     return {
-      fileName,
       initialValue: parseDocumentDraftText(text),
     };
   };
