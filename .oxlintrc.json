@@ -26,5 +26,29 @@
     "typescript/no-unnecessary-type-arguments": "off",
     "typescript/no-unsafe-type-assertion": "off",
     "vue/valid-define-props": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/app/**/*.{ts,tsx,vue}",
+        "src/pages/**/*.{ts,tsx,vue}",
+        "src/widgets/**/*.{ts,tsx,vue}",
+        "src/features/**/*.{ts,tsx,vue}",
+        "src/entities/**/*.{ts,tsx,vue}"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@shared/service/*", "@shared/service/**"],
+                "message": "Import from @shared/service instead of directly importing service implementation modules."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

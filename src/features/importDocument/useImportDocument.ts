@@ -1,7 +1,6 @@
 import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
-import { useFileSystemService } from '@shared/service/fileSystem';
 import { fileOpen } from 'browser-fs-access';
 import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
@@ -42,9 +41,8 @@ const parseDocumentDraftText = (text: string): ReturnType<typeof zodCFRDocumentC
  */
 export const useImportDocument = () => {
   const {
-    repositories: { createDocument },
+    repositories: { createDocument, importDocumentFromJsonPath },
   } = useMainServiceClient();
-  const { readText } = useFileSystemService();
 
   /**
    * Reads and validates a selected Mioframe JSON document before repository creation.
@@ -91,30 +89,6 @@ export const useImportDocument = () => {
   };
 
   /**
-   * Reads and validates a Mioframe JSON document from an existing VFS path before repository creation.
-   * @param filePath - The VFS path to the JSON file.
-   * @returns The parsed draft.
-   */
-  const readImportDocumentDraftFromPath = async (
-    filePath: string,
-  ): Promise<ImportedDocumentDraft> => {
-    let text: string;
-
-    try {
-      text = await readText(filePath);
-    } catch (error) {
-      throw new DomainError('Could not import the document', {
-        cause: error,
-        code: ImportDocumentErrorCode.fileReadFailed,
-      });
-    }
-
-    return {
-      initialValue: parseDocumentDraftText(text),
-    };
-  };
-
-  /**
    * Creates an imported document in the target directory from a validated draft payload.
    * @param path - The directory path where the imported document should be created.
    * @param draft - Parsed import payload selected by the user.
@@ -140,6 +114,6 @@ export const useImportDocument = () => {
   return {
     createImportedDocument,
     readImportDocumentDraft,
-    readImportDocumentDraftFromPath,
+    importDocumentFromJsonPath,
   };
 };

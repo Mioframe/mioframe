@@ -1,6 +1,6 @@
 import { resolveSafeErrorMessage } from '@shared/lib/error';
-import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
-import { useMainServiceClient } from '@shared/service/useService';
+import type { ReadDirectoryOptions } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';

@@ -1,6 +1,6 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { getGoogleDrivePathEmail } from '@shared/lib/googleDriveFileSystemProvider';
-import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google';
+import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service';
 
 export enum GoogleDriveAccessRecoveryKind {
   popupBlocked = 'popupBlocked',

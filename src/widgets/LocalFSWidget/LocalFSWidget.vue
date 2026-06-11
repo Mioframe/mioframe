@@ -4,7 +4,7 @@ import { useDisconnectDeviceDirectory } from '@feature/deviceDirectoryDisconnect
 import { MioframeSpaceCreateListItem, MioframeSpaceOpenListItem } from '@feature/mioframeSpacePick';
 import { MDListContainer } from '@shared/ui/Lists';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { OPFSName } from '@shared/service/directories';
+import { OPFSName } from '@shared/service';
 import LocalFSDeviceFileListItem from './LocalFSDeviceFileListItem.vue';
 import BrowserStorageListItems from './BrowserStorageListItems.vue';
 

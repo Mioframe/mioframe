@@ -2,46 +2,73 @@ import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { RepositoryImportErrorCode } from '@shared/service';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
-import type { ImportedDocumentDraft } from './useImportDocument';
 import { useImportDocument } from './useImportDocument';
 
 const shouldSkipImportErrorReport = (error: unknown) =>
   isUserFileSelectionCancel(error) ||
   (error instanceof DomainError &&
     (error.code === ImportDocumentErrorCode.invalidJson ||
-      error.code === ImportDocumentErrorCode.invalidDocumentFormat));
+      error.code === ImportDocumentErrorCode.invalidDocumentFormat ||
+      error.code === RepositoryImportErrorCode.invalidJson ||
+      error.code === RepositoryImportErrorCode.invalidDocumentFormat));
 
 /**
  * Runs the document JSON import flow with shared snackbar and diagnostics behavior.
  * @returns Shared import action for feature callers that import a document into a directory.
  */
 export const useImportDocumentAction = () => {
-  const { createImportedDocument, readImportDocumentDraft, readImportDocumentDraftFromPath } =
+  const { createImportedDocument, readImportDocumentDraft, importDocumentFromJsonPath } =
     useImportDocument();
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
   const { requestAccess } = useFileSystemAccessPermissionBroker();
 
+  const reportImportError = (error: unknown, diagnosticsAction: string) => {
+    const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
+
+    addSnackbar({
+      text: recovery
+        ? 'Grant write access to import documents into this remembered space.'
+        : error instanceof DomainError
+          ? error.message
+          : 'Could not import the document',
+    });
+
+    if (!shouldSkipImportErrorReport(error)) {
+      const reportError =
+        error instanceof DomainError
+          ? error
+          : new DomainError('Could not import the document', {
+              cause: error,
+              code: ImportDocumentErrorCode.documentImportFailed,
+            });
+      captureDiagnosticException(reportError, {
+        feature: 'documentImport',
+        action: diagnosticsAction,
+      });
+    }
+  };
+
+  /**
+   * Runs `performCreate` with write-access recovery and retry, then shows a success snackbar.
+   * Errors that are not write-access errors bubble to the caller for unified error handling.
+   * @param performCreate
+   * @param diagnosticsAction
+   */
   const runImport = async (
-    targetPath: string,
-    readDraft: () => Promise<ImportedDocumentDraft | undefined>,
+    performCreate: () => Promise<string | undefined>,
     diagnosticsAction: string,
   ): Promise<string | undefined> => {
     try {
-      const draft = await readDraft();
-
-      if (!draft) {
-        return undefined;
-      }
-
       let documentId: string | undefined;
 
       try {
-        documentId = await createImportedDocument(targetPath, draft);
+        documentId = await performCreate();
       } catch (error) {
         const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
 
@@ -79,7 +106,7 @@ export const useImportDocumentAction = () => {
           return undefined;
         }
 
-        documentId = await createImportedDocument(targetPath, draft);
+        documentId = await performCreate();
       }
 
       if (!documentId) {
@@ -90,36 +117,27 @@ export const useImportDocumentAction = () => {
 
       return documentId;
     } catch (error) {
-      const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
-
-      addSnackbar({
-        text: recovery
-          ? 'Grant write access to import documents into this remembered space.'
-          : error instanceof DomainError
-            ? error.message
-            : 'Could not import the document',
-      });
-
-      if (!shouldSkipImportErrorReport(error)) {
-        const reportError =
-          error instanceof DomainError
-            ? error
-            : new DomainError('Could not import the document', {
-                cause: error,
-                code: ImportDocumentErrorCode.documentImportFailed,
-              });
-        captureDiagnosticException(reportError, {
-          feature: 'documentImport',
-          action: diagnosticsAction,
-        });
-      }
-
+      reportImportError(error, diagnosticsAction);
       return undefined;
     }
   };
 
   const importDocument = async (path: string): Promise<string | undefined> => {
-    return runImport(path, readImportDocumentDraft, 'importDocumentJson');
+    // Read draft ONCE outside the retry — the file picker must not reopen on write-access retry.
+    let draft: Awaited<ReturnType<typeof readImportDocumentDraft>>;
+
+    try {
+      draft = await readImportDocumentDraft();
+    } catch (error) {
+      reportImportError(error, 'importDocumentJson');
+      return undefined;
+    }
+
+    if (!draft) {
+      return undefined;
+    }
+
+    return runImport(() => createImportedDocument(path, draft), 'importDocumentJson');
   };
 
   const importDocumentFromPath = async (
@@ -138,8 +156,7 @@ export const useImportDocumentAction = () => {
     }
 
     return runImport(
-      targetDirectoryPath,
-      () => readImportDocumentDraftFromPath(sourceFilePath),
+      () => importDocumentFromJsonPath(targetDirectoryPath, sourceFilePath),
       'importDocumentFromPath',
     );
   };

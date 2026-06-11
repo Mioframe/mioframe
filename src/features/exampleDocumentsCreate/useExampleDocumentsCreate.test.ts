@@ -18,19 +18,23 @@ const {
   captureDiagnosticExceptionMock: vi.fn(),
 }));
 
-vi.mock('@shared/service', () => ({
-  useMainServiceClient: () => ({
-    fileSystem: {
-      createDirectory: createDirectoryMock,
-      directoryContent: {
-        fetch: directoryContentFetchMock,
+vi.mock('@shared/service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/service')>();
+  return {
+    ...actual,
+    useMainServiceClient: () => ({
+      fileSystem: {
+        createDirectory: createDirectoryMock,
+        directoryContent: {
+          fetch: directoryContentFetchMock,
+        },
       },
-    },
-    repositories: {
-      createDocument: createDocumentMock,
-    },
-  }),
-}));
+      repositories: {
+        createDocument: createDocumentMock,
+      },
+    }),
+  };
+});
 
 vi.mock('@shared/lib/diagnostics', () => ({
   captureDiagnosticException: captureDiagnosticExceptionMock,

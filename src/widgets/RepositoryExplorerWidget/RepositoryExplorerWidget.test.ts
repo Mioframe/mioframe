@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
-import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google';
+import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service';
 
 const directoryStatRef = ref<{
   capabilities?: {
@@ -52,13 +52,17 @@ vi.mock('@shared/serviceClient/fileSystem', () => ({
   }),
 }));
 
-vi.mock('@shared/service', () => ({
-  useMainServiceClient: () => ({
-    google: {
-      requestToken: requestTokenMock,
-    },
-  }),
-}));
+vi.mock('@shared/service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/service')>();
+  return {
+    ...actual,
+    useMainServiceClient: () => ({
+      google: {
+        requestToken: requestTokenMock,
+      },
+    }),
+  };
+});
 
 vi.mock('@feature/importDocument', () => ({
   useImportDocumentAction: () => ({
