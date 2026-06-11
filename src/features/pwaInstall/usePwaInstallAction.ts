@@ -15,7 +15,7 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
  */
 export const usePwaInstallAction = () => {
   const { retainedPrompt, isInstalledForSession } = usePwaInstallRuntime();
-  const { settings } = useLocalSettings();
+  const { settings, isFinished } = useLocalSettings();
 
   /** Whether the browser has provided a retained install prompt. */
   const hasRetainedPrompt = computed(() => retainedPrompt.value !== null);
@@ -65,6 +65,7 @@ export const usePwaInstallAction = () => {
 
   /** Whether the home install widget should be visible. */
   const isHomeWidgetVisible = computed(() => {
+    if (!isFinished.value) return false;
     if (isInstalledForSession.value) return false;
     const dismissedUntil = settings.value.pwaInstallWidgetDismissedUntil;
     if (dismissedUntil !== undefined && dismissalNow.value < dismissedUntil) return false;

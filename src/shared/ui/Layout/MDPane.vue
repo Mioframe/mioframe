@@ -55,7 +55,7 @@ defineAllowedBottomNavigation(allowBottomNavigation);
     flex-grow: 1;
     flex-shrink: 1;
     padding: var(--md-pane-padding-y, 0) var(--md-pane-padding-x, 0);
-    gap: 16dp;
+    gap: var(--md-pane-content-gap, 0);
   }
 }
 </style>

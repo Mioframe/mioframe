@@ -89,8 +89,8 @@ const onCreatedStarterExampleDocument = ({
 .home {
   --md-container-color: inherit;
   --md-content-color: inherit;
+  --md-pane-content-gap: 16dp;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 </style>

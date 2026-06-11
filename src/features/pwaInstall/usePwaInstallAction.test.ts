@@ -31,7 +31,10 @@ describe('usePwaInstallAction', () => {
     vi.useRealTimers();
   });
 
-  const setupSettings = (overrides: Record<string, unknown> = {}) => {
+  const setupSettings = (
+    overrides: Record<string, unknown> = {},
+    { isFinished = true }: { isFinished?: boolean } = {},
+  ) => {
     const defaultValue = {
       diagnosticsEnabled: false,
       diagnosticsConsentRequested: false,
@@ -40,7 +43,7 @@ describe('usePwaInstallAction', () => {
     };
     useIDBKeyvalMock.mockImplementation((_key: unknown, _default: unknown) => ({
       data: ref(structuredClone(defaultValue)),
-      isFinished: ref(true),
+      isFinished: ref(isFinished),
     }));
   };
 
@@ -147,6 +150,54 @@ describe('usePwaInstallAction', () => {
     const { isHomeWidgetVisible } = usePwaInstallAction();
 
     expect(isHomeWidgetVisible.value).toBe(true);
+  });
+
+  it('isHomeWidgetVisible is false while settings are not finished loading', async () => {
+    setupSettings({}, { isFinished: false });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+  });
+
+  it('isHomeWidgetVisible becomes true after settings finish loading with no dismissal', async () => {
+    const isFinishedRef = ref(false);
+    useIDBKeyvalMock.mockImplementation(() => ({
+      data: ref({ diagnosticsEnabled: false, diagnosticsConsentRequested: false, panesWidth: [] }),
+      isFinished: isFinishedRef,
+    }));
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+
+    isFinishedRef.value = true;
+    await nextTick();
+
+    expect(isHomeWidgetVisible.value).toBe(true);
+  });
+
+  it('isHomeWidgetVisible stays hidden after settings finish loading when dismissedUntil is in future', async () => {
+    const futureTimestamp = Date.now() + 10_000;
+    const isFinishedRef = ref(false);
+    useIDBKeyvalMock.mockImplementation(() => ({
+      data: ref({
+        diagnosticsEnabled: false,
+        diagnosticsConsentRequested: false,
+        panesWidth: [],
+        pwaInstallWidgetDismissedUntil: futureTimestamp,
+      }),
+      isFinished: isFinishedRef,
+    }));
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+    const { isHomeWidgetVisible } = usePwaInstallAction();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
+
+    isFinishedRef.value = true;
+    await nextTick();
+
+    expect(isHomeWidgetVisible.value).toBe(false);
   });
 
   it('isHomeWidgetVisible becomes true reactively after dismissedUntil expires', async () => {

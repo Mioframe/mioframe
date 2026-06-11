@@ -11,6 +11,17 @@ let googleDriveIntegrationAvailable = true;
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
     settings,
+    isFinished: ref(true),
+  }),
+}));
+
+vi.mock('@feature/pwaInstall', () => ({
+  usePwaInstallAction: () => ({
+    isHomeWidgetVisible: ref(false),
+    isSettingsEntryVisible: ref(true),
+    hasRetainedPrompt: ref(false),
+    runInstallAction: vi.fn(),
+    dismissHomeWidget: vi.fn(),
   }),
 }));
 
@@ -44,6 +55,15 @@ vi.mock('@shared/ui/AppBar', () => ({
     name: 'MDAppBarStub',
     setup(_props, { slots }) {
       return () => h('header', { 'data-testid': 'app-bar' }, slots.trailingElements?.());
+    },
+  }),
+}));
+
+vi.mock('@widget/PwaInstallWidget', () => ({
+  PwaInstallWidget: defineComponent({
+    name: 'PwaInstallWidgetStub',
+    setup() {
+      return () => h('div', { 'data-testid': 'pwa-install-widget' });
     },
   }),
 }));
