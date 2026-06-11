@@ -1,4 +1,4 @@
-import { tryOnScopeDispose } from '@vueuse/core';
+import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import { computed, shallowRef, watch } from 'vue';
 import { useLocalSettings } from '@entity/localSettings';
 import { detectBrowserPlatform, selectInstallGuideUrl } from '@shared/lib/pwaInstall';
@@ -10,10 +10,10 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 /**
  * Exposes the current PWA install action state and user actions.
- * Safe to call from multiple components — shares global runtime state.
+ * Singleton — all callers share the same computed state, watcher, and dismissal timer.
  * @returns Install action state and action handlers.
  */
-export const usePwaInstallAction = () => {
+export const usePwaInstallAction = createGlobalState(() => {
   const { retainedPrompt, isInstalledForSession } = usePwaInstallRuntime();
   const { settings, isFinished } = useLocalSettings();
 
@@ -106,4 +106,4 @@ export const usePwaInstallAction = () => {
     runInstallAction,
     dismissHomeWidget,
   };
-};
+});

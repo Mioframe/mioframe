@@ -237,6 +237,32 @@ describe('usePwaInstallAction', () => {
     expect(isHomeWidgetVisible.value).toBe(true);
   });
 
+  it('repeated calls return shared reactive state without creating duplicate timers', async () => {
+    vi.useFakeTimers();
+    const remaining = 1000;
+    const futureTimestamp = Date.now() + remaining;
+    setupSettings({ pwaInstallWidgetDismissedUntil: futureTimestamp });
+    const { usePwaInstallAction } = await import('./usePwaInstallAction');
+
+    const { isHomeWidgetVisible: visible1 } = usePwaInstallAction();
+    const timerCountAfterFirst = vi.getTimerCount();
+    const { isHomeWidgetVisible: visible2 } = usePwaInstallAction();
+    const timerCountAfterSecond = vi.getTimerCount();
+
+    // Second call must not add extra timers.
+    expect(timerCountAfterSecond).toBe(timerCountAfterFirst);
+
+    // Both references reflect the same reactive state.
+    expect(visible1.value).toBe(false);
+    expect(visible2.value).toBe(false);
+
+    vi.advanceTimersByTime(remaining + 1);
+    await nextTick();
+
+    expect(visible1.value).toBe(true);
+    expect(visible2.value).toBe(true);
+  });
+
   it('isSettingsEntryVisible is not affected by home widget dismissal (reactive check)', async () => {
     vi.useFakeTimers();
     const futureTimestamp = Date.now() + 1000;
