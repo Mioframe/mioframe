@@ -1153,4 +1153,101 @@ describe('useRepositoriesService', () => {
       expect(error.cause).toBeDefined();
     });
   });
+
+  describe('importDocumentFromJsonText', () => {
+    const validDocument: CFRDocumentContent = {
+      body: {},
+      name: 'Imported',
+      type: 'note',
+      version: 1,
+    };
+
+    it('creates a document from valid JSON text and returns its id', async () => {
+      const targetPath = '/repo-import-text';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      const id = await service.importDocumentFromJsonText(
+        targetPath,
+        JSON.stringify(validDocument),
+      );
+
+      expect(typeof id).toBe('string');
+      expect(id).toBeTruthy();
+      const repo = repoInstances.get(targetPath)?.[0];
+      expect(repo?.create).toHaveBeenCalledWith(validDocument);
+    });
+
+    it('does not call vfsDelete (source is caller-owned, not VFS)', async () => {
+      const targetPath = '/repo-text-no-modify';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.importDocumentFromJsonText(targetPath, JSON.stringify(validDocument));
+
+      expect(vfsDelete).not.toHaveBeenCalled();
+    });
+
+    it('allows duplicate document names in the same directory', async () => {
+      const targetPath = '/repo-text-dup';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      const id1 = await service.importDocumentFromJsonText(
+        targetPath,
+        JSON.stringify(validDocument),
+      );
+      const id2 = await service.importDocumentFromJsonText(
+        targetPath,
+        JSON.stringify(validDocument),
+      );
+
+      expect(id1).not.toBe(id2);
+    });
+
+    it('rejects with a safe DomainError when the text is not valid JSON', async () => {
+      const targetPath = '/repo-text-invalid-json';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      const error = await service
+        .importDocumentFromJsonText(targetPath, '{')
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected file is not valid JSON',
+        code: RepositoryImportErrorCode.invalidJson,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBeInstanceOf(SyntaxError);
+    });
+
+    it('rejects with a safe DomainError when the JSON is not a Mioframe document', async () => {
+      const targetPath = '/repo-text-invalid-doc';
+      createDirectoryContentSubject(targetPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryImportErrorCode } = await import('./repositoryImportErrorCode');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      const error = await service
+        .importDocumentFromJsonText(targetPath, JSON.stringify({ name: 'Doc' }))
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        message: 'The selected JSON file is not a Mioframe document',
+        code: RepositoryImportErrorCode.invalidDocumentFormat,
+      });
+      if (!(error instanceof DomainError)) throw new Error('expected DomainError');
+      expect(error.cause).toBeDefined();
+    });
+  });
 });

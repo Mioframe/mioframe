@@ -1,5 +1,5 @@
 import { useLocalSettings } from '@entity/localSettings';
-import { applyDiagnosticsPolicy } from '@shared/service';
+import { applyDiagnosticsPolicy } from '@shared/serviceClient/diagnostics';
 import { watch } from 'vue';
 
 /**

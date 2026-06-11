@@ -326,29 +326,10 @@ const setupRepositoriesService = () => {
     return documentId;
   };
 
-  /**
-   * Reads a JSON file from the VFS, validates it as a Mioframe CFR document, and creates a new
-   * document in the target repository directory.
-   * @param targetDirectoryPath - Absolute path to the repository directory to create the document in.
-   * @param sourceFilePath - Absolute VFS path to the source JSON file.
-   * @returns The created document identifier.
-   */
-  const importDocumentFromJsonPath = async (
+  const importDocumentFromText = async (
     targetDirectoryPath: string,
-    sourceFilePath: string,
+    text: string,
   ): Promise<AMDocumentId> => {
-    let text: string;
-
-    try {
-      const file = await vfs.readFile(sourceFilePath);
-      text = await file.text();
-    } catch (error) {
-      throw new DomainError('Could not import the document', {
-        cause: error,
-        code: RepositoryImportErrorCode.fileReadFailed,
-      });
-    }
-
     let data: unknown;
 
     try {
@@ -373,6 +354,45 @@ const setupRepositoriesService = () => {
 
     return createDocument(targetDirectoryPath, parsed);
   };
+
+  /**
+   * Reads a JSON file from the VFS, validates it as a Mioframe CFR document, and creates a new
+   * document in the target repository directory.
+   * @param targetDirectoryPath - Absolute path to the repository directory to create the document in.
+   * @param sourceFilePath - Absolute VFS path to the source JSON file.
+   * @returns The created document identifier.
+   */
+  const importDocumentFromJsonPath = async (
+    targetDirectoryPath: string,
+    sourceFilePath: string,
+  ): Promise<AMDocumentId> => {
+    let text: string;
+
+    try {
+      const file = await vfs.readFile(sourceFilePath);
+      text = await file.text();
+    } catch (error) {
+      throw new DomainError('Could not import the document', {
+        cause: error,
+        code: RepositoryImportErrorCode.fileReadFailed,
+      });
+    }
+
+    return importDocumentFromText(targetDirectoryPath, text);
+  };
+
+  /**
+   * Parses and validates a JSON text string as a Mioframe CFR document and creates a new document
+   * in the target repository directory. Use this when the caller already holds the file text,
+   * such as after reading a user-selected file on the main thread.
+   * @param targetDirectoryPath - Absolute path to the repository directory to create the document in.
+   * @param jsonText - Raw JSON text content of the source file.
+   * @returns The created document identifier.
+   */
+  const importDocumentFromJsonText = async (
+    targetDirectoryPath: string,
+    jsonText: string,
+  ): Promise<AMDocumentId> => importDocumentFromText(targetDirectoryPath, jsonText);
 
   /**
    * Initializes repository storage for an empty mounted directory through the shared repo cache.
@@ -426,6 +446,15 @@ const setupRepositoriesService = () => {
      * @returns The created document identifier.
      */
     importDocumentFromJsonPath,
+    /**
+     * Parses and validates a JSON text string as a Mioframe CFR document and creates a new
+     * document in the target repository directory. Use this when the caller already holds the file
+     * text, such as after reading a user-selected file on the main thread.
+     * @param targetDirectoryPath - Absolute path to the repository directory.
+     * @param jsonText - Raw JSON text content of the source file.
+     * @returns The created document identifier.
+     */
+    importDocumentFromJsonText,
   };
 };
 

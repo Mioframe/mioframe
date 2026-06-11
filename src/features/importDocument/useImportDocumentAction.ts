@@ -8,15 +8,12 @@ import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileS
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
-import type { ImportedDocumentDraft } from './useImportDocument';
 import { useImportDocument } from './useImportDocument';
 
 const shouldSkipImportErrorReport = (error: unknown) =>
   isUserFileSelectionCancel(error) ||
   (error instanceof DomainError &&
-    (error.code === ImportDocumentErrorCode.invalidJson ||
-      error.code === ImportDocumentErrorCode.invalidDocumentFormat ||
-      error.code === RepositoryImportErrorCode.invalidJson ||
+    (error.code === RepositoryImportErrorCode.invalidJson ||
       error.code === RepositoryImportErrorCode.invalidDocumentFormat));
 
 /**
@@ -24,9 +21,9 @@ const shouldSkipImportErrorReport = (error: unknown) =>
  * @returns Shared import action for feature callers that import a document into a directory.
  */
 export const useImportDocumentAction = () => {
-  const { createImportedDocument, readImportDocumentDraft } = useImportDocument();
+  const { readJsonFileText } = useImportDocument();
   const {
-    repositories: { importDocumentFromJsonPath },
+    repositories: { importDocumentFromJsonPath, importDocumentFromJsonText },
   } = useMainServiceClient();
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
@@ -109,26 +106,29 @@ export const useImportDocumentAction = () => {
     return retry();
   };
 
-  /**
-   * Runs a draft-based import with write-access recovery and retry, then shows a success snackbar.
-   * @param path - Target directory path.
-   * @param draft - Validated document draft from the file picker.
-   * @param diagnosticsAction - Action label for diagnostics reporting.
-   * @returns The created document ID, or `undefined` when cancelled or on a handled error.
-   */
-  const runDraftImport = async (
-    path: string,
-    draft: ImportedDocumentDraft,
-    diagnosticsAction: string,
-  ): Promise<string | undefined> => {
+  const importDocument = async (path: string): Promise<string | undefined> => {
+    // Read text ONCE outside the retry — the file picker must not reopen on write-access retry.
+    let text: string | undefined;
+
+    try {
+      text = await readJsonFileText();
+    } catch (error) {
+      reportImportError(error, 'importDocumentJson');
+      return undefined;
+    }
+
+    if (text === undefined) {
+      return undefined;
+    }
+
     try {
       let documentId: string | undefined;
 
       try {
-        documentId = await createImportedDocument(path, draft);
+        documentId = await importDocumentFromJsonText(path, text);
       } catch (error) {
         documentId = await withWriteAccessRecovery(error, () =>
-          createImportedDocument(path, draft),
+          importDocumentFromJsonText(path, text),
         );
       }
 
@@ -140,7 +140,7 @@ export const useImportDocumentAction = () => {
 
       return documentId;
     } catch (error) {
-      reportImportError(error, diagnosticsAction);
+      reportImportError(error, 'importDocumentJson');
       return undefined;
     }
   };
@@ -152,10 +152,21 @@ export const useImportDocumentAction = () => {
    * @param sourceFilePath - Absolute VFS path to the source JSON file.
    * @returns The created document ID, or `undefined` when cancelled or on a handled error.
    */
-  const runJsonPathImport = async (
+  const importDocumentFromPath = async (
     targetDirectoryPath: string,
     sourceFilePath: string,
   ): Promise<string | undefined> => {
+    const shouldImport = await confirm({
+      headline: 'Import document',
+      supportingText: 'Import this JSON file as a new Mioframe document in the current folder?',
+      confirmLabel: 'Import',
+      cancelLabel: 'Cancel',
+    });
+
+    if (!shouldImport) {
+      return undefined;
+    }
+
     try {
       let documentId: string | undefined;
 
@@ -178,42 +189,6 @@ export const useImportDocumentAction = () => {
       reportImportError(error, 'importDocumentFromPath');
       return undefined;
     }
-  };
-
-  const importDocument = async (path: string): Promise<string | undefined> => {
-    // Read draft ONCE outside the retry — the file picker must not reopen on write-access retry.
-    let draft: Awaited<ReturnType<typeof readImportDocumentDraft>>;
-
-    try {
-      draft = await readImportDocumentDraft();
-    } catch (error) {
-      reportImportError(error, 'importDocumentJson');
-      return undefined;
-    }
-
-    if (!draft) {
-      return undefined;
-    }
-
-    return runDraftImport(path, draft, 'importDocumentJson');
-  };
-
-  const importDocumentFromPath = async (
-    targetDirectoryPath: string,
-    sourceFilePath: string,
-  ): Promise<string | undefined> => {
-    const shouldImport = await confirm({
-      headline: 'Import document',
-      supportingText: 'Import this JSON file as a new Mioframe document in the current folder?',
-      confirmLabel: 'Import',
-      cancelLabel: 'Cancel',
-    });
-
-    if (!shouldImport) {
-      return undefined;
-    }
-
-    return runJsonPathImport(targetDirectoryPath, sourceFilePath);
   };
 
   return {
