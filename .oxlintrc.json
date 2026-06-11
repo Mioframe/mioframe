@@ -42,7 +42,13 @@
           {
             "patterns": [
               {
-                "group": ["@shared/service/*", "@shared/service/**"],
+                "group": [
+                  "@shared/service/*",
+                  "@shared/service/**",
+                  "**/shared/service",
+                  "**/shared/service/*",
+                  "**/shared/service/**"
+                ],
                 "message": "Import from @shared/service instead of directly importing service implementation modules."
               }
             ]

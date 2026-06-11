@@ -41,7 +41,7 @@ const parseDocumentDraftText = (text: string): ReturnType<typeof zodCFRDocumentC
  */
 export const useImportDocument = () => {
   const {
-    repositories: { createDocument, importDocumentFromJsonPath },
+    repositories: { createDocument },
   } = useMainServiceClient();
 
   /**
@@ -114,6 +114,5 @@ export const useImportDocument = () => {
   return {
     createImportedDocument,
     readImportDocumentDraft,
-    importDocumentFromJsonPath,
   };
 };

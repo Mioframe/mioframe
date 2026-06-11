@@ -228,8 +228,6 @@ const setupFileSystemService = () => {
 
   void deviceFilesReady;
 
-  const readText = (path: string) => vfs.readFile(path).then((file) => file.text());
-
   const move = (oldPath: string, newPath: string) => vfs.move(oldPath, newPath);
 
   const remove = (path: string, recursive?: boolean) => vfs.delete(path, recursive);
@@ -330,7 +328,6 @@ const setupFileSystemService = () => {
     vfs,
 
     createDirectory,
-    readText,
     directoryContent$,
     directoryContent: defineObservableQuery(directoryContent$),
     fsNodeStat$,

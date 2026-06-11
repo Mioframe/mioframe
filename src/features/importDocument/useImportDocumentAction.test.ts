@@ -36,7 +36,6 @@ vi.mock('./useImportDocument', () => ({
   useImportDocument: () => ({
     createImportedDocument: createImportedDocumentMock,
     readImportDocumentDraft: readImportDocumentDraftMock,
-    importDocumentFromJsonPath: importDocumentFromJsonPathMock,
   }),
 }));
 
@@ -68,6 +67,11 @@ vi.mock('@shared/service', () => ({
     invalidDocumentFormat: 'repositories.importInvalidDocumentFormat',
     fileReadFailed: 'repositories.importFileReadFailed',
   },
+  useMainServiceClient: () => ({
+    repositories: {
+      importDocumentFromJsonPath: importDocumentFromJsonPathMock,
+    },
+  }),
 }));
 
 describe('useImportDocumentAction', () => {

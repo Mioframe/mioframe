@@ -11,7 +11,6 @@ vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     repositories: {
       createDocument: createDocumentMock,
-      importDocumentFromJsonPath: vi.fn(),
     },
   }),
 }));
@@ -32,14 +31,6 @@ describe('useImportDocument', () => {
     createDocumentMock.mockReset();
     fileOpenMock.mockReset();
     createDocumentMock.mockResolvedValue('document-id');
-  });
-
-  it('does not expose the obsolete importJsonFile helper', () => {
-    expect(useImportDocument()).not.toHaveProperty('importJsonFile');
-  });
-
-  it('does not expose readImportDocumentDraftFromPath', () => {
-    expect(useImportDocument()).not.toHaveProperty('readImportDocumentDraftFromPath');
   });
 
   it('wraps invalid JSON with a user-facing DomainError', async () => {

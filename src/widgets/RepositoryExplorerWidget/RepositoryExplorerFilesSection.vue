@@ -20,33 +20,14 @@ const emit = defineEmits<{
 
 const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
 
-const visibleDirectoryNames = computed(
-  () =>
-    new Set(
-      props.regularFileEntries.flatMap(([name, { type }]) =>
-        type === FSNodeType.Directory ? [name] : [],
-      ),
-    ),
-);
-
-const isDirectoryEntry = (name: string) => visibleDirectoryNames.value.has(name);
-
 const isJsonFileEntry = (name: string, type: FSNodeType) =>
   type === FSNodeType.File && name.toLowerCase().endsWith('.json');
 
 const isInteractiveEntry = (name: string, type: FSNodeType) =>
-  isDirectoryEntry(name) || isJsonFileEntry(name, type);
+  type === FSNodeType.Directory || isJsonFileEntry(name, type);
 
-const onClickEntry = (name: string) => {
-  const entry = props.regularFileEntries.find(([entryName]) => entryName === name);
-
-  if (!entry) {
-    return;
-  }
-
-  const [, { type }] = entry;
-
-  if (isDirectoryEntry(name)) {
+const onClickEntry = (name: string, type: FSNodeType) => {
+  if (type === FSNodeType.Directory) {
     emit('selectPath', PathUtils.join(props.directoryPath, name));
     return;
   }
@@ -89,7 +70,7 @@ const emptyText = computed(() =>
         :supporting-text="description"
         :type="nodeType"
         class="repository-explorer-files-section__list-item"
-        @click="onClickEntry"
+        @click="(clickedName) => onClickEntry(clickedName, nodeType)"
       >
         <template #trailingIcon>
           <RepositoryExplorerEntryManageButton

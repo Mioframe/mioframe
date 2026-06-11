@@ -1609,37 +1609,4 @@ describe('useFileSystemService', () => {
     });
     subscription.unsubscribe();
   });
-
-  it('readText returns the text content of an existing VFS file', async () => {
-    const fileContent = '{"name":"Doc","type":"note","version":1,"body":{}}';
-    const readDirectoryMock = vi
-      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
-      .mockResolvedValue([['doc.json', fileStat]]);
-    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
-    provider.readFile = vi.fn(() =>
-      Promise.resolve(new File([fileContent], 'doc.json', { type: 'application/json' })),
-    );
-    const service = await createService();
-
-    await service.createDirectory('/drive');
-    service.vfs.mount('/drive', provider);
-
-    await expect(service.readText('/drive/doc.json')).resolves.toBe(fileContent);
-    expect(provider.readFile).toHaveBeenCalledWith('/doc.json');
-  });
-
-  it('readText propagates VFS read failures to the caller', async () => {
-    const readDirectoryMock = vi
-      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
-      .mockResolvedValue([['doc.json', fileStat]]);
-    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
-    const readError = new Error('disk read error');
-    provider.readFile = vi.fn(() => Promise.reject(readError));
-    const service = await createService();
-
-    await service.createDirectory('/drive');
-    service.vfs.mount('/drive', provider);
-
-    await expect(service.readText('/drive/doc.json')).rejects.toBe(readError);
-  });
 });
