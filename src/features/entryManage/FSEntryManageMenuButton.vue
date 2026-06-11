@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
-import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import { MDContextMenuButton } from '@shared/ui/Menu';
 import { computed, toRefs } from 'vue';
+import { useFSEntryManageActions } from './useFSEntryManageActions';
 
 type FSEntryManageMenuButtonProps = {
   path: string;
@@ -21,58 +22,17 @@ const emit = defineEmits<{
   selectRemove: [];
   selectImportJson: [];
 }>();
-const { path } = toRefs(props);
+const { path, entryType, canEditChildren, canChangePath, canDelete, showDocumentActions } =
+  toRefs(props);
 
 const fsEntryName = computed(() => PathUtils.basename(path.value));
-const isDirectory = computed(() => props.entryType === FSNodeType.Directory);
 
-const actionButtons = computed(() => {
-  const buttons: Array<{ key: string; label: string; symbolName: string }> = [];
-
-  if (isDirectory.value && props.canEditChildren !== false && props.showDocumentActions === true) {
-    buttons.push({
-      key: 'createDirectory',
-      label: 'Create directory',
-      symbolName: 'create_new_folder',
-    });
-    buttons.push({
-      key: 'createDocument',
-      label: 'Create document',
-      symbolName: 'edit_document',
-    });
-  } else if (isDirectory.value && props.canEditChildren !== false) {
-    buttons.push({
-      key: 'createDirectory',
-      label: 'Create directory',
-      symbolName: 'create_new_folder',
-    });
-  }
-
-  if (props.canChangePath === true) {
-    buttons.push({
-      key: 'rename',
-      label: 'Rename',
-      symbolName: 'edit',
-    });
-  }
-
-  if (isDirectory.value && props.canEditChildren !== false && props.showDocumentActions === true) {
-    buttons.push({
-      key: 'importJson',
-      label: 'Import JSON',
-      symbolName: 'file_copy',
-    });
-  }
-
-  if (props.canDelete === true) {
-    buttons.push({
-      key: 'remove',
-      label: 'Remove',
-      symbolName: 'delete',
-    });
-  }
-
-  return defineMenuButtonList(buttons);
+const { actionButtons } = useFSEntryManageActions({
+  entryType,
+  canEditChildren,
+  canChangePath,
+  canDelete,
+  showDocumentActions,
 });
 
 const menuTooltip = computed(() => `options ${fsEntryName.value}`);

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useFSNodeStat } from '@entity/fsEntry';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import { FSEntryManageMenuButton } from '@feature/entryManage';
+import { FSEntryManageMenuButton, useFSEntryManageActions } from '@feature/entryManage';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useImportDocumentAction } from '@feature/importDocument';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { computed, ref, toRefs } from 'vue';
+import { computed, ref, toRef, toRefs, watch } from 'vue';
 
 const props = withDefaults(
   defineProps<{
@@ -32,6 +32,20 @@ const showRenameDialog = ref(false);
 const canEditChildren = computed(() => fsEntryStat.value?.capabilities?.canEditChildren);
 const canChangePath = computed(() => fsEntryStat.value?.capabilities?.canChangePath);
 const canDelete = computed(() => fsEntryStat.value?.capabilities?.canDelete);
+
+const { hasActions } = useFSEntryManageActions({
+  entryType: toRef(props, 'entryType'),
+  canEditChildren,
+  canChangePath,
+  canDelete,
+  showDocumentActions: toRef(props, 'showDocumentActions'),
+});
+
+watch(path, () => {
+  showCreateDirectoryDialog.value = false;
+  showCreateDocumentDialog.value = false;
+  showRenameDialog.value = false;
+});
 
 const onCloseCreateDirectoryDialog = () => {
   showCreateDirectoryDialog.value = false;
@@ -68,6 +82,7 @@ const onSelectImportJson = async () => {
 
 <template>
   <FSEntryManageMenuButton
+    v-if="hasActions"
     :path="path"
     :entry-type="entryType"
     :can-edit-children="canEditChildren"

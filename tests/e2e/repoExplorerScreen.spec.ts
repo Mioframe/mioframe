@@ -1,5 +1,11 @@
 import { expect, type Page, test } from '@playwright/test';
-import { createUniqueName, dismissStorageOnboarding, launchApp, openDirectory } from './helpers';
+import {
+  createUniqueName,
+  dismissStorageOnboarding,
+  launchApp,
+  openDirectory,
+  openEntryAddSheet,
+} from './helpers';
 
 const browserStorageLabel = /^browser storage$/i;
 
@@ -205,4 +211,81 @@ test('repo explorer keeps clickable cursors and natural section flow on a wide v
     throw new Error('Missing Add FAB box.');
   }
   expect(fabBox.height).toBeGreaterThan(0);
+});
+
+test('repo explorer clears open context menus and dialogs after navigating home and returning', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openBrowserStorage(page);
+
+  const outerDir = createUniqueName('nav-context-outer');
+  const innerDir = createUniqueName('nav-context-inner');
+
+  await createDirectoryFromAddSheet(page, outerDir);
+  await openDirectory(page, outerDir);
+  await createDirectoryFromAddSheet(page, innerDir);
+
+  const innerOptionsButton = page.getByRole('button', {
+    name: new RegExp(`^options ${innerDir}$`, 'i'),
+  });
+  await expect(innerOptionsButton).toBeVisible();
+  await innerOptionsButton.click();
+
+  const renameItem = page.getByRole('menuitem', { name: /^rename$/i });
+  await expect(renameItem).toBeVisible();
+
+  await page.getByRole('button', { name: /^home$/i }).click();
+
+  await expect(page).toHaveURL(/home/i);
+  await expect(page.getByRole('menuitem', { name: /^rename$/i })).toHaveCount(0);
+
+  await openDirectory(page, outerDir);
+
+  await expect(innerOptionsButton).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^rename$/i })).toHaveCount(0);
+});
+
+test('repo explorer clears rename dialog state when navigating to a sibling directory with the same entry name', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openBrowserStorage(page);
+
+  const dirA = createUniqueName('nav-sibling-a');
+  const dirB = createUniqueName('nav-sibling-b');
+  const sharedEntry = 'shared-entry';
+
+  await createDirectoryFromAddSheet(page, dirA);
+  await createDirectoryFromAddSheet(page, dirB);
+
+  await openDirectory(page, dirA);
+  const addSheetA = await openEntryAddSheet(page);
+  await addSheetA.getByText(/^create directory$/i).click();
+  const dialogA = page.getByRole('dialog', { name: /create a new folder/i });
+  await dialogA.getByLabel(/folder's name/i).fill(sharedEntry);
+  await dialogA.getByRole('button', { name: /^create$/i }).click();
+  await expect(page.getByText(sharedEntry, { exact: true })).toBeVisible();
+
+  const optionsButtonInA = page.getByRole('button', {
+    name: new RegExp(`^options ${sharedEntry}$`, 'i'),
+  });
+  await optionsButtonInA.click();
+  await page.getByRole('menuitem', { name: /^rename$/i }).click();
+
+  const renameDialog = page.getByRole('dialog', { name: /^rename/i });
+  await expect(renameDialog).toBeVisible();
+
+  await page.getByRole('button', { name: /^home$/i }).click();
+  await expect(page).toHaveURL(/home/i);
+
+  await openDirectory(page, dirB);
+  const addSheetB = await openEntryAddSheet(page);
+  await addSheetB.getByText(/^create directory$/i).click();
+  const dialogB = page.getByRole('dialog', { name: /create a new folder/i });
+  await dialogB.getByLabel(/folder's name/i).fill(sharedEntry);
+  await dialogB.getByRole('button', { name: /^create$/i }).click();
+  await expect(page.getByText(sharedEntry, { exact: true })).toBeVisible();
+
+  await expect(page.getByRole('dialog', { name: /^rename/i })).toHaveCount(0);
 });
