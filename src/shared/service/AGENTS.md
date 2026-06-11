@@ -1,11 +1,16 @@
 # src/shared/service
 
-Inherits the rules from src/shared/AGENTS.md. Applies to src/shared/service and its descendants until a deeper AGENTS.md overrides it.
+Applies to `src/shared/service` and descendants.
+Inherits root and shared rules.
 
 ## Contains
 
-- Background-side service implementations, worker wiring, cache-aware queries, mutations, service proxy implementation, and service public contracts.
+- Background service implementations.
+- Worker wiring and proxy service support.
+- Service public contracts.
 
-## Patterns
+## Rules
 
-- Services expose infrastructural capabilities and contracts, not screen-specific
+- UI/FSD layers access services only through `@shared/service` and `useMainServiceClient`.
+- Keep `@shared/service` narrow.
+- `@shared/service` may export only the worker
