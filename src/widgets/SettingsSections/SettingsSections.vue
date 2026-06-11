@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
+import { PwaInstallSettingsListItem, usePwaInstallAction } from '@feature/pwaInstall';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 
 const { settings } = useLocalSettings();
 const { diagnosticsEnabled, setDiagnosticsEnabledByUser } = useDiagnosticsSettings();
+const { isSettingsEntryVisible } = usePwaInstallAction();
 
 const onToggleStarterExamples = () => {
   settings.value.hideStarterWidget = settings.value.hideStarterWidget === true ? undefined : true;
@@ -52,6 +54,12 @@ const onClickAboutMioframe = () => {
 <template>
   <div class="settings-sections">
     <StorageSettingsSection />
+
+    <SettingsSection v-if="isSettingsEntryVisible" title="App">
+      <MDListContainer is="div">
+        <PwaInstallSettingsListItem />
+      </MDListContainer>
+    </SettingsSection>
 
     <SettingsSection title="Privacy & diagnostics">
       <MDListContainer is="div">

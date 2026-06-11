@@ -11,6 +11,7 @@ const zodSettingsStorage = z._default(
     googleDriveIntegrationEnabled: z.optional(z.boolean()),
     hideStarterWidget: z.optional(z.boolean()),
     panesWidth: z._default(z.array(z.number()), []),
+    pwaInstallWidgetDismissedUntil: z.optional(z.number()),
   }),
   { diagnosticsEnabled: false, diagnosticsConsentRequested: false, panesWidth: [] },
 );
