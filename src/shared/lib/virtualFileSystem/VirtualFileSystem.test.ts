@@ -337,10 +337,30 @@ describe('VirtualFileSystem', () => {
       await expect(vfs.writeFile('/mnt/test/file.txt', 'content')).resolves.toBeUndefined();
     });
 
-    it('emits create and update based on the pre-write existence check', async () => {
+    it('does not call provider stat before writing and emits write invalidation events', async () => {
       const events: Array<{ type: string; path: string; size?: number | undefined }> = [];
+      let statCallCount = 0;
+      let writeCallCount = 0;
+      const provider: IFileSystemProvider = {
+        stat: () => {
+          statCallCount += 1;
+          return Promise.resolve({
+            type: FSNodeType.File,
+            size: 7,
+          });
+        },
+        readFile: (path) => memoryFS.readFile(path),
+        writeFile: (path, content, options) => {
+          writeCallCount += 1;
+          return memoryFS.writeFile(path, content, options);
+        },
+        readDirectory: (path) => memoryFS.readDirectory(path),
+        createDirectory: (path) => memoryFS.createDirectory(path),
+        delete: (path, recursive) => memoryFS.delete(path, recursive),
+        move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
+      };
 
-      vfs.mount('/mnt/test', memoryFS);
+      vfs.mount('/mnt/test', provider);
       vfs.watch('/mnt/test', (event) => {
         events.push({ type: event.type, path: event.path, size: event.size });
       });
@@ -348,15 +368,53 @@ describe('VirtualFileSystem', () => {
       await vfs.writeFile('/mnt/test/file.txt', 'create');
       await vfs.writeFile('/mnt/test/file.txt', 'updated');
 
-      expect(events).toContainEqual({
-        type: VfsEventType.CREATE,
-        path: '/mnt/test/file.txt',
-        size: 6,
+      expect(statCallCount).toBe(0);
+      expect(writeCallCount).toBe(2);
+      expect(events).toEqual([
+        {
+          type: VfsEventType.WRITE,
+          path: '/mnt/test/file.txt',
+          size: 6,
+        },
+        {
+          type: VfsEventType.WRITE,
+          path: '/mnt/test/file.txt',
+          size: 7,
+        },
+      ]);
+    });
+
+    it('tracks write activity completion on failure and does not emit a success event', async () => {
+      const events: Array<{ type: string; path: string }> = [];
+      const provider: IFileSystemProvider = {
+        stat: () =>
+          Promise.resolve({
+            type: FSNodeType.Directory,
+          }),
+        readFile: () => Promise.resolve(new File(['content'], 'file.txt')),
+        writeFile: () => Promise.reject(new Error('write failed')),
+        readDirectory: () => Promise.resolve([]),
+        createDirectory: () => Promise.resolve(undefined),
+        delete: () => Promise.resolve(undefined),
+        move: () => Promise.resolve(undefined),
+      };
+
+      vfs.mount('/mnt/test', provider);
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
       });
-      expect(events).toContainEqual({
-        type: VfsEventType.UPDATE,
-        path: '/mnt/test/file.txt',
-        size: 7,
+
+      await expect(vfs.writeFile('/mnt/test/file.txt', 'content')).rejects.toThrow('write failed');
+      expect(events).toEqual([]);
+      expect(await getActivityState()).toMatchObject({
+        status: 'error',
+        activeCount: 0,
+        lastError: {
+          operationType: 'writeFile',
+          path: '/mnt/test/file.txt',
+          message: 'write failed',
+          acknowledged: false,
+        },
       });
     });
   });
@@ -1107,7 +1165,7 @@ describe('VirtualFileSystem', () => {
       });
     });
 
-    it('should emit create event when writing new file', async () => {
+    it('should emit write event when writing new file', async () => {
       vfs.mount('/mnt/test', memoryFS);
 
       const events: Array<{ type: string; path: string }> = [];
@@ -1118,12 +1176,12 @@ describe('VirtualFileSystem', () => {
       await vfs.writeFile('/mnt/test/newfile.txt', 'content');
 
       expect(events).toContainEqual({
-        type: 'create',
+        type: 'write',
         path: '/mnt/test/newfile.txt',
       });
     });
 
-    it('should emit update event when writing existing file', async () => {
+    it('should emit write event when writing existing file', async () => {
       // Create file first
       await memoryFS.writeFile('/existing.txt', 'original', {
         create: true,
@@ -1140,7 +1198,7 @@ describe('VirtualFileSystem', () => {
       await vfs.writeFile('/mnt/test/existing.txt', 'updated');
 
       expect(events).toContainEqual({
-        type: 'update',
+        type: 'write',
         path: '/mnt/test/existing.txt',
       });
     });
@@ -1358,7 +1416,7 @@ describe('VirtualFileSystem', () => {
       expect(events2.length).toBe(1);
     });
 
-    it('should emit update event when overwriting file with same content', async () => {
+    it('should emit write event when overwriting file with same content', async () => {
       await memoryFS.writeFile('/file.txt', 'content', {
         create: true,
         overwrite: true,
@@ -1373,7 +1431,7 @@ describe('VirtualFileSystem', () => {
 
       await vfs.writeFile('/mnt/test/file.txt', 'content');
 
-      expect(events.some((e) => e.type === 'update')).toBe(true);
+      expect(events.some((e) => e.type === 'write')).toBe(true);
     });
 
     it('should emit mount event when remounting provider', () => {
@@ -1409,9 +1467,9 @@ describe('VirtualFileSystem', () => {
       await vfs.writeFile('/mnt/a/c/d.txt', 'content');
 
       expect(events).toContainEqual({ type: 'create', path: '/mnt/a' });
-      expect(events).toContainEqual({ type: 'create', path: '/mnt/a/b.txt' });
+      expect(events).toContainEqual({ type: 'write', path: '/mnt/a/b.txt' });
       expect(events).toContainEqual({ type: 'create', path: '/mnt/a/c' });
-      expect(events).toContainEqual({ type: 'create', path: '/mnt/a/c/d.txt' });
+      expect(events).toContainEqual({ type: 'write', path: '/mnt/a/c/d.txt' });
     });
 
     it('should handle rapid sequential operations', async () => {
@@ -1427,13 +1485,9 @@ describe('VirtualFileSystem', () => {
       await vfs.writeFile('/mnt/test/file2.txt', 'content');
       await vfs.delete('/mnt/test/file1.txt');
 
-      expect(events.some((e) => e.path === '/mnt/test/file1.txt' && e.type === 'create')).toBe(
-        true,
-      );
+      expect(events.some((e) => e.path === '/mnt/test/file1.txt' && e.type === 'write')).toBe(true);
       expect(events.some((e) => e.path === '/mnt/test/dir1' && e.type === 'create')).toBe(true);
-      expect(events.some((e) => e.path === '/mnt/test/file2.txt' && e.type === 'create')).toBe(
-        true,
-      );
+      expect(events.some((e) => e.path === '/mnt/test/file2.txt' && e.type === 'write')).toBe(true);
       expect(events.some((e) => e.path === '/mnt/test/file1.txt' && e.type === 'delete')).toBe(
         true,
       );
@@ -1502,7 +1556,7 @@ describe('VirtualFileSystem', () => {
       expect(callCount).toBe(1); // Should still be 1, not 2
     });
 
-    it('should emit update event for file content changes', async () => {
+    it('should emit write event for file content changes', async () => {
       // Create file first
       await memoryFS.writeFile('/update-test.txt', 'original', {
         create: true,
@@ -1519,9 +1573,27 @@ describe('VirtualFileSystem', () => {
       await vfs.writeFile('/mnt/test/update-test.txt', 'new-content');
 
       expect(events).toContainEqual({
-        type: 'update',
+        type: 'write',
         path: '/mnt/test/update-test.txt',
       });
+    });
+
+    it('should notify a watcher subscribed to the written file path with a write event', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test/file.txt', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.writeFile('/mnt/test/file.txt', 'content');
+
+      expect(events).toEqual([
+        {
+          type: 'write',
+          path: '/mnt/test/file.txt',
+        },
+      ]);
     });
   });
 });
