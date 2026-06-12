@@ -370,6 +370,23 @@ export const WebFileSystemProvider = (
     }
   };
 
+  const hasFileEntry = async (
+    directoryHandle: FileSystemDirectoryHandle,
+    fileName: string,
+  ): Promise<boolean> => {
+    for await (const [entryName, childHandle] of directoryHandle.entries()) {
+      if (entryName === fileName) {
+        if (childHandle.kind !== 'file') {
+          throw new VfsError(FileSystemError.FileIsADirectory, 'Type mismatch.');
+        }
+
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const stat = async (path: string): Promise<FSNodeStat> => {
     await ensureAccess('read');
     const { stat: nodeStat } = await lookupPath(path);
@@ -395,6 +412,44 @@ export const WebFileSystemProvider = (
     const parentDir = await withWriteAccessRecovery(() =>
       getHandle(parentPath, false, 'directory'),
     );
+
+    if (create && overwrite) {
+      const existedBeforeWrite = await withWriteAccessRecovery(() =>
+        hasFileEntry(parentDir, fileName),
+      );
+      reportDiagnosticStep({ step: 'fileHandleCreate', result: 'started' });
+      let resolvedHandle: FileSystemFileHandle;
+      try {
+        resolvedHandle = await createFileHandleWithWriteRecovery(parentDir, fileName);
+        reportDiagnosticStep({ step: 'fileHandleCreate', result: 'succeeded' });
+      } catch (createError) {
+        reportDiagnosticStep({ step: 'fileHandleCreate', result: 'failed', error: createError });
+        throw createError;
+      }
+
+      const rollbackCreatedFile = async () => {
+        if (existedBeforeWrite) {
+          return;
+        }
+
+        try {
+          await withWriteAccessRecovery(() =>
+            parentDir.removeEntry(fileName, { recursive: false }),
+          );
+        } catch {
+          // cleanup is best-effort
+        }
+      };
+
+      try {
+        await writeFileHandleContent(resolvedHandle, content);
+      } catch (writeError) {
+        await rollbackCreatedFile();
+        throw writeError;
+      }
+
+      return { stat: { type: FSNodeType.File } };
+    }
 
     reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
     let existingHandle: FileSystemFileHandle | undefined;
