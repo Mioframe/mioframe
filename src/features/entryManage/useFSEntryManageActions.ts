@@ -1,6 +1,9 @@
 import { type Ref, computed } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { defineMenuButtonList } from '@shared/ui/Menu';
+import { defineMenuButtonList, type BaseMenuButton } from '@shared/ui/Menu';
+
+/** Non-empty menu-button list required by entry-manage action controls. */
+export type NonEmptyMenuButtonList<T extends BaseMenuButton = BaseMenuButton> = [T, ...T[]];
 
 /** Reactive capability inputs that determine which FS entry actions are available. */
 type FSEntryManageActionsOptions = {
@@ -20,7 +23,7 @@ type FSEntryManageActionsOptions = {
  * Derives the available action button list and a `hasActions` flag from FS entry capabilities.
  * Single source of truth for action derivation used by `FSEntryManageMenuButton` and its parent.
  * @param options - Reactive capability refs for the FS entry.
- * @returns `actionButtons` computed list and `hasActions` boolean computed.
+ * @returns `actionButtons`, `hasActions`, and a nullable non-empty action list for guarded parents.
  */
 export const useFSEntryManageActions = (options: FSEntryManageActionsOptions) => {
   const actionButtons = computed(() => {
@@ -63,6 +66,15 @@ export const useFSEntryManageActions = (options: FSEntryManageActionsOptions) =>
   });
 
   const hasActions = computed(() => actionButtons.value.length > 0);
+  const nonEmptyActionButtons = computed<NonEmptyMenuButtonList | null>(() => {
+    const [firstButton, ...remainingButtons] = actionButtons.value;
 
-  return { actionButtons, hasActions };
+    if (firstButton === undefined) {
+      return null;
+    }
+
+    return [firstButton, ...remainingButtons];
+  });
+
+  return { actionButtons, hasActions, nonEmptyActionButtons };
 };

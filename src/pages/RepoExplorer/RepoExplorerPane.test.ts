@@ -2,9 +2,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
+import type { NonEmptyMenuButtonList } from '@feature/entryManage';
+import { defineMenuButtonList } from '@shared/ui/Menu';
 
 const canEditDirectoryContents = ref<boolean | undefined>(true);
 const hasDirectoryManageActionsRef = ref(true);
+const directoryManageActionsRef = ref<NonEmptyMenuButtonList | null>(
+  defineMenuButtonList([{ key: 'rename', label: 'Rename', symbolName: 'edit' }] as const),
+);
 const openMock = vi.fn();
 const importDocumentMock = vi.fn();
 
@@ -16,6 +21,13 @@ vi.mock('@feature/entryManage', () => ({
   useFSEntryManageActions: () => ({
     hasActions: hasDirectoryManageActionsRef,
     actionButtons: ref([]),
+    nonEmptyActionButtons: directoryManageActionsRef,
+  }),
+  useEntryManageDialogState: () => ({
+    showRenameDialog: ref(false),
+    onSelectRename: vi.fn(),
+    onSelectRemove: vi.fn(),
+    onCloseRenameDialog: vi.fn(),
   }),
 }));
 
@@ -87,6 +99,15 @@ vi.mock('@feature/documentCreate', () => ({
     name: 'DocumentCreationDialogStub',
     setup() {
       return () => h('div', { 'data-testid': 'document-create-dialog' });
+    },
+  }),
+}));
+
+vi.mock('@feature/entryRename', () => ({
+  FSEntryRenameDialog: defineComponent({
+    name: 'FSEntryRenameDialogStub',
+    setup() {
+      return () => h('div', { 'data-testid': 'rename-dialog' });
     },
   }),
 }));
@@ -221,6 +242,9 @@ describe('RepoExplorerPane', () => {
   afterEach(() => {
     canEditDirectoryContents.value = true;
     hasDirectoryManageActionsRef.value = true;
+    directoryManageActionsRef.value = defineMenuButtonList([
+      { key: 'rename', label: 'Rename', symbolName: 'edit' },
+    ] as const);
     openMock.mockReset();
     importDocumentMock.mockReset();
     document.body.innerHTML = '';
@@ -292,6 +316,15 @@ describe('RepoExplorerPane', () => {
 
   it('hides the directory manage button when no actions are available', async () => {
     hasDirectoryManageActionsRef.value = false;
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.text()).not.toContain('Current directory actions: Create directory');
+  });
+
+  it('does not render the directory manage button when the non-empty action list is absent', async () => {
+    hasDirectoryManageActionsRef.value = true;
+    directoryManageActionsRef.value = null;
 
     const wrapper = await mountPane();
 

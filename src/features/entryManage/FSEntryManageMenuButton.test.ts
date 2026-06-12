@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
+import type { NonEmptyMenuButtonList } from './useFSEntryManageActions';
 
 const { selectedLabel, renderedLabels } = vi.hoisted(() => ({
   selectedLabel: { value: 'Import JSON' },
@@ -60,9 +61,7 @@ describe('FSEntryManageMenuButton', () => {
     renderedLabels.value = [];
   });
 
-  const mountButton = async (
-    actions: Array<{ key: string; label: string; symbolName: string }>,
-  ) => {
+  const mountButton = async (actions: NonEmptyMenuButtonList) => {
     const { default: FSEntryManageMenuButton } = await import('./FSEntryManageMenuButton.vue');
     return mount(FSEntryManageMenuButton, {
       props: {
@@ -79,7 +78,7 @@ describe('FSEntryManageMenuButton', () => {
       { key: 'rename', label: 'Rename', symbolName: 'edit' },
       { key: 'importJson', label: 'Import JSON', symbolName: 'file_copy' },
       { key: 'remove', label: 'Remove', symbolName: 'delete' },
-    ]);
+    ] as const);
 
     expect(renderedLabels.value).toEqual([
       'Create directory',
@@ -95,13 +94,15 @@ describe('FSEntryManageMenuButton', () => {
       { key: 'createDirectory', label: 'Create directory', symbolName: 'create_new_folder' },
       { key: 'rename', label: 'Rename', symbolName: 'edit' },
       { key: 'remove', label: 'Remove', symbolName: 'delete' },
-    ]);
+    ] as const);
 
     expect(renderedLabels.value).toEqual(['Create directory', 'Rename', 'Remove']);
   });
 
   it('exposes the entry-specific menu tooltip', async () => {
-    const wrapper = await mountButton([{ key: 'rename', label: 'Rename', symbolName: 'edit' }]);
+    const wrapper = await mountButton([
+      { key: 'rename', label: 'Rename', symbolName: 'edit' },
+    ] as const);
 
     expect(wrapper.text()).toContain('options target');
   });
@@ -111,7 +112,7 @@ describe('FSEntryManageMenuButton', () => {
 
     const wrapper = await mountButton([
       { key: 'createDirectory', label: 'Create directory', symbolName: 'create_new_folder' },
-    ]);
+    ] as const);
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
@@ -124,7 +125,7 @@ describe('FSEntryManageMenuButton', () => {
 
     const wrapper = await mountButton([
       { key: 'createDocument', label: 'Create document', symbolName: 'edit_document' },
-    ]);
+    ] as const);
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
@@ -137,7 +138,7 @@ describe('FSEntryManageMenuButton', () => {
 
     const wrapper = await mountButton([
       { key: 'importJson', label: 'Import JSON', symbolName: 'file_copy' },
-    ]);
+    ] as const);
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
@@ -148,7 +149,9 @@ describe('FSEntryManageMenuButton', () => {
   it('emits rename when the action is selected', async () => {
     selectedLabel.value = 'Rename';
 
-    const wrapper = await mountButton([{ key: 'rename', label: 'Rename', symbolName: 'edit' }]);
+    const wrapper = await mountButton([
+      { key: 'rename', label: 'Rename', symbolName: 'edit' },
+    ] as const);
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
@@ -159,7 +162,9 @@ describe('FSEntryManageMenuButton', () => {
   it('emits remove when the action is selected', async () => {
     selectedLabel.value = 'Remove';
 
-    const wrapper = await mountButton([{ key: 'remove', label: 'Remove', symbolName: 'delete' }]);
+    const wrapper = await mountButton([
+      { key: 'remove', label: 'Remove', symbolName: 'delete' },
+    ] as const);
 
     await wrapper.get('button').trigger('click');
     await flushPromises();

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { MDContextMenuButton, type MenuButtonList } from '@shared/ui/Menu';
+import { MDContextMenuButton } from '@shared/ui/Menu';
+import type { NonEmptyMenuButtonList } from './useFSEntryManageActions';
 import { computed } from 'vue';
 
 type FSEntryManageMenuButtonProps = {
   path: string;
   /** Pre-derived non-empty action list. Parent must not render this button when the list is empty. */
-  actions: MenuButtonList;
+  actions: NonEmptyMenuButtonList;
 };
 
 const props = defineProps<FSEntryManageMenuButtonProps>();

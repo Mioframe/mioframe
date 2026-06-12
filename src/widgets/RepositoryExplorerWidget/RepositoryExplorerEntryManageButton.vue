@@ -1,110 +1,51 @@
 <script setup lang="ts">
-import { FSEntryManageMenuButton, useFSEntryManageActions } from '@feature/entryManage';
-import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import { useRemoveFSEntry } from '@feature/entryRemove';
-import { FSEntryRenameDialog } from '@feature/entryRename';
-import { useImportDocumentAction } from '@feature/importDocument';
-import { DocumentCreationDialog } from '@feature/documentCreate';
-import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { computed, ref, toRefs, watch } from 'vue';
+import { FSEntryManageMenuButton } from '@feature/entryManage';
+import type { NonEmptyMenuButtonList } from '@feature/entryManage';
 
-const props = defineProps<{
+defineProps<{
   path: string;
-  entryType: FSNodeType;
-  canEditChildren?: boolean | undefined;
-  canChangePath?: boolean | undefined;
-  canDelete?: boolean | undefined;
-  showDocumentActions?: boolean | undefined;
+  /** Pre-derived non-empty action list. Parent must not render this component when the list is empty. */
+  actions: NonEmptyMenuButtonList;
 }>();
 
-const { path, entryType, canEditChildren, canChangePath, canDelete } = toRefs(props);
-const showDocumentActions = computed(() => props.showDocumentActions === true);
-
-const { importDocument } = useImportDocumentAction();
-const { remove } = useRemoveFSEntry();
-
-const showCreateDirectoryDialog = ref(false);
-const showCreateDocumentDialog = ref(false);
-const showRenameDialog = ref(false);
-
-const { actionButtons } = useFSEntryManageActions({
-  entryType,
-  canEditChildren,
-  canChangePath,
-  canDelete,
-  showDocumentActions,
-});
-
-watch(path, () => {
-  showCreateDirectoryDialog.value = false;
-  showCreateDocumentDialog.value = false;
-  showRenameDialog.value = false;
-});
-
-const onCloseCreateDirectoryDialog = () => {
-  showCreateDirectoryDialog.value = false;
-};
-
-const onCloseCreateDocumentDialog = () => {
-  showCreateDocumentDialog.value = false;
-};
-
-const onCloseRenameDialog = () => {
-  showRenameDialog.value = false;
-};
+const emit = defineEmits<{
+  selectCreateDirectory: [];
+  selectCreateDocument: [];
+  selectRename: [];
+  selectRemove: [];
+  selectImportJson: [];
+}>();
 
 const onSelectCreateDirectory = () => {
-  showCreateDirectoryDialog.value = true;
+  emit('selectCreateDirectory');
 };
 
 const onSelectCreateDocument = () => {
-  showCreateDocumentDialog.value = true;
+  emit('selectCreateDocument');
 };
 
 const onSelectRename = () => {
-  showRenameDialog.value = true;
+  emit('selectRename');
 };
 
-const onSelectRemove = async () => {
-  await remove(path.value);
+const onSelectRemove = () => {
+  emit('selectRemove');
 };
 
-const onSelectImportJson = async () => {
-  await importDocument(path.value);
+const onSelectImportJson = () => {
+  emit('selectImportJson');
 };
 </script>
 
 <template>
-  <span class="repository-explorer-entry-manage-button">
-    <FSEntryManageMenuButton
-      :path="path"
-      :actions="actionButtons"
-      @select-create-directory="onSelectCreateDirectory"
-      @select-create-document="onSelectCreateDocument"
-      @select-rename="onSelectRename"
-      @select-remove="onSelectRemove"
-      @select-import-json="onSelectImportJson"
-    />
-
-    <DirectoryCreateDialog
-      v-if="showCreateDirectoryDialog"
-      :path="path"
-      @cancel="onCloseCreateDirectoryDialog"
-      @created="onCloseCreateDirectoryDialog"
-    />
-
-    <DocumentCreationDialog
-      v-if="showCreateDocumentDialog"
-      :path="path"
-      @cancel="onCloseCreateDocumentDialog"
-      @created="onCloseCreateDocumentDialog"
-    />
-
-    <FSEntryRenameDialog
-      v-if="showRenameDialog"
-      :path="path"
-      @cancel="onCloseRenameDialog"
-      @renamed="onCloseRenameDialog"
-    />
-  </span>
+  <FSEntryManageMenuButton
+    class="repository-explorer-entry-manage-button"
+    :path="path"
+    :actions="actions"
+    @select-create-directory="onSelectCreateDirectory"
+    @select-create-document="onSelectCreateDocument"
+    @select-rename="onSelectRename"
+    @select-remove="onSelectRemove"
+    @select-import-json="onSelectImportJson"
+  />
 </template>

@@ -19,7 +19,8 @@ vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
     props: {
       directoryPath: { type: String, required: true },
       name: { type: String, required: true },
-      entryType: { type: Number, required: true },
+      // eslint-disable-next-line vue/require-prop-types -- Test stub accepts enum runtime values only.
+      entryType: { required: true },
       description: { type: String, default: undefined },
       canEditChildren: { type: Boolean, default: undefined },
       canChangePath: { type: Boolean, default: undefined },
