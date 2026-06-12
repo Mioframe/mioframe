@@ -9,8 +9,13 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, useTemplateRef } from 'vue';
-import { formatSaveStatusErrorDetails, STATUS_LABELS } from './saveStatusText';
+import { CHIP_STATUS_LABELS, formatSaveStatusErrorDetails } from './saveStatusText';
+import type { VisibleVfsActivityStatus } from './useVfsActivityStatusChipVisibility';
 import { useWriteAccessRecoveryState } from './useWriteAccessRecoveryState';
+
+const props = defineProps<{
+  status: VisibleVfsActivityStatus;
+}>();
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
@@ -20,7 +25,7 @@ const {
   fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
 } = useMainServiceClient();
 const { requestAccess } = useFileSystemAccessPermissionBroker();
-const { hasUnacknowledgedError, state } = useVfsActivity();
+const { state } = useVfsActivity();
 
 const {
   writeAccessRecovery,
@@ -31,18 +36,12 @@ const {
   markStorageFailureAfterGrant,
 } = useWriteAccessRecoveryState(state);
 
-const isError = computed(() => state.value.status === 'error');
-const isActive = computed(() => state.value.status === 'active');
-const label = computed(() =>
-  state.value.status === 'idle' ? undefined : STATUS_LABELS[state.value.status],
-);
+const isError = computed(() => props.status === 'error');
+const isActive = computed(() => props.status === 'active');
+const label = computed(() => CHIP_STATUS_LABELS[props.status]);
 const errorDetails = computed(() => formatSaveStatusErrorDetails(state.value.lastError));
 
 const onClickTrigger = () => {
-  if (state.value.status === 'idle') {
-    return;
-  }
-
   showErrorDetails.value = true;
   void checkPendingRequest();
 };
@@ -152,7 +151,6 @@ const onInteractionOutside = () => {
 
 <template>
   <MDAssistChip
-    v-if="label"
     ref="triggerRef"
     :label="label"
     class="vfs-activity-status-chip"
@@ -167,7 +165,6 @@ const onInteractionOutside = () => {
   </MDAssistChip>
 
   <MDOverlayTooltip
-    v-if="isActive || (isError && hasUnacknowledgedError)"
     :show="showErrorDetails"
     :target-element="triggerRef"
     @interaction-outside="onInteractionOutside"

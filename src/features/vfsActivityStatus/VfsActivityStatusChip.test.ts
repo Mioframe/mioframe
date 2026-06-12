@@ -125,7 +125,11 @@ vi.mock('@shared/ui/Tooltips', () => ({
 const mountVfsActivityStatusChip = async () => {
   const { default: VfsActivityStatusChip } = await import('./VfsActivityStatusChip.vue');
 
-  const wrapper = mount(VfsActivityStatusChip);
+  const wrapper = mount(VfsActivityStatusChip, {
+    props: {
+      status: vfsState.value.status === 'active' ? 'active' : 'error',
+    },
+  });
   // Flush the initial watch(immediate) checkPendingRequest call.
   await flushPromises();
   return wrapper;
@@ -180,12 +184,6 @@ describe('VfsActivityStatusChip', () => {
     });
   });
 
-  it('stays hidden while idle', async () => {
-    const wrapper = await mountVfsActivityStatusChip();
-
-    expect(wrapper.find('button').exists()).toBe(false);
-  });
-
   it('shows active save details from the single status control', async () => {
     vfsState.value = { status: 'active', activeCount: 1 };
 
@@ -212,7 +210,7 @@ describe('VfsActivityStatusChip', () => {
 
     await wrapper.get('button').trigger('click');
 
-    expect(wrapper.text()).toContain('Could not save changes');
+    expect(wrapper.text()).toContain('Save failed');
     expect(wrapper.text()).toContain('Could not confirm the last save.');
     expect(wrapper.text()).toContain('Copy details');
 
