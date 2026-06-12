@@ -1577,5 +1577,23 @@ describe('VirtualFileSystem', () => {
         path: '/mnt/test/update-test.txt',
       });
     });
+
+    it('should notify a watcher subscribed to the written file path with a write event', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test/file.txt', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.writeFile('/mnt/test/file.txt', 'content');
+
+      expect(events).toEqual([
+        {
+          type: 'write',
+          path: '/mnt/test/file.txt',
+        },
+      ]);
+    });
   });
 });

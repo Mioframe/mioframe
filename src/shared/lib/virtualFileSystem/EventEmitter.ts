@@ -6,9 +6,9 @@ import type { FSNodeType } from './IFileSystemProvider';
  * Events are divided into two categories:
  *
  * **Content events** (files and directories):
- * - `create` — A new file or directory has been created
+ * - `create` — A new file or directory has been definitely created
  * - `write` — File content was written; the file may have been created or updated
- * - `update` — An existing file has been modified (content changed)
+ * - `update` — An existing file has been definitely updated by an exact operation
  * - `delete` — A file or directory has been deleted
  * - `rename` — A file or directory has been renamed/moved
  *
@@ -21,8 +21,8 @@ import type { FSNodeType } from './IFileSystemProvider';
  */
 export enum VfsEventType {
   /**
-   * A new file or directory has been created.
-   * Emitted by: writeFile (new file), createDirectory
+   * A new file or directory has been definitely created.
+   * Emitted by: createDirectory and exact provider/root create events
    */
   CREATE = 'create',
 
@@ -34,7 +34,7 @@ export enum VfsEventType {
   WRITE = 'write',
 
   /**
-   * An existing file has been modified.
+   * An existing file has been definitely modified.
    * Emitted by: exact provider refresh/update operations
    * Note: Only for files, not directories
    */

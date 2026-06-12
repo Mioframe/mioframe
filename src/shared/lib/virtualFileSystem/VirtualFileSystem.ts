@@ -288,6 +288,9 @@ export class VirtualFileSystem {
 
   /**
    * Writes content to a file. If the file doesn't exist, it creates it; if it does, it overwrites it.
+   * Emits {@link VfsEventType.WRITE} after a successful write so watchers can
+   * invalidate the affected path without assuming whether the file was created
+   * or updated.
    * @param path - Absolute path to the file.
    * @param content - Content (string, Blob, BufferSource).
    * @returns Promise that resolves when the write and event emission are complete.
