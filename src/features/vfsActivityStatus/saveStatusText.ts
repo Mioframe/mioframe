@@ -1,10 +1,9 @@
 import { dayjs } from '@shared/lib/dayjs';
 import type { VfsActivityError, VfsActivityState } from '@shared/lib/virtualFileSystem';
 
-export const STATUS_LABELS: Record<VfsActivityState['status'], string> = {
-  idle: 'All changes saved',
+export const CHIP_STATUS_LABELS: Record<Exclude<VfsActivityState['status'], 'idle'>, string> = {
   active: 'Saving…',
-  error: 'Could not save changes',
+  error: 'Save failed',
 };
 
 /**

@@ -287,6 +287,15 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
   });
 
+  it('renders injected app-bar trailing content before pane-specific actions', async () => {
+    const wrapper = await mountPane();
+    const headerText = wrapper.get('header').text();
+
+    expect(headerText.indexOf('Trailing')).toBeLessThan(
+      headerText.indexOf('Current directory actions: Create directory'),
+    );
+  });
+
   it('opens the create directory dialog after selecting create directory from the add sheet', async () => {
     const wrapper = await mountPane();
 

@@ -57,6 +57,24 @@ test('repo explorer keeps one primary Add flow and preserves directory creation 
   await expect(page.getByRole('button', { name: /^home$/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^all changes saved$/i })).toHaveCount(0);
   await expect(page.getByText(/^storage status$/i)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^saving…$/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^save failed$/i })).toHaveCount(0);
+
+  const homeButton = page.getByRole('button', { name: /^home$/i });
+  const homeButtonBox = await homeButton.boundingBox();
+  const currentDirectoryMenuBox = await currentDirectoryMenu.boundingBox();
+
+  expect(homeButtonBox).not.toBeNull();
+  expect(currentDirectoryMenuBox).not.toBeNull();
+
+  if (homeButtonBox == null || currentDirectoryMenuBox == null) {
+    throw new Error('Expected compact app bar action boxes.');
+  }
+
+  expect(homeButtonBox.x + homeButtonBox.width).toBeLessThanOrEqual(360);
+  expect(currentDirectoryMenuBox.x + currentDirectoryMenuBox.width).toBeLessThanOrEqual(360);
+  expect(homeButtonBox.y + homeButtonBox.height).toBeLessThanOrEqual(160);
+  expect(currentDirectoryMenuBox.y + currentDirectoryMenuBox.height).toBeLessThanOrEqual(160);
 
   await currentDirectoryMenu.click();
   await expect(page.getByRole('menuitem', { name: /^create directory$/i })).toBeVisible();

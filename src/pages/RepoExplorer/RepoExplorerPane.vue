@@ -128,6 +128,8 @@ const onClickReturnHome = async () => {
       </template>
 
       <template #trailingElements>
+        <slot name="appBarTrailing" />
+
         <RepositoryExplorerEntryManageButton
           v-if="hasDirectoryManageActions && directoryManageActions"
           :key="directoryPath"
@@ -137,8 +139,6 @@ const onClickReturnHome = async () => {
           @select-rename="onManageSelectRename"
           @select-remove="onManageSelectRemove"
         />
-
-        <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
 

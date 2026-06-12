@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { VfsActivityStatusChip } from '@feature/vfsActivityStatus';
+import { useVfsActivityStatusChipVisibility } from '@feature/vfsActivityStatus';
 import { useStackNavigation } from '@page/routes';
 import { MDSplitLayout } from '@shared/ui/Layout';
 import { defineNavigationButton, type NavigationButton } from '@shared/ui/Navigation';
@@ -18,6 +19,7 @@ const settingsNavigationButton = defineNavigationButton({
 const navigationButtons: NavigationButton[] = [homeNavigationButton, settingsNavigationButton];
 
 const { open, back } = useStackNavigation();
+const { visibleStatus } = useVfsActivityStatusChipVisibility();
 
 const onClickNavigation = async (button: NavigationButton) => {
   switch (button) {
@@ -66,7 +68,7 @@ const onClickBack = () => {
     @click-back="onClickBack"
   >
     <template #appBarTrailing>
-      <VfsActivityStatusChip />
+      <VfsActivityStatusChip v-if="visibleStatus" :status="visibleStatus" />
     </template>
   </MDSplitLayout>
 </template>
