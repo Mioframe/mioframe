@@ -94,6 +94,10 @@ describe('useFileSystemAccessPermissionBroker', () => {
     ).resolves.toEqual({
       status: 'granted',
     });
+    expect(getTemporaryFileSystemAccessHandleMock).toHaveBeenCalledWith({
+      operation: 'read',
+      spaceName: 'Work',
+    });
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'read' });
     expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith({
       operation: 'read',
@@ -131,6 +135,10 @@ describe('useFileSystemAccessPermissionBroker', () => {
     ).resolves.toEqual({
       status: 'denied',
     });
+    expect(getTemporaryFileSystemAccessHandleMock).toHaveBeenCalledWith({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
 
     scope.stop();
@@ -162,6 +170,10 @@ describe('useFileSystemAccessPermissionBroker', () => {
       }),
     ).resolves.toEqual({
       status: 'granted',
+    });
+    expect(getTemporaryFileSystemAccessHandleMock).toHaveBeenCalledWith({
+      operation: 'read',
+      spaceName: 'Work',
     });
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
     expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith({

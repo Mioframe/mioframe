@@ -44,11 +44,13 @@ const {
 } = repositoryExplorerDirectoryState;
 const {
   googleDriveRecovery,
-  grantLocalDirectoryAccess,
+  grantFullAccess,
+  grantReadOnlyAccess,
   hasGoogleDriveRecovery,
   hasLocalDirectoryRecovery,
+  isGrantFullAccessLoading,
   isGrantLocalDirectoryAccessDisabled,
-  isGrantLocalDirectoryAccessLoading,
+  isGrantReadOnlyAccessLoading,
   localDirectoryRecoveryMessage,
 } = useRepositoryExplorerRecovery({
   directoryPath,
@@ -76,11 +78,11 @@ const onSelectJsonFile = (filePath: string) => {
 };
 
 const onClickGrantReadOnlyAccess = () => {
-  void grantLocalDirectoryAccess('read');
+  void grantReadOnlyAccess();
 };
 
 const onClickGrantFullAccess = () => {
-  void grantLocalDirectoryAccess('readwrite');
+  void grantFullAccess();
 };
 </script>
 
@@ -113,13 +115,13 @@ const onClickGrantFullAccess = () => {
             color="text"
             label="Read only"
             :disabled="isGrantLocalDirectoryAccessDisabled"
-            :loading="isGrantLocalDirectoryAccessLoading"
+            :loading="isGrantReadOnlyAccessLoading"
             @click="onClickGrantReadOnlyAccess"
           />
           <MDButton
             label="Grant full access"
             :disabled="isGrantLocalDirectoryAccessDisabled"
-            :loading="isGrantLocalDirectoryAccessLoading"
+            :loading="isGrantFullAccessLoading"
             @click="onClickGrantFullAccess"
           />
         </template>

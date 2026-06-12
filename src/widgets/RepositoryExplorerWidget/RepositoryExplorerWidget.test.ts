@@ -21,9 +21,14 @@ const isLoadingRef = ref(false);
 const isRepositoryInitializedRef = ref(false);
 const regularFileEntriesRef = ref<unknown[] | undefined>([]);
 const repositoryRecoveryErrorsRef = ref<unknown[]>([]);
-const requestAccessMock = vi.fn();
 const requestTokenMock = vi.fn();
 const importDocumentFromPathMock = vi.fn();
+const grantFullAccessMock = vi.fn();
+const grantReadOnlyAccessMock = vi.fn();
+const isGrantFullAccessLoadingRef = ref(false);
+const isGrantLocalDirectoryAccessDisabledRef = ref(false);
+const isGrantReadOnlyAccessLoadingRef = ref(false);
+const localDirectoryRecoveryMessageRef = ref('');
 
 const createSerializedRecoveryError = ({
   mode,
@@ -46,9 +51,16 @@ vi.mock('@entity/fsEntry', () => ({
   }),
 }));
 
-vi.mock('@shared/serviceClient/fileSystem', () => ({
-  useFileSystemAccessPermissionBroker: () => ({
-    requestAccess: requestAccessMock,
+vi.mock('@feature/localDirectoryRecovery', () => ({
+  useLocalDirectoryRecoveryAction: () => ({
+    grantFullAccess: grantFullAccessMock,
+    grantReadOnlyAccess: grantReadOnlyAccessMock,
+    isGrantFullAccessLoading: computed(() => isGrantFullAccessLoadingRef.value),
+    isGrantLocalDirectoryAccessDisabled: computed(
+      () => isGrantLocalDirectoryAccessDisabledRef.value,
+    ),
+    isGrantReadOnlyAccessLoading: computed(() => isGrantReadOnlyAccessLoadingRef.value),
+    localDirectoryRecoveryMessage: computed(() => localDirectoryRecoveryMessageRef.value),
   }),
 }));
 
@@ -299,9 +311,14 @@ describe('RepositoryExplorerWidget', () => {
     isRepositoryInitializedRef.value = false;
     regularFileEntriesRef.value = [];
     repositoryRecoveryErrorsRef.value = [];
-    requestAccessMock.mockReset();
     requestTokenMock.mockReset();
     importDocumentFromPathMock.mockReset();
+    grantFullAccessMock.mockReset();
+    grantReadOnlyAccessMock.mockReset();
+    isGrantFullAccessLoadingRef.value = false;
+    isGrantLocalDirectoryAccessDisabledRef.value = false;
+    isGrantReadOnlyAccessLoadingRef.value = false;
+    localDirectoryRecoveryMessageRef.value = '';
     document.body.innerHTML = '';
   });
 
@@ -343,7 +360,8 @@ describe('RepositoryExplorerWidget', () => {
     expect(grantButtonBeforeLoad.attributes('disabled')).toBeUndefined();
     expect(readOnlyButtonBeforeLoad.attributes('disabled')).toBeUndefined();
     expect(wrapper.text()).not.toContain('Cancel');
-    expect(requestAccessMock).not.toHaveBeenCalled();
+    expect(grantFullAccessMock).not.toHaveBeenCalled();
+    expect(grantReadOnlyAccessMock).not.toHaveBeenCalled();
   });
 
   it('detects read recovery from the directory stat error through the generic parser', async () => {
@@ -351,6 +369,8 @@ describe('RepositoryExplorerWidget', () => {
       spaceName: 'Archive',
       mode: 'read',
     });
+    localDirectoryRecoveryMessageRef.value =
+      'Mioframe remembers "Archive", but your browser requires permission before opening it.';
 
     const wrapper = await mountWidget();
 
@@ -366,14 +386,14 @@ describe('RepositoryExplorerWidget', () => {
     ).toHaveLength(1);
   });
 
-  it('calls the main-thread permission broker with read mode from the secondary action without retrying the route after grant', async () => {
+  it('calls the feature read-only recovery action without retrying the route after grant', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'read',
       }),
     ];
-    requestAccessMock.mockResolvedValue({ status: 'granted' });
+    grantReadOnlyAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountWidget();
 
@@ -385,22 +405,18 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestAccessMock).toHaveBeenCalledWith({
-      operation: 'read',
-      requestedMode: 'read',
-      spaceName: 'Work',
-    });
+    expect(grantReadOnlyAccessMock).toHaveBeenCalledWith();
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
   });
 
-  it('calls the main-thread permission broker with readwrite mode from the primary action without retrying the route after grant', async () => {
+  it('calls the feature full-access recovery action without retrying the route after grant', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'read',
       }),
     ];
-    requestAccessMock.mockResolvedValue({ status: 'granted' });
+    grantFullAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountWidget();
 
@@ -414,103 +430,22 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestAccessMock).toHaveBeenCalledWith({
-      operation: 'read',
-      requestedMode: 'readwrite',
-      spaceName: 'Work',
-    });
+    expect(grantFullAccessMock).toHaveBeenCalledWith();
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
   });
 
-  it('keeps the recovery state and safe message after denial without retrying the route', async () => {
+  it('renders the feature-provided recovery message', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'read',
       }),
     ];
-    requestAccessMock.mockResolvedValue({ status: 'denied' });
+    localDirectoryRecoveryMessageRef.value =
+      'Could not request browser permission. Try again from this action.';
 
     const wrapper = await mountWidget();
 
-    const grantButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Grant full access');
-
-    if (!grantButton) {
-      throw new Error('Expected Grant full access button');
-    }
-
-    await grantButton.trigger('click');
-
-    expect(requestAccessMock).toHaveBeenCalledWith({
-      operation: 'read',
-      requestedMode: 'readwrite',
-      spaceName: 'Work',
-    });
-    expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
-    expect(wrapper.text()).toContain(
-      'Mioframe still cannot open this space because your browser did not grant permission.',
-    );
-  });
-
-  it('keeps the recovery state and safe message after cancellation without retrying the route', async () => {
-    repositoryRecoveryErrorsRef.value = [
-      createSerializedRecoveryError({
-        spaceName: 'Work',
-        mode: 'read',
-      }),
-    ];
-    requestAccessMock.mockResolvedValue({ status: 'cancelled' });
-
-    const wrapper = await mountWidget();
-
-    const grantButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Grant full access');
-
-    if (!grantButton) {
-      throw new Error('Expected Grant full access button');
-    }
-
-    await grantButton.trigger('click');
-
-    expect(requestAccessMock).toHaveBeenCalledWith({
-      operation: 'read',
-      requestedMode: 'readwrite',
-      spaceName: 'Work',
-    });
-    expect(wrapper.text()).toContain(
-      'Mioframe still cannot open this space because your browser did not grant permission.',
-    );
-  });
-
-  it('shows a safe error message when browser prompting fails', async () => {
-    repositoryRecoveryErrorsRef.value = [
-      createSerializedRecoveryError({
-        spaceName: 'Work',
-        mode: 'read',
-      }),
-    ];
-    requestAccessMock.mockResolvedValue({ status: 'error' });
-
-    const wrapper = await mountWidget();
-
-    const grantButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Grant full access');
-
-    if (!grantButton) {
-      throw new Error('Expected Grant full access button');
-    }
-
-    await grantButton.trigger('click');
-
-    expect(requestAccessMock).toHaveBeenCalledWith({
-      operation: 'read',
-      requestedMode: 'readwrite',
-      spaceName: 'Work',
-    });
     expect(wrapper.text()).toContain(
       'Could not request browser permission. Try again from this action.',
     );
@@ -546,7 +481,8 @@ describe('RepositoryExplorerWidget', () => {
 
     const wrapper = await mountWidget();
 
-    expect(requestAccessMock).not.toHaveBeenCalled();
+    expect(grantFullAccessMock).not.toHaveBeenCalled();
+    expect(grantReadOnlyAccessMock).not.toHaveBeenCalled();
     expect(wrapper.text()).not.toContain('Grant full access');
     expect(wrapper.text()).not.toContain('Read only');
     expect(wrapper.text()).not.toContain('Permission required');

@@ -14,10 +14,19 @@ import {
   reportWriteAccessStorageFailure,
 } from './writeAccessRecoveryDiagnostics';
 
-type FileSystemAccessRequestKey = {
+type FileSystemAccessRequestIdentity = {
   operation: FileSystemAccessOperation;
-  requestedMode: WebFileSystemAccessMode;
   spaceName: string;
+};
+
+/**
+ * Permission request payload for a user-triggered browser grant attempt.
+ * Uses the original recovery identity for service lookup and keeps the chosen browser mode
+ * separate for `requestPermission({ mode })`.
+ */
+export type FileSystemAccessPermissionRequest = FileSystemAccessRequestIdentity & {
+  /** Browser permission mode chosen for this explicit recovery attempt. */
+  requestedMode: WebFileSystemAccessMode;
 };
 
 /**
@@ -35,7 +44,7 @@ export const useFileSystemAccessPermissionBroker = () => {
   } = useMainServiceClient();
 
   const requestAccess = async (
-    key: FileSystemAccessRequestKey,
+    key: FileSystemAccessPermissionRequest,
   ): Promise<{
     status:
       | 'granted'
@@ -49,7 +58,10 @@ export const useFileSystemAccessPermissionBroker = () => {
 
     try {
       addWriteAccessRequestStartBreadcrumb();
-      const request = await getTemporaryFileSystemAccessHandle(key);
+      const request = await getTemporaryFileSystemAccessHandle({
+        operation: key.operation,
+        spaceName: key.spaceName,
+      });
 
       if (!request) {
         reportWriteAccessMissingRequest({ attemptId });
