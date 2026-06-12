@@ -49,6 +49,10 @@ export const useLocalDirectoryRecoveryAction = ({
         spaceName: currentRecovery.spaceName,
       });
 
+      if (recovery.value !== currentRecovery) {
+        return result;
+      }
+
       if (result.status === 'granted' || result.status === 'grantedWithReplayFailures') {
         recoveryMessageOverride.value = undefined;
         return result;

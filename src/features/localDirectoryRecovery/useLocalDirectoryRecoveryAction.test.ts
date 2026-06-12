@@ -137,6 +137,64 @@ describe('useLocalDirectoryRecoveryAction', () => {
     scope.stop();
   });
 
+  it('does not overwrite new recovery message when a stale request resolves with denied', async () => {
+    let resolveRequest: ((value: { status: 'denied' }) => void) | undefined;
+    requestAccessMock.mockImplementation(
+      () =>
+        new Promise<{ status: 'denied' }>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    const { action, recoveryRef, scope } = await mountAction({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+
+    const requestPromise = action.grantFullAccess();
+    await flushMicrotasks();
+
+    recoveryRef.value = { operation: 'read', spaceName: 'Archive' };
+    await flushMicrotasks();
+
+    resolveRequest?.({ status: 'denied' });
+    await requestPromise;
+
+    expect(action.localDirectoryRecoveryMessage.value).toBe(
+      'Mioframe remembers "Archive", but your browser requires permission before opening it.',
+    );
+
+    scope.stop();
+  });
+
+  it('does not overwrite new recovery message when a stale request resolves with error', async () => {
+    let resolveRequest: ((value: { status: 'error' }) => void) | undefined;
+    requestAccessMock.mockImplementation(
+      () =>
+        new Promise<{ status: 'error' }>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    const { action, recoveryRef, scope } = await mountAction({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+
+    const requestPromise = action.grantFullAccess();
+    await flushMicrotasks();
+
+    recoveryRef.value = { operation: 'read', spaceName: 'Archive' };
+    await flushMicrotasks();
+
+    resolveRequest?.({ status: 'error' });
+    await requestPromise;
+
+    expect(action.localDirectoryRecoveryMessage.value).toBe(
+      'Mioframe remembers "Archive", but your browser requires permission before opening it.',
+    );
+
+    scope.stop();
+  });
+
   it('returns error without calling the broker when recovery is missing', async () => {
     const { action, scope } = await mountAction(undefined);
 
