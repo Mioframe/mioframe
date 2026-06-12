@@ -396,6 +396,22 @@ export const WebFileSystemProvider = (
       getHandle(parentPath, false, 'directory'),
     );
 
+    if (create && overwrite) {
+      reportDiagnosticStep({ step: 'fileHandleCreate', result: 'started' });
+      let resolvedHandle: FileSystemFileHandle;
+      try {
+        resolvedHandle = await createFileHandleWithWriteRecovery(parentDir, fileName);
+        reportDiagnosticStep({ step: 'fileHandleCreate', result: 'succeeded' });
+      } catch (createError) {
+        reportDiagnosticStep({ step: 'fileHandleCreate', result: 'failed', error: createError });
+        throw createError;
+      }
+
+      await writeFileHandleContent(resolvedHandle, content);
+
+      return { stat: { type: FSNodeType.File } };
+    }
+
     reportDiagnosticStep({ step: 'fileLookup', result: 'started' });
     let existingHandle: FileSystemFileHandle | undefined;
     try {
