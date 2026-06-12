@@ -3,6 +3,7 @@ import type { AMChunk } from '@shared/lib/automerge';
 import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
+import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
 import {
   listStorageFileEntries,
   selectReadableStorageEntries,
@@ -10,7 +11,6 @@ import {
   storageKeyToId,
   toWritableStorageFileName,
 } from './storageKeyHelpers';
-import { partialKeyToFileName } from './partialKeyToFileName';
 
 /**
  * Creates an Automerge storage adapter backed by a VirtualFileSystem path.
@@ -44,23 +44,14 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
 
   const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
     if (key.length === 3) {
-      const v2Name = toWritableStorageFileName(key);
+      const [documentId, kind, hash] = key;
+      const v2Name = encodeStorageKeyToV2FileName(documentId, kind, hash);
 
       if (v2Name) {
         const v2Data = await tryReadDirectFile(v2Name);
 
         if (v2Data) {
           return v2Data;
-        }
-      }
-
-      const legacyName = partialKeyToFileName(key);
-
-      if (legacyName && legacyName !== v2Name) {
-        const legacyData = await tryReadDirectFile(legacyName);
-
-        if (legacyData) {
-          return legacyData;
         }
       }
     }
