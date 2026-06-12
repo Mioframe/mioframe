@@ -353,6 +353,7 @@ describe('VfsActivityStatusChip', () => {
 
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(dismissSaveStatusErrorMock).toHaveBeenCalledOnce();
