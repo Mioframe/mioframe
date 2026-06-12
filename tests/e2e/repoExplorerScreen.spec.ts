@@ -5,6 +5,7 @@ import {
   launchApp,
   openDirectory,
   openEntryAddSheet,
+  openOpfs,
 } from './helpers';
 
 const browserStorageLabel = /^browser storage$/i;
@@ -240,6 +241,7 @@ test('repo explorer clears open context menus and dialogs after navigating home 
   await expect(page).toHaveURL(/home/i);
   await expect(page.getByRole('menuitem', { name: /^rename$/i })).toHaveCount(0);
 
+  await openOpfs(page);
   await openDirectory(page, outerDir);
 
   await expect(innerOptionsButton).toBeVisible();
@@ -275,10 +277,13 @@ test('repo explorer clears rename dialog state when navigating to a sibling dire
 
   const renameDialog = page.getByRole('dialog', { name: /^rename/i });
   await expect(renameDialog).toBeVisible();
+  await renameDialog.getByRole('button', { name: /^cancel$/i }).click();
+  await expect(renameDialog).toHaveCount(0);
 
   await page.getByRole('button', { name: /^home$/i }).click();
   await expect(page).toHaveURL(/home/i);
 
+  await openOpfs(page);
   await openDirectory(page, dirB);
   const addSheetB = await openEntryAddSheet(page);
   await addSheetB.getByText(/^create directory$/i).click();

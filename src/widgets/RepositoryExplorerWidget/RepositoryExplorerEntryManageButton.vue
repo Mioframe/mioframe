@@ -6,24 +6,19 @@ import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useImportDocumentAction } from '@feature/importDocument';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { ref, toRefs, watch } from 'vue';
+import { computed, ref, toRefs, watch } from 'vue';
 
-const props = withDefaults(
-  defineProps<{
-    path: string;
-    entryType: FSNodeType;
-    canEditChildren?: boolean | undefined;
-    canChangePath?: boolean | undefined;
-    canDelete?: boolean | undefined;
-    showDocumentActions?: boolean | undefined;
-  }>(),
-  {
-    showDocumentActions: false,
-  },
-);
+const props = defineProps<{
+  path: string;
+  entryType: FSNodeType;
+  canEditChildren?: boolean | undefined;
+  canChangePath?: boolean | undefined;
+  canDelete?: boolean | undefined;
+  showDocumentActions?: boolean | undefined;
+}>();
 
-const { path, entryType, canEditChildren, canChangePath, canDelete, showDocumentActions } =
-  toRefs(props);
+const { path, entryType, canEditChildren, canChangePath, canDelete } = toRefs(props);
+const showDocumentActions = computed(() => props.showDocumentActions === true);
 
 const { importDocument } = useImportDocumentAction();
 const { remove } = useRemoveFSEntry();
@@ -80,34 +75,36 @@ const onSelectImportJson = async () => {
 </script>
 
 <template>
-  <FSEntryManageMenuButton
-    :path="path"
-    :actions="actionButtons"
-    @select-create-directory="onSelectCreateDirectory"
-    @select-create-document="onSelectCreateDocument"
-    @select-rename="onSelectRename"
-    @select-remove="onSelectRemove"
-    @select-import-json="onSelectImportJson"
-  />
+  <span class="repository-explorer-entry-manage-button">
+    <FSEntryManageMenuButton
+      :path="path"
+      :actions="actionButtons"
+      @select-create-directory="onSelectCreateDirectory"
+      @select-create-document="onSelectCreateDocument"
+      @select-rename="onSelectRename"
+      @select-remove="onSelectRemove"
+      @select-import-json="onSelectImportJson"
+    />
 
-  <DirectoryCreateDialog
-    v-if="showCreateDirectoryDialog"
-    :path="path"
-    @cancel="onCloseCreateDirectoryDialog"
-    @created="onCloseCreateDirectoryDialog"
-  />
+    <DirectoryCreateDialog
+      v-if="showCreateDirectoryDialog"
+      :path="path"
+      @cancel="onCloseCreateDirectoryDialog"
+      @created="onCloseCreateDirectoryDialog"
+    />
 
-  <DocumentCreationDialog
-    v-if="showCreateDocumentDialog"
-    :path="path"
-    @cancel="onCloseCreateDocumentDialog"
-    @created="onCloseCreateDocumentDialog"
-  />
+    <DocumentCreationDialog
+      v-if="showCreateDocumentDialog"
+      :path="path"
+      @cancel="onCloseCreateDocumentDialog"
+      @created="onCloseCreateDocumentDialog"
+    />
 
-  <FSEntryRenameDialog
-    v-if="showRenameDialog"
-    :path="path"
-    @cancel="onCloseRenameDialog"
-    @renamed="onCloseRenameDialog"
-  />
+    <FSEntryRenameDialog
+      v-if="showRenameDialog"
+      :path="path"
+      @cancel="onCloseRenameDialog"
+      @renamed="onCloseRenameDialog"
+    />
+  </span>
 </template>

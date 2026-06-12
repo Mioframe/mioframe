@@ -5,9 +5,13 @@ import { defineComponent, h, ref } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 
 const hasActionsRef = ref(false);
+const capturedShowDocumentActions: Array<boolean | undefined> = [];
 
 vi.mock('@feature/entryManage', () => ({
-  useFSEntryManageActions: () => ({ hasActions: hasActionsRef, actionButtons: ref([]) }),
+  useFSEntryManageActions: (options: { showDocumentActions?: { value?: boolean | undefined } }) => {
+    capturedShowDocumentActions.push(options.showDocumentActions?.value);
+    return { hasActions: hasActionsRef, actionButtons: ref([]) };
+  },
 }));
 
 vi.mock('@entity/fsEntry', () => ({
@@ -78,6 +82,7 @@ const mountItem = async (overrides?: {
 describe('RepositoryExplorerFileListItem', () => {
   afterEach(() => {
     hasActionsRef.value = false;
+    capturedShowDocumentActions.length = 0;
     document.body.innerHTML = '';
   });
 
@@ -150,6 +155,18 @@ describe('RepositoryExplorerFileListItem', () => {
     const wrapper = await mountItem({ entryType: FSNodeType.File, name: 'file.txt' });
 
     expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(false);
+  });
+
+  it('passes showDocumentActions=true for directory entries', async () => {
+    await mountItem({ entryType: FSNodeType.Directory });
+
+    expect(capturedShowDocumentActions.at(-1)).toBe(true);
+  });
+
+  it('passes showDocumentActions=false for file entries', async () => {
+    await mountItem({ entryType: FSNodeType.File });
+
+    expect(capturedShowDocumentActions.at(-1)).toBe(false);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

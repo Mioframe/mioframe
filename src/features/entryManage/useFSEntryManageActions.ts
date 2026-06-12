@@ -47,7 +47,7 @@ export const useFSEntryManageActions = (options: FSEntryManageActionsOptions) =>
       });
     }
 
-    if (canChangePath.value === true) {
+    if (canChangePath.value !== false) {
       buttons.push({ key: 'rename', label: 'Rename', symbolName: 'edit' });
     }
 
@@ -55,7 +55,7 @@ export const useFSEntryManageActions = (options: FSEntryManageActionsOptions) =>
       buttons.push({ key: 'importJson', label: 'Import JSON', symbolName: 'file_copy' });
     }
 
-    if (canDelete.value === true) {
+    if (canDelete.value !== false) {
       buttons.push({ key: 'remove', label: 'Remove', symbolName: 'delete' });
     }
 

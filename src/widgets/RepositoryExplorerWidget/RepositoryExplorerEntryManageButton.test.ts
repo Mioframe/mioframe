@@ -75,13 +75,18 @@ vi.mock('@feature/entryRename', () => ({
   }),
 }));
 
+type StubEmitEventName = 'selectRename' | 'selectCreateDirectory' | 'selectCreateDocument';
+const { stubEmitEvent } = vi.hoisted(() => {
+  const stubEmitEvent: { value: StubEmitEventName } = { value: 'selectRename' };
+  return { stubEmitEvent };
+});
+
 vi.mock('@feature/entryManage', async (importOriginal) => {
   const original = await importOriginal<typeof import('@feature/entryManage')>();
   return {
     ...original,
     FSEntryManageMenuButton: defineComponent({
       name: 'FSEntryManageMenuButtonStub',
-      emits: ['selectRename'],
       setup(_props, { emit }) {
         return () =>
           h(
@@ -89,7 +94,7 @@ vi.mock('@feature/entryManage', async (importOriginal) => {
             {
               'data-testid': 'entry-manage-menu-button',
               onClick: () => {
-                emit('selectRename');
+                emit(stubEmitEvent.value);
               },
             },
             'Menu',
@@ -132,7 +137,16 @@ const mountButton = async (overrides?: {
 
 describe('RepositoryExplorerEntryManageButton', () => {
   afterEach(() => {
+    stubEmitEvent.value = 'selectRename';
     document.body.innerHTML = '';
+  });
+
+  it('renders no dialogs on initial mount', async () => {
+    const wrapper = await mountButton();
+
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="rename-dialog"]').exists()).toBe(false);
   });
 
   it('always renders the menu button — parent composition is responsible for the hasActions guard', async () => {
@@ -169,6 +183,34 @@ describe('RepositoryExplorerEntryManageButton', () => {
     await flushPromises();
 
     expect(wrapper.find('[data-testid="rename-dialog"]').exists()).toBe(false);
+  });
+
+  it('resets open create directory dialog when the path prop changes', async () => {
+    stubEmitEvent.value = 'selectCreateDirectory';
+    const wrapper = await mountButton({ path: '/dir-a/docs' });
+
+    await wrapper.find('[data-testid="entry-manage-menu-button"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(true);
+
+    await wrapper.setProps({ path: '/dir-b/docs' });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
+  });
+
+  it('resets open create document dialog when the path prop changes', async () => {
+    stubEmitEvent.value = 'selectCreateDocument';
+    const wrapper = await mountButton({ path: '/dir-a/docs' });
+
+    await wrapper.find('[data-testid="entry-manage-menu-button"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(true);
+
+    await wrapper.setProps({ path: '/dir-b/docs' });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */
