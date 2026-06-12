@@ -370,23 +370,6 @@ export const WebFileSystemProvider = (
     }
   };
 
-  const hasFileEntry = async (
-    directoryHandle: FileSystemDirectoryHandle,
-    fileName: string,
-  ): Promise<boolean> => {
-    for await (const [entryName, childHandle] of directoryHandle.entries()) {
-      if (entryName === fileName) {
-        if (childHandle.kind !== 'file') {
-          throw new VfsError(FileSystemError.FileIsADirectory, 'Type mismatch.');
-        }
-
-        return true;
-      }
-    }
-
-    return false;
-  };
-
   const stat = async (path: string): Promise<FSNodeStat> => {
     await ensureAccess('read');
     const { stat: nodeStat } = await lookupPath(path);
@@ -414,9 +397,6 @@ export const WebFileSystemProvider = (
     );
 
     if (create && overwrite) {
-      const existedBeforeWrite = await withWriteAccessRecovery(() =>
-        hasFileEntry(parentDir, fileName),
-      );
       reportDiagnosticStep({ step: 'fileHandleCreate', result: 'started' });
       let resolvedHandle: FileSystemFileHandle;
       try {
@@ -427,26 +407,7 @@ export const WebFileSystemProvider = (
         throw createError;
       }
 
-      const rollbackCreatedFile = async () => {
-        if (existedBeforeWrite) {
-          return;
-        }
-
-        try {
-          await withWriteAccessRecovery(() =>
-            parentDir.removeEntry(fileName, { recursive: false }),
-          );
-        } catch {
-          // cleanup is best-effort
-        }
-      };
-
-      try {
-        await writeFileHandleContent(resolvedHandle, content);
-      } catch (writeError) {
-        await rollbackCreatedFile();
-        throw writeError;
-      }
+      await writeFileHandleContent(resolvedHandle, content);
 
       return { stat: { type: FSNodeType.File } };
     }

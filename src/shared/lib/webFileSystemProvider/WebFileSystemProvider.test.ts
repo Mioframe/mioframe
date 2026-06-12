@@ -474,7 +474,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toThrow(storageError);
   });
 
-  it('cleans up a newly created file after createWritable failure and rethrows the original error', async () => {
+  it('rethrows createWritable failure on the optimized path without rollback deletion', async () => {
     const openError = new DOMException('quota exceeded', 'QuotaExceededError');
     const createdHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
     createdHandle.createWritable = vi.fn(() => Promise.reject(openError));
@@ -487,11 +487,13 @@ describe('WebFileSystemProvider', () => {
       name: '',
       permissionState: 'granted',
     });
-    parentHandle.getFileHandle = vi.fn((fileName: string, options?: FileSystemGetFileOptions) => {
+    const getFileHandleMock = vi.fn((fileName: string, options?: FileSystemGetFileOptions) => {
       expect(fileName).toBe('note.txt');
       expect(options).toEqual({ create: true });
       return Promise.resolve(createdHandle);
     });
+    parentHandle.getFileHandle = getFileHandleMock;
+    parentHandle.getFileHandleMock = getFileHandleMock;
     const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
@@ -502,7 +504,9 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toBe(openError);
 
-    expect(parentHandle.removeEntryMock).toHaveBeenCalledWith('note.txt', { recursive: false });
+    expect(parentHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
+    expect(parentHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', { create: true });
+    expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual(
       expect.objectContaining({
         result: 'failed',
@@ -518,16 +522,21 @@ describe('WebFileSystemProvider', () => {
       name: 'docs',
       permissionState: 'granted',
     });
+    const originalEntries = parentHandle.entries.bind(parentHandle);
+    const parentEntriesMock = vi.fn(() => originalEntries());
+    parentHandle.entries = parentEntriesMock;
     const rootHandle = createDirectoryHandleMock({
       entries: [parentHandle],
       name: '',
       permissionState: 'granted',
     });
-    parentHandle.getFileHandle = vi.fn((fileName: string, options?: FileSystemGetFileOptions) => {
+    const getFileHandleMock = vi.fn((fileName: string, options?: FileSystemGetFileOptions) => {
       expect(fileName).toBe('note.txt');
       expect(options).toEqual({ create: true });
       return Promise.resolve(createdHandle);
     });
+    parentHandle.getFileHandle = getFileHandleMock;
+    parentHandle.getFileHandleMock = getFileHandleMock;
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
     });
@@ -536,6 +545,9 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
 
+    expect(parentHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
+    expect(parentHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', { create: true });
+    expect(parentEntriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
     expect(createdHandle.getFileMock).not.toHaveBeenCalled();
   });
@@ -597,7 +609,7 @@ describe('WebFileSystemProvider', () => {
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 
-  it('cleans up a newly created file after write fails but does not clean up an existing file after write fails', async () => {
+  it('does not clean up files after optimized-path write failures', async () => {
     const writeError = new DOMException('quota exceeded', 'QuotaExceededError');
     const createdHandle = createFileHandleMock({ name: 'new.txt', permissionState: 'granted' });
     createdHandle.createWritable = vi.fn(async () => {
@@ -648,20 +660,17 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/docs/old.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toBe(writeError);
 
-    expect(parentHandle.removeEntryMock).toHaveBeenCalledTimes(1);
-    expect(parentHandle.removeEntryMock).toHaveBeenCalledWith('new.txt', { recursive: false });
+    expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 
-  it('preserves the original write failure when cleanup also fails', async () => {
+  it('preserves the original write failure without attempting optimized-path cleanup', async () => {
     const writeError = new DOMException('quota exceeded', 'QuotaExceededError');
     const createdHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
     createdHandle.createWritable = vi.fn(() => Promise.reject(writeError));
-    const cleanupError = new DOMException('locked', 'InvalidModificationError');
     const parentHandle = createDirectoryHandleMock({
       name: 'docs',
       permissionState: 'granted',
     });
-    parentHandle.removeEntry = vi.fn(() => Promise.reject(cleanupError));
     const rootHandle = createDirectoryHandleMock({
       entries: [parentHandle],
       name: '',
@@ -679,6 +688,7 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toBe(writeError);
+    expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 
   it('aborts the writable and preserves the original error when write fails after createWritable succeeds', async () => {
