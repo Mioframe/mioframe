@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, toRefs } from 'vue';
+import { computed, nextTick, ref, toRefs, watch } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
+import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
+import { FSEntryRenameDialog } from '@feature/entryRename';
+import { useFSNodeStat } from '@entity/fsEntry';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
@@ -39,6 +42,32 @@ const showEntryAddSheet = ref(false);
 const showCreateDirectoryDialog = ref(false);
 const showCreateDocumentDialog = ref(false);
 const { importDocument } = useImportDocumentAction();
+
+const { data: directoryStat } = useFSNodeStat(directoryPath);
+const directoryCanEditChildren = computed(() => directoryStat.value?.capabilities?.canEditChildren);
+const directoryCanChangePath = computed(() => directoryStat.value?.capabilities?.canChangePath);
+const directoryCanDelete = computed(() => directoryStat.value?.capabilities?.canDelete);
+const { hasActions: hasDirectoryManageActions, nonEmptyActionButtons: directoryManageActions } =
+  useFSEntryManageActions({
+    entryType: computed(() => FSNodeType.Directory),
+    canEditChildren: directoryCanEditChildren,
+    canChangePath: directoryCanChangePath,
+    canDelete: directoryCanDelete,
+    showDocumentActions: computed(() => false),
+  });
+
+const {
+  showRenameDialog: showDirectoryRenameDialog,
+  onSelectRename: onManageSelectRename,
+  onSelectRemove: onManageSelectRemove,
+  onCloseRenameDialog: onCloseDirectoryRenameDialog,
+} = useEntryManageDialogState(directoryPath);
+
+watch(directoryPath, () => {
+  showEntryAddSheet.value = false;
+  showCreateDirectoryDialog.value = false;
+  showCreateDocumentDialog.value = false;
+});
 
 const onClickAdd = () => {
   showEntryAddSheet.value = true;
@@ -100,8 +129,13 @@ const onClickReturnHome = async () => {
 
       <template #trailingElements>
         <RepositoryExplorerEntryManageButton
+          v-if="hasDirectoryManageActions && directoryManageActions"
+          :key="directoryPath"
           :path="directoryPath"
-          :entry-type="FSNodeType.Directory"
+          :actions="directoryManageActions"
+          @select-create-directory="onSelectCreateDirectory"
+          @select-rename="onManageSelectRename"
+          @select-remove="onManageSelectRemove"
         />
 
         <slot name="appBarTrailing" />
@@ -141,6 +175,13 @@ const onClickReturnHome = async () => {
       :path="directoryPath"
       @cancel="onCloseCreateDocumentDialog"
       @created="onCloseCreateDocumentDialog"
+    />
+
+    <FSEntryRenameDialog
+      v-if="showDirectoryRenameDialog"
+      :path="directoryPath"
+      @cancel="onCloseDirectoryRenameDialog"
+      @renamed="onCloseDirectoryRenameDialog"
     />
   </MDPane>
 </template>

@@ -1,104 +1,51 @@
 <script setup lang="ts">
-import { useFSNodeStat } from '@entity/fsEntry';
-import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { FSEntryManageMenuButton } from '@feature/entryManage';
-import { useRemoveFSEntry } from '@feature/entryRemove';
-import { FSEntryRenameDialog } from '@feature/entryRename';
-import { useImportDocumentAction } from '@feature/importDocument';
-import { DocumentCreationDialog } from '@feature/documentCreate';
-import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { computed, ref, toRefs } from 'vue';
+import type { NonEmptyMenuButtonList } from '@feature/entryManage';
 
-const props = withDefaults(
-  defineProps<{
-    path: string;
-    entryType: FSNodeType;
-    showDocumentActions?: boolean | undefined;
-  }>(),
-  {
-    showDocumentActions: false,
-  },
-);
+defineProps<{
+  path: string;
+  /** Pre-derived non-empty action list. Parent must not render this component when the list is empty. */
+  actions: NonEmptyMenuButtonList;
+}>();
 
-const { path } = toRefs(props);
-const { data: fsEntryStat } = useFSNodeStat(path);
-const { importDocument } = useImportDocumentAction();
-const { remove } = useRemoveFSEntry();
-
-const showCreateDirectoryDialog = ref(false);
-const showCreateDocumentDialog = ref(false);
-const showRenameDialog = ref(false);
-
-const canEditChildren = computed(() => fsEntryStat.value?.capabilities?.canEditChildren);
-const canChangePath = computed(() => fsEntryStat.value?.capabilities?.canChangePath);
-const canDelete = computed(() => fsEntryStat.value?.capabilities?.canDelete);
-
-const onCloseCreateDirectoryDialog = () => {
-  showCreateDirectoryDialog.value = false;
-};
-
-const onCloseCreateDocumentDialog = () => {
-  showCreateDocumentDialog.value = false;
-};
-
-const onCloseRenameDialog = () => {
-  showRenameDialog.value = false;
-};
+const emit = defineEmits<{
+  selectCreateDirectory: [];
+  selectCreateDocument: [];
+  selectRename: [];
+  selectRemove: [];
+  selectImportJson: [];
+}>();
 
 const onSelectCreateDirectory = () => {
-  showCreateDirectoryDialog.value = true;
+  emit('selectCreateDirectory');
 };
 
 const onSelectCreateDocument = () => {
-  showCreateDocumentDialog.value = true;
+  emit('selectCreateDocument');
 };
 
 const onSelectRename = () => {
-  showRenameDialog.value = true;
+  emit('selectRename');
 };
 
-const onSelectRemove = async () => {
-  await remove(path.value);
+const onSelectRemove = () => {
+  emit('selectRemove');
 };
 
-const onSelectImportJson = async () => {
-  await importDocument(path.value);
+const onSelectImportJson = () => {
+  emit('selectImportJson');
 };
 </script>
 
 <template>
   <FSEntryManageMenuButton
+    class="repository-explorer-entry-manage-button"
     :path="path"
-    :entry-type="entryType"
-    :can-edit-children="canEditChildren"
-    :can-change-path="canChangePath"
-    :can-delete="canDelete"
-    :show-document-actions="showDocumentActions"
+    :actions="actions"
     @select-create-directory="onSelectCreateDirectory"
     @select-create-document="onSelectCreateDocument"
     @select-rename="onSelectRename"
     @select-remove="onSelectRemove"
     @select-import-json="onSelectImportJson"
-  />
-
-  <DirectoryCreateDialog
-    v-if="showCreateDirectoryDialog"
-    :path="path"
-    @cancel="onCloseCreateDirectoryDialog"
-    @created="onCloseCreateDirectoryDialog"
-  />
-
-  <DocumentCreationDialog
-    v-if="showCreateDocumentDialog"
-    :path="path"
-    @cancel="onCloseCreateDocumentDialog"
-    @created="onCloseCreateDocumentDialog"
-  />
-
-  <FSEntryRenameDialog
-    v-if="showRenameDialog"
-    :path="path"
-    @cancel="onCloseRenameDialog"
-    @renamed="onCloseRenameDialog"
   />
 </template>

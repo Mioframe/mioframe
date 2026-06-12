@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
-import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
-import { computed, toRefs } from 'vue';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { MDContextMenuButton } from '@shared/ui/Menu';
+import type { NonEmptyMenuButtonList } from './useFSEntryManageActions';
+import { computed } from 'vue';
 
 type FSEntryManageMenuButtonProps = {
   path: string;
-  entryType: FSNodeType;
-  canEditChildren?: boolean | undefined;
-  canChangePath?: boolean | undefined;
-  canDelete?: boolean | undefined;
-  showDocumentActions?: boolean | undefined;
+  /** Pre-derived non-empty action list. Parent must not render this button when the list is empty. */
+  actions: NonEmptyMenuButtonList;
 };
 
 const props = defineProps<FSEntryManageMenuButtonProps>();
@@ -21,63 +19,11 @@ const emit = defineEmits<{
   selectRemove: [];
   selectImportJson: [];
 }>();
-const { path } = toRefs(props);
 
-const fsEntryName = computed(() => PathUtils.basename(path.value));
-const isDirectory = computed(() => props.entryType === FSNodeType.Directory);
-
-const actionButtons = computed(() => {
-  const buttons: Array<{ key: string; label: string; symbolName: string }> = [];
-
-  if (isDirectory.value && props.canEditChildren !== false && props.showDocumentActions === true) {
-    buttons.push({
-      key: 'createDirectory',
-      label: 'Create directory',
-      symbolName: 'create_new_folder',
-    });
-    buttons.push({
-      key: 'createDocument',
-      label: 'Create document',
-      symbolName: 'edit_document',
-    });
-  } else if (isDirectory.value && props.canEditChildren !== false) {
-    buttons.push({
-      key: 'createDirectory',
-      label: 'Create directory',
-      symbolName: 'create_new_folder',
-    });
-  }
-
-  if (props.canChangePath === true) {
-    buttons.push({
-      key: 'rename',
-      label: 'Rename',
-      symbolName: 'edit',
-    });
-  }
-
-  if (isDirectory.value && props.canEditChildren !== false && props.showDocumentActions === true) {
-    buttons.push({
-      key: 'importJson',
-      label: 'Import JSON',
-      symbolName: 'file_copy',
-    });
-  }
-
-  if (props.canDelete === true) {
-    buttons.push({
-      key: 'remove',
-      label: 'Remove',
-      symbolName: 'delete',
-    });
-  }
-
-  return defineMenuButtonList(buttons);
-});
-
+const fsEntryName = computed(() => PathUtils.basename(props.path));
 const menuTooltip = computed(() => `options ${fsEntryName.value}`);
 
-const onClickMenuAction = ({ key }: { key: string }) => {
+const onClickMenuAction = ({ key }: { key: string | number }) => {
   switch (key) {
     case 'createDirectory':
       emit('selectCreateDirectory');
@@ -99,5 +45,5 @@ const onClickMenuAction = ({ key }: { key: string }) => {
 </script>
 
 <template>
-  <MDContextMenuButton :btns="actionButtons" :tooltip="menuTooltip" @click="onClickMenuAction" />
+  <MDContextMenuButton :btns="actions" :tooltip="menuTooltip" @click="onClickMenuAction" />
 </template>

@@ -24,7 +24,6 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     ignoreHTTPSErrors: true,
-    serviceWorkers: 'block',
   },
   webServer: externalBaseURL
     ? undefined
@@ -34,6 +33,7 @@ export default defineConfig({
           ...process.env,
           FORCE_COLOR: '0',
           NO_COLOR: '1',
+          VITE_DISABLE_PWA: '1',
         },
         ignoreHTTPSErrors: true,
         stdout: 'pipe',
