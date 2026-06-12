@@ -3,6 +3,7 @@ import type { AMChunk } from '@shared/lib/automerge';
 import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
+import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
 import {
   listStorageFileEntries,
   selectReadableStorageEntries,
@@ -27,7 +28,34 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
     return selectReadableStorageEntries(directoryContent.map(([name]) => name));
   };
 
+  const tryReadDirectFile = async (name: string): Promise<Uint8Array | undefined> => {
+    try {
+      const file = await vfs.readFile(PathUtils.join(path, name));
+
+      return new Uint8Array(await file.arrayBuffer());
+    } catch (error) {
+      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+        return undefined;
+      }
+
+      throw error;
+    }
+  };
+
   const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
+    if (key.length === 3) {
+      const [documentId, kind, hash] = key;
+      const v2Name = encodeStorageKeyToV2FileName(documentId, kind, hash);
+
+      if (v2Name) {
+        const v2Data = await tryReadDirectFile(v2Name);
+
+        if (v2Data) {
+          return v2Data;
+        }
+      }
+    }
+
     const allEntries = await listDeduplicatedEntries();
     const keyId = storageKeyToId(key);
     const matched = allEntries.get(keyId);
@@ -36,9 +64,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
       return undefined;
     }
 
-    const file = await vfs.readFile(PathUtils.join(path, matched.name));
-
-    return new Uint8Array(await file.arrayBuffer());
+    return tryReadDirectFile(matched.name);
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
