@@ -134,7 +134,11 @@ describe('DocumentViewPane', () => {
     const wrapper = await mountPane();
     const headerText = wrapper.get('header').text();
 
-    expect(headerText.indexOf('Trailing')).toBeLessThan(headerText.indexOf('Rename document'));
+    const trailingIndex = headerText.indexOf('Trailing');
+    const renameIndex = headerText.indexOf('Rename document');
+    expect(trailingIndex).toBeGreaterThanOrEqual(0);
+    expect(renameIndex).toBeGreaterThanOrEqual(0);
+    expect(trailingIndex).toBeLessThan(renameIndex);
   });
 });
 

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { VfsActivityStatusChip } from '@feature/vfsActivityStatus';
-import { useVfsActivityStatusChipVisibility } from '@feature/vfsActivityStatus';
+import {
+  VfsActivityStatusChip,
+  useVfsActivityStatusChipVisibility,
+} from '@feature/vfsActivityStatus';
 import { useStackNavigation } from '@page/routes';
 import { MDSplitLayout } from '@shared/ui/Layout';
 import { defineNavigationButton, type NavigationButton } from '@shared/ui/Navigation';

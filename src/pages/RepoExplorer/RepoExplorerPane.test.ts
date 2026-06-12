@@ -291,9 +291,11 @@ describe('RepoExplorerPane', () => {
     const wrapper = await mountPane();
     const headerText = wrapper.get('header').text();
 
-    expect(headerText.indexOf('Trailing')).toBeLessThan(
-      headerText.indexOf('Current directory actions: Create directory'),
-    );
+    const trailingIndex = headerText.indexOf('Trailing');
+    const manageIndex = headerText.indexOf('Current directory actions: Create directory');
+    expect(trailingIndex).toBeGreaterThanOrEqual(0);
+    expect(manageIndex).toBeGreaterThanOrEqual(0);
+    expect(trailingIndex).toBeLessThan(manageIndex);
   });
 
   it('opens the create directory dialog after selecting create directory from the add sheet', async () => {
