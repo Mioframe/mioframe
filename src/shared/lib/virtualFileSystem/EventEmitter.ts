@@ -7,6 +7,7 @@ import type { FSNodeType } from './IFileSystemProvider';
  *
  * **Content events** (files and directories):
  * - `create` — A new file or directory has been created
+ * - `write` — File content was written; the file may have been created or updated
  * - `update` — An existing file has been modified (content changed)
  * - `delete` — A file or directory has been deleted
  * - `rename` — A file or directory has been renamed/moved
@@ -26,8 +27,15 @@ export enum VfsEventType {
   CREATE = 'create',
 
   /**
+   * File content was written and callers should invalidate the affected path.
+   * Emitted by: writeFile
+   * Note: The file may have been created or updated
+   */
+  WRITE = 'write',
+
+  /**
    * An existing file has been modified.
-   * Emitted by: writeFile (existing file)
+   * Emitted by: exact provider refresh/update operations
    * Note: Only for files, not directories
    */
   UPDATE = 'update',
@@ -57,14 +65,21 @@ export enum VfsEventType {
   UNMOUNT = 'unmount',
 }
 
+/**
+ * Origin of a VFS event.
+ */
 export enum VfsEventSource {
   VFS = 'vfs',
   PROVIDER = 'provider',
 }
 
+/**
+ * Normalized event payload delivered by VFS watchers.
+ */
 export interface VfsEvent {
   /** Event origin */
   source: VfsEventSource;
+  /** Event kind */
   type: VfsEventType;
   /** Path relative to VFS root */
   path: string;
@@ -76,9 +91,9 @@ export interface VfsEvent {
   providerPath?: string | undefined;
   /** Original provider-relative new path before mount prefixing */
   providerNewPath?: string | undefined;
-  /** Node type for content events (create, update, delete, rename) */
+  /** Node type for content events (create, write, update, delete, rename) */
   nodeType?: FSNodeType | undefined;
-  /** File size in bytes (for update events) */
+  /** File size in bytes (for write/update events) */
   size?: number | undefined;
 }
 
@@ -91,7 +106,7 @@ export class EventEmitter {
   private errorHandler: (error: unknown) => void;
 
   /**
-   * @param errorHandler Function for handling errors in subscribers.
+   * @param errorHandler - Function for handling errors in subscribers.
    * Defaults to logging error to console.error.
    */
   constructor(errorHandler?: (error: unknown) => void) {
@@ -104,7 +119,7 @@ export class EventEmitter {
 
   /**
    * Subscribe to events.
-   * @param callback Function to be called when an event occurs
+   * @param callback - Function to be called when an event occurs
    * @returns Function to unsubscribe
    */
   public subscribe(callback: (event: VfsEvent) => void): () => void {
@@ -114,7 +129,7 @@ export class EventEmitter {
 
   /**
    * Emit an event to all subscribers.
-   * @param event Event to emit
+   * @param event - Event to emit
    */
   public emit(event: VfsEvent) {
     for (const listener of this.listeners) {

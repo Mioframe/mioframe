@@ -297,18 +297,13 @@ export class VirtualFileSystem {
       this.locks.request(path, async () => {
         const { provider, relativePath } = this.resolve(path);
 
-        const exists = await provider
-          .stat(relativePath)
-          .then(() => true)
-          .catch(() => false);
-
         const { stat } = await provider.writeFile(relativePath, content, {
           create: true,
           overwrite: true,
         });
 
         this.emitVfsEvent({
-          type: exists ? VfsEventType.UPDATE : VfsEventType.CREATE,
+          type: VfsEventType.WRITE,
           path,
           nodeType: FSNodeType.File,
           size: stat.size,
