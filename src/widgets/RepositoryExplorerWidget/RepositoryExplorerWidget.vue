@@ -74,6 +74,14 @@ const onReturnHomeClick = () => {
 const onSelectJsonFile = (filePath: string) => {
   void importDocumentFromPath(directoryPath.value, filePath);
 };
+
+const onClickGrantReadOnlyAccess = () => {
+  void grantLocalDirectoryAccess('read');
+};
+
+const onClickGrantFullAccess = () => {
+  void grantLocalDirectoryAccess('readwrite');
+};
 </script>
 
 <template>
@@ -102,10 +110,17 @@ const onSelectJsonFile = (filePath: string) => {
 
         <template #actions>
           <MDButton
-            label="Grant access"
+            color="text"
+            label="Read only"
             :disabled="isGrantLocalDirectoryAccessDisabled"
             :loading="isGrantLocalDirectoryAccessLoading"
-            @click="grantLocalDirectoryAccess"
+            @click="onClickGrantReadOnlyAccess"
+          />
+          <MDButton
+            label="Grant full access"
+            :disabled="isGrantLocalDirectoryAccessDisabled"
+            :loading="isGrantLocalDirectoryAccessLoading"
+            @click="onClickGrantFullAccess"
           />
         </template>
       </MDEmptyState>

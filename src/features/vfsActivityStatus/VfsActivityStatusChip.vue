@@ -99,7 +99,11 @@ const onClickGrantWriteAccess = async () => {
   isGrantWriteAccessLoading.value = true;
 
   try {
-    const result = await requestAccess(recovery);
+    const result = await requestAccess({
+      operation: recovery.operation,
+      requestedMode: 'readwrite',
+      spaceName: recovery.spaceName,
+    });
 
     if (result.status === 'granted') {
       dismissSaveStatusError();

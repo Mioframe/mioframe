@@ -88,6 +88,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'read',
+        requestedMode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -124,12 +125,50 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'write',
+        requestedMode: 'readwrite',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
       status: 'denied',
     });
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
+
+    scope.stop();
+  });
+
+  it('allows a read recovery request to explicitly ask for readwrite permission', async () => {
+    const handle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    handle.requestPermissionMock.mockResolvedValue('granted');
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+      handle,
+      operation: 'read',
+      spaceName: 'Work',
+    });
+    resolveFileSystemAccessRequestMock.mockResolvedValue({
+      status: 'granted',
+    });
+
+    const { broker, scope } = await mountBroker();
+
+    await expect(
+      broker.requestAccess({
+        operation: 'read',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      status: 'granted',
+    });
+    expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
+    expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith({
+      operation: 'read',
+      permissionState: 'granted',
+      spaceName: 'Work',
+    });
 
     scope.stop();
   });
@@ -142,6 +181,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'read',
+        requestedMode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -187,6 +227,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'read',
+        requestedMode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -195,6 +236,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'read',
+        requestedMode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -214,6 +256,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'read',
+        requestedMode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -243,6 +286,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'read',
+        requestedMode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -273,6 +317,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'write',
+        requestedMode: 'readwrite',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -303,6 +348,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     await expect(
       broker.requestAccess({
         operation: 'write',
+        requestedMode: 'readwrite',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
@@ -318,7 +364,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
@@ -349,7 +399,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
@@ -380,7 +434,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
@@ -413,7 +471,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
@@ -444,7 +506,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
@@ -475,7 +541,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(0);
 
@@ -498,7 +568,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(0);
 
@@ -512,7 +586,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
@@ -544,7 +622,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      const result = await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      const result = await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(result).toEqual({ status: 'error' });
       expect(diagnosticSink).toHaveLength(1);
@@ -579,7 +661,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(typeof diagnosticSink[0]?.attemptId).toBe('string');
@@ -595,8 +681,16 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
-      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'Work',
+      });
 
       expect(diagnosticSink).toHaveLength(2);
       expect(diagnosticSink[0]?.attemptId).toBeDefined();
@@ -611,7 +705,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       const { broker, scope } = await mountBroker();
 
-      await broker.requestAccess({ operation: 'write', spaceName: 'SuperSecretWork' });
+      await broker.requestAccess({
+        operation: 'write',
+        requestedMode: 'readwrite',
+        spaceName: 'SuperSecretWork',
+      });
 
       expect(diagnosticSink).toHaveLength(1);
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('SuperSecretWork');

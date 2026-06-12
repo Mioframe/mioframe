@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { isNotNil } from 'es-toolkit';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import type { WebFileSystemAccessMode } from '@shared/lib/webFileSystemProvider';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { getGoogleDriveAccessRecoveryError } from '@entity/googleDriveAccess';
@@ -56,7 +57,7 @@ export const useRepositoryExplorerRecovery = ({
     path: directoryPath,
   });
 
-  const grantLocalDirectoryAccess = async () => {
+  const grantLocalDirectoryAccess = async (requestedMode: WebFileSystemAccessMode) => {
     const recovery = localDirectoryRecovery.value;
 
     if (!recovery || isGrantLoading.value) {
@@ -66,7 +67,11 @@ export const useRepositoryExplorerRecovery = ({
     isGrantLoading.value = true;
 
     try {
-      const result = await requestAccess(recovery);
+      const result = await requestAccess({
+        operation: recovery.operation,
+        requestedMode,
+        spaceName: recovery.spaceName,
+      });
 
       // Read recovery resolves to `granted` before any write-only replay/storage handlers can run.
       if (result.status === 'granted' || result.status === 'grantedWithReplayFailures') {

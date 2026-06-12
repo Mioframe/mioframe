@@ -1,5 +1,6 @@
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import type { WebFileSystemAccessMode } from '@shared/lib/webFileSystemProvider';
 import { useMainServiceClient } from '@shared/service';
 import {
   addWriteAccessPermissionPromptStartBreadcrumb,
@@ -15,6 +16,7 @@ import {
 
 type FileSystemAccessRequestKey = {
   operation: FileSystemAccessOperation;
+  requestedMode: WebFileSystemAccessMode;
   spaceName: string;
 };
 
@@ -23,6 +25,8 @@ type FileSystemAccessRequestKey = {
  * `requestPermission(descriptor?)` and `queryPermission(descriptor?)` accept an optional
  * descriptor whose `mode` is `'read'` or `'readwrite'`; the permission prompt still must run
  * inside the explicit user action that requested recovery.
+ * The blocked operation identifies the pending recovery request. `requestedMode` identifies the
+ * browser permission mode chosen by the user for this attempt.
  * @returns One-shot access broker with no prepared-handle state.
  */
 export const useFileSystemAccessPermissionBroker = () => {
@@ -57,7 +61,7 @@ export const useFileSystemAccessPermissionBroker = () => {
       try {
         addWriteAccessPermissionPromptStartBreadcrumb();
         const permissionState = await handle.requestPermission({
-          mode: request.operation === 'write' ? 'readwrite' : 'read',
+          mode: key.requestedMode,
         });
         addWriteAccessPermissionResolvedBreadcrumb({ permissionState });
 

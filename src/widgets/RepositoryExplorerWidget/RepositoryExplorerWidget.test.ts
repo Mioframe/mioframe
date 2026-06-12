@@ -331,13 +331,17 @@ describe('RepositoryExplorerWidget', () => {
 
     const grantButtonBeforeLoad = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Grant access');
+      .find((button) => button.text() === 'Grant full access');
+    const readOnlyButtonBeforeLoad = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Read only');
 
-    if (!grantButtonBeforeLoad) {
-      throw new Error('Expected Grant access button');
+    if (!grantButtonBeforeLoad || !readOnlyButtonBeforeLoad) {
+      throw new Error('Expected local directory recovery buttons');
     }
 
     expect(grantButtonBeforeLoad.attributes('disabled')).toBeUndefined();
+    expect(readOnlyButtonBeforeLoad.attributes('disabled')).toBeUndefined();
     expect(wrapper.text()).not.toContain('Cancel');
     expect(requestAccessMock).not.toHaveBeenCalled();
   });
@@ -355,11 +359,41 @@ describe('RepositoryExplorerWidget', () => {
       'Mioframe remembers "Archive", but your browser requires permission before opening it.',
     );
     expect(
-      wrapper.findAll('button').filter((button) => button.text() === 'Grant access'),
+      wrapper.findAll('button').filter((button) => button.text() === 'Grant full access'),
+    ).toHaveLength(1);
+    expect(
+      wrapper.findAll('button').filter((button) => button.text() === 'Read only'),
     ).toHaveLength(1);
   });
 
-  it('calls the main-thread permission broker without retrying the route after grant', async () => {
+  it('calls the main-thread permission broker with read mode from the secondary action without retrying the route after grant', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedRecoveryError({
+        spaceName: 'Work',
+        mode: 'read',
+      }),
+    ];
+    requestAccessMock.mockResolvedValue({ status: 'granted' });
+
+    const wrapper = await mountWidget();
+
+    const grantButton = wrapper.findAll('button').find((button) => button.text() === 'Read only');
+
+    if (!grantButton) {
+      throw new Error('Expected Read only button');
+    }
+
+    await grantButton.trigger('click');
+
+    expect(requestAccessMock).toHaveBeenCalledWith({
+      operation: 'read',
+      requestedMode: 'read',
+      spaceName: 'Work',
+    });
+    expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
+  });
+
+  it('calls the main-thread permission broker with readwrite mode from the primary action without retrying the route after grant', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedRecoveryError({
         spaceName: 'Work',
@@ -372,16 +406,17 @@ describe('RepositoryExplorerWidget', () => {
 
     const grantButton = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Grant access');
+      .find((button) => button.text() === 'Grant full access');
 
     if (!grantButton) {
-      throw new Error('Expected Grant access button');
+      throw new Error('Expected Grant full access button');
     }
 
     await grantButton.trigger('click');
 
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'read',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
@@ -400,16 +435,17 @@ describe('RepositoryExplorerWidget', () => {
 
     const grantButton = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Grant access');
+      .find((button) => button.text() === 'Grant full access');
 
     if (!grantButton) {
-      throw new Error('Expected Grant access button');
+      throw new Error('Expected Grant full access button');
     }
 
     await grantButton.trigger('click');
 
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'read',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
@@ -431,16 +467,17 @@ describe('RepositoryExplorerWidget', () => {
 
     const grantButton = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Grant access');
+      .find((button) => button.text() === 'Grant full access');
 
     if (!grantButton) {
-      throw new Error('Expected Grant access button');
+      throw new Error('Expected Grant full access button');
     }
 
     await grantButton.trigger('click');
 
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'read',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(wrapper.text()).toContain(
@@ -461,16 +498,17 @@ describe('RepositoryExplorerWidget', () => {
 
     const grantButton = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Grant access');
+      .find((button) => button.text() === 'Grant full access');
 
     if (!grantButton) {
-      throw new Error('Expected Grant access button');
+      throw new Error('Expected Grant full access button');
     }
 
     await grantButton.trigger('click');
 
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'read',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(wrapper.text()).toContain(
@@ -509,7 +547,8 @@ describe('RepositoryExplorerWidget', () => {
     const wrapper = await mountWidget();
 
     expect(requestAccessMock).not.toHaveBeenCalled();
-    expect(wrapper.text()).not.toContain('Grant access');
+    expect(wrapper.text()).not.toContain('Grant full access');
+    expect(wrapper.text()).not.toContain('Read only');
     expect(wrapper.text()).not.toContain('Permission required');
   });
 
