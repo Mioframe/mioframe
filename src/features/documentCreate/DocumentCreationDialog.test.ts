@@ -172,6 +172,7 @@ describe('DocumentCreationDialog', () => {
     });
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(createDocumentMock).toHaveBeenCalledTimes(2);
