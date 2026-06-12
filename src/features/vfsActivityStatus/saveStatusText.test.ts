@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatSaveStatusErrorDetails, STATUS_LABELS } from './saveStatusText';
+import { CHIP_STATUS_LABELS, formatSaveStatusErrorDetails } from './saveStatusText';
 
 vi.mock('@shared/lib/dayjs', () => ({
   dayjs: () => ({
@@ -8,11 +8,10 @@ vi.mock('@shared/lib/dayjs', () => ({
 }));
 
 describe('saveStatusText', () => {
-  it('defines english labels for each save status', () => {
-    expect(STATUS_LABELS).toEqual({
-      idle: 'All changes saved',
+  it('defines compact english labels for visible save chip states', () => {
+    expect(CHIP_STATUS_LABELS).toEqual({
       active: 'Saving…',
-      error: 'Could not save changes',
+      error: 'Save failed',
     });
   });
 

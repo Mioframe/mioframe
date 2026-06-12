@@ -78,13 +78,14 @@ const onCloseRenameDocument = () => {
       </template>
 
       <template #trailingElements>
+        <slot name="appBarTrailing" />
+
         <MDIconButton
           v-if="showRenameButton"
           tooltip="Rename document"
           md-symbol-name="edit"
           @click="onClickRenameDocument"
         />
-        <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
 
