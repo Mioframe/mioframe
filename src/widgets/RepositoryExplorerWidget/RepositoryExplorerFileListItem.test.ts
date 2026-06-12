@@ -7,7 +7,7 @@ import { FSNodeType } from '@shared/lib/virtualFileSystem';
 const hasActionsRef = ref(false);
 
 vi.mock('@feature/entryManage', () => ({
-  useEntryManageAvailability: () => ({ hasActions: hasActionsRef }),
+  useFSEntryManageActions: () => ({ hasActions: hasActionsRef, actionButtons: ref([]) }),
 }));
 
 vi.mock('@entity/fsEntry', () => ({
@@ -54,6 +54,9 @@ const mountItem = async (overrides?: {
   name?: string;
   directoryPath?: string;
   description?: string;
+  canEditChildren?: boolean;
+  canChangePath?: boolean;
+  canDelete?: boolean;
 }) => {
   const { default: RepositoryExplorerFileListItem } =
     await import('./RepositoryExplorerFileListItem.vue');
@@ -63,6 +66,11 @@ const mountItem = async (overrides?: {
       name: overrides?.name ?? 'entry',
       entryType: overrides?.entryType ?? FSNodeType.File,
       ...(overrides?.description !== undefined ? { description: overrides.description } : {}),
+      ...(overrides?.canEditChildren !== undefined
+        ? { canEditChildren: overrides.canEditChildren }
+        : {}),
+      ...(overrides?.canChangePath !== undefined ? { canChangePath: overrides.canChangePath } : {}),
+      ...(overrides?.canDelete !== undefined ? { canDelete: overrides.canDelete } : {}),
     },
   });
 };
@@ -89,6 +97,31 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(false);
   });
 
+  it('does not render the manage button when capabilities produce no actions', async () => {
+    hasActionsRef.value = false;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.File,
+      canEditChildren: false,
+      canChangePath: false,
+      canDelete: false,
+    });
+
+    expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(false);
+  });
+
+  it('renders the manage button when capabilities produce actions', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      canChangePath: true,
+      canDelete: true,
+    });
+
+    expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(true);
+  });
+
   it('renders directory entries as interactive buttons', async () => {
     const wrapper = await mountItem({ entryType: FSNodeType.Directory, name: 'MyDir' });
 
@@ -111,7 +144,7 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(wrapper.emitted('click')).toEqual([['ClickMe']]);
   });
 
-  it('does not render the manage button for a file entry with no actions even when stat loads', async () => {
+  it('does not render the manage button for a file entry with no actions', async () => {
     hasActionsRef.value = false;
 
     const wrapper = await mountItem({ entryType: FSNodeType.File, name: 'file.txt' });

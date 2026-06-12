@@ -1,16 +1,12 @@
 <script setup lang="ts">
-import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
-import { MDContextMenuButton } from '@shared/ui/Menu';
-import { computed, toRefs } from 'vue';
-import { useFSEntryManageActions } from './useFSEntryManageActions';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { MDContextMenuButton, type MenuButtonList } from '@shared/ui/Menu';
+import { computed } from 'vue';
 
 type FSEntryManageMenuButtonProps = {
   path: string;
-  entryType: FSNodeType;
-  canEditChildren?: boolean | undefined;
-  canChangePath?: boolean | undefined;
-  canDelete?: boolean | undefined;
-  showDocumentActions?: boolean | undefined;
+  /** Pre-derived non-empty action list. Parent must not render this button when the list is empty. */
+  actions: MenuButtonList;
 };
 
 const props = defineProps<FSEntryManageMenuButtonProps>();
@@ -22,22 +18,11 @@ const emit = defineEmits<{
   selectRemove: [];
   selectImportJson: [];
 }>();
-const { path, entryType, canEditChildren, canChangePath, canDelete, showDocumentActions } =
-  toRefs(props);
 
-const fsEntryName = computed(() => PathUtils.basename(path.value));
-
-const { actionButtons } = useFSEntryManageActions({
-  entryType,
-  canEditChildren,
-  canChangePath,
-  canDelete,
-  showDocumentActions,
-});
-
+const fsEntryName = computed(() => PathUtils.basename(props.path));
 const menuTooltip = computed(() => `options ${fsEntryName.value}`);
 
-const onClickMenuAction = ({ key }: { key: string }) => {
+const onClickMenuAction = ({ key }: { key: string | number }) => {
   switch (key) {
     case 'createDirectory':
       emit('selectCreateDirectory');
@@ -59,5 +44,5 @@ const onClickMenuAction = ({ key }: { key: string }) => {
 </script>
 
 <template>
-  <MDContextMenuButton :btns="actionButtons" :tooltip="menuTooltip" @click="onClickMenuAction" />
+  <MDContextMenuButton :btns="actions" :tooltip="menuTooltip" @click="onClickMenuAction" />
 </template>

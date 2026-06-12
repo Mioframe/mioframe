@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import { useEntryManageAvailability } from '@feature/entryManage';
+import { useFSEntryManageActions } from '@feature/entryManage';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { computed, toRef } from 'vue';
 import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
@@ -10,20 +10,24 @@ const props = defineProps<{
   name: string;
   description?: string | undefined;
   entryType: FSNodeType;
+  canEditChildren?: boolean | undefined;
+  canChangePath?: boolean | undefined;
+  canDelete?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{
   click: [name: string];
 }>();
 
-const entryPath = computed(() => PathUtils.join(props.directoryPath, props.name));
 const showDocumentActions = computed(() => props.entryType === FSNodeType.Directory);
 
-const { hasActions } = useEntryManageAvailability(
-  entryPath,
-  toRef(props, 'entryType'),
+const { hasActions } = useFSEntryManageActions({
+  entryType: toRef(props, 'entryType'),
+  canEditChildren: toRef(props, 'canEditChildren'),
+  canChangePath: toRef(props, 'canChangePath'),
+  canDelete: toRef(props, 'canDelete'),
   showDocumentActions,
-);
+});
 
 const onClickEntry = (name: string) => {
   emit('click', name);
@@ -44,8 +48,11 @@ const onClickEntry = (name: string) => {
   >
     <template v-if="hasActions" #trailingIcon>
       <RepositoryExplorerEntryManageButton
-        :path="entryPath"
+        :path="PathUtils.join(directoryPath, name)"
         :entry-type="entryType"
+        :can-edit-children="canEditChildren"
+        :can-change-path="canChangePath"
+        :can-delete="canDelete"
         :show-document-actions="showDocumentActions"
       />
     </template>

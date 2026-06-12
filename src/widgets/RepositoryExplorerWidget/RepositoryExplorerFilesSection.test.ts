@@ -21,6 +21,9 @@ vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
       name: { type: String, required: true },
       entryType: { type: Number, required: true },
       description: { type: String, default: undefined },
+      canEditChildren: { type: Boolean, default: undefined },
+      canChangePath: { type: Boolean, default: undefined },
+      canDelete: { type: Boolean, default: undefined },
     },
     emits: ['click'],
     setup(props, { emit }) {

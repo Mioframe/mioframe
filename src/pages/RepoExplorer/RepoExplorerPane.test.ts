@@ -8,8 +8,15 @@ const hasDirectoryManageActionsRef = ref(true);
 const openMock = vi.fn();
 const importDocumentMock = vi.fn();
 
+vi.mock('@entity/fsEntry', () => ({
+  useFSNodeStat: () => ({ data: ref(undefined) }),
+}));
+
 vi.mock('@feature/entryManage', () => ({
-  useEntryManageAvailability: () => ({ hasActions: hasDirectoryManageActionsRef }),
+  useFSEntryManageActions: () => ({
+    hasActions: hasDirectoryManageActionsRef,
+    actionButtons: ref([]),
+  }),
 }));
 
 vi.mock('@page/routes', () => ({

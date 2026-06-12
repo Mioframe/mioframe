@@ -1,23 +1,8 @@
 /* eslint-disable vue/one-component-per-file -- Focused component contract test with inline stubs. */
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
-
-const fsEntryStatRef = ref<
-  | {
-      capabilities?: {
-        canEditChildren?: boolean;
-        canChangePath?: boolean;
-        canDelete?: boolean;
-      };
-    }
-  | undefined
->(undefined);
-
-vi.mock('@entity/fsEntry', () => ({
-  useFSNodeStat: () => ({ data: fsEntryStatRef }),
-}));
 
 vi.mock('@feature/entryRemove', () => ({
   useRemoveFSEntry: () => ({ remove: vi.fn() }),
@@ -122,6 +107,9 @@ vi.mock('@shared/ui/Menu', async (importOriginal) => {
 const mountButton = async (overrides?: {
   path?: string;
   entryType?: FSNodeType;
+  canEditChildren?: boolean;
+  canChangePath?: boolean;
+  canDelete?: boolean;
   showDocumentActions?: boolean;
 }) => {
   const { default: RepositoryExplorerEntryManageButton } =
@@ -130,6 +118,11 @@ const mountButton = async (overrides?: {
     props: {
       path: overrides?.path ?? '/test/entry',
       entryType: overrides?.entryType ?? FSNodeType.Directory,
+      ...(overrides?.canEditChildren !== undefined
+        ? { canEditChildren: overrides.canEditChildren }
+        : {}),
+      ...(overrides?.canChangePath !== undefined ? { canChangePath: overrides.canChangePath } : {}),
+      ...(overrides?.canDelete !== undefined ? { canDelete: overrides.canDelete } : {}),
       ...(overrides?.showDocumentActions !== undefined
         ? { showDocumentActions: overrides.showDocumentActions }
         : {}),
@@ -139,29 +132,33 @@ const mountButton = async (overrides?: {
 
 describe('RepositoryExplorerEntryManageButton', () => {
   afterEach(() => {
-    fsEntryStatRef.value = undefined;
     document.body.innerHTML = '';
   });
 
   it('always renders the menu button — parent composition is responsible for the hasActions guard', async () => {
-    fsEntryStatRef.value = {
-      capabilities: {
-        canEditChildren: false,
-        canChangePath: false,
-        canDelete: false,
-      },
-    };
+    const wrapper = await mountButton({
+      canEditChildren: false,
+      canChangePath: false,
+      canDelete: false,
+    });
 
-    const wrapper = await mountButton();
+    expect(wrapper.find('[data-testid="entry-manage-menu-button"]').exists()).toBe(true);
+  });
+
+  it('does not call useFSNodeStat — capabilities come from props', async () => {
+    // This test verifies the contract: the component must receive capabilities via props.
+    // If useFSNodeStat were called it would throw in this environment without a mock.
+    // No @entity/fsEntry mock is configured here intentionally.
+    const wrapper = await mountButton({
+      canEditChildren: true,
+      canChangePath: true,
+      canDelete: true,
+    });
 
     expect(wrapper.find('[data-testid="entry-manage-menu-button"]').exists()).toBe(true);
   });
 
   it('resets open dialogs when the path prop changes', async () => {
-    fsEntryStatRef.value = {
-      capabilities: { canEditChildren: true, canChangePath: true, canDelete: true },
-    };
-
     const wrapper = await mountButton({ path: '/dir-a/docs' });
 
     await wrapper.find('[data-testid="entry-manage-menu-button"]').trigger('click');

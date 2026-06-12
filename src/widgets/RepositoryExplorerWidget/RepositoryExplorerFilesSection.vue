@@ -59,12 +59,15 @@ const emptyText = computed(() =>
       class="repository-explorer-files-section__list"
     >
       <RepositoryExplorerFileListItem
-        v-for="[name, { description, type: nodeType }] in regularFileEntries"
+        v-for="[name, { description, type: nodeType, capabilities }] in regularFileEntries"
         :key="PathUtils.join(directoryPath, name)"
         :directory-path="directoryPath"
         :name="name"
         :description="description"
         :entry-type="nodeType"
+        :can-edit-children="capabilities?.canEditChildren"
+        :can-change-path="capabilities?.canChangePath"
+        :can-delete="capabilities?.canDelete"
         class="repository-explorer-files-section__list-item"
         @click="(clickedName) => onClickEntry(clickedName, nodeType)"
       />
