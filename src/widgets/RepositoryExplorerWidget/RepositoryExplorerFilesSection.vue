@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { FSEntryMDListItem } from '@entity/fsEntry';
 import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { MDListContainer } from '@shared/ui/Lists';
 import { computed } from 'vue';
-import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
+import RepositoryExplorerFileListItem from './RepositoryExplorerFileListItem.vue';
 
 type RepositoryExplorerFileEntry = readonly [name: string, stat: FSNodeStat];
 
@@ -22,9 +21,6 @@ const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
 
 const isJsonFileEntry = (name: string, type: FSNodeType) =>
   type === FSNodeType.File && name.toLowerCase().endsWith('.json');
-
-const isInteractiveEntry = (name: string, type: FSNodeType) =>
-  type === FSNodeType.Directory || isJsonFileEntry(name, type);
 
 const onClickEntry = (name: string, type: FSNodeType) => {
   if (type === FSNodeType.Directory) {
@@ -62,24 +58,19 @@ const emptyText = computed(() =>
       v-if="hasRegularFiles"
       class="repository-explorer-files-section__list"
     >
-      <FSEntryMDListItem
-        v-for="[name, { description, type: nodeType }] in regularFileEntries"
-        :key="name"
-        :is-button="isInteractiveEntry(name, nodeType)"
+      <RepositoryExplorerFileListItem
+        v-for="[name, { description, type: nodeType, capabilities }] in regularFileEntries"
+        :key="PathUtils.join(directoryPath, name)"
+        :directory-path="directoryPath"
         :name="name"
-        :supporting-text="description"
-        :type="nodeType"
+        :description="description"
+        :entry-type="nodeType"
+        :can-edit-children="capabilities?.canEditChildren"
+        :can-change-path="capabilities?.canChangePath"
+        :can-delete="capabilities?.canDelete"
         class="repository-explorer-files-section__list-item"
         @click="(clickedName) => onClickEntry(clickedName, nodeType)"
-      >
-        <template #trailingIcon>
-          <RepositoryExplorerEntryManageButton
-            :path="PathUtils.join(directoryPath, name)"
-            :entry-type="nodeType"
-            :show-document-actions="nodeType === FSNodeType.Directory"
-          />
-        </template>
-      </FSEntryMDListItem>
+      />
     </MDListContainer>
 
     <p v-else class="repository-explorer-files-section__empty-text">{{ emptyText }}</p>

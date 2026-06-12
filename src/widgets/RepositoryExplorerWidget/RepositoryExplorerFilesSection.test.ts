@@ -4,34 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 
-vi.mock('@entity/fsEntry', () => ({
-  FSEntryMDListItem: defineComponent({
-    name: 'FSEntryMDListItemStub',
-    props: {
-      name: { type: String, required: true },
-      isButton: { type: Boolean, default: false },
-    },
-    emits: ['click'],
-    setup(props, { emit, slots }) {
-      return () =>
-        h(
-          props.isButton ? 'button' : 'div',
-          {
-            ...(props.isButton
-              ? {
-                  type: 'button',
-                  onClick: () => {
-                    emit('click', props.name);
-                  },
-                }
-              : {}),
-          },
-          [props.name, slots.trailingIcon?.()],
-        );
-    },
-  }),
-}));
-
 vi.mock('@shared/ui/Lists', () => ({
   MDListContainer: defineComponent({
     name: 'MDListContainerStub',
@@ -41,51 +13,45 @@ vi.mock('@shared/ui/Lists', () => ({
   }),
 }));
 
-vi.mock('./RepositoryExplorerEntryManageButton.vue', () => ({
+vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
   default: defineComponent({
-    name: 'RepositoryExplorerEntryManageButtonStub',
+    name: 'RepositoryExplorerFileListItemStub',
     props: {
-      showDocumentActions: {
-        type: Boolean,
-        default: false,
-      },
-      entryType: {
-        type: Number,
-        required: true,
-      },
+      directoryPath: { type: String, required: true },
+      name: { type: String, required: true },
+      // eslint-disable-next-line vue/require-prop-types -- Test stub accepts enum runtime values only.
+      entryType: { required: true },
+      description: { type: String, default: undefined },
+      canEditChildren: { type: Boolean, default: undefined },
+      canChangePath: { type: Boolean, default: undefined },
+      canDelete: { type: Boolean, default: undefined },
     },
-    setup(props) {
-      return () =>
-        h(
-          'span',
-          props.showDocumentActions
-            ? `dir-actions-${props.entryType}`
-            : `file-actions-${props.entryType}`,
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () => {
+        const isInteractive =
+          props.entryType === FSNodeType.Directory ||
+          (props.entryType === FSNodeType.File && props.name.toLowerCase().endsWith('.json'));
+        return h(
+          isInteractive ? 'button' : 'div',
+          {
+            ...(isInteractive
+              ? {
+                  type: 'button',
+                  onClick: () => {
+                    emit('click', props.name);
+                  },
+                }
+              : {}),
+          },
+          props.name,
         );
+      };
     },
   }),
 }));
 
 describe('RepositoryExplorerFilesSection', () => {
-  it('keeps nested directory document actions reachable while files stay file-only', async () => {
-    const { default: RepositoryExplorerFilesSection } =
-      await import('./RepositoryExplorerFilesSection.vue');
-
-    const wrapper = mount(RepositoryExplorerFilesSection, {
-      props: {
-        directoryPath: '/repo',
-        hideAutomergeFiles: true,
-        regularFileEntries: [
-          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
-          ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
-        ],
-      },
-    });
-
-    expect(wrapper.text()).toContain(`dir-actions-${FSNodeType.Directory}`);
-    expect(wrapper.text()).toContain(`file-actions-${FSNodeType.File}`);
-  });
-
   it('renders directories as interactive and emits selectPath for them', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');
