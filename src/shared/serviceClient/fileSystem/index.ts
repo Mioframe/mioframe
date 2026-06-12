@@ -1,1 +1,4 @@
-export { useFileSystemAccessPermissionBroker } from './useFileSystemAccessPermissionBroker';
+export {
+  useFileSystemAccessPermissionBroker,
+  type FileSystemAccessPermissionRequest,
+} from './useFileSystemAccessPermissionBroker';

@@ -273,6 +273,7 @@ describe('useImportDocumentAction', () => {
     await expect(importDocument('/documents')).resolves.toBeUndefined();
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(addSnackbarMock).toHaveBeenCalledWith({
@@ -363,6 +364,7 @@ describe('useImportDocumentAction', () => {
     });
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(importDocumentFromJsonFileMock).toHaveBeenCalledTimes(2);

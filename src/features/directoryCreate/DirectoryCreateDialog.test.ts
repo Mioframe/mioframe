@@ -170,6 +170,7 @@ describe('DirectoryCreateDialog', () => {
     });
     expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
+      requestedMode: 'readwrite',
       spaceName: 'Work',
     });
     expect(createDirectoryMock).toHaveBeenCalledTimes(2);

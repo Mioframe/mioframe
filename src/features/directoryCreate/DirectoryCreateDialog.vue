@@ -53,7 +53,11 @@ const requestWriteAccess = async (recovery: FileSystemAccessRecovery) => {
     return false;
   }
 
-  const result = await requestAccess(recovery);
+  const result = await requestAccess({
+    operation: recovery.operation,
+    requestedMode: 'readwrite',
+    spaceName: recovery.spaceName,
+  });
 
   if (
     result.status === 'granted' ||
