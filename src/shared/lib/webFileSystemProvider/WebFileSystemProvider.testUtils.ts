@@ -26,6 +26,11 @@ type MockFileSystemFileHandle = FileSystemFileHandle & {
 
 type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
   __sameEntryKey: string;
+  entriesMock: ReturnType<
+    typeof vi.fn<
+      () => AsyncIterableIterator<[string, FileSystemFileHandle | FileSystemDirectoryHandle]>
+    >
+  >;
   getDirectoryHandleMock: ReturnType<
     typeof vi.fn<
       (
@@ -215,11 +220,24 @@ export const createDirectoryHandleMock = ({
     entryMap.delete(entryName);
     return Promise.resolve(undefined);
   });
+  const entriesMock = vi.fn(() =>
+    (async function* () {
+      await Promise.resolve();
+      for (const [entryName, entryHandle] of entryMap.entries()) {
+        const entry: [string, FileSystemFileHandle | FileSystemDirectoryHandle] = [
+          entryName,
+          entryHandle,
+        ];
+        yield entry;
+      }
+    })(),
+  );
 
   const handle: MockFileSystemDirectoryHandle = {
     kind: 'directory',
     name,
     __sameEntryKey: sameEntryKey,
+    entriesMock,
     getDirectoryHandleMock,
     getFileHandleMock,
     ...(queryPermissionMock === undefined ? {} : { queryPermission: queryPermissionMock }),
@@ -231,17 +249,7 @@ export const createDirectoryHandleMock = ({
     isSameEntryMock,
     isFile: false,
     isDirectory: true,
-    entries: () =>
-      (async function* () {
-        await Promise.resolve();
-        for (const [entryName, entryHandle] of entryMap.entries()) {
-          const entry: [string, FileSystemFileHandle | FileSystemDirectoryHandle] = [
-            entryName,
-            entryHandle,
-          ];
-          yield entry;
-        }
-      })(),
+    entries: entriesMock,
     keys: () =>
       (async function* () {
         await Promise.resolve();
