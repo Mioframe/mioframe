@@ -95,6 +95,80 @@ describe('createVFSAdapter – load reads legacy files', () => {
 
     expect(result).toBeUndefined();
   });
+
+  it('reads a v2 full-key file directly without scanning the directory', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
+    const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+
+    expect(result).toEqual(DATA_A);
+    expect(readDirectorySpy).not.toHaveBeenCalled();
+  });
+
+  it('reads a legacy full-key file directly without scanning when v2 is missing', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
+    await vfs.writeFile(`${path}/${legacyName}`, DATA_A);
+    const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+
+    expect(result).toEqual(DATA_A);
+    expect(readDirectorySpy).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the directory scan when direct v2 and legacy reads miss', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const scanOnlyLegacyName = `${docId}_snapshot_${HASH_A}`;
+    const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
+    const readFileSpy = vi.spyOn(vfs, 'readFile');
+    await vfs.writeFile(`${path}/${scanOnlyLegacyName}`, DATA_A);
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+
+    expect(result).toEqual(DATA_A);
+    expect(readDirectorySpy).toHaveBeenCalledTimes(1);
+    expect(readFileSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('prefers v2 data over legacy when both direct paths exist for the same full key', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
+    const v2Data = new Uint8Array([40, 50, 60]);
+    const legacyData = new Uint8Array([10, 20, 30]);
+    await vfs.writeFile(`${path}/${legacyName}`, legacyData);
+    await vfs.writeFile(`${path}/${v2Name}`, v2Data);
+    const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+
+    expect(result).toEqual(v2Data);
+    expect(readDirectorySpy).not.toHaveBeenCalled();
+  });
+
+  it('still discovers externally created files through the fallback scan path', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const scanOnlyLegacyName = `${docId}_snapshot_${HASH_A}`;
+    await vfs.writeFile(`${path}/${scanOnlyLegacyName}`, DATA_A);
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+
+    expect(result).toEqual(DATA_A);
+  });
 });
 
 describe('createVFSAdapter – loadRange handles both legacy and v2 files', () => {

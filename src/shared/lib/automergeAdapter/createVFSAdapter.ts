@@ -10,6 +10,7 @@ import {
   storageKeyToId,
   toWritableStorageFileName,
 } from './storageKeyHelpers';
+import { partialKeyToFileName } from './partialKeyToFileName';
 
 /**
  * Creates an Automerge storage adapter backed by a VirtualFileSystem path.
@@ -27,7 +28,43 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
     return selectReadableStorageEntries(directoryContent.map(([name]) => name));
   };
 
+  const tryReadDirectFile = async (name: string): Promise<Uint8Array | undefined> => {
+    try {
+      const file = await vfs.readFile(PathUtils.join(path, name));
+
+      return new Uint8Array(await file.arrayBuffer());
+    } catch (error) {
+      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+        return undefined;
+      }
+
+      throw error;
+    }
+  };
+
   const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
+    if (key.length === 3) {
+      const v2Name = toWritableStorageFileName(key);
+
+      if (v2Name) {
+        const v2Data = await tryReadDirectFile(v2Name);
+
+        if (v2Data) {
+          return v2Data;
+        }
+      }
+
+      const legacyName = partialKeyToFileName(key);
+
+      if (legacyName && legacyName !== v2Name) {
+        const legacyData = await tryReadDirectFile(legacyName);
+
+        if (legacyData) {
+          return legacyData;
+        }
+      }
+    }
+
     const allEntries = await listDeduplicatedEntries();
     const keyId = storageKeyToId(key);
     const matched = allEntries.get(keyId);
@@ -36,9 +73,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
       return undefined;
     }
 
-    const file = await vfs.readFile(PathUtils.join(path, matched.name));
-
-    return new Uint8Array(await file.arrayBuffer());
+    return tryReadDirectFile(matched.name);
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
