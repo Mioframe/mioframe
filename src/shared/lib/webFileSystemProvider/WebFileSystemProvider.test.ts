@@ -348,7 +348,7 @@ describe('WebFileSystemProvider', () => {
     expect(fileHandle.__writtenContent).toEqual(['hello']);
   });
 
-  it('does not perform a create:false file lookup on the optimized create+overwrite write path', async () => {
+  it('uses the optimized create+overwrite write path without lookup, enumeration, or metadata reads', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
@@ -369,6 +369,8 @@ describe('WebFileSystemProvider', () => {
     expect(rootHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', {
       create: true,
     });
+    expect(rootHandle.entriesMock).not.toHaveBeenCalled();
+    expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
     expect(fileHandle.getFileMock).not.toHaveBeenCalled();
   });
 
@@ -506,7 +508,9 @@ describe('WebFileSystemProvider', () => {
 
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', { create: true });
+    expect(parentHandle.entriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
+    expect(createdHandle.getFileMock).not.toHaveBeenCalled();
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual(
       expect.objectContaining({
         result: 'failed',
@@ -522,9 +526,6 @@ describe('WebFileSystemProvider', () => {
       name: 'docs',
       permissionState: 'granted',
     });
-    const originalEntries = parentHandle.entries.bind(parentHandle);
-    const parentEntriesMock = vi.fn(() => originalEntries());
-    parentHandle.entries = parentEntriesMock;
     const rootHandle = createDirectoryHandleMock({
       entries: [parentHandle],
       name: '',
@@ -547,7 +548,7 @@ describe('WebFileSystemProvider', () => {
 
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', { create: true });
-    expect(parentEntriesMock).not.toHaveBeenCalled();
+    expect(parentHandle.entriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
     expect(createdHandle.getFileMock).not.toHaveBeenCalled();
   });
@@ -660,6 +661,7 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/docs/old.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toBe(writeError);
 
+    expect(parentHandle.entriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 
@@ -688,7 +690,9 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toBe(writeError);
+    expect(parentHandle.entriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
+    expect(createdHandle.getFileMock).not.toHaveBeenCalled();
   });
 
   it('aborts the writable and preserves the original error when write fails after createWritable succeeds', async () => {
