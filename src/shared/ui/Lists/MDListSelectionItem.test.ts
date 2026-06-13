@@ -190,4 +190,54 @@ describe('MDListSelectionItem', () => {
 
     warnSpy.mockRestore();
   });
+
+  it('renders role=presentation and no aria-selected when outside any list context', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mount(MDListSelectionItem, {
+      attachTo: document.body,
+      props: { labelText: 'Orphan', value: 'x' },
+    });
+    const item = wrapper.get('.md-list-selection-item');
+
+    expect(item.attributes('role')).toBe('presentation');
+    expect(item.attributes('aria-selected')).toBeUndefined();
+
+    warnSpy.mockRestore();
+  });
+
+  it('renders role=presentation and no aria-selected when inside a list with selectionMode=none', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mountSelectionItem({ value: 'opt' }, { selectionMode: 'none' });
+    const item = wrapper.get('.md-list-selection-item');
+
+    expect(item.attributes('role')).toBe('presentation');
+    expect(item.attributes('aria-selected')).toBeUndefined();
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not fire a selection update when clicked inside a list with selectionMode=none', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const onUpdateModelValue = vi.fn();
+
+    const wrapper = mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList selection-mode="none" :model-value="null" @update:model-value="onUpdateModelValue">
+            <MDListSelectionItem label-text="Pick me" value="pick" />
+          </MDList>
+        `,
+        setup: () => ({ onUpdateModelValue }),
+      },
+      { attachTo: document.body },
+    );
+
+    await wrapper.get('.md-list-selection-item').trigger('click');
+    expect(onUpdateModelValue).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
 });

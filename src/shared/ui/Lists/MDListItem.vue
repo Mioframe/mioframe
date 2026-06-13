@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useAttrs, useSlots, useTemplateRef } from 'vue';
-import { MDStateLayer, useRipple, useStateLayer } from '../State';
+import { useEventListener } from '@vueuse/core';
+import { MDStateLayer, usePressed, useRipple, useStateLayer } from '../State';
 import {
   warnListItemInsideSelectionList,
   warnMultiActionMissingRequirements,
   warnSingleActionMissingHandler,
 } from './listItemDevWarnings';
-import { buildListItemHostStyle, resolveListItemLineCount } from './listItemLayout';
 import { useMDListContext } from './listContext';
+import { useListItemAnatomy } from './useListItemAnatomy';
 
 type MDListItemMode = 'static' | 'single-action' | 'multi-action';
 type MDListLeadingType = 'icon' | 'avatar' | 'media' | 'control';
@@ -23,7 +24,9 @@ const props = withDefaults(
     draggable?: boolean | undefined;
     href?: string | undefined;
     labelText: string;
+    // eslint-disable-next-line vue/no-unused-properties -- consumed by useListItemAnatomy via props object; rule cannot trace indirect composable usage
     leadingType?: MDListLeadingType | undefined;
+    // eslint-disable-next-line vue/no-unused-properties -- consumed by useListItemAnatomy via props object; rule cannot trace indirect composable usage
     lineCount?: 1 | 2 | 3 | undefined;
     mode?: MDListItemMode | undefined;
     nativeType?: 'button' | 'submit' | 'reset' | undefined;
@@ -54,23 +57,31 @@ const slots = useSlots();
 const attrs = useAttrs();
 const listContext = useMDListContext();
 
-const hasLeading = computed(() => !!slots.leading);
-const hasOverline = computed(() => !!slots.overline || !!props.overline);
-const hasSupportingText = computed(() => !!slots.supportingText || !!props.supportingText);
-const hasTrailing = computed(() => !!slots.trailing);
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
 const inList = computed(() => listContext?.usesListSemantics.value ?? false);
 const selectionMode = computed(() => listContext?.selectionMode.value ?? 'none');
 const hasPrimaryAction = computed(() => props.mode !== 'static');
-const usesInternalActionSurface = computed(() => inList.value && hasPrimaryAction.value);
-
-const resolvedLineCount = computed<1 | 2 | 3>(() =>
-  resolveListItemLineCount(hasOverline.value, hasSupportingText.value, props.lineCount),
+// Suppress interactive action surfaces inside selection lists to avoid rendering a
+// button or link inside a listbox, which is invalid ARIA.
+const usesInternalActionSurface = computed(
+  () => inList.value && hasPrimaryAction.value && selectionMode.value === 'none',
+);
+// Row-level state tracking is needed when a trailing action is present so hover and
+// pressed cover the full row width, including the padding areas around the trailing action.
+const isMultiActionInList = computed(
+  () => hasTrailingAction.value && usesInternalActionSurface.value,
 );
 
-const resolvedHeight = computed(
-  () => listContext?.itemHeights.value[resolvedLineCount.value] ?? 56,
-);
+const {
+  hasLeading,
+  hasOverline,
+  hasSupportingText,
+  hasTrailing,
+  resolvedLineCount,
+  hostStyle,
+  leadingClass,
+  supportingTextClass,
+} = useListItemAnatomy(props, slots, listContext, 'md-list-item');
 
 const rootTag = computed(() => {
   if (inList.value) {
@@ -120,10 +131,51 @@ const interactiveSurfaceEl = computed(() => {
 });
 
 const dragged = ref(false);
-const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
+const {
+  hover: primaryHover,
+  focused,
+  durationPressedState: primaryDurationPressed,
+} = useStateLayer(interactiveSurfaceEl, { dragged });
 
-const leadingClass = computed(() => `md-list-item__leading_type_${props.leadingType}`);
-const hostStyle = computed(() => buildListItemHostStyle(resolvedHeight.value));
+// Multi-action: track hover at root level so the state layer covers the full row,
+// including the padding area around the trailing action. Cannot use useLastHover(rootEl)
+// here because the global "last hovered" list would be overwritten by child element
+// pointerenter events, making rootEl lose hover state as soon as the pointer moves over
+// any child (primaryActionEl, icon buttons, etc.).
+const rowHoverState = ref(false);
+useEventListener(
+  computed(() => (isMultiActionInList.value ? rootEl.value : null)),
+  'pointerenter',
+  (e: PointerEvent) => {
+    if (e.pointerType !== 'touch') {
+      rowHoverState.value = true;
+    }
+  },
+  { passive: true },
+);
+useEventListener(
+  computed(() => (isMultiActionInList.value ? rootEl.value : null)),
+  'pointerleave',
+  () => {
+    rowHoverState.value = false;
+  },
+  { passive: true },
+);
+
+// Multi-action: track pressed at root level so the pressed state covers the full row.
+const { durationPressedState: rowDurationPressed } = usePressed(
+  computed(() => (isMultiActionInList.value ? rootEl.value : null)),
+);
+
+// Final resolved state: for multi-action items use the root-level trackers; for all
+// other modes use the interactive surface trackers.
+const hover = computed(() =>
+  isMultiActionInList.value ? rowHoverState.value : primaryHover.value,
+);
+const durationPressedState = computed(() =>
+  isMultiActionInList.value ? rowDurationPressed.value : primaryDurationPressed.value,
+);
+
 const rootClass = computed(() => ({
   'md-list-item': true,
   'md-list-item_in-list': inList.value,
@@ -162,11 +214,6 @@ const interactiveAttrs = computed(() => {
   );
   return Object.fromEntries(entries);
 });
-
-const supportingTextClass = computed(() => ({
-  'md-list-item__supporting-text_two-line': resolvedLineCount.value === 2,
-  'md-list-item__supporting-text_three-line': resolvedLineCount.value === 3,
-}));
 
 const onAction = (event: MouseEvent) => {
   if (props.disabled) {
@@ -264,6 +311,20 @@ defineExpose({
     @drop="onDragEnd"
   >
     <template v-if="usesInternalActionSurface">
+      <!--
+        Multi-action: row-level state layer placed before action siblings so it renders
+        behind them (position: absolute; z-index: 0 covers the full container). The primary
+        action and trailing action appear on top via their own z-index.
+      -->
+      <MDStateLayer
+        v-if="hasTrailingAction"
+        :hover="hover"
+        :focused="focused"
+        :pressed="durationPressedState"
+        :dragged="dragged"
+        :disabled="disabled"
+      />
+
       <component
         :is="primaryActionTag"
         ref="primaryActionEl"
@@ -277,7 +338,9 @@ defineExpose({
         @click="onAction"
         @keydown="onActionKeydown"
       >
+        <!-- Single-action: state layer inside the action element bounds. -->
         <MDStateLayer
+          v-if="!hasTrailingAction"
           :hover="hover"
           :focused="focused"
           :pressed="durationPressedState"
@@ -310,14 +373,29 @@ defineExpose({
         </span>
       </component>
 
-      <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
+      <!--
+        Trailing action: sibling of the primary action. The click.self.stop handler fires
+        the primary action for clicks that land on the container padding (not on the slot
+        content), eliminating dead zones inside the visual row without creating nested
+        interactive controls.
+      -->
+      <span
+        v-if="hasTrailingAction"
+        class="md-list-item__trailing-action"
+        @click.self.stop="onAction"
+      >
         <slot name="trailingAction" />
       </span>
     </template>
 
     <template v-else>
+      <!--
+        Standalone single-action only: the root element is the interactive surface so
+        the state layer goes here. Not rendered inside selection lists where the item
+        is structurally suppressed to static appearance (role=none).
+      -->
       <MDStateLayer
-        v-if="mode === 'single-action'"
+        v-if="mode === 'single-action' && !inList"
         :hover="hover"
         :focused="focused"
         :pressed="durationPressedState"

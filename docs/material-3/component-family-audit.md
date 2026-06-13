@@ -61,7 +61,7 @@ Gaps:
 
 Verdict: include in Buttons pilot after base buttons and icon buttons.
 
-## Lists: `MDList`, `MDListItem`, `MDListContainer`
+## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`, `MDListContainer`
 
 Material cache confirms lists help users find and act on items; items should be scannable and consistently formatted; M3 baseline heights are 56dp, 72dp, and 88dp; M3 Expressive adds standard/segmented styles and improved selection states.
 
@@ -78,7 +78,7 @@ Current state:
 - inside `MDList`, action rows render a stable listitem wrapper plus an internal button/link primary action surface, so the final list contract is no longer `button[role=listitem]` or `a[role=listitem]`;
 - segmented expressive styling is implemented in the shared primitive, including grouped container shape, inter-item gap, and first/last item rounding;
 - expressive one-line rows now use a taller 64dp minimum container height while baseline keeps the 56dp / 72dp / 88dp thresholds;
-- menu surfaces override list-item minimum height through the shared `--md-comp-list-item-min-container-height` contract instead of stale item-local variables;
+- `--md-comp-list-item-min-container-height` is a public consumer token; it is not used by Menu, which owns its own geometry through separate CSS;
 - component tokens use Material anatomy names instead of generic content or muted naming;
 - direct consumers corrected to choose list style through `MDList`, including repository explorer sections, local file-system lists, Google session lists, database property lists, and database view reordering;
 - Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic configuration, state, selection, trailing-action, and DOM-contract stories; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels;
@@ -92,7 +92,8 @@ Gaps:
 - `MDList` does not yet expose richer listbox labeling helpers beyond forwarded ARIA attributes;
 - selection rows currently use a shared checkmark indicator rather than Material-specific radio or checkbox controls;
 - live Figma node verification for the cited Lists page was blocked by the current Figma MCP Starter-plan rate limit during this pass;
-- expressive row-height verification should still be re-checked against the Design Kit when Figma MCP access is available again.
+- expressive row-height verification should still be re-checked against the Design Kit when Figma MCP access is available again;
+- multi-action interaction-states Storybook story predates the row-level state-layer fix and should be updated to reflect full-row hover/pressed coverage.
 
 Verdict: second migration family after Buttons. Remains `partial` until live Figma comparison, multi-action keyboard traversal, and full accessibility verification are complete.
 

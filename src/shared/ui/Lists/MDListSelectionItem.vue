@@ -3,7 +3,7 @@ import { computed, onMounted, useSlots, useTemplateRef, warn } from 'vue';
 import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useMDListContext, type MDListSelectionValue } from './listContext';
-import { buildListItemHostStyle, resolveListItemLineCount } from './listItemLayout';
+import { useListItemAnatomy } from './useListItemAnatomy';
 
 type MDListLeadingType = 'icon' | 'avatar' | 'media' | 'control';
 
@@ -11,7 +11,9 @@ const props = withDefaults(
   defineProps<{
     disabled?: boolean | undefined;
     labelText: string;
+    // eslint-disable-next-line vue/no-unused-properties -- consumed by useListItemAnatomy via props object; rule cannot trace indirect composable usage
     leadingType?: MDListLeadingType | undefined;
+    // eslint-disable-next-line vue/no-unused-properties -- consumed by useListItemAnatomy via props object; rule cannot trace indirect composable usage
     lineCount?: 1 | 2 | 3 | undefined;
     overline?: string | undefined;
     supportingText?: string | undefined;
@@ -33,27 +35,31 @@ defineSlots<{
 const slots = useSlots();
 const listContext = useMDListContext();
 
-const hasLeading = computed(() => !!slots.leading);
-const hasOverline = computed(() => !!slots.overline || !!props.overline);
-const hasSupportingText = computed(() => !!slots.supportingText || !!props.supportingText);
-const hasTrailing = computed(() => !!slots.trailing);
+const {
+  hasLeading,
+  hasOverline,
+  hasSupportingText,
+  hasTrailing,
+  resolvedLineCount,
+  hostStyle,
+  leadingClass,
+  supportingTextClass,
+} = useListItemAnatomy(props, slots, listContext, 'md-list-selection-item');
 
-const resolvedLineCount = computed<1 | 2 | 3>(() =>
-  resolveListItemLineCount(hasOverline.value, hasSupportingText.value, props.lineCount),
-);
-
-const resolvedHeight = computed(
-  () => listContext?.itemHeights.value[resolvedLineCount.value] ?? 56,
-);
 const rootTag = computed(() => listContext?.itemTag.value ?? 'div');
-const isSelected = computed(() => listContext?.isItemSelected(props.value) ?? false);
+// Only active when inside a list that has an explicit selection mode.
+// Outside that context, rendering role=option without a listbox parent is invalid ARIA.
+const isInSelectionList = computed(
+  () => !!listContext && listContext.selectionMode.value !== 'none',
+);
+const isSelected = computed(() =>
+  isInSelectionList.value ? (listContext?.isItemSelected(props.value) ?? false) : false,
+);
 const isDisabled = computed(() => props.disabled);
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { hover, focused, durationPressedState } = useStateLayer(rootEl, {});
 
-const leadingClass = computed(() => `md-list-selection-item__leading_type_${props.leadingType}`);
-const hostStyle = computed(() => buildListItemHostStyle(resolvedHeight.value));
 const rootClass = computed(() => ({
   'md-list-selection-item': true,
   'md-list-selection-item_in-list': true,
@@ -67,13 +73,8 @@ const rootClass = computed(() => ({
   'md-state_disabled': isDisabled.value,
 }));
 
-const supportingTextClass = computed(() => ({
-  'md-list-selection-item__supporting-text_two-line': resolvedLineCount.value === 2,
-  'md-list-selection-item__supporting-text_three-line': resolvedLineCount.value === 3,
-}));
-
 const onSelect = () => {
-  if (!isDisabled.value) {
+  if (!isDisabled.value && isInSelectionList.value) {
     listContext?.selectItem(props.value);
   }
 };
@@ -106,8 +107,8 @@ if (import.meta.env.DEV) {
     ref="rootEl"
     :class="rootClass"
     :style="hostStyle"
-    role="option"
-    :aria-selected="String(isSelected)"
+    :role="isInSelectionList ? 'option' : 'presentation'"
+    :aria-selected="isInSelectionList ? String(isSelected) : undefined"
     :aria-disabled="isDisabled ? 'true' : undefined"
     data-md-list-selection-item="true"
     :tabindex="-1"

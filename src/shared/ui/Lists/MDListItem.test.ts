@@ -195,4 +195,54 @@ describe('MDListItem', () => {
 
     warnSpy.mockRestore();
   });
+
+  it('suppresses the internal action surface when placed inside a selection list', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mountListItem(
+      { mode: 'single-action', onAction: vi.fn() },
+      { inList: true, listProps: { selectionMode: 'single' } },
+    );
+    const item = wrapper.get('.md-list-item');
+
+    expect(item.find('.md-list-item__primary-action').exists()).toBe(false);
+    expect(item.find('button').exists()).toBe(false);
+    expect(item.find('a').exists()).toBe(false);
+
+    warnSpy.mockRestore();
+  });
+
+  it('fires the primary action when the trailing-action container padding area is clicked', async () => {
+    const onAction = vi.fn();
+    const wrapper = mountListItem(
+      { mode: 'multi-action', onAction },
+      {
+        inList: true,
+        slots: {
+          trailingAction: '<button type="button">Edit</button>',
+        },
+      },
+    );
+
+    await wrapper.get('.md-list-item__trailing-action').trigger('click');
+
+    expect(onAction).toHaveBeenCalledOnce();
+  });
+
+  it('does not fire the primary action when clicking inside the trailing action slot', async () => {
+    const onAction = vi.fn();
+    const wrapper = mountListItem(
+      { mode: 'multi-action', onAction },
+      {
+        inList: true,
+        slots: {
+          trailingAction: '<button type="button">Edit</button>',
+        },
+      },
+    );
+
+    await wrapper.get('.md-list-item__trailing-action button').trigger('click');
+
+    expect(onAction).not.toHaveBeenCalled();
+  });
 });
