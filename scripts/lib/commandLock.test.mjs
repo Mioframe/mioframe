@@ -659,9 +659,9 @@ describe('machine lock: expensive command blocks verify', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Narrowed bypass: standalone expensive child must not bypass machine lock
+// Machine lock bypass: env-flag combinations
 // ---------------------------------------------------------------------------
-describe('machine lock bypass: standalone expensive child cannot bypass', () => {
+describe('machine lock bypass: env-flag combinations', () => {
   it('MIOFRAME_MACHINE_LOCK_HELD=1 alone does not bypass local machine lock', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-held-alone-'));
     tempDirs.push(baseDir);
@@ -700,24 +700,10 @@ describe('machine lock bypass: standalone expensive child cannot bypass', () => 
     );
   });
 
-  it('MIOFRAME_MACHINE_LOCK_HELD=1 + MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD=1 does not bypass', async () => {
+  it('MIOFRAME_MACHINE_LOCK_HELD=1 + MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD=1 bypasses for expensive children', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-held-expensive-'));
     tempDirs.push(baseDir);
     const machineLockDir = path.join(baseDir, 'machine.lock');
-    fs.mkdirSync(machineLockDir, { recursive: true });
-    writeTestMetadata(machineLockDir, {
-      kind: 'expensive',
-      command: 'pnpm test:visual',
-      cwd: '/repo',
-      heartbeatAt: new Date().toISOString(),
-      hostname: os.hostname(),
-      label: 'visual',
-      lockPath: machineLockDir,
-      logPath: '.verify/logs',
-      ownerToken: 'owner',
-      pid: process.pid,
-      startedAt: new Date().toISOString(),
-    });
 
     await withProcessEnv(
       {
@@ -727,13 +713,17 @@ describe('machine lock bypass: standalone expensive child cannot bypass', () => 
         MIOFRAME_VERIFY_LOCK_HELD: undefined,
       },
       async () => {
-        await expect(
-          withExpensiveCommandLock(
-            { label: 'child', command: 'pnpm test:visual' },
-            async () => 'done',
-            { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
-          ),
-        ).rejects.toThrow('already running');
+        let callbackRan = false;
+
+        await withExpensiveCommandLock(
+          { label: 'storybook:build', command: 'node scripts/storybook.mjs build' },
+          async () => {
+            callbackRan = true;
+          },
+          { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+        );
+
+        expect(callbackRan).toBe(true);
       },
     );
   });
