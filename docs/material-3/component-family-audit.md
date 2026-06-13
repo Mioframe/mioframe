@@ -67,22 +67,27 @@ Material cache confirms lists help users find and act on items; items should be 
 
 Current state:
 
-- `MDListItem` now uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, `trailingAction`, and `selectionControl`;
+- `MDListItem` uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, `trailingAction`, and `selectionControl`;
 - list modes are explicit through `static`, `single-action`, `multi-action`, `single-select`, and `multi-select`;
-- multi-action rows render a separate primary-action surface plus trailing action surface, so secondary controls no longer nest inside a native row button;
-- selection rows use one row-level selection interaction and can render a visual selection control in the leading or trailing slot;
-- public tokens moved to `--md-comp-list-item-*`;
-- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries;
-- focused unit tests cover mode separation, line-count rendering, disabled behavior, and the migrated wrappers.
+- `multi-action` is enforced: a dev-mode warning fires when `mode="multi-action"` is used without a `#trailingAction` slot; consumers `DocumentMDListItem` and `DatabaseViewListEdit` no longer infer `multi-action` from slot presence alone;
+- static rows with a trailing control use `static` mode and the `#trailing` slot; they do not expose a fake primary action surface;
+- multi-action rows render a separate `button`/`a` primary-action surface plus a trailing-action surface; no secondary controls nest inside the primary-action element;
+- all known consumers corrected: `FSEntryMDListItem`, `DocumentMDListItem`, `DatabaseViewListEdit`, `DatabasePropertyListItem`, `DirectoryContentEntry`, `DatabasePropertyEditList`;
+- public tokens use `--md-comp-list-item-*`; old non-Material tokens `--md-list-item-border-radius` and `--md-list-container-border-radius` have been migrated to `--md-comp-list-item-container-shape` and `--md-comp-list-container-shape` in all consumers;
+- `MDListContainer` and `MDList` `type="list"|"grid"` replaced with `layout?: 'column' | 'grid'`; `grid` is project-specific layout, not a Material list style;
+- `MDListContainer` scoped CSS uses `dp` authoring units throughout;
+- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot;
+- focused unit tests cover mode separation, line-count rendering, disabled behavior, and corrected consumer wrappers.
 
 Gaps:
 
-- selected state is implemented for the baseline list item, but expressive segmented list styling is not supported;
-- multi-action keyboard roving between primary and secondary actions is not implemented as a first-class shared contract;
-- `MDListContainer` and `MDList` still provide only light structural helpers and do not yet expose a richer selection-container API such as listbox labeling helpers;
-- browser/visual verification remains required before the family can be marked aligned.
+- selected state uses color only; no non-color indicator exists; list-level selection semantics (`listbox`, `option` roles, roving focus) are not implemented; `selected` must not be presented as a fully accessible selected state;
+- expressive segmented list styling (`standard`/`segmented` Material vocabulary) is not yet exposed as a distinct API variant on `MDListContainer`/`MDList`;
+- multi-action keyboard roving between primary and secondary actions is not implemented as a shared contract;
+- `MDListContainer` and `MDList` do not expose listbox labeling helpers or a richer selection-container API;
+- visual snapshot baselines require regeneration after `dp`-unit and token-migration changes that affect border-radius rendering.
 
-Verdict: second migration family after Buttons.
+Verdict: second migration family after Buttons. Remains `partial` until selection semantics, segmented variant, and visual verification are complete.
 
 ## Dialogs: `DialogForm`
 

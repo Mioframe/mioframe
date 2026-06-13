@@ -39,7 +39,13 @@ const onListItemClick = () => {
 
 <template>
   <MDListItem
-    :mode="slots.trailingAction ? 'multi-action' : is === 'button' ? 'single-action' : 'static'"
+    :mode="
+      is === 'button' && slots.trailingAction
+        ? 'multi-action'
+        : is === 'button'
+          ? 'single-action'
+          : 'static'
+    "
     :container-tag="is === 'li' ? 'li' : 'div'"
     :label-text="headline"
     :supporting-text="supportingText"
@@ -60,7 +66,11 @@ const onListItemClick = () => {
       </slot>
     </template>
 
-    <template v-if="!!slots.trailingAction" #trailingAction>
+    <template v-if="!!slots.trailingAction && is === 'button'" #trailingAction>
+      <slot name="trailingAction" :document-name="documentName" />
+    </template>
+
+    <template v-if="!!slots.trailingAction && is !== 'button'" #trailing>
       <slot name="trailingAction" :document-name="documentName" />
     </template>
   </MDListItem>

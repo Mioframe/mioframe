@@ -198,7 +198,7 @@ useOnBackNavigationStackedWhen(showModel, () => {
   display: flex;
   flex-direction: column;
 
-  --md-list-container-border-radius: 0px;
+  --md-comp-list-container-shape: 0dp;
   --md-comp-list-item-horizontal-padding: 12dp;
   --md-comp-list-item-trailing-end-padding: 12dp;
   --md-comp-list-item-container-height: 48dp;

@@ -247,7 +247,7 @@ const onUpdatedEditItemDialog = () => {
   }
 
   &__property-list {
-    --md-list-container-border-radius: 16px;
+    --md-comp-list-container-shape: 16dp;
   }
 }
 </style>

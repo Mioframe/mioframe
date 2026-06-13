@@ -108,7 +108,7 @@ const emptyText = computed(() =>
   }
 
   &__list-item {
-    --md-list-item-border-radius: 8px;
+    --md-comp-list-item-container-shape: 8dp;
   }
 
   &__empty-text {

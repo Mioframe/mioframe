@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useAttrs, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useAttrs, useTemplateRef, warn } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 type MDListItemMode =
@@ -60,6 +60,18 @@ const hasOverline = computed(() => props.overline || !!slots.overline);
 const hasLeading = computed(() => !!slots.leading);
 const hasTrailing = computed(() => !!slots.trailing);
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
+
+if (import.meta.env.DEV) {
+  onMounted(() => {
+    if (props.mode === 'multi-action' && !hasTrailingAction.value) {
+      warn(
+        'MDListItem: mode="multi-action" requires a #trailingAction slot. ' +
+          'Without a secondary action surface this creates an invalid Material list item. ' +
+          'Use mode="single-action" when there is only one action.',
+      );
+    }
+  });
+}
 const hasSelectionControl = computed(() => isSelectionMode.value && !!slots.selectionControl);
 const resolvedLineCount = computed(() => props.lineCount ?? (hasSupportingText.value ? 2 : 1));
 const rootTag = computed(() =>

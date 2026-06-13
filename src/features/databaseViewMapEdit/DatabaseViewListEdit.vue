@@ -79,7 +79,7 @@ const onClickView = (id: DatabaseViewId) => {
       v-for="[id, view] in orderedViewList"
       :key="id"
       v-reorder-item="id"
-      mode="multi-action"
+      :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
       :label-text="view.name"
       class="db-view-map-edit__view-item"
       :class="{

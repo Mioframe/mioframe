@@ -9,7 +9,8 @@ import MDListItem from './MDListItem.vue';
 
 const { list, itemMode = 'static' } = defineProps<{
   list: T[];
-  type?: 'list' | 'grid' | undefined;
+  /** Project-specific layout override passed to MDListContainer. Not a Material list style. */
+  layout?: 'column' | 'grid' | undefined;
   itemMode?: 'static' | 'single-action' | undefined;
 }>();
 
@@ -30,7 +31,7 @@ const onActionItem = (item: T, index: number) => {
 </script>
 
 <template>
-  <MDListContainer :type="type" class="md-list">
+  <MDListContainer :layout="layout" class="md-list">
     <TransitionGroup tag="div" name="md-list">
       <MDListItem
         v-for="(item, index) in listProp"
