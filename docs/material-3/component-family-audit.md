@@ -76,7 +76,12 @@ Current state:
 - public tokens use `--md-comp-list-item-*`; old non-Material tokens `--md-list-item-border-radius` and `--md-list-container-border-radius` have been migrated to `--md-comp-list-item-container-shape` and `--md-comp-list-container-shape` in all consumers;
 - `MDListContainer` and `MDList` `type="list"|"grid"` replaced with `layout?: 'column' | 'grid'`; `grid` is project-specific layout, not a Material list style;
 - `MDListContainer` scoped CSS uses `dp` authoring units throughout;
-- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot;
+- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels; migration-history wording removed;
+- `Configurations` story includes an overline item; all supported configurations have visual coverage;
+- interaction states story uses `--md-content-color: var(--md-sys-color-primary)` in the story wrapper and a Default reference row so state-layer overlays are clearly visible at Material spec opacities in screenshots;
+- trailing action target size verified with a Playwright browser assertion against the `.md-icon-button__target` span (≥48×48 px); no target-size regression can pass the visual gate silently;
+- a dev-mode warning fires when `selected=true` is used without a `#selectionControl` slot (color-only selected state);
+- visual snapshot baselines regenerated and reviewed against Material reference;
 - focused unit tests cover mode separation, line-count rendering, disabled behavior, and corrected consumer wrappers.
 
 Gaps:
@@ -84,10 +89,9 @@ Gaps:
 - selected state uses color only; no non-color indicator exists; list-level selection semantics (`listbox`, `option` roles, roving focus) are not implemented; `selected` must not be presented as a fully accessible selected state;
 - expressive segmented list styling (`standard`/`segmented` Material vocabulary) is not yet exposed as a distinct API variant on `MDListContainer`/`MDList`;
 - multi-action keyboard roving between primary and secondary actions is not implemented as a shared contract;
-- `MDListContainer` and `MDList` do not expose listbox labeling helpers or a richer selection-container API;
-- visual snapshot baselines require regeneration after `dp`-unit and token-migration changes that affect border-radius rendering.
+- `MDListContainer` and `MDList` do not expose listbox labeling helpers or a richer selection-container API.
 
-Verdict: second migration family after Buttons. Remains `partial` until selection semantics, segmented variant, and visual verification are complete.
+Verdict: second migration family after Buttons. Remains `partial` until selection semantics, segmented variant, and full accessibility verification are complete.
 
 ## Dialogs: `DialogForm`
 

@@ -61,6 +61,8 @@ const hasLeading = computed(() => !!slots.leading);
 const hasTrailing = computed(() => !!slots.trailing);
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
 
+const hasSelectionControl = computed(() => isSelectionMode.value && !!slots.selectionControl);
+
 if (import.meta.env.DEV) {
   onMounted(() => {
     if (props.mode === 'multi-action' && !hasTrailingAction.value) {
@@ -70,9 +72,17 @@ if (import.meta.env.DEV) {
           'Use mode="single-action" when there is only one action.',
       );
     }
+
+    if (props.selected && !hasSelectionControl.value) {
+      warn(
+        'MDListItem: selected=true without a #selectionControl slot uses color alone to ' +
+          'indicate selection. Material 3 requires a non-color indicator (checkbox, radio, or ' +
+          'icon) for accessible selected state. Provide a #selectionControl slot or use ' +
+          'mode="single-select"/"multi-select" with a selection control.',
+      );
+    }
   });
 }
-const hasSelectionControl = computed(() => isSelectionMode.value && !!slots.selectionControl);
 const resolvedLineCount = computed(() => props.lineCount ?? (hasSupportingText.value ? 2 : 1));
 const rootTag = computed(() =>
   props.mode === 'single-action' ? (props.href ? 'a' : 'button') : props.containerTag,

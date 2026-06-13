@@ -198,6 +198,38 @@ test('MDListItem trailing action story avoids nested native buttons', async ({ p
   await expect(nestedButtons).toHaveCount(0);
 });
 
+test('MDListItem trailing action icon buttons meet the Material 48dp minimum target size', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
+
+  // The visible button element may be smaller than 48px; the interactive
+  // target is the .md-icon-button__target span that expands the hit area.
+  const surface = page.getByTestId('visual-md-list-item-trailing-action');
+  const targets = surface.locator('.md-list-item__trailing-action .md-icon-button__target');
+  const count = await targets.count();
+
+  expect(count).toBeGreaterThan(0);
+
+  const boxes = await Promise.all(
+    Array.from({ length: count }, (_, i) => targets.nth(i).boundingBox()),
+  );
+
+  for (const [i, box] of boxes.entries()) {
+    expect(box, `trailing action target ${i} must have a bounding box`).not.toBeNull();
+    if (box) {
+      expect(
+        box.width,
+        `trailing action target ${i} width must be at least 48px (Material min target)`,
+      ).toBeGreaterThanOrEqual(48);
+      expect(
+        box.height,
+        `trailing action target ${i} height must be at least 48px (Material min target)`,
+      ).toBeGreaterThanOrEqual(48);
+    }
+  }
+});
+
 test('MDListItem configurations match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
 

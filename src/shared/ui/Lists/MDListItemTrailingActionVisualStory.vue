@@ -13,8 +13,8 @@ const onAction = () => {};
   <div v-bind="rootAttrs" class="visual-surface md-list-item-trailing-action-story">
     <MDListItem
       mode="multi-action"
-      label-text="Draft database"
-      supporting-text="Trailing action stays compact"
+      label-text="Trailing action"
+      supporting-text="Secondary action is independent of the primary action."
       @action="onAction"
     >
       <template #trailingAction>
@@ -23,12 +23,22 @@ const onAction = () => {};
     </MDListItem>
     <MDListItem
       mode="multi-action"
-      label-text="Pinned view"
-      supporting-text="Outlined action still matches develop layout"
+      label-text="Outlined trailing action"
+      supporting-text="Outlined secondary action variant."
       @action="onAction"
     >
       <template #trailingAction>
-        <MDIconButton tooltip="Edit view" color="outlined" md-symbol-name="edit" />
+        <MDIconButton tooltip="Edit" color="outlined" md-symbol-name="edit" />
+      </template>
+    </MDListItem>
+    <MDListItem
+      mode="multi-action"
+      label-text="Multi-action item"
+      supporting-text="Primary and secondary actions have separate targets."
+      @action="onAction"
+    >
+      <template #trailingAction>
+        <MDIconButton tooltip="More options" md-symbol-name="more_vert" />
       </template>
     </MDListItem>
   </div>

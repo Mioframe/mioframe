@@ -21,6 +21,12 @@ const onAction = () => {};
     />
 
     <MDListItem
+      label-text="Overline item"
+      overline="Category"
+      supporting-text="Overline sits above the label in label-small."
+    />
+
+    <MDListItem
       label-text="Three-line item"
       supporting-text="Supporting text can expand across two supporting lines in the three-line configuration."
       :line-count="3"
