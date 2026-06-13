@@ -7,6 +7,11 @@ import {
   type MDListStyle,
   type MDListVariant,
 } from './listContext';
+import {
+  focusListOption,
+  getNextEnabledListOption,
+  syncListOptionTabStops,
+} from './listOptionNavigation';
 
 defineOptions({
   inheritAttrs: false,
@@ -104,56 +109,6 @@ const containerRole = computed(() => {
   return resolvedTag.value === 'ul' ? null : 'list';
 });
 
-const syncOptionTabStops = () => {
-  if (props.selectionMode === 'none') {
-    return;
-  }
-
-  const container = getContainerElement();
-
-  if (!container) {
-    return;
-  }
-
-  const options = Array.from(
-    container.querySelectorAll<HTMLElement>('[data-md-list-option="true"]'),
-  );
-
-  if (!options.length) {
-    return;
-  }
-
-  const selectedOption =
-    options.find((option) => option.getAttribute('aria-selected') === 'true') ?? options[0];
-  const activeOption =
-    document.activeElement instanceof HTMLElement &&
-    options.some((option) => option === document.activeElement)
-      ? document.activeElement
-      : selectedOption;
-
-  for (const option of options) {
-    option.tabIndex = option === activeOption ? 0 : -1;
-  }
-};
-
-const focusOption = (target: HTMLElement) => {
-  const container = getContainerElement();
-
-  if (!container) {
-    return;
-  }
-
-  const options = Array.from(
-    container.querySelectorAll<HTMLElement>('[data-md-list-option="true"]'),
-  );
-
-  for (const option of options) {
-    option.tabIndex = option === target ? 0 : -1;
-  }
-
-  target.focus();
-};
-
 const moveFocus = (event: KeyboardEvent, direction: 'first' | 'last' | 1 | -1) => {
   if (props.selectionMode === 'none') {
     return;
@@ -166,34 +121,14 @@ const moveFocus = (event: KeyboardEvent, direction: 'first' | 'last' | 1 | -1) =
     return;
   }
 
-  const currentOption = currentTarget.closest<HTMLElement>('[data-md-list-option="true"]');
-
-  if (!currentOption) {
-    return;
-  }
-
-  const options = Array.from(
-    container.querySelectorAll<HTMLElement>('[data-md-list-option="true"]'),
-  );
-  const currentIndex = options.findIndex((option) => option === currentOption);
-
-  if (currentIndex === -1) {
-    return;
-  }
-
-  const nextOption =
-    direction === 'first'
-      ? options[0]
-      : direction === 'last'
-        ? options.at(-1)
-        : options.at((currentIndex + direction + options.length) % options.length);
+  const nextOption = getNextEnabledListOption(container, currentTarget, direction);
 
   if (!nextOption) {
     return;
   }
 
   event.preventDefault();
-  focusOption(nextOption);
+  focusListOption(container, nextOption);
 };
 
 const onFocusin = (event: FocusEvent) => {
@@ -204,7 +139,7 @@ const onFocusin = (event: FocusEvent) => {
   const option = event.target.closest<HTMLElement>('[data-md-list-option="true"]');
 
   if (option) {
-    focusOption(option);
+    focusListOption(getContainerElement() ?? option.parentElement ?? option, option);
   }
 };
 
@@ -244,7 +179,12 @@ onMounted(() => {
 
   container?.addEventListener('focusin', handleFocusin);
   container?.addEventListener('keydown', handleKeydown);
-  void nextTick(syncOptionTabStops);
+  void nextTick(() => {
+    const nextContainer = getContainerElement();
+    if (nextContainer) {
+      syncListOptionTabStops(nextContainer);
+    }
+  });
 });
 
 onUnmounted(() => {
@@ -255,7 +195,12 @@ onUnmounted(() => {
 });
 
 onUpdated(() => {
-  void nextTick(syncOptionTabStops);
+  void nextTick(() => {
+    const container = getContainerElement();
+    if (container) {
+      syncListOptionTabStops(container);
+    }
+  });
 });
 </script>
 

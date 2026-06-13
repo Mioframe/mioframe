@@ -1,4 +1,5 @@
 import { computed, inject, provide, type ComputedRef, type InjectionKey, type Ref } from 'vue';
+import { getMDListItemHeights } from './listItemSizing';
 
 /** Shared visual treatment for list containers. */
 export type MDListStyle = 'standard' | 'segmented';
@@ -76,9 +77,7 @@ export const provideMDListContext = (
   provide(LIST_CONTEXT_KEY, {
     variant: computed(() => variant.value),
     itemTag: computed(() => (tag.value === 'ul' ? 'li' : 'div')),
-    itemHeights: computed(() =>
-      variant.value === 'baseline' ? { 1: 56, 2: 72, 3: 88 } : { 1: 56, 2: 72, 3: 88 },
-    ),
+    itemHeights: computed(() => getMDListItemHeights(variant.value)),
     listStyle: computed(() => listStyle.value),
     selectionMode: computed(() => selectionMode.value),
     usesListSemantics: computed(() => true),

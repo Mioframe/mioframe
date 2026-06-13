@@ -26,8 +26,11 @@
   - `MDListItem` owns anatomy and valid interaction modes only.
   - Standard and segmented are the supported list styles.
   - List-level single-select and multi-select behavior is supported through controlled `selectionMode` plus `modelValue`.
+  - Baseline rows keep 56dp / 72dp / 88dp minimum container heights; expressive rows use a 64dp one-line minimum and keep the 72dp / 88dp multi-line thresholds.
+  - Menu surfaces override row minimum height through the shared `--md-comp-list-item-min-container-height` contract instead of stale item-local variables.
 - Deviation:
   - Live Figma verification for the cited Lists page is currently blocked by the workspace Figma MCP Starter-plan rate limit.
+  - Expressive height verification is derived from the current Material cache plus the shared list geometry after Figma MCP inspection was blocked; re-check against the Design Kit when the rate limit resets.
   - Selection rows currently use a shared checkmark indicator instead of Material-specific radio or checkbox controls.
 - Verification surface:
   - focused unit tests for DOM structure and invalid combinations
@@ -100,6 +103,7 @@
   - selection is owned by `MDList`, not an item-level `selected` prop
   - rows require primitive `value` props
   - selected state uses `role="option"` and a non-color indicator
+  - rows without a provided `value` render as disabled options and stay out of roving focus
   - nested trailing actions are invalid
 - Multi-action:
   - requires a real primary action
@@ -118,4 +122,4 @@
   - menu surfaces previously relied on `MDListContainer`; the migration must preserve overlay behavior after moving menus off list semantics
   - repository and home-like consumers currently patch shape locally; those overrides must be removed or narrowed
   - live Figma node verification may remain blocked until the plan limit resets or is upgraded
-  - visual baselines will need careful refresh after geometry changes
+  - expressive row-height verification should still be re-checked against the Design Kit when Figma MCP access is available again

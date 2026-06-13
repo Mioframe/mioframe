@@ -128,6 +128,26 @@ describe('MDListItem', () => {
     expect(item.find('.md-list-item__selection-indicator').exists()).toBe(true);
   });
 
+  it('renders missing-value rows in selection lists as disabled options instead of listitems', () => {
+    const wrapper = mountListItem(
+      {},
+      {
+        inList: true,
+        listProps: {
+          selectionMode: 'single',
+          modelValue: 'settings',
+        },
+      },
+    );
+
+    const item = wrapper.get('.md-list-item');
+
+    expect(item.attributes('role')).toBe('option');
+    expect(item.attributes('aria-disabled')).toBe('true');
+    expect(item.attributes('aria-selected')).toBe('false');
+    expect(item.find('.md-list-item__selection-indicator').exists()).toBe(true);
+  });
+
   it('does not participate in list selection without a list-level selection context', () => {
     const wrapper = mountListItem({ value: 'settings' });
 

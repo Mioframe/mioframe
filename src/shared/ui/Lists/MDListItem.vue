@@ -59,6 +59,7 @@ const slots = useSlots();
 const attrs = useAttrs();
 const listContext = useMDListContext();
 const instance = getCurrentInstance();
+const vnodeProps = computed<Record<string, unknown>>(() => instance?.vnode.props ?? {});
 
 const hasLeading = computed(() => !!slots.leading);
 const hasOverline = computed(() => !!slots.overline || !!props.overline);
@@ -67,17 +68,24 @@ const hasTrailing = computed(() => !!slots.trailing);
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
 const inList = computed(() => listContext?.usesListSemantics.value ?? false);
 const selectionMode = computed(() => listContext?.selectionMode.value ?? 'none');
+const rendersSelectionOption = computed(() => inList.value && selectionMode.value !== 'none');
+const hasSelectionValue = computed(() =>
+  Object.prototype.hasOwnProperty.call(vnodeProps.value, 'value'),
+);
 const participatesInSelection = computed(
-  () => inList.value && selectionMode.value !== 'none' && props.value !== undefined,
+  () => rendersSelectionOption.value && hasSelectionValue.value,
+);
+const selectionOptionDisabled = computed(
+  () => rendersSelectionOption.value && (!!props.disabled || !hasSelectionValue.value),
 );
 const isSelected = computed(() =>
   participatesInSelection.value ? (listContext?.isItemSelected(props.value) ?? false) : false,
 );
-const hasPrimaryAction = computed(() => props.mode !== 'static' || participatesInSelection.value);
+const hasPrimaryAction = computed(() => props.mode !== 'static' || rendersSelectionOption.value);
 const usesInternalActionSurface = computed(
-  () => inList.value && hasPrimaryAction.value && !participatesInSelection.value,
+  () => inList.value && hasPrimaryAction.value && !rendersSelectionOption.value,
 );
-const showSelectionIndicator = computed(() => participatesInSelection.value);
+const showSelectionIndicator = computed(() => rendersSelectionOption.value);
 
 const resolvedLineCount = computed<1 | 2 | 3>(() => {
   if (props.lineCount) {
@@ -110,7 +118,7 @@ const rootTag = computed(() => {
   return props.containerTag;
 });
 const rootRole = computed(() => {
-  if (participatesInSelection.value) {
+  if (rendersSelectionOption.value) {
     return 'option';
   }
 
@@ -148,7 +156,7 @@ const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfac
 
 const leadingClass = computed(() => `md-list-item__leading_type_${props.leadingType}`);
 const hostStyle = computed(() => ({
-  '--md-list-item-height': `${resolvedHeight.value}px`,
+  '--md-private-list-item-resolved-container-height': `${resolvedHeight.value}px`,
 }));
 const rootClass = computed(() => ({
   'md-list-item': true,
@@ -210,7 +218,7 @@ const onAction = (event: MouseEvent) => {
 };
 
 const onSelect = () => {
-  if (!props.disabled) {
+  if (!selectionOptionDisabled.value) {
     listContext?.selectItem(props.value);
   }
 };
@@ -237,7 +245,7 @@ const onRootClick = (event: MouseEvent) => {
 };
 
 const onRootKeydown = (event: KeyboardEvent) => {
-  if (participatesInSelection.value && (event.key === ' ' || event.key === 'Enter')) {
+  if (rendersSelectionOption.value && (event.key === ' ' || event.key === 'Enter')) {
     event.preventDefault();
     onSelect();
     return;
@@ -260,8 +268,9 @@ const onDragEnd = () => {
 
 if (import.meta.env.DEV) {
   onMounted(() => {
-    const vnodeProps = instance?.vnode.props ?? {};
-    const hasActionListener = Object.keys(vnodeProps).some((key) => key.startsWith('onAction'));
+    const hasActionListener = Object.keys(vnodeProps.value).some((key) =>
+      key.startsWith('onAction'),
+    );
 
     if (props.mode === 'single-action' && !props.href && !hasActionListener) {
       warn(
@@ -319,13 +328,19 @@ defineExpose({
     :class="rootClass"
     :style="hostStyle"
     :role="rootRole"
-    :aria-selected="participatesInSelection ? String(isSelected) : undefined"
+    :aria-selected="rendersSelectionOption ? String(isSelected) : undefined"
+    :aria-disabled="
+      rendersSelectionOption && selectionOptionDisabled
+        ? 'true'
+        : !inList && mode === 'single-action' && href && disabled
+          ? 'true'
+          : undefined
+    "
     :href="!inList && mode === 'single-action' ? href : undefined"
     :type="!inList && mode === 'single-action' ? buttonType : undefined"
     :disabled="!inList && mode === 'single-action' && !href && disabled ? true : undefined"
-    :aria-disabled="!inList && mode === 'single-action' && href && disabled ? 'true' : undefined"
     :tabindex="!inList && mode === 'single-action' && href && disabled ? -1 : undefined"
-    :data-md-list-option="participatesInSelection ? 'true' : undefined"
+    :data-md-list-option="rendersSelectionOption ? 'true' : undefined"
     :draggable="!disabled ? draggable : undefined"
     @click="onRootClick"
     @keydown="onRootKeydown"
@@ -468,7 +483,10 @@ defineExpose({
   position: relative;
   display: flex;
   align-items: stretch;
-  min-height: var(--md-list-item-height);
+  min-height: var(
+    --md-comp-list-item-min-container-height,
+    var(--md-private-list-item-resolved-container-height)
+  );
   border: 0;
   border-radius: var(--md-list-item-container-shape, 0dp);
   background: var(--md-comp-list-item-container-color);
@@ -529,7 +547,10 @@ defineExpose({
     align-items: center;
     flex: 1 1 auto;
     min-width: 0;
-    min-height: var(--md-list-item-height);
+    min-height: var(
+      --md-comp-list-item-min-container-height,
+      var(--md-private-list-item-resolved-container-height)
+    );
     padding-inline: var(--md-list-item-content-padding-inline-start)
       var(--md-list-item-content-padding-inline-end);
     padding-block: var(--md-list-item-content-padding-block);
