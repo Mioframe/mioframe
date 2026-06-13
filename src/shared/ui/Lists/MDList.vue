@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, onUpdated, useTemplateRef, warn } from 'vue';
+import { computed, useTemplateRef, warn } from 'vue';
 import {
   provideMDListContext,
   type MDListModelValue,
@@ -7,11 +7,7 @@ import {
   type MDListStyle,
   type MDListVariant,
 } from './listContext';
-import {
-  focusListOption,
-  getNextEnabledListOption,
-  syncListOptionTabStops,
-} from './listOptionNavigation';
+import { useListSelectionKeyboard } from './useListSelectionKeyboard';
 
 defineOptions({
   inheritAttrs: false,
@@ -109,99 +105,9 @@ const containerRole = computed(() => {
   return resolvedTag.value === 'ul' ? null : 'list';
 });
 
-const moveFocus = (event: KeyboardEvent, direction: 'first' | 'last' | 1 | -1) => {
-  if (props.selectionMode === 'none') {
-    return;
-  }
+const selectionActive = computed(() => props.selectionMode !== 'none');
 
-  const container = getContainerElement();
-  const currentTarget = event.target;
-
-  if (!(container && currentTarget instanceof HTMLElement)) {
-    return;
-  }
-
-  const nextOption = getNextEnabledListOption(container, currentTarget, direction);
-
-  if (!nextOption) {
-    return;
-  }
-
-  event.preventDefault();
-  focusListOption(container, nextOption);
-};
-
-const onFocusin = (event: FocusEvent) => {
-  if (props.selectionMode === 'none' || !(event.target instanceof HTMLElement)) {
-    return;
-  }
-
-  const option = event.target.closest<HTMLElement>('[data-md-list-option="true"]');
-
-  if (option) {
-    focusListOption(getContainerElement() ?? option.parentElement ?? option, option);
-  }
-};
-
-const onKeydown = (event: KeyboardEvent) => {
-  switch (event.key) {
-    case 'ArrowDown':
-    case 'ArrowRight':
-      moveFocus(event, 1);
-      return;
-    case 'ArrowUp':
-    case 'ArrowLeft':
-      moveFocus(event, -1);
-      return;
-    case 'Home':
-      moveFocus(event, 'first');
-      return;
-    case 'End':
-      moveFocus(event, 'last');
-      return;
-  }
-};
-
-const handleFocusin = (event: Event) => {
-  if (event instanceof FocusEvent) {
-    onFocusin(event);
-  }
-};
-
-const handleKeydown = (event: Event) => {
-  if (event instanceof KeyboardEvent) {
-    onKeydown(event);
-  }
-};
-
-onMounted(() => {
-  const container = getContainerElement();
-
-  container?.addEventListener('focusin', handleFocusin);
-  container?.addEventListener('keydown', handleKeydown);
-  void nextTick(() => {
-    const nextContainer = getContainerElement();
-    if (nextContainer) {
-      syncListOptionTabStops(nextContainer);
-    }
-  });
-});
-
-onUnmounted(() => {
-  const container = getContainerElement();
-
-  container?.removeEventListener('focusin', handleFocusin);
-  container?.removeEventListener('keydown', handleKeydown);
-});
-
-onUpdated(() => {
-  void nextTick(() => {
-    const container = getContainerElement();
-    if (container) {
-      syncListOptionTabStops(container);
-    }
-  });
-});
+useListSelectionKeyboard(getContainerElement, selectionActive);
 </script>
 
 <template>
@@ -280,39 +186,39 @@ onUpdated(() => {
   }
 
   &_style_segmented :deep(.md-list-item_in-list),
-  &_style_segmented :deep(.md-list-option_in-list) {
+  &_style_segmented :deep(.md-list-selection-item_in-list) {
     background: var(--md-sys-color-surface);
   }
 
   &_style_segmented :deep(.md-list-item_in-list:first-child),
-  &_style_segmented :deep(.md-list-option_in-list:first-child) {
+  &_style_segmented :deep(.md-list-selection-item_in-list:first-child) {
     border-start-start-radius: 16dp;
     border-start-end-radius: 16dp;
   }
 
   &_style_segmented :deep(.md-list-item_in-list:last-child),
-  &_style_segmented :deep(.md-list-option_in-list:last-child) {
+  &_style_segmented :deep(.md-list-selection-item_in-list:last-child) {
     border-end-start-radius: 16dp;
     border-end-end-radius: 16dp;
   }
 
   &_style_segmented :deep(.md-list-item_in-list:first-child:last-child),
-  &_style_segmented :deep(.md-list-option_in-list:first-child:last-child) {
+  &_style_segmented :deep(.md-list-selection-item_in-list:first-child:last-child) {
     border-radius: 16dp;
   }
 
   &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
   &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__body),
-  &_variant_baseline :deep(.md-list-option_line-count_3 .md-list-option__body),
+  &_variant_baseline :deep(.md-list-selection-item_line-count_3 .md-list-selection-item__body),
   &_variant_expressive :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
   &_variant_expressive :deep(.md-list-item_line-count_3 .md-list-item__body),
-  &_variant_expressive :deep(.md-list-option_line-count_3 .md-list-option__body) {
+  &_variant_expressive :deep(.md-list-selection-item_line-count_3 .md-list-selection-item__body) {
     align-items: flex-start;
   }
 
   &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
   &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__body),
-  &_variant_baseline :deep(.md-list-option_line-count_3 .md-list-option__body) {
+  &_variant_baseline :deep(.md-list-selection-item_line-count_3 .md-list-selection-item__body) {
     --md-private-list-item-content-padding-block: 12dp;
   }
 }

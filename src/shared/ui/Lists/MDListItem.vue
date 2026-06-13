@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useAttrs, useSlots, useTemplateRef, warn } from 'vue';
+import { computed, onMounted, ref, useAttrs, useSlots, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
+import {
+  warnListItemInsideSelectionList,
+  warnMultiActionMissingRequirements,
+  warnSingleActionMissingHandler,
+} from './listItemDevWarnings';
+import { buildListItemHostStyle, resolveListItemLineCount } from './listItemLayout';
 import { useMDListContext } from './listContext';
 
 type MDListItemMode = 'static' | 'single-action' | 'multi-action';
@@ -58,25 +64,14 @@ const selectionMode = computed(() => listContext?.selectionMode.value ?? 'none')
 const hasPrimaryAction = computed(() => props.mode !== 'static');
 const usesInternalActionSurface = computed(() => inList.value && hasPrimaryAction.value);
 
-const resolvedLineCount = computed<1 | 2 | 3>(() => {
-  if (props.lineCount) {
-    return props.lineCount;
-  }
-
-  if (hasOverline.value && hasSupportingText.value) {
-    return 3;
-  }
-
-  if (hasOverline.value || hasSupportingText.value) {
-    return 2;
-  }
-
-  return 1;
-});
+const resolvedLineCount = computed<1 | 2 | 3>(() =>
+  resolveListItemLineCount(hasOverline.value, hasSupportingText.value, props.lineCount),
+);
 
 const resolvedHeight = computed(
   () => listContext?.itemHeights.value[resolvedLineCount.value] ?? 56,
 );
+
 const rootTag = computed(() => {
   if (inList.value) {
     return listContext?.itemTag.value ?? 'div';
@@ -88,8 +83,13 @@ const rootTag = computed(() => {
 
   return props.containerTag;
 });
+
 const rootRole = computed(() => {
   if (inList.value) {
+    if (selectionMode.value !== 'none') {
+      return 'none';
+    }
+
     return rootTag.value === 'li' ? undefined : 'listitem';
   }
 
@@ -100,6 +100,7 @@ const rootRole = computed(() => {
   const explicitRole = typeof attrs.role === 'string' ? attrs.role : undefined;
   return explicitRole ?? (props.mode === 'static' ? 'listitem' : undefined);
 });
+
 const primaryActionTag = computed<'button' | 'a'>(() => (props.href ? 'a' : 'button'));
 const showVisualState = computed(() => hasPrimaryAction.value && !props.disabled);
 const buttonType = computed(() => (props.href ? undefined : props.nativeType));
@@ -122,9 +123,7 @@ const dragged = ref(false);
 const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
 
 const leadingClass = computed(() => `md-list-item__leading_type_${props.leadingType}`);
-const hostStyle = computed(() => ({
-  '--md-private-list-item-resolved-container-height': `${resolvedHeight.value}px`,
-}));
+const hostStyle = computed(() => buildListItemHostStyle(resolvedHeight.value));
 const rootClass = computed(() => ({
   'md-list-item': true,
   'md-list-item_in-list': inList.value,
@@ -218,25 +217,16 @@ if (import.meta.env.DEV) {
   onMounted(() => {
     const hasActionListener = Object.keys(attrs).some((key) => key.startsWith('onAction'));
 
-    if (props.mode === 'single-action' && !props.href && !hasActionListener) {
-      warn(
-        'MDListItem: mode="single-action" requires either an @action listener or an href. Use mode="static" for non-interactive rows.',
-      );
+    if (props.mode === 'single-action') {
+      warnSingleActionMissingHandler(hasActionListener, !!props.href);
     }
 
-    if (
-      props.mode === 'multi-action' &&
-      (!hasTrailingAction.value || (!hasActionListener && !props.href))
-    ) {
-      warn(
-        'MDListItem: mode="multi-action" requires either a real primary @action or href, plus a #trailingAction slot.',
-      );
+    if (props.mode === 'multi-action') {
+      warnMultiActionMissingRequirements(hasTrailingAction.value, hasActionListener, !!props.href);
     }
 
     if (selectionMode.value !== 'none') {
-      warn(
-        'MDListItem: rendered inside a selection list. Use MDListOption instead, which owns role=option and selection semantics.',
-      );
+      warnListItemInsideSelectionList();
     }
   });
 }

@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import MDList from './MDList.vue';
 import MDListItem from './MDListItem.vue';
-import MDListOption from './MDListOption.vue';
+import MDListSelectionItem from './MDListSelectionItem.vue';
 
 describe('MDList', () => {
   it('uses the Material variant prop instead of density naming', () => {
@@ -22,15 +22,15 @@ describe('MDList', () => {
     const onUpdateModelValue = vi.fn();
     const wrapper = mount(
       {
-        components: { MDList, MDListOption },
+        components: { MDList, MDListSelectionItem },
         template: `
           <MDList
             selection-mode="single"
             :model-value="selected"
             @update:model-value="onUpdateModelValue"
           >
-            <MDListOption label-text="One" value="one" />
-            <MDListOption label-text="Two" value="two" />
+            <MDListSelectionItem label-text="One" value="one" />
+            <MDListSelectionItem label-text="Two" value="two" />
           </MDList>
         `,
         setup: () => ({
@@ -57,10 +57,10 @@ describe('MDList', () => {
   it('keeps selection-list DOM safe when an item is missing a value', () => {
     const wrapper = mount(
       {
-        components: { MDList, MDListOption },
+        components: { MDList, MDListSelectionItem },
         template: `
           <MDList selection-mode="single">
-            <MDListOption label-text="Has value" value="two" />
+            <MDListSelectionItem label-text="Has value" value="two" />
           </MDList>
         `,
       },
@@ -77,13 +77,13 @@ describe('MDList', () => {
   it('skips disabled options when assigning tab stops and moving focus', async () => {
     const wrapper = mount(
       {
-        components: { MDList, MDListOption },
+        components: { MDList, MDListSelectionItem },
         template: `
           <MDList selection-mode="single" model-value="two">
-            <MDListOption label-text="Disabled selected" value="two" disabled />
-            <MDListOption label-text="Enabled one" value="one" />
-            <MDListOption label-text="Disabled two" value="three" disabled />
-            <MDListOption label-text="Enabled four" value="four" />
+            <MDListSelectionItem label-text="Disabled selected" value="two" disabled />
+            <MDListSelectionItem label-text="Enabled one" value="one" />
+            <MDListSelectionItem label-text="Disabled two" value="three" disabled />
+            <MDListSelectionItem label-text="Enabled four" value="four" />
           </MDList>
         `,
       },
@@ -116,11 +116,11 @@ describe('MDList', () => {
   it('leaves all options out of the tab order when every option is disabled', async () => {
     const wrapper = mount(
       {
-        components: { MDList, MDListOption },
+        components: { MDList, MDListSelectionItem },
         template: `
           <MDList selection-mode="multiple" :model-value="[]">
-            <MDListOption label-text="One" value="one" disabled />
-            <MDListOption label-text="Two" value="two" disabled />
+            <MDListSelectionItem label-text="One" value="one" disabled />
+            <MDListSelectionItem label-text="Two" value="two" disabled />
           </MDList>
         `,
       },
@@ -150,7 +150,9 @@ describe('MDList', () => {
       { attachTo: document.body },
     );
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Use MDListOption instead'));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Use MDListSelectionItem instead'),
+    );
 
     warnSpy.mockRestore();
     document.body.innerHTML = '';

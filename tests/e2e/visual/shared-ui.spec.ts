@@ -308,7 +308,7 @@ test('MDList selection uses list-level option semantics and a visible selected i
   const selectedOptions = surface.locator('[role="option"][aria-selected="true"]');
   await expect(selectedOptions).toHaveCount(3);
   await expect(
-    selectedOptions.locator('.md-list-option__selection-indicator .md-symbol'),
+    selectedOptions.locator('.md-list-selection-item__selection-indicator .md-symbol'),
   ).toHaveCount(3);
 });
 

@@ -177,7 +177,21 @@ describe('MDListItem', () => {
 
     mountListItem({}, { inList: true, listProps: { selectionMode: 'single' } });
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Use MDListOption instead'));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Use MDListSelectionItem instead'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('renders role=none instead of listitem when placed inside a selection list to prevent invalid listbox>listitem DOM', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mountListItem({}, { inList: true, listProps: { selectionMode: 'single' } });
+    const item = wrapper.get('.md-list-item');
+
+    expect(item.attributes('role')).toBe('none');
+    expect(item.attributes('aria-selected')).toBeUndefined();
 
     warnSpy.mockRestore();
   });

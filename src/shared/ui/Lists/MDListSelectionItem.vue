@@ -3,6 +3,7 @@ import { computed, onMounted, useSlots, useTemplateRef, warn } from 'vue';
 import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useMDListContext, type MDListSelectionValue } from './listContext';
+import { buildListItemHostStyle, resolveListItemLineCount } from './listItemLayout';
 
 type MDListLeadingType = 'icon' | 'avatar' | 'media' | 'control';
 
@@ -37,21 +38,9 @@ const hasOverline = computed(() => !!slots.overline || !!props.overline);
 const hasSupportingText = computed(() => !!slots.supportingText || !!props.supportingText);
 const hasTrailing = computed(() => !!slots.trailing);
 
-const resolvedLineCount = computed<1 | 2 | 3>(() => {
-  if (props.lineCount) {
-    return props.lineCount;
-  }
-
-  if (hasOverline.value && hasSupportingText.value) {
-    return 3;
-  }
-
-  if (hasOverline.value || hasSupportingText.value) {
-    return 2;
-  }
-
-  return 1;
-});
+const resolvedLineCount = computed<1 | 2 | 3>(() =>
+  resolveListItemLineCount(hasOverline.value, hasSupportingText.value, props.lineCount),
+);
 
 const resolvedHeight = computed(
   () => listContext?.itemHeights.value[resolvedLineCount.value] ?? 56,
@@ -63,17 +52,15 @@ const isDisabled = computed(() => props.disabled);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { hover, focused, durationPressedState } = useStateLayer(rootEl, {});
 
-const leadingClass = computed(() => `md-list-option__leading_type_${props.leadingType}`);
-const hostStyle = computed(() => ({
-  '--md-private-list-item-resolved-container-height': `${resolvedHeight.value}px`,
-}));
+const leadingClass = computed(() => `md-list-selection-item__leading_type_${props.leadingType}`);
+const hostStyle = computed(() => buildListItemHostStyle(resolvedHeight.value));
 const rootClass = computed(() => ({
-  'md-list-option': true,
-  'md-list-option_in-list': true,
-  'md-list-option_line-count_1': resolvedLineCount.value === 1,
-  'md-list-option_line-count_2': resolvedLineCount.value === 2,
-  'md-list-option_line-count_3': resolvedLineCount.value === 3,
-  'md-list-option_selected': isSelected.value,
+  'md-list-selection-item': true,
+  'md-list-selection-item_in-list': true,
+  'md-list-selection-item_line-count_1': resolvedLineCount.value === 1,
+  'md-list-selection-item_line-count_2': resolvedLineCount.value === 2,
+  'md-list-selection-item_line-count_3': resolvedLineCount.value === 3,
+  'md-list-selection-item_selected': isSelected.value,
   'md-state_hover': !isDisabled.value && hover.value,
   'md-state_focused': !isDisabled.value && focused.value,
   'md-state_pressed': !isDisabled.value && durationPressedState.value,
@@ -81,8 +68,8 @@ const rootClass = computed(() => ({
 }));
 
 const supportingTextClass = computed(() => ({
-  'md-list-option__supporting-text_two-line': resolvedLineCount.value === 2,
-  'md-list-option__supporting-text_three-line': resolvedLineCount.value === 3,
+  'md-list-selection-item__supporting-text_two-line': resolvedLineCount.value === 2,
+  'md-list-selection-item__supporting-text_three-line': resolvedLineCount.value === 3,
 }));
 
 const onSelect = () => {
@@ -103,10 +90,10 @@ useRipple(computed(() => (!isDisabled.value ? rootEl.value : undefined)));
 if (import.meta.env.DEV) {
   onMounted(() => {
     if (!listContext) {
-      warn('MDListOption: must be rendered inside an MDList with selectionMode set.');
+      warn('MDListSelectionItem: must be rendered inside an MDList with selectionMode set.');
     } else if (listContext.selectionMode.value === 'none') {
       warn(
-        'MDListOption: parent MDList has selectionMode="none". Set selectionMode to "single" or "multiple".',
+        'MDListSelectionItem: parent MDList has selectionMode="none". Set selectionMode to "single" or "multiple".',
       );
     }
   });
@@ -122,7 +109,7 @@ if (import.meta.env.DEV) {
     role="option"
     :aria-selected="String(isSelected)"
     :aria-disabled="isDisabled ? 'true' : undefined"
-    data-md-list-option="true"
+    data-md-list-selection-item="true"
     :tabindex="-1"
     @click="onSelect"
     @keydown="onKeydown"
@@ -134,32 +121,32 @@ if (import.meta.env.DEV) {
       :disabled="isDisabled"
     />
 
-    <div class="md-list-option__body">
-      <span class="md-list-option__selection-indicator" aria-hidden="true">
+    <div class="md-list-selection-item__body">
+      <span class="md-list-selection-item__selection-indicator" aria-hidden="true">
         <MDSymbol v-if="isSelected" name="check" />
       </span>
 
-      <span v-if="hasLeading" class="md-list-option__leading" :class="leadingClass">
+      <span v-if="hasLeading" class="md-list-selection-item__leading" :class="leadingClass">
         <slot name="leading" />
       </span>
 
-      <span class="md-list-option__content">
-        <span v-if="hasOverline" class="md-list-option__overline">
+      <span class="md-list-selection-item__content">
+        <span v-if="hasOverline" class="md-list-selection-item__overline">
           <slot name="overline">{{ overline }}</slot>
         </span>
 
-        <span class="md-list-option__label-text">{{ labelText }}</span>
+        <span class="md-list-selection-item__label-text">{{ labelText }}</span>
 
         <span
           v-if="hasSupportingText"
-          class="md-list-option__supporting-text"
+          class="md-list-selection-item__supporting-text"
           :class="supportingTextClass"
         >
           <slot name="supportingText">{{ supportingText }}</slot>
         </span>
       </span>
 
-      <span v-if="hasTrailing" class="md-list-option__trailing">
+      <span v-if="hasTrailing" class="md-list-selection-item__trailing">
         <slot name="trailing" />
       </span>
     </div>
@@ -167,7 +154,7 @@ if (import.meta.env.DEV) {
 </template>
 
 <style scoped>
-.md-list-option {
+.md-list-selection-item {
   --md-comp-list-item-container-color: var(--md-sys-color-surface);
   --md-comp-list-item-disabled-label-text-color: rgb(
     from var(--md-sys-color-on-surface) r g b / 0.38
