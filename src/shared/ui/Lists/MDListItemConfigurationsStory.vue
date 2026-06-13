@@ -7,6 +7,8 @@ import MDListItem from './MDListItem.vue';
 const rootAttrs = {
   'data-testid': 'visual-md-list-item-configurations',
 };
+
+const onAction = () => {};
 </script>
 
 <template>
@@ -68,6 +70,7 @@ const rootAttrs = {
       mode="multi-action"
       label-text="Trailing action"
       supporting-text="Secondary actions are separated from the primary action."
+      @action="onAction"
     >
       <template #trailingAction>
         <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />

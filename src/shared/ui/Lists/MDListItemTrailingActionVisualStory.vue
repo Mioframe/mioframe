@@ -5,6 +5,8 @@ import MDListItem from './MDListItem.vue';
 const rootAttrs = {
   'data-testid': 'visual-md-list-item-trailing-action',
 };
+
+const onAction = () => {};
 </script>
 
 <template>
@@ -13,6 +15,7 @@ const rootAttrs = {
       mode="multi-action"
       label-text="Draft database"
       supporting-text="Trailing action stays compact"
+      @action="onAction"
     >
       <template #trailingAction>
         <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
@@ -22,6 +25,7 @@ const rootAttrs = {
       mode="multi-action"
       label-text="Pinned view"
       supporting-text="Outlined action still matches develop layout"
+      @action="onAction"
     >
       <template #trailingAction>
         <MDIconButton tooltip="Edit view" color="outlined" md-symbol-name="edit" />

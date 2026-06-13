@@ -23,8 +23,6 @@ const slots = defineSlots<{
 }>();
 
 const listProp = computed(() => list);
-const itemContainerTag = computed(() => (itemMode === 'static' ? 'li' : 'div'));
-const containerTag = computed(() => (itemContainerTag.value === 'li' ? 'ul' : 'div'));
 
 const onActionItem = (item: T, index: number) => {
   emit('actionItem', { item, index });
@@ -32,13 +30,12 @@ const onActionItem = (item: T, index: number) => {
 </script>
 
 <template>
-  <MDListContainer :is="containerTag" :type="type" class="md-list">
-    <TransitionGroup name="md-list">
+  <MDListContainer :type="type" class="md-list">
+    <TransitionGroup tag="div" name="md-list">
       <MDListItem
         v-for="(item, index) in listProp"
         :key="item.key"
         :mode="itemMode"
-        :container-tag="itemContainerTag"
         :label-text="item.labelText"
         :supporting-text="item.supportingText"
         @action="() => onActionItem(item, index)"

@@ -14,14 +14,14 @@ const slots = defineSlots<{
 </script>
 
 <template>
-  <MDListItem mode="multi-action" :label-text="props.name" class="directory-content-entry">
+  <MDListItem mode="static" :label-text="props.name" class="directory-content-entry">
     <template #leading>
       <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 
       <MDSymbol v-else name="draft" />
     </template>
 
-    <template v-if="slots.trailingAction" #trailingAction>
+    <template v-if="slots.trailingAction" #trailing>
       <slot name="trailingAction" />
     </template>
   </MDListItem>

@@ -29,7 +29,9 @@ const onListItemClick = () => {
 
 <template>
   <MDListItem
-    :mode="slots.trailingAction ? 'multi-action' : isButton ? 'single-action' : 'static'"
+    :mode="
+      isButton && slots.trailingAction ? 'multi-action' : isButton ? 'single-action' : 'static'
+    "
     :label-text="name"
     :supporting-text="supportingText"
     @action="onListItemClick"
@@ -42,7 +44,11 @@ const onListItemClick = () => {
       <MDSymbol v-else name="insert_page_break" />
     </template>
 
-    <template v-if="!!slots.trailingAction" #trailingAction>
+    <template v-if="isButton && !!slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" :entry="name" />
+    </template>
+
+    <template v-else-if="!isButton && !!slots.trailingAction" #trailing>
       <slot name="trailingAction" :entry="name" />
     </template>
   </MDListItem>

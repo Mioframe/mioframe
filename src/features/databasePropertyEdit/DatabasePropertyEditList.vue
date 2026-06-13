@@ -24,10 +24,10 @@ const propertyCollection = useWrapStrictRecord(() => properties);
     <MDListItem
       v-for="[propertyId, property] in propertyCollection?.entries"
       :key="propertyId"
-      :mode="slots.trailingAction ? 'multi-action' : 'static'"
+      mode="static"
       :label-text="property.name"
     >
-      <template v-if="!!slots.trailingAction" #trailingAction>
+      <template v-if="!!slots.trailingAction" #trailing>
         <slot name="trailingAction" :property="property" :property-id="propertyId" />
       </template>
     </MDListItem>

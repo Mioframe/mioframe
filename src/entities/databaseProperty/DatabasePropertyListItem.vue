@@ -26,12 +26,8 @@ const supportingText = computed(() => property.value?.type);
 </script>
 
 <template>
-  <MDListItem
-    :mode="slots.trailingAction ? 'multi-action' : 'static'"
-    :label-text="headline"
-    :supporting-text="supportingText"
-  >
-    <template v-if="!!slots.trailingAction" #trailingAction>
+  <MDListItem mode="static" :label-text="headline" :supporting-text="supportingText">
+    <template v-if="!!slots.trailingAction" #trailing>
       <slot name="trailingAction" :property="property" />
     </template>
   </MDListItem>

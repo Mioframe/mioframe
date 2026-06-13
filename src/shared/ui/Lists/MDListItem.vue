@@ -116,16 +116,6 @@ const interactiveAriaSelected = computed(() => {
 
   return props.selected ? 'true' : 'false';
 });
-const minHeight = computed(() => {
-  switch (resolvedLineCount.value) {
-    case 3:
-      return '88dp';
-    case 2:
-      return '72dp';
-    default:
-      return '56dp';
-  }
-});
 const supportingTextClass = computed(() => ({
   'md-list-item__supporting-text_one-line': resolvedLineCount.value === 1,
   'md-list-item__supporting-text_two-line': resolvedLineCount.value === 2,
@@ -202,7 +192,6 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     ref="rootEl"
     v-bind="rootAttrs"
     class="md-list-item"
-    :style="{ '--md-comp-list-item-container-height': minHeight }"
     :role="rootRole"
     :draggable="rootDraggable"
     :class="{
@@ -371,6 +360,7 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
   --md-comp-list-item-container-height: 56dp;
+  --md-comp-list-container-shape: 0dp;
   --md-comp-list-item-container-shape: 0dp;
   --md-comp-list-item-leading-space: 16dp;
   --md-comp-list-item-trailing-space: 16dp;
@@ -395,22 +385,22 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
   &:first-child {
     border-top-right-radius: max(
       var(--md-comp-list-item-container-shape),
-      var(--md-list-container-border-radius, 0dp)
+      var(--md-comp-list-container-shape, 0dp)
     );
     border-top-left-radius: max(
       var(--md-comp-list-item-container-shape),
-      var(--md-list-container-border-radius, 0dp)
+      var(--md-comp-list-container-shape, 0dp)
     );
   }
 
   &:last-child {
     border-bottom-right-radius: max(
       var(--md-comp-list-item-container-shape),
-      var(--md-list-container-border-radius, 0dp)
+      var(--md-comp-list-container-shape, 0dp)
     );
     border-bottom-left-radius: max(
       var(--md-comp-list-item-container-shape),
-      var(--md-list-container-border-radius, 0dp)
+      var(--md-comp-list-container-shape, 0dp)
     );
   }
 
@@ -565,6 +555,14 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     &_three-line {
       -webkit-line-clamp: 2;
     }
+  }
+
+  &_line-count_2 {
+    --md-comp-list-item-container-height: 72dp;
+  }
+
+  &_line-count_3 {
+    --md-comp-list-item-container-height: 88dp;
   }
 
   &_mode_static,

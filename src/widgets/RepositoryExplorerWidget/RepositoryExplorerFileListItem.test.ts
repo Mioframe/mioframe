@@ -213,5 +213,25 @@ describe('RepositoryExplorerFileListItem', () => {
 
     expect(capturedShowDocumentActions.at(-1)).toBe(false);
   });
+
+  it('does not create a primary click target for non-openable file entries that have manage actions', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({ entryType: FSNodeType.File, name: 'file.txt' });
+
+    expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(true);
+    expect(wrapper.element.tagName.toLowerCase()).not.toBe('button');
+    expect(wrapper.find('button:not([data-testid="manage-button"])').exists()).toBe(false);
+  });
+
+  it('does not emit click when a non-openable file entry with manage actions is activated', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({ entryType: FSNodeType.File, name: 'file.txt' });
+
+    await wrapper.trigger('click');
+
+    expect(wrapper.emitted('click')).toBeUndefined();
+  });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

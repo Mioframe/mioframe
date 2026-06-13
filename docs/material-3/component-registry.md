@@ -49,10 +49,13 @@ Rows below are intentionally conservative. `partial` does not mean Material 3 al
 - Floating action buttons: `MDFab` and `MDFabContainer` are `partial`. Include in Buttons pilot. Separate Material FAB behavior from project placement helpers.
 - Lists: `MDList`, `MDListItem`, and `MDListContainer` are `partial`.
   Material docs checked: `components/lists/specs.md`, `components/lists/guidelines.md`, `components/lists/accessibility.md`, and `foundations/design-tokens/overview.md`.
-  Token status: `MDListItem` uses `--md-comp-list-item-*`; `MDListContainer` remains a light structural wrapper.
-  Public API status: explicit `static`, `single-action`, `multi-action`, `single-select`, and `multi-select` modes with Material anatomy slot names.
-  Storybook status: `Material 3/Components/Lists/MDListItem` documents configurations, states, and multi-action layout.
-  Visual or browser verification status: focused visual/browser checks still required; local run can be blocked by the active verification lock.
+  Token status: `MDListItem` uses `--md-comp-list-item-*`; `MDListContainer` uses `--md-comp-list-container-shape`. Old non-Material tokens `--md-list-container-border-radius` and `--md-list-item-border-radius` have been removed.
+  Public API status: explicit `static`, `single-action`, `multi-action`, `single-select`, and `multi-select` modes with Material anatomy slot names. `multi-action` requires a real primary action; static rows with trailing controls use `static` mode with the `trailing` slot.
+  Interaction contract status: `multi-action` is no longer inferred from the presence of a trailing slot. Consumers (`FSEntryMDListItem`, `DatabasePropertyListItem`, `DirectoryContentEntry`, `DatabasePropertyEditList`) have been corrected to use `static` + `trailing` slot for rows with no primary action.
+  DOM structure status: `MDList` no longer produces `ul > span > li` invalid markup; uses `div[role=list]` + `div[role=listitem]` with ARIA semantics.
+  CSS unit status: `dp` units are used only in PostCSS-processed scoped styles; inline style `dp` values have been replaced with CSS class-based overrides.
+  Storybook status: `Material 3/Components/Lists/MDListItem` documents configurations, states, multi-action layout, and selection. All `multi-action` stories now include a primary `@action` handler.
+  Visual or browser verification status: `Configurations`, `VisualStates`, `VisualInteractionStates`, and `TrailingActionLayout` stories are tagged `visual`. Snapshot baselines require regeneration via `pnpm test:visual:update` because the `dp`-unit height fix changes 2-line and 3-line item heights from the previous broken values.
   Deviations or unsupported features: expressive segmented list styling and shared roving-keyboard handling for multi-action rows are still unsupported.
 - Dialogs: shared `Dialog/*` surfaces are `partial`. Verify modal semantics, actions, focus, scroll, adaptive layout, and destructive flows.
 - Text fields: `MDTextField` and `MDFieldContainer` are `partial`. Verify labels, supporting/error text, value contract, slots, and states.

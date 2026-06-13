@@ -198,6 +198,14 @@ test('MDListItem trailing action story avoids nested native buttons', async ({ p
   await expect(nestedButtons).toHaveCount(0);
 });
 
+test('MDListItem configurations match baseline', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+  const surface = page.getByTestId('visual-md-list-item-configurations');
+
+  await expect(surface).toHaveScreenshot('md-list-item-configurations.png');
+});
+
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({
   page,
 }) => {
@@ -334,23 +342,6 @@ test('MDIconButton default small layout footprint remains 40dp', async ({ page }
 
   expect(box?.width).toBe(40);
   expect(box?.height).toBe(40);
-});
-
-test('MDListItem trailing actions keep the compact icon-button footprint', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdlistitem--trailing-action-layout');
-
-  const buttons = page
-    .getByTestId('visual-md-list-item-trailing-action')
-    .locator('.md-list-item__trailing-icon button');
-  const count = await buttons.count();
-  const boxes = await Promise.all(
-    Array.from({ length: count }, (_, index) => buttons.nth(index).boundingBox()),
-  );
-
-  for (const box of boxes) {
-    expect(box?.width).toBe(40);
-    expect(box?.height).toBe(40);
-  }
 });
 
 test('MDStateLayer visual states match baseline', async ({ page }) => {

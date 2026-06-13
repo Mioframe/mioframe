@@ -17,7 +17,7 @@ defineSlots<{
     :class="{
       'md-list-container_grid': type === 'grid',
     }"
-    role="list"
+    :role="is !== 'ul' ? 'list' : undefined"
   >
     <TransitionGroup v-if="transition" name="transition">
       <slot />
@@ -29,12 +29,12 @@ defineSlots<{
 
 <style scoped>
 .md-list-container {
-  --md-list-container-border-radius: 16px;
+  --md-comp-list-container-shape: 16px;
 
   list-style-type: none;
   display: flex;
   flex-direction: column;
-  border-radius: var(--md-list-container-border-radius, 0px);
+  border-radius: var(--md-comp-list-container-shape, 0px);
 
   &_grid {
     display: grid;
@@ -42,8 +42,7 @@ defineSlots<{
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     grid-auto-rows: min-content;
 
-    --md-list-container-border-radius: 8px;
-    --md-list-item-border-radius: 8px;
+    --md-comp-list-container-shape: 8px;
   }
 
   :deep() {
