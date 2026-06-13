@@ -67,33 +67,29 @@ Material cache confirms lists help users find and act on items; items should be 
 
 Current state:
 
-- `MDListItem` uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, `trailingAction`, and `selectionControl`;
-- list modes are explicit through `static`, `single-action`, `multi-action`, `single-select`, and `multi-select`;
+- `MDList` now owns list style and density through `listStyle: 'standard' | 'segmented'` and `density: 'baseline' | 'expressive'`;
+- `MDListContainer` is reduced to a thin compatibility alias over `MDList`, rather than a separate generic layout owner;
+- `MDListItem` uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, and `trailingAction`;
+- list modes are explicit through `static`, `single-action`, and `multi-action`;
 - `single-action` is enforced: a dev-mode warning fires when `mode="single-action"` is used without an `@action` listener and without an `href`;
 - `multi-action` is enforced: a dev-mode warning fires when `mode="multi-action"` is used without a `#trailingAction` slot;
 - static rows with a trailing control use `static` mode and the `#trailing` slot; they do not expose a fake primary action surface;
-- multi-action rows render a separate `button`/`a` primary-action surface plus a trailing-action surface; no secondary controls nest inside the primary-action element;
-- all known consumers corrected: `FSEntryMDListItem`, `DocumentMDListItem`, `DatabaseViewListEdit`, `DatabasePropertyListItem`, `DirectoryContentEntry`, `DatabasePropertyEditList`;
-- public tokens use `--md-comp-list-item-*`; old non-Material tokens migrated; `MDListContainer` defaults `--md-comp-list-container-shape` to `0dp` (Material baseline standard = square corners); consumers needing a different container shape set their own `--md-comp-list-container-shape`;
-- `MDListItem` dead first/last-child corner-radius rules removed; they always evaluated to `0dp` under the baseline default and implied a segmented-style contract that is not implemented;
-- `MDListContainer` and `MDList` `type="list"|"grid"` replaced with `layout?: 'column' | 'grid'`; `grid` is project-specific layout, not a Material list style;
-- `MDListContainer` scoped CSS uses `dp` authoring units throughout;
-- `role="listitem"` is now applied explicitly to all `MDListItem` root elements when the root tag is not `li`; all modes (static, single-action as `button`/`a`, multi-action, select) produce a valid `listitem` in the rendered DOM;
-- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels;
-- `Configurations` story includes all supported configurations; interaction states story covers single-action (full-row state layer) and multi-action (primary-action-bounded state layer); supporting text describes surface coverage, not internal opacity values;
+- inside `MDList`, action rows render a stable listitem wrapper plus an internal button/link primary action surface, so the final list contract is no longer `button[role=listitem]` or `a[role=listitem]`;
+- segmented expressive styling is implemented in the shared primitive, including grouped container shape, inter-item gap, and first/last item rounding;
+- direct consumers corrected to choose list style through `MDList`, including repository explorer sections, local file-system lists, Google session lists, database property lists, and database view reordering;
+- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic configuration, state, trailing-action, and DOM-contract stories; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels;
+- `Configurations` story includes baseline standard and expressive segmented examples; interaction states story covers single-action (full-row state layer) and multi-action (primary-action-bounded state layer);
 - trailing action target size verified with a Playwright browser assertion against the `.md-icon-button__target` span (≥48×48 px);
-- a dev-mode warning fires when `selected=true` is used without a `#selectionControl` slot (color-only selected state);
-- unit tests cover mode separation, line-count rendering, listitem role in all modes, li-tag implicit-role preservation, disabled behavior, single-action warning, and corrected consumer wrappers.
+- browser-level DOM tests cover static, single-action, multi-action, and segmented lists; unit tests cover mode separation, line-count rendering, li-tag list semantics, and invalid combination warnings.
 
 Gaps:
 
-- selected state uses color only; no non-color indicator exists; list-level selection semantics (`listbox`, `option` roles, roving focus) are not implemented; `selected` must not be presented as a fully accessible selected state;
-- expressive/segmented list style (rounded corners, gaps between items, highlighted selection states) is not implemented; the supported style is baseline standard (square corners only);
+- full list-level selection semantics (`listbox`, `option`, roving focus, selected-state indicators beyond color) are not implemented and must not be presented as supported;
 - multi-action keyboard roving between primary and secondary actions is not implemented as a shared contract;
-- `MDListContainer` and `MDList` do not expose listbox labeling helpers or a richer selection-container API;
+- `MDList` does not yet expose listbox labeling helpers or a richer selection-container API;
 - visual snapshot baselines must be regenerated after the shape and story changes in this pass.
 
-Verdict: second migration family after Buttons. Remains `partial` until selection semantics, segmented variant, visual snapshot regeneration, and full accessibility verification are complete.
+Verdict: second migration family after Buttons. Remains `partial` until full selection semantics, multi-action keyboard traversal, visual snapshot regeneration, and full accessibility verification are complete.
 
 ## Dialogs: `DialogForm`
 

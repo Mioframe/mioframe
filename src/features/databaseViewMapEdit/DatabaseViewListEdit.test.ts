@@ -43,7 +43,7 @@ describe('DatabaseViewListEdit', () => {
   it('renders single-action rows when no trailingAction slot is provided', () => {
     const wrapper = mountEdit();
 
-    expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(false);
+    expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(true);
     expect(wrapper.find('.md-list-item__trailing-action').exists()).toBe(false);
     expect(wrapper.find('button').exists()).toBe(true);
   });

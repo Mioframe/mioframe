@@ -2,7 +2,6 @@
 import type { MaybeElement } from '@vueuse/core';
 import { computed, nextTick, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { tryOnBeforeUnmount, unrefElement, useEventListener } from '@vueuse/core';
-import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription } from './types';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
@@ -170,18 +169,28 @@ useOnBackNavigationStackedWhen(showModel, () => {
     :disabled="disabledTeleport"
     :container="listContainerRef"
   >
-    <MDListContainer
-      is="div"
-      v-if="showModel"
+    <TransitionGroup
+      v-if="showModel && transition"
       ref="listContainerRef"
+      tag="div"
       class="md md-menu"
       :style="containerStyle"
-      :transition="transition"
       :aria-label="ariaLabel"
       :role="role"
     >
       <slot />
-    </MDListContainer>
+    </TransitionGroup>
+
+    <div
+      v-else-if="showModel"
+      ref="listContainerRef"
+      class="md md-menu"
+      :style="containerStyle"
+      :aria-label="ariaLabel"
+      :role="role"
+    >
+      <slot />
+    </div>
   </TeleportContainer>
 </template>
 
@@ -198,11 +207,12 @@ useOnBackNavigationStackedWhen(showModel, () => {
   display: flex;
   flex-direction: column;
 
-  --md-comp-list-container-shape: 0dp;
   --md-comp-list-item-horizontal-padding: 12dp;
-  --md-comp-list-item-trailing-end-padding: 12dp;
-  --md-comp-list-item-container-height: 48dp;
+  --md-list-item-padding-inline: 12dp;
+  --md-list-item-padding-inline-end: 12dp;
+  --md-list-item-height: 48px;
   --md-comp-list-item-container-color: var(--md-container-color);
-  --md-comp-list-item-container-shape: 0dp;
+  --md-list-item-wrapper-shape: 0dp;
+  --md-list-item-action-shape: 0dp;
 }
 </style>

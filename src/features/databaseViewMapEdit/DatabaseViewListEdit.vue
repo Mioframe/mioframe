@@ -8,7 +8,7 @@ import {
 } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { useReorderSurface, vReorderItem } from '@shared/lib/sortable';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs, useTemplateRef } from 'vue';
 
 const props = defineProps<{
@@ -74,7 +74,13 @@ const onClickView = (id: DatabaseViewId) => {
 </script>
 
 <template>
-  <MDListContainer ref="viewListEl" transition class="db-view-map-edit">
+  <MDList
+    ref="viewListEl"
+    density="expressive"
+    list-style="segmented"
+    transition
+    class="db-view-map-edit"
+  >
     <MDListItem
       v-for="[id, view] in orderedViewList"
       :key="id"
@@ -96,5 +102,5 @@ const onClickView = (id: DatabaseViewId) => {
         <slot name="trailingAction" :view-id="id" />
       </template>
     </MDListItem>
-  </MDListContainer>
+  </MDList>
 </template>

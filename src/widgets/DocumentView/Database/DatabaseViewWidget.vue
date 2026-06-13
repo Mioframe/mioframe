@@ -245,9 +245,5 @@ const onUpdatedEditItemDialog = () => {
   &__body {
     padding: 16px;
   }
-
-  &__property-list {
-    --md-comp-list-container-shape: 16dp;
-  }
 }
 </style>

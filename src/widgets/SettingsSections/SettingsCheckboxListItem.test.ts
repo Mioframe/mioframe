@@ -46,7 +46,7 @@ vi.mock('@shared/ui/Lists', () => ({
     ) {
       return () =>
         h(
-          props.mode === 'multi-select' ? 'button' : 'div',
+          props.mode === 'single-action' ? 'button' : 'div',
           {
             ...attrs,
             'data-line-count': props.lineCount,
@@ -55,7 +55,7 @@ vi.mock('@shared/ui/Lists', () => ({
               if (!props.disabled) emit('action', e);
             },
           },
-          [h('span', props.labelText), slots.selectionControl?.()],
+          [h('span', props.labelText), slots.trailing?.()],
         );
     },
   },

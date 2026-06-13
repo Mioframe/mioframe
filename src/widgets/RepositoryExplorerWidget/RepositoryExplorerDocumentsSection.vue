@@ -5,7 +5,7 @@ import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { computed, shallowRef, toRefs } from 'vue';
 
@@ -82,9 +82,10 @@ const emptySupportingText = computed(() => {
       />
     </div>
 
-    <MDListContainer
-      is="div"
+    <MDList
       v-if="documentIds.length > 0"
+      density="expressive"
+      list-style="segmented"
       class="repository-explorer-documents-section__list"
     >
       <CFRDocumentMDListItem
@@ -100,7 +101,7 @@ const emptySupportingText = computed(() => {
           <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />
         </template>
       </CFRDocumentMDListItem>
-    </MDListContainer>
+    </MDList>
 
     <MDEmptyState
       v-else-if="emptyHeadline"
@@ -155,11 +156,6 @@ const emptySupportingText = computed(() => {
     line-height: var(--md-sys-typescale-body-small-line-height);
     letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
-
-  &__list-item {
-    --md-comp-list-item-container-shape: 8dp;
-  }
-
   &__empty-state {
     padding: 0 16px;
   }

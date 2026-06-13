@@ -27,7 +27,7 @@ const onChange = () => {
 
 <template>
   <MDListItem
-    mode="multi-select"
+    mode="single-action"
     role="checkbox"
     :label-text="headline"
     :supporting-text="supportingText"
@@ -39,7 +39,7 @@ const onChange = () => {
     :aria-busy="loading ? 'true' : undefined"
     @action="onChange"
   >
-    <template #selectionControl>
+    <template #trailing>
       <MDCircularProgressIndicator v-if="loading" :size="24" />
       <MDCheckbox v-else presentation :model-value="checked" :disabled="disabled" />
     </template>

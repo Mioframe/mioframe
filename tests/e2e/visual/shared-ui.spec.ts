@@ -167,7 +167,7 @@ test('MDExtendedFab visual states match baseline', async ({ page }) => {
 test('MDListItem visual states match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
 
-  const surface = page.getByTestId('visual-md-list-item-states');
+  const surface = page.getByTestId('visual-md-list-states');
 
   await expect(surface).toHaveScreenshot('md-list-item-states.png');
 });
@@ -175,7 +175,7 @@ test('MDListItem visual states match baseline', async ({ page }) => {
 test('MDListItem interaction states match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
 
-  const surface = page.getByTestId('visual-md-list-item-interaction-states');
+  const surface = page.getByTestId('visual-md-list-interaction-states');
 
   await expect(surface).toHaveScreenshot('md-list-item-interaction-states.png');
 });
@@ -183,7 +183,7 @@ test('MDListItem interaction states match baseline', async ({ page }) => {
 test('MDListItem trailing action layout matches baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
 
-  const surface = page.getByTestId('visual-md-list-item-trailing-action');
+  const surface = page.getByTestId('visual-md-list-trailing-action');
 
   await expect(surface).toHaveScreenshot('md-list-item-trailing-action.png');
 });
@@ -191,9 +191,7 @@ test('MDListItem trailing action layout matches baseline', async ({ page }) => {
 test('MDListItem trailing action story avoids nested native buttons', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
 
-  const nestedButtons = page
-    .getByTestId('visual-md-list-item-trailing-action')
-    .locator('button button');
+  const nestedButtons = page.getByTestId('visual-md-list-trailing-action').locator('button button');
 
   await expect(nestedButtons).toHaveCount(0);
 });
@@ -205,7 +203,7 @@ test('MDListItem trailing action icon buttons meet the Material 48dp minimum tar
 
   // The visible button element may be smaller than 48px; the interactive
   // target is the .md-icon-button__target span that expands the hit area.
-  const surface = page.getByTestId('visual-md-list-item-trailing-action');
+  const surface = page.getByTestId('visual-md-list-trailing-action');
   const targets = surface.locator('.md-list-item__trailing-action .md-icon-button__target');
   const count = await targets.count();
 
@@ -233,9 +231,38 @@ test('MDListItem trailing action icon buttons meet the Material 48dp minimum tar
 test('MDListItem configurations match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
 
-  const surface = page.getByTestId('visual-md-list-item-configurations');
+  const surface = page.getByTestId('visual-md-list-configurations');
 
   await expect(surface).toHaveScreenshot('md-list-item-configurations.png');
+});
+
+test('MDList DOM contract keeps list semantics and separate action surfaces', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--dom-contract');
+
+  await expect(page.locator('#dom-static-list')).toHaveAttribute('role', 'list');
+  await expect(page.locator('#dom-static-item')).toHaveAttribute('role', 'listitem');
+  await expect(page.locator('#dom-static-item button')).toHaveCount(0);
+
+  await expect(page.locator('#dom-single-item')).toHaveAttribute('role', 'listitem');
+  await expect(page.locator('#dom-single-item .md-list-item__primary-action')).toHaveCount(1);
+
+  await expect(page.locator('#dom-multi-item')).toHaveAttribute('role', 'listitem');
+  await expect(page.locator('#dom-multi-item .md-list-item__primary-action')).toHaveCount(1);
+  await expect(page.locator('#dom-multi-item .md-list-item__trailing-action')).toHaveCount(1);
+  await expect(page.locator('#dom-multi-item button button')).toHaveCount(0);
+});
+
+test('MDList segmented style rounds the first and last item wrappers', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--dom-contract');
+
+  const first = page.locator('#dom-segmented-list .md-list-item').first();
+  const last = page.locator('#dom-segmented-list .md-list-item').last();
+
+  const firstRadius = await first.evaluate((node) => getComputedStyle(node).borderTopLeftRadius);
+  const lastRadius = await last.evaluate((node) => getComputedStyle(node).borderBottomRightRadius);
+
+  expect(firstRadius).toBe('16px');
+  expect(lastRadius).toBe('16px');
 });
 
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({

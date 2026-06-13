@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useAttrs, useTemplateRef, warn } from 'vue';
+import {
+  computed,
+  getCurrentInstance,
+  onMounted,
+  ref,
+  useAttrs,
+  useSlots,
+  useTemplateRef,
+  warn,
+} from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
+import { useMDListContext } from './listContext';
 
-type MDListItemMode =
-  | 'static'
-  | 'single-action'
-  | 'multi-action'
-  | 'single-select'
-  | 'multi-select';
+type MDListItemMode = 'static' | 'single-action' | 'multi-action';
+type MDListLeadingType = 'icon' | 'avatar' | 'media' | 'control';
 
 defineOptions({
   inheritAttrs: false,
@@ -15,154 +21,164 @@ defineOptions({
 
 const props = withDefaults(
   defineProps<{
-    labelText: string;
-    supportingText?: string | undefined;
-    overline?: string | undefined;
-    lineCount?: 1 | 2 | 3 | undefined;
-    mode?: MDListItemMode | undefined;
     containerTag?: 'div' | 'li' | undefined;
-    href?: string | undefined;
-    nativeType?: 'button' | 'submit' | 'reset' | undefined;
-    selected?: boolean | undefined;
     disabled?: boolean | undefined;
     draggable?: boolean | undefined;
-    selectionControlPosition?: 'leading' | 'trailing' | undefined;
+    href?: string | undefined;
+    labelText: string;
+    leadingType?: MDListLeadingType | undefined;
+    lineCount?: 1 | 2 | 3 | undefined;
+    mode?: MDListItemMode | undefined;
+    nativeType?: 'button' | 'submit' | 'reset' | undefined;
+    overline?: string | undefined;
+    selected?: boolean | undefined;
+    supportingText?: string | undefined;
   }>(),
   {
-    mode: 'static',
     containerTag: 'div',
+    leadingType: 'icon',
+    mode: 'static',
     nativeType: 'button',
-    selectionControlPosition: 'trailing',
   },
 );
 
 const emit = defineEmits<{
-  action: [e: MouseEvent];
+  action: [event: MouseEvent];
 }>();
 
-const slots = defineSlots<{
+defineSlots<{
   leading: () => unknown;
   overline: () => unknown;
   supportingText: () => unknown;
   trailing: () => unknown;
   trailingAction: () => unknown;
-  selectionControl: () => unknown;
 }>();
 
+const slots = useSlots();
 const attrs = useAttrs();
+const listContext = useMDListContext();
+const instance = getCurrentInstance();
 
-const isSelectionMode = computed(
-  () => props.mode === 'single-select' || props.mode === 'multi-select',
-);
-const hasPrimaryAction = computed(() => props.mode !== 'static');
-const hasSupportingText = computed(() => props.supportingText || !!slots.supportingText);
-const hasOverline = computed(() => props.overline || !!slots.overline);
 const hasLeading = computed(() => !!slots.leading);
+const hasOverline = computed(() => !!slots.overline || !!props.overline);
+const hasSupportingText = computed(() => !!slots.supportingText || !!props.supportingText);
 const hasTrailing = computed(() => !!slots.trailing);
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
+const hasPrimaryAction = computed(() => props.mode !== 'static');
+const inList = computed(() => listContext?.usesListSemantics.value ?? false);
+const usesInternalActionSurface = computed(() => inList.value && hasPrimaryAction.value);
 
-const hasSelectionControl = computed(() => isSelectionMode.value && !!slots.selectionControl);
+const resolvedLineCount = computed<1 | 2 | 3>(() => {
+  if (props.lineCount) {
+    return props.lineCount;
+  }
 
-if (import.meta.env.DEV) {
-  onMounted(() => {
-    if (props.mode === 'single-action' && !props.href && attrs.onAction === undefined) {
-      warn(
-        'MDListItem: mode="single-action" requires either an @action listener or an href. ' +
-          'Without either, the item renders a button with no action. ' +
-          'Use mode="static" for non-interactive items.',
-      );
-    }
+  if (hasOverline.value && hasSupportingText.value) {
+    return 3;
+  }
 
-    if (props.mode === 'multi-action' && !hasTrailingAction.value) {
-      warn(
-        'MDListItem: mode="multi-action" requires a #trailingAction slot. ' +
-          'Without a secondary action surface this creates an invalid Material list item. ' +
-          'Use mode="single-action" when there is only one action.',
-      );
-    }
+  if (hasOverline.value || hasSupportingText.value) {
+    return 2;
+  }
 
-    if (props.selected && !hasSelectionControl.value) {
-      warn(
-        'MDListItem: selected=true without a #selectionControl slot uses color alone to ' +
-          'indicate selection. Material 3 requires a non-color indicator (checkbox, radio, or ' +
-          'icon) for accessible selected state. Provide a #selectionControl slot or use ' +
-          'mode="single-select"/"multi-select" with a selection control.',
-      );
-    }
-  });
-}
-const resolvedLineCount = computed(() => props.lineCount ?? (hasSupportingText.value ? 2 : 1));
-const rootTag = computed(() =>
-  props.mode === 'single-action' ? (props.href ? 'a' : 'button') : props.containerTag,
+  return 1;
+});
+
+const resolvedHeight = computed(
+  () => listContext?.lineHeights.value[resolvedLineCount.value] ?? 56,
 );
+const rootTag = computed(() => {
+  if (inList.value) {
+    return listContext?.itemTag.value ?? 'div';
+  }
+
+  if (props.mode === 'single-action') {
+    return props.href ? 'a' : 'button';
+  }
+
+  return props.containerTag;
+});
+const rootRole = computed(() => {
+  if (inList.value) {
+    return rootTag.value === 'li' ? undefined : 'listitem';
+  }
+
+  if (rootTag.value === 'li') {
+    return undefined;
+  }
+
+  const explicitRole = typeof attrs.role === 'string' ? attrs.role : undefined;
+  return explicitRole ?? (props.mode === 'static' ? 'listitem' : undefined);
+});
 const primaryActionTag = computed<'button' | 'a'>(() => (props.href ? 'a' : 'button'));
+const showVisualState = computed(() => hasPrimaryAction.value && !props.disabled);
+const buttonType = computed(() => (props.href ? undefined : props.nativeType));
+
+const rootEl = useTemplateRef<HTMLElement>('rootEl');
+const primaryActionEl = useTemplateRef<HTMLElement>('primaryActionEl');
+const interactiveSurfaceEl = computed(() => {
+  if (usesInternalActionSurface.value) {
+    return primaryActionEl.value;
+  }
+
+  if (props.mode === 'single-action') {
+    return rootEl.value;
+  }
+
+  return primaryActionEl.value;
+});
+
+const dragged = ref(false);
+const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
+
+const leadingClass = computed(() => `md-list-item__leading_type_${props.leadingType}`);
+const hostStyle = computed(() => ({
+  '--md-list-item-height': `${resolvedHeight.value}px`,
+}));
+const rootClass = computed(() => ({
+  'md-list-item': true,
+  'md-list-item_in-list': inList.value,
+  'md-list-item_mode_static': props.mode === 'static',
+  'md-list-item_mode_single-action': props.mode === 'single-action',
+  'md-list-item_mode_multi-action': props.mode === 'multi-action',
+  'md-list-item_line-count_1': resolvedLineCount.value === 1,
+  'md-list-item_line-count_2': resolvedLineCount.value === 2,
+  'md-list-item_line-count_3': resolvedLineCount.value === 3,
+  'md-list-item_selected': props.selected,
+  'md-state_hover': showVisualState.value && hover.value,
+  'md-state_focused': showVisualState.value && focused.value,
+  'md-state_pressed': showVisualState.value && durationPressedState.value,
+  'md-state_dragged': showVisualState.value && dragged.value,
+  'md-state_disabled': props.disabled,
+}));
+
+const rootAttrs = computed(() => {
+  if (!inList.value) {
+    return attrs;
+  }
+
+  const forwardedEntries = Object.entries(attrs).filter(
+    ([key]) => key === 'class' || key === 'style' || key === 'id' || key.startsWith('data-'),
+  );
+
+  return Object.fromEntries(forwardedEntries);
+});
+
 const interactiveAttrs = computed(() => {
   if (props.mode === 'static') {
     return attrs;
   }
 
-  const restAttrs = { ...attrs };
-  delete restAttrs.class;
-  delete restAttrs.style;
-  return restAttrs;
-});
-const rootAttrs = computed(() => {
-  if (!hasPrimaryAction.value || props.mode === 'single-action') {
-    return attrs;
-  }
-
-  const { class: className, style, ...restAttrs } = attrs;
-  const dataAttrs = Object.fromEntries(
-    Object.entries(restAttrs).filter(([key]) => key.startsWith('data-')),
+  const entries = Object.entries(attrs).filter(
+    ([key]) => key !== 'class' && key !== 'style' && (!inList.value || key !== 'id'),
   );
+  return Object.fromEntries(entries);
+});
 
-  return {
-    class: className,
-    style,
-    ...dataAttrs,
-  };
-});
-const rootRole = computed(() => {
-  // li elements have the implicit listitem role; return undefined so Vue does not
-  // render an explicit attribute. For all other root tags, forward an explicit role
-  // when the caller provides one (preserving their intent), or default to listitem
-  // so the rendered DOM always provides a valid listitem in a div[role=list] parent.
-  if (rootTag.value === 'li') return undefined;
-  const explicitRole = typeof attrs.role === 'string' ? attrs.role : undefined;
-  return explicitRole ?? 'listitem';
-});
-const rootDraggable = computed(() => (!props.disabled ? props.draggable : undefined));
-const buttonType = computed(() => (props.href ? undefined : props.nativeType));
-const interactiveAriaDisabled = computed(() => (props.disabled && props.href ? 'true' : undefined));
-const interactiveTabIndex = computed(() => {
-  if (!props.disabled || !props.href) {
-    return interactiveAttrs.value.tabindex;
-  }
-
-  return -1;
-});
-const interactiveAriaSelected = computed(() => {
-  if (!isSelectionMode.value || interactiveAttrs.value['aria-checked'] !== undefined) {
-    return interactiveAttrs.value['aria-selected'];
-  }
-
-  return props.selected ? 'true' : 'false';
-});
 const supportingTextClass = computed(() => ({
-  'md-list-item__supporting-text_one-line': resolvedLineCount.value === 1,
   'md-list-item__supporting-text_two-line': resolvedLineCount.value === 2,
   'md-list-item__supporting-text_three-line': resolvedLineCount.value === 3,
 }));
-
-const rootEl = useTemplateRef<HTMLElement>('rootEl');
-const primaryActionEl = useTemplateRef<HTMLElement>('primaryActionEl');
-const interactiveSurfaceEl = computed(() =>
-  props.mode === 'single-action' ? rootEl.value : primaryActionEl.value,
-);
-
-const dragged = ref(false);
-const showVisualState = computed(() => hasPrimaryAction.value && !props.disabled);
-const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
 
 const onAction = (event: MouseEvent) => {
   if (props.disabled) {
@@ -187,35 +203,60 @@ const onActionKeydown = (event: KeyboardEvent) => {
   }
 };
 
-const onSingleActionClick = (event: MouseEvent) => {
-  if (props.mode !== 'single-action') {
-    return;
+const onRootClick = (event: MouseEvent) => {
+  if (!inList.value && props.mode === 'single-action') {
+    onAction(event);
   }
-
-  onAction(event);
 };
 
-const onSingleActionKeydown = (event: KeyboardEvent) => {
-  if (props.mode !== 'single-action') {
-    return;
+const onRootKeydown = (event: KeyboardEvent) => {
+  if (!inList.value && props.mode === 'single-action') {
+    onActionKeydown(event);
   }
-
-  onActionKeydown(event);
 };
 
 const onDragStart = () => {
-  if (props.disabled) {
-    return;
+  if (!props.disabled) {
+    dragged.value = true;
   }
-
-  dragged.value = true;
 };
 
 const onDragEnd = () => {
   dragged.value = false;
 };
 
+if (import.meta.env.DEV) {
+  onMounted(() => {
+    const vnodeProps = instance?.vnode.props ?? {};
+    const hasActionListener = Object.keys(vnodeProps).some((key) => key.startsWith('onAction'));
+
+    if (props.mode === 'single-action' && !props.href && !hasActionListener) {
+      warn(
+        'MDListItem: mode="single-action" requires either an @action listener or an href. Use mode="static" for non-interactive rows.',
+      );
+    }
+
+    if (
+      props.mode === 'multi-action' &&
+      (!hasTrailingAction.value || (!hasActionListener && !props.href))
+    ) {
+      warn(
+        'MDListItem: mode="multi-action" requires either a real primary @action or href, plus a #trailingAction slot.',
+      );
+    }
+  });
+}
+
 useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefined)));
+
+defineExpose({
+  focusPrimaryAction() {
+    primaryActionEl.value?.focus();
+    if (!primaryActionEl.value) {
+      rootEl.value?.focus();
+    }
+  },
+});
 </script>
 
 <template>
@@ -223,87 +264,22 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     :is="rootTag"
     ref="rootEl"
     v-bind="rootAttrs"
-    class="md-list-item"
+    :class="rootClass"
+    :style="hostStyle"
     :role="rootRole"
-    :draggable="rootDraggable"
-    :class="{
-      'md-list-item_mode_static': mode === 'static',
-      'md-list-item_mode_single-action': mode === 'single-action',
-      'md-list-item_mode_multi-action': mode === 'multi-action',
-      'md-list-item_mode_single-select': mode === 'single-select',
-      'md-list-item_mode_multi-select': mode === 'multi-select',
-      'md-list-item_line-count_1': resolvedLineCount === 1,
-      'md-list-item_line-count_2': resolvedLineCount === 2,
-      'md-list-item_line-count_3': resolvedLineCount === 3,
-      'md-list-item_selected': selected,
-      'md-state_hover': showVisualState && hover,
-      'md-state_focused': showVisualState && focused,
-      'md-state_pressed': showVisualState && durationPressedState,
-      'md-state_dragged': showVisualState && dragged,
-      'md-state_disabled': disabled,
-    }"
-    :href="mode === 'single-action' ? href : undefined"
-    :disabled="mode === 'single-action' && !href && disabled ? true : undefined"
-    :type="mode === 'single-action' ? buttonType : undefined"
-    :tabindex="mode === 'single-action' ? interactiveTabIndex : undefined"
-    :aria-disabled="mode === 'single-action' ? interactiveAriaDisabled : undefined"
-    :aria-selected="mode === 'single-action' ? interactiveAriaSelected : undefined"
-    @click="onSingleActionClick"
-    @keydown="onSingleActionKeydown"
+    :href="!inList && mode === 'single-action' ? href : undefined"
+    :type="!inList && mode === 'single-action' ? buttonType : undefined"
+    :disabled="!inList && mode === 'single-action' && !href && disabled ? true : undefined"
+    :aria-disabled="!inList && mode === 'single-action' && href && disabled ? 'true' : undefined"
+    :tabindex="!inList && mode === 'single-action' && href && disabled ? -1 : undefined"
+    :draggable="!disabled ? draggable : undefined"
+    @click="onRootClick"
+    @keydown="onRootKeydown"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
     @drop="onDragEnd"
   >
-    <MDStateLayer
-      v-if="mode === 'single-action'"
-      :hover="hover"
-      :focused="focused"
-      :pressed="durationPressedState"
-      :dragged="dragged"
-      :disabled="disabled"
-    />
-
-    <template v-if="mode === 'single-action' || mode === 'static'">
-      <span
-        v-if="hasLeading || (hasSelectionControl && selectionControlPosition === 'leading')"
-        class="md-list-item__leading"
-      >
-        <slot
-          v-if="hasSelectionControl && selectionControlPosition === 'leading'"
-          name="selectionControl"
-        />
-        <slot v-if="hasLeading" name="leading" />
-      </span>
-
-      <span class="md-list-item__content">
-        <span v-if="hasOverline" class="md-list-item__overline">
-          <slot name="overline">{{ overline }}</slot>
-        </span>
-
-        <span class="md-list-item__label-text">{{ labelText }}</span>
-
-        <span
-          v-if="hasSupportingText"
-          class="md-list-item__supporting-text"
-          :class="supportingTextClass"
-        >
-          <slot name="supportingText">{{ supportingText }}</slot>
-        </span>
-      </span>
-
-      <span
-        v-if="hasTrailing || (hasSelectionControl && selectionControlPosition === 'trailing')"
-        class="md-list-item__trailing"
-      >
-        <slot v-if="hasTrailing" name="trailing" />
-        <slot
-          v-if="hasSelectionControl && selectionControlPosition === 'trailing'"
-          name="selectionControl"
-        />
-      </span>
-    </template>
-
-    <template v-else>
+    <template v-if="usesInternalActionSurface">
       <component
         :is="primaryActionTag"
         ref="primaryActionEl"
@@ -312,9 +288,8 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
         :href="href"
         :type="buttonType"
         :disabled="!href && disabled ? true : undefined"
-        :tabindex="interactiveTabIndex"
-        :aria-disabled="interactiveAriaDisabled"
-        :aria-selected="interactiveAriaSelected"
+        :aria-disabled="href && disabled ? 'true' : undefined"
+        :tabindex="href && disabled ? -1 : undefined"
         @click="onAction"
         @keydown="onActionKeydown"
       >
@@ -326,15 +301,8 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
           :disabled="disabled"
         />
 
-        <span
-          v-if="hasLeading || (hasSelectionControl && selectionControlPosition === 'leading')"
-          class="md-list-item__leading"
-        >
-          <slot
-            v-if="hasSelectionControl && selectionControlPosition === 'leading'"
-            name="selectionControl"
-          />
-          <slot v-if="hasLeading" name="leading" />
+        <span v-if="hasLeading" class="md-list-item__leading" :class="leadingClass">
+          <slot name="leading" />
         </span>
 
         <span class="md-list-item__content">
@@ -353,17 +321,51 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
           </span>
         </span>
 
-        <span
-          v-if="hasTrailing || (hasSelectionControl && selectionControlPosition === 'trailing')"
-          class="md-list-item__trailing"
-        >
-          <slot v-if="hasTrailing" name="trailing" />
-          <slot
-            v-if="hasSelectionControl && selectionControlPosition === 'trailing'"
-            name="selectionControl"
-          />
+        <span v-if="hasTrailing" class="md-list-item__trailing">
+          <slot name="trailing" />
         </span>
       </component>
+
+      <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
+        <slot name="trailingAction" />
+      </span>
+    </template>
+
+    <template v-else>
+      <MDStateLayer
+        v-if="mode === 'single-action'"
+        :hover="hover"
+        :focused="focused"
+        :pressed="durationPressedState"
+        :dragged="dragged"
+        :disabled="disabled"
+      />
+
+      <div class="md-list-item__body">
+        <span v-if="hasLeading" class="md-list-item__leading" :class="leadingClass">
+          <slot name="leading" />
+        </span>
+
+        <span class="md-list-item__content">
+          <span v-if="hasOverline" class="md-list-item__overline">
+            <slot name="overline">{{ overline }}</slot>
+          </span>
+
+          <span class="md-list-item__label-text">{{ labelText }}</span>
+
+          <span
+            v-if="hasSupportingText"
+            class="md-list-item__supporting-text"
+            :class="supportingTextClass"
+          >
+            <slot name="supportingText">{{ supportingText }}</slot>
+          </span>
+        </span>
+
+        <span v-if="hasTrailing" class="md-list-item__trailing">
+          <slot name="trailing" />
+        </span>
+      </div>
 
       <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
         <slot name="trailingAction" />
@@ -375,92 +377,69 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
 <style scoped>
 .md-list-item {
   --md-comp-list-item-container-color: var(--md-sys-color-surface);
-  --md-comp-list-item-label-text-color: var(--md-sys-color-on-surface);
-  --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-overline-text-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-leading-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-trailing-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-selected-container-color: var(--md-sys-color-primary-container);
-  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-primary-container);
-  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-primary-container);
-  --md-comp-list-item-selected-leading-color: var(--md-sys-color-on-primary-container);
-  --md-comp-list-item-selected-trailing-color: var(--md-sys-color-on-primary-container);
-  --md-comp-list-item-disabled-label-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
-  );
-  --md-comp-list-item-disabled-supporting-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
-  );
-  --md-comp-list-item-container-height: 56dp;
-  --md-comp-list-item-container-shape: 0dp;
-  --md-comp-list-item-leading-space: 16dp;
-  --md-comp-list-item-trailing-space: 16dp;
-  --md-comp-list-item-horizontal-padding: 16dp;
-  --md-comp-list-item-trailing-end-padding: 24dp;
-  --md-comp-list-item-leading-avatar-size: 40dp;
-  --md-comp-list-item-leading-icon-size: 24dp;
-  --md-comp-list-item-target-size: 48dp;
+  --md-comp-list-item-content-color: var(--md-sys-color-on-surface);
+  --md-comp-list-item-muted-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-selected-container-color: var(--md-sys-color-secondary-container);
+  --md-comp-list-item-selected-content-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-disabled-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-content-color: var(--md-comp-list-item-content-color);
 
   position: relative;
   display: flex;
   align-items: stretch;
-  min-height: var(--md-comp-list-item-container-height);
-  box-sizing: border-box;
+  min-height: var(--md-list-item-height);
   border: 0;
-  border-radius: var(--md-comp-list-item-container-shape);
+  border-radius: var(--md-list-item-wrapper-shape, 0dp);
   background: var(--md-comp-list-item-container-color);
-  color: var(--md-comp-list-item-label-text-color);
+  color: var(--md-comp-list-item-content-color);
   list-style: none;
+  text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 
   &_selected {
     --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
-    --md-comp-list-item-label-text-color: var(--md-comp-list-item-selected-label-text-color);
-    --md-comp-list-item-supporting-text-color: var(
-      --md-comp-list-item-selected-supporting-text-color
-    );
-    --md-comp-list-item-overline-text-color: var(
-      --md-comp-list-item-selected-supporting-text-color
-    );
-    --md-comp-list-item-leading-color: var(--md-comp-list-item-selected-leading-color);
-    --md-comp-list-item-trailing-color: var(--md-comp-list-item-selected-trailing-color);
+    --md-comp-list-item-content-color: var(--md-comp-list-item-selected-content-color);
+    --md-comp-list-item-muted-color: var(--md-comp-list-item-selected-content-color);
+    --md-content-color: var(--md-comp-list-item-selected-content-color);
   }
 
   &.md-state_disabled,
   &:disabled,
   &[aria-disabled='true'] {
-    --md-comp-list-item-label-text-color: var(--md-comp-list-item-disabled-label-text-color);
-    --md-comp-list-item-supporting-text-color: var(
-      --md-comp-list-item-disabled-supporting-text-color
-    );
-    --md-comp-list-item-overline-text-color: var(
-      --md-comp-list-item-disabled-supporting-text-color
-    );
-    --md-comp-list-item-leading-color: var(--md-comp-list-item-disabled-supporting-text-color);
-    --md-comp-list-item-trailing-color: var(--md-comp-list-item-disabled-supporting-text-color);
+    --md-comp-list-item-content-color: var(--md-comp-list-item-disabled-color);
+    --md-comp-list-item-muted-color: var(--md-comp-list-item-disabled-color);
+    --md-content-color: var(--md-comp-list-item-disabled-color);
+  }
+
+  &.md-state_dragged {
+    background: var(--md-sys-color-tertiary-container);
+    box-shadow: var(--md-sys-elevation-level2);
+    --md-comp-list-item-content-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-muted-color: var(--md-sys-color-on-tertiary-container);
+    --md-content-color: var(--md-sys-color-on-tertiary-container);
   }
 
   &__primary-action,
-  &:is(button, a) {
+  &__body,
+  &:is(button, a) > &__body {
     position: relative;
+    z-index: 0;
     display: flex;
-    align-items: stretch;
+    align-items: center;
     flex: 1 1 auto;
     min-width: 0;
-    min-height: var(--md-comp-list-item-target-size);
-    box-sizing: border-box;
-    padding-inline: var(--md-comp-list-item-horizontal-padding)
-      var(--md-comp-list-item-trailing-end-padding);
-    padding-block: 8dp;
+    min-height: var(--md-list-item-height);
+    padding-inline: var(--md-list-item-padding-inline) var(--md-list-item-padding-inline-end);
+    padding-block: var(--md-list-item-padding-block);
+    gap: var(--md-list-item-gap);
     border: 0;
-    border-radius: inherit;
+    border-radius: var(--md-list-item-action-shape, 0dp);
     background: transparent;
     color: inherit;
     font: inherit;
     text-align: start;
     text-decoration: none;
-    transition-property: color, background-color, border-radius, box-shadow;
-    transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+    box-sizing: border-box;
   }
 
   &__primary-action:is(button:not(:disabled), a:not([aria-disabled='true'])),
@@ -476,12 +455,34 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     display: flex;
     align-items: center;
     flex: 0 0 auto;
-    color: var(--md-comp-list-item-trailing-color);
+    min-width: 0;
+    color: var(--md-comp-list-item-muted-color);
   }
 
   &__leading {
-    min-width: var(--md-comp-list-item-leading-icon-size);
-    color: var(--md-comp-list-item-leading-color);
+    justify-content: center;
+    min-width: var(--md-list-item-leading-size);
+    color: var(--md-comp-list-item-muted-color);
+
+    &_type_icon {
+      min-width: var(--md-list-item-leading-size);
+    }
+
+    &_type_avatar {
+      min-width: 40dp;
+      min-height: 40dp;
+    }
+
+    &_type_media {
+      min-width: 56dp;
+      min-height: 56dp;
+      align-self: center;
+    }
+
+    &_type_control {
+      min-width: 48dp;
+      min-height: 48dp;
+    }
   }
 
   &__content {
@@ -492,32 +493,35 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     flex-direction: column;
     justify-content: center;
     min-width: 0;
-    color: inherit;
   }
 
-  &__leading + &__content {
-    margin-inline-start: var(--md-comp-list-item-leading-space);
+  &__trailing {
+    justify-content: flex-end;
+    min-height: var(--md-list-item-passive-trailing-min-size);
   }
 
-  &__trailing,
   &__trailing-action {
-    margin-inline-start: var(--md-comp-list-item-trailing-space);
+    justify-content: center;
+    padding-inline: 8dp var(--md-list-item-padding-inline-end);
+    min-width: 48dp;
+    min-height: 48dp;
+    align-self: center;
   }
 
   &__overline {
-    color: var(--md-comp-list-item-overline-text-color);
-    font-family: var(--md-sys-typescale-label-small-font);
-    font-size: var(--md-sys-typescale-label-small-size);
-    font-weight: var(--md-sys-typescale-label-small-weight);
-    line-height: var(--md-sys-typescale-label-small-line-height);
-    letter-spacing: var(--md-sys-typescale-label-small-tracking);
+    color: var(--md-comp-list-item-muted-color);
+    font-family: var(--md-sys-typescale-label-medium-font);
+    font-size: var(--md-sys-typescale-label-medium-size);
+    font-weight: var(--md-sys-typescale-label-medium-weight);
+    line-height: var(--md-sys-typescale-label-medium-line-height);
+    letter-spacing: var(--md-sys-typescale-label-medium-tracking);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   &__label-text {
-    color: var(--md-comp-list-item-label-text-color);
+    color: var(--md-comp-list-item-content-color);
     font-family: var(--md-sys-typescale-body-large-font);
     font-size: var(--md-sys-typescale-body-large-size);
     font-weight: var(--md-sys-typescale-body-large-weight);
@@ -528,20 +532,8 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     text-overflow: ellipsis;
   }
 
-  &_mode_multi-action &__primary-action,
-  &_mode_single-select &__primary-action,
-  &_mode_multi-select &__primary-action {
-    padding-inline-end: var(--md-comp-list-item-horizontal-padding);
-  }
-
-  &_mode_multi-action &__trailing-action {
-    justify-content: center;
-    padding-inline-end: var(--md-comp-list-item-trailing-end-padding);
-    min-height: var(--md-comp-list-item-target-size);
-  }
-
   &__supporting-text {
-    color: var(--md-comp-list-item-supporting-text-color);
+    color: var(--md-comp-list-item-muted-color);
     display: -webkit-box;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -553,10 +545,6 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     line-height: var(--md-sys-typescale-body-medium-line-height);
     letter-spacing: var(--md-sys-typescale-body-medium-tracking);
 
-    &_one-line {
-      -webkit-line-clamp: 1;
-    }
-
     &_two-line {
       -webkit-line-clamp: 1;
     }
@@ -566,45 +554,9 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     }
   }
 
-  &_line-count_2 {
-    --md-comp-list-item-container-height: 72dp;
-  }
-
-  &_line-count_3 {
-    --md-comp-list-item-container-height: 88dp;
-  }
-
-  &_mode_static,
-  &_mode_single-action {
-    align-items: center;
-    padding-inline: var(--md-comp-list-item-horizontal-padding)
-      var(--md-comp-list-item-trailing-end-padding);
-    padding-block: 8dp;
-  }
-
-  &_mode_static &__leading,
-  &_mode_single-action &__leading {
-    min-height: var(--md-comp-list-item-leading-icon-size);
-  }
-
-  &_mode_static &__trailing,
-  &_mode_single-action &__trailing {
-    min-height: var(--md-comp-list-item-target-size);
-    justify-content: center;
-  }
-
-  &.md-list-item_line-count_3 {
+  &_line-count_3 &__primary-action,
+  &_line-count_3 &__body {
     align-items: flex-start;
-  }
-
-  &.md-list-item_line-count_3 &__primary-action {
-    align-items: flex-start;
-  }
-
-  &.md-list-item_line-count_3 &__primary-action,
-  &.md-list-item_line-count_3.md-list-item_mode_static,
-  &.md-list-item_line-count_3.md-list-item_mode_single-action {
-    padding-block-start: 12dp;
   }
 }
 </style>

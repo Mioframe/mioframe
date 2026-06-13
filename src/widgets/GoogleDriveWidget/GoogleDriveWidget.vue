@@ -2,7 +2,7 @@
 import { GoogleSessionListItem, useGoogleSessions } from '@entity/googleSession';
 import { GoogleSessionAddListItem } from '@feature/googleSessionAdd';
 import { GoogleSessionManageMenuButton } from '@feature/googleSessionManage';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 
 const emit = defineEmits<{
   clickUser: [email: string];
@@ -12,7 +12,7 @@ const { sessionList } = useGoogleSessions();
 </script>
 
 <template>
-  <MDListContainer>
+  <MDList density="expressive" list-style="segmented">
     <GoogleSessionListItem
       v-for="session in sessionList"
       :key="session.email"
@@ -25,5 +25,5 @@ const { sessionList } = useGoogleSessions();
     </GoogleSessionListItem>
 
     <GoogleSessionAddListItem />
-  </MDListContainer>
+  </MDList>
 </template>

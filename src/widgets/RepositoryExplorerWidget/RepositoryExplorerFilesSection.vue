@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import { computed } from 'vue';
 import RepositoryExplorerFileListItem from './RepositoryExplorerFileListItem.vue';
 
@@ -53,9 +53,10 @@ const emptyText = computed(() =>
       <p class="repository-explorer-files-section__supporting-text">{{ supportingText }}</p>
     </div>
 
-    <MDListContainer
-      is="div"
+    <MDList
       v-if="hasRegularFiles"
+      density="expressive"
+      list-style="segmented"
       class="repository-explorer-files-section__list"
     >
       <RepositoryExplorerFileListItem
@@ -71,7 +72,7 @@ const emptyText = computed(() =>
         class="repository-explorer-files-section__list-item"
         @click="(clickedName) => onClickEntry(clickedName, nodeType)"
       />
-    </MDListContainer>
+    </MDList>
 
     <p v-else class="repository-explorer-files-section__empty-text">{{ emptyText }}</p>
   </section>
@@ -106,11 +107,6 @@ const emptyText = computed(() =>
     line-height: var(--md-sys-typescale-body-small-line-height);
     letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
-
-  &__list-item {
-    --md-comp-list-item-container-shape: 8dp;
-  }
-
   &__empty-text {
     margin: 0;
     padding: 0 16px;

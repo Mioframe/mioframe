@@ -91,20 +91,13 @@ vi.mock('@shared/ui/Lists', () => ({
     setup(props, { attrs, emit, slots }) {
       return () =>
         h(
-          props.mode === 'single-action' ||
-            props.mode === 'single-select' ||
-            props.mode === 'multi-select'
-            ? 'button'
-            : 'div',
+          props.mode === 'single-action' ? 'button' : 'div',
           {
             ...attrs,
             role: attrs.role ?? 'listitem',
             disabled: props.disabled ? true : undefined,
             onClick:
-              (props.mode === 'single-action' ||
-                props.mode === 'single-select' ||
-                props.mode === 'multi-select') &&
-              !props.disabled
+              props.mode === 'single-action' && !props.disabled
                 ? () => {
                     emit('action');
                   }
@@ -114,7 +107,7 @@ vi.mock('@shared/ui/Lists', () => ({
             h('span', props.labelText),
             props.supportingText ? h('span', props.supportingText) : null,
             slots.supportingText?.(),
-            slots.selectionControl?.(),
+            slots.trailing?.(),
           ],
         );
     },

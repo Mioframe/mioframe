@@ -1,115 +1,110 @@
 <script setup lang="ts">
-import { MDCheckbox } from '../Checkbox';
 import MDIconButton from '../Button/MDIconButton.vue';
 import MDSymbol from '../Icon/MDSymbol.vue';
+import MDList from './MDList.vue';
 import MDListItem from './MDListItem.vue';
 
 const rootAttrs = {
-  'data-testid': 'visual-md-list-item-configurations',
+  'data-testid': 'visual-md-list-configurations',
 };
-
 const onAction = () => {};
 </script>
 
 <template>
   <div v-bind="rootAttrs" class="visual-surface md-list-item-configurations-story">
-    <MDListItem label-text="One-line item" />
+    <section class="md-list-item-configurations-story__section">
+      <h3 class="md-list-item-configurations-story__title">Standard baseline</h3>
+      <MDList class="md-list-item-configurations-story__list">
+        <MDListItem label-text="One-line item" />
+        <MDListItem
+          label-text="Two-line item"
+          supporting-text="Supporting text uses the baseline list height."
+        />
+        <MDListItem
+          label-text="Three-line item"
+          overline="Category"
+          supporting-text="Supporting text can expand to two supporting lines in the three-line configuration."
+          :line-count="3"
+        />
+      </MDList>
+    </section>
 
-    <MDListItem
-      label-text="Two-line item"
-      supporting-text="Supporting text uses the baseline two-line height."
-    />
+    <section class="md-list-item-configurations-story__section">
+      <h3 class="md-list-item-configurations-story__title">Segmented expressive</h3>
+      <MDList
+        density="expressive"
+        list-style="segmented"
+        class="md-list-item-configurations-story__list"
+      >
+        <MDListItem mode="single-action" label-text="One-line item" @action="onAction">
+          <template #leading>
+            <MDSymbol name="draft" />
+          </template>
+          <template #trailing>
+            <span class="md-list-item-configurations-story__trailing-text">12 min</span>
+          </template>
+        </MDListItem>
 
-    <MDListItem
-      label-text="Overline item"
-      overline="Category"
-      supporting-text="Overline sits above the label in label-small."
-    />
+        <MDListItem
+          mode="single-action"
+          leading-type="avatar"
+          label-text="Two-line avatar item"
+          supporting-text="Avatar rows use the expressive leading slot geometry."
+          @action="onAction"
+        >
+          <template #leading>
+            <span class="md-list-item-configurations-story__avatar">AB</span>
+          </template>
+          <template #trailing>
+            <MDSymbol name="chevron_right" />
+          </template>
+        </MDListItem>
 
-    <MDListItem
-      label-text="Three-line item"
-      supporting-text="Supporting text can expand across two supporting lines in the three-line configuration."
-      :line-count="3"
-    />
-
-    <MDListItem
-      mode="single-action"
-      label-text="Leading icon"
-      supporting-text="Icons stay in the leading slot."
-    >
-      <template #leading>
-        <MDSymbol name="draft" />
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      mode="single-action"
-      label-text="Leading avatar"
-      supporting-text="Avatars also use the leading slot."
-    >
-      <template #leading>
-        <span class="md-list-item-configurations-story__avatar">AB</span>
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      mode="single-action"
-      label-text="Trailing text"
-      supporting-text="Meta information belongs in the trailing slot."
-    >
-      <template #trailing>
-        <span class="md-list-item-configurations-story__trailing-text">12 min</span>
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      mode="single-action"
-      label-text="Trailing icon"
-      supporting-text="Static trailing icons stay non-interactive."
-    >
-      <template #trailing>
-        <MDSymbol name="chevron_right" />
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      mode="multi-action"
-      label-text="Trailing action"
-      supporting-text="Secondary actions are separated from the primary action."
-      @action="onAction"
-    >
-      <template #trailingAction>
-        <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      mode="multi-select"
-      label-text="Selection control"
-      supporting-text="Use one selection interaction per row."
-      selected
-    >
-      <template #selectionControl>
-        <MDCheckbox presentation :model-value="true" />
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      mode="single-action"
-      label-text="Disabled item"
-      supporting-text="Disabled state preserves the list layout."
-      disabled
-    >
-      <template #leading>
-        <MDSymbol name="lock" />
-      </template>
-    </MDListItem>
+        <MDListItem
+          mode="multi-action"
+          leading-type="media"
+          label-text="Three-line media item"
+          overline="Playlist"
+          supporting-text="Media rows keep the content slot widest while the trailing action stays independent."
+          :line-count="3"
+          @action="onAction"
+        >
+          <template #leading>
+            <span class="md-list-item-configurations-story__media" />
+          </template>
+          <template #trailingAction>
+            <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
+          </template>
+        </MDListItem>
+      </MDList>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .md-list-item-configurations-story {
-  width: min(320dp, calc(100vw - 32dp));
+  display: grid;
+  gap: 24dp;
+  width: min(360dp, calc(100vw - 32dp));
+}
+
+.md-list-item-configurations-story__section {
+  display: grid;
+  gap: 8dp;
+}
+
+.md-list-item-configurations-story__title {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+
+.md-list-item-configurations-story__list {
+  width: 100%;
 }
 
 .md-list-item-configurations-story__avatar {
@@ -127,12 +122,22 @@ const onAction = () => {};
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
 }
 
+.md-list-item-configurations-story__media {
+  display: block;
+  width: 56dp;
+  height: 56dp;
+  border-radius: 12dp;
+  background:
+    linear-gradient(135deg, rgb(from var(--md-sys-color-tertiary) r g b / 0.35), transparent),
+    var(--md-sys-color-tertiary-container);
+}
+
 .md-list-item-configurations-story__trailing-text {
   color: var(--md-sys-color-on-surface-variant);
-  font-family: var(--md-sys-typescale-label-small-font);
-  font-size: var(--md-sys-typescale-label-small-size);
-  font-weight: var(--md-sys-typescale-label-small-weight);
-  line-height: var(--md-sys-typescale-label-small-line-height);
-  letter-spacing: var(--md-sys-typescale-label-small-tracking);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
 }
 </style>

@@ -1,128 +1,122 @@
-<template>
-  <div v-bind="rootAttrs" class="visual-surface md-list-item-interaction-states-story">
-    <p class="md-list-item-interaction-states-story__section">Single-action</p>
-
-    <MDListItem
-      mode="single-action"
-      label-text="Enabled"
-      supporting-text="Baseline — no state layer"
-    />
-    <MDListItem
-      mode="single-action"
-      class="md-state_hover"
-      label-text="Hover"
-      supporting-text="State layer covers full item surface"
-    />
-    <MDListItem
-      mode="single-action"
-      class="md-state_focused"
-      label-text="Focus"
-      supporting-text="State layer covers full item surface"
-    />
-    <MDListItem
-      mode="single-action"
-      class="md-state_pressed"
-      label-text="Pressed"
-      supporting-text="State layer covers full item surface"
-    />
-    <MDListItem
-      mode="single-action"
-      class="md-state_dragged"
-      label-text="Dragged"
-      supporting-text="State layer covers full item surface"
-      draggable
-    />
-    <MDListItem
-      mode="single-action"
-      label-text="Disabled"
-      supporting-text="No state layer"
-      disabled
-    />
-
-    <p class="md-list-item-interaction-states-story__section">
-      Multi-action — primary action surface
-    </p>
-
-    <MDListItem
-      mode="multi-action"
-      label-text="Enabled"
-      supporting-text="No state layer on primary action"
-      @action="onAction"
-    >
-      <template #trailingAction>
-        <button type="button" class="md-list-item-interaction-states-story__secondary-btn">
-          ⋮
-        </button>
-      </template>
-    </MDListItem>
-    <MDListItem
-      ref="multiActionHoverRef"
-      mode="multi-action"
-      label-text="Hover (primary only)"
-      supporting-text="State layer covers primary action area; secondary target is unaffected"
-      @action="onAction"
-    >
-      <template #trailingAction>
-        <button type="button" class="md-list-item-interaction-states-story__secondary-btn">
-          ⋮
-        </button>
-      </template>
-    </MDListItem>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { onMounted, useTemplateRef } from 'vue';
+import MDIconButton from '../Button/MDIconButton.vue';
+import MDSymbol from '../Icon/MDSymbol.vue';
+import MDList from './MDList.vue';
 import MDListItem from './MDListItem.vue';
 
+const interactionRef = useTemplateRef<HTMLElement>('interactionRef');
 const rootAttrs = {
-  'data-testid': 'visual-md-list-item-interaction-states',
+  'data-testid': 'visual-md-list-interaction-states',
 };
-
+const hoverAttrs = { 'data-visual-state': 'hover' };
+const focusAttrs = { 'data-visual-state': 'focus' };
+const pressedAttrs = { 'data-visual-state': 'pressed' };
 const onAction = () => {};
 
-const multiActionHoverRef = useTemplateRef<InstanceType<typeof MDListItem>>('multiActionHoverRef');
-
 onMounted(() => {
-  const el = multiActionHoverRef.value?.$el;
-  if (!(el instanceof HTMLElement)) return;
-  // Inject md-state_hover onto the primary-action element so the state layer
-  // (its direct child) activates via the :global(.md-state_hover) > & CSS rule,
-  // demonstrating that hover coverage is bounded to the primary action surface.
-  el.querySelector<HTMLElement>('.md-list-item__primary-action')?.classList.add('md-state_hover');
+  const root = interactionRef.value;
+  if (!root) {
+    return;
+  }
+
+  root
+    .querySelector<HTMLElement>('[data-visual-state="hover"] .md-list-item__primary-action')
+    ?.classList.add('md-state_hover');
+  root
+    .querySelector<HTMLElement>('[data-visual-state="focus"] .md-list-item__primary-action')
+    ?.classList.add('md-state_focused');
+  root
+    .querySelector<HTMLElement>('[data-visual-state="pressed"] .md-list-item__primary-action')
+    ?.classList.add('md-state_pressed');
 });
 </script>
 
+<template>
+  <div
+    ref="interactionRef"
+    v-bind="rootAttrs"
+    class="visual-surface md-list-item-interaction-states-story"
+  >
+    <section class="md-list-item-interaction-states-story__section">
+      <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
+      <MDList density="expressive">
+        <MDListItem
+          v-bind="hoverAttrs"
+          mode="single-action"
+          label-text="Hover"
+          supporting-text="The state layer spans the row action surface"
+          @action="onAction"
+        >
+          <template #leading>
+            <MDSymbol name="draft" />
+          </template>
+        </MDListItem>
+        <MDListItem
+          v-bind="focusAttrs"
+          mode="single-action"
+          label-text="Focus"
+          supporting-text="Focus stays inside the row action shape"
+          @action="onAction"
+        />
+        <MDListItem
+          v-bind="pressedAttrs"
+          mode="single-action"
+          label-text="Pressed"
+          supporting-text="Pressed ripple stays on the row action surface"
+          @action="onAction"
+        />
+      </MDList>
+    </section>
+
+    <section class="md-list-item-interaction-states-story__section">
+      <h3 class="md-list-item-interaction-states-story__title">Multi-action surface</h3>
+      <MDList density="expressive" list-style="segmented">
+        <MDListItem
+          v-bind="hoverAttrs"
+          mode="multi-action"
+          label-text="Primary hover"
+          supporting-text="The primary surface does not collapse to just the text column"
+          @action="onAction"
+        >
+          <template #trailingAction>
+            <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
+          </template>
+        </MDListItem>
+        <MDListItem
+          mode="multi-action"
+          label-text="Trailing action independence"
+          supporting-text="The secondary action keeps its own target and hit area"
+          @action="onAction"
+        >
+          <template #trailingAction>
+            <MDIconButton tooltip="Edit" color="outlined" md-symbol-name="edit" />
+          </template>
+        </MDListItem>
+      </MDList>
+    </section>
+  </div>
+</template>
+
 <style scoped>
 .md-list-item-interaction-states-story {
-  width: 360px;
-  /*
-   * Use primary as the state-layer color so state-layer overlays are clearly
-   * visible at Material spec opacities in a screenshot.
-   * In production, --md-content-color inherits from the global on-surface token.
-   */
-  --md-content-color: var(--md-sys-color-primary);
+  display: grid;
+  gap: 24dp;
+  width: min(360dp, calc(100vw - 32dp));
 }
 
 .md-list-item-interaction-states-story__section {
-  margin: 8px 16px 2px;
-  font-family: var(--md-sys-typescale-label-small-font);
-  font-size: var(--md-sys-typescale-label-small-size);
-  font-weight: var(--md-sys-typescale-label-small-weight);
-  line-height: var(--md-sys-typescale-label-small-line-height);
-  color: var(--md-sys-color-on-surface-variant);
+  display: grid;
+  gap: 8dp;
 }
 
-.md-list-item-interaction-states-story__secondary-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 48px;
-  min-height: 48px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
+.md-list-item-interaction-states-story__title {
+  margin: 0;
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 20px;
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
 }
 </style>
