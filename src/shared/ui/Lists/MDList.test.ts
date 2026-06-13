@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import MDList from './MDList.vue';
 import MDListItem from './MDListItem.vue';
+import MDListOption from './MDListOption.vue';
 
 describe('MDList', () => {
   it('uses the Material variant prop instead of density naming', () => {
@@ -21,15 +22,15 @@ describe('MDList', () => {
     const onUpdateModelValue = vi.fn();
     const wrapper = mount(
       {
-        components: { MDList, MDListItem },
+        components: { MDList, MDListOption },
         template: `
           <MDList
             selection-mode="single"
             :model-value="selected"
             @update:model-value="onUpdateModelValue"
           >
-            <MDListItem label-text="One" value="one" />
-            <MDListItem label-text="Two" value="two" />
+            <MDListOption label-text="One" value="one" />
+            <MDListOption label-text="Two" value="two" />
           </MDList>
         `,
         setup: () => ({
@@ -56,11 +57,10 @@ describe('MDList', () => {
   it('keeps selection-list DOM safe when an item is missing a value', () => {
     const wrapper = mount(
       {
-        components: { MDList, MDListItem },
+        components: { MDList, MDListOption },
         template: `
           <MDList selection-mode="single">
-            <MDListItem label-text="Missing value" />
-            <MDListItem label-text="Has value" value="two" />
+            <MDListOption label-text="Has value" value="two" />
           </MDList>
         `,
       },
@@ -69,22 +69,21 @@ describe('MDList', () => {
 
     const options = wrapper.findAll('[role="option"]');
 
-    expect(options).toHaveLength(2);
-    expect(options[0]?.attributes('aria-disabled')).toBe('true');
+    expect(options).toHaveLength(1);
+    expect(options[0]?.attributes('aria-disabled')).toBeUndefined();
     expect(options[0]?.attributes('aria-selected')).toBe('false');
-    expect(options[1]?.attributes('aria-disabled')).toBeUndefined();
   });
 
   it('skips disabled options when assigning tab stops and moving focus', async () => {
     const wrapper = mount(
       {
-        components: { MDList, MDListItem },
+        components: { MDList, MDListOption },
         template: `
           <MDList selection-mode="single" model-value="two">
-            <MDListItem label-text="Disabled selected" value="two" disabled />
-            <MDListItem label-text="Enabled one" value="one" />
-            <MDListItem label-text="Disabled two" value="three" disabled />
-            <MDListItem label-text="Enabled four" value="four" />
+            <MDListOption label-text="Disabled selected" value="two" disabled />
+            <MDListOption label-text="Enabled one" value="one" />
+            <MDListOption label-text="Disabled two" value="three" disabled />
+            <MDListOption label-text="Enabled four" value="four" />
           </MDList>
         `,
       },
@@ -117,11 +116,11 @@ describe('MDList', () => {
   it('leaves all options out of the tab order when every option is disabled', async () => {
     const wrapper = mount(
       {
-        components: { MDList, MDListItem },
+        components: { MDList, MDListOption },
         template: `
           <MDList selection-mode="multiple" :model-value="[]">
-            <MDListItem label-text="One" value="one" disabled />
-            <MDListItem label-text="Two" />
+            <MDListOption label-text="One" value="one" disabled />
+            <MDListOption label-text="Two" value="two" disabled />
           </MDList>
         `,
       },
@@ -134,5 +133,26 @@ describe('MDList', () => {
       expect(option.element.tabIndex).toBe(-1);
       expect(option.attributes('aria-disabled')).toBe('true');
     }
+  });
+
+  it('warns in development when MDListItem is used inside a selection list', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList selection-mode="single">
+            <MDListItem label-text="Wrong component" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Use MDListOption instead'));
+
+    warnSpy.mockRestore();
+    document.body.innerHTML = '';
   });
 });

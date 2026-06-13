@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import MDList from './MDList.vue';
-import MDListItem from './MDListItem.vue';
+import MDListOption from './MDListOption.vue';
 import type { MDListModelValue } from './listContext';
 
 const rootAttrs = {
@@ -36,13 +36,13 @@ const onMultipleSelectionChange = (value: MDListModelValue) => {
         selection-mode="single"
         @update:model-value="onSingleSelectionChange"
       >
-        <MDListItem value="bread" label-text="Bread" />
-        <MDListItem
+        <MDListOption value="bread" label-text="Bread" />
+        <MDListOption
           value="rice"
           label-text="Rice"
           supporting-text="Selected row shows a check indicator."
         />
-        <MDListItem value="pita" label-text="Pita" />
+        <MDListOption value="pita" label-text="Pita" />
       </MDList>
     </section>
 
@@ -55,17 +55,17 @@ const onMultipleSelectionChange = (value: MDListModelValue) => {
         list-style="segmented"
         @update:model-value="onMultipleSelectionChange"
       >
-        <MDListItem
+        <MDListOption
           value="alerts"
           label-text="Alerts"
           supporting-text="Multiple rows can be selected without nested actions."
         />
-        <MDListItem
+        <MDListOption
           value="docs"
           label-text="Documents"
           supporting-text="Selection remains list-level."
         />
-        <MDListItem
+        <MDListOption
           value="notes"
           label-text="Very long document title that should only truncate once the content column actually runs out of room"
           supporting-text="This supporting text stays inside the content area at narrow widths and should not collapse under the trailing indicator."

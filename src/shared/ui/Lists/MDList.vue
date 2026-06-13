@@ -242,16 +242,16 @@ onUpdated(() => {
 
 <style scoped>
 .md-list {
-  --md-list-item-action-shape: 0dp;
-  --md-list-item-container-shape: 0dp;
-  --md-list-item-content-padding-inline-start: 16dp;
-  --md-list-item-content-padding-inline-end: 24dp;
-  --md-list-item-content-padding-block: 8dp;
-  --md-list-item-leading-space: 16dp;
-  --md-list-item-leading-size: 24dp;
-  --md-list-item-passive-trailing-min-size: 24dp;
-  --md-list-item-segmented-gap: 0dp;
-  --md-list-item-trailing-space: 16dp;
+  --md-private-list-item-action-shape: 0dp;
+  --md-private-list-item-container-shape: 0dp;
+  --md-private-list-item-content-padding-inline-start: 16dp;
+  --md-private-list-item-content-padding-inline-end: 24dp;
+  --md-private-list-item-content-padding-block: 8dp;
+  --md-private-list-item-leading-space: 16dp;
+  --md-private-list-item-leading-size: 24dp;
+  --md-private-list-item-passive-trailing-min-size: 24dp;
+  --md-private-list-item-segmented-gap: 0dp;
+  --md-private-list-item-trailing-space: 16dp;
 
   margin: 0;
   padding: 0;
@@ -260,53 +260,60 @@ onUpdated(() => {
   list-style: none;
 
   &_variant_expressive {
-    --md-list-item-action-shape: 12dp;
-    --md-list-item-container-shape: 12dp;
-    --md-list-item-content-padding-inline-end: 16dp;
-    --md-list-item-content-padding-block: 10dp;
-    --md-list-item-leading-space: 12dp;
-    --md-list-item-passive-trailing-min-size: 28dp;
-    --md-list-item-leading-size: 20dp;
+    --md-private-list-item-action-shape: 12dp;
+    --md-private-list-item-container-shape: 12dp;
+    --md-private-list-item-content-padding-inline-end: 16dp;
+    --md-private-list-item-content-padding-block: 10dp;
+    --md-private-list-item-leading-space: 12dp;
+    --md-private-list-item-passive-trailing-min-size: 28dp;
+    --md-private-list-item-leading-size: 20dp;
   }
 
   &_style_segmented {
-    --md-list-item-segmented-gap: 2dp;
+    --md-private-list-item-segmented-gap: 2dp;
 
-    gap: var(--md-list-item-segmented-gap);
+    gap: var(--md-private-list-item-segmented-gap);
     padding: 0;
     overflow: clip;
     border-radius: 16dp;
     background: var(--md-sys-color-surface-container-low, var(--md-sys-color-surface-container));
   }
 
-  &_style_segmented :deep(.md-list-item_in-list) {
+  &_style_segmented :deep(.md-list-item_in-list),
+  &_style_segmented :deep(.md-list-option_in-list) {
     background: var(--md-sys-color-surface);
   }
 
-  &_style_segmented :deep(.md-list-item_in-list:first-child) {
+  &_style_segmented :deep(.md-list-item_in-list:first-child),
+  &_style_segmented :deep(.md-list-option_in-list:first-child) {
     border-start-start-radius: 16dp;
     border-start-end-radius: 16dp;
   }
 
-  &_style_segmented :deep(.md-list-item_in-list:last-child) {
+  &_style_segmented :deep(.md-list-item_in-list:last-child),
+  &_style_segmented :deep(.md-list-option_in-list:last-child) {
     border-end-start-radius: 16dp;
     border-end-end-radius: 16dp;
   }
 
-  &_style_segmented :deep(.md-list-item_in-list:first-child:last-child) {
+  &_style_segmented :deep(.md-list-item_in-list:first-child:last-child),
+  &_style_segmented :deep(.md-list-option_in-list:first-child:last-child) {
     border-radius: 16dp;
   }
 
   &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
   &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__body),
+  &_variant_baseline :deep(.md-list-option_line-count_3 .md-list-option__body),
   &_variant_expressive :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
-  &_variant_expressive :deep(.md-list-item_line-count_3 .md-list-item__body) {
+  &_variant_expressive :deep(.md-list-item_line-count_3 .md-list-item__body),
+  &_variant_expressive :deep(.md-list-option_line-count_3 .md-list-option__body) {
     align-items: flex-start;
   }
 
   &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
-  &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__body) {
-    --md-list-item-content-padding-block: 12dp;
+  &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__body),
+  &_variant_baseline :deep(.md-list-option_line-count_3 .md-list-option__body) {
+    --md-private-list-item-content-padding-block: 12dp;
   }
 }
 </style>

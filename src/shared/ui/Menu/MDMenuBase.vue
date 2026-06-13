@@ -203,16 +203,8 @@ useOnBackNavigationStackedWhen(showModel, () => {
 
   border-radius: var(--md-sys-shape-corner-extra-small);
   box-shadow: var(--md-sys-elevation-level2);
-  --md-container-color: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-container);
   display: flex;
   flex-direction: column;
-
-  --md-comp-list-item-horizontal-padding: 12dp;
-  --md-list-item-padding-inline: 12dp;
-  --md-list-item-padding-inline-end: 12dp;
-  --md-comp-list-item-min-container-height: 48px;
-  --md-comp-list-item-container-color: var(--md-container-color);
-  --md-list-item-wrapper-shape: 0dp;
-  --md-list-item-action-shape: 0dp;
 }
 </style>

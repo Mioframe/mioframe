@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, shallowRef, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { MDSymbol } from '../Icon';
-import { MDListItem } from '../Lists';
-import type { MaybeElement } from '@vueuse/core';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useInjectFocusRegister } from './focusProvider';
-import { findClosestElement } from '@shared/lib/useClosestElement';
 import MDMenuBase from './MDMenuBase.vue';
 
 const showSubmenuModel = defineModel<boolean | undefined>('showSubmenu');
@@ -31,7 +29,7 @@ const slots = defineSlots<{
 
 const { label } = toRefs(props);
 
-const listItemEl = useTemplateRef<MaybeElement>('listItemEl');
+const menuItemEl = useTemplateRef<HTMLElement>('menuItemEl');
 
 const showSubmenu = shallowRef(false);
 
@@ -44,14 +42,13 @@ const onClickItem = () => {
   emit('click');
 };
 
-const htmlEl = computed(() =>
-  listItemEl.value ? findClosestElement(listItemEl.value) : undefined,
-);
+const { hover, focused, durationPressedState } = useStateLayer(menuItemEl, {});
+useRipple(menuItemEl);
 
 const focus = computed(() =>
-  htmlEl.value
+  menuItemEl.value
     ? () => {
-        htmlEl.value?.focus();
+        menuItemEl.value?.focus();
       }
     : undefined,
 );
@@ -60,30 +57,75 @@ useInjectFocusRegister(label, focus);
 </script>
 
 <template>
-  <MDListItem
-    ref="listItemEl"
-    mode="single-action"
-    :label-text="label"
-    class="md-menu-item"
-    :role="itemRole ?? null"
-    @action="onClickItem"
+  <button
+    ref="menuItemEl"
+    type="button"
+    class="md-menu-item-base"
+    :role="itemRole ?? undefined"
+    @click="onClickItem"
   >
-    <template v-if="symbolName" #leading>
-      <MDSymbol :name="symbolName" />
-    </template>
+    <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
-    <template v-if="!!slots.submenu" #trailing>
+    <span v-if="symbolName" class="md-menu-item-base__leading">
+      <MDSymbol :name="symbolName" />
+    </span>
+
+    <span class="md-menu-item-base__label">{{ label }}</span>
+
+    <span v-if="!!slots.submenu" class="md-menu-item-base__trailing">
       <MDSymbol name="arrow_right" />
-    </template>
-  </MDListItem>
+    </span>
+  </button>
 
   <MDMenuBase
     v-if="slots.submenu"
     v-model:show="showSubmenu"
-    :target="listItemEl"
+    :target="menuItemEl"
     disabled-teleport
     placement="right-start"
   >
     <slot name="submenu" />
   </MDMenuBase>
 </template>
+
+<style scoped>
+.md-menu-item-base {
+  --md-content-color: var(--md-sys-color-on-surface);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding-inline: 12dp;
+  gap: 12dp;
+  border: 0;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+  text-align: start;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+
+  &__leading,
+  &__trailing {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  &__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+</style>

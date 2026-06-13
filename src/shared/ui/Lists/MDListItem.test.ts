@@ -108,52 +108,13 @@ describe('MDListItem', () => {
     expect(wrapper.element.tagName.toLowerCase()).toBe('button');
   });
 
-  it('renders list-level selection rows as options with a visible non-color indicator', () => {
-    const wrapper = mountListItem(
-      { value: 'settings' },
-      {
-        inList: true,
-        listProps: {
-          selectionMode: 'single',
-          modelValue: 'settings',
-        },
-      },
-    );
-
+  it('does not render option semantics or a selection indicator without a selection list context', () => {
+    const wrapper = mountListItem({}, { inList: true });
     const item = wrapper.get('.md-list-item');
 
-    expect(wrapper.get('.md-list').attributes('role')).toBe('listbox');
-    expect(item.attributes('role')).toBe('option');
-    expect(item.attributes('aria-selected')).toBe('true');
-    expect(item.find('.md-list-item__selection-indicator').exists()).toBe(true);
-  });
-
-  it('renders missing-value rows in selection lists as disabled options instead of listitems', () => {
-    const wrapper = mountListItem(
-      {},
-      {
-        inList: true,
-        listProps: {
-          selectionMode: 'single',
-          modelValue: 'settings',
-        },
-      },
-    );
-
-    const item = wrapper.get('.md-list-item');
-
-    expect(item.attributes('role')).toBe('option');
-    expect(item.attributes('aria-disabled')).toBe('true');
-    expect(item.attributes('aria-selected')).toBe('false');
-    expect(item.find('.md-list-item__selection-indicator').exists()).toBe(true);
-  });
-
-  it('does not participate in list selection without a list-level selection context', () => {
-    const wrapper = mountListItem({ value: 'settings' });
-
-    expect(wrapper.get('.md-list-item').attributes('role')).toBe('listitem');
-    expect(wrapper.get('.md-list-item').attributes('aria-selected')).toBeUndefined();
-    expect(wrapper.find('.md-list-item__selection-indicator').exists()).toBe(false);
+    expect(item.attributes('role')).toBe('listitem');
+    expect(item.attributes('aria-selected')).toBeUndefined();
+    expect(item.find('.md-list-item__selection-indicator').exists()).toBe(false);
   });
 
   it('resolves a two-line layout when supporting text is present', () => {
@@ -207,6 +168,16 @@ describe('MDListItem', () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('mode="multi-action" requires either a real primary @action or href'),
     );
+
+    warnSpy.mockRestore();
+  });
+
+  it('warns in development when used inside a selection list', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mountListItem({}, { inList: true, listProps: { selectionMode: 'single' } });
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Use MDListOption instead'));
 
     warnSpy.mockRestore();
   });

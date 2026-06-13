@@ -1,17 +1,7 @@
 <script setup lang="ts">
-import {
-  computed,
-  getCurrentInstance,
-  onMounted,
-  ref,
-  useAttrs,
-  useSlots,
-  useTemplateRef,
-  warn,
-} from 'vue';
-import MDSymbol from '../Icon/MDSymbol.vue';
+import { computed, onMounted, ref, useAttrs, useSlots, useTemplateRef, warn } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
-import { useMDListContext, type MDListSelectionValue } from './listContext';
+import { useMDListContext } from './listContext';
 
 type MDListItemMode = 'static' | 'single-action' | 'multi-action';
 type MDListLeadingType = 'icon' | 'avatar' | 'media' | 'control';
@@ -33,7 +23,6 @@ const props = withDefaults(
     nativeType?: 'button' | 'submit' | 'reset' | undefined;
     overline?: string | undefined;
     supportingText?: string | undefined;
-    value?: MDListSelectionValue | undefined;
   }>(),
   {
     containerTag: 'div',
@@ -58,8 +47,6 @@ defineSlots<{
 const slots = useSlots();
 const attrs = useAttrs();
 const listContext = useMDListContext();
-const instance = getCurrentInstance();
-const vnodeProps = computed<Record<string, unknown>>(() => instance?.vnode.props ?? {});
 
 const hasLeading = computed(() => !!slots.leading);
 const hasOverline = computed(() => !!slots.overline || !!props.overline);
@@ -68,24 +55,8 @@ const hasTrailing = computed(() => !!slots.trailing);
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
 const inList = computed(() => listContext?.usesListSemantics.value ?? false);
 const selectionMode = computed(() => listContext?.selectionMode.value ?? 'none');
-const rendersSelectionOption = computed(() => inList.value && selectionMode.value !== 'none');
-const hasSelectionValue = computed(() =>
-  Object.prototype.hasOwnProperty.call(vnodeProps.value, 'value'),
-);
-const participatesInSelection = computed(
-  () => rendersSelectionOption.value && hasSelectionValue.value,
-);
-const selectionOptionDisabled = computed(
-  () => rendersSelectionOption.value && (!!props.disabled || !hasSelectionValue.value),
-);
-const isSelected = computed(() =>
-  participatesInSelection.value ? (listContext?.isItemSelected(props.value) ?? false) : false,
-);
-const hasPrimaryAction = computed(() => props.mode !== 'static' || rendersSelectionOption.value);
-const usesInternalActionSurface = computed(
-  () => inList.value && hasPrimaryAction.value && !rendersSelectionOption.value,
-);
-const showSelectionIndicator = computed(() => rendersSelectionOption.value);
+const hasPrimaryAction = computed(() => props.mode !== 'static');
+const usesInternalActionSurface = computed(() => inList.value && hasPrimaryAction.value);
 
 const resolvedLineCount = computed<1 | 2 | 3>(() => {
   if (props.lineCount) {
@@ -118,10 +89,6 @@ const rootTag = computed(() => {
   return props.containerTag;
 });
 const rootRole = computed(() => {
-  if (rendersSelectionOption.value) {
-    return 'option';
-  }
-
   if (inList.value) {
     return rootTag.value === 'li' ? undefined : 'listitem';
   }
@@ -144,11 +111,11 @@ const interactiveSurfaceEl = computed(() => {
     return primaryActionEl.value;
   }
 
-  if (props.mode === 'single-action' || participatesInSelection.value) {
+  if (props.mode === 'single-action') {
     return rootEl.value;
   }
 
-  return primaryActionEl.value;
+  return null;
 });
 
 const dragged = ref(false);
@@ -167,8 +134,6 @@ const rootClass = computed(() => ({
   'md-list-item_line-count_1': resolvedLineCount.value === 1,
   'md-list-item_line-count_2': resolvedLineCount.value === 2,
   'md-list-item_line-count_3': resolvedLineCount.value === 3,
-  'md-list-item_selectable': participatesInSelection.value,
-  'md-list-item_selected': isSelected.value,
   'md-state_hover': showVisualState.value && hover.value,
   'md-state_focused': showVisualState.value && focused.value,
   'md-state_pressed': showVisualState.value && durationPressedState.value,
@@ -189,7 +154,7 @@ const rootAttrs = computed(() => {
 });
 
 const interactiveAttrs = computed(() => {
-  if (props.mode === 'static' && !participatesInSelection.value) {
+  if (props.mode === 'static') {
     return attrs;
   }
 
@@ -217,12 +182,6 @@ const onAction = (event: MouseEvent) => {
   emit('action', event);
 };
 
-const onSelect = () => {
-  if (!selectionOptionDisabled.value) {
-    listContext?.selectItem(props.value);
-  }
-};
-
 const onActionKeydown = (event: KeyboardEvent) => {
   if (props.href && event.key === ' ') {
     event.preventDefault();
@@ -234,23 +193,12 @@ const onActionKeydown = (event: KeyboardEvent) => {
 };
 
 const onRootClick = (event: MouseEvent) => {
-  if (participatesInSelection.value) {
-    onSelect();
-    return;
-  }
-
   if (!inList.value && props.mode === 'single-action') {
     onAction(event);
   }
 };
 
 const onRootKeydown = (event: KeyboardEvent) => {
-  if (rendersSelectionOption.value && (event.key === ' ' || event.key === 'Enter')) {
-    event.preventDefault();
-    onSelect();
-    return;
-  }
-
   if (!inList.value && props.mode === 'single-action') {
     onActionKeydown(event);
   }
@@ -268,9 +216,7 @@ const onDragEnd = () => {
 
 if (import.meta.env.DEV) {
   onMounted(() => {
-    const hasActionListener = Object.keys(vnodeProps.value).some((key) =>
-      key.startsWith('onAction'),
-    );
+    const hasActionListener = Object.keys(attrs).some((key) => key.startsWith('onAction'));
 
     if (props.mode === 'single-action' && !props.href && !hasActionListener) {
       warn(
@@ -287,22 +233,9 @@ if (import.meta.env.DEV) {
       );
     }
 
-    if (selectionMode.value !== 'none' && props.value === undefined) {
-      warn('MDListItem: selection lists require each item to provide a primitive value.');
-    }
-
-    if (selectionMode.value !== 'none' && props.mode !== 'static') {
+    if (selectionMode.value !== 'none') {
       warn(
-        'MDListItem: selection lists own the row interaction surface. Use mode="static" for selectable rows.',
-      );
-    }
-
-    if (
-      selectionMode.value !== 'none' &&
-      (props.mode === 'multi-action' || hasTrailingAction.value)
-    ) {
-      warn(
-        'MDListItem: selection lists cannot include nested trailing actions. Use a non-selectable list for multi-action rows.',
+        'MDListItem: rendered inside a selection list. Use MDListOption instead, which owns role=option and selection semantics.',
       );
     }
   });
@@ -328,19 +261,11 @@ defineExpose({
     :class="rootClass"
     :style="hostStyle"
     :role="rootRole"
-    :aria-selected="rendersSelectionOption ? String(isSelected) : undefined"
-    :aria-disabled="
-      rendersSelectionOption && selectionOptionDisabled
-        ? 'true'
-        : !inList && mode === 'single-action' && href && disabled
-          ? 'true'
-          : undefined
-    "
+    :aria-disabled="!inList && mode === 'single-action' && href && disabled ? 'true' : undefined"
     :href="!inList && mode === 'single-action' ? href : undefined"
     :type="!inList && mode === 'single-action' ? buttonType : undefined"
     :disabled="!inList && mode === 'single-action' && !href && disabled ? true : undefined"
     :tabindex="!inList && mode === 'single-action' && href && disabled ? -1 : undefined"
-    :data-md-list-option="rendersSelectionOption ? 'true' : undefined"
     :draggable="!disabled ? draggable : undefined"
     @click="onRootClick"
     @keydown="onRootKeydown"
@@ -402,7 +327,7 @@ defineExpose({
 
     <template v-else>
       <MDStateLayer
-        v-if="mode === 'single-action' || participatesInSelection"
+        v-if="mode === 'single-action'"
         :hover="hover"
         :focused="focused"
         :pressed="durationPressedState"
@@ -411,14 +336,6 @@ defineExpose({
       />
 
       <div class="md-list-item__body">
-        <span
-          v-if="showSelectionIndicator"
-          class="md-list-item__selection-indicator"
-          aria-hidden="true"
-        >
-          <MDSymbol v-if="isSelected" name="check" />
-        </span>
-
         <span v-if="hasLeading" class="md-list-item__leading" :class="leadingClass">
           <slot name="leading" />
         </span>
@@ -488,7 +405,7 @@ defineExpose({
     var(--md-private-list-item-resolved-container-height)
   );
   border: 0;
-  border-radius: var(--md-list-item-container-shape, 0dp);
+  border-radius: var(--md-private-list-item-container-shape, 0dp);
   background: var(--md-comp-list-item-container-color);
   color: var(--md-comp-list-item-label-text-color);
   list-style: none;
@@ -551,11 +468,11 @@ defineExpose({
       --md-comp-list-item-min-container-height,
       var(--md-private-list-item-resolved-container-height)
     );
-    padding-inline: var(--md-list-item-content-padding-inline-start)
-      var(--md-list-item-content-padding-inline-end);
-    padding-block: var(--md-list-item-content-padding-block);
+    padding-inline: var(--md-private-list-item-content-padding-inline-start)
+      var(--md-private-list-item-content-padding-inline-end);
+    padding-block: var(--md-private-list-item-content-padding-block);
     border: 0;
-    border-radius: var(--md-list-item-action-shape, 0dp);
+    border-radius: var(--md-private-list-item-action-shape, 0dp);
     background: transparent;
     color: inherit;
     font: inherit;
@@ -586,17 +503,17 @@ defineExpose({
     width: 24dp;
     min-width: 24dp;
     color: var(--md-comp-list-item-leading-icon-color);
-    margin-inline-end: var(--md-list-item-leading-space);
+    margin-inline-end: var(--md-private-list-item-leading-space);
   }
 
   &__leading {
     justify-content: center;
-    min-width: var(--md-list-item-leading-size);
+    min-width: var(--md-private-list-item-leading-size);
     color: var(--md-comp-list-item-leading-icon-color);
-    margin-inline-end: var(--md-list-item-leading-space);
+    margin-inline-end: var(--md-private-list-item-leading-space);
 
     &_type_icon {
-      min-width: var(--md-list-item-leading-size);
+      min-width: var(--md-private-list-item-leading-size);
     }
 
     &_type_avatar {
@@ -628,15 +545,15 @@ defineExpose({
 
   &__trailing {
     justify-content: flex-end;
-    min-height: var(--md-list-item-passive-trailing-min-size);
+    min-height: var(--md-private-list-item-passive-trailing-min-size);
     color: var(--md-comp-list-item-trailing-text-color);
-    margin-inline-start: var(--md-list-item-trailing-space);
+    margin-inline-start: var(--md-private-list-item-trailing-space);
   }
 
   &__trailing-action {
     justify-content: center;
     color: var(--md-comp-list-item-trailing-icon-color);
-    padding-inline: 8dp var(--md-list-item-content-padding-inline-end);
+    padding-inline: 8dp var(--md-private-list-item-content-padding-inline-end);
     min-width: 48dp;
     min-height: 48dp;
     align-self: center;
