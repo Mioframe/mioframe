@@ -24,7 +24,7 @@ const { propertiesIdList: properties } = useDatabaseProperties(path, documentId)
 </script>
 
 <template>
-  <MDList density="expressive" list-style="segmented">
+  <MDList variant="expressive" list-style="segmented">
     <DatabasePropertyListItem
       v-for="propertyId in properties"
       :key="propertyId"

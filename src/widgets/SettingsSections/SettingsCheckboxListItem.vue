@@ -33,7 +33,6 @@ const onChange = () => {
     :supporting-text="supportingText"
     :disabled="disabled || loading"
     :line-count="lines"
-    :selected="checked"
     :aria-checked="checked"
     :aria-disabled="disabled || loading ? 'true' : undefined"
     :aria-busy="loading ? 'true' : undefined"

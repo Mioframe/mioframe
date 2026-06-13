@@ -84,7 +84,7 @@ const emptySupportingText = computed(() => {
 
     <MDList
       v-if="documentIds.length > 0"
-      density="expressive"
+      variant="expressive"
       list-style="segmented"
       class="repository-explorer-documents-section__list"
     >

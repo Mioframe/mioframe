@@ -2,44 +2,109 @@ import { computed, inject, provide, type ComputedRef, type InjectionKey, type Re
 
 /** Shared visual treatment for list containers. */
 export type MDListStyle = 'standard' | 'segmented';
-/** Material density profile for list row sizing. */
-export type MDListDensity = 'baseline' | 'expressive';
+/** Material list variant for row sizing and shape behavior. */
+export type MDListVariant = 'baseline' | 'expressive';
+/** Controlled list-level selection mode. */
+export type MDListSelectionMode = 'none' | 'single' | 'multiple';
+/** Primitive selection values supported by the shared list contract. */
+export type MDListSelectionValue = boolean | number | string;
+
+/** Controlled selection payload accepted by `MDList`. */
+export type MDListModelValue = MDListSelectionValue | readonly MDListSelectionValue[] | undefined;
 
 /** Reactive list container state shared with descendant items. */
 export interface MDListContextValue {
-  /** Active density profile for descendant rows. */
-  density: ComputedRef<MDListDensity>;
+  /** Active Material list variant for descendant rows. */
+  variant: ComputedRef<MDListVariant>;
   /** Semantic wrapper tag each item should render. */
   itemTag: ComputedRef<'div' | 'li'>;
   /** Material row heights keyed by resolved line count. */
-  lineHeights: ComputedRef<Record<1 | 2 | 3, number>>;
+  itemHeights: ComputedRef<Record<1 | 2 | 3, number>>;
   /** Active container style variant. */
   listStyle: ComputedRef<MDListStyle>;
+  /** Active list-level selection mode. */
+  selectionMode: ComputedRef<MDListSelectionMode>;
   /** Whether descendants should render list semantics. */
   usesListSemantics: ComputedRef<boolean>;
+  /** Checks whether a value is selected by the controlled list state. */
+  isItemSelected: (value: MDListSelectionValue | undefined) => boolean;
+  /** Requests a controlled selection update from the list owner. */
+  selectItem: (value: MDListSelectionValue | undefined) => void;
 }
 
 const LIST_CONTEXT_KEY: InjectionKey<MDListContextValue> = Symbol('md-list-context');
 
+const isSelectionValue = (value: unknown): value is MDListSelectionValue =>
+  typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string';
+
+const includesValue = (
+  selection: readonly MDListSelectionValue[],
+  value: MDListSelectionValue,
+): boolean => selection.some((entry) => Object.is(entry, value));
+
 /**
  * Provides shared list semantics and sizing to descendant list items.
  * @param listStyle - Reactive list style variant.
- * @param density - Reactive list density profile.
+ * @param variant - Reactive list variant.
  * @param tag - Reactive semantic container tag.
+ * @param selectionMode - Reactive selection mode.
+ * @param modelValue - Reactive controlled selection state.
+ * @param onUpdateModelValue - Controlled selection update callback.
  */
 export const provideMDListContext = (
   listStyle: Ref<MDListStyle> | ComputedRef<MDListStyle>,
-  density: Ref<MDListDensity> | ComputedRef<MDListDensity>,
+  variant: Ref<MDListVariant> | ComputedRef<MDListVariant>,
   tag: Ref<'div' | 'ul'> | ComputedRef<'div' | 'ul'>,
+  selectionMode: Ref<MDListSelectionMode> | ComputedRef<MDListSelectionMode>,
+  modelValue: Ref<MDListModelValue> | ComputedRef<MDListModelValue>,
+  onUpdateModelValue: (value: MDListModelValue) => void,
 ) => {
+  const selectedValues = computed<readonly MDListSelectionValue[]>(() => {
+    if (selectionMode.value === 'none') {
+      return [];
+    }
+
+    const value = modelValue.value;
+
+    if (selectionMode.value === 'multiple') {
+      return Array.isArray(value) ? value.filter(isSelectionValue) : [];
+    }
+
+    return isSelectionValue(value) ? [value] : [];
+  });
+
   provide(LIST_CONTEXT_KEY, {
-    density: computed(() => density.value),
+    variant: computed(() => variant.value),
     itemTag: computed(() => (tag.value === 'ul' ? 'li' : 'div')),
-    lineHeights: computed(() =>
-      density.value === 'baseline' ? { 1: 56, 2: 72, 3: 88 } : { 1: 48, 2: 64, 3: 80 },
+    itemHeights: computed(() =>
+      variant.value === 'baseline' ? { 1: 56, 2: 72, 3: 88 } : { 1: 56, 2: 72, 3: 88 },
     ),
     listStyle: computed(() => listStyle.value),
+    selectionMode: computed(() => selectionMode.value),
     usesListSemantics: computed(() => true),
+    isItemSelected(value) {
+      if (!isSelectionValue(value) || selectionMode.value === 'none') {
+        return false;
+      }
+
+      return includesValue(selectedValues.value, value);
+    },
+    selectItem(value) {
+      if (!isSelectionValue(value) || selectionMode.value === 'none') {
+        return;
+      }
+
+      if (selectionMode.value === 'single') {
+        onUpdateModelValue(value);
+        return;
+      }
+
+      const nextValues = includesValue(selectedValues.value, value)
+        ? selectedValues.value.filter((entry) => !Object.is(entry, value))
+        : [...selectedValues.value, value];
+
+      onUpdateModelValue(nextValues);
+    },
   });
 };
 

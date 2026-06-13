@@ -29,22 +29,26 @@ const { directoryPath: path, documentId } = toRefs(props);
 
 const { reorder, views: viewList } = useDatabaseViews(path, documentId);
 
-const viewListEl = useTemplateRef('viewListEl');
+const viewListEl = useTemplateRef<InstanceType<typeof MDList>>('viewListEl');
+const viewListContainerEl = computed(() => viewListEl.value?.$el ?? null);
 
 const viewMap = computed(() => new Map(viewList.value ?? []));
 
-const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(viewListEl, {
-  itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
-  onCommit: ({ orderedIds }) => {
-    const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
+const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(
+  viewListContainerEl,
+  {
+    itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
+    onCommit: ({ orderedIds }) => {
+      const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
 
-    if (nextOrderedIds.length !== orderedIds.length) {
-      return;
-    }
+      if (nextOrderedIds.length !== orderedIds.length) {
+        return;
+      }
 
-    return reorder(nextOrderedIds);
+      return reorder(nextOrderedIds);
+    },
   },
-});
+);
 
 const displayViewIdList = computed(() =>
   displayItemIdList.value.filter((id) => zodIs(id, zodDatabaseViewId)),
@@ -76,7 +80,7 @@ const onClickView = (id: DatabaseViewId) => {
 <template>
   <MDList
     ref="viewListEl"
-    density="expressive"
+    variant="expressive"
     list-style="segmented"
     transition
     class="db-view-map-edit"

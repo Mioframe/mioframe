@@ -23,7 +23,6 @@ vi.mock('@shared/ui/Lists', () => ({
       mode: { type: String, default: 'static' },
       disabled: { type: Boolean, default: false },
       lineCount: { type: Number, default: undefined },
-      selected: { type: Boolean, default: false },
     },
     emits: ['action'],
     setup(
@@ -32,7 +31,6 @@ vi.mock('@shared/ui/Lists', () => ({
         mode: string;
         disabled?: boolean;
         lineCount?: number;
-        selected?: boolean;
       },
       {
         attrs,
@@ -50,7 +48,6 @@ vi.mock('@shared/ui/Lists', () => ({
           {
             ...attrs,
             'data-line-count': props.lineCount,
-            'data-selected': props.selected ? 'true' : 'false',
             onClick: (e: MouseEvent) => {
               if (!props.disabled) emit('action', e);
             },

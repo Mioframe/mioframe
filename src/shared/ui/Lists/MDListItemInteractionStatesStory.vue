@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, useTemplateRef } from 'vue';
+import { onMounted, ref, useTemplateRef } from 'vue';
 import MDIconButton from '../Button/MDIconButton.vue';
 import MDSymbol from '../Icon/MDSymbol.vue';
 import MDList from './MDList.vue';
@@ -12,7 +12,20 @@ const rootAttrs = {
 const hoverAttrs = { 'data-visual-state': 'hover' };
 const focusAttrs = { 'data-visual-state': 'focus' };
 const pressedAttrs = { 'data-visual-state': 'pressed' };
+const multiActionIndependenceAttrs = {
+  'data-testid': 'md-list-multi-action-independence',
+};
 const onAction = () => {};
+const primaryActionCount = ref(0);
+const trailingActionCount = ref(0);
+
+const onPrimaryAction = () => {
+  primaryActionCount.value += 1;
+};
+
+const onTrailingAction = () => {
+  trailingActionCount.value += 1;
+};
 
 onMounted(() => {
   const root = interactionRef.value;
@@ -40,7 +53,7 @@ onMounted(() => {
   >
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
-      <MDList density="expressive">
+      <MDList variant="expressive">
         <MDListItem
           v-bind="hoverAttrs"
           mode="single-action"
@@ -71,7 +84,7 @@ onMounted(() => {
 
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Multi-action surface</h3>
-      <MDList density="expressive" list-style="segmented">
+      <MDList variant="expressive" list-style="segmented">
         <MDListItem
           v-bind="hoverAttrs"
           mode="multi-action"
@@ -84,16 +97,26 @@ onMounted(() => {
           </template>
         </MDListItem>
         <MDListItem
+          v-bind="multiActionIndependenceAttrs"
           mode="multi-action"
           label-text="Trailing action independence"
           supporting-text="The secondary action keeps its own target and hit area"
-          @action="onAction"
+          @action="onPrimaryAction"
         >
           <template #trailingAction>
-            <MDIconButton tooltip="Edit" color="outlined" md-symbol-name="edit" />
+            <MDIconButton
+              tooltip="Edit"
+              color="outlined"
+              md-symbol-name="edit"
+              @click="onTrailingAction"
+            />
           </template>
         </MDListItem>
       </MDList>
+      <p class="md-list-item-interaction-states-story__counts">
+        <span id="md-list-primary-action-count">{{ primaryActionCount }}</span>
+        <span id="md-list-trailing-action-count">{{ trailingActionCount }}</span>
+      </p>
     </section>
   </div>
 </template>
@@ -118,5 +141,17 @@ onMounted(() => {
   font-weight: var(--md-sys-typescale-label-large-weight);
   line-height: var(--md-sys-typescale-label-large-line-height);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+
+.md-list-item-interaction-states-story__counts {
+  display: flex;
+  gap: 12dp;
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  letter-spacing: var(--md-sys-typescale-body-small-tracking);
 }
 </style>

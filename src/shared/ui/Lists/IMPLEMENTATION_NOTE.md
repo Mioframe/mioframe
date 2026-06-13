@@ -25,9 +25,10 @@
   - `MDList` owns list style, grouping, shape, spacing, semantics, and any future list-level selection context.
   - `MDListItem` owns anatomy and valid interaction modes only.
   - Standard and segmented are the supported list styles.
-  - Full list-level selection is deferred in this pass. Item-level `selected` modes are removed from supported public API/status rather than presented as partial Material support.
+  - List-level single-select and multi-select behavior is supported through controlled `selectionMode` plus `modelValue`.
 - Deviation:
-  - Full single-select and multi-select listbox behavior is not implemented in this pass because the repo has no shared roving-focus/listbox foundation and the task scope also requires a broad container/style migration. This remains a documented gap, not a claimed supported feature.
+  - Live Figma verification for the cited Lists page is currently blocked by the workspace Figma MCP Starter-plan rate limit.
+  - Selection rows currently use a shared checkmark indicator instead of Material-specific radio or checkbox controls.
 - Verification surface:
   - focused unit tests for DOM structure and invalid combinations
   - Storybook matrix for supported list variants and states
@@ -71,12 +72,10 @@
   - focus
   - pressed
   - dragged
+  - selected through list-level selection mode
 
 ## Not supported in this pass
 
-- public list selection modes
-- listbox/option semantics
-- roving keyboard behavior for selection lists
 - expandable/swipe list variants
 - project-specific grid layout on `MDList`/`MDListContainer`
 
@@ -97,6 +96,11 @@
   - requires a real `@action` listener or `href`
   - full-row state layer belongs to the internal primary action
   - no secondary interactive control inside the primary action
+- Single-select / multi-select:
+  - selection is owned by `MDList`, not an item-level `selected` prop
+  - rows require primitive `value` props
+  - selected state uses `role="option"` and a non-color indicator
+  - nested trailing actions are invalid
 - Multi-action:
   - requires a real primary action
   - requires at least one secondary action
@@ -113,4 +117,5 @@
 - Risks:
   - menu surfaces previously relied on `MDListContainer`; the migration must preserve overlay behavior after moving menus off list semantics
   - repository and home-like consumers currently patch shape locally; those overrides must be removed or narrowed
+  - live Figma node verification may remain blocked until the plan limit resets or is upgraded
   - visual baselines will need careful refresh after geometry changes

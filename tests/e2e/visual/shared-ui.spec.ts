@@ -236,6 +236,14 @@ test('MDListItem configurations match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-list-item-configurations.png');
 });
 
+test('MDListItem selection modes match baseline', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
+
+  const surface = page.getByTestId('visual-md-list-selection');
+
+  await expect(surface).toHaveScreenshot('md-list-item-selection.png');
+});
+
 test('MDList DOM contract keeps list semantics and separate action surfaces', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--dom-contract');
 
@@ -263,6 +271,45 @@ test('MDList segmented style rounds the first and last item wrappers', async ({ 
 
   expect(firstRadius).toBe('16px');
   expect(lastRadius).toBe('16px');
+});
+
+test('MDListItem multi-action rows keep the trailing action independent from the primary action', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+  const targetRow = page.getByTestId('md-list-multi-action-independence');
+  const primaryAction = targetRow.locator('.md-list-item__primary-action');
+  const trailingAction = targetRow.getByRole('button', { name: 'Edit' });
+  const primaryCount = page.locator('#md-list-primary-action-count');
+  const trailingCount = page.locator('#md-list-trailing-action-count');
+
+  await primaryAction.click();
+  await expect(primaryCount).toHaveText('1');
+  await expect(trailingCount).toHaveText('0');
+
+  await trailingAction.click();
+  await expect(primaryCount).toHaveText('1');
+  await expect(trailingCount).toHaveText('1');
+});
+
+test('MDList selection uses list-level option semantics and a visible selected indicator', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
+
+  const surface = page.getByTestId('visual-md-list-selection');
+  const listboxes = surface.getByRole('listbox');
+
+  await expect(listboxes).toHaveCount(2);
+  await expect(listboxes.nth(0)).not.toHaveAttribute('aria-multiselectable', /true/);
+  await expect(listboxes.nth(1)).toHaveAttribute('aria-multiselectable', 'true');
+
+  const selectedOptions = surface.locator('[role="option"][aria-selected="true"]');
+  await expect(selectedOptions).toHaveCount(3);
+  await expect(
+    selectedOptions.locator('.md-list-item__selection-indicator .md-symbol'),
+  ).toHaveCount(3);
 });
 
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({

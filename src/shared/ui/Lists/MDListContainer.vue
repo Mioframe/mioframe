@@ -1,36 +1,55 @@
 <script setup lang="ts">
 import MDList from './MDList.vue';
-import type { MDListDensity, MDListStyle } from './listContext';
+import type {
+  MDListModelValue,
+  MDListSelectionMode,
+  MDListStyle,
+  MDListVariant,
+} from './listContext';
 
 withDefaults(
   defineProps<{
-    density?: MDListDensity | undefined;
     is?: 'div' | 'ul' | undefined;
-    tag?: 'div' | 'ul' | undefined;
     listStyle?: MDListStyle | undefined;
+    modelValue?: MDListModelValue;
+    selectionMode?: MDListSelectionMode | undefined;
+    tag?: 'div' | 'ul' | undefined;
     transition?: boolean | undefined;
+    variant?: MDListVariant | undefined;
   }>(),
   {
-    density: 'baseline',
-    tag: 'div',
     listStyle: 'standard',
+    selectionMode: 'none',
+    tag: 'div',
     transition: false,
+    variant: 'baseline',
   },
 );
+
+const emit = defineEmits<{
+  'update:modelValue': [value: MDListModelValue];
+}>();
 
 defineSlots<{
   default: () => unknown;
 }>();
+
+const onUpdateModelValue = (value: MDListModelValue) => {
+  emit('update:modelValue', value);
+};
 </script>
 
 <template>
   <MDList
     :is="is"
-    :density="density"
-    :tag="tag"
     :list-style="listStyle"
+    :model-value="modelValue"
+    :selection-mode="selectionMode"
+    :tag="tag"
     :transition="transition"
+    :variant="variant"
     v-bind="$attrs"
+    @update:model-value="onUpdateModelValue"
   >
     <slot />
   </MDList>

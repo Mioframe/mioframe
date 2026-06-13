@@ -32,7 +32,7 @@ const onAction = () => {};
     <section class="md-list-item-configurations-story__section">
       <h3 class="md-list-item-configurations-story__title">Segmented expressive</h3>
       <MDList
-        density="expressive"
+        variant="expressive"
         list-style="segmented"
         class="md-list-item-configurations-story__list"
       >

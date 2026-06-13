@@ -2,6 +2,7 @@ import MDListItemConfigurationsStory from './MDListItemConfigurationsStory.vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDListItemDomContractStory from './MDListItemDomContractStory.vue';
 import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory.vue';
+import MDListItemSelectionStory from './MDListItemSelectionStory.vue';
 import MDListItemTrailingActionVisualStory from './MDListItemTrailingActionVisualStory.vue';
 import MDListItemVisualStatesStory from './MDListItemVisualStatesStory.vue';
 
@@ -49,6 +50,14 @@ export const TrailingActionLayout: Story = {
   render: () => ({
     components: { MDListItemTrailingActionVisualStory },
     template: '<MDListItemTrailingActionVisualStory />',
+  }),
+};
+
+export const SelectionModes: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemSelectionStory },
+    template: '<MDListItemSelectionStory />',
   }),
 };
 

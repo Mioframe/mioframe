@@ -9,8 +9,9 @@ import {
   useTemplateRef,
   warn,
 } from 'vue';
+import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
-import { useMDListContext } from './listContext';
+import { useMDListContext, type MDListSelectionValue } from './listContext';
 
 type MDListItemMode = 'static' | 'single-action' | 'multi-action';
 type MDListLeadingType = 'icon' | 'avatar' | 'media' | 'control';
@@ -31,8 +32,8 @@ const props = withDefaults(
     mode?: MDListItemMode | undefined;
     nativeType?: 'button' | 'submit' | 'reset' | undefined;
     overline?: string | undefined;
-    selected?: boolean | undefined;
     supportingText?: string | undefined;
+    value?: MDListSelectionValue | undefined;
   }>(),
   {
     containerTag: 'div',
@@ -64,9 +65,19 @@ const hasOverline = computed(() => !!slots.overline || !!props.overline);
 const hasSupportingText = computed(() => !!slots.supportingText || !!props.supportingText);
 const hasTrailing = computed(() => !!slots.trailing);
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
-const hasPrimaryAction = computed(() => props.mode !== 'static');
 const inList = computed(() => listContext?.usesListSemantics.value ?? false);
-const usesInternalActionSurface = computed(() => inList.value && hasPrimaryAction.value);
+const selectionMode = computed(() => listContext?.selectionMode.value ?? 'none');
+const participatesInSelection = computed(
+  () => inList.value && selectionMode.value !== 'none' && props.value !== undefined,
+);
+const isSelected = computed(() =>
+  participatesInSelection.value ? (listContext?.isItemSelected(props.value) ?? false) : false,
+);
+const hasPrimaryAction = computed(() => props.mode !== 'static' || participatesInSelection.value);
+const usesInternalActionSurface = computed(
+  () => inList.value && hasPrimaryAction.value && !participatesInSelection.value,
+);
+const showSelectionIndicator = computed(() => participatesInSelection.value);
 
 const resolvedLineCount = computed<1 | 2 | 3>(() => {
   if (props.lineCount) {
@@ -85,7 +96,7 @@ const resolvedLineCount = computed<1 | 2 | 3>(() => {
 });
 
 const resolvedHeight = computed(
-  () => listContext?.lineHeights.value[resolvedLineCount.value] ?? 56,
+  () => listContext?.itemHeights.value[resolvedLineCount.value] ?? 56,
 );
 const rootTag = computed(() => {
   if (inList.value) {
@@ -99,6 +110,10 @@ const rootTag = computed(() => {
   return props.containerTag;
 });
 const rootRole = computed(() => {
+  if (participatesInSelection.value) {
+    return 'option';
+  }
+
   if (inList.value) {
     return rootTag.value === 'li' ? undefined : 'listitem';
   }
@@ -121,7 +136,7 @@ const interactiveSurfaceEl = computed(() => {
     return primaryActionEl.value;
   }
 
-  if (props.mode === 'single-action') {
+  if (props.mode === 'single-action' || participatesInSelection.value) {
     return rootEl.value;
   }
 
@@ -144,7 +159,8 @@ const rootClass = computed(() => ({
   'md-list-item_line-count_1': resolvedLineCount.value === 1,
   'md-list-item_line-count_2': resolvedLineCount.value === 2,
   'md-list-item_line-count_3': resolvedLineCount.value === 3,
-  'md-list-item_selected': props.selected,
+  'md-list-item_selectable': participatesInSelection.value,
+  'md-list-item_selected': isSelected.value,
   'md-state_hover': showVisualState.value && hover.value,
   'md-state_focused': showVisualState.value && focused.value,
   'md-state_pressed': showVisualState.value && durationPressedState.value,
@@ -165,7 +181,7 @@ const rootAttrs = computed(() => {
 });
 
 const interactiveAttrs = computed(() => {
-  if (props.mode === 'static') {
+  if (props.mode === 'static' && !participatesInSelection.value) {
     return attrs;
   }
 
@@ -193,6 +209,12 @@ const onAction = (event: MouseEvent) => {
   emit('action', event);
 };
 
+const onSelect = () => {
+  if (!props.disabled) {
+    listContext?.selectItem(props.value);
+  }
+};
+
 const onActionKeydown = (event: KeyboardEvent) => {
   if (props.href && event.key === ' ') {
     event.preventDefault();
@@ -204,12 +226,23 @@ const onActionKeydown = (event: KeyboardEvent) => {
 };
 
 const onRootClick = (event: MouseEvent) => {
+  if (participatesInSelection.value) {
+    onSelect();
+    return;
+  }
+
   if (!inList.value && props.mode === 'single-action') {
     onAction(event);
   }
 };
 
 const onRootKeydown = (event: KeyboardEvent) => {
+  if (participatesInSelection.value && (event.key === ' ' || event.key === 'Enter')) {
+    event.preventDefault();
+    onSelect();
+    return;
+  }
+
   if (!inList.value && props.mode === 'single-action') {
     onActionKeydown(event);
   }
@@ -244,6 +277,25 @@ if (import.meta.env.DEV) {
         'MDListItem: mode="multi-action" requires either a real primary @action or href, plus a #trailingAction slot.',
       );
     }
+
+    if (selectionMode.value !== 'none' && props.value === undefined) {
+      warn('MDListItem: selection lists require each item to provide a primitive value.');
+    }
+
+    if (selectionMode.value !== 'none' && props.mode !== 'static') {
+      warn(
+        'MDListItem: selection lists own the row interaction surface. Use mode="static" for selectable rows.',
+      );
+    }
+
+    if (
+      selectionMode.value !== 'none' &&
+      (props.mode === 'multi-action' || hasTrailingAction.value)
+    ) {
+      warn(
+        'MDListItem: selection lists cannot include nested trailing actions. Use a non-selectable list for multi-action rows.',
+      );
+    }
   });
 }
 
@@ -267,11 +319,13 @@ defineExpose({
     :class="rootClass"
     :style="hostStyle"
     :role="rootRole"
+    :aria-selected="participatesInSelection ? String(isSelected) : undefined"
     :href="!inList && mode === 'single-action' ? href : undefined"
     :type="!inList && mode === 'single-action' ? buttonType : undefined"
     :disabled="!inList && mode === 'single-action' && !href && disabled ? true : undefined"
     :aria-disabled="!inList && mode === 'single-action' && href && disabled ? 'true' : undefined"
     :tabindex="!inList && mode === 'single-action' && href && disabled ? -1 : undefined"
+    :data-md-list-option="participatesInSelection ? 'true' : undefined"
     :draggable="!disabled ? draggable : undefined"
     @click="onRootClick"
     @keydown="onRootKeydown"
@@ -333,7 +387,7 @@ defineExpose({
 
     <template v-else>
       <MDStateLayer
-        v-if="mode === 'single-action'"
+        v-if="mode === 'single-action' || participatesInSelection"
         :hover="hover"
         :focused="focused"
         :pressed="durationPressedState"
@@ -342,6 +396,14 @@ defineExpose({
       />
 
       <div class="md-list-item__body">
+        <span
+          v-if="showSelectionIndicator"
+          class="md-list-item__selection-indicator"
+          aria-hidden="true"
+        >
+          <MDSymbol v-if="isSelected" name="check" />
+        </span>
+
         <span v-if="hasLeading" class="md-list-item__leading" :class="leadingClass">
           <slot name="leading" />
         </span>
@@ -377,46 +439,85 @@ defineExpose({
 <style scoped>
 .md-list-item {
   --md-comp-list-item-container-color: var(--md-sys-color-surface);
-  --md-comp-list-item-content-color: var(--md-sys-color-on-surface);
-  --md-comp-list-item-muted-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-disabled-label-text-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-disabled-leading-icon-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-disabled-supporting-text-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-disabled-trailing-icon-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-item-leading-avatar-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-leading-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-overline-color: var(--md-sys-color-on-surface-variant);
   --md-comp-list-item-selected-container-color: var(--md-sys-color-secondary-container);
-  --md-comp-list-item-selected-content-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-disabled-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-  --md-content-color: var(--md-comp-list-item-content-color);
+  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-label-text-color);
+  --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-trailing-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-trailing-text-color: var(--md-sys-color-on-surface-variant);
+  --md-content-color: var(--md-comp-list-item-state-layer-color);
 
   position: relative;
   display: flex;
   align-items: stretch;
   min-height: var(--md-list-item-height);
   border: 0;
-  border-radius: var(--md-list-item-wrapper-shape, 0dp);
+  border-radius: var(--md-list-item-container-shape, 0dp);
   background: var(--md-comp-list-item-container-color);
-  color: var(--md-comp-list-item-content-color);
+  color: var(--md-comp-list-item-label-text-color);
   list-style: none;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 
   &_selected {
     --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
-    --md-comp-list-item-content-color: var(--md-comp-list-item-selected-content-color);
-    --md-comp-list-item-muted-color: var(--md-comp-list-item-selected-content-color);
-    --md-content-color: var(--md-comp-list-item-selected-content-color);
+    --md-comp-list-item-label-text-color: var(--md-comp-list-item-selected-label-text-color);
+    --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-selected-label-text-color);
+    --md-comp-list-item-overline-color: var(--md-comp-list-item-selected-supporting-text-color);
+    --md-comp-list-item-state-layer-color: var(--md-comp-list-item-selected-label-text-color);
+    --md-comp-list-item-supporting-text-color: var(
+      --md-comp-list-item-selected-supporting-text-color
+    );
+    --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-selected-trailing-icon-color);
+    --md-comp-list-item-trailing-text-color: var(
+      --md-comp-list-item-selected-supporting-text-color
+    );
   }
 
   &.md-state_disabled,
   &:disabled,
   &[aria-disabled='true'] {
-    --md-comp-list-item-content-color: var(--md-comp-list-item-disabled-color);
-    --md-comp-list-item-muted-color: var(--md-comp-list-item-disabled-color);
-    --md-content-color: var(--md-comp-list-item-disabled-color);
+    --md-comp-list-item-label-text-color: var(--md-comp-list-item-disabled-label-text-color);
+    --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-disabled-leading-icon-color);
+    --md-comp-list-item-overline-color: var(--md-comp-list-item-disabled-supporting-text-color);
+    --md-comp-list-item-state-layer-color: var(--md-comp-list-item-disabled-label-text-color);
+    --md-comp-list-item-supporting-text-color: var(
+      --md-comp-list-item-disabled-supporting-text-color
+    );
+    --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-disabled-trailing-icon-color);
+    --md-comp-list-item-trailing-text-color: var(
+      --md-comp-list-item-disabled-supporting-text-color
+    );
   }
 
   &.md-state_dragged {
     background: var(--md-sys-color-tertiary-container);
     box-shadow: var(--md-sys-elevation-level2);
-    --md-comp-list-item-content-color: var(--md-sys-color-on-tertiary-container);
-    --md-comp-list-item-muted-color: var(--md-sys-color-on-tertiary-container);
-    --md-content-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-label-text-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-leading-icon-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-overline-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-state-layer-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-trailing-icon-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-list-item-trailing-text-color: var(--md-sys-color-on-tertiary-container);
   }
 
   &__primary-action,
@@ -429,9 +530,9 @@ defineExpose({
     flex: 1 1 auto;
     min-width: 0;
     min-height: var(--md-list-item-height);
-    padding-inline: var(--md-list-item-padding-inline) var(--md-list-item-padding-inline-end);
-    padding-block: var(--md-list-item-padding-block);
-    gap: var(--md-list-item-gap);
+    padding-inline: var(--md-list-item-content-padding-inline-start)
+      var(--md-list-item-content-padding-inline-end);
+    padding-block: var(--md-list-item-content-padding-block);
     border: 0;
     border-radius: var(--md-list-item-action-shape, 0dp);
     background: transparent;
@@ -448,6 +549,7 @@ defineExpose({
   }
 
   &__leading,
+  &__selection-indicator,
   &__trailing,
   &__trailing-action {
     position: relative;
@@ -456,13 +558,21 @@ defineExpose({
     align-items: center;
     flex: 0 0 auto;
     min-width: 0;
-    color: var(--md-comp-list-item-muted-color);
+  }
+
+  &__selection-indicator {
+    justify-content: center;
+    width: 24dp;
+    min-width: 24dp;
+    color: var(--md-comp-list-item-leading-icon-color);
+    margin-inline-end: var(--md-list-item-leading-space);
   }
 
   &__leading {
     justify-content: center;
     min-width: var(--md-list-item-leading-size);
-    color: var(--md-comp-list-item-muted-color);
+    color: var(--md-comp-list-item-leading-icon-color);
+    margin-inline-end: var(--md-list-item-leading-space);
 
     &_type_icon {
       min-width: var(--md-list-item-leading-size);
@@ -498,18 +608,21 @@ defineExpose({
   &__trailing {
     justify-content: flex-end;
     min-height: var(--md-list-item-passive-trailing-min-size);
+    color: var(--md-comp-list-item-trailing-text-color);
+    margin-inline-start: var(--md-list-item-trailing-space);
   }
 
   &__trailing-action {
     justify-content: center;
-    padding-inline: 8dp var(--md-list-item-padding-inline-end);
+    color: var(--md-comp-list-item-trailing-icon-color);
+    padding-inline: 8dp var(--md-list-item-content-padding-inline-end);
     min-width: 48dp;
     min-height: 48dp;
     align-self: center;
   }
 
   &__overline {
-    color: var(--md-comp-list-item-muted-color);
+    color: var(--md-comp-list-item-overline-color);
     font-family: var(--md-sys-typescale-label-medium-font);
     font-size: var(--md-sys-typescale-label-medium-size);
     font-weight: var(--md-sys-typescale-label-medium-weight);
@@ -521,7 +634,7 @@ defineExpose({
   }
 
   &__label-text {
-    color: var(--md-comp-list-item-content-color);
+    color: var(--md-comp-list-item-label-text-color);
     font-family: var(--md-sys-typescale-body-large-font);
     font-size: var(--md-sys-typescale-body-large-size);
     font-weight: var(--md-sys-typescale-body-large-weight);
@@ -533,7 +646,7 @@ defineExpose({
   }
 
   &__supporting-text {
-    color: var(--md-comp-list-item-muted-color);
+    color: var(--md-comp-list-item-supporting-text-color);
     display: -webkit-box;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -91,7 +91,7 @@ onMounted(() => {
     <section class="md-list-item-visual-states-story__section">
       <h3 class="md-list-item-visual-states-story__title">Segmented expressive</h3>
       <MDList
-        density="expressive"
+        variant="expressive"
         list-style="segmented"
         class="md-list-item-visual-states-story__list"
       >

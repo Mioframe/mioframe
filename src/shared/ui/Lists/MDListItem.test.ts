@@ -108,6 +108,34 @@ describe('MDListItem', () => {
     expect(wrapper.element.tagName.toLowerCase()).toBe('button');
   });
 
+  it('renders list-level selection rows as options with a visible non-color indicator', () => {
+    const wrapper = mountListItem(
+      { value: 'settings' },
+      {
+        inList: true,
+        listProps: {
+          selectionMode: 'single',
+          modelValue: 'settings',
+        },
+      },
+    );
+
+    const item = wrapper.get('.md-list-item');
+
+    expect(wrapper.get('.md-list').attributes('role')).toBe('listbox');
+    expect(item.attributes('role')).toBe('option');
+    expect(item.attributes('aria-selected')).toBe('true');
+    expect(item.find('.md-list-item__selection-indicator').exists()).toBe(true);
+  });
+
+  it('does not participate in list selection without a list-level selection context', () => {
+    const wrapper = mountListItem({ value: 'settings' });
+
+    expect(wrapper.get('.md-list-item').attributes('role')).toBe('listitem');
+    expect(wrapper.get('.md-list-item').attributes('aria-selected')).toBeUndefined();
+    expect(wrapper.find('.md-list-item__selection-indicator').exists()).toBe(false);
+  });
+
   it('resolves a two-line layout when supporting text is present', () => {
     const wrapper = mountListItem({ supportingText: 'System preferences' }, { inList: true });
 
