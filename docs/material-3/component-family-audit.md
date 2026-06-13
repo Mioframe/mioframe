@@ -69,29 +69,31 @@ Current state:
 
 - `MDListItem` uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, `trailingAction`, and `selectionControl`;
 - list modes are explicit through `static`, `single-action`, `multi-action`, `single-select`, and `multi-select`;
-- `multi-action` is enforced: a dev-mode warning fires when `mode="multi-action"` is used without a `#trailingAction` slot; consumers `DocumentMDListItem` and `DatabaseViewListEdit` no longer infer `multi-action` from slot presence alone;
+- `single-action` is enforced: a dev-mode warning fires when `mode="single-action"` is used without an `@action` listener and without an `href`;
+- `multi-action` is enforced: a dev-mode warning fires when `mode="multi-action"` is used without a `#trailingAction` slot;
 - static rows with a trailing control use `static` mode and the `#trailing` slot; they do not expose a fake primary action surface;
 - multi-action rows render a separate `button`/`a` primary-action surface plus a trailing-action surface; no secondary controls nest inside the primary-action element;
 - all known consumers corrected: `FSEntryMDListItem`, `DocumentMDListItem`, `DatabaseViewListEdit`, `DatabasePropertyListItem`, `DirectoryContentEntry`, `DatabasePropertyEditList`;
-- public tokens use `--md-comp-list-item-*`; old non-Material tokens `--md-list-item-border-radius` and `--md-list-container-border-radius` have been migrated to `--md-comp-list-item-container-shape` and `--md-comp-list-container-shape` in all consumers;
+- public tokens use `--md-comp-list-item-*`; old non-Material tokens migrated; `MDListContainer` defaults `--md-comp-list-container-shape` to `0dp` (Material baseline standard = square corners); consumers needing a different container shape set their own `--md-comp-list-container-shape`;
+- `MDListItem` dead first/last-child corner-radius rules removed; they always evaluated to `0dp` under the baseline default and implied a segmented-style contract that is not implemented;
 - `MDListContainer` and `MDList` `type="list"|"grid"` replaced with `layout?: 'column' | 'grid'`; `grid` is project-specific layout, not a Material list style;
 - `MDListContainer` scoped CSS uses `dp` authoring units throughout;
-- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels; migration-history wording removed;
-- `Configurations` story includes an overline item; all supported configurations have visual coverage;
-- interaction states story uses `--md-content-color: var(--md-sys-color-primary)` in the story wrapper and a Default reference row so state-layer overlays are clearly visible at Material spec opacities in screenshots;
-- trailing action target size verified with a Playwright browser assertion against the `.md-icon-button__target` span (≥48×48 px); no target-size regression can pass the visual gate silently;
+- `role="listitem"` is now applied explicitly to all `MDListItem` root elements when the root tag is not `li`; all modes (static, single-action as `button`/`a`, multi-action, select) produce a valid `listitem` in the rendered DOM;
+- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels;
+- `Configurations` story includes all supported configurations; interaction states story covers single-action (full-row state layer) and multi-action (primary-action-bounded state layer); supporting text describes surface coverage, not internal opacity values;
+- trailing action target size verified with a Playwright browser assertion against the `.md-icon-button__target` span (≥48×48 px);
 - a dev-mode warning fires when `selected=true` is used without a `#selectionControl` slot (color-only selected state);
-- visual snapshot baselines regenerated and reviewed against Material reference;
-- focused unit tests cover mode separation, line-count rendering, disabled behavior, and corrected consumer wrappers.
+- unit tests cover mode separation, line-count rendering, listitem role in all modes, li-tag implicit-role preservation, disabled behavior, single-action warning, and corrected consumer wrappers.
 
 Gaps:
 
 - selected state uses color only; no non-color indicator exists; list-level selection semantics (`listbox`, `option` roles, roving focus) are not implemented; `selected` must not be presented as a fully accessible selected state;
-- expressive segmented list styling (`standard`/`segmented` Material vocabulary) is not yet exposed as a distinct API variant on `MDListContainer`/`MDList`;
+- expressive/segmented list style (rounded corners, gaps between items, highlighted selection states) is not implemented; the supported style is baseline standard (square corners only);
 - multi-action keyboard roving between primary and secondary actions is not implemented as a shared contract;
-- `MDListContainer` and `MDList` do not expose listbox labeling helpers or a richer selection-container API.
+- `MDListContainer` and `MDList` do not expose listbox labeling helpers or a richer selection-container API;
+- visual snapshot baselines must be regenerated after the shape and story changes in this pass.
 
-Verdict: second migration family after Buttons. Remains `partial` until selection semantics, segmented variant, and full accessibility verification are complete.
+Verdict: second migration family after Buttons. Remains `partial` until selection semantics, segmented variant, visual snapshot regeneration, and full accessibility verification are complete.
 
 ## Dialogs: `DialogForm`
 

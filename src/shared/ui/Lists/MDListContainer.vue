@@ -30,7 +30,7 @@ defineSlots<{
 
 <style scoped>
 .md-list-container {
-  --md-comp-list-container-shape: 16dp;
+  --md-comp-list-container-shape: 0dp;
 
   list-style-type: none;
   display: flex;

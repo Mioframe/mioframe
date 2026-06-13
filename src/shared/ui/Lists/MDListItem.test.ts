@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import MDListItem from './MDListItem.vue';
 
 const mountListItem = (
@@ -20,7 +20,7 @@ describe('MDListItem', () => {
     document.body.innerHTML = '';
   });
 
-  it('defaults to a static one-line list item with native list semantics on div hosts', () => {
+  it('defaults to a static one-line list item with listitem semantics', () => {
     const wrapper = mountListItem();
 
     expect(wrapper.attributes('role')).toBe('listitem');
@@ -56,9 +56,57 @@ describe('MDListItem', () => {
     );
   });
 
-  it('emits action from single-action items', async () => {
+  it('adds role="listitem" to single-action root button', () => {
     const wrapper = mountListItem({
       mode: 'single-action',
+      onAction: vi.fn(),
+    });
+
+    expect(wrapper.attributes('role')).toBe('listitem');
+    expect(wrapper.element.tagName.toLowerCase()).toBe('button');
+  });
+
+  it('adds role="listitem" to single-action anchor root', () => {
+    const wrapper = mountListItem({
+      mode: 'single-action',
+      href: '#target',
+    });
+
+    expect(wrapper.attributes('role')).toBe('listitem');
+    expect(wrapper.element.tagName.toLowerCase()).toBe('a');
+  });
+
+  it('adds role="listitem" to multi-action root container', () => {
+    const wrapper = mountListItem(
+      { mode: 'multi-action', onAction: vi.fn() },
+      { trailingAction: '<button type="button">Secondary</button>' },
+    );
+
+    expect(wrapper.attributes('role')).toBe('listitem');
+  });
+
+  it('does not add explicit role when containerTag is li', () => {
+    const wrapper = mountListItem({ containerTag: 'li' });
+
+    expect(wrapper.attributes('role')).toBeUndefined();
+    expect(wrapper.element.tagName.toLowerCase()).toBe('li');
+  });
+
+  it('forwards an explicit role from attrs without overriding it', () => {
+    const wrapperWithRole = mount(MDListItem, {
+      attachTo: document.body,
+      props: { labelText: 'Settings' },
+      attrs: { role: 'option' },
+    });
+
+    expect(wrapperWithRole.attributes('role')).toBe('option');
+  });
+
+  it('emits action from single-action items', async () => {
+    const onAction = vi.fn();
+    const wrapper = mountListItem({
+      mode: 'single-action',
+      onAction,
     });
 
     await wrapper.get('button').trigger('click');
@@ -71,6 +119,7 @@ describe('MDListItem', () => {
       {
         mode: 'multi-action',
         supportingText: 'System preferences',
+        onAction: vi.fn(),
       },
       {
         trailingAction: '<button type="button">Disconnect</button>',
@@ -102,6 +151,7 @@ describe('MDListItem', () => {
     const wrapper = mountListItem({
       mode: 'single-action',
       disabled: true,
+      onAction: vi.fn(),
     });
 
     await wrapper.get('button').trigger('click');
@@ -118,5 +168,19 @@ describe('MDListItem', () => {
 
     expect(wrapper.get('a').attributes('aria-disabled')).toBe('true');
     expect(wrapper.get('a').attributes('tabindex')).toBe('-1');
+  });
+
+  it('warns in development when single-action has no action listener or href', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mountListItem({ mode: 'single-action' }); // no onAction, no href
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'mode="single-action" requires either an @action listener or an href',
+      ),
+    );
+
+    warnSpy.mockRestore();
   });
 });

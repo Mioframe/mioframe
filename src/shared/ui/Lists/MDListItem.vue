@@ -65,6 +65,14 @@ const hasSelectionControl = computed(() => isSelectionMode.value && !!slots.sele
 
 if (import.meta.env.DEV) {
   onMounted(() => {
+    if (props.mode === 'single-action' && !props.href && attrs.onAction === undefined) {
+      warn(
+        'MDListItem: mode="single-action" requires either an @action listener or an href. ' +
+          'Without either, the item renders a button with no action. ' +
+          'Use mode="static" for non-interactive items.',
+      );
+    }
+
     if (props.mode === 'multi-action' && !hasTrailingAction.value) {
       warn(
         'MDListItem: mode="multi-action" requires a #trailingAction slot. ' +
@@ -115,11 +123,13 @@ const rootAttrs = computed(() => {
   };
 });
 const rootRole = computed(() => {
-  if (props.mode === 'static' && props.containerTag === 'div' && attrs.role === undefined) {
-    return 'listitem';
-  }
-
-  return undefined;
+  // li elements have the implicit listitem role; return undefined so Vue does not
+  // render an explicit attribute. For all other root tags, forward an explicit role
+  // when the caller provides one (preserving their intent), or default to listitem
+  // so the rendered DOM always provides a valid listitem in a div[role=list] parent.
+  if (rootTag.value === 'li') return undefined;
+  const explicitRole = typeof attrs.role === 'string' ? attrs.role : undefined;
+  return explicitRole ?? 'listitem';
 });
 const rootDraggable = computed(() => (!props.disabled ? props.draggable : undefined));
 const buttonType = computed(() => (props.href ? undefined : props.nativeType));
@@ -382,7 +392,6 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
   --md-comp-list-item-container-height: 56dp;
-  --md-comp-list-container-shape: 0dp;
   --md-comp-list-item-container-shape: 0dp;
   --md-comp-list-item-leading-space: 16dp;
   --md-comp-list-item-trailing-space: 16dp;
@@ -403,28 +412,6 @@ useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefin
   color: var(--md-comp-list-item-label-text-color);
   list-style: none;
   -webkit-tap-highlight-color: transparent;
-
-  &:first-child {
-    border-top-right-radius: max(
-      var(--md-comp-list-item-container-shape),
-      var(--md-comp-list-container-shape, 0dp)
-    );
-    border-top-left-radius: max(
-      var(--md-comp-list-item-container-shape),
-      var(--md-comp-list-container-shape, 0dp)
-    );
-  }
-
-  &:last-child {
-    border-bottom-right-radius: max(
-      var(--md-comp-list-item-container-shape),
-      var(--md-comp-list-container-shape, 0dp)
-    );
-    border-bottom-left-radius: max(
-      var(--md-comp-list-item-container-shape),
-      var(--md-comp-list-container-shape, 0dp)
-    );
-  }
 
   &_selected {
     --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
