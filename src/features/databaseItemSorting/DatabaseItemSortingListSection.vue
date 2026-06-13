@@ -28,7 +28,7 @@ const props = defineProps<{
 }>();
 
 defineSlots<{
-  trailingIcon: (p: { propertyId: DatabasePropertyId; direction: SORT_DIRECTION }) => unknown;
+  trailingAction: (p: { propertyId: DatabasePropertyId; direction: SORT_DIRECTION }) => unknown;
 }>();
 
 const { path, documentId, viewId } = toRefs(props);
@@ -110,7 +110,7 @@ const onInteractionOutside = () => {
           'md-state_drag': draggedSortingId === propertyId,
         }"
       >
-        <template #trailingIcon>
+        <template #trailingAction>
           <MDIconButton
             v-reorder-ignore
             color="standard"

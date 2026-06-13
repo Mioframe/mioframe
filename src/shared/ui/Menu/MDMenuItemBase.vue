@@ -61,19 +61,18 @@ useInjectFocusRegister(label, focus);
 
 <template>
   <MDListItem
-    is="button"
     ref="listItemEl"
-    :headline="label"
-    type="button"
+    mode="single-action"
+    :label-text="label"
     class="md-menu-item"
-    :item-role="itemRole"
-    @click="onClickItem"
+    :role="itemRole ?? null"
+    @action="onClickItem"
   >
-    <template v-if="symbolName" #leadingIcon>
+    <template v-if="symbolName" #leading>
       <MDSymbol :name="symbolName" />
     </template>
 
-    <template v-if="!!slots.submenu" #trailingIcon>
+    <template v-if="!!slots.submenu" #trailing>
       <MDSymbol name="arrow_right" />
     </template>
   </MDListItem>

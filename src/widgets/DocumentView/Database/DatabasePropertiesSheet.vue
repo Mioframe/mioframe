@@ -100,7 +100,7 @@ const onCancelCreateProperty = () => {
         :directory-path="directoryPath"
         :document-id="documentId"
       >
-        <template #trailingIcon="{ propertyId, property }">
+        <template #trailingAction="{ propertyId, property }">
           <MDContextMenuButton
             :btns="propertyContextBtns"
             :tooltip="`options ${property?.name}`"

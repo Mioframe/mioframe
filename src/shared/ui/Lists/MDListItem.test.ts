@@ -2,15 +2,17 @@ import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
 import MDListItem from './MDListItem.vue';
 
-const mountListItem = (props: Record<string, unknown> = {}, attrs: Record<string, unknown> = {}) =>
+const mountListItem = (
+  props: Record<string, unknown> = {},
+  slots: Record<string, string | (() => unknown)> = {},
+) =>
   mount(MDListItem, {
     attachTo: document.body,
     props: {
-      headline: 'Settings',
-      supportingText: 'System preferences',
+      labelText: 'Settings',
       ...props,
     },
-    attrs,
+    slots,
   });
 
 describe('MDListItem', () => {
@@ -18,202 +20,103 @@ describe('MDListItem', () => {
     document.body.innerHTML = '';
   });
 
-  it('defaults to a valid one-line list item', () => {
+  it('defaults to a static one-line list item with native list semantics on div hosts', () => {
     const wrapper = mountListItem();
 
     expect(wrapper.attributes('role')).toBe('listitem');
-    expect(wrapper.attributes('style')).toContain('--md-list-item-min-height: 56px');
+    expect(wrapper.classes()).toContain('md-list-item_line-count_1');
+    expect(wrapper.text()).toContain('Settings');
+  });
+
+  it('resolves two-line layout when supporting text is present', () => {
+    const wrapper = mountListItem({
+      supportingText: 'System preferences',
+    });
+
+    expect(wrapper.classes()).toContain('md-list-item_line-count_2');
     expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
-      'md-list-item__supporting-text--one-line',
+      'md-list-item__supporting-text_two-line',
     );
   });
 
-  it('uses the explicit two-line variant when requested', () => {
-    const wrapper = mountListItem({
-      lines: 2,
-    });
-
-    expect(wrapper.attributes('style')).toContain('--md-list-item-min-height: 72px');
-    expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
-      'md-list-item__supporting-text--two-lines',
-    );
-  });
-
-  it('uses the explicit three-line variant when requested', () => {
-    const wrapper = mountListItem({
-      lines: 3,
-    });
-
-    expect(wrapper.attributes('style')).toContain('--md-list-item-min-height: 88px');
-    expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
-      'md-list-item__supporting-text--three-lines',
-    );
-  });
-
-  it('defaults button items to type button', () => {
-    const wrapper = mountListItem({
-      is: 'button',
-      headline: 'Create space',
-    });
-
-    expect(wrapper.get('button').attributes('type')).toBe('button');
-  });
-
-  it('does not force a listitem role onto native interactive elements', () => {
-    const wrapper = mountListItem({
-      is: 'button',
-      headline: 'Open space',
-    });
-
-    expect(wrapper.get('button').attributes('role')).toBeUndefined();
-  });
-
-  it('marks enabled native interactive hosts as clickable without changing static hosts', () => {
-    const buttonWrapper = mountListItem({
-      is: 'button',
-      type: 'button',
-    });
-    const anchorWrapper = mountListItem({
-      is: 'a',
-    });
-    const staticWrapper = mountListItem({
-      is: 'div',
-    });
-
-    expect(buttonWrapper.classes()).toContain('md-list-item');
-    expect(anchorWrapper.classes()).toContain('md-list-item');
-    expect(staticWrapper.classes()).toContain('md-list-item');
-    expect(buttonWrapper.element.tagName).toBe('BUTTON');
-    expect(anchorWrapper.element.tagName).toBe('A');
-    expect(staticWrapper.element.tagName).toBe('DIV');
-  });
-
-  it('keeps native list semantics for non-interactive li items', () => {
-    const wrapper = mountListItem({
-      is: 'li',
-      headline: 'Saved item',
-    });
-
-    expect(wrapper.element.tagName).toBe('LI');
-    expect(wrapper.attributes('role')).toBeUndefined();
-  });
-
-  it('renders trailing actions without turning the row into a primary action', () => {
+  it('uses the explicit three-line layout when requested', () => {
     const wrapper = mountListItem(
       {
-        headline: 'Mounted space',
+        supportingText: 'System preferences',
+        lineCount: 3,
       },
-      {},
+      {
+        supportingText: 'Two lines of support text become the three-line configuration.',
+      },
     );
 
-    wrapper.unmount();
-    const trailingWrapper = mount(MDListItem, {
-      attachTo: document.body,
-      props: {
-        headline: 'Mounted space',
-      },
-      slots: {
-        trailingIcon: '<button type="button">Disconnect</button>',
-      },
-    });
-
-    expect(trailingWrapper.find('button').text()).toBe('Disconnect');
-    expect(trailingWrapper.emitted('click')).toBeUndefined();
+    expect(wrapper.classes()).toContain('md-list-item_line-count_3');
+    expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
+      'md-list-item__supporting-text_three-line',
+    );
   });
 
-  it('keeps button hosts free of nested interactive descendants and divs', () => {
+  it('emits action from single-action items', async () => {
     const wrapper = mountListItem({
-      is: 'button',
-      type: 'button',
+      mode: 'single-action',
     });
-    const button = wrapper.get('button');
 
-    expect(button.find('button').exists()).toBe(false);
-    expect(button.find('div').exists()).toBe(false);
-    expect(button.find('input, select, textarea, a[href], [role="button"]').exists()).toBe(false);
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.emitted('action')).toHaveLength(1);
   });
 
-  it('does not emit click from a disabled button host', async () => {
+  it('renders multi-action items with a separate trailing action surface', () => {
+    const wrapper = mountListItem(
+      {
+        mode: 'multi-action',
+        supportingText: 'System preferences',
+      },
+      {
+        trailingAction: '<button type="button">Disconnect</button>',
+      },
+    );
+
+    expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(true);
+    expect(wrapper.get('.md-list-item__trailing-action button').text()).toBe('Disconnect');
+    expect(wrapper.get('.md-list-item__primary-action').find('button').exists()).toBe(false);
+  });
+
+  it('renders selection controls without a secondary action surface', () => {
+    const wrapper = mountListItem(
+      {
+        mode: 'multi-select',
+        selected: true,
+      },
+      {
+        selectionControl: '<span class="selection-control">Selected</span>',
+      },
+    );
+
+    expect(wrapper.classes()).toContain('md-list-item_selected');
+    expect(wrapper.get('.selection-control').text()).toBe('Selected');
+    expect(wrapper.find('.md-list-item__trailing-action').exists()).toBe(false);
+  });
+
+  it('does not emit action from disabled single-action items', async () => {
     const wrapper = mountListItem({
-      is: 'button',
-      type: 'button',
+      mode: 'single-action',
       disabled: true,
     });
 
     await wrapper.get('button').trigger('click');
 
-    expect(wrapper.emitted('click')).toBeUndefined();
-    expect(document.body.querySelector('.md-ripple')).toBeNull();
+    expect(wrapper.emitted('action')).toBeUndefined();
   });
 
-  it('keeps disabled button hosts in the disabled native contract', () => {
+  it('disables anchor-backed single-action items without leaving them in tab order', () => {
     const wrapper = mountListItem({
-      is: 'button',
-      type: 'button',
+      mode: 'single-action',
+      href: '#target',
       disabled: true,
     });
 
-    expect(wrapper.get('button').attributes('disabled')).toBeDefined();
-    expect(wrapper.classes()).toContain('md-state_disabled');
-  });
-
-  it('prevents disabled anchor activation and removes it from tab order', () => {
-    const wrapper = mountListItem({
-      is: 'a',
-      disabled: true,
-    });
-    const anchor = wrapper.get('a');
-    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
-    const keydownEvent = new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'Enter',
-    });
-
-    anchor.element.dispatchEvent(clickEvent);
-    anchor.element.dispatchEvent(keydownEvent);
-
-    expect(clickEvent.defaultPrevented).toBe(true);
-    expect(keydownEvent.defaultPrevented).toBe(true);
-    expect(anchor.attributes('aria-disabled')).toBe('true');
-    expect(anchor.attributes('tabindex')).toBe('-1');
-    expect(wrapper.emitted('click')).toBeUndefined();
-    expect(wrapper.emitted('keydown')).toBeUndefined();
-    expect(document.body.querySelector('.md-ripple')).toBeNull();
-  });
-
-  it('does not expose active state classes or draggable state when disabled', async () => {
-    const wrapper = mountListItem(
-      {
-        is: 'div',
-        disabled: true,
-        draggable: true,
-      },
-      { tabindex: '0' },
-    );
-
-    expect(wrapper.classes()).toContain('md-state_disabled');
-    expect(wrapper.classes()).not.toContain('md-state_hover');
-    expect(wrapper.classes()).not.toContain('md-state_focused');
-    expect(wrapper.classes()).not.toContain('md-state_pressed');
-    expect(wrapper.classes()).not.toContain('md-state_dragged');
-    expect(wrapper.attributes('aria-disabled')).toBe('true');
-    expect(wrapper.attributes('tabindex')).toBe('-1');
-    expect(wrapper.attributes('draggable')).toBeUndefined();
-
-    await wrapper.trigger('dragstart');
-
-    expect(wrapper.classes()).not.toContain('md-state_dragged');
-    expect(document.body.querySelector('.md-ripple')).toBeNull();
-  });
-
-  it('does not add tabindex to a disabled static host that did not have one', () => {
-    const wrapper = mountListItem({
-      is: 'div',
-      disabled: true,
-    });
-
-    expect(wrapper.attributes('tabindex')).toBeUndefined();
-    expect(wrapper.attributes('aria-disabled')).toBe('true');
+    expect(wrapper.get('a').attributes('aria-disabled')).toBe('true');
+    expect(wrapper.get('a').attributes('tabindex')).toBe('-1');
   });
 });

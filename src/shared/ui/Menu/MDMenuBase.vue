@@ -199,16 +199,10 @@ useOnBackNavigationStackedWhen(showModel, () => {
   flex-direction: column;
 
   --md-list-container-border-radius: 0px;
-
-  --md-list-item-horizontal-gap: 12px;
-  --md-list-item-min-height: 48px;
-
-  --md-list-item-container-color: var(--md-container-color);
-
-  :deep() {
-    .md-list-item__headline::first-letter {
-      text-transform: uppercase;
-    }
-  }
+  --md-comp-list-item-horizontal-padding: 12dp;
+  --md-comp-list-item-trailing-end-padding: 12dp;
+  --md-comp-list-item-container-height: 48dp;
+  --md-comp-list-item-container-color: var(--md-container-color);
+  --md-comp-list-item-container-shape: 0dp;
 }
 </style>

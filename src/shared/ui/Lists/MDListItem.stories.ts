@@ -1,17 +1,14 @@
+import MDListItemConfigurationsStory from './MDListItemConfigurationsStory.vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory.vue';
 import MDListItemTrailingActionVisualStory from './MDListItemTrailingActionVisualStory.vue';
 import MDListItemVisualStatesStory from './MDListItemVisualStatesStory.vue';
 
 const meta = {
-  title: 'shared/ui/MDListItem',
+  title: 'Material 3/Components/Lists/MDListItem',
   args: {
-    headline: 'List item',
+    labelText: 'List item',
     supportingText: 'Supporting text',
-  },
-  argTypes: {
-    onClick: { action: 'click' },
-    onKeydown: { action: 'keydown' },
   },
   parameters: {
     layout: 'centered',
@@ -27,6 +24,14 @@ export const VisualStates: Story = {
   render: () => ({
     components: { MDListItemVisualStatesStory },
     template: '<MDListItemVisualStatesStory />',
+  }),
+};
+
+export const Configurations: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemConfigurationsStory },
+    template: '<MDListItemConfigurationsStory />',
   }),
 };
 

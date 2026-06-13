@@ -67,16 +67,20 @@ Material cache confirms lists help users find and act on items; items should be 
 
 Current state:
 
-- `MDListItem` supports headline, supporting text, 1/2/3 line heights, leading icon/avatar, trailing icon, native `button`/`a`/`div`/`li` hosts, disabled, draggable, and role override;
-- uses state layer, ripple, and keyboard handling;
-- has visual/interaction/trailing-action tests.
+- `MDListItem` now uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, `trailingAction`, and `selectionControl`;
+- list modes are explicit through `static`, `single-action`, `multi-action`, `single-select`, and `multi-select`;
+- multi-action rows render a separate primary-action surface plus trailing action surface, so secondary controls no longer nest inside a native row button;
+- selection rows use one row-level selection interaction and can render a visual selection control in the leading or trailing slot;
+- public tokens moved to `--md-comp-list-item-*`;
+- Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic state/configuration galleries;
+- focused unit tests cover mode separation, line-count rendering, disabled behavior, and the migrated wrappers.
 
 Gaps:
 
-- local list variables instead of `--md-comp-list-*` and `--md-comp-list-item-*`;
-- heights are authored as px rather than dp;
-- selected and segmented list styles are not first-class contracts;
-- trailing action needs an explicit contract instead of being only a `trailingIcon` slot convention.
+- selected state is implemented for the baseline list item, but expressive segmented list styling is not supported;
+- multi-action keyboard roving between primary and secondary actions is not implemented as a first-class shared contract;
+- `MDListContainer` and `MDList` still provide only light structural helpers and do not yet expose a richer selection-container API such as listbox labeling helpers;
+- browser/visual verification remains required before the family can be marked aligned.
 
 Verdict: second migration family after Buttons.
 

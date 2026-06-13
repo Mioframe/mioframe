@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs } from 'vue';
+import { computed, toRefs, useSlots } from 'vue';
 import { useDatabaseProperty } from './useDatabaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 
@@ -11,9 +11,10 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const slots = defineSlots<{
-  trailingIcon: (p: { property?: Readonly<DatabaseUnknownProperty> | undefined }) => unknown;
+defineSlots<{
+  trailingAction: (p: { property?: Readonly<DatabaseUnknownProperty> | undefined }) => unknown;
 }>();
+const slots = useSlots();
 
 const { path, documentId, propertyId } = toRefs(props);
 
@@ -25,9 +26,13 @@ const supportingText = computed(() => property.value?.type);
 </script>
 
 <template>
-  <MDListItem :headline="headline" :supporting-text="supportingText">
-    <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" :property="property" />
+  <MDListItem
+    :mode="slots.trailingAction ? 'multi-action' : 'static'"
+    :label-text="headline"
+    :supporting-text="supportingText"
+  >
+    <template v-if="!!slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" :property="property" />
     </template>
   </MDListItem>
 </template>

@@ -65,7 +65,7 @@ const onClickEntry = (name: string) => {
     class="repository-explorer-file-list-item"
     @click="onClickEntry"
   >
-    <template v-if="hasActions" #trailingIcon>
+    <template v-if="hasActions" #trailingAction>
       <RepositoryExplorerEntryManageButton
         v-if="nonEmptyActionButtons"
         :path="entryPath"

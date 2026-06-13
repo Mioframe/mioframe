@@ -47,7 +47,13 @@ Rows below are intentionally conservative. `partial` does not mean Material 3 al
 - Buttons: `MDButton` is `partial`. First pilot. Verify variants, props, target area, `--md-comp-button-*`, Storybook hierarchy, and visual states.
 - Icon buttons: `MDIconButton` is `partial`. Include in Buttons pilot. Verify selected/toggle behavior, icon sizing, and toolbar target behavior.
 - Floating action buttons: `MDFab` and `MDFabContainer` are `partial`. Include in Buttons pilot. Separate Material FAB behavior from project placement helpers.
-- Lists: `MDList`, `MDListItem`, and `MDListContainer` are `partial`. Verify row interaction, trailing actions, density, supporting text, and target area.
+- Lists: `MDList`, `MDListItem`, and `MDListContainer` are `partial`.
+  Material docs checked: `components/lists/specs.md`, `components/lists/guidelines.md`, `components/lists/accessibility.md`, and `foundations/design-tokens/overview.md`.
+  Token status: `MDListItem` uses `--md-comp-list-item-*`; `MDListContainer` remains a light structural wrapper.
+  Public API status: explicit `static`, `single-action`, `multi-action`, `single-select`, and `multi-select` modes with Material anatomy slot names.
+  Storybook status: `Material 3/Components/Lists/MDListItem` documents configurations, states, and multi-action layout.
+  Visual or browser verification status: focused visual/browser checks still required; local run can be blocked by the active verification lock.
+  Deviations or unsupported features: expressive segmented list styling and shared roving-keyboard handling for multi-action rows are still unsupported.
 - Dialogs: shared `Dialog/*` surfaces are `partial`. Verify modal semantics, actions, focus, scroll, adaptive layout, and destructive flows.
 - Text fields: `MDTextField` and `MDFieldContainer` are `partial`. Verify labels, supporting/error text, value contract, slots, and states.
 - Selection controls: `MDCheckbox`, `MDCheckboxField`, and `MDSelectBase` are `partial`. Verify checkbox/select semantics, keyboard behavior, menu ownership, and accessibility.

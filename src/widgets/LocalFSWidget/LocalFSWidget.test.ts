@@ -110,11 +110,11 @@ vi.mock('@shared/ui/Lists', () => ({
   MDListItem: defineComponent({
     name: 'MDListItemStub',
     props: {
-      is: {
+      mode: {
         type: String,
-        default: 'div',
+        default: 'static',
       },
-      headline: {
+      labelText: {
         type: String,
         required: true,
       },
@@ -127,24 +127,25 @@ vi.mock('@shared/ui/Lists', () => ({
         default: false,
       },
     },
-    emits: ['click'],
+    emits: ['action'],
     setup(props, { emit, slots }) {
       return () =>
         h(
-          props.is === 'button' ? 'button' : 'div',
+          props.mode === 'single-action' ? 'button' : 'div',
           {
-            'data-headline': props.headline,
+            'data-label-text': props.labelText,
             disabled: props.disabled || undefined,
             onClick: () => {
-              emit('click');
+              emit('action');
             },
           },
           [
-            h('span', props.headline),
+            h('span', props.labelText),
             props.supportingText ? h('span', props.supportingText) : null,
-            slots.leadingIcon?.(),
+            slots.leading?.(),
             slots.supportingText?.(),
-            slots.trailingIcon?.(),
+            slots.selectionControl?.(),
+            slots.trailingAction?.(),
           ],
         );
     },
@@ -273,8 +274,8 @@ describe('LocalFSWidget', () => {
 
     const wrapper = await mountLocalFSWidget();
 
-    const enableButton = wrapper.find('[data-headline="Enable more reliable storage"]');
-    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+    const enableButton = wrapper.find('[data-label-text="Enable more reliable storage"]');
+    const browserStorageNav = wrapper.find('[data-label-text="Browser Storage"]');
 
     expect(enableButton.exists()).toBe(true);
     expect(enableButton.element.tagName).toBe('BUTTON');
@@ -301,7 +302,7 @@ describe('LocalFSWidget', () => {
 
     const wrapper = await mountLocalFSWidget();
 
-    await wrapper.find('[data-headline="Enable more reliable storage"]').trigger('click');
+    await wrapper.find('[data-label-text="Enable more reliable storage"]').trigger('click');
 
     expect(enableStorageMock).toHaveBeenCalledTimes(1);
     expect(showFeedbackMock).toHaveBeenCalledOnce();
@@ -321,9 +322,9 @@ describe('LocalFSWidget', () => {
 
     const wrapper = await mountLocalFSWidget();
 
-    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
+    expect(wrapper.find('[data-label-text="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="Browser Storage"]').exists()).toBe(true);
   });
 
   it('shows "More reliable storage unavailable" warning above Browser Storage nav in unsupported state', async () => {
@@ -338,8 +339,8 @@ describe('LocalFSWidget', () => {
 
     const wrapper = await mountLocalFSWidget();
 
-    const warningItem = wrapper.find('[data-headline="More reliable storage unavailable"]');
-    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+    const warningItem = wrapper.find('[data-label-text="More reliable storage unavailable"]');
+    const browserStorageNav = wrapper.find('[data-label-text="Browser Storage"]');
 
     expect(warningItem.exists()).toBe(true);
     expect(browserStorageNav.exists()).toBe(true);
@@ -364,12 +365,12 @@ describe('LocalFSWidget', () => {
 
     const wrapper = await mountLocalFSWidget();
 
-    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="More reliable storage unavailable"]').exists()).toBe(
+    expect(wrapper.find('[data-label-text="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="More reliable storage unavailable"]').exists()).toBe(
       false,
     );
-    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
+    expect(wrapper.find('[data-label-text="Browser Storage"]').exists()).toBe(true);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

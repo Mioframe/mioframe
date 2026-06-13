@@ -1,122 +1,185 @@
-<script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
+<script setup lang="ts">
 import { computed, ref, useAttrs, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
+
+type MDListItemMode =
+  | 'static'
+  | 'single-action'
+  | 'multi-action'
+  | 'single-select'
+  | 'multi-select';
 
 defineOptions({
   inheritAttrs: false,
 });
 
-const props = defineProps<{
-  headline: string;
-  supportingText?: string | undefined;
-  lines?: 1 | 2 | 3 | undefined;
-  is?: Is | undefined;
-  type?: 'button' | 'submit' | 'reset' | false | undefined;
-  itemRole?: string | undefined;
-  disabled?: boolean | undefined;
-  draggable?: boolean | undefined;
-}>();
+const props = withDefaults(
+  defineProps<{
+    labelText: string;
+    supportingText?: string | undefined;
+    overline?: string | undefined;
+    lineCount?: 1 | 2 | 3 | undefined;
+    mode?: MDListItemMode | undefined;
+    containerTag?: 'div' | 'li' | undefined;
+    href?: string | undefined;
+    nativeType?: 'button' | 'submit' | 'reset' | undefined;
+    selected?: boolean | undefined;
+    disabled?: boolean | undefined;
+    draggable?: boolean | undefined;
+    selectionControlPosition?: 'leading' | 'trailing' | undefined;
+  }>(),
+  {
+    mode: 'static',
+    containerTag: 'div',
+    nativeType: 'button',
+    selectionControlPosition: 'trailing',
+  },
+);
 
 const emit = defineEmits<{
-  click: [e: MouseEvent];
-  keydown: [e: KeyboardEvent];
+  action: [e: MouseEvent];
 }>();
 
 const slots = defineSlots<{
-  leadingIcon: () => unknown;
-  trailingIcon: () => unknown;
-  leadingAvatarContainer: () => unknown;
+  leading: () => unknown;
+  overline: () => unknown;
   supportingText: () => unknown;
+  trailing: () => unknown;
+  trailingAction: () => unknown;
+  selectionControl: () => unknown;
 }>();
 
 const attrs = useAttrs();
 
-const itemTag = computed<'button' | 'a' | 'div' | 'li'>(() => props.is ?? 'div');
-const isButtonHost = computed(() => itemTag.value === 'button');
-const isAnchorHost = computed(() => itemTag.value === 'a');
-const isStaticHost = computed(() => itemTag.value === 'div' || itemTag.value === 'li');
-const isNativeInteractive = computed(() => isButtonHost.value || isAnchorHost.value);
-const buttonType = computed<'button' | 'submit' | 'reset' | undefined | false>(() => {
-  if (!isButtonHost.value) {
-    return undefined;
+const isSelectionMode = computed(
+  () => props.mode === 'single-select' || props.mode === 'multi-select',
+);
+const hasPrimaryAction = computed(() => props.mode !== 'static');
+const hasSupportingText = computed(() => props.supportingText || !!slots.supportingText);
+const hasOverline = computed(() => props.overline || !!slots.overline);
+const hasLeading = computed(() => !!slots.leading);
+const hasTrailing = computed(() => !!slots.trailing);
+const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
+const hasSelectionControl = computed(() => isSelectionMode.value && !!slots.selectionControl);
+const resolvedLineCount = computed(() => props.lineCount ?? (hasSupportingText.value ? 2 : 1));
+const rootTag = computed(() =>
+  props.mode === 'single-action' ? (props.href ? 'a' : 'button') : props.containerTag,
+);
+const primaryActionTag = computed<'button' | 'a'>(() => (props.href ? 'a' : 'button'));
+const interactiveAttrs = computed(() => {
+  if (props.mode === 'static') {
+    return attrs;
   }
 
-  return props.type || 'button';
+  const restAttrs = { ...attrs };
+  delete restAttrs.class;
+  delete restAttrs.style;
+  return restAttrs;
 });
-const resolvedLines = computed(() => props.lines ?? 1);
-const minHeight = computed(() => {
-  switch (resolvedLines.value) {
-    case 3:
-      return '88px';
-    case 2:
-      return '72px';
-    default:
-      return '56px';
+const rootAttrs = computed(() => {
+  if (!hasPrimaryAction.value || props.mode === 'single-action') {
+    return attrs;
   }
+
+  const { class: className, style, ...restAttrs } = attrs;
+  const dataAttrs = Object.fromEntries(
+    Object.entries(restAttrs).filter(([key]) => key.startsWith('data-')),
+  );
+
+  return {
+    class: className,
+    style,
+    ...dataAttrs,
+  };
 });
-const supportingTextClass = computed(() => ({
-  'md-list-item__supporting-text--one-line': resolvedLines.value === 1,
-  'md-list-item__supporting-text--two-lines': resolvedLines.value === 2,
-  'md-list-item__supporting-text--three-lines': resolvedLines.value === 3,
-}));
-const activationKeys = new Set([' ', 'Enter']);
-
-const onClick = (e: MouseEvent) => {
-  if (props.disabled) {
-    if (isAnchorHost.value || isStaticHost.value) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    return;
-  }
-
-  if (isNativeInteractive.value) {
-    emit('click', e);
-  }
-};
-
-const onKeydown = (e: KeyboardEvent) => {
-  if (props.disabled) {
-    if ((isAnchorHost.value || isStaticHost.value) && activationKeys.has(e.key)) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    return;
-  }
-
-  if (isNativeInteractive.value) {
-    emit('keydown', e);
-  }
-};
-
-const hostEl = useTemplateRef<HTMLElement>('hostEl');
-const dragged = ref(false);
-const showVisualState = computed(() => !props.disabled);
-const { hover, focused, durationPressedState } = useStateLayer(hostEl, { dragged });
-const hostRole = computed(() => {
-  if (props.itemRole) {
-    return props.itemRole;
-  }
-
-  if (itemTag.value === 'div') {
+const rootRole = computed(() => {
+  if (props.mode === 'static' && props.containerTag === 'div' && attrs.role === undefined) {
     return 'listitem';
   }
 
   return undefined;
 });
-
-const hostTabIndex = computed(() => {
-  const rawTabIndex = attrs.tabindex;
-  if (props.disabled && (isAnchorHost.value || (isStaticHost.value && rawTabIndex !== undefined))) {
-    return -1;
+const rootDraggable = computed(() => (!props.disabled ? props.draggable : undefined));
+const buttonType = computed(() => (props.href ? undefined : props.nativeType));
+const interactiveAriaDisabled = computed(() => (props.disabled && props.href ? 'true' : undefined));
+const interactiveTabIndex = computed(() => {
+  if (!props.disabled || !props.href) {
+    return interactiveAttrs.value.tabindex;
   }
 
-  return rawTabIndex;
+  return -1;
 });
+const interactiveAriaSelected = computed(() => {
+  if (!isSelectionMode.value || interactiveAttrs.value['aria-checked'] !== undefined) {
+    return interactiveAttrs.value['aria-selected'];
+  }
 
-const hostDraggable = computed(() => (!props.disabled ? props.draggable : undefined));
+  return props.selected ? 'true' : 'false';
+});
+const minHeight = computed(() => {
+  switch (resolvedLineCount.value) {
+    case 3:
+      return '88dp';
+    case 2:
+      return '72dp';
+    default:
+      return '56dp';
+  }
+});
+const supportingTextClass = computed(() => ({
+  'md-list-item__supporting-text_one-line': resolvedLineCount.value === 1,
+  'md-list-item__supporting-text_two-line': resolvedLineCount.value === 2,
+  'md-list-item__supporting-text_three-line': resolvedLineCount.value === 3,
+}));
+
+const rootEl = useTemplateRef<HTMLElement>('rootEl');
+const primaryActionEl = useTemplateRef<HTMLElement>('primaryActionEl');
+const interactiveSurfaceEl = computed(() =>
+  props.mode === 'single-action' ? rootEl.value : primaryActionEl.value,
+);
+
+const dragged = ref(false);
+const showVisualState = computed(() => hasPrimaryAction.value && !props.disabled);
+const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
+
+const onAction = (event: MouseEvent) => {
+  if (props.disabled) {
+    if (props.href) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    return;
+  }
+
+  emit('action', event);
+};
+
+const onActionKeydown = (event: KeyboardEvent) => {
+  if (props.href && event.key === ' ') {
+    event.preventDefault();
+
+    if (!props.disabled) {
+      event.currentTarget?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+  }
+};
+
+const onSingleActionClick = (event: MouseEvent) => {
+  if (props.mode !== 'single-action') {
+    return;
+  }
+
+  onAction(event);
+};
+
+const onSingleActionKeydown = (event: KeyboardEvent) => {
+  if (props.mode !== 'single-action') {
+    return;
+  }
+
+  onActionKeydown(event);
+};
 
 const onDragStart = () => {
   if (props.disabled) {
@@ -130,207 +193,411 @@ const onDragEnd = () => {
   dragged.value = false;
 };
 
-useRipple(computed(() => (!props.disabled && itemTag.value !== 'li' ? hostEl.value : undefined)));
+useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefined)));
 </script>
 
 <template>
   <component
-    :is="itemTag"
-    ref="hostEl"
-    v-bind="attrs"
+    :is="rootTag"
+    ref="rootEl"
+    v-bind="rootAttrs"
     class="md-list-item"
-    :style="{ '--md-list-item-min-height': minHeight }"
-    :draggable="hostDraggable"
-    :disabled="isButtonHost && props.disabled ? true : undefined"
-    :type="buttonType"
-    :tabindex="hostTabIndex"
-    :aria-disabled="props.disabled && !isButtonHost ? 'true' : undefined"
-    :role="hostRole"
+    :style="{ '--md-comp-list-item-container-height': minHeight }"
+    :role="rootRole"
+    :draggable="rootDraggable"
     :class="{
+      'md-list-item_mode_static': mode === 'static',
+      'md-list-item_mode_single-action': mode === 'single-action',
+      'md-list-item_mode_multi-action': mode === 'multi-action',
+      'md-list-item_mode_single-select': mode === 'single-select',
+      'md-list-item_mode_multi-select': mode === 'multi-select',
+      'md-list-item_line-count_1': resolvedLineCount === 1,
+      'md-list-item_line-count_2': resolvedLineCount === 2,
+      'md-list-item_line-count_3': resolvedLineCount === 3,
+      'md-list-item_selected': selected,
       'md-state_hover': showVisualState && hover,
       'md-state_focused': showVisualState && focused,
       'md-state_pressed': showVisualState && durationPressedState,
       'md-state_dragged': showVisualState && dragged,
-      'md-state_disabled': props.disabled,
+      'md-state_disabled': disabled,
     }"
-    @click="onClick"
-    @keydown="onKeydown"
+    :href="mode === 'single-action' ? href : undefined"
+    :disabled="mode === 'single-action' && !href && disabled ? true : undefined"
+    :type="mode === 'single-action' ? buttonType : undefined"
+    :tabindex="mode === 'single-action' ? interactiveTabIndex : undefined"
+    :aria-disabled="mode === 'single-action' ? interactiveAriaDisabled : undefined"
+    :aria-selected="mode === 'single-action' ? interactiveAriaSelected : undefined"
+    @click="onSingleActionClick"
+    @keydown="onSingleActionKeydown"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
     @drop="onDragEnd"
   >
     <MDStateLayer
+      v-if="mode === 'single-action'"
       :hover="hover"
       :focused="focused"
       :pressed="durationPressedState"
       :dragged="dragged"
-      :disabled="props.disabled"
+      :disabled="disabled"
     />
 
-    <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
-      <slot name="leadingIcon" />
-    </span>
+    <template v-if="mode === 'single-action' || mode === 'static'">
+      <span
+        v-if="hasLeading || (hasSelectionControl && selectionControlPosition === 'leading')"
+        class="md-list-item__leading"
+      >
+        <slot
+          v-if="hasSelectionControl && selectionControlPosition === 'leading'"
+          name="selectionControl"
+        />
+        <slot v-if="hasLeading" name="leading" />
+      </span>
 
-    <span v-if="!!slots.leadingAvatarContainer" class="md-list-item__leading-avatar-container">
-      <slot name="leadingAvatarContainer" />
-    </span>
+      <span class="md-list-item__content">
+        <span v-if="hasOverline" class="md-list-item__overline">
+          <slot name="overline">{{ overline }}</slot>
+        </span>
 
-    <span class="md-list-item__body">
-      <span class="md-list-item__headline">{{ props.headline }}</span>
+        <span class="md-list-item__label-text">{{ labelText }}</span>
+
+        <span
+          v-if="hasSupportingText"
+          class="md-list-item__supporting-text"
+          :class="supportingTextClass"
+        >
+          <slot name="supportingText">{{ supportingText }}</slot>
+        </span>
+      </span>
 
       <span
-        v-if="props.supportingText || !!slots.supportingText"
-        class="md-list-item__supporting-text"
-        :class="supportingTextClass"
+        v-if="hasTrailing || (hasSelectionControl && selectionControlPosition === 'trailing')"
+        class="md-list-item__trailing"
       >
-        <slot name="supportingText">{{ props.supportingText }}</slot>
+        <slot v-if="hasTrailing" name="trailing" />
+        <slot
+          v-if="hasSelectionControl && selectionControlPosition === 'trailing'"
+          name="selectionControl"
+        />
       </span>
-    </span>
+    </template>
 
-    <span v-if="!!slots.trailingIcon" class="md-list-item__trailing-icon">
-      <slot name="trailingIcon" />
-    </span>
+    <template v-else>
+      <component
+        :is="primaryActionTag"
+        ref="primaryActionEl"
+        v-bind="interactiveAttrs"
+        class="md-list-item__primary-action"
+        :href="href"
+        :type="buttonType"
+        :disabled="!href && disabled ? true : undefined"
+        :tabindex="interactiveTabIndex"
+        :aria-disabled="interactiveAriaDisabled"
+        :aria-selected="interactiveAriaSelected"
+        @click="onAction"
+        @keydown="onActionKeydown"
+      >
+        <MDStateLayer
+          :hover="hover"
+          :focused="focused"
+          :pressed="durationPressedState"
+          :dragged="dragged"
+          :disabled="disabled"
+        />
+
+        <span
+          v-if="hasLeading || (hasSelectionControl && selectionControlPosition === 'leading')"
+          class="md-list-item__leading"
+        >
+          <slot
+            v-if="hasSelectionControl && selectionControlPosition === 'leading'"
+            name="selectionControl"
+          />
+          <slot v-if="hasLeading" name="leading" />
+        </span>
+
+        <span class="md-list-item__content">
+          <span v-if="hasOverline" class="md-list-item__overline">
+            <slot name="overline">{{ overline }}</slot>
+          </span>
+
+          <span class="md-list-item__label-text">{{ labelText }}</span>
+
+          <span
+            v-if="hasSupportingText"
+            class="md-list-item__supporting-text"
+            :class="supportingTextClass"
+          >
+            <slot name="supportingText">{{ supportingText }}</slot>
+          </span>
+        </span>
+
+        <span
+          v-if="hasTrailing || (hasSelectionControl && selectionControlPosition === 'trailing')"
+          class="md-list-item__trailing"
+        >
+          <slot v-if="hasTrailing" name="trailing" />
+          <slot
+            v-if="hasSelectionControl && selectionControlPosition === 'trailing'"
+            name="selectionControl"
+          />
+        </span>
+      </component>
+
+      <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
+        <slot name="trailingAction" />
+      </span>
+    </template>
   </component>
 </template>
 
 <style scoped>
 .md-list-item {
-  --horizontal-gap: var(--md-list-item-horizontal-gap, 16px);
-  --min-height: var(--md-list-item-min-height, 56px);
-  --border-radius: var(--md-list-item-border-radius, 0px);
-
-  --md-container-color: var(--md-list-item-container-color, var(--md-sys-color-surface));
-  --md-content-color: var(--md-list-item-content-color, var(--md-sys-color-on-surface));
-  --md-list-item-supporting-color: var(
-    --md-list-item-supporting-color-override,
-    var(--md-sys-color-on-surface-variant)
+  --md-comp-list-item-container-color: var(--md-sys-color-surface);
+  --md-comp-list-item-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-overline-text-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-leading-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-trailing-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-selected-container-color: var(--md-sys-color-primary-container);
+  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-primary-container);
+  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-primary-container);
+  --md-comp-list-item-selected-leading-color: var(--md-sys-color-on-primary-container);
+  --md-comp-list-item-selected-trailing-color: var(--md-sys-color-on-primary-container);
+  --md-comp-list-item-disabled-label-text-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
   );
-  --md-list-item-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-  --md-list-item-disabled-supporting-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-comp-list-item-disabled-supporting-text-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-container-height: 56dp;
+  --md-comp-list-item-container-shape: 0dp;
+  --md-comp-list-item-leading-space: 16dp;
+  --md-comp-list-item-trailing-space: 16dp;
+  --md-comp-list-item-horizontal-padding: 16dp;
+  --md-comp-list-item-trailing-end-padding: 24dp;
+  --md-comp-list-item-leading-avatar-size: 40dp;
+  --md-comp-list-item-leading-icon-size: 24dp;
+  --md-comp-list-item-target-size: 48dp;
 
   position: relative;
   display: flex;
-  align-items: center;
-  min-height: var(--min-height);
+  align-items: stretch;
+  min-height: var(--md-comp-list-item-container-height);
   box-sizing: border-box;
-  padding: 8px var(--horizontal-gap);
   border: 0;
-  border-radius: var(--border-radius);
-  background: var(--md-container-color);
-  color: var(--md-content-color);
-  font-family: var(--md-sys-typescale-body-large-font);
-  text-align: start;
-  transition-property: color, background-color, border-radius, box-shadow;
-  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  border-radius: var(--md-comp-list-item-container-shape);
+  background: var(--md-comp-list-item-container-color);
+  color: var(--md-comp-list-item-label-text-color);
+  list-style: none;
   -webkit-tap-highlight-color: transparent;
 
   &:first-child {
-    border-top-right-radius: max(var(--border-radius), var(--md-list-container-border-radius, 0px));
-    border-top-left-radius: max(var(--border-radius), var(--md-list-container-border-radius, 0px));
+    border-top-right-radius: max(
+      var(--md-comp-list-item-container-shape),
+      var(--md-list-container-border-radius, 0dp)
+    );
+    border-top-left-radius: max(
+      var(--md-comp-list-item-container-shape),
+      var(--md-list-container-border-radius, 0dp)
+    );
   }
 
   &:last-child {
     border-bottom-right-radius: max(
-      var(--border-radius),
-      var(--md-list-container-border-radius, 0px)
+      var(--md-comp-list-item-container-shape),
+      var(--md-list-container-border-radius, 0dp)
     );
     border-bottom-left-radius: max(
-      var(--border-radius),
-      var(--md-list-container-border-radius, 0px)
+      var(--md-comp-list-item-container-shape),
+      var(--md-list-container-border-radius, 0dp)
     );
   }
 
-  &__leading-icon {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    min-width: 24px;
-    min-height: 24px;
-
-    color: var(--md-list-item-supporting-color);
-  }
-
-  &__body {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    min-width: 0;
-
-    .md-list-item__leading-avatar-container ~ &,
-    .md-list-item__leading-icon ~ & {
-      margin-left: var(--horizontal-gap);
-    }
-  }
-
-  &__headline {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-
-    font-size: var(--md-sys-typescale-body-large-size);
-    line-height: var(--md-sys-typescale-body-large-line-height);
-    letter-spacing: var(--md-sys-typescale-body-large-tracking);
-    font-weight: var(--md-sys-typescale-body-large-weight);
-  }
-
-  &__supporting-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-
-    color: var(--md-list-item-supporting-color);
-    font-family: var(--md-sys-typescale-body-medium-font);
-    line-height: var(--md-sys-typescale-body-medium-line-height);
-    font-size: var(--md-sys-typescale-body-medium-size);
-    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
-    font-weight: var(--md-sys-typescale-body-medium-weight);
-  }
-
-  &__supporting-text--one-line {
-    -webkit-line-clamp: 1;
-  }
-
-  &__supporting-text--two-lines {
-    -webkit-line-clamp: 2;
-  }
-
-  &__supporting-text--three-lines {
-    -webkit-line-clamp: 3;
-  }
-
-  &__leading-avatar-container {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 40px;
-    height: 40px;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-
-  &__trailing-icon {
-    position: relative;
-    z-index: 1;
-    margin-left: var(--horizontal-gap);
-
-    color: var(--md-list-item-supporting-color);
+  &_selected {
+    --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
+    --md-comp-list-item-label-text-color: var(--md-comp-list-item-selected-label-text-color);
+    --md-comp-list-item-supporting-text-color: var(
+      --md-comp-list-item-selected-supporting-text-color
+    );
+    --md-comp-list-item-overline-text-color: var(
+      --md-comp-list-item-selected-supporting-text-color
+    );
+    --md-comp-list-item-leading-color: var(--md-comp-list-item-selected-leading-color);
+    --md-comp-list-item-trailing-color: var(--md-comp-list-item-selected-trailing-color);
   }
 
   &.md-state_disabled,
   &:disabled,
   &[aria-disabled='true'] {
-    --md-content-color: var(--md-list-item-disabled-content-color);
-    --md-list-item-supporting-color: var(--md-list-item-disabled-supporting-color);
+    --md-comp-list-item-label-text-color: var(--md-comp-list-item-disabled-label-text-color);
+    --md-comp-list-item-supporting-text-color: var(
+      --md-comp-list-item-disabled-supporting-text-color
+    );
+    --md-comp-list-item-overline-text-color: var(
+      --md-comp-list-item-disabled-supporting-text-color
+    );
+    --md-comp-list-item-leading-color: var(--md-comp-list-item-disabled-supporting-text-color);
+    --md-comp-list-item-trailing-color: var(--md-comp-list-item-disabled-supporting-text-color);
   }
-}
 
-.md-list-item:is(button:not(:disabled), a:not([aria-disabled='true'])) {
-  cursor: pointer;
+  &__primary-action,
+  &:is(button, a) {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: var(--md-comp-list-item-target-size);
+    box-sizing: border-box;
+    padding-inline: var(--md-comp-list-item-horizontal-padding)
+      var(--md-comp-list-item-trailing-end-padding);
+    padding-block: 8dp;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    text-decoration: none;
+    transition-property: color, background-color, border-radius, box-shadow;
+    transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  }
+
+  &__primary-action:is(button:not(:disabled), a:not([aria-disabled='true'])),
+  &:is(button:not(:disabled), a:not([aria-disabled='true'])) {
+    cursor: pointer;
+  }
+
+  &__leading,
+  &__trailing,
+  &__trailing-action {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    color: var(--md-comp-list-item-trailing-color);
+  }
+
+  &__leading {
+    min-width: var(--md-comp-list-item-leading-icon-size);
+    color: var(--md-comp-list-item-leading-color);
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    color: inherit;
+  }
+
+  &__leading + &__content {
+    margin-inline-start: var(--md-comp-list-item-leading-space);
+  }
+
+  &__trailing,
+  &__trailing-action {
+    margin-inline-start: var(--md-comp-list-item-trailing-space);
+  }
+
+  &__overline {
+    color: var(--md-comp-list-item-overline-text-color);
+    font-family: var(--md-sys-typescale-label-small-font);
+    font-size: var(--md-sys-typescale-label-small-size);
+    font-weight: var(--md-sys-typescale-label-small-weight);
+    line-height: var(--md-sys-typescale-label-small-line-height);
+    letter-spacing: var(--md-sys-typescale-label-small-tracking);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__label-text {
+    color: var(--md-comp-list-item-label-text-color);
+    font-family: var(--md-sys-typescale-body-large-font);
+    font-size: var(--md-sys-typescale-body-large-size);
+    font-weight: var(--md-sys-typescale-body-large-weight);
+    line-height: var(--md-sys-typescale-body-large-line-height);
+    letter-spacing: var(--md-sys-typescale-body-large-tracking);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &_mode_multi-action &__primary-action,
+  &_mode_single-select &__primary-action,
+  &_mode_multi-select &__primary-action {
+    padding-inline-end: var(--md-comp-list-item-horizontal-padding);
+  }
+
+  &_mode_multi-action &__trailing-action {
+    justify-content: center;
+    padding-inline-end: var(--md-comp-list-item-trailing-end-padding);
+    min-height: var(--md-comp-list-item-target-size);
+  }
+
+  &__supporting-text {
+    color: var(--md-comp-list-item-supporting-text-color);
+    display: -webkit-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    font-family: var(--md-sys-typescale-body-medium-font);
+    font-size: var(--md-sys-typescale-body-medium-size);
+    font-weight: var(--md-sys-typescale-body-medium-weight);
+    line-height: var(--md-sys-typescale-body-medium-line-height);
+    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
+
+    &_one-line {
+      -webkit-line-clamp: 1;
+    }
+
+    &_two-line {
+      -webkit-line-clamp: 1;
+    }
+
+    &_three-line {
+      -webkit-line-clamp: 2;
+    }
+  }
+
+  &_mode_static,
+  &_mode_single-action {
+    align-items: center;
+    padding-inline: var(--md-comp-list-item-horizontal-padding)
+      var(--md-comp-list-item-trailing-end-padding);
+    padding-block: 8dp;
+  }
+
+  &_mode_static &__leading,
+  &_mode_single-action &__leading {
+    min-height: var(--md-comp-list-item-leading-icon-size);
+  }
+
+  &_mode_static &__trailing,
+  &_mode_single-action &__trailing {
+    min-height: var(--md-comp-list-item-target-size);
+    justify-content: center;
+  }
+
+  &.md-list-item_line-count_3 {
+    align-items: flex-start;
+  }
+
+  &.md-list-item_line-count_3 &__primary-action {
+    align-items: flex-start;
+  }
+
+  &.md-list-item_line-count_3 &__primary-action,
+  &.md-list-item_line-count_3.md-list-item_mode_static,
+  &.md-list-item_line-count_3.md-list-item_mode_single-action {
+    padding-block-start: 12dp;
+  }
 }
 </style>

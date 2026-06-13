@@ -9,7 +9,7 @@ import {
 } from '@shared/lib/databaseDocument';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs } from 'vue';
+import { computed, toRefs, useSlots } from 'vue';
 
 const props = defineProps<{
   path: string;
@@ -18,9 +18,10 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const slots = defineSlots<{
-  trailingIcon: () => unknown;
+defineSlots<{
+  trailingAction: () => unknown;
 }>();
+const slots = useSlots();
 
 const { documentId, path, viewId, propertyId } = toRefs(props);
 
@@ -41,8 +42,13 @@ const onClick = async () => {
 </script>
 
 <template>
-  <MDListItem is="button" :headline="headline" class="db-sorting-item" @click="onClick">
-    <template #leadingIcon>
+  <MDListItem
+    :mode="slots.trailingAction ? 'multi-action' : 'single-action'"
+    :label-text="headline"
+    class="db-sorting-item"
+    @action="onClick"
+  >
+    <template #leading>
       <MDSymbol
         class="db-sorting-item__symbol"
         name="sort"
@@ -52,8 +58,8 @@ const onClick = async () => {
       />
     </template>
 
-    <template v-if="slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" />
+    <template v-if="slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" />
     </template>
   </MDListItem>
 </template>

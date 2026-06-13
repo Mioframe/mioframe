@@ -58,7 +58,7 @@ const layoutOptions = [undefined, 'horizontal', 'vertical'] as const;
     <template #space>
       <MDPane class="container">
         <MDListContainer>
-          <MDListItem v-for="i in state.numberItems" :key="i" :headline="`item ${i}`" />
+          <MDListItem v-for="i in state.numberItems" :key="i" :label-text="`item ${i}`" />
         </MDListContainer>
 
         <MDToolbarContainer

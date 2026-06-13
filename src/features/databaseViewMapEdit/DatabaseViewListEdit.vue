@@ -21,8 +21,8 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<{
-  trailingIcon: (p: { viewId: DatabaseViewId }) => unknown;
-  leadingIcon: (p: { viewId: DatabaseViewId }) => unknown;
+  trailingAction: (p: { viewId: DatabaseViewId }) => unknown;
+  leading: (p: { viewId: DatabaseViewId }) => unknown;
 }>();
 
 const { directoryPath: path, documentId } = toRefs(props);
@@ -76,24 +76,24 @@ const onClickView = (id: DatabaseViewId) => {
 <template>
   <MDListContainer ref="viewListEl" transition class="db-view-map-edit">
     <MDListItem
-      is="button"
       v-for="[id, view] in orderedViewList"
       :key="id"
       v-reorder-item="id"
-      :headline="view.name"
+      mode="multi-action"
+      :label-text="view.name"
       class="db-view-map-edit__view-item"
       :class="{
         'md-state_drag': draggedViewId === id,
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
-      @click="() => onClickView(id)"
+      @action="() => onClickView(id)"
     >
-      <template v-if="!!slots.leadingIcon" #leadingIcon>
-        <slot name="leadingIcon" :view-id="id" />
+      <template v-if="!!slots.leading" #leading>
+        <slot name="leading" :view-id="id" />
       </template>
 
-      <template v-if="!!slots.trailingIcon" #trailingIcon>
-        <slot name="trailingIcon" :view-id="id" />
+      <template v-if="!!slots.trailingAction" #trailingAction>
+        <slot name="trailingAction" :view-id="id" />
       </template>
     </MDListItem>
   </MDListContainer>

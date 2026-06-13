@@ -165,7 +165,7 @@ test('MDExtendedFab visual states match baseline', async ({ page }) => {
 });
 
 test('MDListItem visual states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdlistitem--visual-states');
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
 
   const surface = page.getByTestId('visual-md-list-item-states');
 
@@ -173,7 +173,7 @@ test('MDListItem visual states match baseline', async ({ page }) => {
 });
 
 test('MDListItem interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdlistitem--visual-interaction-states');
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
 
   const surface = page.getByTestId('visual-md-list-item-interaction-states');
 
@@ -181,7 +181,7 @@ test('MDListItem interaction states match baseline', async ({ page }) => {
 });
 
 test('MDListItem trailing action layout matches baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdlistitem--trailing-action-layout');
+  await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
 
   const surface = page.getByTestId('visual-md-list-item-trailing-action');
 
@@ -189,7 +189,7 @@ test('MDListItem trailing action layout matches baseline', async ({ page }) => {
 });
 
 test('MDListItem trailing action story avoids nested native buttons', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdlistitem--trailing-action-layout');
+  await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
 
   const nestedButtons = page
     .getByTestId('visual-md-list-item-trailing-action')

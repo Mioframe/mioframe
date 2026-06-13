@@ -1,31 +1,27 @@
 <template>
   <div v-bind="rootAttrs" class="visual-surface md-list-item-story-surface">
     <MDListItem
-      is="button"
+      mode="single-action"
       class="md-state_hover"
-      type="button"
-      headline="Hover"
+      label-text="Hover"
       supporting-text="Ripple enabled"
     />
     <MDListItem
-      is="button"
+      mode="single-action"
       class="md-state_focused"
-      type="button"
-      headline="Focus"
+      label-text="Focus"
       supporting-text="Focus visible"
     />
     <MDListItem
-      is="button"
+      mode="single-action"
       class="md-state_pressed"
-      type="button"
-      headline="Pressed"
+      label-text="Pressed"
       supporting-text="Pressed state"
     />
     <MDListItem
-      is="button"
+      mode="single-action"
       class="md-state_dragged"
-      type="button"
-      headline="Dragged"
+      label-text="Dragged"
       supporting-text="Dragged state"
       draggable
     />

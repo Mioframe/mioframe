@@ -61,7 +61,7 @@ vi.mock('@entity/fsEntry', () => ({
                 }
               : {}),
           },
-          [props.name, slots.trailingIcon?.()],
+          [props.name, slots.trailingAction?.()],
         );
     },
   }),

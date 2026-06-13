@@ -88,7 +88,7 @@ vi.mock('@entity/cfrDocument', () => ({
               emit('click', props.documentId);
             },
           },
-          [props.documentId, slots.trailingIcon?.()],
+          [props.documentId, slots.trailingAction?.()],
         );
     },
   }),

@@ -96,7 +96,7 @@ const emptySupportingText = computed(() => {
         class="repository-explorer-documents-section__list-item"
         @click="onSelectDocument"
       >
-        <template #trailingIcon>
+        <template #trailingAction>
           <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />
         </template>
       </CFRDocumentMDListItem>

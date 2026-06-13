@@ -24,7 +24,7 @@ vi.mock('@shared/ui/Lists', () => ({
   MDListItem: defineComponent({
     name: 'MDListItemStub',
     props: {
-      headline: {
+      labelText: {
         type: String,
         required: true,
       },
@@ -33,7 +33,7 @@ vi.mock('@shared/ui/Lists', () => ({
         default: '',
       },
     },
-    emits: ['click'],
+    emits: ['action'],
     setup(props, { emit, slots }) {
       return () =>
         h(
@@ -41,10 +41,10 @@ vi.mock('@shared/ui/Lists', () => ({
           {
             type: 'button',
             onClick: () => {
-              emit('click');
+              emit('action');
             },
           },
-          [slots.leadingIcon?.(), `${props.headline}|${props.supportingText}`],
+          [slots.leading?.(), `${props.labelText}|${props.supportingText}`],
         );
     },
   }),

@@ -36,12 +36,11 @@ const onSelectArticle = async (slug: string) => {
 
       <MDListContainer is="div">
         <MDListItem
-          is="button"
           v-for="article in helpCatalog"
           :key="article.slug"
-          type="button"
-          :headline="article.title"
-          @click="() => onSelectArticle(article.slug)"
+          mode="single-action"
+          :label-text="article.title"
+          @action="() => onSelectArticle(article.slug)"
         />
       </MDListContainer>
     </div>

@@ -110,27 +110,17 @@ const onClickAboutMioframe = () => {
 
     <SettingsSection title="Help">
       <MDListContainer is="div">
-        <MDListItem
-          is="button"
-          type="button"
-          headline="Privacy policy"
-          @click="onClickPrivacyPolicy"
-        >
+        <MDListItem mode="single-action" label-text="Privacy policy" @action="onClickPrivacyPolicy">
           <template #supportingText> Read how Mioframe handles privacy and diagnostics. </template>
         </MDListItem>
 
-        <MDListItem is="button" type="button" headline="Help" @click="onClickHelp">
+        <MDListItem mode="single-action" label-text="Help" @action="onClickHelp">
           <template #supportingText>
             Read data storage, backup, restore, and troubleshooting guides.
           </template>
         </MDListItem>
 
-        <MDListItem
-          is="button"
-          type="button"
-          headline="About Mioframe"
-          @click="onClickAboutMioframe"
-        >
+        <MDListItem mode="single-action" label-text="About Mioframe" @action="onClickAboutMioframe">
           <template #supportingText>Version and build information.</template>
         </MDListItem>
       </MDListContainer>

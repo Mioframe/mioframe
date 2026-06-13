@@ -9,20 +9,20 @@ const props = defineProps<{
 }>();
 
 const slots = defineSlots<{
-  trailing: unknown;
+  trailingAction: unknown;
 }>();
 </script>
 
 <template>
-  <MDListItem is="button" :headline="props.name" class="directory-content-entry">
-    <template #leadingIcon>
+  <MDListItem mode="multi-action" :label-text="props.name" class="directory-content-entry">
+    <template #leading>
       <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 
       <MDSymbol v-else name="draft" />
     </template>
 
-    <template v-if="slots.trailing" #trailingIcon>
-      <slot name="trailing" />
+    <template v-if="slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" />
     </template>
   </MDListItem>
 </template>

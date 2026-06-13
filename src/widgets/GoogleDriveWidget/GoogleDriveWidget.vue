@@ -19,7 +19,7 @@ const { sessionList } = useGoogleSessions();
       :session="session"
       @click="() => emit('clickUser', session.email)"
     >
-      <template #trailingIcon>
+      <template #trailingAction>
         <GoogleSessionManageMenuButton :email="session.email" />
       </template>
     </GoogleSessionListItem>

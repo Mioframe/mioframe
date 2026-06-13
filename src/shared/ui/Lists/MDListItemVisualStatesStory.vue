@@ -1,26 +1,28 @@
 <template>
   <div v-bind="rootAttrs" class="visual-surface md-list-item-story-surface">
-    <MDListItem is="button" type="button" headline="Button host" supporting-text="Ripple enabled" />
+    <MDListItem mode="single-action" label-text="Single action" supporting-text="Ripple enabled" />
     <MDListItem
-      is="button"
-      type="button"
-      headline="Disabled button host"
+      mode="single-action"
+      label-text="Disabled single action"
       supporting-text="Disabled state"
       disabled
     />
     <MDListItem
-      is="a"
-      headline="Disabled anchor host"
+      mode="single-action"
+      href="#disabled"
+      label-text="Disabled link action"
       supporting-text="No focus or navigation"
       disabled
     />
-    <MDListItem is="li" headline="Static host" supporting-text="Non-interactive baseline" />
     <MDListItem
-      is="div"
-      headline="Disabled static host"
+      container-tag="li"
+      label-text="Static item"
+      supporting-text="Non-interactive baseline"
+    />
+    <MDListItem
+      label-text="Disabled static item"
       supporting-text="Disabled visual treatment"
       disabled
-      tabindex="0"
     />
   </div>
 </template>

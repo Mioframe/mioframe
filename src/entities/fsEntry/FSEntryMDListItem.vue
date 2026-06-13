@@ -2,7 +2,7 @@
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { toRefs } from 'vue';
+import { toRefs, useSlots } from 'vue';
 
 const props = defineProps<{
   name: string;
@@ -15,9 +15,10 @@ const emit = defineEmits<{
   click: [name: string];
 }>();
 
-const slots = defineSlots<{
-  trailingIcon(): unknown;
+defineSlots<{
+  trailingAction(): unknown;
 }>();
+const slots = useSlots();
 
 const { name } = toRefs(props);
 
@@ -28,12 +29,12 @@ const onListItemClick = () => {
 
 <template>
   <MDListItem
-    :is="isButton ? 'button' : undefined"
-    :headline="name"
+    :mode="slots.trailingAction ? 'multi-action' : isButton ? 'single-action' : 'static'"
+    :label-text="name"
     :supporting-text="supportingText"
-    @click="onListItemClick"
+    @action="onListItemClick"
   >
-    <template #leadingIcon>
+    <template #leading>
       <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 
       <MDSymbol v-else-if="type === FSNodeType.File" name="draft" />
@@ -41,8 +42,8 @@ const onListItemClick = () => {
       <MDSymbol v-else name="insert_page_break" />
     </template>
 
-    <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" :entry="name" />
+    <template v-if="!!slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" :entry="name" />
     </template>
   </MDListItem>
 </template>

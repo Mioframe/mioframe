@@ -151,14 +151,11 @@ const onRenameViewCompleted = () => {
           :document-id="documentId"
           @click-view="onSelectViewPreset"
         >
-          <template #leadingIcon="{ viewId }">
-            <MDCheckbox
-              :model-value="viewId === effectiveViewId"
-              @update:model-value="($event) => onChangeExplicitViewId(viewId, $event)"
-            />
+          <template #leading="{ viewId }">
+            <MDCheckbox presentation :model-value="viewId === effectiveViewId" />
           </template>
 
-          <template #trailingIcon="{ viewId }">
+          <template #trailingAction="{ viewId }">
             <MDContextMenuButton
               :btns="viewContextMenu"
               tooltip="settings view"

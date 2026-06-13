@@ -43,34 +43,34 @@ const onClosed = () => {
       </div>
 
       <MDListItem
-        is="button"
-        headline="Create document"
+        mode="single-action"
+        label-text="Create document"
         supporting-text="Start a new document."
-        @click="onClickCreateDocument"
+        @action="onClickCreateDocument"
       >
-        <template #leadingIcon>
+        <template #leading>
           <MDSymbol name="edit_document" />
         </template>
       </MDListItem>
 
       <MDListItem
-        is="button"
-        headline="Import document"
+        mode="single-action"
+        label-text="Import document"
         supporting-text="Import a JSON document."
-        @click="onClickImportDocument"
+        @action="onClickImportDocument"
       >
-        <template #leadingIcon>
+        <template #leading>
           <MDSymbol name="upload_file" />
         </template>
       </MDListItem>
 
       <MDListItem
-        is="button"
-        headline="Create directory"
+        mode="single-action"
+        label-text="Create directory"
         supporting-text="Add a new folder here."
-        @click="onClickCreateDirectory"
+        @action="onClickCreateDirectory"
       >
-        <template #leadingIcon>
+        <template #leading>
           <MDSymbol name="create_new_folder" />
         </template>
       </MDListItem>

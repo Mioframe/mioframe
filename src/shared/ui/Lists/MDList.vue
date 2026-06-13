@@ -1,60 +1,54 @@
 <script
   setup
   lang="ts"
-  generic="T extends { headline: string; key: PropertyKey; supportingText?: string }"
+  generic="T extends { labelText: string; key: PropertyKey; supportingText?: string }"
 >
 import { computed } from 'vue';
 import MDListContainer from './MDListContainer.vue';
 import MDListItem from './MDListItem.vue';
 
-const { list, isItemButton } = defineProps<{
+const { list, itemMode = 'static' } = defineProps<{
   list: T[];
   type?: 'list' | 'grid' | undefined;
-  isItemButton?: boolean | undefined;
+  itemMode?: 'static' | 'single-action' | undefined;
 }>();
 
 const emit = defineEmits<{
-  clickItem: [payload: { item: T; index: number }];
+  actionItem: [payload: { item: T; index: number }];
 }>();
 
 const slots = defineSlots<{
-  leadingAvatarContainer: (p: { item: T; index: number }) => unknown;
-  leadingIcon: (p: { item: T; index: number }) => unknown;
-  trailingIcon: (p: { item: T; index: number }) => unknown;
+  leading: (p: { item: T; index: number }) => unknown;
+  trailing: (p: { item: T; index: number }) => unknown;
 }>();
 
 const listProp = computed(() => list);
+const itemContainerTag = computed(() => (itemMode === 'static' ? 'li' : 'div'));
+const containerTag = computed(() => (itemContainerTag.value === 'li' ? 'ul' : 'div'));
 
-const onClickItem = (item: T, index: number) => {
-  emit('clickItem', { item, index });
+const onActionItem = (item: T, index: number) => {
+  emit('actionItem', { item, index });
 };
-
-const itemTag = computed((): 'button' | 'li' | 'a' | 'div' => (isItemButton ? 'button' : 'li'));
-
-const containerTag = computed((): 'ul' | 'div' => (itemTag.value === 'li' ? 'ul' : 'div'));
 </script>
 
 <template>
   <MDListContainer :is="containerTag" :type="type" class="md-list">
     <TransitionGroup name="md-list">
       <MDListItem
-        :is="itemTag"
         v-for="(item, index) in listProp"
         :key="item.key"
-        :headline="item.headline"
+        :mode="itemMode"
+        :container-tag="itemContainerTag"
+        :label-text="item.labelText"
         :supporting-text="item.supportingText"
-        @click="() => onClickItem(item, index)"
+        @action="() => onActionItem(item, index)"
       >
-        <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
-          <slot name="leadingAvatarContainer" :item="item" :index="index" />
+        <template v-if="!!slots.leading" #leading>
+          <slot name="leading" :item="item" :index="index" />
         </template>
 
-        <template v-if="!!slots.leadingIcon" #leadingIcon>
-          <slot name="leadingIcon" :item="item" :index="index" />
-        </template>
-
-        <template v-if="!!slots.trailingIcon" #trailingIcon>
-          <slot name="trailingIcon" :item="item" :index="index" />
+        <template v-if="!!slots.trailing" #trailing>
+          <slot name="trailing" :item="item" :index="index" />
         </template>
       </MDListItem>
     </TransitionGroup>

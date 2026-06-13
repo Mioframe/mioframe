@@ -8,14 +8,14 @@ const { loading, openSpace } = useOpenMioframeSpace();
 
 <template>
   <MDListItem
-    is="button"
-    headline="Open space"
+    mode="single-action"
+    label-text="Open space"
     supporting-text="Choose a folder that already contains a Mioframe space."
-    :lines="2"
+    :line-count="3"
     :disabled="loading"
-    @click="openSpace"
+    @action="openSpace"
   >
-    <template #leadingIcon>
+    <template #leading>
       <MDSymbol name="folder_open" />
     </template>
   </MDListItem>

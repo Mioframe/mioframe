@@ -9,16 +9,21 @@ const rootAttrs = {
 
 <template>
   <div v-bind="rootAttrs" class="visual-surface md-list-item-trailing-action-story">
-    <MDListItem headline="Draft database" supporting-text="Trailing action stays compact">
-      <template #trailingIcon>
+    <MDListItem
+      mode="multi-action"
+      label-text="Draft database"
+      supporting-text="Trailing action stays compact"
+    >
+      <template #trailingAction>
         <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
       </template>
     </MDListItem>
     <MDListItem
-      headline="Pinned view"
+      mode="multi-action"
+      label-text="Pinned view"
       supporting-text="Outlined action still matches develop layout"
     >
-      <template #trailingIcon>
+      <template #trailingAction>
         <MDIconButton tooltip="Edit view" color="outlined" md-symbol-name="edit" />
       </template>
     </MDListItem>

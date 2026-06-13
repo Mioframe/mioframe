@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs } from 'vue';
+import { computed, toRefs, useSlots } from 'vue';
 import type { GoogleSessionDisplay } from '@shared/service';
 import GoogleSessionAvatar from './GoogleSessionAvatar.vue';
 
@@ -12,9 +12,10 @@ const emit = defineEmits<{
   click: [];
 }>();
 
-const slots = defineSlots<{
-  trailingIcon(): unknown;
+defineSlots<{
+  trailingAction(): unknown;
 }>();
+const slots = useSlots();
 
 const { session } = toRefs(props);
 
@@ -28,17 +29,17 @@ const onListItemClick = () => {
 
 <template>
   <MDListItem
-    is="button"
-    :headline="headline"
+    :mode="slots.trailingAction ? 'multi-action' : 'single-action'"
+    :label-text="headline"
     :supporting-text="supportingText"
-    @click="onListItemClick"
+    @action="onListItemClick"
   >
-    <template #leadingAvatarContainer>
+    <template #leading>
       <GoogleSessionAvatar :profile-image-url="session.profile.picture" />
     </template>
 
-    <template v-if="slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" />
+    <template v-if="slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" />
     </template>
   </MDListItem>
 </template>

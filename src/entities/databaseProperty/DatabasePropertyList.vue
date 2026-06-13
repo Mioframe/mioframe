@@ -12,7 +12,7 @@ const props = defineProps<{
 }>();
 
 const slots = defineSlots<{
-  trailingIcon: (p: {
+  trailingAction: (p: {
     property?: DatabaseUnknownProperty | undefined;
     propertyId: DatabasePropertyId;
   }) => unknown;
@@ -32,8 +32,8 @@ const { propertiesIdList: properties } = useDatabaseProperties(path, documentId)
       :document-id="documentId"
       :property-id="propertyId"
     >
-      <template v-if="!!slots.trailingIcon" #trailingIcon="{ property }">
-        <slot name="trailingIcon" :property-id="propertyId" :property="property" />
+      <template v-if="!!slots.trailingAction" #trailingAction="{ property }">
+        <slot name="trailingAction" :property-id="propertyId" :property="property" />
       </template>
     </DatabasePropertyListItem>
   </MDListContainer>
