@@ -6,6 +6,8 @@ const isRootOnlyAttr = (key: string): boolean =>
 /**
  * Splits forwarded attrs between the stable list item wrapper and the internal
  * primary action surface when the row renders one.
+ * @param attrs
+ * @param usesInternalActionSurface
  */
 export const splitListItemAttrs = (
   attrs: ListItemAttrs,
