@@ -82,31 +82,34 @@ Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-lis
 - Non-selectable lists: `div[role="list"]` by default, `ul` when children are guaranteed `li` wrappers.
 - Selection lists: always `div[role="listbox"]` — `tag="ul"` is overridden.
 - Every `MDListItem` renders a stable outer wrapper: `li` (no role) or `div[role="listitem"]` inside non-selection lists, `div[role="none"]` inside selection lists (prevents invalid `listbox > listitem`).
-- Every `MDListSelectionItem` inside a selection list renders as `div[role="option"]`. Outside a selection list it renders as `div[role="presentation"]` to avoid orphaned `role="option"` without a listbox parent.
-- Single-action items render the primary action as an internal `button` or `a` — never as the listitem root. Inside a selection list, `MDListItem` suppresses the action surface to avoid nesting an interactive element inside a listbox.
-- Multi-action items render one internal primary action plus one independent trailing action region. The row-level `MDStateLayer` covers the full row width, including padding between the primary action and trailing action. Clicking the trailing-action container (but not the trailing action itself) fires the primary action via `@click.self`.
+- Every `MDListSelectionItem` inside a selection list renders as `div[role="option"]`. Outside a selection list it renders as `div[role="presentation"]` to avoid orphaned `role="option"` without a listbox parent. Orphan items also have no state layer, no ripple, no pointer cursor, and no `tabindex`.
+- Single-action items render the primary action as an internal `button` or `a` — never as the listitem root. Inside a selection list, `MDListItem` suppresses both the action surface and any trailing action slot to avoid nesting interactive elements inside a listbox.
+- Multi-action items render one internal primary action plus one independent trailing action region. The row-level `MDStateLayer` covers the full row width, including padding between the primary action and trailing action. Clicking the trailing-action container (but not the trailing action itself) fires the primary action via `@click.self`. The trailing action has its own independent state layer.
 - No native interactive element may be nested inside another native interactive element.
 
 ## Internal module map
 
-| File                             | Responsibility                                                                                               |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `listContext.ts`                 | Provide/inject list context; selection state, variant, tag, heights                                          |
-| `listItemSizing.ts`              | Material row height constants keyed by variant and line count                                                |
-| `listItemLayout.ts`              | Shared line-count resolution and host-style helpers                                                          |
-| `listItemDevWarnings.ts`         | Development-only warning functions for MDListItem misuse                                                     |
-| `useListItemAnatomy.ts`          | Shared anatomy computeds (slot detection, line count, host style) used by MDListItem and MDListSelectionItem |
-| `listSelectionItemNavigation.ts` | Roving tab-stop and keyboard navigation for listbox selection items                                          |
-| `useListSelectionKeyboard.ts`    | Composable that wires keyboard/focus lifecycle into MDList                                                   |
+| File                             | Responsibility                                                                                                                                                    |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `listContext.ts`                 | Provide/inject list context; selection state, variant, tag, heights                                                                                               |
+| `listItemSizing.ts`              | Material row height constants keyed by variant and line count                                                                                                     |
+| `listItemLayout.ts`              | Shared line-count resolution and host-style helpers                                                                                                               |
+| `listItemDevWarnings.ts`         | Development-only warning functions for MDListItem misuse                                                                                                          |
+| `listItemAnatomy.css`            | Shared List-family CSS: token defaults, state modifier remaps, body/element layout, typography; imported as non-scoped by both MDListItem and MDListSelectionItem |
+| `useListItemAnatomy.ts`          | Shared anatomy computeds (slot detection, line count, host style) used by MDListItem and MDListSelectionItem                                                      |
+| `listSelectionItemNavigation.ts` | Roving tab-stop and keyboard navigation for listbox selection items                                                                                               |
+| `useListSelectionKeyboard.ts`    | Composable that wires keyboard/focus lifecycle into MDList                                                                                                        |
 
 ## Supported features
 
 - List styles: `standard`, `segmented`
 - Item modes (MDListItem): `static`, `single-action`, `multi-action`
-- Selection (MDListSelectionItem): `single` and `multiple` modes, checkmark indicator, roving keyboard focus; renders `role="presentation"` (no selection behavior) when used outside a selection list
+- Selection (MDListSelectionItem): `single` and `multiple` modes, checkmark indicator, roving keyboard focus; renders `role="presentation"` with no state layer, ripple, pointer cursor, or `tabindex` when used outside a selection list
 - Anatomy slots: leading icon/avatar/media/control, overline, label, supporting text, trailing text/icon, trailing action (MDListItem only)
 - Line counts: one-line, two-line, three-line
 - States: enabled, disabled, hover, focus, pressed, dragged (MDListItem), selected (MDListSelectionItem)
+- Selection list misuse safety: `MDListItem` inside a selection list renders `role="none"` and suppresses both its primary action surface and any trailing action slot, preventing invalid interactive controls inside a listbox
+- Orphan selection item safety: `MDListSelectionItem` without a selection context renders as inert presentation content with no interactive affordance
 
 ## Not supported in this pass
 

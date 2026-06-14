@@ -60,6 +60,11 @@ const listContext = useMDListContext();
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
 const inList = computed(() => listContext?.usesListSemantics.value ?? false);
 const selectionMode = computed(() => listContext?.selectionMode.value ?? 'none');
+// Suppress trailing action when inside a selection list to prevent interactive controls
+// from rendering inside a listbox (invalid ARIA and confusing interaction geometry).
+const showTrailingActionInStaticPath = computed(
+  () => hasTrailingAction.value && (!inList.value || selectionMode.value === 'none'),
+);
 const hasPrimaryAction = computed(() => props.mode !== 'static');
 // Suppress interactive action surfaces inside selection lists to avoid rendering a
 // button or link inside a listbox, which is invalid ARIA.
@@ -429,88 +434,23 @@ defineExpose({
         </span>
       </div>
 
-      <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
+      <span v-if="showTrailingActionInStaticPath" class="md-list-item__trailing-action">
         <slot name="trailingAction" />
       </span>
     </template>
   </component>
 </template>
 
+<style>
+/* Shared List-family anatomy: token defaults, state modifiers, body layout, element
+   geometry, and typography. Imported as a non-scoped block so MDListItem and
+   MDListSelectionItem share one implementation instead of duplicating it. */
+@import './listItemAnatomy.css';
+</style>
+
 <style scoped>
 .md-list-item {
-  --md-comp-list-item-container-color: var(--md-sys-color-surface);
-  --md-comp-list-item-disabled-label-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
-  );
-  --md-comp-list-item-disabled-leading-icon-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
-  );
-  --md-comp-list-item-disabled-supporting-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
-  );
-  --md-comp-list-item-disabled-trailing-icon-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
-  );
-  --md-comp-list-item-label-text-color: var(--md-sys-color-on-surface);
-  --md-comp-list-item-leading-avatar-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-leading-icon-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-overline-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-selected-container-color: var(--md-sys-color-secondary-container);
-  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-label-text-color);
-  --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-trailing-icon-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-trailing-text-color: var(--md-sys-color-on-surface-variant);
-  --md-content-color: var(--md-comp-list-item-state-layer-color);
-
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  min-height: var(
-    --md-comp-list-item-min-container-height,
-    var(--md-private-list-item-resolved-container-height)
-  );
-  border: 0;
-  border-radius: var(--md-private-list-item-container-shape, 0dp);
-  background: var(--md-comp-list-item-container-color);
-  color: var(--md-comp-list-item-label-text-color);
-  list-style: none;
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-
-  &_selected {
-    --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
-    --md-comp-list-item-label-text-color: var(--md-comp-list-item-selected-label-text-color);
-    --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-selected-label-text-color);
-    --md-comp-list-item-overline-color: var(--md-comp-list-item-selected-supporting-text-color);
-    --md-comp-list-item-state-layer-color: var(--md-comp-list-item-selected-label-text-color);
-    --md-comp-list-item-supporting-text-color: var(
-      --md-comp-list-item-selected-supporting-text-color
-    );
-    --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-selected-trailing-icon-color);
-    --md-comp-list-item-trailing-text-color: var(
-      --md-comp-list-item-selected-supporting-text-color
-    );
-  }
-
-  &.md-state_disabled,
-  &:disabled,
-  &[aria-disabled='true'] {
-    --md-comp-list-item-label-text-color: var(--md-comp-list-item-disabled-label-text-color);
-    --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-disabled-leading-icon-color);
-    --md-comp-list-item-overline-color: var(--md-comp-list-item-disabled-supporting-text-color);
-    --md-comp-list-item-state-layer-color: var(--md-comp-list-item-disabled-label-text-color);
-    --md-comp-list-item-supporting-text-color: var(
-      --md-comp-list-item-disabled-supporting-text-color
-    );
-    --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-disabled-trailing-icon-color);
-    --md-comp-list-item-trailing-text-color: var(
-      --md-comp-list-item-disabled-supporting-text-color
-    );
-  }
-
+  /* Dragged state is MDListItem-only (selection items do not support drag). */
   &.md-state_dragged {
     background: var(--md-sys-color-tertiary-container);
     box-shadow: var(--md-sys-elevation-level2);
@@ -523,22 +463,9 @@ defineExpose({
     --md-comp-list-item-trailing-text-color: var(--md-sys-color-on-tertiary-container);
   }
 
+  /* Button/link resets specific to action surface elements. */
   &__primary-action,
-  &__body,
   &:is(button, a) > &__body {
-    position: relative;
-    z-index: 0;
-    display: flex;
-    align-items: center;
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: var(
-      --md-comp-list-item-min-container-height,
-      var(--md-private-list-item-resolved-container-height)
-    );
-    padding-inline: var(--md-private-list-item-content-padding-inline-start)
-      var(--md-private-list-item-content-padding-inline-end);
-    padding-block: var(--md-private-list-item-content-padding-block);
     border: 0;
     border-radius: var(--md-private-list-item-action-shape, 0dp);
     background: transparent;
@@ -546,78 +473,15 @@ defineExpose({
     font: inherit;
     text-align: start;
     text-decoration: none;
-    box-sizing: border-box;
   }
 
+  /* Pointer cursor only for enabled interactive elements. */
   &__primary-action:is(button:not(:disabled), a:not([aria-disabled='true'])),
   &:is(button:not(:disabled), a:not([aria-disabled='true'])) {
     cursor: pointer;
   }
 
-  &__leading,
-  &__selection-indicator,
-  &__trailing,
-  &__trailing-action {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    min-width: 0;
-  }
-
-  &__selection-indicator {
-    justify-content: center;
-    width: 24dp;
-    min-width: 24dp;
-    color: var(--md-comp-list-item-leading-icon-color);
-    margin-inline-end: var(--md-private-list-item-leading-space);
-  }
-
-  &__leading {
-    justify-content: center;
-    min-width: var(--md-private-list-item-leading-size);
-    color: var(--md-comp-list-item-leading-icon-color);
-    margin-inline-end: var(--md-private-list-item-leading-space);
-
-    &_type_icon {
-      min-width: var(--md-private-list-item-leading-size);
-    }
-
-    &_type_avatar {
-      min-width: 40dp;
-      min-height: 40dp;
-    }
-
-    &_type_media {
-      min-width: 56dp;
-      min-height: 56dp;
-      align-self: center;
-    }
-
-    &_type_control {
-      min-width: 48dp;
-      min-height: 48dp;
-    }
-  }
-
-  &__content {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    justify-content: center;
-    min-width: 0;
-  }
-
-  &__trailing {
-    justify-content: flex-end;
-    min-height: var(--md-private-list-item-passive-trailing-min-size);
-    color: var(--md-comp-list-item-trailing-text-color);
-    margin-inline-start: var(--md-private-list-item-trailing-space);
-  }
-
+  /* Trailing action: flex container, padding, and sizing specific to MDListItem. */
   &__trailing-action {
     justify-content: center;
     color: var(--md-comp-list-item-trailing-icon-color);
@@ -625,57 +489,6 @@ defineExpose({
     min-width: 48dp;
     min-height: 48dp;
     align-self: center;
-  }
-
-  &__overline {
-    color: var(--md-comp-list-item-overline-color);
-    font-family: var(--md-sys-typescale-label-medium-font);
-    font-size: var(--md-sys-typescale-label-medium-size);
-    font-weight: var(--md-sys-typescale-label-medium-weight);
-    line-height: var(--md-sys-typescale-label-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-label-medium-tracking);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &__label-text {
-    color: var(--md-comp-list-item-label-text-color);
-    font-family: var(--md-sys-typescale-body-large-font);
-    font-size: var(--md-sys-typescale-body-large-size);
-    font-weight: var(--md-sys-typescale-body-large-weight);
-    line-height: var(--md-sys-typescale-body-large-line-height);
-    letter-spacing: var(--md-sys-typescale-body-large-tracking);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &__supporting-text {
-    color: var(--md-comp-list-item-supporting-text-color);
-    display: -webkit-box;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-    font-family: var(--md-sys-typescale-body-medium-font);
-    font-size: var(--md-sys-typescale-body-medium-size);
-    font-weight: var(--md-sys-typescale-body-medium-weight);
-    line-height: var(--md-sys-typescale-body-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
-
-    &_two-line {
-      -webkit-line-clamp: 1;
-    }
-
-    &_three-line {
-      -webkit-line-clamp: 2;
-    }
-  }
-
-  &_line-count_3 &__primary-action,
-  &_line-count_3 &__body {
-    align-items: flex-start;
   }
 }
 </style>

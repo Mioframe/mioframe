@@ -212,6 +212,26 @@ describe('MDListItem', () => {
     warnSpy.mockRestore();
   });
 
+  it('suppresses trailing action slot when inside a selection list', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mountListItem(
+      { mode: 'multi-action', onAction: vi.fn() },
+      {
+        inList: true,
+        listProps: { selectionMode: 'single' },
+        slots: {
+          trailingAction: '<button type="button">Edit</button>',
+        },
+      },
+    );
+
+    expect(wrapper.find('.md-list-item__trailing-action').exists()).toBe(false);
+    expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(false);
+
+    warnSpy.mockRestore();
+  });
+
   it('fires the primary action when the trailing-action container padding area is clicked', async () => {
     const onAction = vi.fn();
     const wrapper = mountListItem(

@@ -21,15 +21,29 @@ onMounted(() => {
     return;
   }
 
+  // Single-action: MDStateLayer is inside __primary-action, so the state class must
+  // be on that element for the state layer to pick it up via its parent selector.
   root
-    .querySelector<HTMLElement>('[data-state="hover"] .md-list-item__primary-action')
+    .querySelector<HTMLElement>(
+      '[data-state="hover"].md-list-item_mode_single-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_hover');
   root
-    .querySelector<HTMLElement>('[data-state="focus"] .md-list-item__primary-action')
+    .querySelector<HTMLElement>(
+      '[data-state="focus"].md-list-item_mode_single-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_focused');
   root
-    .querySelector<HTMLElement>('[data-state="pressed"] .md-list-item__primary-action')
+    .querySelector<HTMLElement>(
+      '[data-state="pressed"].md-list-item_mode_single-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_pressed');
+
+  // Multi-action: the row-level MDStateLayer is a direct child of the root container.
+  // Add the state class to the root so the full-row state layer responds.
+  root
+    .querySelector<HTMLElement>('[data-state="hover"].md-list-item_mode_multi-action')
+    ?.classList.add('md-state_hover');
 });
 </script>
 
@@ -109,7 +123,7 @@ onMounted(() => {
           v-bind="hoverAttrs"
           mode="multi-action"
           label-text="Hover"
-          supporting-text="Hover is bounded to the primary action surface"
+          supporting-text="Row-level state layer covers the full item container"
           @action="onAction"
         >
           <template #trailingAction>

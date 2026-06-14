@@ -82,9 +82,13 @@ Current state:
 - component tokens use Material anatomy names instead of generic content or muted naming;
 - direct consumers corrected to choose list style through `MDList`, including repository explorer sections, local file-system lists, Google session lists, database property lists, and database view reordering;
 - Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic configuration, state, selection, trailing-action, and DOM-contract stories; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels;
-- `Configurations` story includes baseline standard and expressive segmented examples; interaction states story covers single-action (full-row state layer) and multi-action (primary-action-bounded state layer); selection story covers single-select and multi-select lists;
+- shared List-family anatomy CSS (`listItemAnatomy.css`) is imported non-scoped by both MDListItem and MDListSelectionItem, eliminating duplicated token definitions, state modifier remaps, body/element layout, and typography between the two components;
+- `MDListItem` inside a selection list suppresses both its primary action surface and any trailing action slot, rendering only inert presentation content (`role="none"`);
+- `MDListSelectionItem` outside a selection context renders as structurally inert presentation content: `role="presentation"`, no state layer, no ripple, no pointer cursor, no `tabindex`;
+- multi-action rows use a row-level MDStateLayer as a direct child of the root container so the full-row visual state covers the complete item width; trailing action has its own independent local state layer;
+- `Configurations` story includes baseline standard and expressive segmented examples; interaction states story covers single-action (full-row state layer), multi-action (row-level state layer on root), and trailing action (local state layer independent of row state); selection story covers single-select and multi-select lists;
 - trailing action target size verified with a Playwright browser assertion against the `.md-icon-button__target` span (≥48×48 px);
-- browser-level DOM tests cover static, single-action, multi-action, segmented, and selection lists; unit tests cover mode separation, variant naming, line-count rendering, li-tag list semantics, invalid selection rows, disabled-aware option focus, and selection wiring.
+- browser-level DOM tests cover static, single-action, multi-action, segmented, and selection lists; unit tests cover mode separation, variant naming, line-count rendering, li-tag list semantics, selection list trailing action suppression, orphan selection item state layer absence and tabindex absence, disabled-aware option focus, and selection wiring.
 
 Gaps:
 
@@ -92,8 +96,7 @@ Gaps:
 - `MDList` does not yet expose richer listbox labeling helpers beyond forwarded ARIA attributes;
 - selection rows currently use a shared checkmark indicator rather than Material-specific radio or checkbox controls;
 - live Figma node verification for the cited Lists page was blocked by the current Figma MCP Starter-plan rate limit during this pass;
-- expressive row-height verification should still be re-checked against the Design Kit when Figma MCP access is available again;
-- multi-action interaction-states Storybook story predates the row-level state-layer fix and should be updated to reflect full-row hover/pressed coverage.
+- expressive row-height verification should still be re-checked against the Design Kit when Figma MCP access is available again.
 
 Verdict: second migration family after Buttons. Remains `partial` until live Figma comparison, multi-action keyboard traversal, and full accessibility verification are complete.
 

@@ -6,6 +6,7 @@ import MDList from './MDList.vue';
 import MDListItem from './MDListItem.vue';
 
 const interactionRef = useTemplateRef<HTMLElement>('interactionRef');
+const trailingHoverTarget = useTemplateRef<HTMLElement>('trailingHoverTarget');
 const rootAttrs = {
   'data-testid': 'visual-md-list-interaction-states',
 };
@@ -33,15 +34,32 @@ onMounted(() => {
     return;
   }
 
+  // Single-action: MDStateLayer is inside __primary-action.
   root
-    .querySelector<HTMLElement>('[data-visual-state="hover"] .md-list-item__primary-action')
+    .querySelector<HTMLElement>(
+      '[data-visual-state="hover"].md-list-item_mode_single-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_hover');
   root
-    .querySelector<HTMLElement>('[data-visual-state="focus"] .md-list-item__primary-action')
+    .querySelector<HTMLElement>(
+      '[data-visual-state="focus"].md-list-item_mode_single-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_focused');
   root
-    .querySelector<HTMLElement>('[data-visual-state="pressed"] .md-list-item__primary-action')
+    .querySelector<HTMLElement>(
+      '[data-visual-state="pressed"].md-list-item_mode_single-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_pressed');
+
+  // Multi-action: row-level MDStateLayer is a direct child of the root container;
+  // add state to the root so the full-row layer responds.
+  root
+    .querySelector<HTMLElement>('[data-visual-state="hover"].md-list-item_mode_multi-action')
+    ?.classList.add('md-state_hover');
+
+  // Trailing action hover: add hover state to the icon button root via template ref so that
+  // the trailing state layer shows independently from the row-level state layer.
+  trailingHoverTarget.value?.firstElementChild?.classList.add('md-state_hover');
 });
 </script>
 
@@ -110,6 +128,23 @@ onMounted(() => {
               md-symbol-name="edit"
               @click="onTrailingAction"
             />
+          </template>
+        </MDListItem>
+        <MDListItem
+          mode="multi-action"
+          label-text="Trailing action hover"
+          supporting-text="Trailing action state layer is local to the trailing target, row stays resting"
+          @action="onAction"
+        >
+          <template #trailingAction>
+            <!--
+              The wrapper span is used via template ref so onMounted can add md-state_hover
+              to the icon button's root element, showing the trailing state layer is independent
+              from the row-level state layer.
+            -->
+            <span ref="trailingHoverTarget">
+              <MDIconButton tooltip="Options" md-symbol-name="more_vert" />
+            </span>
           </template>
         </MDListItem>
       </MDList>

@@ -1,0 +1,257 @@
+/*
+ * Shared Material List item anatomy styles.
+ *
+ * Consumed by MDListItem and MDListSelectionItem via a non-scoped <style> block so that
+ * the List-family components share one implementation of token defaults, state modifiers,
+ * and element geometry instead of duplicating them in each scoped block.
+ *
+ * All selectors are BEM-namespaced to the List component family and must not be used
+ * outside src/shared/ui/Lists.
+ */
+
+/* ─── Token defaults ──────────────────────────────────────────────────────── */
+
+.md-list-item,
+.md-list-selection-item {
+  --md-comp-list-item-container-color: var(--md-sys-color-surface);
+  --md-comp-list-item-disabled-label-text-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-disabled-leading-icon-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-disabled-supporting-text-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-disabled-trailing-icon-color: rgb(
+    from var(--md-sys-color-on-surface) r g b / 0.38
+  );
+  --md-comp-list-item-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-item-leading-avatar-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-leading-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-overline-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-selected-container-color: var(--md-sys-color-secondary-container);
+  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-label-text-color);
+  --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-trailing-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-item-trailing-text-color: var(--md-sys-color-on-surface-variant);
+  --md-content-color: var(--md-comp-list-item-state-layer-color);
+
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-height: var(
+    --md-comp-list-item-min-container-height,
+    var(--md-private-list-item-resolved-container-height)
+  );
+  border: 0;
+  border-radius: var(--md-private-list-item-container-shape, 0dp);
+  background: var(--md-comp-list-item-container-color);
+  color: var(--md-comp-list-item-label-text-color);
+  list-style: none;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Selected state (token remaps) ──────────────────────────────────────── */
+
+.md-list-item_selected,
+.md-list-selection-item_selected {
+  --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
+  --md-comp-list-item-label-text-color: var(--md-comp-list-item-selected-label-text-color);
+  --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-selected-label-text-color);
+  --md-comp-list-item-overline-color: var(--md-comp-list-item-selected-supporting-text-color);
+  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-selected-label-text-color);
+  --md-comp-list-item-supporting-text-color: var(
+    --md-comp-list-item-selected-supporting-text-color
+  );
+  --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-selected-trailing-icon-color);
+  --md-comp-list-item-trailing-text-color: var(--md-comp-list-item-selected-supporting-text-color);
+}
+
+/* ─── Disabled state (token remaps) ──────────────────────────────────────── */
+
+.md-list-item.md-state_disabled,
+.md-list-item:disabled,
+.md-list-item[aria-disabled='true'],
+.md-list-selection-item.md-state_disabled,
+.md-list-selection-item[aria-disabled='true'] {
+  --md-comp-list-item-label-text-color: var(--md-comp-list-item-disabled-label-text-color);
+  --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-disabled-leading-icon-color);
+  --md-comp-list-item-overline-color: var(--md-comp-list-item-disabled-supporting-text-color);
+  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-disabled-label-text-color);
+  --md-comp-list-item-supporting-text-color: var(
+    --md-comp-list-item-disabled-supporting-text-color
+  );
+  --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-disabled-trailing-icon-color);
+  --md-comp-list-item-trailing-text-color: var(--md-comp-list-item-disabled-supporting-text-color);
+}
+
+/* ─── Shared body / action surface layout ────────────────────────────────── */
+
+.md-list-item__primary-action,
+.md-list-item__body,
+.md-list-selection-item__body {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(
+    --md-comp-list-item-min-container-height,
+    var(--md-private-list-item-resolved-container-height)
+  );
+  padding-inline: var(--md-private-list-item-content-padding-inline-start)
+    var(--md-private-list-item-content-padding-inline-end);
+  padding-block: var(--md-private-list-item-content-padding-block);
+  box-sizing: border-box;
+}
+
+/* Three-line items align body content to the start so leading/trailing stay top-aligned. */
+.md-list-item_line-count_3 .md-list-item__body,
+.md-list-item_line-count_3 .md-list-item__primary-action,
+.md-list-selection-item_line-count_3 .md-list-selection-item__body {
+  align-items: flex-start;
+}
+
+/* ─── Shared flex-item elements ──────────────────────────────────────────── */
+
+.md-list-item__leading,
+.md-list-selection-item__leading,
+.md-list-item__selection-indicator,
+.md-list-selection-item__selection-indicator,
+.md-list-item__trailing,
+.md-list-selection-item__trailing,
+.md-list-item__trailing-action {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* ─── Selection indicator ────────────────────────────────────────────────── */
+
+.md-list-item__selection-indicator,
+.md-list-selection-item__selection-indicator {
+  justify-content: center;
+  width: 24dp;
+  min-width: 24dp;
+  color: var(--md-comp-list-item-leading-icon-color);
+  margin-inline-end: var(--md-private-list-item-leading-space);
+}
+
+/* ─── Leading element ────────────────────────────────────────────────────── */
+
+.md-list-item__leading,
+.md-list-selection-item__leading {
+  justify-content: center;
+  min-width: var(--md-private-list-item-leading-size);
+  color: var(--md-comp-list-item-leading-icon-color);
+  margin-inline-end: var(--md-private-list-item-leading-space);
+}
+
+.md-list-item__leading_type_icon,
+.md-list-selection-item__leading_type_icon {
+  min-width: var(--md-private-list-item-leading-size);
+}
+
+.md-list-item__leading_type_avatar,
+.md-list-selection-item__leading_type_avatar {
+  min-width: 40dp;
+  min-height: 40dp;
+}
+
+.md-list-item__leading_type_media,
+.md-list-selection-item__leading_type_media {
+  min-width: 56dp;
+  min-height: 56dp;
+  align-self: center;
+}
+
+.md-list-item__leading_type_control,
+.md-list-selection-item__leading_type_control {
+  min-width: 48dp;
+  min-height: 48dp;
+}
+
+/* ─── Content column ─────────────────────────────────────────────────────── */
+
+.md-list-item__content,
+.md-list-selection-item__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* ─── Trailing element ───────────────────────────────────────────────────── */
+
+.md-list-item__trailing,
+.md-list-selection-item__trailing {
+  justify-content: flex-end;
+  min-height: var(--md-private-list-item-passive-trailing-min-size);
+  color: var(--md-comp-list-item-trailing-text-color);
+  margin-inline-start: var(--md-private-list-item-trailing-space);
+}
+
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+
+.md-list-item__overline,
+.md-list-selection-item__overline {
+  color: var(--md-comp-list-item-overline-color);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.md-list-item__label-text,
+.md-list-selection-item__label-text {
+  color: var(--md-comp-list-item-label-text-color);
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.md-list-item__supporting-text,
+.md-list-selection-item__supporting-text {
+  color: var(--md-comp-list-item-supporting-text-color);
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
+}
+
+.md-list-item__supporting-text_two-line,
+.md-list-selection-item__supporting-text_two-line {
+  -webkit-line-clamp: 1;
+}
+
+.md-list-item__supporting-text_three-line,
+.md-list-selection-item__supporting-text_three-line {
+  -webkit-line-clamp: 2;
+}

@@ -176,6 +176,47 @@ describe('MDListSelectionItem', () => {
     expect(item.find('a').exists()).toBe(false);
   });
 
+  it('does not render a state layer when outside any list context', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mount(MDListSelectionItem, {
+      attachTo: document.body,
+      props: { labelText: 'Orphan', value: 'x' },
+    });
+
+    expect(wrapper.find('.md-state-layer').exists()).toBe(false);
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not render a state layer when inside a list with selectionMode=none', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mountSelectionItem({ value: 'opt' }, { selectionMode: 'none' });
+
+    expect(wrapper.find('.md-state-layer').exists()).toBe(false);
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not set tabindex when outside any list context', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mount(MDListSelectionItem, {
+      attachTo: document.body,
+      props: { labelText: 'Orphan', value: 'x' },
+    });
+
+    expect(wrapper.get('.md-list-selection-item').attributes('tabindex')).toBeUndefined();
+
+    warnSpy.mockRestore();
+  });
+
+  it('sets tabindex=-1 when inside an active selection list', () => {
+    const wrapper = mountSelectionItem({ value: 'opt' });
+    expect(wrapper.get('.md-list-selection-item').attributes('tabindex')).toBe('-1');
+  });
+
   it('warns in development when rendered outside a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
