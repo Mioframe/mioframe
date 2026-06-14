@@ -26,8 +26,8 @@ const onAction = () => {};
           <MDIconButton tooltip="How documents are stored" md-symbol-name="info" />
         </div>
 
-        <div id="surface-context-repository-segmented-list">
-          <MDList list-style="segmented">
+        <div id="surface-context-repository-standard-list">
+          <MDList>
             <MDListItem
               mode="single-action"
               label-text="Research notes"

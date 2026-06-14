@@ -688,12 +688,12 @@ test('MDList standard surface context survives intermediate wrappers', async ({ 
 });
 
 test('MDList segmented container owns the grouped surface background', async ({ page }) => {
-  await openStory(
-    page,
-    'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
-  );
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
-  const segmentedList = page.locator('#surface-context-repository-segmented-list .md-list').first();
+  const segmentedList = page
+    .getByTestId('visual-md-list-surface-segmented')
+    .locator('.md-list')
+    .first();
 
   const bgColor = await segmentedList.evaluate((node) => getComputedStyle(node).backgroundColor);
 
@@ -703,13 +703,11 @@ test('MDList segmented container owns the grouped surface background', async ({ 
 });
 
 test('MDList segmented items remain transparent inside the grouped surface', async ({ page }) => {
-  await openStory(
-    page,
-    'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
-  );
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
   const segmentedItem = page
-    .locator('#surface-context-repository-segmented-list .md-list-item')
+    .getByTestId('visual-md-list-surface-segmented')
+    .locator('.md-list-item')
     .first();
 
   const bgColor = await segmentedItem.evaluate((node) => getComputedStyle(node).backgroundColor);
@@ -720,7 +718,7 @@ test('MDList segmented items remain transparent inside the grouped surface', asy
   ).toBe('rgba(0, 0, 0, 0)');
 });
 
-test('MDList segmented surface does not leak into the Repository Explorer header', async ({
+test('MDList standard list does not add background to Repository Explorer document section', async ({
   page,
 }) => {
   await openStory(
@@ -731,18 +729,21 @@ test('MDList segmented surface does not leak into the Repository Explorer header
   const header = page.locator(
     '#surface-context-repository-documents .md-list-item-surface-repository-story__repo-header',
   );
-  const segmentedList = page.locator('#surface-context-repository-segmented-list .md-list').first();
+  const standardList = page.locator('#surface-context-repository-standard-list .md-list').first();
 
   const [headerColor, listColor] = await Promise.all([
     header.evaluate((node) => getComputedStyle(node).backgroundColor),
-    segmentedList.evaluate((node) => getComputedStyle(node).backgroundColor),
+    standardList.evaluate((node) => getComputedStyle(node).backgroundColor),
   ]);
 
   expect(
     headerColor,
     'the Repository Explorer header must remain transparent and inherit the parent section surface',
   ).toBe('rgba(0, 0, 0, 0)');
-  expect(listColor).not.toBe(headerColor);
+  expect(
+    listColor,
+    'the standard document list must be transparent so it inherits the pane surface',
+  ).toBe('rgba(0, 0, 0, 0)');
 });
 
 test('MDListItem surface context standard story matches baseline', async ({ page }) => {

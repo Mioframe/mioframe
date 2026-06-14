@@ -53,11 +53,7 @@ const emptyText = computed(() =>
       <p class="repository-explorer-files-section__supporting-text">{{ supportingText }}</p>
     </div>
 
-    <MDList
-      v-if="hasRegularFiles"
-      list-style="segmented"
-      class="repository-explorer-files-section__list"
-    >
+    <MDList v-if="hasRegularFiles" class="repository-explorer-files-section__list">
       <RepositoryExplorerFileListItem
         v-for="[name, { description, type: nodeType, capabilities }] in regularFileEntries"
         :key="PathUtils.join(directoryPath, name)"

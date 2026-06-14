@@ -82,11 +82,7 @@ const emptySupportingText = computed(() => {
       />
     </div>
 
-    <MDList
-      v-if="documentIds.length > 0"
-      list-style="segmented"
-      class="repository-explorer-documents-section__list"
-    >
+    <MDList v-if="documentIds.length > 0" class="repository-explorer-documents-section__list">
       <CFRDocumentMDListItem
         is="button"
         v-for="documentId in documentIds"

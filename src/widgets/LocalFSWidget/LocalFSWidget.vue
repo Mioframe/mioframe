@@ -25,7 +25,7 @@ const onDisconnectDeviceFile = (name: string) => {
 </script>
 
 <template>
-  <MDList list-style="segmented">
+  <MDList>
     <template v-for="deviceFile in deviceFiles ?? []" :key="deviceFile.name">
       <BrowserStorageListItems
         v-if="deviceFile.name === OPFSName"
