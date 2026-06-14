@@ -35,6 +35,16 @@ Owns list-level style, semantics, and selection context.
 - Provides: list context to descendant items via `provideMDListContext`
 - Owns: `listbox` / `list` container role, roving keyboard focus for selection lists
 
+Selection-list keyboard contract for the current vertical `listbox`:
+
+- `ArrowDown`: move focus to the next enabled option
+- `ArrowUp`: move focus to the previous enabled option
+- `Home`: move focus to the first enabled option
+- `End`: move focus to the last enabled option
+- `ArrowLeft` / `ArrowRight`: not handled as vertical listbox navigation
+
+Horizontal listbox behavior is intentionally unsupported until the component exposes explicit orientation support and `aria-orientation`.
+
 There is no public `variant` prop. The current Material / Expressive row geometry is the only supported implementation.
 
 ### MDListItem

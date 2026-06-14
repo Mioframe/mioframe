@@ -61,11 +61,9 @@ export const useListSelectionKeyboard = (
 
     switch (event.key) {
       case 'ArrowDown':
-      case 'ArrowRight':
         moveFocus(event, 1);
         return;
       case 'ArrowUp':
-      case 'ArrowLeft':
         moveFocus(event, -1);
         return;
       case 'Home':

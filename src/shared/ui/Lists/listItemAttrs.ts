@@ -6,8 +6,9 @@ const isRootOnlyAttr = (key: string): boolean =>
 /**
  * Splits forwarded attrs between the stable list item wrapper and the internal
  * primary action surface when the row renders one.
- * @param attrs
- * @param usesInternalActionSurface
+ * @param attrs - Fallthrough attributes forwarded to the list item component.
+ * @param usesInternalActionSurface - Whether the row renders its own internal button or link surface.
+ * @returns Root-wrapper attrs plus attrs that should move to the internal action surface.
  */
 export const splitListItemAttrs = (
   attrs: ListItemAttrs,

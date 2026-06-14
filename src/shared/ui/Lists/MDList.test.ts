@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { defineComponent, nextTick, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import MDList from './MDList.vue';
 import MDListItem from './MDListItem.vue';
@@ -109,6 +110,108 @@ describe('MDList', () => {
 
     await options[3]?.trigger('keydown', { key: 'Home' });
     expect(document.activeElement).toBe(options[1]?.element);
+  });
+
+  it('does not treat ArrowLeft or ArrowRight as vertical listbox navigation keys', async () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList selection-mode="single" model-value="two">
+            <MDListSelectionItem label-text="One" value="one" />
+            <MDListSelectionItem label-text="Two" value="two" />
+            <MDListSelectionItem label-text="Three" value="three" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    await wrapper.vm.$nextTick();
+
+    const options = wrapper.findAll<HTMLElement>('[role="option"]');
+    options[1]?.element.focus();
+
+    await options[1]?.trigger('keydown', { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(options[1]?.element);
+    expect(options[0]?.element.tabIndex).toBe(-1);
+    expect(options[1]?.element.tabIndex).toBe(0);
+    expect(options[2]?.element.tabIndex).toBe(-1);
+
+    await options[1]?.trigger('keydown', { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(options[1]?.element);
+    expect(options[0]?.element.tabIndex).toBe(-1);
+    expect(options[1]?.element.tabIndex).toBe(0);
+    expect(options[2]?.element.tabIndex).toBe(-1);
+  });
+
+  it('resynchronizes tab stops when option state changes after render', async () => {
+    const options = ref([
+      { label: 'One', value: 'one', disabled: false },
+      { label: 'Two', value: 'two', disabled: false },
+      { label: 'Three', value: 'three', disabled: true },
+    ]);
+    const selected = ref('one');
+
+    const wrapper = mount(
+      defineComponent({
+        components: { MDList, MDListSelectionItem },
+        setup() {
+          return { options, selected };
+        },
+        template: `
+          <MDList selection-mode="single" :model-value="selected">
+            <MDListSelectionItem
+              v-for="option in options"
+              :key="option.value"
+              :label-text="option.label"
+              :value="option.value"
+              :disabled="option.disabled"
+            />
+          </MDList>
+        `,
+      }),
+      { attachTo: document.body },
+    );
+
+    await nextTick();
+
+    let renderedOptions = wrapper.findAll<HTMLElement>('[role="option"]');
+    expect(renderedOptions[0]?.element.tabIndex).toBe(0);
+    expect(renderedOptions[1]?.element.tabIndex).toBe(-1);
+    expect(renderedOptions[2]?.element.tabIndex).toBe(-1);
+
+    options.value = [
+      { label: 'One', value: 'one', disabled: true },
+      { label: 'Two', value: 'two', disabled: false },
+      { label: 'Three', value: 'three', disabled: true },
+    ];
+    await nextTick();
+    await nextTick();
+
+    renderedOptions = wrapper.findAll<HTMLElement>('[role="option"]');
+    expect(renderedOptions[0]?.attributes('aria-disabled')).toBe('true');
+    expect(renderedOptions[0]?.element.tabIndex).toBe(-1);
+    expect(renderedOptions[1]?.element.tabIndex).toBe(0);
+    expect(renderedOptions[2]?.element.tabIndex).toBe(-1);
+
+    options.value = [
+      { label: 'One', value: 'one', disabled: false },
+      { label: 'Two', value: 'two', disabled: false },
+      { label: 'Three', value: 'three', disabled: true },
+    ];
+    selected.value = 'two';
+    await nextTick();
+    await nextTick();
+
+    renderedOptions = wrapper.findAll<HTMLElement>('[role="option"]');
+    expect(renderedOptions[0]?.attributes('aria-disabled')).toBeUndefined();
+    expect(renderedOptions[0]?.element.tabIndex).toBe(-1);
+    expect(renderedOptions[1]?.attributes('aria-selected')).toBe('true');
+    expect(renderedOptions[1]?.element.tabIndex).toBe(0);
+    expect(renderedOptions[2]?.attributes('aria-disabled')).toBe('true');
+    expect(renderedOptions[2]?.element.tabIndex).toBe(-1);
+    expect(renderedOptions.filter((option) => option.element.tabIndex === 0)).toHaveLength(1);
   });
 
   it('leaves all options out of the tab order when every option is disabled', async () => {

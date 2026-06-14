@@ -3,8 +3,8 @@ import { watchEffect, warn, type ComputedRef } from 'vue';
 /**
  * Warns in development when selection lists request `tag="ul"` even though the
  * rendered container must fall back to `div[role="listbox"]`.
- * @param selectionMode
- * @param tag
+ * @param selectionMode - Active list selection mode for the current MDList.
+ * @param tag - Requested rendered tag before selection-list fallback is applied.
  */
 export const useWarnSelectionListTagMismatch = (
   selectionMode: ComputedRef<'none' | 'single' | 'multiple'>,

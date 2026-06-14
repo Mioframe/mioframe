@@ -71,7 +71,7 @@ Current state:
 - `MDListContainer` is a thin compatibility alias over `MDList`, not a separate layout owner;
 - `MDListItem` uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, and `trailingAction`;
 - list modes are explicit through `static`, `single-action`, and `multi-action`;
-- list-level selection is controlled through `selectionMode` plus `modelValue`, with `role="listbox"` and `role="option"` semantics, disabled-aware roving tab stops, and a visible check indicator that does not rely on color alone;
+- list-level selection is controlled through `selectionMode` plus `modelValue`, with `role="listbox"` and `role="option"` semantics, disabled-aware roving tab stops, a vertical keyboard contract (`ArrowDown`/`ArrowUp`/`Home`/`End`; not `ArrowLeft`/`ArrowRight`), and a visible check indicator that does not rely on color alone;
 - `single-action` is enforced: a dev-mode warning fires when `mode="single-action"` is used without an `@action` listener and without an `href`;
 - `multi-action` is enforced: a dev-mode warning fires when `mode="multi-action"` is used without a `#trailingAction` slot;
 - static rows with a trailing control use `static` mode and the `#trailing` slot; they do not expose a fake primary action surface;
