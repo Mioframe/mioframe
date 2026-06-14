@@ -126,9 +126,9 @@
     --md-comp-list-item-min-container-height,
     var(--md-private-list-item-resolved-container-height)
   );
-  padding-inline: var(--md-private-list-item-content-padding-inline-start)
-    var(--md-private-list-item-content-padding-inline-end);
-  padding-block: var(--md-private-list-item-content-padding-block);
+  padding-inline: var(--md-private-list-item-content-padding-inline-start, 16dp)
+    var(--md-private-list-item-content-padding-inline-end, 16dp);
+  padding-block: var(--md-private-list-item-content-padding-block, 10dp);
   box-sizing: border-box;
 }
 
@@ -164,7 +164,7 @@
   width: 24dp;
   min-width: 24dp;
   color: var(--md-comp-list-item-leading-icon-color);
-  margin-inline-end: var(--md-private-list-item-leading-space);
+  margin-inline-end: var(--md-private-list-item-leading-space, 12dp);
 }
 
 /* ─── Leading element ────────────────────────────────────────────────────── */
@@ -172,14 +172,14 @@
 .md-list-item__leading,
 .md-list-selection-item__leading {
   justify-content: center;
-  min-width: var(--md-private-list-item-leading-size);
+  min-width: var(--md-private-list-item-leading-size, 20dp);
   color: var(--md-comp-list-item-leading-icon-color);
-  margin-inline-end: var(--md-private-list-item-leading-space);
+  margin-inline-end: var(--md-private-list-item-leading-space, 12dp);
 }
 
 .md-list-item__leading_type_icon,
 .md-list-selection-item__leading_type_icon {
-  min-width: var(--md-private-list-item-leading-size);
+  min-width: var(--md-private-list-item-leading-size, 20dp);
 }
 
 .md-list-item__leading_type_avatar,
@@ -222,9 +222,9 @@
 .md-list-item__trailing,
 .md-list-selection-item__trailing {
   justify-content: flex-end;
-  min-height: var(--md-private-list-item-passive-trailing-min-size);
+  min-height: var(--md-private-list-item-passive-trailing-min-size, 28dp);
   color: var(--md-comp-list-item-trailing-text-color);
-  margin-inline-start: var(--md-private-list-item-trailing-space);
+  margin-inline-start: var(--md-private-list-item-trailing-space, 16dp);
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────── */

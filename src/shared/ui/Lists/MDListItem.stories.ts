@@ -4,6 +4,7 @@ import MDListItemConsumerPatternsStory from './MDListItemConsumerPatternsStory.v
 import MDListItemDomContractStory from './MDListItemDomContractStory.vue';
 import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory.vue';
 import MDListItemSelectionStory from './MDListItemSelectionStory.vue';
+import MDListItemStandaloneStory from './MDListItemStandaloneStory.vue';
 import MDListItemSurfaceRepositoryStory from './MDListItemSurfaceRepositoryStory.vue';
 import MDListItemSurfaceSegmentedStory from './MDListItemSurfaceSegmentedStory.vue';
 import MDListItemSurfaceStandardStory from './MDListItemSurfaceStandardStory.vue';
@@ -101,5 +102,13 @@ export const ConsumerPatterns: Story = {
   render: () => ({
     components: { MDListItemConsumerPatternsStory },
     template: '<MDListItemConsumerPatternsStory />',
+  }),
+};
+
+export const StandalonePublicApi: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemStandaloneStory },
+    template: '<MDListItemStandaloneStory />',
   }),
 };

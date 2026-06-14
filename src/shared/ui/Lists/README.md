@@ -56,6 +56,13 @@ Owns static, single-action, and multi-action list item anatomy.
 - Slots: `leading`, `overline`, `supportingText`, `trailing`, `trailingAction`
 - Does **not** own selection semantics or a `value` prop.
 
+`MDListItem` is a stable public component. It may be used **standalone** (without a parent `MDList`) or **inside an `MDList`**. Both usages render correctly without consumer-local CSS compensation:
+
+- Standalone: all baseline anatomy defaults (padding, spacing, leading size) are owned by the item itself and have built-in fallback values.
+- Inside `MDList`: the list container provides its own values for the private anatomy variables, which override the item's built-in fallbacks.
+
+Consumers must not add local spacing or padding CSS to compensate for broken `MDListItem` layout. If the item renders incorrectly standalone, it is a bug in the shared UI, not a consumer responsibility.
+
 ### MDListSelectionItem
 
 Owns selectable list item semantics and selection indicator. Must be used inside an `MDList` with `selectionMode` set.
@@ -104,20 +111,22 @@ Consumers must not use `--md-comp-list-item-min-container-height` to force arbit
 
 ### Private implementation variables (internal only — must not be used by consumers)
 
-| Token                                                 | Set by                                         | Purpose                                                                                          |
-| ----------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `--md-private-list-item-action-shape`                 | MDList                                         | Shape of action surface (button/a)                                                               |
-| `--md-private-list-item-container-shape`              | MDList                                         | Shape of list item root                                                                          |
-| `--md-private-list-item-content-padding-inline-start` | MDList                                         | Leading inline padding                                                                           |
-| `--md-private-list-item-content-padding-inline-end`   | MDList                                         | Trailing inline padding                                                                          |
-| `--md-private-list-item-content-padding-block`        | MDList                                         | Block padding                                                                                    |
-| `--md-private-list-item-leading-space`                | MDList                                         | Space between leading content and body                                                           |
-| `--md-private-list-item-leading-size`                 | MDList                                         | Leading icon/element size                                                                        |
-| `--md-private-list-item-passive-trailing-min-size`    | MDList                                         | Minimum trailing element size                                                                    |
-| `--md-private-list-item-trailing-space`               | MDList                                         | Space before trailing content                                                                    |
-| `--md-private-list-item-segmented-gap`                | MDList                                         | Gap between segmented items                                                                      |
-| `--md-private-list-item-trailing-action-reserved`     | MDList                                         | Width reserved for the trailing action hit zone in multi-action rows (padding-start + min-width) |
-| `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | Computed height for current line count                                                           |
+| Token                                                 | Default owner (fallback)                       | Override by | Purpose                                                                                          |
+| ----------------------------------------------------- | ---------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| `--md-private-list-item-action-shape`                 | MDListItem anatomy (12dp)                      | MDList      | Shape of action surface (button/a)                                                               |
+| `--md-private-list-item-container-shape`              | MDListItem anatomy (12dp)                      | MDList      | Shape of list item root                                                                          |
+| `--md-private-list-item-content-padding-inline-start` | MDListItem anatomy (16dp)                      | MDList      | Leading inline padding                                                                           |
+| `--md-private-list-item-content-padding-inline-end`   | MDListItem anatomy (16dp)                      | MDList      | Trailing inline padding                                                                          |
+| `--md-private-list-item-content-padding-block`        | MDListItem anatomy (10dp)                      | MDList      | Block padding                                                                                    |
+| `--md-private-list-item-leading-space`                | MDListItem anatomy (12dp)                      | MDList      | Space between leading content and body                                                           |
+| `--md-private-list-item-leading-size`                 | MDListItem anatomy (20dp)                      | MDList      | Leading icon/element size                                                                        |
+| `--md-private-list-item-passive-trailing-min-size`    | MDListItem anatomy (28dp)                      | MDList      | Minimum trailing element size                                                                    |
+| `--md-private-list-item-trailing-space`               | MDListItem anatomy (16dp)                      | MDList      | Space before trailing content                                                                    |
+| `--md-private-list-item-trailing-action-reserved`     | MDListItem anatomy (56dp)                      | MDList      | Width reserved for the trailing action hit zone in multi-action rows (padding-start + min-width) |
+| `--md-private-list-item-segmented-gap`                | MDList only (0dp)                              | —           | Gap between segmented items; list-level only, not needed by standalone items                     |
+| `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | —           | Computed height for current line count                                                           |
+
+The "Default owner (fallback)" column lists the baseline value used when no ancestor `MDList` sets the variable. `MDList` may override any of these by setting the variable on the `.md-list` element, which descendants inherit. `MDList` segmented style overrides `action-shape` and `container-shape` to `0dp`.
 
 Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-list-item-*` variable.
 

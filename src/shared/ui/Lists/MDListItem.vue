@@ -404,7 +404,7 @@ defineExpose({
   &__trailing-action {
     justify-content: center;
     color: var(--md-comp-list-item-trailing-icon-color);
-    padding-inline: 8dp var(--md-private-list-item-content-padding-inline-end);
+    padding-inline: 8dp var(--md-private-list-item-content-padding-inline-end, 16dp);
     min-width: 48dp;
     min-height: 48dp;
     align-self: center;
@@ -423,7 +423,7 @@ defineExpose({
     inset: 0;
     flex: none;
     padding-inline-end: calc(
-      var(--md-private-list-item-content-padding-inline-end) +
+      var(--md-private-list-item-content-padding-inline-end, 16dp) +
         var(--md-private-list-item-trailing-action-reserved, 56dp)
     );
   }

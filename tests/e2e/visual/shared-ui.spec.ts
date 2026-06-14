@@ -780,6 +780,150 @@ test('MDListItem consumer patterns story matches baseline', async ({ page }) => 
   await expect(surface).toHaveScreenshot('md-list-item-consumer-patterns.png');
 });
 
+test('MDListItem standalone public API story matches baseline', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+  const surface = page.getByTestId('visual-md-list-item-standalone');
+
+  await expect(surface).toHaveScreenshot('md-list-item-standalone.png');
+});
+
+test('MDListItem standalone with leading icon has measurable space between icon and content', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+  const row = page.locator('#standalone-static-leading .md-list-item').first();
+  const leading = row.locator('.md-list-item__leading').first();
+  const content = row.locator('.md-list-item__content').first();
+
+  const leadingBox = await leading.boundingBox();
+  const contentBox = await content.boundingBox();
+
+  expect(leadingBox, 'leading slot must have a bounding box').not.toBeNull();
+  expect(contentBox, 'content slot must have a bounding box').not.toBeNull();
+
+  if (!leadingBox || !contentBox) {
+    throw new Error('Could not get bounding boxes for standalone leading/content gap test.');
+  }
+
+  const gap = contentBox.x - (leadingBox.x + leadingBox.width);
+
+  expect(
+    gap,
+    'standalone MDListItem must have measurable space (>= 8px) between leading icon and content — gap of 0 means anatomy vars were not resolved',
+  ).toBeGreaterThanOrEqual(8);
+});
+
+test('MDListItem standalone content column does not overlap leading slot', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+  const row = page.locator('#standalone-static-leading .md-list-item').first();
+  const leading = row.locator('.md-list-item__leading').first();
+  const content = row.locator('.md-list-item__content').first();
+
+  const leadingBox = await leading.boundingBox();
+  const contentBox = await content.boundingBox();
+
+  expect(leadingBox, 'leading slot must have a bounding box').not.toBeNull();
+  expect(contentBox, 'content slot must have a bounding box').not.toBeNull();
+
+  if (!leadingBox || !contentBox) {
+    throw new Error('Could not get bounding boxes for standalone overlap test.');
+  }
+
+  expect(
+    contentBox.x,
+    'standalone MDListItem content must start to the right of the leading slot right edge',
+  ).toBeGreaterThan(leadingBox.x + leadingBox.width);
+});
+
+test('MDListItem standalone single-action root element is the interactive button', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+  // Standalone single-action: root IS the button (not a wrapper div with an internal button).
+  // This verifies the standalone DOM contract: no extra wrapper layer around the action surface.
+  const row = page.locator('#standalone-single-action-leading .md-list-item').first();
+  const tagName = await row.evaluate((node) => node.tagName.toLowerCase());
+
+  expect(
+    tagName,
+    'standalone single-action MDListItem root must be a button (not a div wrapper with internal button)',
+  ).toBe('button');
+
+  // The button must meet the Material minimum item height (64px for one-line items).
+  const box = await row.boundingBox();
+  expect(box, 'standalone single-action button must have a bounding box').not.toBeNull();
+  if (box) {
+    expect(
+      box.height,
+      'standalone single-action button must meet minimum item height (64dp = 64px)',
+    ).toBeGreaterThanOrEqual(64);
+  }
+});
+
+test('MDListItem standalone multi-action keeps primary/trailing action separation', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+  const row = page.locator('#standalone-multi-action .md-list-item').first();
+  const trailingSlot = row.locator('.md-list-item__trailing-action');
+  const iconButton = row.getByRole('button');
+
+  const trailingBox = await trailingSlot.boundingBox();
+  const iconBox = await iconButton.boundingBox();
+
+  expect(trailingBox, 'trailing action container must have a bounding box').not.toBeNull();
+  expect(iconBox, 'trailing action icon button must have a bounding box').not.toBeNull();
+
+  if (!trailingBox || !iconBox) {
+    throw new Error('Could not get bounding boxes for standalone multi-action separation test.');
+  }
+
+  // The trailing container padding-inline-start (8dp) must create a visible gap to the left
+  // of the icon button — this gap is the non-interactive padding that falls through to the
+  // primary action.
+  expect(
+    trailingBox.x,
+    'trailing action container must start to the left of the icon button (padding gap required)',
+  ).toBeLessThan(iconBox.x);
+});
+
+test('MDListItem EntryAddSheet consumer rows have correct leading icon spacing', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+  const rows = page.locator('#standalone-entry-add-sheet .md-list-item');
+  const count = await rows.count();
+
+  expect(count).toBeGreaterThan(0);
+
+  const boxPairs = await Promise.all(
+    Array.from({ length: count }, (_, i) => {
+      const row = rows.nth(i);
+      return Promise.all([
+        row.locator('.md-list-item__leading').boundingBox(),
+        row.locator('.md-list-item__content').boundingBox(),
+      ]);
+    }),
+  );
+
+  for (const [i, [leadingBox, contentBox]] of boxPairs.entries()) {
+    if (!leadingBox || !contentBox) {
+      throw new Error(`Row ${i}: could not get bounding boxes for EntryAddSheet spacing test.`);
+    }
+
+    expect(
+      contentBox.x,
+      `EntryAddSheet row ${i}: content must start to the right of the leading icon right edge — no overlap allowed`,
+    ).toBeGreaterThan(leadingBox.x + leadingBox.width);
+  }
+});
+
 test('MDListItem Home actions are two-line items without forced three-line layout', async ({
   page,
 }) => {
