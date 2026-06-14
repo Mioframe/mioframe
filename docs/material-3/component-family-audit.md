@@ -87,9 +87,15 @@ Current state:
 - `MDListSelectionItem` outside a selection context renders as structurally inert presentation content: `role="presentation"`, no state layer, no ripple, no pointer cursor, no `tabindex`;
 - multi-action rows position the primary action as `position: absolute; inset: 0` covering the full visual row, with its own `MDStateLayer` inside; the trailing action container background is `pointer-events: none` so empty trailing padding falls through to the primary action; direct slot content (icon button) has `pointer-events: auto` restored via CSS child selector; trailing slot content keeps its own independent state layer;
 - interaction states story covers single-action (full-row state layer), multi-action (full-row primary via absolute positioning, trailing hover independence), and trailing action (local state layer independent of row state); selection story covers single-select and multi-select lists;
+- surface-context story covers standard List on three different parent surface colors to demonstrate transparent background inheritance, and segmented List on surface-container-low;
+- consumer-patterns story covers Home Create/Open space actions (two-line items, no forced three-line layout), Google Drive connected profile row (avatar leading, trailing action), Settings checkbox row (enabled with presentation checkbox, disabled without pointer cursor), and repository/file/directory rows (static, single-action, multi-action);
 - trailing action target size verified with a Playwright browser assertion against the `.md-icon-button__target` span (≥48×48 px);
-- multi-action hover ownership is browser-tested: primary-area hover activates row-level `md-state_hover`; trailing-target hover removes row-level `md-state_hover`; empty trailing padding hover falls through to the primary action surface;
-- browser-level DOM tests cover static, single-action, multi-action, segmented, and selection lists; unit tests cover mode separation, line-count rendering, li-tag list semantics, selection list trailing action suppression, orphan selection item state layer absence and tabindex absence, disabled-aware option focus, and selection wiring.
+- multi-action hover ownership is browser-tested: primary-area hover activates row-level `md-state_hover`; trailing-target hover removes row-level `md-state_hover`; empty trailing padding hover falls through to the primary action surface; all three geometry checks are now hard assertions with no silent skip;
+- standard list transparent background verified by browser assertion (computed background must be `rgba(0, 0, 0, 0)`); segmented list explicit background verified by browser assertion (must not be transparent);
+- Home actions verified to use two-line layout (`md-list-item_line-count_2`), not three-line;
+- Settings checkbox row verified: no nested inputs or labels, no nested buttons, disabled row has no pointer cursor;
+- browser-level DOM tests cover static, single-action, multi-action, segmented, and selection lists; unit tests cover mode separation, line-count rendering, li-tag list semantics, selection list trailing action suppression, orphan selection item state layer absence and tabindex absence, disabled-aware option focus, and selection wiring;
+- `--md-comp-list-item-min-container-height` moved to restricted/internal in README; consumers must use the `lineCount` prop; trailing-action geometry tests converted from conditional-skip to hard assertions.
 
 Gaps:
 

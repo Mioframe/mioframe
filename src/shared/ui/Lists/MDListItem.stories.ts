@@ -1,8 +1,10 @@
 import MDListItemConfigurationsStory from './MDListItemConfigurationsStory.vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import MDListItemConsumerPatternsStory from './MDListItemConsumerPatternsStory.vue';
 import MDListItemDomContractStory from './MDListItemDomContractStory.vue';
 import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory.vue';
 import MDListItemSelectionStory from './MDListItemSelectionStory.vue';
+import MDListItemSurfaceStory from './MDListItemSurfaceStory.vue';
 import MDListItemTrailingActionVisualStory from './MDListItemTrailingActionVisualStory.vue';
 import MDListItemVisualStatesStory from './MDListItemVisualStatesStory.vue';
 
@@ -65,5 +67,21 @@ export const DomContract: Story = {
   render: () => ({
     components: { MDListItemDomContractStory },
     template: '<MDListItemDomContractStory />',
+  }),
+};
+
+export const SurfaceContext: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemSurfaceStory },
+    template: '<MDListItemSurfaceStory />',
+  }),
+};
+
+export const ConsumerPatterns: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemConsumerPatternsStory },
+    template: '<MDListItemConsumerPatternsStory />',
   }),
 };

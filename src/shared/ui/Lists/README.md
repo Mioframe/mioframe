@@ -46,7 +46,6 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 | Token                                                | Purpose                                                  |
 | ---------------------------------------------------- | -------------------------------------------------------- |
 | `--md-comp-list-item-container-color`                | Row background                                           |
-| `--md-comp-list-item-min-container-height`           | Minimum row height override for consumer-specific sizing |
 | `--md-comp-list-item-label-text-color`               | Label text color                                         |
 | `--md-comp-list-item-supporting-text-color`          | Supporting text color                                    |
 | `--md-comp-list-item-overline-color`                 | Overline text color                                      |
@@ -62,6 +61,14 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 | `--md-comp-list-item-disabled-leading-icon-color`    | Disabled row leading icon color                          |
 | `--md-comp-list-item-disabled-supporting-text-color` | Disabled row supporting text color                       |
 | `--md-comp-list-item-disabled-trailing-icon-color`   | Disabled row trailing icon color                         |
+
+### Restricted token (do not use for consumer sizing)
+
+| Token                                      | Status                        | Notes                                                                                                   |
+| ------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--md-comp-list-item-min-container-height` | Internal / compatibility-only | Sets minimum row height. Must not be used to bypass Material List sizing. Use `lineCount` prop instead. |
+
+Consumers must not use `--md-comp-list-item-min-container-height` to force arbitrary row heights. The correct way to adjust row height is through the `lineCount` prop (`1`, `2`, or `3`), which maps to the supported Material minimum heights. Using this token to set custom sizes violates the Material List sizing contract.
 
 ### Private implementation variables (internal only — must not be used by consumers)
 
@@ -115,7 +122,7 @@ Current Expressive minimum row heights:
 | 2          | 72dp       |
 | 3          | 88dp       |
 
-Consumers can override the minimum row height through `--md-comp-list-item-min-container-height`.
+Use the `lineCount` prop (`1`, `2`, or `3`) to select the appropriate Material height. Do not use `--md-comp-list-item-min-container-height` to force arbitrary heights outside these three supported values.
 
 ## Supported features
 

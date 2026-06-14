@@ -18,13 +18,12 @@ const onAction = () => {};
         <MDListItem label-text="One-line item" />
         <MDListItem
           label-text="Two-line item"
-          supporting-text="Supporting text uses the baseline list height."
+          supporting-text="Supporting text is clamped to one line in the two-line layout."
         />
         <MDListItem
           label-text="Three-line item"
           overline="Category"
           supporting-text="Supporting text can expand to two supporting lines in the three-line configuration."
-          :line-count="3"
         />
       </MDList>
     </section>

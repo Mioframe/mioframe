@@ -320,12 +320,16 @@ test('MDListItem multi-action trailing padding fires primary action, not trailin
   const paddingClickX = trailingBox.x + 2;
   const paddingClickY = trailingBox.y + trailingBox.height / 2;
 
-  // Only run if there is measurable padding to the left of the icon button.
-  if (paddingClickX < iconBox.x) {
-    await page.mouse.click(paddingClickX, paddingClickY);
-    await expect(primaryCount).toHaveText('1');
-    await expect(trailingCount).toHaveText('0');
-  }
+  // The trailing container must have measurable padding to the left of the icon button.
+  // If there is no gap, the multi-action hit-zone contract is violated.
+  expect(
+    paddingClickX,
+    'trailing slot must have measurable padding to the left of the icon button (trailing-action padding-inline-start must create a non-interactive gap)',
+  ).toBeLessThan(iconBox.x);
+
+  await page.mouse.click(paddingClickX, paddingClickY);
+  await expect(primaryCount).toHaveText('1');
+  await expect(trailingCount).toHaveText('0');
 });
 
 test('MDListItem multi-action primary area hover activates row-level hover state', async ({
@@ -377,10 +381,19 @@ test('MDListItem multi-action trailing empty padding hover keeps row-level hover
   const trailingBox = await trailingSlot.boundingBox();
   const iconBox = await iconButton.boundingBox();
 
-  if (!trailingBox || !iconBox || trailingBox.x + 4 >= iconBox.x) {
-    // No measurable padding left of icon button — skip rather than fail.
-    return;
+  expect(trailingBox, 'trailing slot must have a bounding box').not.toBeNull();
+  expect(iconBox, 'trailing icon button must have a bounding box').not.toBeNull();
+
+  if (!trailingBox || !iconBox) {
+    throw new Error('Could not get bounding boxes for trailing empty-padding hover test.');
   }
+
+  // The trailing container must have measurable padding to the left of the icon button.
+  // If there is no gap, the multi-action hover-ownership contract is violated.
+  expect(
+    trailingBox.x + 4,
+    'trailing slot must have measurable padding to the left of the icon button (at least 4px gap required for hover-ownership test)',
+  ).toBeLessThan(iconBox.x);
 
   // Move pointer to the left-edge padding of the trailing slot, which has
   // pointer-events: none, so the event falls through to the primary action.
@@ -576,4 +589,117 @@ test('MarkdownContent variants overview matches baseline', async ({ page }) => {
   const surface = page.getByTestId('visual-markdown-content-variants');
 
   await expect(surface).toHaveScreenshot('markdown-content-variants-overview.png');
+});
+
+test('MDList standard items have transparent background inheriting parent surface', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+
+  const surface = page.getByTestId('visual-md-list-surface');
+
+  // Standard list items must be transparent. Verify by checking the item background
+  // is transparent (no non-transparent background on the list item root).
+  const listItems = surface.locator('.md-list_style_standard .md-list-item').first();
+
+  const bgColor = await listItems.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+  // transparent computes as rgba(0, 0, 0, 0) in browser.
+  expect(
+    bgColor,
+    'standard list item background must be transparent to inherit the parent surface color',
+  ).toBe('rgba(0, 0, 0, 0)');
+});
+
+test('MDList segmented items have explicit surface background', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+
+  const surface = page.getByTestId('visual-md-list-surface');
+
+  const segmentedItem = surface.locator('.md-list_style_segmented .md-list-item').first();
+
+  const bgColor = await segmentedItem.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+  // Segmented items must NOT be transparent — they have an explicit surface background
+  // that creates the segmented panel appearance.
+  expect(
+    bgColor,
+    'segmented list item must have an explicit surface background, not transparent',
+  ).not.toBe('rgba(0, 0, 0, 0)');
+});
+
+test('MDListItem surface context story matches baseline', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+
+  const surface = page.getByTestId('visual-md-list-surface');
+
+  await expect(surface).toHaveScreenshot('md-list-item-surface-context.png');
+});
+
+test('MDListItem consumer patterns story matches baseline', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--consumer-patterns');
+
+  const surface = page.getByTestId('visual-md-list-consumer-patterns');
+
+  await expect(surface).toHaveScreenshot('md-list-item-consumer-patterns.png');
+});
+
+test('MDListItem Home actions are two-line items without forced three-line layout', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--consumer-patterns');
+
+  const homeSection = page.locator('#consumer-home-actions');
+  const listItems = homeSection.locator('.md-list-item');
+  const items = await listItems.all();
+
+  expect(items.length).toBeGreaterThan(0);
+
+  // Home actions have supporting text but no overline → must be two-line, not three-line.
+  await Promise.all(
+    items.map(async (item) => {
+      await expect(item).toHaveClass(/md-list-item_line-count_2/);
+      await expect(item).not.toHaveClass(/md-list-item_line-count_3/);
+    }),
+  );
+});
+
+test('MDListItem Settings checkbox row does not contain nested interactive controls', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--consumer-patterns');
+
+  const checkboxSection = page.locator('#consumer-settings-checkbox');
+
+  // The presentation checkbox must not be a standalone interactive control.
+  // No native inputs or labels should exist inside the row.
+  const inputs = checkboxSection.locator('input');
+  await expect(inputs).toHaveCount(0);
+
+  const labels = checkboxSection.locator('label');
+  await expect(labels).toHaveCount(0);
+
+  // Nested buttons inside the row's primary action button are invalid.
+  const nestedButtons = checkboxSection.locator('button button');
+  await expect(nestedButtons).toHaveCount(0);
+});
+
+test('MDListItem disabled Settings checkbox row shows no pointer cursor', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--consumer-patterns');
+
+  const checkboxSection = page.locator('#consumer-settings-checkbox');
+  const disabledRow = checkboxSection.locator('.md-list-item.md-state_disabled').first();
+
+  const cursor = await disabledRow.evaluate((node) => getComputedStyle(node).cursor);
+
+  expect(cursor, 'disabled checkbox row must not show pointer cursor').not.toBe('pointer');
+});
+
+test('MDListItem consumer patterns have no nested native buttons', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--consumer-patterns');
+
+  const surface = page.getByTestId('visual-md-list-consumer-patterns');
+  const nestedButtons = surface.locator('button button');
+
+  await expect(nestedButtons).toHaveCount(0);
 });
