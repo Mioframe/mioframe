@@ -144,11 +144,14 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
       var(--md-sys-color-surface-container)
     );
     --md-content-color: var(--md-sys-color-on-surface);
+    /* overflow: hidden (not clip) establishes a scroll container, resetting the automatic grid-item min-size to 0 so white-space: nowrap content can't expand the grid track. */
+    --md-private-list-item-container-shape: 0dp;
+    --md-private-list-item-action-shape: 0dp;
     --md-private-list-item-segmented-gap: 2dp;
 
     gap: var(--md-private-list-item-segmented-gap);
     padding: 0;
-    overflow: clip;
+    overflow: hidden;
     border-radius: 16dp;
     background: var(--md-current-container-color, var(--md-container-color));
   }

@@ -4,7 +4,9 @@ import MDListItemConsumerPatternsStory from './MDListItemConsumerPatternsStory.v
 import MDListItemDomContractStory from './MDListItemDomContractStory.vue';
 import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory.vue';
 import MDListItemSelectionStory from './MDListItemSelectionStory.vue';
-import MDListItemSurfaceStory from './MDListItemSurfaceStory.vue';
+import MDListItemSurfaceRepositoryStory from './MDListItemSurfaceRepositoryStory.vue';
+import MDListItemSurfaceSegmentedStory from './MDListItemSurfaceSegmentedStory.vue';
+import MDListItemSurfaceStandardStory from './MDListItemSurfaceStandardStory.vue';
 import MDListItemTrailingActionVisualStory from './MDListItemTrailingActionVisualStory.vue';
 import MDListItemVisualStatesStory from './MDListItemVisualStatesStory.vue';
 
@@ -70,11 +72,27 @@ export const DomContract: Story = {
   }),
 };
 
-export const SurfaceContext: Story = {
+export const SurfaceContextStandard: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDListItemSurfaceStory },
-    template: '<MDListItemSurfaceStory />',
+    components: { MDListItemSurfaceStandardStory },
+    template: '<MDListItemSurfaceStandardStory />',
+  }),
+};
+
+export const SurfaceContextSegmented: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemSurfaceSegmentedStory },
+    template: '<MDListItemSurfaceSegmentedStory />',
+  }),
+};
+
+export const SurfaceContextRepositoryExplorer: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemSurfaceRepositoryStory },
+    template: '<MDListItemSurfaceRepositoryStory />',
   }),
 };
 

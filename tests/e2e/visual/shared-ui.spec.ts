@@ -421,6 +421,51 @@ test('MDList selection uses list-level option semantics and a visible selected i
   ).toHaveCount(3);
 });
 
+test('MDListSelectionItem long text does not overflow the list container', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
+
+  const surface = page.getByTestId('visual-md-list-selection');
+  const surfaceBox = await surface.boundingBox();
+
+  expect(surfaceBox, 'selection surface must have a bounding box').not.toBeNull();
+  if (!surfaceBox) {
+    throw new Error('Could not get bounding box for selection surface.');
+  }
+
+  // The long-text item is the third option in the multi-select segmented list.
+  const longTextItem = surface.getByRole('option').filter({ hasText: /Very long document title/ });
+
+  const itemBox = await longTextItem.boundingBox();
+
+  expect(itemBox, 'long-text item must have a bounding box').not.toBeNull();
+  if (!itemBox) {
+    throw new Error('Could not get bounding box for long-text selection item.');
+  }
+
+  expect(
+    itemBox.x + itemBox.width,
+    'long-text item right edge must not exceed the selection surface right edge',
+  ).toBeLessThanOrEqual(surfaceBox.x + surfaceBox.width + 1);
+
+  // Selection indicator must remain visible alongside the truncated content.
+  const indicator = longTextItem.locator('.md-list-selection-item__selection-indicator');
+  const indicatorBox = await indicator.boundingBox();
+
+  expect(indicatorBox, 'selection indicator must have a bounding box').not.toBeNull();
+  if (!indicatorBox) {
+    throw new Error('Could not get bounding box for selection indicator.');
+  }
+
+  expect(
+    indicatorBox.x,
+    'selection indicator must be inside the surface left edge',
+  ).toBeGreaterThanOrEqual(surfaceBox.x);
+  expect(
+    indicatorBox.x + indicatorBox.width,
+    'selection indicator must not exceed the surface right edge',
+  ).toBeLessThanOrEqual(surfaceBox.x + surfaceBox.width + 1);
+});
+
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({
   page,
 }) => {
@@ -594,9 +639,9 @@ test('MarkdownContent variants overview matches baseline', async ({ page }) => {
 test('MDList standard items have transparent background inheriting parent surface', async ({
   page,
 }) => {
-  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
 
-  const surface = page.getByTestId('visual-md-list-surface');
+  const surface = page.getByTestId('visual-md-list-surface-standard');
 
   // Standard list items must be transparent. Verify by checking the item background
   // is transparent (no non-transparent background on the list item root).
@@ -612,7 +657,7 @@ test('MDList standard items have transparent background inheriting parent surfac
 });
 
 test('MDList standard container has transparent background', async ({ page }) => {
-  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
 
   const standardList = page.locator('#surface-context-wrapped-standard .md-list').first();
 
@@ -625,7 +670,7 @@ test('MDList standard container has transparent background', async ({ page }) =>
 });
 
 test('MDList standard surface context survives intermediate wrappers', async ({ page }) => {
-  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
 
   const wrappedSurface = page.locator('#surface-context-wrapped-standard');
   const wrappedItem = wrappedSurface.locator('.md-list-item').first();
@@ -643,7 +688,10 @@ test('MDList standard surface context survives intermediate wrappers', async ({ 
 });
 
 test('MDList segmented container owns the grouped surface background', async ({ page }) => {
-  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+  await openStory(
+    page,
+    'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
+  );
 
   const segmentedList = page.locator('#surface-context-repository-segmented-list .md-list').first();
 
@@ -655,7 +703,10 @@ test('MDList segmented container owns the grouped surface background', async ({ 
 });
 
 test('MDList segmented items remain transparent inside the grouped surface', async ({ page }) => {
-  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+  await openStory(
+    page,
+    'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
+  );
 
   const segmentedItem = page
     .locator('#surface-context-repository-segmented-list .md-list-item')
@@ -672,10 +723,13 @@ test('MDList segmented items remain transparent inside the grouped surface', asy
 test('MDList segmented surface does not leak into the Repository Explorer header', async ({
   page,
 }) => {
-  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+  await openStory(
+    page,
+    'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
+  );
 
   const header = page.locator(
-    '#surface-context-repository-documents .md-list-item-surface-story__repo-header',
+    '#surface-context-repository-documents .md-list-item-surface-repository-story__repo-header',
   );
   const segmentedList = page.locator('#surface-context-repository-segmented-list .md-list').first();
 
@@ -691,12 +745,31 @@ test('MDList segmented surface does not leak into the Repository Explorer header
   expect(listColor).not.toBe(headerColor);
 });
 
-test('MDListItem surface context story matches baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+test('MDListItem surface context standard story matches baseline', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
 
-  const surface = page.getByTestId('visual-md-list-surface');
+  const surface = page.getByTestId('visual-md-list-surface-standard');
 
-  await expect(surface).toHaveScreenshot('md-list-item-surface-context.png');
+  await expect(surface).toHaveScreenshot('md-list-item-surface-context-standard.png');
+});
+
+test('MDListItem surface context segmented story matches baseline', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+  const surface = page.getByTestId('visual-md-list-surface-segmented');
+
+  await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented.png');
+});
+
+test('MDListItem surface context repository explorer story matches baseline', async ({ page }) => {
+  await openStory(
+    page,
+    'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
+  );
+
+  const surface = page.getByTestId('visual-md-list-surface-repository');
+
+  await expect(surface).toHaveScreenshot('md-list-item-surface-context-repository.png');
 });
 
 test('MDListItem consumer patterns story matches baseline', async ({ page }) => {

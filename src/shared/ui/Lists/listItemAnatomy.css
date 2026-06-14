@@ -61,6 +61,9 @@
   position: relative;
   display: flex;
   align-items: stretch;
+  /* min-width: 0 allows the item to shrink below its content intrinsic width when inside
+     a flex column list, so that text overflow/ellipsis on children works correctly. */
+  min-width: 0;
   min-height: var(
     --md-comp-list-item-min-container-height,
     var(--md-private-list-item-resolved-container-height)
