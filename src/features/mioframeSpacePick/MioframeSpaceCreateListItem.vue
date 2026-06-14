@@ -13,7 +13,6 @@ const { loading, parentHandle, pickParentDirectory, resetParentDirectory } =
     mode="single-action"
     label-text="Create space"
     supporting-text="Choose where Mioframe should create a new folder for your documents."
-    :line-count="3"
     :disabled="loading || !!parentHandle"
     @action="pickParentDirectory"
   >

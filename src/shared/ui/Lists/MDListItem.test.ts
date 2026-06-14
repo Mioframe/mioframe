@@ -232,7 +232,12 @@ describe('MDListItem', () => {
     warnSpy.mockRestore();
   });
 
-  it('fires the primary action when the trailing-action container padding area is clicked', async () => {
+  // Trailing-area padding fires primary action via CSS geometry: the primary action is
+  // position: absolute; inset: 0, and the trailing-action container is pointer-events:
+  // none on its background (direct slot content restores pointer-events: auto). In JSDOM
+  // CSS hit-testing is not simulated, so this contract is covered by the Playwright
+  // browser test 'MDListItem multi-action trailing padding fires primary action' instead.
+  it('does not attach a native click handler to the trailing-action container', () => {
     const onAction = vi.fn();
     const wrapper = mountListItem(
       { mode: 'multi-action', onAction },
@@ -244,9 +249,9 @@ describe('MDListItem', () => {
       },
     );
 
-    await wrapper.get('.md-list-item__trailing-action').trigger('click');
-
-    expect(onAction).toHaveBeenCalledOnce();
+    const trailingEl = wrapper.get('.md-list-item__trailing-action').element;
+    // The container should have no onclick attribute; hit-zone routing is CSS-only.
+    expect(trailingEl instanceof HTMLElement && trailingEl.onclick).toBeNull();
   });
 
   it('does not fire the primary action when clicking inside the trailing action slot', async () => {

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useAttrs, useSlots, useTemplateRef } from 'vue';
-import { useEventListener } from '@vueuse/core';
-import { MDStateLayer, usePressed, useRipple, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import {
   warnListItemInsideSelectionList,
   warnMultiActionMissingRequirements,
@@ -71,11 +70,6 @@ const hasPrimaryAction = computed(() => props.mode !== 'static');
 const usesInternalActionSurface = computed(
   () => inList.value && hasPrimaryAction.value && selectionMode.value === 'none',
 );
-// Row-level state tracking is needed when a trailing action is present so hover and
-// pressed cover the full row width, including the padding areas around the trailing action.
-const isMultiActionInList = computed(
-  () => hasTrailingAction.value && usesInternalActionSurface.value,
-);
 
 const {
   hasLeading,
@@ -136,54 +130,18 @@ const interactiveSurfaceEl = computed(() => {
 });
 
 const dragged = ref(false);
-const {
-  hover: primaryHover,
-  focused,
-  durationPressedState: primaryDurationPressed,
-} = useStateLayer(interactiveSurfaceEl, { dragged });
-
-// Multi-action: track hover at root level so the state layer covers the full row,
-// including the padding area around the trailing action. Cannot use useLastHover(rootEl)
-// here because the global "last hovered" list would be overwritten by child element
-// pointerenter events, making rootEl lose hover state as soon as the pointer moves over
-// any child (primaryActionEl, icon buttons, etc.).
-const rowHoverState = ref(false);
-useEventListener(
-  computed(() => (isMultiActionInList.value ? rootEl.value : null)),
-  'pointerenter',
-  (e: PointerEvent) => {
-    if (e.pointerType !== 'touch') {
-      rowHoverState.value = true;
-    }
-  },
-  { passive: true },
-);
-useEventListener(
-  computed(() => (isMultiActionInList.value ? rootEl.value : null)),
-  'pointerleave',
-  () => {
-    rowHoverState.value = false;
-  },
-  { passive: true },
-);
-
-// Multi-action: track pressed at root level so the pressed state covers the full row.
-const { durationPressedState: rowDurationPressed } = usePressed(
-  computed(() => (isMultiActionInList.value ? rootEl.value : null)),
-);
-
-// Final resolved state: for multi-action items use the root-level trackers; for all
-// other modes use the interactive surface trackers.
-const hover = computed(() =>
-  isMultiActionInList.value ? rowHoverState.value : primaryHover.value,
-);
-const durationPressedState = computed(() =>
-  isMultiActionInList.value ? rowDurationPressed.value : primaryDurationPressed.value,
-);
+// Multi-action full-row hover: primary action is positioned absolute (inset: 0) so it
+// covers the full visual row width. useLastHover(primaryActionEl) naturally handles
+// trailing-action isolation: when the trailing slot content (icon button) becomes the
+// last hovered element in the global hover list, the primary action is no longer last →
+// hover = false. Empty trailing space has pointer-events: none on the container, so
+// events fall through to the primary action → hover = true.
+const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
 
 const rootClass = computed(() => ({
   'md-list-item': true,
   'md-list-item_in-list': inList.value,
+  'md-list-item_has-trailing-action': hasTrailingAction.value,
   'md-list-item_mode_static': props.mode === 'static',
   'md-list-item_mode_single-action': props.mode === 'single-action',
   'md-list-item_mode_multi-action': props.mode === 'multi-action',
@@ -316,20 +274,6 @@ defineExpose({
     @drop="onDragEnd"
   >
     <template v-if="usesInternalActionSurface">
-      <!--
-        Multi-action: row-level state layer placed before action siblings so it renders
-        behind them (position: absolute; z-index: 0 covers the full container). The primary
-        action and trailing action appear on top via their own z-index.
-      -->
-      <MDStateLayer
-        v-if="hasTrailingAction"
-        :hover="hover"
-        :focused="focused"
-        :pressed="durationPressedState"
-        :dragged="dragged"
-        :disabled="disabled"
-      />
-
       <component
         :is="primaryActionTag"
         ref="primaryActionEl"
@@ -343,9 +287,7 @@ defineExpose({
         @click="onAction"
         @keydown="onActionKeydown"
       >
-        <!-- Single-action: state layer inside the action element bounds. -->
         <MDStateLayer
-          v-if="!hasTrailingAction"
           :hover="hover"
           :focused="focused"
           :pressed="durationPressedState"
@@ -379,16 +321,11 @@ defineExpose({
       </component>
 
       <!--
-        Trailing action: sibling of the primary action. The click.self.stop handler fires
-        the primary action for clicks that land on the container padding (not on the slot
-        content), eliminating dead zones inside the visual row without creating nested
-        interactive controls.
+        Trailing action: pointer-events: none via CSS so empty padding falls through to
+        the primary action (which is position: absolute; inset: 0 underneath). The slot
+        content (icon button) restores its own pointer-events via the browser default.
       -->
-      <span
-        v-if="hasTrailingAction"
-        class="md-list-item__trailing-action"
-        @click.self.stop="onAction"
-      >
+      <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
         <slot name="trailingAction" />
       </span>
     </template>
@@ -489,6 +426,40 @@ defineExpose({
     min-width: 48dp;
     min-height: 48dp;
     align-self: center;
+  }
+
+  /*
+   * Multi-action geometry: primary action covers the full row via position: absolute;
+   * inset: 0. Trailing action sits on top as an absolute overlay with pointer-events:
+   * none so empty padding falls through to the primary action hit-target underneath.
+   * Slot content (icon button) restores its own pointer-events via browser default.
+   * useLastHover(primaryActionEl) sees hover only when pointer is NOT inside the icon
+   * button, giving correct per-region hover state without root-level tracking.
+   */
+  &_has-trailing-action &__primary-action {
+    position: absolute;
+    inset: 0;
+    flex: none;
+    padding-inline-end: calc(
+      var(--md-private-list-item-content-padding-inline-end) +
+        var(--md-private-list-item-trailing-action-reserved, 56dp)
+    );
+  }
+
+  &_has-trailing-action &__trailing-action {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block: 0;
+    flex: none;
+    /* Container background is transparent to pointer events: empty trailing padding
+       falls through to the primary-action hit target underneath. */
+    pointer-events: none;
+
+    /* Restore interactivity for the direct slot content (icon button or similar)
+       so it keeps its own hit area and click handler. */
+    > * {
+      pointer-events: auto;
+    }
   }
 }
 </style>

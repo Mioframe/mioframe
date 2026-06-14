@@ -51,10 +51,12 @@ onMounted(() => {
     )
     ?.classList.add('md-state_pressed');
 
-  // Multi-action: row-level MDStateLayer is a direct child of the root container;
-  // add state to the root so the full-row layer responds.
+  // Multi-action: MDStateLayer is inside __primary-action (which is position: absolute;
+  // inset: 0 covering the full row). Add the state class to __primary-action.
   root
-    .querySelector<HTMLElement>('[data-visual-state="hover"].md-list-item_mode_multi-action')
+    .querySelector<HTMLElement>(
+      '[data-visual-state="hover"].md-list-item_mode_multi-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_hover');
 
   // Trailing action hover: add hover state to the icon button root via template ref so that

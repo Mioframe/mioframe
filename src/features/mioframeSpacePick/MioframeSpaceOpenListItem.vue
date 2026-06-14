@@ -11,7 +11,6 @@ const { loading, openSpace } = useOpenMioframeSpace();
     mode="single-action"
     label-text="Open space"
     supporting-text="Choose a folder that already contains a Mioframe space."
-    :line-count="3"
     :disabled="loading"
     @action="openSpace"
   >

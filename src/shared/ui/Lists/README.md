@@ -61,19 +61,20 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 
 ### Private implementation variables (internal only — must not be used by consumers)
 
-| Token                                                 | Set by                                         | Purpose                                          |
-| ----------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------ |
-| `--md-private-list-item-action-shape`                 | MDList                                         | Shape of action surface (button/a)               |
-| `--md-private-list-item-container-shape`              | MDList                                         | Shape of list item root                          |
-| `--md-private-list-item-content-padding-inline-start` | MDList                                         | Leading inline padding                           |
-| `--md-private-list-item-content-padding-inline-end`   | MDList                                         | Trailing inline padding                          |
-| `--md-private-list-item-content-padding-block`        | MDList                                         | Block padding                                    |
-| `--md-private-list-item-leading-space`                | MDList                                         | Space between leading content and body           |
-| `--md-private-list-item-leading-size`                 | MDList                                         | Leading icon/element size                        |
-| `--md-private-list-item-passive-trailing-min-size`    | MDList                                         | Minimum trailing element size                    |
-| `--md-private-list-item-trailing-space`               | MDList                                         | Space before trailing content                    |
-| `--md-private-list-item-segmented-gap`                | MDList                                         | Gap between segmented items                      |
-| `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | Computed height for current variant + line count |
+| Token                                                 | Set by                                         | Purpose                                                                                          |
+| ----------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `--md-private-list-item-action-shape`                 | MDList                                         | Shape of action surface (button/a)                                                               |
+| `--md-private-list-item-container-shape`              | MDList                                         | Shape of list item root                                                                          |
+| `--md-private-list-item-content-padding-inline-start` | MDList                                         | Leading inline padding                                                                           |
+| `--md-private-list-item-content-padding-inline-end`   | MDList                                         | Trailing inline padding                                                                          |
+| `--md-private-list-item-content-padding-block`        | MDList                                         | Block padding                                                                                    |
+| `--md-private-list-item-leading-space`                | MDList                                         | Space between leading content and body                                                           |
+| `--md-private-list-item-leading-size`                 | MDList                                         | Leading icon/element size                                                                        |
+| `--md-private-list-item-passive-trailing-min-size`    | MDList                                         | Minimum trailing element size                                                                    |
+| `--md-private-list-item-trailing-space`               | MDList                                         | Space before trailing content                                                                    |
+| `--md-private-list-item-segmented-gap`                | MDList                                         | Gap between segmented items                                                                      |
+| `--md-private-list-item-trailing-action-reserved`     | MDList                                         | Width reserved for the trailing action hit zone in multi-action rows (padding-start + min-width) |
+| `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | Computed height for current variant + line count                                                 |
 
 Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-list-item-*` variable.
 
@@ -84,7 +85,7 @@ Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-lis
 - Every `MDListItem` renders a stable outer wrapper: `li` (no role) or `div[role="listitem"]` inside non-selection lists, `div[role="none"]` inside selection lists (prevents invalid `listbox > listitem`).
 - Every `MDListSelectionItem` inside a selection list renders as `div[role="option"]`. Outside a selection list it renders as `div[role="presentation"]` to avoid orphaned `role="option"` without a listbox parent. Orphan items also have no state layer, no ripple, no pointer cursor, and no `tabindex`.
 - Single-action items render the primary action as an internal `button` or `a` — never as the listitem root. Inside a selection list, `MDListItem` suppresses both the action surface and any trailing action slot to avoid nesting interactive elements inside a listbox.
-- Multi-action items render one internal primary action plus one independent trailing action region. The row-level `MDStateLayer` covers the full row width, including padding between the primary action and trailing action. Clicking the trailing-action container (but not the trailing action itself) fires the primary action via `@click.self`. The trailing action has its own independent state layer.
+- Multi-action items render one internal primary action plus one independent trailing action region. The primary action is `position: absolute; inset: 0` covering the full visual row, with its `MDStateLayer` inside. The trailing action container sits on top as a positioned overlay with `pointer-events: none` on the container background so that empty trailing padding (and hover) falls through to the primary action hit target; direct slot content (icon button) restores its own `pointer-events: auto`. The trailing slot content has its own independent state layer.
 - No native interactive element may be nested inside another native interactive element.
 
 ## Internal module map

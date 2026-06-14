@@ -39,10 +39,13 @@ onMounted(() => {
     )
     ?.classList.add('md-state_pressed');
 
-  // Multi-action: the row-level MDStateLayer is a direct child of the root container.
-  // Add the state class to the root so the full-row state layer responds.
+  // Multi-action: MDStateLayer is inside __primary-action. Add the state class there
+  // so the state layer responds; parent rule :global(.md-state_hover) > & does not apply
+  // since the root element no longer carries the state class.
   root
-    .querySelector<HTMLElement>('[data-state="hover"].md-list-item_mode_multi-action')
+    .querySelector<HTMLElement>(
+      '[data-state="hover"].md-list-item_mode_multi-action .md-list-item__primary-action',
+    )
     ?.classList.add('md-state_hover');
 });
 </script>

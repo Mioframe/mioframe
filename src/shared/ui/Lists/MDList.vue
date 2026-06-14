@@ -157,6 +157,7 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
   --md-private-list-item-leading-size: 24dp;
   --md-private-list-item-passive-trailing-min-size: 24dp;
   --md-private-list-item-segmented-gap: 0dp;
+  --md-private-list-item-trailing-action-reserved: 56dp; /* 8dp padding-start + 48dp min-width */
   --md-private-list-item-trailing-space: 16dp;
 
   margin: 0;

@@ -293,6 +293,41 @@ test('MDListItem multi-action rows keep the trailing action independent from the
   await expect(trailingCount).toHaveText('1');
 });
 
+test('MDListItem multi-action trailing padding fires primary action, not trailing', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+  const targetRow = page.getByTestId('md-list-multi-action-independence');
+  const trailingSlot = targetRow.locator('.md-list-item__trailing-action');
+  const iconButton = targetRow.getByRole('button', { name: 'Edit' });
+  const primaryCount = page.locator('#md-list-primary-action-count');
+  const trailingCount = page.locator('#md-list-trailing-action-count');
+
+  const trailingBox = await trailingSlot.boundingBox();
+  const iconBox = await iconButton.boundingBox();
+
+  expect(trailingBox, 'trailing slot must have a bounding box').not.toBeNull();
+  expect(iconBox, 'trailing icon button must have a bounding box').not.toBeNull();
+
+  if (!trailingBox || !iconBox) {
+    throw new Error('Could not get bounding boxes for trailing hit-zone test.');
+  }
+
+  // Click the left edge of the trailing slot, which is padding space outside the icon
+  // button. With pointer-events: none on the container the click falls through to the
+  // primary action that is position: absolute; inset: 0 underneath.
+  const paddingClickX = trailingBox.x + 2;
+  const paddingClickY = trailingBox.y + trailingBox.height / 2;
+
+  // Only run if there is measurable padding to the left of the icon button.
+  if (paddingClickX < iconBox.x) {
+    await page.mouse.click(paddingClickX, paddingClickY);
+    await expect(primaryCount).toHaveText('1');
+    await expect(trailingCount).toHaveText('0');
+  }
+});
+
 test('MDList selection uses list-level option semantics and a visible selected indicator', async ({
   page,
 }) => {

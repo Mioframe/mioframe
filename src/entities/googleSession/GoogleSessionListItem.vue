@@ -32,6 +32,7 @@ const onListItemClick = () => {
     :mode="slots.trailingAction ? 'multi-action' : 'single-action'"
     :label-text="headline"
     :supporting-text="supportingText"
+    leading-type="avatar"
     @action="onListItemClick"
   >
     <template #leading>
