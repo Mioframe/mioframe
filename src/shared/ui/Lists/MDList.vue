@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, useTemplateRef, warn } from 'vue';
+import { computed, useTemplateRef } from 'vue';
+import { useWarnSelectionListTagMismatch } from './listDevWarnings';
 import {
   provideMDListContext,
   type MDListModelValue,
@@ -53,20 +54,15 @@ const getContainerElement = (): HTMLElement | null => {
   return null;
 };
 
-const resolvedListStyle = computed<MDListStyle>(() => {
-  if (props.selectionMode !== 'none' && props.tag === 'ul') {
-    if (import.meta.env.DEV) {
-      warn(
-        'MDList: selectionMode lists render as div/listbox containers. Falling back from tag="ul" to tag="div".',
-      );
-    }
-  }
-
-  return props.listStyle;
-});
+const resolvedListStyle = computed<MDListStyle>(() => props.listStyle);
 
 const resolvedTag = computed<'div' | 'ul'>(() =>
   props.selectionMode === 'none' ? (props.is ?? props.tag) : 'div',
+);
+
+useWarnSelectionListTagMismatch(
+  computed(() => props.selectionMode),
+  computed(() => props.tag),
 );
 
 provideMDListContext(

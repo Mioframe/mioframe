@@ -155,4 +155,27 @@ describe('MDList', () => {
     warnSpy.mockRestore();
     document.body.innerHTML = '';
   });
+
+  it('warns in development when tag="ul" is requested for a selection list', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mount(MDList, {
+      attachTo: document.body,
+      props: {
+        selectionMode: 'single',
+        tag: 'ul',
+      },
+      slots: {
+        default: '<div>Row</div>',
+      },
+    });
+
+    expect(wrapper.get('.md-list').element.tagName.toLowerCase()).toBe('div');
+    expect(warnSpy).toHaveBeenCalled();
+    expect(String(warnSpy.mock.calls[0]?.[0])).toContain(
+      'selectionMode lists render as div/listbox containers',
+    );
+
+    warnSpy.mockRestore();
+  });
 });

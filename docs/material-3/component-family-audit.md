@@ -78,7 +78,7 @@ Current state:
 - inside `MDList`, action rows render a stable listitem wrapper plus an internal button/link primary action surface, so the final list contract is no longer `button[role=listitem]` or `a[role=listitem]`;
 - segmented styling is implemented in the shared primitive, including grouped container shape, inter-item gap, and first/last item rounding;
 - all rows use Expressive minimum container heights: 64dp / 72dp / 88dp (one/two/three-line);
-- `--md-comp-list-item-min-container-height` is a public consumer token; it is not used by Menu, which owns its own geometry through separate CSS;
+- `--md-comp-list-item-min-container-height` remains restricted/internal compatibility-only documentation; it is not a public consumer sizing API, and Menu still owns its own geometry through separate CSS;
 - component tokens use Material anatomy names instead of generic content or muted naming;
 - direct consumers select list style through `MDList` without a `variant` prop, including repository explorer sections, local file-system lists, Google session lists, database property lists, and database view reordering;
 - Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic configuration, state, selection, trailing-action, and DOM-contract stories; baseline stories have been removed; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels;
@@ -95,7 +95,7 @@ Current state:
 - Home actions verified to use two-line layout (`md-list-item_line-count_2`), not three-line;
 - Settings checkbox row verified: no nested inputs or labels, no nested buttons, disabled row has no pointer cursor;
 - browser-level DOM tests cover static, single-action, multi-action, segmented, and selection lists; unit tests cover mode separation, line-count rendering, li-tag list semantics, selection list trailing action suppression, orphan selection item state layer absence and tabindex absence, disabled-aware option focus, and selection wiring;
-- `--md-comp-list-item-min-container-height` moved to restricted/internal in README; consumers must use the `lineCount` prop; trailing-action geometry tests converted from conditional-skip to hard assertions.
+- `--md-comp-list-item-min-container-height` moved to restricted/internal in README; content-driven sizing remains the default and `lineCount` is limited to supported one/two/three-line layouts; trailing-action geometry tests converted from conditional-skip to hard assertions.
 
 Gaps:
 

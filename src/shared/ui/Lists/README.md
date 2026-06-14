@@ -86,11 +86,11 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 
 ### Restricted token (do not use for consumer sizing)
 
-| Token                                      | Status                        | Notes                                                                                                   |
-| ------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `--md-comp-list-item-min-container-height` | Internal / compatibility-only | Sets minimum row height. Must not be used to bypass Material List sizing. Use `lineCount` prop instead. |
+| Token                                      | Status                        | Notes                                                                                              |
+| ------------------------------------------ | ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| `--md-comp-list-item-min-container-height` | Internal / compatibility-only | Compatibility escape hatch for internal implementation. Must not be used as a consumer sizing API. |
 
-Consumers must not use `--md-comp-list-item-min-container-height` to force arbitrary row heights. The correct way to adjust row height is through the `lineCount` prop (`1`, `2`, or `3`), which maps to the supported Material minimum heights. Using this token to set custom sizes violates the Material List sizing contract.
+Consumers must not use `--md-comp-list-item-min-container-height` to force arbitrary row heights. List sizing is content-driven by default: label-only rows resolve to one line, supporting text resolves to two lines by default, and overline plus supporting text resolves to three lines. The `lineCount` prop exists only for the supported Material one-line, two-line, and three-line layouts. It is not a visual tuning escape hatch.
 
 ### Private implementation variables (internal only — must not be used by consumers)
 
@@ -130,6 +130,8 @@ Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-lis
 | `listContext.ts`                 | Provide/inject list context; selection state, tag, semantics                                                                                                      |
 | `listItemSizing.ts`              | Material row height constants for the current Expressive geometry                                                                                                 |
 | `listItemLayout.ts`              | Shared line-count resolution and host-style helpers                                                                                                               |
+| `listDevWarnings.ts`             | Development-only warning helpers for MDList semantics and misuse                                                                                                  |
+| `listItemAttrs.ts`               | Private attr-routing helper that keeps semantic attrs on root rows unless an internal action surface owns them                                                    |
 | `listItemDevWarnings.ts`         | Development-only warning functions for MDListItem misuse                                                                                                          |
 | `listItemAnatomy.css`            | Shared List-family CSS: token defaults, state modifier remaps, body/element layout, typography; imported as non-scoped by both MDListItem and MDListSelectionItem |
 | `useListItemAnatomy.ts`          | Shared anatomy computeds (slot detection, line count, host style) used by MDListItem and MDListSelectionItem                                                      |
@@ -146,7 +148,7 @@ Current Expressive minimum row heights:
 | 2          | 72dp       |
 | 3          | 88dp       |
 
-Use the `lineCount` prop (`1`, `2`, or `3`) to select the appropriate Material height. Do not use `--md-comp-list-item-min-container-height` to force arbitrary heights outside these three supported values.
+List item height is content-driven by default. Use `lineCount` only when you need to declare one of the supported Material one-line, two-line, or three-line layouts explicitly. Do not use `lineCount` or `--md-comp-list-item-min-container-height` as arbitrary visual height-tuning controls.
 
 ## Supported features
 

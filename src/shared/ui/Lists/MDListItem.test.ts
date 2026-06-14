@@ -77,6 +77,39 @@ describe('MDListItem', () => {
     expect(item.element.tagName.toLowerCase()).toBe('div');
   });
 
+  it('keeps semantic attrs on static in-list rows when no internal action surface is used', () => {
+    const wrapper = mountListItem(
+      {
+        'aria-label': 'Static settings row',
+        title: 'Static row title',
+      },
+      { inList: true },
+    );
+    const item = wrapper.get('.md-list-item');
+
+    expect(item.attributes('aria-label')).toBe('Static settings row');
+    expect(item.attributes('title')).toBe('Static row title');
+  });
+
+  it('forwards action attrs to the internal primary action surface for single-action rows', () => {
+    const wrapper = mountListItem(
+      {
+        mode: 'single-action',
+        onAction: vi.fn(),
+        'aria-label': 'Open settings',
+        title: 'Open settings title',
+      },
+      { inList: true },
+    );
+    const item = wrapper.get('.md-list-item');
+    const button = item.get('.md-list-item__primary-action');
+
+    expect(item.attributes('aria-label')).toBeUndefined();
+    expect(item.attributes('title')).toBeUndefined();
+    expect(button.attributes('aria-label')).toBe('Open settings');
+    expect(button.attributes('title')).toBe('Open settings title');
+  });
+
   it('renders multi-action rows with sibling primary and trailing action surfaces inside MDList', () => {
     const wrapper = mountListItem(
       { mode: 'multi-action', onAction: vi.fn() },
@@ -91,6 +124,33 @@ describe('MDListItem', () => {
     expect(wrapper.get('.md-list-item').attributes('role')).toBe('listitem');
     expect(wrapper.get('.md-list-item__primary-action').find('button').exists()).toBe(false);
     expect(wrapper.get('.md-list-item__trailing-action button').text()).toBe('Secondary');
+  });
+
+  it('keeps root attrs and avoids nested controls for multi-action in-list rows', () => {
+    const wrapper = mountListItem(
+      {
+        mode: 'multi-action',
+        onAction: vi.fn(),
+        id: 'multi-row',
+        'data-test-id': 'multi-row-data',
+        'aria-label': 'Primary action label',
+        title: 'Primary action title',
+      },
+      {
+        inList: true,
+        slots: {
+          trailingAction: '<button type="button">Secondary</button>',
+        },
+      },
+    );
+    const item = wrapper.get('.md-list-item');
+    const primaryAction = wrapper.get('.md-list-item__primary-action');
+
+    expect(item.attributes('id')).toBe('multi-row');
+    expect(item.attributes('data-test-id')).toBe('multi-row-data');
+    expect(primaryAction.attributes('aria-label')).toBe('Primary action label');
+    expect(primaryAction.attributes('title')).toBe('Primary action title');
+    expect(primaryAction.find('button').exists()).toBe(false);
   });
 
   it('uses li wrappers when the list tag is ul', () => {
@@ -228,6 +288,33 @@ describe('MDListItem', () => {
 
     expect(wrapper.find('.md-list-item__trailing-action').exists()).toBe(false);
     expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(false);
+
+    warnSpy.mockRestore();
+  });
+
+  it('keeps semantic attrs on suppressed rows inside a selection list', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mountListItem(
+      {
+        mode: 'multi-action',
+        onAction: vi.fn(),
+        'aria-label': 'Suppressed row label',
+        title: 'Suppressed row title',
+      },
+      {
+        inList: true,
+        listProps: { selectionMode: 'single' },
+        slots: {
+          trailingAction: '<button type="button">Edit</button>',
+        },
+      },
+    );
+    const item = wrapper.get('.md-list-item');
+
+    expect(item.attributes('role')).toBe('none');
+    expect(item.attributes('aria-label')).toBe('Suppressed row label');
+    expect(item.attributes('title')).toBe('Suppressed row title');
 
     warnSpy.mockRestore();
   });

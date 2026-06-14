@@ -6,6 +6,7 @@ import {
   warnMultiActionMissingRequirements,
   warnSingleActionMissingHandler,
 } from './listItemDevWarnings';
+import { splitListItemAttrs } from './listItemAttrs';
 import { useMDListContext } from './listContext';
 import { useListItemAnatomy } from './useListItemAnatomy';
 
@@ -155,28 +156,9 @@ const rootClass = computed(() => ({
   'md-state_disabled': props.disabled,
 }));
 
-const rootAttrs = computed(() => {
-  if (!inList.value) {
-    return attrs;
-  }
-
-  const forwardedEntries = Object.entries(attrs).filter(
-    ([key]) => key === 'class' || key === 'style' || key === 'id' || key.startsWith('data-'),
-  );
-
-  return Object.fromEntries(forwardedEntries);
-});
-
-const interactiveAttrs = computed(() => {
-  if (props.mode === 'static') {
-    return attrs;
-  }
-
-  const entries = Object.entries(attrs).filter(
-    ([key]) => key !== 'class' && key !== 'style' && (!inList.value || key !== 'id'),
-  );
-  return Object.fromEntries(entries);
-});
+const splitAttrs = computed(() => splitListItemAttrs(attrs, usesInternalActionSurface.value));
+const rootAttrs = computed(() => splitAttrs.value.rootAttrs);
+const interactiveAttrs = computed(() => splitAttrs.value.interactiveAttrs);
 
 const onAction = (event: MouseEvent) => {
   if (props.disabled) {
