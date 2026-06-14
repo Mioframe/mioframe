@@ -139,20 +139,22 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
   display: flex;
   flex-direction: column;
   list-style: none;
+  background: transparent;
+  color: var(--md-current-content-color, var(--md-content-color, inherit));
 
   &_style_segmented {
+    --md-container-color: var(
+      --md-sys-color-surface-container-low,
+      var(--md-sys-color-surface-container)
+    );
+    --md-content-color: var(--md-sys-color-on-surface);
     --md-private-list-item-segmented-gap: 2dp;
 
     gap: var(--md-private-list-item-segmented-gap);
     padding: 0;
     overflow: clip;
     border-radius: 16dp;
-    background: var(--md-sys-color-surface-container-low, var(--md-sys-color-surface-container));
-  }
-
-  &_style_segmented :deep(.md-list-item_in-list),
-  &_style_segmented :deep(.md-list-selection-item_in-list) {
-    background: var(--md-sys-color-surface);
+    background: var(--md-current-container-color, var(--md-container-color));
   }
 
   &_style_segmented :deep(.md-list-item_in-list:first-child),

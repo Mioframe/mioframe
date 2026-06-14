@@ -611,21 +611,84 @@ test('MDList standard items have transparent background inheriting parent surfac
   ).toBe('rgba(0, 0, 0, 0)');
 });
 
-test('MDList segmented items have explicit surface background', async ({ page }) => {
+test('MDList standard container has transparent background', async ({ page }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
 
-  const surface = page.getByTestId('visual-md-list-surface');
+  const standardList = page.locator('#surface-context-wrapped-standard .md-list').first();
 
-  const segmentedItem = surface.locator('.md-list_style_segmented .md-list-item').first();
+  const bgColor = await standardList.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+  expect(
+    bgColor,
+    'standard list container must be transparent so wrapper and parent surfaces remain visible',
+  ).toBe('rgba(0, 0, 0, 0)');
+});
+
+test('MDList standard surface context survives intermediate wrappers', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+
+  const wrappedSurface = page.locator('#surface-context-wrapped-standard');
+  const wrappedItem = wrappedSurface.locator('.md-list-item').first();
+
+  const [surfaceColor, itemColor] = await Promise.all([
+    wrappedSurface.evaluate((node) => getComputedStyle(node).backgroundColor),
+    wrappedItem.evaluate((node) => getComputedStyle(node).backgroundColor),
+  ]);
+
+  expect(surfaceColor).not.toBe('rgba(0, 0, 0, 0)');
+  expect(
+    itemColor,
+    'intermediate wrappers must not inject a background or break inherited surface context',
+  ).toBe('rgba(0, 0, 0, 0)');
+});
+
+test('MDList segmented container owns the grouped surface background', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+
+  const segmentedList = page.locator('#surface-context-repository-segmented-list .md-list').first();
+
+  const bgColor = await segmentedList.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+  expect(bgColor, 'segmented list container must own the grouped surface background').not.toBe(
+    'rgba(0, 0, 0, 0)',
+  );
+});
+
+test('MDList segmented items remain transparent inside the grouped surface', async ({ page }) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+
+  const segmentedItem = page
+    .locator('#surface-context-repository-segmented-list .md-list-item')
+    .first();
 
   const bgColor = await segmentedItem.evaluate((node) => getComputedStyle(node).backgroundColor);
 
-  // Segmented items must NOT be transparent — they have an explicit surface background
-  // that creates the segmented panel appearance.
   expect(
     bgColor,
-    'segmented list item must have an explicit surface background, not transparent',
-  ).not.toBe('rgba(0, 0, 0, 0)');
+    'segmented list items should stay transparent so the grouped container owns the base surface',
+  ).toBe('rgba(0, 0, 0, 0)');
+});
+
+test('MDList segmented surface does not leak into the Repository Explorer header', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context');
+
+  const header = page.locator(
+    '#surface-context-repository-documents .md-list-item-surface-story__repo-header',
+  );
+  const segmentedList = page.locator('#surface-context-repository-segmented-list .md-list').first();
+
+  const [headerColor, listColor] = await Promise.all([
+    header.evaluate((node) => getComputedStyle(node).backgroundColor),
+    segmentedList.evaluate((node) => getComputedStyle(node).backgroundColor),
+  ]);
+
+  expect(
+    headerColor,
+    'the Repository Explorer header must remain transparent and inherit the parent section surface',
+  ).toBe('rgba(0, 0, 0, 0)');
+  expect(listColor).not.toBe(headerColor);
 });
 
 test('MDListItem surface context story matches baseline', async ({ page }) => {

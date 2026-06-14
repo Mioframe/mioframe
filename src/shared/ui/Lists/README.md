@@ -4,6 +4,26 @@ Material 3 / Material 3 Expressive List component family for `src/shared/ui/List
 
 Mioframe Lists follow the latest recommended Material 3 / Expressive direction. The legacy `baseline` list style is intentionally unsupported and has been removed from the runtime API.
 
+## Surface context
+
+Lists use the shared inherited surface-context contract:
+
+- `--md-current-container-color`
+- `--md-current-content-color`
+
+These default to the existing foundation surface tokens:
+
+- `--md-current-container-color: var(--md-container-color)`
+- `--md-current-content-color: var(--md-content-color)`
+
+This keeps surface ownership explicit:
+
+- parent pane/card/section/sheet owns the actual surface by setting `--md-container-color` and `--md-content-color`
+- layout-only wrappers may sit between the surface owner and the list without breaking inheritance
+- standard `MDList` and default list items stay transparent and inherit the current surface/content context
+- segmented `MDList` establishes a new grouped surface context inside its own bounds only
+- hover, focus, pressed, and selected feedback are expressed through state layers or selected-state tokens, not by injecting a base background into standard rows
+
 ## Components
 
 ### MDList
@@ -45,7 +65,9 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 
 | Token                                                | Purpose                                                  |
 | ---------------------------------------------------- | -------------------------------------------------------- |
-| `--md-comp-list-item-container-color`                | Row background                                           |
+| `--md-current-container-color`                       | Current inherited Material surface container color       |
+| `--md-current-content-color`                         | Current inherited Material surface content color         |
+| `--md-comp-list-item-container-color`                | Row background; defaults to transparent                  |
 | `--md-comp-list-item-label-text-color`               | Label text color                                         |
 | `--md-comp-list-item-supporting-text-color`          | Supporting text color                                    |
 | `--md-comp-list-item-overline-color`                 | Overline text color                                      |
@@ -88,6 +110,8 @@ Consumers must not use `--md-comp-list-item-min-container-height` to force arbit
 | `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | Computed height for current line count                                                           |
 
 Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-list-item-*` variable.
+
+`--md-current-container-color` and `--md-current-content-color` are foundation-level inherited surface-context tokens, not List-private tokens.
 
 ## DOM contract
 
@@ -148,7 +172,7 @@ Use the `lineCount` prop (`1`, `2`, or `3`) to select the appropriate Material h
 
 ## Material and Figma verification status
 
-Material sources checked: `components/lists/overview`, `guidelines`, `specs`, `accessibility`.
+Material sources checked: `components/lists/overview`, `guidelines`, `specs`, `accessibility`, and `foundations/interaction/states/state-layers`.
 
 Geometry values (heights, padding, spacing) are based on the Material cache snapshot. Figma live verification is **partial** — exact Expressive geometry has not been fully verified against the Design Kit:
 
