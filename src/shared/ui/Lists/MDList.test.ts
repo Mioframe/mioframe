@@ -5,17 +5,15 @@ import MDListItem from './MDListItem.vue';
 import MDListSelectionItem from './MDListSelectionItem.vue';
 
 describe('MDList', () => {
-  it('uses the Material variant prop instead of density naming', () => {
+  it('renders the list root with the md-list block class', () => {
     const wrapper = mount(MDList, {
-      props: {
-        variant: 'expressive',
-      },
       slots: {
         default: '<div>Row</div>',
       },
     });
 
-    expect(wrapper.get('.md-list').classes()).toContain('md-list_variant_expressive');
+    expect(wrapper.get('.md-list').classes()).toContain('md-list');
+    expect(wrapper.get('.md-list').classes()).toContain('md-list_style_standard');
   });
 
   it('exposes listbox semantics and controlled selection updates for selection lists', async () => {

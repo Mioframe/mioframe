@@ -53,7 +53,7 @@ onMounted(() => {
 <template>
   <div ref="statesRef" v-bind="rootAttrs" class="visual-surface md-list-item-visual-states-story">
     <section class="md-list-item-visual-states-story__section">
-      <h3 class="md-list-item-visual-states-story__title">Standard baseline</h3>
+      <h3 class="md-list-item-visual-states-story__title">Standard</h3>
       <MDList class="md-list-item-visual-states-story__list">
         <MDListItem
           v-bind="enabledAttrs"
@@ -106,12 +106,8 @@ onMounted(() => {
     </section>
 
     <section class="md-list-item-visual-states-story__section">
-      <h3 class="md-list-item-visual-states-story__title">Segmented expressive</h3>
-      <MDList
-        variant="expressive"
-        list-style="segmented"
-        class="md-list-item-visual-states-story__list"
-      >
+      <h3 class="md-list-item-visual-states-story__title">Segmented</h3>
+      <MDList list-style="segmented" class="md-list-item-visual-states-story__list">
         <MDListItem
           mode="multi-action"
           label-text="Enabled"

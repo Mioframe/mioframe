@@ -12,7 +12,7 @@ const { sessionList } = useGoogleSessions();
 </script>
 
 <template>
-  <MDList variant="expressive" list-style="segmented">
+  <MDList list-style="segmented">
     <GoogleSessionListItem
       v-for="session in sessionList"
       :key="session.email"

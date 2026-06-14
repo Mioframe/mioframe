@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import MDList from './MDList.vue';
-import type {
-  MDListModelValue,
-  MDListSelectionMode,
-  MDListStyle,
-  MDListVariant,
-} from './listContext';
+import type { MDListModelValue, MDListSelectionMode, MDListStyle } from './listContext';
 
 withDefaults(
   defineProps<{
@@ -15,14 +10,12 @@ withDefaults(
     selectionMode?: MDListSelectionMode | undefined;
     tag?: 'div' | 'ul' | undefined;
     transition?: boolean | undefined;
-    variant?: MDListVariant | undefined;
   }>(),
   {
     listStyle: 'standard',
     selectionMode: 'none',
     tag: 'div',
     transition: false,
-    variant: 'baseline',
   },
 );
 
@@ -47,7 +40,6 @@ const onUpdateModelValue = (value: MDListModelValue) => {
     :selection-mode="selectionMode"
     :tag="tag"
     :transition="transition"
-    :variant="variant"
     v-bind="$attrs"
     @update:model-value="onUpdateModelValue"
   >

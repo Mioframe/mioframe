@@ -1,10 +1,7 @@
 import { computed, inject, provide, type ComputedRef, type InjectionKey, type Ref } from 'vue';
-import { getMDListItemHeights } from './listItemSizing';
 
 /** Shared visual treatment for list containers. */
 export type MDListStyle = 'standard' | 'segmented';
-/** Material list variant for row sizing and shape behavior. */
-export type MDListVariant = 'baseline' | 'expressive';
 /** Controlled list-level selection mode. */
 export type MDListSelectionMode = 'none' | 'single' | 'multiple';
 /** Primitive selection values supported by the shared list contract. */
@@ -15,12 +12,8 @@ export type MDListModelValue = MDListSelectionValue | readonly MDListSelectionVa
 
 /** Reactive list container state shared with descendant items. */
 export interface MDListContextValue {
-  /** Active Material list variant for descendant rows. */
-  variant: ComputedRef<MDListVariant>;
   /** Semantic wrapper tag each item should render. */
   itemTag: ComputedRef<'div' | 'li'>;
-  /** Material row heights keyed by resolved line count. */
-  itemHeights: ComputedRef<Record<1 | 2 | 3, number>>;
   /** Active container style variant. */
   listStyle: ComputedRef<MDListStyle>;
   /** Active list-level selection mode. */
@@ -44,9 +37,8 @@ const includesValue = (
 ): boolean => selection.some((entry) => Object.is(entry, value));
 
 /**
- * Provides shared list semantics and sizing to descendant list items.
+ * Provides shared list semantics to descendant list items.
  * @param listStyle - Reactive list style variant.
- * @param variant - Reactive list variant.
  * @param tag - Reactive semantic container tag.
  * @param selectionMode - Reactive selection mode.
  * @param modelValue - Reactive controlled selection state.
@@ -54,7 +46,6 @@ const includesValue = (
  */
 export const provideMDListContext = (
   listStyle: Ref<MDListStyle> | ComputedRef<MDListStyle>,
-  variant: Ref<MDListVariant> | ComputedRef<MDListVariant>,
   tag: Ref<'div' | 'ul'> | ComputedRef<'div' | 'ul'>,
   selectionMode: Ref<MDListSelectionMode> | ComputedRef<MDListSelectionMode>,
   modelValue: Ref<MDListModelValue> | ComputedRef<MDListModelValue>,
@@ -75,9 +66,7 @@ export const provideMDListContext = (
   });
 
   provide(LIST_CONTEXT_KEY, {
-    variant: computed(() => variant.value),
     itemTag: computed(() => (tag.value === 'ul' ? 'li' : 'div')),
-    itemHeights: computed(() => getMDListItemHeights(variant.value)),
     listStyle: computed(() => listStyle.value),
     selectionMode: computed(() => selectionMode.value),
     usesListSemantics: computed(() => true),

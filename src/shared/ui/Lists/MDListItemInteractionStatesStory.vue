@@ -73,7 +73,7 @@ onMounted(() => {
   >
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
-      <MDList variant="expressive">
+      <MDList>
         <MDListItem
           v-bind="hoverAttrs"
           mode="single-action"
@@ -104,7 +104,7 @@ onMounted(() => {
 
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Multi-action surface</h3>
-      <MDList variant="expressive" list-style="segmented">
+      <MDList list-style="segmented">
         <MDListItem
           v-bind="hoverAttrs"
           mode="multi-action"

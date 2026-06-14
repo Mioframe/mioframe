@@ -47,11 +47,10 @@ const onMultipleSelectionChange = (value: MDListModelValue) => {
     </section>
 
     <section class="md-list-item-selection-story__section">
-      <h3 class="md-list-item-selection-story__title">Multi-select segmented expressive</h3>
+      <h3 class="md-list-item-selection-story__title">Multi-select segmented</h3>
       <MDList
         :model-value="multipleSelection"
         selection-mode="multiple"
-        variant="expressive"
         list-style="segmented"
         @update:model-value="onMultipleSelectionChange"
       >

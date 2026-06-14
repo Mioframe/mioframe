@@ -11,7 +11,7 @@ const onAction = () => {};
 
 <template>
   <div v-bind="rootAttrs" class="visual-surface md-list-item-trailing-action-story">
-    <MDList variant="expressive" list-style="segmented">
+    <MDList list-style="segmented">
       <MDListItem
         mode="multi-action"
         label-text="Trailing action"

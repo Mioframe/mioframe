@@ -1,17 +1,21 @@
 # Lists
 
-Material 3 List component family for `src/shared/ui/Lists`.
+Material 3 / Material 3 Expressive List component family for `src/shared/ui/Lists`.
+
+Mioframe Lists follow the latest recommended Material 3 / Expressive direction. The legacy `baseline` list style is intentionally unsupported and has been removed from the runtime API.
 
 ## Components
 
 ### MDList
 
-Owns list-level variant, style, semantics, and selection context.
+Owns list-level style, semantics, and selection context.
 
-- Props: `variant` (`baseline` | `expressive`), `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`), `is`, `transition`
+- Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`), `is`, `transition`
 - Emits: `update:modelValue`
 - Provides: list context to descendant items via `provideMDListContext`
 - Owns: `listbox` / `list` container role, roving keyboard focus for selection lists
+
+There is no public `variant` prop. The current Material / Expressive row geometry is the only supported implementation.
 
 ### MDListItem
 
@@ -74,7 +78,7 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 | `--md-private-list-item-trailing-space`               | MDList                                         | Space before trailing content                                                                    |
 | `--md-private-list-item-segmented-gap`                | MDList                                         | Gap between segmented items                                                                      |
 | `--md-private-list-item-trailing-action-reserved`     | MDList                                         | Width reserved for the trailing action hit zone in multi-action rows (padding-start + min-width) |
-| `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | Computed height for current variant + line count                                                 |
+| `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | Computed height for current line count                                                           |
 
 Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-list-item-*` variable.
 
@@ -85,21 +89,33 @@ Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-lis
 - Every `MDListItem` renders a stable outer wrapper: `li` (no role) or `div[role="listitem"]` inside non-selection lists, `div[role="none"]` inside selection lists (prevents invalid `listbox > listitem`).
 - Every `MDListSelectionItem` inside a selection list renders as `div[role="option"]`. Outside a selection list it renders as `div[role="presentation"]` to avoid orphaned `role="option"` without a listbox parent. Orphan items also have no state layer, no ripple, no pointer cursor, and no `tabindex`.
 - Single-action items render the primary action as an internal `button` or `a` — never as the listitem root. Inside a selection list, `MDListItem` suppresses both the action surface and any trailing action slot to avoid nesting interactive elements inside a listbox.
-- Multi-action items render one internal primary action plus one independent trailing action region. The primary action is `position: absolute; inset: 0` covering the full visual row, with its `MDStateLayer` inside. The trailing action container sits on top as a positioned overlay with `pointer-events: none` on the container background so that empty trailing padding (and hover) falls through to the primary action hit target; direct slot content (icon button) restores its own `pointer-events: auto`. The trailing slot content has its own independent state layer.
+- Multi-action items render one internal primary action plus one independent trailing action region. The primary action is `position: absolute; inset: 0` covering the full visual row, with its `MDStateLayer` inside. The trailing action container sits on top as a positioned overlay with `pointer-events: none` on the container background so that empty trailing padding (and hover) falls through to the primary action hit target; direct slot content (icon button) restores its own `pointer-events: auto`. The trailing slot content has its own independent state layer. Browser-level tests in `tests/e2e/visual/shared-ui.spec.ts` verify that: primary area hover activates row-level hover state; trailing target hover removes row-level hover state; empty trailing padding hover falls through to primary action.
 - No native interactive element may be nested inside another native interactive element.
 
 ## Internal module map
 
 | File                             | Responsibility                                                                                                                                                    |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `listContext.ts`                 | Provide/inject list context; selection state, variant, tag, heights                                                                                               |
-| `listItemSizing.ts`              | Material row height constants keyed by variant and line count                                                                                                     |
+| `listContext.ts`                 | Provide/inject list context; selection state, tag, semantics                                                                                                      |
+| `listItemSizing.ts`              | Material row height constants for the current Expressive geometry                                                                                                 |
 | `listItemLayout.ts`              | Shared line-count resolution and host-style helpers                                                                                                               |
 | `listItemDevWarnings.ts`         | Development-only warning functions for MDListItem misuse                                                                                                          |
 | `listItemAnatomy.css`            | Shared List-family CSS: token defaults, state modifier remaps, body/element layout, typography; imported as non-scoped by both MDListItem and MDListSelectionItem |
 | `useListItemAnatomy.ts`          | Shared anatomy computeds (slot detection, line count, host style) used by MDListItem and MDListSelectionItem                                                      |
 | `listSelectionItemNavigation.ts` | Roving tab-stop and keyboard navigation for listbox selection items                                                                                               |
 | `useListSelectionKeyboard.ts`    | Composable that wires keyboard/focus lifecycle into MDList                                                                                                        |
+
+## Row sizing
+
+Current Expressive minimum row heights:
+
+| Line count | Min height |
+| ---------- | ---------- |
+| 1          | 64dp       |
+| 2          | 72dp       |
+| 3          | 88dp       |
+
+Consumers can override the minimum row height through `--md-comp-list-item-min-container-height`.
 
 ## Supported features
 
@@ -112,8 +128,9 @@ Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-lis
 - Selection list misuse safety: `MDListItem` inside a selection list renders `role="none"` and suppresses both its primary action surface and any trailing action slot, preventing invalid interactive controls inside a listbox
 - Orphan selection item safety: `MDListSelectionItem` without a selection context renders as inert presentation content with no interactive affordance
 
-## Not supported in this pass
+## Intentionally unsupported
 
+- `baseline` list style: legacy / reference-only, not a current Material recommendation
 - Expandable / swipe list variants
 - Radio/checkbox controls as selection indicators (checkmark only)
 - Project-specific grid layout on MDList/MDListContainer
@@ -126,10 +143,10 @@ Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-lis
 
 Material sources checked: `components/lists/overview`, `guidelines`, `specs`, `accessibility`.
 
-Geometry values (heights, padding, spacing) are based on the Material cache snapshot as of 2026-06-13. Figma live verification is **partial** — Figma MCP access was rate-limited during this implementation pass. The following remain unverified against the Design Kit:
+Geometry values (heights, padding, spacing) are based on the Material cache snapshot. Figma live verification is **partial** — exact Expressive geometry has not been fully verified against the Design Kit:
 
-- Expressive one-line height (currently 64dp — derived from Material cache + shared geometry)
+- Expressive one-line height (currently 64dp)
 - Exact state-layer shape and bounds for expressive variant
 - Leading/trailing spacing values for expressive variant
 
-Re-verify against the Design Kit when Figma MCP access is available. Do not mark Lists as `aligned` until Figma geometry verification is complete.
+Lists remain `partial` until Figma geometry verification is complete. Re-verify against the Design Kit when Figma MCP access is available.

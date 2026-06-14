@@ -44,7 +44,7 @@ const {
   hostStyle,
   leadingClass,
   supportingTextClass,
-} = useListItemAnatomy(props, slots, listContext, 'md-list-selection-item');
+} = useListItemAnatomy(props, slots, 'md-list-selection-item');
 
 const rootTag = computed(() => listContext?.itemTag.value ?? 'div');
 // Only active when inside a list that has an explicit selection mode.

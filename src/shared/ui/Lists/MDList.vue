@@ -5,7 +5,6 @@ import {
   type MDListModelValue,
   type MDListSelectionMode,
   type MDListStyle,
-  type MDListVariant,
 } from './listContext';
 import { useListSelectionKeyboard } from './useListSelectionKeyboard';
 
@@ -21,14 +20,12 @@ const props = withDefaults(
     selectionMode?: MDListSelectionMode | undefined;
     tag?: 'div' | 'ul' | undefined;
     transition?: boolean | undefined;
-    variant?: MDListVariant | undefined;
   }>(),
   {
     listStyle: 'standard',
     selectionMode: 'none',
     tag: 'div',
     transition: false,
-    variant: 'baseline',
   },
 );
 
@@ -56,20 +53,6 @@ const getContainerElement = (): HTMLElement | null => {
   return null;
 };
 
-const resolvedVariant = computed<MDListVariant>(() => {
-  if (props.listStyle === 'segmented' && props.variant === 'baseline') {
-    if (import.meta.env.DEV) {
-      warn(
-        'MDList: listStyle="segmented" requires variant="expressive". Falling back to expressive variant semantics for this list.',
-      );
-    }
-
-    return 'expressive';
-  }
-
-  return props.variant;
-});
-
 const resolvedListStyle = computed<MDListStyle>(() => {
   if (props.selectionMode !== 'none' && props.tag === 'ul') {
     if (import.meta.env.DEV) {
@@ -88,7 +71,6 @@ const resolvedTag = computed<'div' | 'ul'>(() =>
 
 provideMDListContext(
   resolvedListStyle,
-  resolvedVariant,
   resolvedTag,
   computed(() => props.selectionMode),
   computed(() => props.modelValue),
@@ -117,11 +99,7 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
     :tag="resolvedTag"
     v-bind="$attrs"
     class="md-list"
-    :class="[
-      `md-list_style_${resolvedListStyle}`,
-      `md-list_variant_${resolvedVariant}`,
-      `md-list_selection-mode_${selectionMode}`,
-    ]"
+    :class="[`md-list_style_${resolvedListStyle}`, `md-list_selection-mode_${selectionMode}`]"
     :role="containerRole"
     :aria-multiselectable="selectionMode === 'multiple' ? 'true' : undefined"
   >
@@ -134,11 +112,7 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
     ref="containerEl"
     v-bind="$attrs"
     class="md-list"
-    :class="[
-      `md-list_style_${resolvedListStyle}`,
-      `md-list_variant_${resolvedVariant}`,
-      `md-list_selection-mode_${selectionMode}`,
-    ]"
+    :class="[`md-list_style_${resolvedListStyle}`, `md-list_selection-mode_${selectionMode}`]"
     :role="containerRole"
     :aria-multiselectable="selectionMode === 'multiple' ? 'true' : undefined"
   >
@@ -148,14 +122,14 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
 
 <style scoped>
 .md-list {
-  --md-private-list-item-action-shape: 0dp;
-  --md-private-list-item-container-shape: 0dp;
+  --md-private-list-item-action-shape: 12dp;
+  --md-private-list-item-container-shape: 12dp;
   --md-private-list-item-content-padding-inline-start: 16dp;
-  --md-private-list-item-content-padding-inline-end: 24dp;
-  --md-private-list-item-content-padding-block: 8dp;
-  --md-private-list-item-leading-space: 16dp;
-  --md-private-list-item-leading-size: 24dp;
-  --md-private-list-item-passive-trailing-min-size: 24dp;
+  --md-private-list-item-content-padding-inline-end: 16dp;
+  --md-private-list-item-content-padding-block: 10dp;
+  --md-private-list-item-leading-space: 12dp;
+  --md-private-list-item-leading-size: 20dp;
+  --md-private-list-item-passive-trailing-min-size: 28dp;
   --md-private-list-item-segmented-gap: 0dp;
   --md-private-list-item-trailing-action-reserved: 56dp; /* 8dp padding-start + 48dp min-width */
   --md-private-list-item-trailing-space: 16dp;
@@ -165,16 +139,6 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
   display: flex;
   flex-direction: column;
   list-style: none;
-
-  &_variant_expressive {
-    --md-private-list-item-action-shape: 12dp;
-    --md-private-list-item-container-shape: 12dp;
-    --md-private-list-item-content-padding-inline-end: 16dp;
-    --md-private-list-item-content-padding-block: 10dp;
-    --md-private-list-item-leading-space: 12dp;
-    --md-private-list-item-passive-trailing-min-size: 28dp;
-    --md-private-list-item-leading-size: 20dp;
-  }
 
   &_style_segmented {
     --md-private-list-item-segmented-gap: 2dp;
@@ -206,21 +170,6 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
   &_style_segmented :deep(.md-list-item_in-list:first-child:last-child),
   &_style_segmented :deep(.md-list-selection-item_in-list:first-child:last-child) {
     border-radius: 16dp;
-  }
-
-  &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
-  &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__body),
-  &_variant_baseline :deep(.md-list-selection-item_line-count_3 .md-list-selection-item__body),
-  &_variant_expressive :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
-  &_variant_expressive :deep(.md-list-item_line-count_3 .md-list-item__body),
-  &_variant_expressive :deep(.md-list-selection-item_line-count_3 .md-list-selection-item__body) {
-    align-items: flex-start;
-  }
-
-  &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__primary-action),
-  &_variant_baseline :deep(.md-list-item_line-count_3 .md-list-item__body),
-  &_variant_baseline :deep(.md-list-selection-item_line-count_3 .md-list-selection-item__body) {
-    --md-private-list-item-content-padding-block: 12dp;
   }
 }
 </style>

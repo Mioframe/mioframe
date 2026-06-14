@@ -49,7 +49,7 @@ const onAction = () => {};
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Multi-action list</h3>
-      <MDList v-bind="multiListAttrs" variant="expressive">
+      <MDList v-bind="multiListAttrs">
         <MDListItem
           v-bind="multiItemAttrs"
           mode="multi-action"
@@ -66,7 +66,7 @@ const onAction = () => {};
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Segmented list</h3>
-      <MDList v-bind="segmentedListAttrs" variant="expressive" list-style="segmented">
+      <MDList v-bind="segmentedListAttrs" list-style="segmented">
         <MDListItem label-text="Segment one" />
         <MDListItem label-text="Segment two" />
         <MDListItem label-text="Segment three" />

@@ -80,7 +80,7 @@ const {
   hostStyle,
   leadingClass,
   supportingTextClass,
-} = useListItemAnatomy(props, slots, listContext, 'md-list-item');
+} = useListItemAnatomy(props, slots, 'md-list-item');
 
 const rootTag = computed(() => {
   if (inList.value) {

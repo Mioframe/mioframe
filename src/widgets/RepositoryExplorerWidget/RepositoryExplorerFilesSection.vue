@@ -55,7 +55,6 @@ const emptyText = computed(() =>
 
     <MDList
       v-if="hasRegularFiles"
-      variant="expressive"
       list-style="segmented"
       class="repository-explorer-files-section__list"
     >

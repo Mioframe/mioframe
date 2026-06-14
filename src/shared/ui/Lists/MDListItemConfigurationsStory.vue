@@ -13,7 +13,7 @@ const onAction = () => {};
 <template>
   <div v-bind="rootAttrs" class="visual-surface md-list-item-configurations-story">
     <section class="md-list-item-configurations-story__section">
-      <h3 class="md-list-item-configurations-story__title">Standard baseline</h3>
+      <h3 class="md-list-item-configurations-story__title">Standard</h3>
       <MDList class="md-list-item-configurations-story__list">
         <MDListItem label-text="One-line item" />
         <MDListItem
@@ -30,12 +30,8 @@ const onAction = () => {};
     </section>
 
     <section class="md-list-item-configurations-story__section">
-      <h3 class="md-list-item-configurations-story__title">Segmented expressive</h3>
-      <MDList
-        variant="expressive"
-        list-style="segmented"
-        class="md-list-item-configurations-story__list"
-      >
+      <h3 class="md-list-item-configurations-story__title">Segmented</h3>
+      <MDList list-style="segmented" class="md-list-item-configurations-story__list">
         <MDListItem mode="single-action" label-text="One-line item" @action="onAction">
           <template #leading>
             <MDSymbol name="draft" />

@@ -1,6 +1,6 @@
 import { computed, type Slots } from 'vue';
-import type { MDListContextValue } from './listContext';
 import { buildListItemHostStyle, resolveListItemLineCount } from './listItemLayout';
+import { MD_LIST_ITEM_MIN_HEIGHTS } from './listItemSizing';
 
 type MDListLeadingType = 'icon' | 'avatar' | 'media' | 'control';
 
@@ -26,14 +26,12 @@ interface ListItemAnatomySlots {
  * `MDListSelectionItem`.
  * @param props - Anatomy-relevant props from the host component.
  * @param slots - Slot map from the host component (via `useSlots()`).
- * @param listContext - Nearest list context, or `null` when outside a list.
  * @param blockClass - BEM block class name used as prefix for element classes.
  * @returns Reactive anatomy computeds ready for use in the component template.
  */
 export const useListItemAnatomy = (
   props: ListItemAnatomyProps,
   slots: ListItemAnatomySlots,
-  listContext: MDListContextValue | null,
   blockClass: string,
 ) => {
   const hasLeading = computed(() => !!slots.leading);
@@ -45,9 +43,7 @@ export const useListItemAnatomy = (
     resolveListItemLineCount(hasOverline.value, hasSupportingText.value, props.lineCount),
   );
 
-  const resolvedHeight = computed(
-    () => listContext?.itemHeights.value[resolvedLineCount.value] ?? 56,
-  );
+  const resolvedHeight = computed(() => MD_LIST_ITEM_MIN_HEIGHTS[resolvedLineCount.value]);
 
   const hostStyle = computed(() => buildListItemHostStyle(resolvedHeight.value));
 

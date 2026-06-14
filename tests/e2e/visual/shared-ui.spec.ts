@@ -328,6 +328,67 @@ test('MDListItem multi-action trailing padding fires primary action, not trailin
   }
 });
 
+test('MDListItem multi-action primary area hover activates row-level hover state', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+  // data-testid propagates to both the listitem root and the primary-action button,
+  // so narrow to the role=listitem wrapper for class assertions.
+  const targetRow = page.locator(
+    '[data-testid="md-list-multi-action-independence"][role="listitem"]',
+  );
+  const primaryAction = targetRow.locator('.md-list-item__primary-action');
+
+  await primaryAction.hover();
+
+  await expect(targetRow).toHaveClass(/md-state_hover/);
+});
+
+test('MDListItem multi-action trailing target hover removes row-level hover state', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+  const targetRow = page.locator(
+    '[data-testid="md-list-multi-action-independence"][role="listitem"]',
+  );
+  const primaryAction = targetRow.locator('.md-list-item__primary-action');
+  const trailingButton = targetRow.getByRole('button', { name: 'Edit' });
+
+  await primaryAction.hover();
+  await expect(targetRow).toHaveClass(/md-state_hover/);
+
+  await trailingButton.hover();
+  await expect(targetRow).not.toHaveClass(/md-state_hover/);
+});
+
+test('MDListItem multi-action trailing empty padding hover keeps row-level hover state', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+  const targetRow = page.locator(
+    '[data-testid="md-list-multi-action-independence"][role="listitem"]',
+  );
+  const trailingSlot = targetRow.locator('.md-list-item__trailing-action');
+  const iconButton = targetRow.getByRole('button', { name: 'Edit' });
+
+  const trailingBox = await trailingSlot.boundingBox();
+  const iconBox = await iconButton.boundingBox();
+
+  if (!trailingBox || !iconBox || trailingBox.x + 4 >= iconBox.x) {
+    // No measurable padding left of icon button — skip rather than fail.
+    return;
+  }
+
+  // Move pointer to the left-edge padding of the trailing slot, which has
+  // pointer-events: none, so the event falls through to the primary action.
+  await page.mouse.move(trailingBox.x + 2, trailingBox.y + trailingBox.height / 2);
+
+  await expect(targetRow).toHaveClass(/md-state_hover/);
+});
+
 test('MDList selection uses list-level option semantics and a visible selected indicator', async ({
   page,
 }) => {
