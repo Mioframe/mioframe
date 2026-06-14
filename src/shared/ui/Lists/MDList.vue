@@ -144,18 +144,26 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
       var(--md-sys-color-surface-container)
     );
     --md-content-color: var(--md-sys-color-on-surface);
-    /* overflow: hidden (not clip) establishes a scroll container, resetting the automatic grid-item min-size to 0 so white-space: nowrap content can't expand the grid track. */
+    /* Items own their corner shapes via action-surface border-radius. overflow: clip
+       is used for visual containment only — it does not create a scroll container,
+       so the explicit min-width: 0 is required to suppress the automatic grid/flex-item
+       minimum size that would otherwise allow nowrap text to expand the container. */
     --md-private-list-item-container-shape: 0dp;
     --md-private-list-item-action-shape: 0dp;
     --md-private-list-item-segmented-gap: 2dp;
 
     gap: var(--md-private-list-item-segmented-gap);
     padding: 0;
-    overflow: hidden;
+    /* min-width: 0 is required when this element is a grid or flex item so that
+       white-space: nowrap content inside cannot expand the containing track. */
+    min-width: 0;
+    overflow: clip;
     border-radius: 16dp;
     background: var(--md-current-container-color, var(--md-container-color));
   }
 
+  /* Item-root rounding for first/last/single — keeps selected-item container backgrounds
+     correctly shaped when the item has a non-transparent background. */
   &_style_segmented :deep(.md-list-item_in-list:first-child),
   &_style_segmented :deep(.md-list-selection-item_in-list:first-child) {
     border-start-start-radius: 16dp;
@@ -171,6 +179,25 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
   &_style_segmented :deep(.md-list-item_in-list:first-child:last-child),
   &_style_segmented :deep(.md-list-selection-item_in-list:first-child:last-child) {
     border-radius: 16dp;
+  }
+
+  /* Action-surface rounding: MDStateLayer and the ripple element both use
+     border-radius: inherit, so shaping the action surface directly gives state layers
+     and ripples the correct shape without container overflow clipping. */
+  &_style_segmented :deep(.md-list-item_in-list:first-child .md-list-item__primary-action),
+  &_style_segmented :deep(.md-list-item_in-list:first-child .md-list-item__body),
+  &_style_segmented
+    :deep(.md-list-selection-item_in-list:first-child .md-list-selection-item__body) {
+    border-start-start-radius: 16dp;
+    border-start-end-radius: 16dp;
+  }
+
+  &_style_segmented :deep(.md-list-item_in-list:last-child .md-list-item__primary-action),
+  &_style_segmented :deep(.md-list-item_in-list:last-child .md-list-item__body),
+  &_style_segmented
+    :deep(.md-list-selection-item_in-list:last-child .md-list-selection-item__body) {
+    border-end-start-radius: 16dp;
+    border-end-end-radius: 16dp;
   }
 }
 </style>

@@ -718,6 +718,62 @@ test('MDList segmented items remain transparent inside the grouped surface', asy
   ).toBe('rgba(0, 0, 0, 0)');
 });
 
+test('MDList segmented first-item action surface has top corners rounded without container clipping', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+  const firstAction = page
+    .getByTestId('visual-md-list-surface-segmented')
+    .locator('.md-list-item:first-child .md-list-item__primary-action');
+
+  const topLeftRadius = await firstAction.evaluate(
+    (node) => getComputedStyle(node).borderTopLeftRadius,
+  );
+
+  expect(
+    topLeftRadius,
+    'first item action surface must carry its own top-left corner (16px) so state layers are shaped without container clipping',
+  ).toBe('16px');
+});
+
+test('MDList segmented last-item action surface has bottom corners rounded without container clipping', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+  const lastAction = page
+    .getByTestId('visual-md-list-surface-segmented')
+    .locator('.md-list-item:last-child .md-list-item__primary-action');
+
+  const bottomRightRadius = await lastAction.evaluate(
+    (node) => getComputedStyle(node).borderBottomRightRadius,
+  );
+
+  expect(
+    bottomRightRadius,
+    'last item action surface must carry its own bottom-right corner (16px) so state layers are shaped without container clipping',
+  ).toBe('16px');
+});
+
+test('MDList segmented container does not use overflow hidden to clip item corners', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+  const segmentedList = page
+    .getByTestId('visual-md-list-surface-segmented')
+    .locator('.md-list')
+    .first();
+
+  const overflow = await segmentedList.evaluate((node) => getComputedStyle(node).overflow);
+
+  expect(
+    overflow,
+    'segmented container must use overflow:clip for visual containment, not overflow:hidden which clips state layers via container instead of action-surface shape',
+  ).toBe('clip');
+});
+
 test('MDList standard list does not add background to Repository Explorer document section', async ({
   page,
 }) => {
