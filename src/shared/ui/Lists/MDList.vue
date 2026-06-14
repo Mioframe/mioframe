@@ -136,14 +136,9 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
   flex-direction: column;
   list-style: none;
   background: transparent;
-  color: var(--md-current-content-color, var(--md-content-color, inherit));
+  color: var(--md-current-content-color, inherit);
 
   &_style_segmented {
-    --md-container-color: var(
-      --md-sys-color-surface-container-low,
-      var(--md-sys-color-surface-container)
-    );
-    --md-content-color: var(--md-sys-color-on-surface);
     /* Items own their corner shapes via action-surface border-radius. overflow: clip
        is used for visual containment only — it does not create a scroll container,
        so the explicit min-width: 0 is required to suppress the automatic grid/flex-item
@@ -151,6 +146,16 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
     --md-private-list-item-container-shape: 0dp;
     --md-private-list-item-action-shape: 0dp;
     --md-private-list-item-segmented-gap: 2dp;
+    /* M3 Expressive segmented lists use filled items separated by gaps. The list
+       container has no background; visual grouping comes from the item fill and the
+       gaps that reveal the parent surface beneath. Item fill uses surface-container-low
+       per the segmented list visual model. The private token cascades to item children,
+       which derive --md-comp-list-item-container-color from it so that item-level
+       overrides (selected, dragged) can still win via the public token. */
+    --md-private-list-item-container-color: var(
+      --md-sys-color-surface-container-low,
+      var(--md-sys-color-surface-container)
+    );
 
     gap: var(--md-private-list-item-segmented-gap);
     padding: 0;
@@ -159,7 +164,6 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
     min-width: 0;
     overflow: clip;
     border-radius: 16dp;
-    background: var(--md-current-container-color, var(--md-container-color));
   }
 
   /* Item-root rounding for first/last/single — keeps selected-item container backgrounds

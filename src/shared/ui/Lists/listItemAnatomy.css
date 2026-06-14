@@ -13,7 +13,7 @@
 
 .md-list-item,
 .md-list-selection-item {
-  --md-comp-list-item-container-color: transparent;
+  --md-comp-list-item-container-color: var(--md-private-list-item-container-color, transparent);
   --md-comp-list-item-disabled-label-text-color: rgb(
     from var(--md-current-content-color, var(--md-sys-color-on-surface)) r g b / 0.38
   );
@@ -39,10 +39,10 @@
     --md-current-content-color,
     var(--md-sys-color-on-surface-variant)
   );
-  --md-comp-list-item-selected-container-color: var(--md-sys-color-secondary-container);
-  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-selected-container-color: var(--md-sys-color-primary-container);
+  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-primary-container);
+  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-primary-container);
+  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-primary-container);
   --md-comp-list-item-state-layer-color: var(--md-comp-list-item-label-text-color);
   --md-comp-list-item-supporting-text-color: var(
     --md-current-content-color,
@@ -56,7 +56,6 @@
     --md-current-content-color,
     var(--md-sys-color-on-surface-variant)
   );
-  --md-content-color: var(--md-comp-list-item-state-layer-color);
 
   position: relative;
   display: flex;

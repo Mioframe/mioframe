@@ -259,6 +259,86 @@ describe('MDList', () => {
     document.body.innerHTML = '';
   });
 
+  describe('transition=true', () => {
+    it('renders the md-list class and style modifier on the TransitionGroup root', () => {
+      const wrapper = mount(MDList, {
+        attachTo: document.body,
+        props: { transition: true },
+        slots: { default: '<div>Item</div>' },
+      });
+
+      expect(wrapper.get('.md-list').classes()).toContain('md-list');
+      expect(wrapper.get('.md-list').classes()).toContain('md-list_style_standard');
+    });
+
+    it('exposes list role via TransitionGroup when selectionMode is none', () => {
+      const wrapper = mount(MDList, {
+        attachTo: document.body,
+        props: { transition: true, tag: 'div' },
+        slots: { default: '<div>Item</div>' },
+      });
+
+      expect(wrapper.get('.md-list').attributes('role')).toBe('list');
+    });
+
+    it('exposes listbox role via TransitionGroup for selection lists', () => {
+      const wrapper = mount(
+        {
+          components: { MDList, MDListSelectionItem },
+          template: `
+            <MDList :transition="true" selection-mode="single" :model-value="null">
+              <MDListSelectionItem label-text="One" value="one" />
+            </MDList>
+          `,
+        },
+        { attachTo: document.body },
+      );
+
+      expect(wrapper.get('.md-list').attributes('role')).toBe('listbox');
+      expect(wrapper.find('[role="option"]').exists()).toBe(true);
+    });
+
+    it('propagates list context to items via TransitionGroup', () => {
+      const wrapper = mount(
+        {
+          components: { MDList, MDListItem },
+          template: `
+            <MDList :transition="true">
+              <MDListItem label-text="Row" />
+            </MDList>
+          `,
+        },
+        { attachTo: document.body },
+      );
+
+      expect(wrapper.get('.md-list-item').attributes('role')).toBe('listitem');
+    });
+
+    it('runs roving keyboard navigation when transition=true and selection is active', async () => {
+      const wrapper = mount(
+        {
+          components: { MDList, MDListSelectionItem },
+          template: `
+            <MDList :transition="true" selection-mode="single" :model-value="null">
+              <MDListSelectionItem label-text="One" value="one" />
+              <MDListSelectionItem label-text="Two" value="two" />
+            </MDList>
+          `,
+        },
+        { attachTo: document.body },
+      );
+
+      await wrapper.vm.$nextTick();
+
+      const options = wrapper.findAll<HTMLElement>('[role="option"]');
+      expect(options[0]?.element.tabIndex).toBe(0);
+
+      options[0]?.element.focus();
+      await options[0]?.trigger('keydown', { key: 'ArrowDown' });
+      expect(document.activeElement).toBe(options[1]?.element);
+    });
+  });
+
   it('warns in development when tag="ul" is requested for a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

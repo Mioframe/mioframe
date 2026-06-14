@@ -687,7 +687,9 @@ test('MDList standard surface context survives intermediate wrappers', async ({ 
   ).toBe('rgba(0, 0, 0, 0)');
 });
 
-test('MDList segmented container owns the grouped surface background', async ({ page }) => {
+test('MDList segmented container is transparent — item fill owns the surface, not the list', async ({
+  page,
+}) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
   const segmentedList = page
@@ -697,12 +699,15 @@ test('MDList segmented container owns the grouped surface background', async ({ 
 
   const bgColor = await segmentedList.evaluate((node) => getComputedStyle(node).backgroundColor);
 
-  expect(bgColor, 'segmented list container must own the grouped surface background').not.toBe(
-    'rgba(0, 0, 0, 0)',
-  );
+  expect(
+    bgColor,
+    'M3 segmented list container must be transparent — visual grouping comes from filled items and gaps, not a list-level background plate',
+  ).toBe('rgba(0, 0, 0, 0)');
 });
 
-test('MDList segmented items remain transparent inside the grouped surface', async ({ page }) => {
+test('MDList segmented items own their surface fill via --md-private-list-item-container-color', async ({
+  page,
+}) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
   const segmentedItem = page
@@ -714,8 +719,8 @@ test('MDList segmented items remain transparent inside the grouped surface', asy
 
   expect(
     bgColor,
-    'segmented list items should stay transparent so the grouped container owns the base surface',
-  ).toBe('rgba(0, 0, 0, 0)');
+    'M3 segmented list items must have a non-transparent fill (surface-container-low) — the list container has no background, individual items carry the visual surface',
+  ).not.toBe('rgba(0, 0, 0, 0)');
 });
 
 test('MDList segmented first-item action surface has top corners rounded without container clipping', async ({
@@ -928,7 +933,10 @@ test('MDListItem standalone multi-action keeps primary/trailing action separatio
 
   const row = page.locator('#standalone-multi-action .md-list-item').first();
   const trailingSlot = row.locator('.md-list-item__trailing-action');
-  const iconButton = row.getByRole('button');
+  // Standalone multi-action now renders an internal primary-action button (position: absolute;
+  // inset: 0) alongside the trailing action slot. Scope to the trailing slot so that
+  // getByRole('button') does not match the primary-action surface.
+  const iconButton = trailingSlot.getByRole('button');
 
   const trailingBox = await trailingSlot.boundingBox();
   const iconBox = await iconButton.boundingBox();

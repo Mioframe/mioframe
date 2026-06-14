@@ -341,6 +341,102 @@ describe('MDListItem', () => {
     expect(trailingEl instanceof HTMLElement && trailingEl.onclick).toBeNull();
   });
 
+  describe('standalone multi-action', () => {
+    it('renders an internal primary action surface and trailing action when standalone', () => {
+      const wrapper = mountListItem(
+        { mode: 'multi-action', onAction: vi.fn() },
+        {
+          inList: false,
+          slots: { trailingAction: '<button type="button">Edit</button>' },
+        },
+      );
+
+      expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(true);
+      expect(wrapper.find('.md-list-item__trailing-action').exists()).toBe(true);
+      expect(wrapper.find('.md-list-item__trailing-action button').text()).toBe('Edit');
+    });
+
+    it('warns in development when standalone multi-action lacks the required slots or handler', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mountListItem({ mode: 'multi-action', onAction: vi.fn() }, { inList: false });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'mode="multi-action" requires either a real primary @action or href',
+        ),
+      );
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('attrs forwarding', () => {
+    it('forwards class and data-* to root for static standalone item', () => {
+      const wrapper = mountListItem({
+        class: 'my-custom-class',
+        'data-track': 'settings-row',
+      });
+
+      const item = wrapper.get('.md-list-item');
+
+      expect(item.classes()).toContain('my-custom-class');
+      expect(item.attributes('data-track')).toBe('settings-row');
+    });
+
+    it('forwards class and data-* to root for static in-list item', () => {
+      const wrapper = mountListItem(
+        { class: 'my-in-list-class', 'data-row-id': '42' },
+        { inList: true },
+      );
+      const item = wrapper.get('.md-list-item');
+
+      expect(item.classes()).toContain('my-in-list-class');
+      expect(item.attributes('data-row-id')).toBe('42');
+    });
+
+    it('forwards aria-label and title to the primary action for single-action in-list items', () => {
+      const wrapper = mountListItem(
+        {
+          mode: 'single-action',
+          onAction: vi.fn(),
+          'aria-label': 'Open item',
+          title: 'Item title',
+        },
+        { inList: true },
+      );
+      const action = wrapper.get('.md-list-item__primary-action');
+
+      expect(action.attributes('aria-label')).toBe('Open item');
+      expect(action.attributes('title')).toBe('Item title');
+    });
+
+    it('root receives non-semantic attrs; action surface receives aria/title for single-action', () => {
+      const wrapper = mountListItem(
+        {
+          mode: 'single-action',
+          onAction: vi.fn(),
+          id: 'row-1',
+          'data-index': '0',
+          'aria-label': 'Navigate',
+        },
+        { inList: true },
+      );
+      const item = wrapper.get('.md-list-item');
+      const action = wrapper.get('.md-list-item__primary-action');
+
+      expect(item.attributes('id')).toBe('row-1');
+      expect(item.attributes('data-index')).toBe('0');
+      expect(action.attributes('aria-label')).toBe('Navigate');
+    });
+
+    it('forwards role override from consumer to root for static standalone items', () => {
+      const wrapper = mountListItem({ role: 'option' });
+
+      expect(wrapper.get('.md-list-item').attributes('role')).toBe('option');
+    });
+  });
+
   it('does not fire the primary action when clicking inside the trailing action slot', async () => {
     const onAction = vi.fn();
     const wrapper = mountListItem(

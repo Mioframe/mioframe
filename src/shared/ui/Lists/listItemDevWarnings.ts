@@ -17,6 +17,9 @@ export const warnSingleActionMissingHandler = (hasActionListener: boolean, hasHr
 /**
  * Emits a development warning when a multi-action MDListItem is missing its
  * trailing action slot or primary action handler.
+ *
+ * Standalone multi-action is supported: an internal primary-action surface is
+ * rendered as a sibling of the trailing action, just like the in-list render.
  * @param hasTrailingAction - true when a `#trailingAction` slot is filled
  * @param hasActionListener - true when an `@action` listener is bound
  * @param hasHref - true when an `href` prop is provided

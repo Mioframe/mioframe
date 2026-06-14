@@ -66,10 +66,16 @@ const showTrailingActionInStaticPath = computed(
   () => hasTrailingAction.value && (!inList.value || selectionMode.value === 'none'),
 );
 const hasPrimaryAction = computed(() => props.mode !== 'static');
-// Suppress interactive action surfaces inside selection lists to avoid rendering a
-// button or link inside a listbox, which is invalid ARIA.
+// Render the internal primary-action surface when:
+// - inside a non-selection list (single-action or multi-action in list context), OR
+// - standalone multi-action (needs a real primary-action button/a separate from the root
+//   so the trailing action slot remains an independent hit target).
+// Standalone single-action is excluded: root IS the interactive surface (button/a).
+// Selection lists are excluded: nesting an interactive control inside listbox is invalid ARIA.
 const usesInternalActionSurface = computed(
-  () => inList.value && hasPrimaryAction.value && selectionMode.value === 'none',
+  () =>
+    hasPrimaryAction.value &&
+    (inList.value ? selectionMode.value === 'none' : props.mode === 'multi-action'),
 );
 
 const {

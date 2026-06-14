@@ -2,27 +2,8 @@
 
 Material 3 / Material 3 Expressive List component family for `src/shared/ui/Lists`.
 
-Mioframe Lists follow the latest recommended Material 3 / Expressive direction. The legacy `baseline` list style is intentionally unsupported and has been removed from the runtime API.
-
-## Surface context
-
-Lists use the shared inherited surface-context contract:
-
-- `--md-current-container-color`
-- `--md-current-content-color`
-
-These default to the existing foundation surface tokens:
-
-- `--md-current-container-color: var(--md-container-color)`
-- `--md-current-content-color: var(--md-content-color)`
-
-This keeps surface ownership explicit:
-
-- parent pane/card/section/sheet owns the actual surface by setting `--md-container-color` and `--md-content-color`
-- layout-only wrappers may sit between the surface owner and the list without breaking inheritance
-- standard `MDList` and default list items stay transparent and inherit the current surface/content context
-- segmented `MDList` establishes a new grouped surface context inside its own bounds only
-- hover, focus, pressed, and selected feedback are expressed through state layers or selected-state tokens, not by injecting a base background into standard rows
+Mioframe Lists target the current Material 3 Expressive contract. The legacy `baseline` list style is
+intentionally unsupported and has been removed from the runtime API.
 
 ## Components
 
@@ -76,86 +57,126 @@ Owns selectable list item semantics and selection indicator. Must be used inside
 
 Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new code.
 
+## Supported combinations
+
+| Component                    | Context                                  | Result                                                                                              |
+| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `MDListItem` (static)        | standalone                               | static visual row; `role="listitem"` by default                                                     |
+| `MDListItem` (single-action) | standalone                               | root is `button`/`a`; full interactive surface                                                      |
+| `MDListItem` (multi-action)  | standalone                               | wrapper `div`; internal `button`/`a` primary action + independent trailing action (same as in-list) |
+| `MDListItem` (static)        | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; no action surface                                                   |
+| `MDListItem` (single-action) | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; internal `button`/`a` primary action                                |
+| `MDListItem` (multi-action)  | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; internal primary action + independent trailing action               |
+| `MDListSelectionItem`        | inside `MDList` with `selectionMode` set | `div[role="option"]`; selection semantics                                                           |
+
+## Unsupported combinations
+
+| Combination                                                                    | Behaviour                                                                                                     | Reason                                                          |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `MDListItem` inside a **selection list** (`selectionMode` ≠ `none`)            | dev warning fired; `role="none"`; action surface and trailing action suppressed                               | Nesting interactive controls inside a `listbox` is invalid ARIA |
+| `MDListSelectionItem` outside a **selection list**                             | dev warning fired; `role="presentation"`; no interactive affordance, no ripple, no state layer, no `tabindex` | `role="option"` without a `listbox` ancestor is invalid ARIA    |
+| `MDListSelectionItem` inside a **non-selection list** (`selectionMode="none"`) | dev warning fired; same inert render as above                                                                 | Same ARIA constraint                                            |
+
+## Visual model — standard vs segmented
+
+### Standard
+
+`listStyle="standard"` (default): list has no background. Items are transparent by default, inheriting the parent surface. Visual grouping comes from layout and content density, not from a containing plate.
+
+### Segmented (M3 Expressive)
+
+`listStyle="segmented"`: implements the M3 Expressive filled-items-with-gaps model.
+
+- The **list container has no background**. There is no plate behind the items.
+- Individual items receive a fill (`surface-container-low`) via `--md-comp-list-item-container-color`.
+- A `2dp` gap between items reveals the parent surface, creating visible separation.
+- First and last items have `16dp` rounded corners on the exposed edges; interior item edges are square.
+- Shape belongs to the item's action surface (and root element), not to parent `overflow` clipping.
+
+This matches M3 documentation: _"Use gaps for contained lists. Gaps leverage expressive shape and containment tactics."_
+
 ## Token contract
 
-### Public component tokens (may be set by consumers)
+### Token naming policy
 
-| Token                                                | Purpose                                                  |
-| ---------------------------------------------------- | -------------------------------------------------------- |
-| `--md-current-container-color`                       | Current inherited Material surface container color       |
-| `--md-current-content-color`                         | Current inherited Material surface content color         |
-| `--md-comp-list-item-container-color`                | Row background; defaults to transparent                  |
-| `--md-comp-list-item-label-text-color`               | Label text color                                         |
-| `--md-comp-list-item-supporting-text-color`          | Supporting text color                                    |
-| `--md-comp-list-item-overline-color`                 | Overline text color                                      |
-| `--md-comp-list-item-leading-icon-color`             | Leading icon and avatar color                            |
-| `--md-comp-list-item-trailing-icon-color`            | Trailing icon color                                      |
-| `--md-comp-list-item-trailing-text-color`            | Trailing text color                                      |
-| `--md-comp-list-item-state-layer-color`              | Interaction state layer color                            |
-| `--md-comp-list-item-selected-container-color`       | Selected row background (MDListSelectionItem)            |
-| `--md-comp-list-item-selected-label-text-color`      | Selected row label color (MDListSelectionItem)           |
-| `--md-comp-list-item-selected-supporting-text-color` | Selected row supporting text color (MDListSelectionItem) |
-| `--md-comp-list-item-selected-trailing-icon-color`   | Selected row trailing icon color (MDListSelectionItem)   |
-| `--md-comp-list-item-disabled-label-text-color`      | Disabled row label color                                 |
-| `--md-comp-list-item-disabled-leading-icon-color`    | Disabled row leading icon color                          |
-| `--md-comp-list-item-disabled-supporting-text-color` | Disabled row supporting text color                       |
-| `--md-comp-list-item-disabled-trailing-icon-color`   | Disabled row trailing icon color                         |
+Token names in this family follow these rules:
 
-### Restricted token (do not use for consumer sizing)
+| Prefix                                                        | Meaning                                                                 | Consumer access                                                       |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `--md-comp-list-item-*`                                       | Public component-level tokens matching Material semantics               | Consumers may set these to theme the component                        |
+| `--md-private-list-item-*`                                    | Private implementation variables used internally across the List family | **Must not** be set by consumers outside `src/shared/ui/Lists`        |
+| `--md-sys-color-*`                                            | System-level Material color roles                                       | Consumed by `--md-comp-*` defaults; do not override at the item level |
+| `--md-current-container-color` / `--md-current-content-color` | Project surface-context tokens                                          | Set by surface owners (cards, sheets, panes) and inherited down       |
 
-| Token                                      | Status                        | Notes                                                                                              |
-| ------------------------------------------ | ----------------------------- | -------------------------------------------------------------------------------------------------- |
-| `--md-comp-list-item-min-container-height` | Internal / compatibility-only | Compatibility escape hatch for internal implementation. Must not be used as a consumer sizing API. |
+The following generic tokens are **not** part of the public API and are **not** set by this component family:
+`--md-container-color`, `--md-content-color`. These were removed to eliminate ambiguous cascade bleed.
 
-Consumers must not use `--md-comp-list-item-min-container-height` to force arbitrary row heights. List sizing is content-driven by default: label-only rows resolve to one line, supporting text resolves to two lines by default, and overline plus supporting text resolves to three lines. The `lineCount` prop exists only for the supported Material one-line, two-line, and three-line layouts. It is not a visual tuning escape hatch.
+### Public component tokens
 
-### Private implementation variables (internal only — must not be used by consumers)
+| Token                                                | Purpose                                                                                       |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `--md-comp-list-item-container-color`                | Row background; defaults to `transparent` for standard, `surface-container-low` for segmented |
+| `--md-comp-list-item-label-text-color`               | Label text color                                                                              |
+| `--md-comp-list-item-supporting-text-color`          | Supporting text color                                                                         |
+| `--md-comp-list-item-overline-color`                 | Overline text color                                                                           |
+| `--md-comp-list-item-leading-icon-color`             | Leading icon and avatar color                                                                 |
+| `--md-comp-list-item-trailing-icon-color`            | Trailing icon color                                                                           |
+| `--md-comp-list-item-trailing-text-color`            | Trailing text color                                                                           |
+| `--md-comp-list-item-state-layer-color`              | Interaction state layer color                                                                 |
+| `--md-comp-list-item-selected-container-color`       | Selected row background — defaults to `primary-container`                                     |
+| `--md-comp-list-item-selected-label-text-color`      | Selected row label color — defaults to `on-primary-container`                                 |
+| `--md-comp-list-item-selected-supporting-text-color` | Selected row supporting text color                                                            |
+| `--md-comp-list-item-selected-trailing-icon-color`   | Selected row trailing icon color                                                              |
+| `--md-comp-list-item-disabled-label-text-color`      | Disabled row label color                                                                      |
+| `--md-comp-list-item-disabled-leading-icon-color`    | Disabled row leading icon color                                                               |
+| `--md-comp-list-item-disabled-supporting-text-color` | Disabled row supporting text color                                                            |
+| `--md-comp-list-item-disabled-trailing-icon-color`   | Disabled row trailing icon color                                                              |
 
-| Token                                                 | Default owner (fallback)                       | Override by | Purpose                                                                                          |
-| ----------------------------------------------------- | ---------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
-| `--md-private-list-item-action-shape`                 | MDListItem anatomy (12dp)                      | MDList      | Shape of action surface (button/a)                                                               |
-| `--md-private-list-item-container-shape`              | MDListItem anatomy (12dp)                      | MDList      | Shape of list item root                                                                          |
-| `--md-private-list-item-content-padding-inline-start` | MDListItem anatomy (16dp)                      | MDList      | Leading inline padding                                                                           |
-| `--md-private-list-item-content-padding-inline-end`   | MDListItem anatomy (16dp)                      | MDList      | Trailing inline padding                                                                          |
-| `--md-private-list-item-content-padding-block`        | MDListItem anatomy (10dp)                      | MDList      | Block padding                                                                                    |
-| `--md-private-list-item-leading-space`                | MDListItem anatomy (12dp)                      | MDList      | Space between leading content and body                                                           |
-| `--md-private-list-item-leading-size`                 | MDListItem anatomy (20dp)                      | MDList      | Leading icon/element size                                                                        |
-| `--md-private-list-item-passive-trailing-min-size`    | MDListItem anatomy (28dp)                      | MDList      | Minimum trailing element size                                                                    |
-| `--md-private-list-item-trailing-space`               | MDListItem anatomy (16dp)                      | MDList      | Space before trailing content                                                                    |
-| `--md-private-list-item-trailing-action-reserved`     | MDListItem anatomy (56dp)                      | MDList      | Width reserved for the trailing action hit zone in multi-action rows (padding-start + min-width) |
-| `--md-private-list-item-segmented-gap`                | MDList only (0dp)                              | —           | Gap between segmented items; list-level only, not needed by standalone items                     |
-| `--md-private-list-item-resolved-container-height`    | MDListItem, MDListSelectionItem (inline style) | —           | Computed height for current line count                                                           |
+### Restricted token
 
-The "Default owner (fallback)" column lists the baseline value used when no ancestor `MDList` sets the variable. `MDList` may override any of these by setting the variable on the `.md-list` element, which descendants inherit. `MDList` segmented style overrides `action-shape` and `container-shape` to `0dp`.
+| Token                                      | Status                        | Notes                                                               |
+| ------------------------------------------ | ----------------------------- | ------------------------------------------------------------------- |
+| `--md-comp-list-item-min-container-height` | Internal / compatibility-only | Do not use as a consumer sizing API. List sizing is content-driven. |
+
+### Private implementation variables
+
+| Token                                                 | Default (fallback) | Override by | Purpose                                                                                                                                                                                                    |
+| ----------------------------------------------------- | ------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--md-private-list-item-action-shape`                 | 12dp               | MDList      | Shape of action surface (button/a)                                                                                                                                                                         |
+| `--md-private-list-item-container-shape`              | 12dp               | MDList      | Shape of list item root                                                                                                                                                                                    |
+| `--md-private-list-item-content-padding-inline-start` | 16dp               | MDList      | Leading inline padding                                                                                                                                                                                     |
+| `--md-private-list-item-content-padding-inline-end`   | 16dp               | MDList      | Trailing inline padding                                                                                                                                                                                    |
+| `--md-private-list-item-content-padding-block`        | 10dp               | MDList      | Block padding                                                                                                                                                                                              |
+| `--md-private-list-item-leading-space`                | 12dp               | MDList      | Space between leading content and body                                                                                                                                                                     |
+| `--md-private-list-item-leading-size`                 | 20dp               | MDList      | Leading icon/element size                                                                                                                                                                                  |
+| `--md-private-list-item-passive-trailing-min-size`    | 28dp               | MDList      | Minimum trailing element size                                                                                                                                                                              |
+| `--md-private-list-item-trailing-space`               | 16dp               | MDList      | Space before trailing content                                                                                                                                                                              |
+| `--md-private-list-item-trailing-action-reserved`     | 56dp               | MDList      | Width reserved for trailing action hit zone                                                                                                                                                                |
+| `--md-private-list-item-container-color`              | (unset)            | MDList      | Item fill color; unset for standard, `surface-container-low` for segmented; items derive `--md-comp-list-item-container-color` from this so that selected/dragged overrides still win via the public token |
+| `--md-private-list-item-segmented-gap`                | 0dp                | —           | Gap between segmented items; list-level only                                                                                                                                                               |
+| `--md-private-list-item-resolved-container-height`    | Inline style       | —           | Computed height for current line count                                                                                                                                                                     |
+
+`MDList` may override any `--md-private-list-item-*` by setting the variable on `.md-list`, which descendants inherit. The segmented style overrides `action-shape` and `container-shape` to `0dp`.
 
 Consumers outside `src/shared/ui/Lists` must not reference any `--md-private-list-item-*` variable.
 
-`--md-current-container-color` and `--md-current-content-color` are foundation-level inherited surface-context tokens, not List-private tokens.
+## Line-count contract
 
-## DOM contract
+`lineCount` declares the **total** number of text rows in the list item layout:
 
-- Non-selectable lists: `div[role="list"]` by default, `ul` when children are guaranteed `li` wrappers.
-- Selection lists: always `div[role="listbox"]` — `tag="ul"` is overridden.
-- Every `MDListItem` renders a stable outer wrapper: `li` (no role) or `div[role="listitem"]` inside non-selection lists, `div[role="none"]` inside selection lists (prevents invalid `listbox > listitem`).
-- Every `MDListSelectionItem` inside a selection list renders as `div[role="option"]`. Outside a selection list it renders as `div[role="presentation"]` to avoid orphaned `role="option"` without a listbox parent. Orphan items also have no state layer, no ripple, no pointer cursor, and no `tabindex`.
-- Single-action items render the primary action as an internal `button` or `a` — never as the listitem root. Inside a selection list, `MDListItem` suppresses both the action surface and any trailing action slot to avoid nesting interactive elements inside a listbox.
-- Multi-action items render one internal primary action plus one independent trailing action region. The primary action is `position: absolute; inset: 0` covering the full visual row, with its `MDStateLayer` inside. The trailing action container sits on top as a positioned overlay with `pointer-events: none` on the container background so that empty trailing padding (and hover) falls through to the primary action hit target; direct slot content (icon button) restores its own `pointer-events: auto`. The trailing slot content has its own independent state layer. Browser-level tests in `tests/e2e/visual/shared-ui.spec.ts` verify that: primary area hover activates row-level hover state; trailing target hover removes row-level hover state; empty trailing padding hover falls through to primary action.
-- No native interactive element may be nested inside another native interactive element.
+| `lineCount` | Meaning                                                                     | Supporting text clamp |
+| ----------- | --------------------------------------------------------------------------- | --------------------- |
+| `1`         | Label text only                                                             | —                     |
+| `2`         | Label + one line of supporting text                                         | 1 line                |
+| `3`         | Label + two lines of supporting text, or overline + label + supporting text | 2 lines               |
 
-## Internal module map
+The component auto-resolves line count from slot/prop presence when `lineCount` is not set:
 
-| File                             | Responsibility                                                                                                                                                    |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `listContext.ts`                 | Provide/inject list context; selection state, tag, semantics                                                                                                      |
-| `listItemSizing.ts`              | Material row height constants for the current Expressive geometry                                                                                                 |
-| `listItemLayout.ts`              | Shared line-count resolution and host-style helpers                                                                                                               |
-| `listDevWarnings.ts`             | Development-only warning helpers for MDList semantics and misuse                                                                                                  |
-| `listItemAttrs.ts`               | Private attr-routing helper that keeps semantic attrs on root rows unless an internal action surface owns them                                                    |
-| `listItemDevWarnings.ts`         | Development-only warning functions for MDListItem misuse                                                                                                          |
-| `listItemAnatomy.css`            | Shared List-family CSS: token defaults, state modifier remaps, body/element layout, typography; imported as non-scoped by both MDListItem and MDListSelectionItem |
-| `useListItemAnatomy.ts`          | Shared anatomy computeds (slot detection, line count, host style) used by MDListItem and MDListSelectionItem                                                      |
-| `listSelectionItemNavigation.ts` | Roving tab-stop and keyboard navigation for listbox selection items                                                                                               |
-| `useListSelectionKeyboard.ts`    | Composable that wires keyboard/focus lifecycle into MDList                                                                                                        |
+- `overline` + `supportingText` → 3
+- `supportingText` only → 2
+- neither → 1
+
+Use `lineCount` only when you need to declare a fixed layout that differs from the auto-resolved value. Do not use `lineCount` or `--md-comp-list-item-min-container-height` as arbitrary height-tuning controls.
 
 ## Row sizing
 
@@ -167,22 +188,47 @@ Current Expressive minimum row heights:
 | 2          | 72dp       |
 | 3          | 88dp       |
 
-List item height is content-driven by default. Use `lineCount` only when you need to declare one of the supported Material one-line, two-line, or three-line layouts explicitly. Do not use `lineCount` or `--md-comp-list-item-min-container-height` as arbitrary visual height-tuning controls.
+## DOM contract
 
-## Supported features
+- Non-selectable lists: `div[role="list"]` by default, `ul` when children are guaranteed `li` wrappers.
+- Selection lists: always `div[role="listbox"]` — `tag="ul"` is overridden with a dev warning.
+- Every `MDListItem` inside a non-selection list renders `div[role="listitem"]` or `li`.
+- Every `MDListItem` inside a selection list renders `div[role="none"]` with no action surface and no trailing action (prevents invalid `listbox > listitem`).
+- Every `MDListSelectionItem` inside a selection list renders `div[role="option"]`.
+- `MDListSelectionItem` outside a selection list renders `div[role="presentation"]` with no interactive affordance.
+- Single-action items in list context render the primary action as an internal `button` or `a`. Standalone single-action items use the root element itself as the interactive surface.
+- Multi-action items (both standalone and in list context) render one internal primary action plus one independent trailing action region. The primary action is `position: absolute; inset: 0` covering the full row. The trailing action container is `pointer-events: none` on the background padding so that empty trailing space falls through to the primary action; direct slot content restores `pointer-events: auto`.
+- No native interactive element may be nested inside another native interactive element.
 
-- List styles: `standard`, `segmented`
-- Item modes (MDListItem): `static`, `single-action`, `multi-action`
-- Selection (MDListSelectionItem): `single` and `multiple` modes, checkmark indicator, roving keyboard focus; renders `role="presentation"` with no state layer, ripple, pointer cursor, or `tabindex` when used outside a selection list
-- Anatomy slots: leading icon/avatar/media/control, overline, label, supporting text, trailing text/icon, trailing action (MDListItem only)
-- Line counts: one-line, two-line, three-line
-- States: enabled, disabled, hover, focus, pressed, dragged (MDListItem), selected (MDListSelectionItem)
-- Selection list misuse safety: `MDListItem` inside a selection list renders `role="none"` and suppresses both its primary action surface and any trailing action slot, preventing invalid interactive controls inside a listbox
-- Orphan selection item safety: `MDListSelectionItem` without a selection context renders as inert presentation content with no interactive affordance
+## Dragged state
+
+`MDListItem` supports a `dragged` visual state. The dragged state uses `tertiary-container` as the item background, level-2 elevation, and `on-tertiary-container` for all content colors. This is an intentional deviation from the Material list specs, which document dragged state as an interaction state but do not specify exact color tokens for lists. The tertiary-container role was chosen to make dragged items visually distinct from both hovered and selected items. This is marked as a **project-level deviation** pending a future verification against Design Kit drag-and-drop specifications.
+
+## `listItemAnatomy.css` scope
+
+`listItemAnatomy.css` is imported as a non-scoped `<style>` block by both `MDListItem` and `MDListSelectionItem` so that the two components share one implementation of token defaults, state modifier remaps, and element geometry instead of duplicating it in each scoped block.
+
+All selectors are BEM-namespaced to `.md-list-item` and `.md-list-selection-item`. They must not be used outside `src/shared/ui/Lists`. This file is **not** a global CSS module for consumers.
+
+## Internal module map
+
+| File                             | Responsibility                                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `listContext.ts`                 | Provide/inject list context; selection state, tag, semantics                                                 |
+| `listItemSizing.ts`              | Material row height constants for the current Expressive geometry                                            |
+| `listItemLayout.ts`              | Shared line-count resolution and host-style helpers                                                          |
+| `listDevWarnings.ts`             | Development-only warning helpers for MDList semantics and misuse                                             |
+| `listItemAttrs.ts`               | Private attr-routing helper: semantic attrs on root rows unless internal action surface owns them            |
+| `listItemDevWarnings.ts`         | Development-only warning functions for MDListItem misuse                                                     |
+| `listItemAnatomy.css`            | Shared List-family CSS: token defaults, state modifier remaps, body/element layout, typography               |
+| `useListItemAnatomy.ts`          | Shared anatomy computeds (slot detection, line count, host style) used by MDListItem and MDListSelectionItem |
+| `listSelectionItemNavigation.ts` | Roving tab-stop and keyboard navigation for listbox selection items                                          |
+| `useListSelectionKeyboard.ts`    | Composable that wires keyboard/focus lifecycle into MDList                                                   |
 
 ## Intentionally unsupported
 
 - `baseline` list style: legacy / reference-only, not a current Material recommendation
+- Standalone `mode="multi-action"` MDListItem
 - Expandable / swipe list variants
 - Radio/checkbox controls as selection indicators (checkmark only)
 - Project-specific grid layout on MDList/MDListContainer
@@ -191,14 +237,23 @@ List item height is content-driven by default. Use `lineCount` only when you nee
 
 `MDMenuItem` and `MDMenuItemBase` are separate Material components. They share list-like anatomy but must not depend on private List variables (`--md-private-list-item-*`). Menu geometry is owned by Menu component CSS.
 
-## Material and Figma verification status
+## Known limitations
 
-Material sources checked: `components/lists/overview`, `guidelines`, `specs`, `accessibility`, and `foundations/interaction/states/state-layers`.
+- **Multi-action keyboard traversal**: keyboard traversal between primary and trailing action within one multi-action item is partial. The trailing action is only reachable by Tab; no explicit arrow-key navigation between primary and trailing action is implemented.
+- **Expressive geometry partial verification**: exact Expressive row heights (64dp one-line, 72dp two-line, 88dp three-line) and spacing values are based on the M3 docs snapshot. Full Figma Design Kit verification has not been completed.
+- **Dragged state colors**: see "Dragged state" section above; pending Design Kit verification.
 
-Geometry values (heights, padding, spacing) are based on the Material cache snapshot. Figma live verification is **partial** — exact Expressive geometry has not been fully verified against the Design Kit:
+## Material verification status
 
-- Expressive one-line height (currently 64dp)
-- Exact state-layer shape and bounds for expressive variant
-- Leading/trailing spacing values for expressive variant
+Material sources checked: `components/lists/specs`, `components/lists/guidelines`, `components/lists/accessibility`.
 
-Lists remain `partial` until Figma geometry verification is complete. Re-verify against the Design Kit when Figma MCP access is available.
+Confirmed from specs:
+
+- Selected color roles: `primary-container` / `on-primary-container` (items 8 and 9 in the color list)
+- Segmented style: filled items + gaps; no list-level background plate
+- Standard/segmented are visual choices only; they do not affect behavior
+
+Partial / unverified:
+
+- Expressive one-line height (currently 64dp) — not confirmed against Design Kit
+- Dragged state color tokens — no explicit list-level dragged token in cached docs

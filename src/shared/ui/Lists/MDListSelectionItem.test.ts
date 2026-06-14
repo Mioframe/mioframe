@@ -259,6 +259,28 @@ describe('MDListSelectionItem', () => {
     warnSpy.mockRestore();
   });
 
+  describe('attrs forwarding', () => {
+    it('forwards class and data-* to the selection item root', () => {
+      const wrapper = mountSelectionItem({ value: 'opt', class: 'custom', 'data-id': '5' });
+      const item = wrapper.get('.md-list-selection-item');
+
+      expect(item.classes()).toContain('custom');
+      expect(item.attributes('data-id')).toBe('5');
+    });
+
+    it('forwards aria-label and title to the selection item root', () => {
+      const wrapper = mountSelectionItem({
+        value: 'opt',
+        'aria-label': 'Color option red',
+        title: 'Red',
+      });
+      const item = wrapper.get('.md-list-selection-item');
+
+      expect(item.attributes('aria-label')).toBe('Color option red');
+      expect(item.attributes('title')).toBe('Red');
+    });
+  });
+
   it('does not fire a selection update when clicked inside a list with selectionMode=none', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const onUpdateModelValue = vi.fn();
