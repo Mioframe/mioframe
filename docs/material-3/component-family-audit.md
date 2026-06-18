@@ -166,7 +166,7 @@ Material cache confirms menus are temporary action sets; persistent actions belo
 Current state:
 
 - uses `useOverlayContainer`, `TeleportContainer`, `onInteractionOutside`, Floating UI, focus trap, keyboard search, escape stack, and browser back stack;
-- renders through `MDListContainer` with default `role="menu"`.
+- renders its own menu container with default `role="menu"` and menu-specific CSS; it no longer depends on `MDListContainer`.
 
 Gaps:
 
