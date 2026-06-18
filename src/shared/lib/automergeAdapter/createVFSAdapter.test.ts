@@ -4,8 +4,10 @@ import { FileSystemError, VirtualFileSystem, VfsError } from '../virtualFileSyst
 import { MemoryFileSystem } from '../virtualFileSystem/MemoryFileSystem';
 import { createVFSAdapter } from './createVFSAdapter';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
+import { encodePreferredV3FileName } from './filenameCodecV3';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import type { StorageKey } from './types';
+import { decodeV3StorageWrapper, encodeV3StorageWrapper } from './wrapperCodecV3';
 
 // Real 64-char hex hash (SHA-256 shape) used throughout the codec tests.
 const HASH_A = '0df10d48afdaa0df1a484b006e4854cec8640d416745ce0cc874c07027b69cc2';
@@ -16,6 +18,7 @@ const getDocumentId = () => new Repo().create({}).documentId;
 
 const DATA_A = new Uint8Array([1, 2, 3]);
 const DATA_B = new Uint8Array([4, 5, 6]);
+const EMPTY_DATA = new Uint8Array();
 
 const requireV2Name = (docId: string, kind: 'snapshot' | 'incremental', hash: string): string => {
   const name = encodeStorageKeyToV2FileName(docId, kind, hash);
@@ -31,8 +34,8 @@ const setupVfs = async (): Promise<{ vfs: VirtualFileSystem; path: string }> => 
   return { vfs, path };
 };
 
-describe('createVFSAdapter – save uses v2 compact filenames', () => {
-  it('saves a snapshot with a v2 compact filename (shorter than 112 chars)', async () => {
+describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
+  it('saves snapshot chunks using the v3 mioframe .mf filename format', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
@@ -42,12 +45,24 @@ describe('createVFSAdapter – save uses v2 compact filenames', () => {
 
     const entries = await vfs.readDirectory(path);
     const names = entries.map(([name]) => name);
-    const expectedV2 = requireV2Name(docId, 'snapshot', HASH_A);
 
-    expect(names).toContain(expectedV2);
+    expect(names).toContain(`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`);
   });
 
-  it('saves an incremental with a v2 compact filename', async () => {
+  it('saves a snapshot with a short v3 filename', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.save(key, DATA_A);
+
+    const entries = await vfs.readDirectory(path);
+    const names = entries.map(([name]) => name);
+    expect(names).toContain(`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`);
+  });
+
+  it('saves an incremental with a short v3 filename', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const key: StorageKey = [docId, 'incremental', HASH_B];
@@ -57,7 +72,26 @@ describe('createVFSAdapter – save uses v2 compact filenames', () => {
 
     const entries = await vfs.readDirectory(path);
     const names = entries.map(([name]) => name);
-    expect(names).toContain(requireV2Name(docId, 'incremental', HASH_B));
+    expect(names).toContain(`${docId.slice(0, 6)}.i.${HASH_B.slice(0, 8)}.mf`);
+  });
+
+  it('wraps v3 files and load returns the original Automerge bytes, not the wrapper bytes', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.save(key, DATA_A);
+
+    const fileName = encodePreferredV3FileName(key);
+    if (!fileName) throw new Error('Expected v3 filename');
+
+    const storedBytes = await vfs.readFile(`${path}/${fileName}`);
+    const wrappedBytes = new Uint8Array(await storedBytes.arrayBuffer());
+
+    expect(wrappedBytes).not.toEqual(DATA_A);
+    expect(decodeV3StorageWrapper(wrappedBytes)).toEqual({ key, data: DATA_A });
+    await expect(adapter.load(key)).resolves.toEqual(DATA_A);
   });
 });
 
@@ -86,6 +120,20 @@ describe('createVFSAdapter – load reads legacy files', () => {
     expect(result).toEqual(DATA_A);
   });
 
+  it('loads data from a v3 wrapper file', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const fileName = encodePreferredV3FileName(key);
+    if (!fileName) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${fileName}`, encodeV3StorageWrapper(key, DATA_A));
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load(key);
+
+    expect(result).toEqual(DATA_A);
+  });
+
   it('returns undefined for a missing key', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
@@ -96,21 +144,23 @@ describe('createVFSAdapter – load reads legacy files', () => {
     expect(result).toBeUndefined();
   });
 
-  it('reads a v2 full-key file directly without scanning the directory', async () => {
+  it('reads a preferred v3 full-key file directly without scanning the directory', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
-    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
-    await vfs.writeFile(`${path}/${v2Name}`, DATA_A);
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    if (!v3Name) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${v3Name}`, encodeV3StorageWrapper(key, DATA_A));
     const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
 
     const adapter = createVFSAdapter(vfs, path);
-    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+    const result = await adapter.load(key);
 
     expect(result).toEqual(DATA_A);
     expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
-  it('falls back to the directory scan when direct v2 read misses and only a legacy file exists', async () => {
+  it('falls back to the directory scan when preferred v3 read misses and only a legacy file exists', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
@@ -123,10 +173,10 @@ describe('createVFSAdapter – load reads legacy files', () => {
 
     expect(result).toEqual(DATA_A);
     expect(readDirectorySpy).toHaveBeenCalledTimes(1);
-    expect(readFileSpy).toHaveBeenCalledTimes(2);
+    expect(readFileSpy).toHaveBeenCalledTimes(3);
   });
 
-  it('falls back to the directory scan when direct v2 read misses', async () => {
+  it('falls back to the directory scan when preferred v3 read misses', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const scanOnlyLegacyName = `${docId}_snapshot_${HASH_A}`;
@@ -139,24 +189,26 @@ describe('createVFSAdapter – load reads legacy files', () => {
 
     expect(result).toEqual(DATA_A);
     expect(readDirectorySpy).toHaveBeenCalledTimes(1);
-    expect(readFileSpy).toHaveBeenCalledTimes(2);
+    expect(readFileSpy).toHaveBeenCalledTimes(3);
   });
 
-  it('prefers v2 data over legacy when both direct paths exist for the same full key', async () => {
+  it('prefers a valid v3 file over legacy when both exist for the same full key', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
-    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    if (!v3Name) throw new Error('Expected v3 filename');
     const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
-    const v2Data = new Uint8Array([40, 50, 60]);
+    const v3Data = new Uint8Array([40, 50, 60]);
     const legacyData = new Uint8Array([10, 20, 30]);
     await vfs.writeFile(`${path}/${legacyName}`, legacyData);
-    await vfs.writeFile(`${path}/${v2Name}`, v2Data);
+    await vfs.writeFile(`${path}/${v3Name}`, encodeV3StorageWrapper(key, v3Data));
     const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
 
     const adapter = createVFSAdapter(vfs, path);
-    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+    const result = await adapter.load(key);
 
-    expect(result).toEqual(v2Data);
+    expect(result).toEqual(v3Data);
     expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
@@ -186,6 +238,37 @@ describe('createVFSAdapter – load reads legacy files', () => {
 
     expect(result).toEqual(DATA_A);
     expect(readDirectorySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues to a suffixed v3 candidate when the preferred v3 file is invalid', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${preferredName}`, new Uint8Array([0xde, 0xad]));
+    await vfs.writeFile(
+      `${path}/${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.1.mf`,
+      encodeV3StorageWrapper(key, DATA_A),
+    );
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load(key);
+
+    expect(result).toEqual(DATA_A);
+  });
+
+  it('skips empty v2 files instead of returning invalid empty data', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+    await vfs.writeFile(`${path}/${v2Name}`, EMPTY_DATA);
+
+    const adapter = createVFSAdapter(vfs, path);
+    const result = await adapter.load(key);
+
+    expect(result).toBeUndefined();
   });
 });
 
@@ -307,6 +390,45 @@ describe('createVFSAdapter – loadRange handles both legacy and v2 files', () =
     const kinds = all.map((c) => c.key[1]).sort((a, b) => String(a).localeCompare(String(b)));
     expect(kinds).toEqual(['incremental', 'snapshot']);
   });
+
+  it('returns logical key with the full Automerge key from a v3 wrapper file', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const fileName = encodePreferredV3FileName(key);
+    if (!fileName) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${fileName}`, encodeV3StorageWrapper(key, DATA_A));
+
+    const adapter = createVFSAdapter(vfs, path);
+    const chunks = await adapter.loadRange([docId]);
+
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.key).toEqual(key);
+    expect(chunks[0]?.data).toEqual(DATA_A);
+  });
+
+  it('skips invalid and empty v3 wrapper files during loadRange', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const validKey: StorageKey = [docId, 'snapshot', HASH_A];
+    const validName = encodePreferredV3FileName(validKey);
+    if (!validName) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${validName}`, encodeV3StorageWrapper(validKey, DATA_A));
+    await vfs.writeFile(
+      `${path}/${docId.slice(0, 6)}.s.${HASH_B.slice(0, 8)}.1.mf`,
+      new Uint8Array([1]),
+    );
+    await vfs.writeFile(
+      `${path}/${docId.slice(0, 6)}.i.${HASH_B.slice(0, 8)}.2.mf`,
+      encodeV3StorageWrapper([docId, 'incremental', HASH_B], EMPTY_DATA),
+    );
+
+    const adapter = createVFSAdapter(vfs, path);
+    const chunks = await adapter.loadRange([docId]);
+
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.key).toEqual(validKey);
+  });
 });
 
 describe('createVFSAdapter – remove deletes matching legacy and v2 files', () => {
@@ -376,6 +498,23 @@ describe('createVFSAdapter – remove deletes matching legacy and v2 files', () 
     const entries = await vfs.readDirectory(path);
     expect(entries.map(([n]) => n)).toContain(v2B);
   });
+
+  it('removes valid v3 variants for the same logical key, including suffixed copies', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+    const copiedName = `${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`;
+    await vfs.writeFile(`${path}/${preferredName}`, encodeV3StorageWrapper(key, DATA_A));
+    await vfs.writeFile(`${path}/${copiedName}`, encodeV3StorageWrapper(key, DATA_A));
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.remove(key);
+
+    const entries = await vfs.readDirectory(path);
+    expect(entries).toHaveLength(0);
+  });
 });
 
 describe('createVFSAdapter – removeRange deletes matching legacy and v2 files', () => {
@@ -420,6 +559,27 @@ describe('createVFSAdapter – removeRange deletes matching legacy and v2 files'
     const names = entries.map(([n]) => n);
     expect(names).not.toContain(legacyName);
     expect(names).not.toContain(v2Name);
+  });
+
+  it('deletes valid v3 files within the prefix', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const snapshotKey: StorageKey = [docId, 'snapshot', HASH_A];
+    const incrementalKey: StorageKey = [docId, 'incremental', HASH_B];
+    const snapshotName = encodePreferredV3FileName(snapshotKey);
+    const incrementalName = `${docId.slice(0, 6)}.i.${HASH_B.slice(0, 8)} (1).mf`;
+    if (!snapshotName) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${snapshotName}`, encodeV3StorageWrapper(snapshotKey, DATA_A));
+    await vfs.writeFile(
+      `${path}/${incrementalName}`,
+      encodeV3StorageWrapper(incrementalKey, DATA_B),
+    );
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.removeRange([docId]);
+
+    const entries = await vfs.readDirectory(path);
+    expect(entries).toHaveLength(0);
   });
 
   it('leaves unrelated doc files untouched', async () => {

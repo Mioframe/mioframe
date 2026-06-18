@@ -60,6 +60,9 @@ export const zodStorageKey = union([
 /** Complete storage-key tuple for persisted Automerge files. */
 export type StorageKey = output<typeof zodStorageKey>;
 
+/** Full chunk storage key for snapshot or incremental entries. */
+export type ChunkStorageKey = Extract<StorageKey, [unknown, unknown, unknown]>;
+
 export const zodPartialAutomergeFileName = union([
   zodStorageAdapterId,
   templateLiteral([zodStorageAdapterId, zodFileExtension]),
