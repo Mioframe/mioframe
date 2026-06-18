@@ -31,6 +31,35 @@ describe('filenameCodecV3', () => {
     });
   });
 
+  it('parses supported numeric and manual suffix candidates', () => {
+    const key = getKey();
+
+    expect(decodeV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}.2.mf`)).toEqual(
+      {
+        docPrefix: key[0].slice(0, 6),
+        kind: 'snapshot',
+        hashPrefix: HASH_A.slice(0, 8),
+        suffix: '.2',
+      },
+    );
+    expect(
+      decodeV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} (1).mf`),
+    ).toEqual({
+      docPrefix: key[0].slice(0, 6),
+      kind: 'snapshot',
+      hashPrefix: HASH_A.slice(0, 8),
+      suffix: ' (1)',
+    });
+  });
+
+  it('rejects unrelated same-prefix .mf names', () => {
+    const key = getKey();
+
+    expect(
+      decodeV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`),
+    ).toBeUndefined();
+  });
+
   it('uses controlled numeric suffixes without expanding prefixes', () => {
     const key = getKey();
 

@@ -24,7 +24,9 @@ import {
 
 /**
  * Creates an Automerge storage adapter backed by a VirtualFileSystem path.
- * New writes use v2 compact filenames. Reads and listings recognise both legacy and v2 files.
+ * New chunk writes use short v3 `.mf` wrapper files, while non-chunk entries such as the marker
+ * file keep their legacy filenames. Reads and listings remain backward-compatible with legacy and
+ * v2 chunk files.
  * @param vfs - Mounted virtual file system.
  * @param path - Absolute path of the repository directory inside the VFS.
  * @returns Automerge storage adapter interface.

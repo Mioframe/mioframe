@@ -28,7 +28,9 @@ import {
 
 /**
  * Creates an Automerge storage adapter backed by a `DirectoryForStorageAdapter`.
- * New writes use v2 compact filenames. Reads and listings recognise both legacy and v2 files.
+ * New chunk writes use short v3 `.mf` wrapper files, while non-chunk entries such as the marker
+ * file keep their legacy filenames. Reads and listings remain backward-compatible with legacy and
+ * v2 chunk files.
  * @param directory - Directory abstraction supplying Automerge storage entries.
  * @returns Automerge storage adapter interface.
  */

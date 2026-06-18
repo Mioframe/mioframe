@@ -94,8 +94,9 @@ export const isPlausibleV3CandidateForPrefix = (
 };
 
 /**
- * Resolves a writable short v3 filename without expanding logical prefixes.
- * Existing invalid, unreadable, or empty candidates remain occupied.
+ * Resolves a writable short physical v3 `.mf` filename without expanding logical prefixes.
+ * Existing invalid, unreadable, or empty candidates remain occupied so save never overwrites an
+ * unknown wrapper candidate.
  * @param key - Full logical chunk key to persist.
  * @param existingNames - Current directory entry names.
  * @param readCandidateKeyId - Callback that returns a valid decoded logical key id, or undefined for invalid content.
@@ -167,13 +168,27 @@ export const getGeneratedV3PrefixForKey = (key: ChunkStorageKey): string | undef
 };
 
 /**
- * Returns whether a filename begins with the generated short v3 prefix for a key.
+ * Returns whether a filename belongs to the generated short v3 candidate family for a key.
+ * The physical filename must first decode as a plausible v3 `.mf` candidate; matching the shared
+ * prefix alone is not sufficient.
  * @param name - Physical filename.
  * @param key - Full logical chunk key.
  * @returns True when the filename is in the exact generated candidate family for that key.
  */
 export const isGeneratedV3CandidateForKey = (name: string, key: ChunkStorageKey): boolean => {
+  const parsed = decodeV3CandidateFileName(name);
+
+  if (!parsed) {
+    return false;
+  }
+
   const prefix = getGeneratedV3PrefixForKey(key);
 
-  return prefix !== undefined && name.startsWith(prefix);
+  return (
+    prefix !== undefined &&
+    parsed.kind === key[1] &&
+    key[0].startsWith(parsed.docPrefix) &&
+    key[2].startsWith(parsed.hashPrefix) &&
+    name.startsWith(prefix)
+  );
 };

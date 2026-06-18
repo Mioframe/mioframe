@@ -17,6 +17,7 @@ const CODE_TO_KIND: Readonly<Record<string, ChangedType>> = {
 
 const V3_FILENAME_RE =
   /^(?<docPrefix>[A-Za-z0-9]{6})\.(?<kindCode>[si])\.(?<hashPrefix>[0-9a-f]{8})(?<suffix>.*)\.mf$/;
+const V3_SUPPORTED_SUFFIX_RE = /^(|\.\d+| \(\d+\)| - copy(?: \(\d+\))?)$/;
 
 /**
  * Parsed candidate parts for a plausible v3 `.mf` filename.
@@ -85,7 +86,7 @@ export const encodeV3FileNameWithSuffix = (
 };
 
 /**
- * Parses a plausible v3 candidate filename, including copied-file suffix variants.
+ * Parses a plausible v3 candidate filename, including supported copied-file suffix variants.
  * @param name - Physical filename to inspect.
  * @returns Parsed candidate parts, or undefined when the name is not a plausible v3 file.
  */
@@ -100,6 +101,10 @@ export const decodeV3CandidateFileName = (name: string): V3CandidateFileNamePart
   const kind = CODE_TO_KIND[kindCode ?? ''];
 
   if (!docPrefix || !kind || !hashPrefix) {
+    return undefined;
+  }
+
+  if (!V3_SUPPORTED_SUFFIX_RE.test(suffix ?? '')) {
     return undefined;
   }
 

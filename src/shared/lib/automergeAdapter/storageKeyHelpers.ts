@@ -39,9 +39,12 @@ export const isChunkStorageKey = (key: PartialStorageKey): key is ChunkStorageKe
   zodIs(key, zodStorageKey) && key.length === 3;
 
 /**
- * Returns the physical filename to use when writing a storage key.
- * Full chunk keys `[docId, kind, hash]` use the v2 compact format.
- * Non-chunk keys (e.g. `['storage-adapter-id']`) fall back to the legacy format.
+ * Returns the preferred physical filename for a storage key.
+ * Full chunk keys `[docId, kind, hash]` prefer the short v3 `.mf` filename, which stores the full
+ * logical key inside the wrapper. Adapters may still resolve a different writable v3 candidate
+ * later when the preferred short name is already occupied.
+ * Non-chunk keys (e.g. `['storage-adapter-id']`) keep using the legacy format.
+ * Read paths remain backward-compatible with v2 and legacy chunk filenames.
  * @param key - Storage key to encode.
  * @returns Physical filename, or undefined when the key cannot be encoded.
  */

@@ -667,6 +667,25 @@ describe('createVFSAdapter – remove deletes matching legacy and v2 files', () 
     const entries = await vfs.readDirectory(path);
     expect(entries).toHaveLength(0);
   });
+
+  it('does not treat unrelated same-prefix .mf names as generated v3 candidates during remove', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${preferredName}`, encodeV3StorageWrapper(key, DATA_A));
+    await vfs.writeFile(
+      `${path}/${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`,
+      new Uint8Array([0xde, 0xad]),
+    );
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.remove(key);
+
+    const names = (await vfs.readDirectory(path)).map(([name]) => name);
+    expect(names).toEqual([`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`]);
+  });
 });
 
 describe('createVFSAdapter – removeRange deletes matching legacy and v2 files', () => {
@@ -732,6 +751,25 @@ describe('createVFSAdapter – removeRange deletes matching legacy and v2 files'
 
     const entries = await vfs.readDirectory(path);
     expect(entries).toHaveLength(0);
+  });
+
+  it('removeRange leaves unrelated same-prefix .mf names untouched', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const snapshotKey: StorageKey = [docId, 'snapshot', HASH_A];
+    const snapshotName = encodePreferredV3FileName(snapshotKey);
+    if (!snapshotName) throw new Error('Expected v3 filename');
+    await vfs.writeFile(`${path}/${snapshotName}`, encodeV3StorageWrapper(snapshotKey, DATA_A));
+    await vfs.writeFile(
+      `${path}/${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`,
+      new Uint8Array([0xde, 0xad]),
+    );
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.removeRange([docId]);
+
+    const names = (await vfs.readDirectory(path)).map(([name]) => name);
+    expect(names).toEqual([`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`]);
   });
 
   it('leaves unrelated doc files untouched', async () => {
