@@ -39,10 +39,10 @@
     --md-current-content-color,
     var(--md-sys-color-on-surface-variant)
   );
-  --md-comp-list-item-selected-container-color: var(--md-sys-color-primary-container);
-  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-primary-container);
-  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-primary-container);
-  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-primary-container);
+  --md-comp-list-item-selected-container-color: var(--md-sys-color-secondary-container);
+  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
   --md-comp-list-item-state-layer-color: var(--md-comp-list-item-label-text-color);
   --md-comp-list-item-supporting-text-color: var(
     --md-current-content-color,
@@ -68,7 +68,7 @@
     var(--md-private-list-item-resolved-container-height)
   );
   border: 0;
-  border-radius: var(--md-private-list-item-container-shape, 0dp);
+  border-radius: var(--md-private-list-item-container-shape, 4dp);
   background: var(--md-comp-list-item-container-color);
   color: var(--md-comp-list-item-label-text-color);
   list-style: none;
@@ -80,6 +80,8 @@
 
 .md-list-item_selected,
 .md-list-selection-item_selected {
+  --md-private-list-item-action-shape: 16dp;
+  --md-private-list-item-container-shape: 16dp;
   --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
   --md-comp-list-item-label-text-color: var(--md-comp-list-item-selected-label-text-color);
   --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-selected-label-text-color);
@@ -90,6 +92,21 @@
   );
   --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-selected-trailing-icon-color);
   --md-comp-list-item-trailing-text-color: var(--md-comp-list-item-selected-supporting-text-color);
+}
+
+.md-list-item.md-state_hover,
+.md-list-selection-item.md-state_hover {
+  --md-private-list-item-action-shape: 12dp;
+  --md-private-list-item-container-shape: 12dp;
+}
+
+.md-list-item.md-state_focused,
+.md-list-item.md-state_pressed,
+.md-list-item.md-state_dragged,
+.md-list-selection-item.md-state_focused,
+.md-list-selection-item.md-state_pressed {
+  --md-private-list-item-action-shape: 16dp;
+  --md-private-list-item-container-shape: 16dp;
 }
 
 /* ─── Disabled state (token remaps) ──────────────────────────────────────── */
@@ -129,6 +146,7 @@
     var(--md-private-list-item-content-padding-inline-end, 16dp);
   padding-block: var(--md-private-list-item-content-padding-block, 10dp);
   box-sizing: border-box;
+  border-radius: var(--md-private-list-item-action-shape, 4dp);
 }
 
 /* Three-line items align body content to the start so leading/trailing stay top-aligned. */
@@ -231,11 +249,11 @@
 .md-list-item__overline,
 .md-list-selection-item__overline {
   color: var(--md-comp-list-item-overline-color);
-  font-family: var(--md-sys-typescale-label-medium-font);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  font-weight: var(--md-sys-typescale-label-medium-weight);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
-  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  font-family: var(--md-sys-typescale-label-small-font);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+  line-height: var(--md-sys-typescale-label-small-line-height);
+  letter-spacing: var(--md-sys-typescale-label-small-tracking);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

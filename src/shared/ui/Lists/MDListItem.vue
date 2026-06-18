@@ -377,22 +377,14 @@ defineExpose({
 .md-list-item {
   /* Dragged state is MDListItem-only (selection items do not support drag). */
   &.md-state_dragged {
-    background: var(--md-sys-color-tertiary-container);
-    box-shadow: var(--md-sys-elevation-level2);
-    --md-comp-list-item-label-text-color: var(--md-sys-color-on-tertiary-container);
-    --md-comp-list-item-leading-icon-color: var(--md-sys-color-on-tertiary-container);
-    --md-comp-list-item-overline-color: var(--md-sys-color-on-tertiary-container);
-    --md-comp-list-item-state-layer-color: var(--md-sys-color-on-tertiary-container);
-    --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-tertiary-container);
-    --md-comp-list-item-trailing-icon-color: var(--md-sys-color-on-tertiary-container);
-    --md-comp-list-item-trailing-text-color: var(--md-sys-color-on-tertiary-container);
+    box-shadow: var(--md-sys-elevation-level4);
   }
 
   /* Button/link resets specific to action surface elements. */
   &__primary-action,
   &:is(button, a) > &__body {
     border: 0;
-    border-radius: var(--md-private-list-item-action-shape, 0dp);
+    border-radius: var(--md-private-list-item-action-shape, 4dp);
     background: transparent;
     color: inherit;
     font: inherit;

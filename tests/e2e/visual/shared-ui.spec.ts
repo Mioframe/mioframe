@@ -710,17 +710,28 @@ test('MDList segmented items own their surface fill via --md-private-list-item-c
 }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
+  const segmentedSurface = page
+    .getByTestId('visual-md-list-surface-segmented')
+    .locator('.md-list-item-surface-segmented-story__surface')
+    .first();
   const segmentedItem = page
     .getByTestId('visual-md-list-surface-segmented')
     .locator('.md-list-item')
     .first();
 
-  const bgColor = await segmentedItem.evaluate((node) => getComputedStyle(node).backgroundColor);
+  const [surfaceColor, itemColor] = await Promise.all([
+    segmentedSurface.evaluate((node) => getComputedStyle(node).backgroundColor),
+    segmentedItem.evaluate((node) => getComputedStyle(node).backgroundColor),
+  ]);
 
   expect(
-    bgColor,
-    'M3 segmented list items must have a non-transparent fill (surface-container-low) — the list container has no background, individual items carry the visual surface',
+    itemColor,
+    'M3 segmented list items must have a non-transparent fill — the list container has no background, individual items carry the visual surface',
   ).not.toBe('rgba(0, 0, 0, 0)');
+  expect(
+    itemColor,
+    'segmented item fill must differ from the surrounding surface-container-low wrapper and use the Material list item surface color',
+  ).not.toBe(surfaceColor);
 });
 
 test('MDList segmented first-item action surface has top corners rounded without container clipping', async ({
@@ -915,14 +926,14 @@ test('MDListItem standalone single-action root element is the interactive button
     'standalone single-action MDListItem root must be a button (not a div wrapper with internal button)',
   ).toBe('button');
 
-  // The button must meet the Material minimum item height (64px for one-line items).
+  // The button must meet the Material minimum item height (56px for one-line items).
   const box = await row.boundingBox();
   expect(box, 'standalone single-action button must have a bounding box').not.toBeNull();
   if (box) {
     expect(
       box.height,
-      'standalone single-action button must meet minimum item height (64dp = 64px)',
-    ).toBeGreaterThanOrEqual(64);
+      'standalone single-action button must meet minimum item height (56dp = 56px)',
+    ).toBeGreaterThanOrEqual(56);
   }
 });
 

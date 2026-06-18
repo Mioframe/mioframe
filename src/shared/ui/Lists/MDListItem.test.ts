@@ -186,6 +186,14 @@ describe('MDListItem', () => {
     );
   });
 
+  it('uses the Material one-line minimum height from the shared sizing contract', () => {
+    const wrapper = mountListItem({}, { inList: true });
+
+    expect(wrapper.get('.md-list-item').attributes('style')).toContain(
+      '--md-private-list-item-resolved-container-height: 56px',
+    );
+  });
+
   it('resolves a three-line layout when overline and supporting text are present', () => {
     const wrapper = mountListItem(
       {

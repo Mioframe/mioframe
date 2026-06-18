@@ -10,7 +10,7 @@ export interface MDListItemHeights {
 
 // Current Material / Expressive row heights.
 export const MD_LIST_ITEM_MIN_HEIGHTS: MDListItemHeights = {
-  1: 64,
+  1: 56,
   2: 72,
   3: 88,
 };

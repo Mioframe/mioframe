@@ -118,8 +118,8 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
 
 <style scoped>
 .md-list {
-  --md-private-list-item-action-shape: 12dp;
-  --md-private-list-item-container-shape: 12dp;
+  --md-private-list-item-action-shape: 4dp;
+  --md-private-list-item-container-shape: 4dp;
   --md-private-list-item-content-padding-inline-start: 16dp;
   --md-private-list-item-content-padding-inline-end: 16dp;
   --md-private-list-item-content-padding-block: 10dp;
@@ -143,19 +143,14 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
        is used for visual containment only — it does not create a scroll container,
        so the explicit min-width: 0 is required to suppress the automatic grid/flex-item
        minimum size that would otherwise allow nowrap text to expand the container. */
-    --md-private-list-item-container-shape: 0dp;
-    --md-private-list-item-action-shape: 0dp;
     --md-private-list-item-segmented-gap: 2dp;
     /* M3 Expressive segmented lists use filled items separated by gaps. The list
        container has no background; visual grouping comes from the item fill and the
-       gaps that reveal the parent surface beneath. Item fill uses surface-container-low
+       gaps that reveal the parent surface beneath. Item fill uses surface
        per the segmented list visual model. The private token cascades to item children,
        which derive --md-comp-list-item-container-color from it so that item-level
        overrides (selected, dragged) can still win via the public token. */
-    --md-private-list-item-container-color: var(
-      --md-sys-color-surface-container-low,
-      var(--md-sys-color-surface-container)
-    );
+    --md-private-list-item-container-color: var(--md-sys-color-surface);
 
     gap: var(--md-private-list-item-segmented-gap);
     padding: 0;

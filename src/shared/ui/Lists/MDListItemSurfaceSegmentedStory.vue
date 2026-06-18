@@ -12,7 +12,7 @@ const onAction = () => {};
   <div v-bind="rootAttrs" class="md-list-item-surface-segmented-story">
     <section class="md-list-item-surface-segmented-story__section">
       <h3 class="md-list-item-surface-segmented-story__title">
-        Segmented list on surface-container-low
+        Segmented list on surface-container-low with item surfaces on surface
       </h3>
       <div
         class="md-list-item-surface-segmented-story__surface md-list-item-surface-segmented-story__surface_color_surface-container-low"
