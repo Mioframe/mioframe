@@ -29,8 +29,10 @@ export const resolveListItemLineCount = (
 /**
  * Returns the inline style object that exposes the computed container height
  * as a CSS custom property for the list item.
- * @param resolvedHeight - the height in dp
- * @returns inline style record with the resolved container height custom property
+ * The numeric source value tracks the Material dp token table, but runtime CSS
+ * receives a px-backed custom property string.
+ * @param resolvedHeight - the resolved Material token height as a number
+ * @returns inline style record with the resolved px-backed container height custom property
  */
 export const buildListItemHostStyle = (resolvedHeight: number): Record<string, string> => ({
   '--md-private-list-item-resolved-container-height': `${resolvedHeight}px`,

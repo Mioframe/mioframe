@@ -2,6 +2,10 @@
 import MDList from './MDList.vue';
 import type { MDListModelValue, MDListSelectionMode, MDListStyle } from './listContext';
 
+defineOptions({
+  inheritAttrs: false,
+});
+
 withDefaults(
   defineProps<{
     is?: 'div' | 'ul' | undefined;

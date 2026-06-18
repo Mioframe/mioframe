@@ -63,7 +63,7 @@ Verdict: include in Buttons pilot after base buttons and icon buttons.
 
 ## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`, `MDListContainer`
 
-Material cache confirms lists help users find and act on items; items should be scannable and consistently formatted; M3 Expressive adds standard/segmented styles with 12dp action shape and improved selection states. The legacy M3 `baseline` style (56dp rows, 0dp shape) is reference-only and intentionally unsupported.
+Material cache confirms lists help users find and act on items; items should be scannable and consistently formatted; M3 Expressive adds standard/segmented styles, state-dependent expressive shape, segmented gaps, and improved selection states. The legacy `baseline` style is reference-only and intentionally unsupported in this PR.
 
 Current state:
 
@@ -77,8 +77,10 @@ Current state:
 - static rows with a trailing control use `static` mode and the `#trailing` slot; they do not expose a fake primary action surface;
 - inside `MDList`, action rows render a stable listitem wrapper plus an internal button/link primary action surface, so the final list contract is no longer `button[role=listitem]` or `a[role=listitem]`;
 - segmented styling is implemented in the shared primitive, including grouped container shape, inter-item gap, and first/last item rounding;
-- all rows use Expressive minimum container heights: 64dp / 72dp / 88dp (one/two/three-line);
+- all rows use Expressive minimum container heights: 56dp / 72dp / 88dp (one/two/three-line);
+- expressive shape follows the current token model: 4dp default item shape, 12dp hovered shape, and 16dp focused/pressed/dragged/selected shape, with a 16dp segmented list container shape and 2dp segmented gap;
 - `--md-comp-list-item-min-container-height` remains restricted/internal compatibility-only documentation; it is not a public consumer sizing API, and Menu still owns its own geometry through separate CSS;
+- selected rows use `secondary-container` with `on-secondary-container`, segmented item container color is `surface`, overline typography is `label-small`, and dragged state keeps the standard list color roles instead of custom tertiary colors;
 - component tokens use Material anatomy names instead of generic content or muted naming;
 - direct consumers select list style through `MDList` without a `variant` prop, including repository explorer sections, local file-system lists, Google session lists, database property lists, and database view reordering;
 - Storybook hierarchy is under `Material 3/Components/Lists/MDListItem` with deterministic configuration, state, selection, trailing-action, and DOM-contract stories; baseline stories have been removed; all `multi-action` stories have a primary `@action` handler and a `#trailingAction` slot; stories use Material-oriented labels;
