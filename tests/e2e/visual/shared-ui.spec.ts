@@ -705,17 +705,58 @@ test('MDList segmented container is transparent — item fill owns the surface, 
   ).toBe('rgba(0, 0, 0, 0)');
 });
 
-test('MDList segmented items own their surface fill via --md-private-list-item-container-color', async ({
+test('MDList segmented parity story does not wrap MDList in a contrasting diagnostic surface', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
+  await expect(
+    page
+      .getByTestId('visual-md-list-surface-segmented')
+      .locator('.md-list-item-surface-segmented-diagnostic-story__surface'),
+  ).toHaveCount(0);
+});
+
+test('MDList segmented diagnostic story keeps the contrasting wrapper explicit', async ({
+  page,
+}) => {
+  await openStory(
+    page,
+    'material-3-components-lists-mdlistitem--surface-context-segmented-diagnostic',
+  );
+
+  const diagnosticSurface = page
+    .getByTestId('visual-md-list-surface-segmented-diagnostic')
+    .locator('.md-list-item-surface-segmented-diagnostic-story__surface')
+    .first();
+  const segmentedList = diagnosticSurface.locator('.md-list').first();
+
+  const [surfaceColor, listColor] = await Promise.all([
+    diagnosticSurface.evaluate((node) => getComputedStyle(node).backgroundColor),
+    segmentedList.evaluate((node) => getComputedStyle(node).backgroundColor),
+  ]);
+
+  expect(surfaceColor).not.toBe('rgba(0, 0, 0, 0)');
+  expect(
+    listColor,
+    'diagnostic wrapper must contrast with a transparent MDList so the story demonstrates parent-surface gap reveal rather than a filled list container',
+  ).toBe('rgba(0, 0, 0, 0)');
+});
+
+test('MDList segmented items own their surface fill via --md-private-list-item-container-color', async ({
+  page,
+}) => {
+  await openStory(
+    page,
+    'material-3-components-lists-mdlistitem--surface-context-segmented-diagnostic',
+  );
+
   const segmentedSurface = page
-    .getByTestId('visual-md-list-surface-segmented')
-    .locator('.md-list-item-surface-segmented-story__surface')
+    .getByTestId('visual-md-list-surface-segmented-diagnostic')
+    .locator('.md-list-item-surface-segmented-diagnostic-story__surface')
     .first();
   const segmentedItem = page
-    .getByTestId('visual-md-list-surface-segmented')
+    .getByTestId('visual-md-list-surface-segmented-diagnostic')
     .locator('.md-list-item')
     .first();
 
@@ -790,6 +831,47 @@ test('MDList segmented container does not use overflow hidden to clip item corne
   ).toBe('clip');
 });
 
+test('MDListItem deterministic hover story mirrors runtime state placement on the row root', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+  const singleActionRow = page.locator('[data-visual-state="hover"].md-list-item').first();
+  const multiActionRow = page.locator('[data-visual-state="hover"].md-list-item').nth(1);
+
+  await expect(singleActionRow).toHaveClass(/md-state_hover/);
+  await expect(multiActionRow).toHaveClass(/md-state_hover/);
+  await expect(singleActionRow.locator('.md-list-item__primary-action')).not.toHaveClass(
+    /md-state_hover/,
+  );
+  await expect(multiActionRow.locator('.md-list-item__primary-action')).not.toHaveClass(
+    /md-state_hover/,
+  );
+});
+
+test('MDListItem shape-bearing elements transition border-radius for hover exit smoothing', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+  const row = page.getByTestId('visual-md-list-surface-segmented').locator('.md-list-item').first();
+  const actionSurface = row.locator('.md-list-item__primary-action');
+
+  const [rowTransition, actionTransition] = await Promise.all([
+    row.evaluate((node) => getComputedStyle(node).transitionProperty),
+    actionSurface.evaluate((node) => getComputedStyle(node).transitionProperty),
+  ]);
+
+  expect(
+    rowTransition,
+    'segmented row root must transition border-radius so the visible item container does not snap while the hover layer fades out',
+  ).toContain('border-radius');
+  expect(
+    actionTransition,
+    'segmented action/body surface must transition border-radius so the state layer and visible surface keep the same effective radius during hover exit',
+  ).toContain('border-radius');
+});
+
 test('MDList standard list does not add background to Repository Explorer document section', async ({
   page,
 }) => {
@@ -832,6 +914,17 @@ test('MDListItem surface context segmented story matches baseline', async ({ pag
   const surface = page.getByTestId('visual-md-list-surface-segmented');
 
   await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented.png');
+});
+
+test('MDListItem segmented diagnostic surface context story matches baseline', async ({ page }) => {
+  await openStory(
+    page,
+    'material-3-components-lists-mdlistitem--surface-context-segmented-diagnostic',
+  );
+
+  const surface = page.getByTestId('visual-md-list-surface-segmented-diagnostic');
+
+  await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented-diagnostic.png');
 });
 
 test('MDListItem surface context repository explorer story matches baseline', async ({ page }) => {

@@ -74,6 +74,7 @@
   list-style: none;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
+  transition: border-radius var(--md-sys-motion-duration-short4, 0.2s);
 }
 
 /* ─── Selected state (token remaps) ──────────────────────────────────────── */
@@ -147,6 +148,7 @@
   padding-block: var(--md-private-list-item-content-padding-block, 10dp);
   box-sizing: border-box;
   border-radius: var(--md-private-list-item-action-shape, 4dp);
+  transition: border-radius var(--md-sys-motion-duration-short4, 0.2s);
 }
 
 /* Three-line items align body content to the start so leading/trailing stay top-aligned. */

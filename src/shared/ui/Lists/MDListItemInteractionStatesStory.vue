@@ -34,30 +34,17 @@ onMounted(() => {
     return;
   }
 
-  // Single-action: MDStateLayer is inside __primary-action.
+  root.querySelectorAll<HTMLElement>('[data-visual-state="hover"].md-list-item').forEach((item) => {
+    item.classList.add('md-state_hover');
+  });
+  root.querySelectorAll<HTMLElement>('[data-visual-state="focus"].md-list-item').forEach((item) => {
+    item.classList.add('md-state_focused');
+  });
   root
-    .querySelector<HTMLElement>(
-      '[data-visual-state="hover"].md-list-item_mode_single-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_hover');
-  root
-    .querySelector<HTMLElement>(
-      '[data-visual-state="focus"].md-list-item_mode_single-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_focused');
-  root
-    .querySelector<HTMLElement>(
-      '[data-visual-state="pressed"].md-list-item_mode_single-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_pressed');
-
-  // Multi-action: MDStateLayer is inside __primary-action (which is position: absolute;
-  // inset: 0 covering the full row). Add the state class to __primary-action.
-  root
-    .querySelector<HTMLElement>(
-      '[data-visual-state="hover"].md-list-item_mode_multi-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_hover');
+    .querySelectorAll<HTMLElement>('[data-visual-state="pressed"].md-list-item')
+    .forEach((item) => {
+      item.classList.add('md-state_pressed');
+    });
 
   // Trailing action hover: add hover state to the icon button root via template ref so that
   // the trailing state layer shows independently from the row-level state layer.

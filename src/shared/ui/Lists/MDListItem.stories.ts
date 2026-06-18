@@ -6,6 +6,7 @@ import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory
 import MDListItemSelectionStory from './MDListItemSelectionStory.vue';
 import MDListItemStandaloneStory from './MDListItemStandaloneStory.vue';
 import MDListItemSurfaceRepositoryStory from './MDListItemSurfaceRepositoryStory.vue';
+import MDListItemSurfaceSegmentedDiagnosticStory from './MDListItemSurfaceSegmentedDiagnosticStory.vue';
 import MDListItemSurfaceSegmentedStory from './MDListItemSurfaceSegmentedStory.vue';
 import MDListItemSurfaceStandardStory from './MDListItemSurfaceStandardStory.vue';
 import MDListItemTrailingActionVisualStory from './MDListItemTrailingActionVisualStory.vue';
@@ -82,10 +83,36 @@ export const SurfaceContextStandard: Story = {
 };
 
 export const SurfaceContextSegmented: Story = {
+  name: 'Segmented Material Parity',
   tags: ['visual'],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Material parity sample. MDList stays transparent and is shown without an extra colored wrapper so segmented gaps do not read as a list-container fill.',
+      },
+    },
+  },
   render: () => ({
     components: { MDListItemSurfaceSegmentedStory },
     template: '<MDListItemSurfaceSegmentedStory />',
+  }),
+};
+
+export const SurfaceContextSegmentedDiagnostic: Story = {
+  name: 'Segmented Surface Diagnostic',
+  tags: ['visual'],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Diagnostic surface-context sample. The contrasting parent surface is intentional and demonstrates that transparent segmented gaps reveal the parent surface rather than an MDList background.',
+      },
+    },
+  },
+  render: () => ({
+    components: { MDListItemSurfaceSegmentedDiagnosticStory },
+    template: '<MDListItemSurfaceSegmentedDiagnosticStory />',
   }),
 };
 

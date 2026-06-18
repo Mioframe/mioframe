@@ -12,35 +12,35 @@ const onAction = () => {};
   <div v-bind="rootAttrs" class="md-list-item-surface-segmented-story">
     <section class="md-list-item-surface-segmented-story__section">
       <h3 class="md-list-item-surface-segmented-story__title">
-        Segmented list on surface-container-low with item surfaces on surface
+        Segmented list Material parity sample
       </h3>
-      <div
-        class="md-list-item-surface-segmented-story__surface md-list-item-surface-segmented-story__surface_color_surface-container-low"
-      >
-        <MDList list-style="segmented">
-          <MDListItem
-            mode="single-action"
-            label-text="Segmented first item"
-            supporting-text="Segmented items have an explicit surface background."
-            @action="onAction"
-          >
-            <template #leading>
-              <MDSymbol name="photo" />
-            </template>
-          </MDListItem>
-          <MDListItem
-            mode="multi-action"
-            label-text="Segmented multi-action"
-            supporting-text="Trailing action is independent of the primary surface."
-            @action="onAction"
-          >
-            <template #trailingAction>
-              <MDIconButton tooltip="More options" md-symbol-name="more_vert" />
-            </template>
-          </MDListItem>
-          <MDListItem mode="single-action" label-text="Segmented last item" @action="onAction" />
-        </MDList>
-      </div>
+      <p class="md-list-item-surface-segmented-story__supporting-text">
+        MDList remains transparent. This story avoids a contrasting wrapper around the list so the
+        segmented container does not read like a filled plate.
+      </p>
+      <MDList list-style="segmented">
+        <MDListItem
+          mode="single-action"
+          label-text="Segmented first item"
+          supporting-text="Segmented items keep their own surface fill."
+          @action="onAction"
+        >
+          <template #leading>
+            <MDSymbol name="photo" />
+          </template>
+        </MDListItem>
+        <MDListItem
+          mode="multi-action"
+          label-text="Segmented multi-action"
+          supporting-text="Trailing action is independent of the primary surface."
+          @action="onAction"
+        >
+          <template #trailingAction>
+            <MDIconButton tooltip="More options" md-symbol-name="more_vert" />
+          </template>
+        </MDListItem>
+        <MDListItem mode="single-action" label-text="Segmented last item" @action="onAction" />
+      </MDList>
     </section>
   </div>
 </template>
@@ -69,13 +69,13 @@ const onAction = () => {};
   line-height: var(--md-sys-typescale-label-large-line-height);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
 }
-
-.md-list-item-surface-segmented-story__surface {
-  border-radius: 12dp;
-  overflow: clip;
-}
-
-.md-list-item-surface-segmented-story__surface_color_surface-container-low {
-  background: var(--md-sys-color-surface-container-low);
+.md-list-item-surface-segmented-story__supporting-text {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
 }
 </style>
