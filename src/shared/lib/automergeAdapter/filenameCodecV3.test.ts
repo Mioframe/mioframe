@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   decodeV3CandidateFileName,
   encodePreferredV3FileName,
-  encodeV3FileNameWithParts,
+  encodeV3FileNameWithSuffix,
+  V3_MAX_FILE_NAME_LENGTH,
 } from './filenameCodecV3';
 import type { ChunkStorageKey } from './types';
 
@@ -30,11 +31,28 @@ describe('filenameCodecV3', () => {
     });
   });
 
-  it('supports extended prefixes before numeric suffix fallback', () => {
+  it('uses controlled numeric suffixes without expanding prefixes', () => {
     const key = getKey();
 
-    expect(encodeV3FileNameWithParts(key, { docPrefixLength: 7, hashPrefixLength: 10 })).toBe(
-      `${key[0].slice(0, 7)}.s.${HASH_A.slice(0, 10)}.mf`,
+    expect(encodeV3FileNameWithSuffix(key, 2)).toBe(
+      `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}.2.mf`,
     );
+  });
+
+  it('keeps generated v3 filenames under the hard cap', () => {
+    const key = getKey();
+    const preferred = encodePreferredV3FileName(key);
+    const suffixed = encodeV3FileNameWithSuffix(key, 1234567890);
+
+    expect(preferred).toBeDefined();
+    expect(preferred?.length).toBeLessThanOrEqual(V3_MAX_FILE_NAME_LENGTH);
+    expect(suffixed).toBeDefined();
+    expect(suffixed?.length).toBeLessThanOrEqual(V3_MAX_FILE_NAME_LENGTH);
+  });
+
+  it('rejects suffixes that would exceed the hard cap', () => {
+    const key = getKey();
+
+    expect(encodeV3FileNameWithSuffix(key, 123456789012)).toBeUndefined();
   });
 });

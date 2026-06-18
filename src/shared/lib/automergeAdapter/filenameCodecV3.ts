@@ -1,6 +1,9 @@
 import type { ChangedType, ChunkStorageKey } from './types';
 
 export const V3_FILE_EXTENSION = 'mf';
+export const V3_DOC_PREFIX_LENGTH = 6;
+export const V3_HASH_PREFIX_LENGTH = 8;
+export const V3_MAX_FILE_NAME_LENGTH = 31;
 
 const KIND_TO_CODE: Readonly<Record<ChangedType, string>> = {
   snapshot: 's',
@@ -12,8 +15,6 @@ const CODE_TO_KIND: Readonly<Record<string, ChangedType>> = {
   i: 'incremental',
 };
 
-const DOC_PREFIX_LENGTH = 6;
-const HASH_PREFIX_LENGTH = 8;
 const V3_FILENAME_RE =
   /^(?<docPrefix>[A-Za-z0-9]{6})\.(?<kindCode>[si])\.(?<hashPrefix>[0-9a-f]{8})(?<suffix>.*)\.mf$/;
 
@@ -40,38 +41,47 @@ export const encodePreferredV3FileName = (key: ChunkStorageKey): string | undefi
   const [documentId, kind, hash] = key;
   const kindCode = KIND_TO_CODE[kind];
 
-  if (!kindCode || documentId.length < DOC_PREFIX_LENGTH || hash.length < HASH_PREFIX_LENGTH) {
-    return undefined;
-  }
-
-  return `${documentId.slice(0, DOC_PREFIX_LENGTH)}.${kindCode}.${hash.slice(0, HASH_PREFIX_LENGTH)}.${V3_FILE_EXTENSION}`;
-};
-
-/**
- * Encodes a v3 filename with extended prefixes or a controlled suffix for collision handling.
- * @param key - Full logical Automerge chunk key.
- * @param options - Prefix lengths and optional suffix to encode.
- * @returns Physical filename candidate, or undefined when the requested lengths are invalid.
- */
-export const encodeV3FileNameWithParts = (
-  key: ChunkStorageKey,
-  options: { docPrefixLength: number; hashPrefixLength: number; suffix?: string },
-): string | undefined => {
-  const [documentId, kind, hash] = key;
-  const kindCode = KIND_TO_CODE[kind];
-  const { docPrefixLength, hashPrefixLength, suffix = '' } = options;
-
   if (
     !kindCode ||
-    docPrefixLength < DOC_PREFIX_LENGTH ||
-    hashPrefixLength < HASH_PREFIX_LENGTH ||
-    documentId.length < docPrefixLength ||
-    hash.length < hashPrefixLength
+    documentId.length < V3_DOC_PREFIX_LENGTH ||
+    hash.length < V3_HASH_PREFIX_LENGTH
   ) {
     return undefined;
   }
 
-  return `${documentId.slice(0, docPrefixLength)}.${kindCode}.${hash.slice(0, hashPrefixLength)}${suffix}.${V3_FILE_EXTENSION}`;
+  return `${documentId.slice(0, V3_DOC_PREFIX_LENGTH)}.${kindCode}.${hash.slice(0, V3_HASH_PREFIX_LENGTH)}.${V3_FILE_EXTENSION}`;
+};
+
+/**
+ * Encodes a v3 filename with the fixed short prefixes and an optional numeric suffix.
+ * @param key - Full logical Automerge chunk key.
+ * @param suffixNumber - Optional numeric suffix used for collision handling.
+ * @returns Physical filename candidate, or undefined when the candidate would exceed the hard cap.
+ */
+export const encodeV3FileNameWithSuffix = (
+  key: ChunkStorageKey,
+  suffixNumber?: number,
+): string | undefined => {
+  const baseName = encodePreferredV3FileName(key);
+
+  if (!baseName) {
+    return undefined;
+  }
+
+  if (suffixNumber === undefined) {
+    return baseName;
+  }
+
+  if (!Number.isSafeInteger(suffixNumber) || suffixNumber <= 0) {
+    return undefined;
+  }
+
+  const fileName = baseName.replace(
+    `.${V3_FILE_EXTENSION}`,
+    `.${suffixNumber}.${V3_FILE_EXTENSION}`,
+  );
+
+  return fileName.length <= V3_MAX_FILE_NAME_LENGTH ? fileName : undefined;
 };
 
 /**

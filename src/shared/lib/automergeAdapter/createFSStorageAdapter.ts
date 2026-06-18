@@ -8,7 +8,6 @@ import type {
 import type { AMChunk, AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
 import {
-  getV3CandidateNamesForKey,
   isChunkStorageKey,
   listStorageFileEntries,
   selectReadableStorageEntries,
@@ -17,8 +16,15 @@ import {
   toWritableStorageFileName,
 } from './storageKeyHelpers';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
-import { encodePreferredV3FileName, encodeV3FileNameWithParts } from './filenameCodecV3';
-import { decodeV3StorageWrapper, encodeV3StorageWrapper } from './wrapperCodecV3';
+import { encodePreferredV3FileName } from './filenameCodecV3';
+import { encodeV3StorageWrapper } from './wrapperCodecV3';
+import {
+  decodeValidV3Chunk,
+  getV3CandidateNamesForKey,
+  isGeneratedV3CandidateForKey,
+  isPlausibleV3CandidateForPrefix,
+  resolveWritableV3FileName,
+} from './v3StorageHelpers';
 
 /**
  * Creates an Automerge storage adapter backed by a `DirectoryForStorageAdapter`.
@@ -79,17 +85,7 @@ export const createFSStorageAdapter = (
     }
 
     const rawData = await readFileBytes(entry);
-    const decoded = decodeV3StorageWrapper(rawData);
-
-    if (!decoded || decoded.data.length === 0) {
-      return undefined;
-    }
-
-    if (expectedKey && storageKeyToId(decoded.key) !== storageKeyToId(expectedKey)) {
-      return undefined;
-    }
-
-    return decoded;
+    return decodeValidV3Chunk(rawData, expectedKey);
   };
 
   const readValidLegacyOrV2Chunk = async (
@@ -107,75 +103,6 @@ export const createFSStorageAdapter = (
     }
 
     return { key, data };
-  };
-
-  const resolveWritableV3FileName = async (
-    key: ChunkStorageKey,
-    handles: Map<string, FileForStorageAdapter>,
-  ): Promise<string> => {
-    const candidateName = async (name: string): Promise<string | undefined> => {
-      const existing = await readValidV3Chunk(handles.get(name));
-
-      if (!existing || storageKeyToId(existing.key) === storageKeyToId(key)) {
-        return name;
-      }
-
-      return undefined;
-    };
-
-    for (let hashPrefixLength = 8; hashPrefixLength <= key[2].length; hashPrefixLength++) {
-      const name = encodeV3FileNameWithParts(key, { docPrefixLength: 6, hashPrefixLength });
-
-      if (!name) {
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop -- ordered collision probing stops at the first reusable filename
-      const resolved = handles.has(name) ? await candidateName(name) : name;
-
-      if (resolved) {
-        return resolved;
-      }
-    }
-
-    for (let docPrefixLength = 7; docPrefixLength <= key[0].length; docPrefixLength++) {
-      const name = encodeV3FileNameWithParts(key, {
-        docPrefixLength,
-        hashPrefixLength: key[2].length,
-      });
-
-      if (!name) {
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop -- ordered collision probing stops at the first reusable filename
-      const resolved = handles.has(name) ? await candidateName(name) : name;
-
-      if (resolved) {
-        return resolved;
-      }
-    }
-
-    for (let numericSuffix = 1; numericSuffix < Number.MAX_SAFE_INTEGER; numericSuffix++) {
-      const name = encodeV3FileNameWithParts(key, {
-        docPrefixLength: 6,
-        hashPrefixLength: 8,
-        suffix: `.${numericSuffix}`,
-      });
-
-      if (!name) {
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop -- ordered collision probing stops at the first reusable filename
-      const resolved = handles.has(name) ? await candidateName(name) : name;
-
-      if (resolved) {
-        return resolved;
-      }
-    }
-
-    throw new Error('Unable to resolve a writable v3 Automerge storage filename');
   };
 
   const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
@@ -228,6 +155,7 @@ export const createFSStorageAdapter = (
 
   const save = async (key: StorageKey, data: Uint8Array<ArrayBuffer>) => {
     const fileName = toWritableStorageFileName(key);
+    const chunkKey = isChunkStorageKey(key) ? key : undefined;
 
     if (!fileName) {
       throw new Error('fileName is undefined');
@@ -239,11 +167,18 @@ export const createFSStorageAdapter = (
       );
     }
 
+    if (chunkKey && data.length === 0) {
+      return;
+    }
+
     const handles = await collectFileHandles();
-    const writableFileName = isChunkStorageKey(key)
-      ? await resolveWritableV3FileName(key, handles)
+    const writableFileName = chunkKey
+      ? await resolveWritableV3FileName(chunkKey, handles.keys(), async (name) => {
+          const chunk = await readValidV3Chunk(handles.get(name));
+          return chunk ? storageKeyToId(chunk.key) : undefined;
+        })
       : fileName;
-    const writableData = isChunkStorageKey(key) ? encodeV3StorageWrapper(key, data) : data;
+    const writableData = chunkKey ? encodeV3StorageWrapper(chunkKey, data) : data;
 
     await directory.writeFile?.(
       writableFileName,
@@ -262,10 +197,19 @@ export const createFSStorageAdapter = (
 
     if (isChunkStorageKey(key)) {
       for (const [name, entry] of handles) {
-        // eslint-disable-next-line no-await-in-loop -- every v3 variant must decode before remove can confirm the full logical key
+        if (!isGeneratedV3CandidateForKey(name, key)) {
+          continue;
+        }
+
+        // eslint-disable-next-line no-await-in-loop -- every generated v3 variant must decode before remove can confirm the full logical key
         const chunk = await readValidV3Chunk(entry, key);
 
         if (chunk) {
+          matching.add(name);
+          continue;
+        }
+
+        if (isPlausibleV3CandidateForPrefix(name, key)) {
           matching.add(name);
         }
       }
@@ -288,7 +232,11 @@ export const createFSStorageAdapter = (
     const handles = await collectFileHandles();
     const result = new Map<string, AMChunk>();
 
-    for (const [, entry] of handles) {
+    for (const [name, entry] of handles) {
+      if (!isPlausibleV3CandidateForPrefix(name, keyPrefix)) {
+        continue;
+      }
+
       // eslint-disable-next-line no-await-in-loop -- each wrapper must be decoded before v3 can outrank legacy or v2
       const chunk = await readValidV3Chunk(entry);
 
@@ -331,6 +279,10 @@ export const createFSStorageAdapter = (
     );
 
     for (const [name, entry] of handles) {
+      if (!isPlausibleV3CandidateForPrefix(name, keyPrefix)) {
+        continue;
+      }
+
       // eslint-disable-next-line no-await-in-loop -- removeRange must decode each v3 wrapper because the filename is only a hint
       const chunk = await readValidV3Chunk(entry);
 

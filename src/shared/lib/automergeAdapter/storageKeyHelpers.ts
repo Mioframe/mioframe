@@ -1,6 +1,6 @@
 import { zodIs } from '../validateZodScheme';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
-import { decodeV3CandidateFileName, encodePreferredV3FileName } from './filenameCodecV3';
+import { encodePreferredV3FileName } from './filenameCodecV3';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import { encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
 import type { ChunkStorageKey, PartialStorageKey, StorageKey } from './types';
@@ -62,35 +62,6 @@ export const toWritableStorageFileName = (key: StorageKey): string | undefined =
   }
 
   return partialKeyToFileName(key);
-};
-
-/**
- * Lists plausible v3 candidate filenames for a logical chunk key.
- * @param names - Physical filenames to inspect.
- * @param key - Full logical key being searched.
- * @returns Sorted candidate filenames whose prefixes could map to the key.
- */
-export const getV3CandidateNamesForKey = (
-  names: Iterable<string>,
-  key: ChunkStorageKey,
-): string[] => {
-  const [documentId, kind, hash] = key;
-  const matches: string[] = [];
-
-  for (const name of names) {
-    const parsed = decodeV3CandidateFileName(name);
-
-    if (
-      parsed &&
-      parsed.kind === kind &&
-      documentId.startsWith(parsed.docPrefix) &&
-      hash.startsWith(parsed.hashPrefix)
-    ) {
-      matches.push(name);
-    }
-  }
-
-  return matches.sort((left, right) => left.localeCompare(right));
 };
 
 /**
