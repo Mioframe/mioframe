@@ -21,32 +21,16 @@ onMounted(() => {
     return;
   }
 
-  // Single-action: MDStateLayer is inside __primary-action, so the state class must
-  // be on that element for the state layer to pick it up via its parent selector.
-  root
-    .querySelector<HTMLElement>(
-      '[data-state="hover"].md-list-item_mode_single-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_hover');
-  root
-    .querySelector<HTMLElement>(
-      '[data-state="focus"].md-list-item_mode_single-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_focused');
-  root
-    .querySelector<HTMLElement>(
-      '[data-state="pressed"].md-list-item_mode_single-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_pressed');
+  const applyForcedState = (state: 'hover' | 'focus' | 'pressed', stateClass: string) => {
+    root.querySelectorAll<HTMLElement>(`[data-state="${state}"].md-list-item`).forEach((item) => {
+      item.classList.add(stateClass);
+      item.querySelector<HTMLElement>('.md-list-item__primary-action')?.classList.add(stateClass);
+    });
+  };
 
-  // Multi-action: MDStateLayer is inside __primary-action. Add the state class there
-  // so the state layer responds; parent rule :global(.md-state_hover) > & does not apply
-  // since the root element no longer carries the state class.
-  root
-    .querySelector<HTMLElement>(
-      '[data-state="hover"].md-list-item_mode_multi-action .md-list-item__primary-action',
-    )
-    ?.classList.add('md-state_hover');
+  applyForcedState('hover', 'md-state_hover');
+  applyForcedState('focus', 'md-state_focused');
+  applyForcedState('pressed', 'md-state_pressed');
 });
 </script>
 

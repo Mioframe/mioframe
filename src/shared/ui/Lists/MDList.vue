@@ -118,6 +118,7 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
 
 <style scoped>
 .md-list {
+  --md-private-list-item-container-color: transparent;
   --md-private-list-item-action-shape: 4dp;
   --md-private-list-item-container-shape: 4dp;
   --md-private-list-item-content-padding-inline-start: 16dp;

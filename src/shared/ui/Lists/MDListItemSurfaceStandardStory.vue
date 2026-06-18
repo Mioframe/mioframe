@@ -92,6 +92,29 @@ const onAction = () => {};
 
     <section class="md-list-item-surface-standard-story__section">
       <h3 class="md-list-item-surface-standard-story__title">
+        Parent private variables do not leak into MDList
+      </h3>
+      <div
+        id="surface-context-private-var-wrapper"
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface-container-high md-list-item-surface-standard-story__surface_private-var-leak"
+      >
+        <MDList>
+          <MDListItem
+            mode="single-action"
+            label-text="Private variable leak guard"
+            supporting-text="MDList must reset private item fill vars on its own root."
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="shield" />
+            </template>
+          </MDListItem>
+        </MDList>
+      </div>
+    </section>
+
+    <section class="md-list-item-surface-standard-story__section">
+      <h3 class="md-list-item-surface-standard-story__title">
         Standard list on surface-container-high
       </h3>
       <div
@@ -176,5 +199,9 @@ const onAction = () => {};
 
 .md-list-item-surface-standard-story__surface_color_surface-container-high {
   background: var(--md-sys-color-surface-container-high);
+}
+
+.md-list-item-surface-standard-story__surface_private-var-leak {
+  --md-private-list-item-container-color: rgb(255 0 0);
 }
 </style>
