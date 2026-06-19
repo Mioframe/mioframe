@@ -491,7 +491,7 @@ describe('storageFilePolicy load fast path', () => {
     expect(getListNamesCalls()).toBe(0);
   });
 
-  it('falls back to a direct v2 read before calling listNames()', async () => {
+  it('falls back to v2 after a single listNames() scan when preferred v3 is missing', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
@@ -503,7 +503,7 @@ describe('storageFilePolicy load fast path', () => {
     const { io, getListNamesCalls } = createCountingIo({ [v2Name]: DATA_A });
 
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
-    expect(getListNamesCalls()).toBe(0);
+    expect(getListNamesCalls()).toBe(1);
   });
 
   it('falls back to a directory scan for manual/suffixed v3 and legacy candidates', async () => {
@@ -583,6 +583,25 @@ describe('storageFilePolicy load fast path', () => {
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
   });
 
+  it('returns a valid suffixed v3 candidate, not v2, when the preferred v3 file is missing', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!suffixedName || !v2Name) {
+      throw new Error('Expected v3 and v2 filenames');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({
+      [suffixedName]: encodeV3StorageWrapper(key, DATA_A),
+      [v2Name]: DATA_B,
+    });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+    expect(getListNamesCalls()).toBe(1);
+  });
+
   it('returns v2 when no v3 candidates exist', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
@@ -611,6 +630,16 @@ describe('storageFilePolicy load fast path', () => {
       [v2Name]: DATA_A,
       [legacyName]: DATA_B,
     });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+  });
+
+  it('returns legacy when no v3 or v2 candidates exist', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
+
+    const { io } = createCountingIo({ [legacyName]: DATA_A });
 
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
   });

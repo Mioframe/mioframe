@@ -149,27 +149,13 @@ export const loadStorageEntry = async (
     const [documentId, kind, hash] = key;
     const v2Name = encodeStorageKeyToV2FileName(documentId, kind, hash);
 
-    const tryV2 = async (): Promise<Uint8Array | undefined> => {
-      if (!v2Name) {
-        return undefined;
-      }
-
-      const v2Chunk = await readValidLegacyOrV2Chunk(io, { key, name: v2Name });
-
-      return v2Chunk?.data;
-    };
-
-    // A missing preferred candidate gives no evidence that a v3 fallback exists, so a direct v2
-    // read stays a safe fast path here. An invalid or different-key preferred candidate is
-    // evidence that other v3 candidates may exist for this key, so v2 must wait until after the
-    // v3 fallback scan below to preserve v3-over-v2 priority.
-    if (preferredClassification.kind === 'missing') {
-      const v2Data = await tryV2();
-
-      if (v2Data) {
-        return v2Data;
-      }
-    }
+    // A missing, invalid, or different-key preferred candidate gives no guarantee that no other
+    // v3 candidate exists for this key, so a same-key v3 fallback scan must run before v2 is
+    // allowed to win. The direct v2 read is started in parallel with that scan so it does not add
+    // extra latency, but its result is only used after the v3 fallback scan finds nothing.
+    const v2Promise = v2Name
+      ? readValidLegacyOrV2Chunk(io, { key, name: v2Name })
+      : Promise.resolve(undefined);
 
     const names = await io.listNames();
 
@@ -184,12 +170,10 @@ export const loadStorageEntry = async (
       }
     }
 
-    if (preferredClassification.kind !== 'missing') {
-      const v2Data = await tryV2();
+    const v2Chunk = await v2Promise;
 
-      if (v2Data) {
-        return v2Data;
-      }
+    if (v2Chunk) {
+      return v2Chunk.data;
     }
 
     const matched = selectReadableStorageEntries(names).get(storageKeyToId(key));
