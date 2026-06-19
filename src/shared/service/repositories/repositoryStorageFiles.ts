@@ -1,9 +1,8 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import {
   collectStorageFileNamesForPrefix,
-  decodeV3CandidateFileName,
   discoverStorageDocumentIds,
-  fileNameToPartialKey,
+  isRepositoryStorageCandidateFileName,
   storageAdapterMarkerFileName,
   type StorageFilePolicyIo,
 } from '@shared/lib/automergeAdapter';
@@ -60,12 +59,14 @@ export const getDocumentStorageFiles = async (
 export const isRepositoryMarkerFileName = (name: string) => name === storageAdapterMarkerFileName;
 
 /**
- * Returns whether a file name is an Automerge document storage file.
+ * Returns whether a file name is a repository storage candidate file.
  * @param name - File name to classify.
- * @returns Whether the file name is an Automerge document storage file.
+ * @returns Whether the file name is a repository storage candidate file.
  */
-export const isAutomergeDocumentFileName = (name: string) =>
-  fileNameToPartialKey(name) !== undefined || decodeV3CandidateFileName(name) !== undefined;
+export const isRepositoryStorageCandidateDocumentFileName = (name: string) =>
+  isRepositoryStorageCandidateFileName(name);
+
+export const isAutomergeDocumentFileName = isRepositoryStorageCandidateDocumentFileName;
 
 /**
  * Returns whether a repository storage file should stay hidden in the file list.
@@ -74,7 +75,8 @@ export const isAutomergeDocumentFileName = (name: string) =>
  * @returns Whether the repository storage file should stay hidden in the file list.
  */
 export const shouldHideRepositoryStorageFile = (name: string, hideAutomergeFiles: boolean) =>
-  isRepositoryMarkerFileName(name) || (hideAutomergeFiles && isAutomergeDocumentFileName(name));
+  isRepositoryMarkerFileName(name) ||
+  (hideAutomergeFiles && isRepositoryStorageCandidateDocumentFileName(name));
 
 /**
  * Returns directory entries visible to the user after repository storage files are filtered out.
@@ -168,6 +170,10 @@ const createRepositoryStorageIo = (
         throw error;
       }
     },
+    writeBytes: () =>
+      Promise.reject(new Error('Repository storage discovery IO does not support writes')),
+    removeName: () =>
+      Promise.reject(new Error('Repository storage discovery IO does not support removals')),
   };
 };
 

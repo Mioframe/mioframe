@@ -5,11 +5,15 @@ import { encodePreferredV3FileName } from './filenameCodecV3';
 import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
+  isRepositoryStorageCandidateFileName,
   loadStorageChunksByPrefix,
+  removeStorageEntry,
   resolveStorageChunkWriteTarget,
+  saveStorageEntry,
   type StorageFilePolicyIo,
 } from './storageFilePolicy';
-import type { ChunkStorageKey } from './types';
+import type { ChunkStorageKey, StorageKey } from './types';
+import { partialKeyToFileName } from './partialKeyToFileName';
 import { encodeV3StorageWrapper } from './wrapperCodecV3';
 
 const HASH_A = '0df10d48afdaa0df1a484b006e4854cec8640d416745ce0cc874c07027b69cc2';
@@ -22,6 +26,14 @@ const getDocumentId = () => new Repo().create({}).documentId;
 const createIo = (entries: Record<string, Uint8Array>): StorageFilePolicyIo => ({
   listNames: () => Promise.resolve(Object.keys(entries)),
   readBytes: (name) => Promise.resolve(entries[name]),
+  writeBytes: (name, data) => {
+    entries[name] = new Uint8Array(data);
+    return Promise.resolve();
+  },
+  removeName: (name) => {
+    Reflect.deleteProperty(entries, name);
+    return Promise.resolve();
+  },
 });
 
 describe('storageFilePolicy', () => {
@@ -96,11 +108,75 @@ describe('storageFilePolicy', () => {
         {
           listNames: () => Promise.resolve([fileName]),
           readBytes,
+          writeBytes: () => Promise.resolve(),
+          removeName: () => Promise.resolve(),
         },
         ['storage-adapter-id'],
       ),
     ).resolves.toEqual([]);
 
     expect(readBytes).not.toHaveBeenCalled();
+  });
+
+  it('classifies legacy, v2, and v3 names as repository storage candidates only', () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!v3Name || !v2Name) {
+      throw new Error('Expected storage filenames');
+    }
+
+    expect(isRepositoryStorageCandidateFileName(`${documentId}_snapshot_${HASH_A}.automerge`)).toBe(
+      true,
+    );
+    expect(isRepositoryStorageCandidateFileName(v2Name)).toBe(true);
+    expect(isRepositoryStorageCandidateFileName(v3Name)).toBe(true);
+    expect(isRepositoryStorageCandidateFileName('notes.am')).toBe(false);
+    expect(isRepositoryStorageCandidateFileName('plain.json')).toBe(false);
+  });
+
+  it('saves chunk entries through the policy-owned v3 wrapper contract', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const entries: Record<string, Uint8Array> = {};
+    const io = createIo(entries);
+
+    await saveStorageEntry(io, key, DATA_A);
+
+    const fileName = encodePreferredV3FileName(key);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    expect(entries[fileName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
+  });
+
+  it('removes every physical file that belongs to one logical chunk key', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    const markerName =
+      partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
+
+    if (!preferredName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {
+      [preferredName]: encodeV3StorageWrapper(key, DATA_A),
+      [`${documentId.slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`]: encodeV3StorageWrapper(
+        key,
+        DATA_A,
+      ),
+      [`${documentId}_snapshot_${HASH_A}.automerge`]: DATA_A,
+      [markerName]: new Uint8Array([1]),
+    };
+
+    await removeStorageEntry(createIo(entries), key);
+
+    expect(Object.keys(entries)).toEqual([markerName]);
   });
 });

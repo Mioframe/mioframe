@@ -6,16 +6,14 @@ import type {
 } from './types';
 import type { AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
-import { isChunkStorageKey, toWritableStorageFileName } from './storageKeyHelpers';
 import {
-  collectStorageFileNamesForKey,
-  collectStorageFileNamesForPrefix,
-  loadStorageChunk,
-  loadStorageChunksByPrefix,
-  resolveStorageChunkWriteTarget,
+  loadStorageEntriesByPrefix,
+  loadStorageEntry,
+  removeStorageEntriesByPrefix,
+  removeStorageEntry,
+  saveStorageEntry,
   type StorageFilePolicyIo,
 } from './storageFilePolicy';
-import { encodeV3StorageWrapper } from './wrapperCodecV3';
 
 /**
  * Creates an Automerge storage adapter backed by a `DirectoryForStorageAdapter`.
@@ -33,97 +31,63 @@ export const createFSStorageAdapter = (
     return new Uint8Array(await file.arrayBuffer());
   };
 
-  const collectFileHandles = async (): Promise<Map<string, FileForStorageAdapter>> => {
-    const handles = new Map<string, FileForStorageAdapter>();
+  const createOperationIo = (): StorageFilePolicyIo => {
+    let handlesPromise: Promise<Map<string, FileForStorageAdapter>> | undefined;
 
-    for await (const [rawName, entry] of directory.entries()) {
-      if ('read' in entry) {
-        handles.set(toString(rawName), entry);
-      }
-    }
+    const getHandles = async (): Promise<Map<string, FileForStorageAdapter>> => {
+      handlesPromise ??= (async () => {
+        const handles = new Map<string, FileForStorageAdapter>();
 
-    return handles;
-  };
+        for await (const [rawName, entry] of directory.entries()) {
+          if ('read' in entry) {
+            handles.set(toString(rawName), entry);
+          }
+        }
 
-  const io: StorageFilePolicyIo = {
-    listNames: async () => [...(await collectFileHandles()).keys()],
-    readBytes: async (name) => {
-      const entry = (await collectFileHandles()).get(name);
-      return entry ? readFileBytes(entry) : undefined;
-    },
-  };
+        return handles;
+      })();
 
-  const load = (key: PartialStorageKey) => loadStorageChunk(io, key);
+      return handlesPromise;
+    };
 
-  const save = async (key: StorageKey, data: Uint8Array<ArrayBuffer>) => {
-    const fileName = toWritableStorageFileName(key);
-    const chunkKey = isChunkStorageKey(key) ? key : undefined;
+    return {
+      listNames: async () => [...(await getHandles()).keys()],
+      readBytes: async (name) => {
+        const entry = (await getHandles()).get(name);
+        return entry ? readFileBytes(entry) : undefined;
+      },
+      writeBytes: async (name, data) => {
+        if (!directory.writeFile) {
+          console.warn(
+            "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
+          );
+          return;
+        }
 
-    if (!fileName) {
-      throw new Error('fileName is undefined');
-    }
-
-    if (!('writeFile' in directory)) {
-      console.warn(
-        "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
-      );
-    }
-
-    if (chunkKey && data.length === 0) {
-      return;
-    }
-
-    const writableFileName = chunkKey
-      ? await resolveStorageChunkWriteTarget(io, chunkKey)
-      : fileName;
-    const writableData = chunkKey ? encodeV3StorageWrapper(chunkKey, data) : data;
-
-    await directory.writeFile?.(
-      writableFileName,
-      writableData instanceof Uint8Array ? new Uint8Array(writableData) : writableData,
-    );
-  };
-
-  const remove = async (key: StorageKey) => {
-    const handles = await collectFileHandles();
-
-    await Promise.all(
-      (await collectStorageFileNamesForKey(io, key)).map(async (name) => {
-        const entry = handles.get(name);
+        await directory.writeFile(name, new Uint8Array(data));
+      },
+      removeName: async (name) => {
+        const entry = (await getHandles()).get(name);
 
         if (entry?.remove) {
           await entry.remove();
-        } else {
-          await directory.removeByName?.(name);
+          return;
         }
-      }),
-    );
-  };
 
-  const loadRange = (keyPrefix: PartialStorageKey) => loadStorageChunksByPrefix(io, keyPrefix);
-
-  const removeRange = async (keyPrefix: PartialStorageKey) => {
-    const handles = await collectFileHandles();
-
-    await Promise.all(
-      (await collectStorageFileNamesForPrefix(io, keyPrefix)).map(async (name) => {
-        const entry = handles.get(name);
-
-        if (entry?.remove) {
-          await entry.remove();
-        } else {
-          await directory.removeByName?.(name);
-        }
-      }),
-    );
+        await directory.removeByName?.(name);
+      },
+    };
   };
 
   const adapter: AMStorageAdapterInterface = {
-    load,
-    save,
-    remove,
-    loadRange,
-    removeRange,
+    load: (key: PartialStorageKey) => loadStorageEntry(createOperationIo(), key),
+    save: (key: StorageKey, data: Uint8Array<ArrayBuffer>) =>
+      saveStorageEntry(createOperationIo(), key, data),
+    remove: (key: StorageKey) => removeStorageEntry(createOperationIo(), key),
+    loadRange: (keyPrefix: PartialStorageKey) =>
+      loadStorageEntriesByPrefix(createOperationIo(), keyPrefix),
+    removeRange: (keyPrefix: PartialStorageKey) =>
+      removeStorageEntriesByPrefix(createOperationIo(), keyPrefix),
   };
 
   return adapter;

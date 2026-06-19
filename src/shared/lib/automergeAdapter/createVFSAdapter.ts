@@ -1,17 +1,14 @@
 import type { StorageAdapterInterface } from '@automerge/automerge-repo';
-import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
-import { isChunkStorageKey, toWritableStorageFileName } from './storageKeyHelpers';
 import {
-  collectStorageFileNamesForKey,
-  collectStorageFileNamesForPrefix,
-  loadStorageChunk,
-  loadStorageChunksByPrefix,
-  resolveStorageChunkWriteTarget,
+  loadStorageEntriesByPrefix,
+  loadStorageEntry,
+  removeStorageEntriesByPrefix,
+  removeStorageEntry,
+  saveStorageEntry,
   type StorageFilePolicyIo,
 } from './storageFilePolicy';
-import { encodeV3StorageWrapper } from './wrapperCodecV3';
 
 /**
  * Creates an Automerge storage adapter backed by a VirtualFileSystem path.
@@ -40,75 +37,39 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
     }
   };
 
-  const io: StorageFilePolicyIo = {
-    listNames: async () => (await vfs.readDirectory(path)).map(([name]) => name),
-    readBytes: tryReadDirectFile,
-  };
+  const createOperationIo = (): StorageFilePolicyIo => {
+    let namesPromise: Promise<readonly string[]> | undefined;
 
-  const load = (key: PartialStorageKey) => loadStorageChunk(io, key);
+    const getNames = async (): Promise<readonly string[]> => {
+      namesPromise ??= vfs.readDirectory(path).then((entries) => entries.map(([name]) => name));
+      return namesPromise;
+    };
 
-  const loadRange = (keyPrefix: PartialStorageKey) => loadStorageChunksByPrefix(io, keyPrefix);
-
-  const deleteMatchingFiles = async (names: string[]): Promise<void> => {
-    const results = await Promise.allSettled(
-      names.map((name) => vfs.delete(PathUtils.join(path, name))),
-    );
-
-    for (const result of results) {
-      if (result.status === 'rejected') {
-        const { reason } = result;
-
-        if (!(reason instanceof VfsError && reason.code === FileSystemError.FileNotFound)) {
-          throw reason;
+    return {
+      listNames: getNames,
+      readBytes: tryReadDirectFile,
+      writeBytes: async (name, data) => {
+        await vfs.writeFile(PathUtils.join(path, name), new Uint8Array(data));
+      },
+      removeName: async (name) => {
+        try {
+          await vfs.delete(PathUtils.join(path, name));
+        } catch (error) {
+          if (!(error instanceof VfsError && error.code === FileSystemError.FileNotFound)) {
+            throw error;
+          }
         }
-      }
-    }
-  };
-
-  const remove = async (key: StorageKey) => {
-    await deleteMatchingFiles(await collectStorageFileNamesForKey(io, key));
-  };
-
-  const removeRange = async (keyPrefix: PartialStorageKey) => {
-    await deleteMatchingFiles(await collectStorageFileNamesForPrefix(io, keyPrefix));
-  };
-
-  const save = async (key: StorageKey, data: Uint8Array): Promise<void> => {
-    const fileName = toWritableStorageFileName(key);
-    const chunkKey = isChunkStorageKey(key) ? key : undefined;
-
-    if (!fileName) {
-      throw new Error('fileName is undefined');
-    }
-
-    if (chunkKey && data.length === 0) {
-      return;
-    }
-
-    const writableFileName = chunkKey
-      ? await resolveStorageChunkWriteTarget(io, chunkKey)
-      : fileName;
-    const fullPath = PathUtils.join(path, writableFileName);
-    const writableData = chunkKey ? encodeV3StorageWrapper(chunkKey, data) : data;
-
-    if (writableData instanceof Blob || writableData instanceof ArrayBuffer) {
-      await vfs.writeFile(fullPath, writableData);
-    } else if (
-      isStandardBufferView(writableData) &&
-      writableData.byteOffset === 0 &&
-      writableData.byteLength === writableData.buffer.byteLength
-    ) {
-      await vfs.writeFile(fullPath, new Uint8Array(writableData));
-    } else {
-      await vfs.writeFile(fullPath, new Uint8Array(writableData));
-    }
+      },
+    };
   };
 
   return {
-    load,
-    loadRange,
-    remove,
-    removeRange,
-    save,
+    load: (key: PartialStorageKey) => loadStorageEntry(createOperationIo(), key),
+    loadRange: (keyPrefix: PartialStorageKey) =>
+      loadStorageEntriesByPrefix(createOperationIo(), keyPrefix),
+    remove: (key: StorageKey) => removeStorageEntry(createOperationIo(), key),
+    removeRange: (keyPrefix: PartialStorageKey) =>
+      removeStorageEntriesByPrefix(createOperationIo(), keyPrefix),
+    save: (key: StorageKey, data: Uint8Array) => saveStorageEntry(createOperationIo(), key, data),
   };
 };

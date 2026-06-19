@@ -4,6 +4,7 @@ export {
   getRegularDirectoryEntries,
   getRepositoryFacts,
   isAutomergeDocumentFileName,
+  isRepositoryStorageCandidateDocumentFileName,
   isRepositoryMarkerFileName,
   shouldHideRepositoryStorageFile,
 } from './repositoryStorageFiles';

@@ -1,5 +1,5 @@
 import { Repo } from '@automerge/automerge-repo';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DirectoryForStorageAdapter, FileForStorageAdapter, StorageKey } from './types';
 import { createFSStorageAdapter } from './createFSStorageAdapter';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
@@ -189,5 +189,21 @@ describe('createFSStorageAdapter', () => {
     await adapter.save(key, EMPTY_DATA);
 
     expect(directory.files.size).toBe(0);
+  });
+
+  it('reuses one directory scan during a logical remove operation', async () => {
+    const directory = new MemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+    directory.files.set(preferredName, encodeV3StorageWrapper(key, DATA_A));
+    directory.files.set(`${docId}_snapshot_${HASH_A}.automerge`, DATA_A);
+    const entriesSpy = vi.spyOn(directory, 'entries');
+
+    const adapter = createFSStorageAdapter(directory);
+    await adapter.remove(key);
+
+    expect(entriesSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,6 +1,7 @@
 import type { AMChunk } from '@shared/lib/automerge';
 import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
 import { zodIs } from '../validateZodScheme';
+import { fileNameToPartialKey } from './fileNameToPartialKey';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
 import { decodeV3CandidateFileName, encodePreferredV3FileName } from './filenameCodecV3';
 import {
@@ -9,6 +10,7 @@ import {
   selectReadableStorageEntries,
   storageKeyHasPrefix,
   storageKeyToId,
+  toWritableStorageFileName,
 } from './storageKeyHelpers';
 import type { ChunkStorageKey, PartialStorageKey, StorageKey } from './types';
 import {
@@ -17,7 +19,8 @@ import {
   isGeneratedV3CandidateForKey,
   isPlausibleV3CandidateForPrefix,
   resolveWritableV3FileName,
-} from './v3StorageHelpers';
+} from './v3StoragePolicy';
+import { encodeV3StorageWrapper } from './wrapperCodecV3';
 
 /** Minimal storage IO boundary shared by FS, VFS, and repository discovery. */
 export interface StorageFilePolicyIo {
@@ -25,6 +28,10 @@ export interface StorageFilePolicyIo {
   listNames(): Promise<readonly string[]>;
   /** Reads the raw bytes for one physical storage file, or `undefined` when it is absent. */
   readBytes(name: string): Promise<Uint8Array | undefined>;
+  /** Writes raw bytes for one physical storage file. */
+  writeBytes(name: string, data: Uint8Array): Promise<void>;
+  /** Removes one physical storage file when present. */
+  removeName(name: string): Promise<void>;
 }
 
 type LegacyOrV2Entry = {
@@ -73,7 +80,7 @@ const getReadableLegacyOrV2Entries = async (io: StorageFilePolicyIo) => {
  * @param key - Full or partial logical storage key to load.
  * @returns Raw Automerge bytes, or `undefined` when no valid entry exists.
  */
-export const loadStorageChunk = async (
+export const loadStorageEntry = async (
   io: StorageFilePolicyIo,
   key: PartialStorageKey,
 ): Promise<Uint8Array | undefined> => {
@@ -134,7 +141,7 @@ export const loadStorageChunk = async (
  * @param keyPrefix - Logical storage-key prefix to match.
  * @returns Decoded raw chunks that match the prefix.
  */
-export const loadStorageChunksByPrefix = async (
+export const loadStorageEntriesByPrefix = async (
   io: StorageFilePolicyIo,
   keyPrefix: PartialStorageKey,
 ): Promise<AMChunk[]> => {
@@ -270,6 +277,16 @@ export const collectStorageFileNamesForPrefix = async (
 };
 
 /**
+ * Returns whether a file name is a plausible repository storage candidate.
+ * Filename-only matching is enough for legacy/v2 files, while v3 `.mf` names remain only
+ * candidates until their wrapper payload is decoded.
+ * @param name - Physical filename to classify.
+ * @returns Whether the filename should be treated as repository storage.
+ */
+export const isRepositoryStorageCandidateFileName = (name: string): boolean =>
+  fileNameToPartialKey(name) !== undefined || decodeV3CandidateFileName(name) !== undefined;
+
+/**
  * Discovers the full logical Automerge document ids visible through storage files.
  * Legacy and v2 entries are decoded from filenames; v3 entries are decoded from wrappers.
  * @param io - Storage IO boundary used for listing and decoding files.
@@ -304,4 +321,67 @@ export const discoverStorageDocumentIds = async (
   }
 
   return [...documentIds];
+};
+
+/**
+ * Persists one logical storage entry using the shared physical storage policy.
+ * Chunk entries are written as v3 wrappers, while non-chunk entries keep their legacy filename.
+ * Empty chunk data is treated as invalid and skipped.
+ * @param io - Storage IO boundary used for listing, reading, and writing physical files.
+ * @param key - Full logical storage key to persist.
+ * @param data - Raw Automerge bytes to store.
+ */
+export const saveStorageEntry = async (
+  io: StorageFilePolicyIo,
+  key: StorageKey,
+  data: Uint8Array,
+): Promise<void> => {
+  const fileName = toWritableStorageFileName(key);
+  const chunkKey = isChunkStorageKey(key) ? key : undefined;
+
+  if (!fileName) {
+    throw new Error('fileName is undefined');
+  }
+
+  if (chunkKey && data.length === 0) {
+    return;
+  }
+
+  const writableFileName = chunkKey ? await resolveStorageChunkWriteTarget(io, chunkKey) : fileName;
+  const writableData = chunkKey ? encodeV3StorageWrapper(chunkKey, data) : data;
+
+  await io.writeBytes(writableFileName, writableData);
+};
+
+/**
+ * Removes all physical files that belong to one logical storage key.
+ * @param io - Storage IO boundary used for listing, decoding, and removing physical files.
+ * @param key - Full logical storage key to remove.
+ */
+export const removeStorageEntry = async (
+  io: StorageFilePolicyIo,
+  key: StorageKey,
+): Promise<void> => {
+  await Promise.all(
+    (await collectStorageFileNamesForKey(io, key)).map((name) => io.removeName(name)),
+  );
+};
+
+/**
+ * Removes all physical files that belong to one logical storage key prefix.
+ * @param io - Storage IO boundary used for listing, decoding, and removing physical files.
+ * @param keyPrefix - Logical storage-key prefix to remove.
+ */
+export const removeStorageEntriesByPrefix = async (
+  io: StorageFilePolicyIo,
+  keyPrefix: PartialStorageKey,
+): Promise<void> => {
+  await Promise.all(
+    (await collectStorageFileNamesForPrefix(io, keyPrefix)).map((name) => io.removeName(name)),
+  );
+};
+
+export {
+  loadStorageEntry as loadStorageChunk,
+  loadStorageEntriesByPrefix as loadStorageChunksByPrefix,
 };
