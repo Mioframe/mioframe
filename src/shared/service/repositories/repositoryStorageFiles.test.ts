@@ -356,16 +356,6 @@ describe('v2 compact .am filename filtering', () => {
     expect(facts.isInitialized).toBe(true);
     expect(facts.documentIds).toContain(documentId);
   });
-
-  it('keeps the deprecated Automerge alias aligned with repository candidate detection', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- targeted compatibility coverage
-    const { isAutomergeDocumentFileName } = await import('./repositoryStorageFiles');
-    const { fileName } = createV2DocumentStorageFileName();
-
-    expect(isAutomergeDocumentFileName(fileName)).toBe(
-      isRepositoryStorageCandidateFileName(fileName),
-    );
-  });
 });
 
 describe('getDocumentStorageFiles', () => {

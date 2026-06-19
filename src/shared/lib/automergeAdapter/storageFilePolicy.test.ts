@@ -140,22 +140,6 @@ describe('storageFilePolicy', () => {
     expect(isPlausibleRepositoryStorageCandidateFileName('plain.json')).toBe(false);
   });
 
-  it('keeps the deprecated repository candidate alias aligned with the plausible-name API', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- targeted compatibility coverage
-    const { isRepositoryStorageCandidateFileName } = await import('./storageFilePolicy');
-    const documentId = getDocumentId();
-    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
-
-    if (!v3Name) {
-      throw new Error('Expected v3 filename');
-    }
-
-    expect(isRepositoryStorageCandidateFileName(v3Name)).toBe(
-      isPlausibleRepositoryStorageCandidateFileName(v3Name),
-    );
-  });
-
   it('saves chunk entries through the policy-owned v3 wrapper contract', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];

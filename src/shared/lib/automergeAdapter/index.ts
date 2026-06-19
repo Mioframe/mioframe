@@ -48,19 +48,12 @@ export {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
   isPlausibleRepositoryStorageCandidateFileName,
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- compatibility re-export
-  isRepositoryStorageCandidateFileName,
   loadStorageEntriesByPrefix,
   loadStorageEntry,
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- compatibility re-export
-  loadStorageChunk,
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- compatibility re-export
-  loadStorageChunksByPrefix,
   removeStorageEntriesByPrefix,
   removeStorageEntry,
   resolveStorageChunkWriteTarget,
   saveStorageEntry,
   type MutableStorageFilePolicyIo,
   type ReadOnlyStorageFilePolicyIo,
-  type ReadOnlyStorageFilePolicyIo as StorageFilePolicyIo,
 } from './storageFilePolicy';

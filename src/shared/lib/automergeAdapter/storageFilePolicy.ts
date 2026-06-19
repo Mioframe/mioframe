@@ -291,12 +291,6 @@ export const isPlausibleRepositoryStorageCandidateFileName = (name: string): boo
   fileNameToPartialKey(name) !== undefined || decodeV3CandidateFileName(name) !== undefined;
 
 /**
- * @deprecated Use `isPlausibleRepositoryStorageCandidateFileName` instead. This alias is kept only
- * for compatibility.
- */
-export const isRepositoryStorageCandidateFileName = isPlausibleRepositoryStorageCandidateFileName;
-
-/**
  * Discovers the full logical Automerge document ids visible through storage files.
  * Legacy and v2 entries are decoded from filenames; v3 entries are decoded from wrappers.
  * @param io - Storage IO boundary used for listing and decoding files.
@@ -390,13 +384,3 @@ export const removeStorageEntriesByPrefix = async (
     (await collectStorageFileNamesForPrefix(io, keyPrefix)).map((name) => io.removeName(name)),
   );
 };
-
-/**
- * @deprecated Use `loadStorageEntry` instead. This alias is kept only for compatibility.
- */
-export const loadStorageChunk = loadStorageEntry;
-
-/**
- * @deprecated Use `loadStorageEntriesByPrefix` instead. This alias is kept only for compatibility.
- */
-export const loadStorageChunksByPrefix = loadStorageEntriesByPrefix;

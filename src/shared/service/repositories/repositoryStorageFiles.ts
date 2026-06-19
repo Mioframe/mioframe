@@ -69,18 +69,6 @@ export const isRepositoryStorageCandidateFileName = (name: string) =>
   isPlausibleStorageCandidateFileName(name);
 
 /**
- * @deprecated Use `isRepositoryStorageCandidateFileName` instead. This alias is kept only for
- * compatibility.
- */
-export const isRepositoryStorageCandidateDocumentFileName = isRepositoryStorageCandidateFileName;
-
-/**
- * @deprecated Use `isRepositoryStorageCandidateFileName` instead. This alias is kept only for
- * compatibility.
- */
-export const isAutomergeDocumentFileName = isRepositoryStorageCandidateFileName;
-
-/**
  * Returns whether a repository storage file should stay hidden in the file list.
  * @param name - File name to classify.
  * @param hideAutomergeFiles - Whether Automerge document files should stay hidden.
