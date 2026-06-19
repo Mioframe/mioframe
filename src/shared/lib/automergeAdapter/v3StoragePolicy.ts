@@ -170,6 +170,46 @@ export const getGeneratedV3PrefixForKey = (key: ChunkStorageKey): string | undef
   encodeV3ShortFamilyPrefix(key);
 
 /**
+ * Discriminated outcome of inspecting one physical v3 candidate's bytes against an expected full
+ * logical chunk key. Distinguishes "no usable data" from "valid wrapper for a different key" so
+ * callers never collapse the two into the same removal/overwrite decision.
+ */
+export type V3ChunkCandidateClassification =
+  | { kind: 'missing' }
+  | { kind: 'invalid' }
+  | { kind: 'validSameKey'; chunk: AMChunk }
+  | { kind: 'validDifferentKey'; chunk: AMChunk };
+
+/**
+ * Classifies already-read candidate bytes against an expected full logical chunk key.
+ * Performs no IO; callers supply the bytes from a single `readBytes()` call.
+ * @param data - Raw bytes read from the candidate file, or undefined when absent.
+ * @param expectedKey - Full logical chunk key the caller is resolving for.
+ * @returns Discriminated classification distinguishing missing, invalid, same-key, and different-key wrappers.
+ */
+export const classifyV3ChunkCandidateData = (
+  data: Uint8Array | undefined,
+  expectedKey: ChunkStorageKey,
+): V3ChunkCandidateClassification => {
+  if (!data) {
+    return { kind: 'missing' };
+  }
+
+  const chunk = decodeValidV3Chunk(data);
+
+  if (!chunk) {
+    return { kind: 'invalid' };
+  }
+
+  const sameKey =
+    chunk.key[0] === expectedKey[0] &&
+    chunk.key[1] === expectedKey[1] &&
+    chunk.key[2] === expectedKey[2];
+
+  return sameKey ? { kind: 'validSameKey', chunk } : { kind: 'validDifferentKey', chunk };
+};
+
+/**
  * Returns whether a filename belongs to the generated short v3 candidate family for a key.
  * The physical filename must first decode as a plausible v3 `.mf` candidate; matching the shared
  * prefix alone is not sufficient.

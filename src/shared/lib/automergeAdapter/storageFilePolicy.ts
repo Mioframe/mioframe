@@ -15,6 +15,7 @@ import {
 } from './storageKeyHelpers';
 import type { ChunkStorageKey, PartialStorageKey, StorageKey, StorageKeyPrefix } from './types';
 import {
+  classifyV3ChunkCandidateData,
   decodeValidV3Chunk,
   getV3CandidateNamesForKey,
   isGeneratedV3CandidateForKey,
@@ -135,8 +136,6 @@ export const loadStorageEntry = async (
   io: ReadOnlyStorageFilePolicyIo,
   key: PartialStorageKey,
 ): Promise<Uint8Array | undefined> => {
-  let names: readonly string[] | undefined;
-
   if (isChunkStorageKey(key)) {
     const preferredV3Name = encodePreferredV3FileName(key);
 
@@ -145,19 +144,6 @@ export const loadStorageEntry = async (
 
       if (preferred) {
         return preferred.data;
-      }
-    }
-
-    names = await io.listNames();
-
-    for (const candidateName of getV3CandidateNamesForKey(names, key).filter(
-      (name) => name !== preferredV3Name,
-    )) {
-      // eslint-disable-next-line no-await-in-loop -- stop on the first valid wrapper match
-      const chunk = await readValidV3Chunk(io, candidateName, key);
-
-      if (chunk) {
-        return chunk.data;
       }
     }
 
@@ -171,9 +157,32 @@ export const loadStorageEntry = async (
         return v2Chunk.data;
       }
     }
+
+    const names = await io.listNames();
+
+    for (const candidateName of getV3CandidateNamesForKey(names, key).filter(
+      (name) => name !== preferredV3Name,
+    )) {
+      // eslint-disable-next-line no-await-in-loop -- stop on the first valid wrapper match
+      const chunk = await readValidV3Chunk(io, candidateName, key);
+
+      if (chunk) {
+        return chunk.data;
+      }
+    }
+
+    const matched = selectReadableStorageEntries(names).get(storageKeyToId(key));
+
+    if (!matched || matched.name === v2Name) {
+      return undefined;
+    }
+
+    const fallbackChunk = await readValidLegacyOrV2Chunk(io, matched);
+
+    return fallbackChunk?.data;
   }
 
-  names ??= await io.listNames();
+  const names = await io.listNames();
   const matched = selectReadableStorageEntries(names).get(storageKeyToId(key));
 
   if (!matched) {
@@ -267,18 +276,18 @@ export const collectStorageFileNamesForKey = async (
     const generatedCandidates = index.v3CandidateNames.filter((name) =>
       isGeneratedV3CandidateForKey(name, key),
     );
-    const confirmations = await mapBounded(generatedCandidates, async (name) => {
-      const chunk = await readValidV3Chunk(io, name, key);
+    const classifications = await mapBounded(generatedCandidates, async (name) => {
+      const data = await io.readBytes(name);
 
-      if (chunk) {
-        return name;
-      }
-
-      return isPlausibleV3CandidateForPrefix(name, key) ? name : undefined;
+      return { name, classification: classifyV3ChunkCandidateData(data, key) };
     });
 
-    for (const name of confirmations) {
-      if (name) {
+    for (const { name, classification } of classifications) {
+      if (classification.kind === 'validSameKey') {
+        matching.add(name);
+      } else if (classification.kind === 'invalid' && isPlausibleV3CandidateForPrefix(name, key)) {
+        // Invalid/unreadable garbage that is only plausible for this key's generated family is
+        // safe to clean up. A valid wrapper for a different full key must never be removed here.
         matching.add(name);
       }
     }
@@ -391,8 +400,29 @@ export const saveStorageEntry = async (
     return;
   }
 
-  const writableFileName = chunkKey ? await resolveStorageChunkWriteTarget(io, chunkKey) : fileName;
-  const writableData = chunkKey ? encodeV3StorageWrapper(chunkKey, data) : data;
+  if (!chunkKey) {
+    await io.writeBytes(fileName, data);
+    return;
+  }
+
+  const writableData = encodeV3StorageWrapper(chunkKey, data);
+  const preferredName = encodePreferredV3FileName(chunkKey);
+
+  if (preferredName) {
+    const existingBytes = await io.readBytes(preferredName);
+    const classification = classifyV3ChunkCandidateData(existingBytes, chunkKey);
+
+    if (classification.kind === 'missing' || classification.kind === 'validSameKey') {
+      // Absent or already-owned by this exact full key: write directly, no directory listing.
+      await io.writeBytes(preferredName, writableData);
+      return;
+    }
+
+    // Invalid or occupied by a different full key: fall through to the exceptional fallback
+    // below, which performs a fresh directory listing to resolve a safe alternate filename.
+  }
+
+  const writableFileName = await resolveStorageChunkWriteTarget(io, chunkKey);
 
   await io.writeBytes(writableFileName, writableData);
 };

@@ -34,12 +34,20 @@ policy layer follows this contract:
 
 - The filesystem is always the source of truth. No persistent manifest, index file, or
   long-lived directory cache is ever written to storage or kept as a source of truth.
-- Each top-level operation (`load`, `save`, `remove`, `loadRange`, `removeRange`) fetches a fresh
-  directory listing via exactly one `listNames()` call; sequential operations never reuse a stale
-  listing from a previous call.
-- Within one operation, a directory listing may be classified once into an operation-scoped,
-  IO-free in-memory index (marker/v3-candidate/v2/legacy classification). That index is discarded
-  when the operation finishes; it is never reused across operations or treated as a cache.
+- Operations that need directory-wide state (`loadRange`, `removeRange`, document discovery, and
+  the exceptional save/remove fallback paths below) fetch a fresh directory listing via at most one
+  `listNames()` call; sequential operations never reuse a stale listing from a previous call.
+- Exact `load` and normal deterministic `save` avoid directory listing entirely in the common case:
+  `load` tries the deterministic preferred v3 filename directly, then the direct v2 filename,
+  before falling back to a directory-wide scan for manual/suffixed v3 or legacy candidates; normal
+  `save` reads the deterministic preferred v3 filename directly and writes it when it is absent or
+  already a valid wrapper for the same full key, without listing the directory. A directory listing
+  is only fetched as an exceptional fallback when the preferred filename is occupied by invalid
+  data or by a valid wrapper for a different full key.
+- Within one operation that does list the directory, the listing may be classified once into an
+  operation-scoped, IO-free in-memory index (marker/v3-candidate/v2/legacy classification). That
+  index is discarded when the operation finishes; it is never reused across operations or treated
+  as a cache.
 - Independent v3 wrapper reads and independent physical removals use bounded concurrency (a small
   local constant), never unbounded `Promise.all` over arbitrary file counts.
 - Generated v3 filenames are deterministic: `<docPrefix>.<kindCode>.<hashPrefix>.<fingerprint>.mf`,
