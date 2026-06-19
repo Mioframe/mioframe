@@ -59,7 +59,8 @@ reason:
 - Prefer plan-first implementation over broad discovery.
 - Before broad repository exploration, use ByteRover local search to recall prior project decisions; use synthesized queries only when search results are insufficient.
 - Use the `implementation-preflight` skill before non-trivial implementation work to identify owner boundaries, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
-- Non-local implementation changes require a written preflight before production edits that records Goal, Non-goals, Change classification, Ownership matrix, Affected consumers, Expected code shape, Tests, and Forbidden; persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, and cross-layer behavior must not start by patching individual files.
+- For non-local implementation changes, write a preflight before production edits: Goal, Non-goals, Change classification, Ownership matrix, Affected consumers, Expected code shape, Tests, and Forbidden.
+- Persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, and cross-layer behavior must not start by patching individual files.
 - Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
 - For cross-layer changes, write a compact owner map before production edits: source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner. If any owner is unclear, stop and resolve the architecture before editing.
 - Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.

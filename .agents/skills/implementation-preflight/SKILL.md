@@ -41,7 +41,7 @@ Required change classifications:
 
 Minimum content:
 
-1. **Change classification**: choose the one primary class that best describes the task.
+1. **Change classification**: choose one primary class that best describes the task. Also list any secondary classifications that affect ownership, consumers, compatibility, risk, or verification.
 2. **Ownership matrix**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
 3. **Affected consumers**: list the modules, callers, fixtures, and tests that rely on the contract or behavior.
 4. **Expected final architecture or code shape**: say which module should own the finished behavior and which modules must remain thin or untouched.
