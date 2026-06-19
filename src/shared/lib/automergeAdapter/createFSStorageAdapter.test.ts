@@ -85,6 +85,8 @@ class MemoryDirectory implements DirectoryForStorageAdapter {
 class DirectReadMemoryDirectory extends MemoryDirectory {
   entriesCalls = 0;
   readFileByNameCalls = 0;
+  removeByNameCalls = 0;
+  removedNames: string[] = [];
 
   override entries(): AsyncIterableIterator<[PropertyKey, FileForStorageAdapter]> {
     this.entriesCalls += 1;
@@ -97,6 +99,12 @@ class DirectReadMemoryDirectory extends MemoryDirectory {
 
     const bytes = this.files.get(name);
     return bytes ? new File([Uint8Array.from(bytes).buffer], name) : undefined;
+  }
+
+  override async removeByName(name: string): Promise<void> {
+    this.removeByNameCalls += 1;
+    this.removedNames.push(name);
+    await super.removeByName(name);
   }
 }
 
@@ -267,5 +275,42 @@ describe('createFSStorageAdapter direct read-by-name fast path', () => {
 
     expect(await adapter.load(key)).toEqual(DATA_A);
     expect(entriesSpy).toHaveBeenCalled();
+  });
+
+  it('removes the deterministic primary v3 file via removeByName without calling entries()', async () => {
+    const directory = new DirectReadMemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+    if (!primaryName) throw new Error('Expected v3 filename');
+    directory.files.set(primaryName, encodeV3StorageWrapper(key, DATA_A));
+
+    const adapter = createFSStorageAdapter(directory);
+    await adapter.remove(key);
+
+    expect(directory.files.has(primaryName)).toBe(false);
+    expect(directory.removeByNameCalls).toBe(1);
+    expect(directory.removedNames).toEqual([primaryName]);
+    expect(directory.entriesCalls).toBe(0);
+  });
+
+  it('keeps working through the entries()-based fallback when removeByName is absent', async () => {
+    const directory = new MemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+    if (!primaryName) throw new Error('Expected v3 filename');
+    directory.files.set(primaryName, encodeV3StorageWrapper(key, DATA_A));
+    const entriesSpy = vi.spyOn(directory, 'entries');
+    const fallbackDirectory: DirectoryForStorageAdapter = {
+      entries: directory.entries.bind(directory),
+      writeFile: directory.writeFile.bind(directory),
+    };
+
+    const adapter = createFSStorageAdapter(fallbackDirectory);
+    await adapter.remove(key);
+
+    expect(directory.files.has(primaryName)).toBe(false);
+    expect(entriesSpy).toHaveBeenCalledTimes(1);
   });
 });

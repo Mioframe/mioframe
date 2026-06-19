@@ -73,14 +73,16 @@ export const createFSStorageAdapter = (
         await directory.writeFile(name, new Uint8Array(data));
       },
       removeName: async (name) => {
+        if (directory.removeByName) {
+          await directory.removeByName(name);
+          return;
+        }
+
         const entry = (await getHandles()).get(name);
 
         if (entry?.remove) {
           await entry.remove();
-          return;
         }
-
-        await directory.removeByName?.(name);
       },
     };
   };
