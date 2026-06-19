@@ -291,9 +291,8 @@ export const isPlausibleRepositoryStorageCandidateFileName = (name: string): boo
   fileNameToPartialKey(name) !== undefined || decodeV3CandidateFileName(name) !== undefined;
 
 /**
- * Legacy alias for plausible repository storage candidate detection.
- * Prefer `isPlausibleRepositoryStorageCandidateFileName` so callers do not infer verified v3 identity
- * from filename-only matching.
+ * @deprecated Use `isPlausibleRepositoryStorageCandidateFileName` instead. This alias is kept only
+ * for compatibility.
  */
 export const isRepositoryStorageCandidateFileName = isPlausibleRepositoryStorageCandidateFileName;
 
@@ -392,7 +391,12 @@ export const removeStorageEntriesByPrefix = async (
   );
 };
 
-export {
-  loadStorageEntry as loadStorageChunk,
-  loadStorageEntriesByPrefix as loadStorageChunksByPrefix,
-};
+/**
+ * @deprecated Use `loadStorageEntry` instead. This alias is kept only for compatibility.
+ */
+export const loadStorageChunk = loadStorageEntry;
+
+/**
+ * @deprecated Use `loadStorageEntriesByPrefix` instead. This alias is kept only for compatibility.
+ */
+export const loadStorageChunksByPrefix = loadStorageEntriesByPrefix;

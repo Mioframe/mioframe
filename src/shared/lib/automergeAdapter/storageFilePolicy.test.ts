@@ -6,8 +6,7 @@ import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
   isPlausibleRepositoryStorageCandidateFileName,
-  isRepositoryStorageCandidateFileName,
-  loadStorageChunksByPrefix,
+  loadStorageEntriesByPrefix,
   removeStorageEntry,
   resolveStorageChunkWriteTarget,
   saveStorageEntry,
@@ -68,7 +67,7 @@ describe('storageFilePolicy', () => {
     }
 
     await expect(
-      loadStorageChunksByPrefix(
+      loadStorageEntriesByPrefix(
         createIo({
           [`${documentId}_snapshot_${HASH_A}.automerge`]: DATA_A,
           [v2Name]: DATA_B,
@@ -132,17 +131,29 @@ describe('storageFilePolicy', () => {
       throw new Error('Expected storage filenames');
     }
 
-    expect(isRepositoryStorageCandidateFileName(`${documentId}_snapshot_${HASH_A}.automerge`)).toBe(
-      true,
-    );
     expect(
       isPlausibleRepositoryStorageCandidateFileName(`${documentId}_snapshot_${HASH_A}.automerge`),
     ).toBe(true);
-    expect(isRepositoryStorageCandidateFileName(v2Name)).toBe(true);
-    expect(isRepositoryStorageCandidateFileName(v3Name)).toBe(true);
+    expect(isPlausibleRepositoryStorageCandidateFileName(v2Name)).toBe(true);
     expect(isPlausibleRepositoryStorageCandidateFileName(v3Name)).toBe(true);
-    expect(isRepositoryStorageCandidateFileName('notes.am')).toBe(false);
-    expect(isRepositoryStorageCandidateFileName('plain.json')).toBe(false);
+    expect(isPlausibleRepositoryStorageCandidateFileName('notes.am')).toBe(false);
+    expect(isPlausibleRepositoryStorageCandidateFileName('plain.json')).toBe(false);
+  });
+
+  it('keeps the deprecated repository candidate alias aligned with the plausible-name API', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- targeted compatibility coverage
+    const { isRepositoryStorageCandidateFileName } = await import('./storageFilePolicy');
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    expect(isRepositoryStorageCandidateFileName(v3Name)).toBe(
+      isPlausibleRepositoryStorageCandidateFileName(v3Name),
+    );
   });
 
   it('saves chunk entries through the policy-owned v3 wrapper contract', async () => {

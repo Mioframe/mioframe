@@ -14,7 +14,7 @@ import {
   getDocumentStorageFiles,
   getRegularDirectoryEntries,
   getRepositoryFacts,
-  isAutomergeDocumentFileName,
+  isRepositoryStorageCandidateFileName,
   isRepositoryMarkerFileName,
   shouldHideRepositoryStorageFile,
 } from './repositoryStorageFiles';
@@ -152,6 +152,39 @@ describe('getRepositoryFacts', () => {
     expect(facts.documentIds).not.toContain(documentId.slice(0, 6));
   });
 
+  it('discovers full document ids from supported manual and copied v3 suffix candidates', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const docPrefix = documentId.slice(0, 6);
+    const hashPrefix = SAMPLE_HEX_HASH.slice(0, 8);
+    const names = [
+      `${docPrefix}.s.${hashPrefix} (1).mf`,
+      `${docPrefix}.s.${hashPrefix} - copy.mf`,
+      `${docPrefix}.s.${hashPrefix}.1.mf`,
+    ] as const;
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+
+    for (const name of names) {
+      // eslint-disable-next-line no-await-in-loop -- each candidate should remain individually visible
+      await vfs.writeFile(`${path}/${name}`, encodeV3StorageWrapper(key, new Uint8Array([1])));
+    }
+
+    const facts = await getRepositoryFacts(
+      vfs,
+      path,
+      names.map((name) => [name, createStat(FSNodeType.File)]),
+    );
+
+    expect(facts).toEqual({
+      documentIds: [documentId],
+      isInitialized: true,
+    });
+  });
+
   it('skips malformed, truncated, empty, and unrelated v3 candidates during repository discovery', async () => {
     const vfs = new VirtualFileSystem();
     const path = '/repo';
@@ -255,8 +288,8 @@ describe('repository storage file classifiers', () => {
 
     expect(isRepositoryMarkerFileName(storageAdapterMarkerFileName)).toBe(true);
     expect(isRepositoryMarkerFileName('plain.json')).toBe(false);
-    expect(isAutomergeDocumentFileName(fileName)).toBe(true);
-    expect(isAutomergeDocumentFileName('plain.json')).toBe(false);
+    expect(isRepositoryStorageCandidateFileName(fileName)).toBe(true);
+    expect(isRepositoryStorageCandidateFileName('plain.json')).toBe(false);
   });
 
   it('hides only the storage files requested by the current visibility setting', () => {
@@ -270,10 +303,10 @@ describe('repository storage file classifiers', () => {
 });
 
 describe('v2 compact .am filename filtering', () => {
-  it('classifies v2 .am storage files as Automerge document files', () => {
+  it('classifies v2 .am storage files as repository storage candidates', () => {
     const { fileName } = createV2DocumentStorageFileName();
 
-    expect(isAutomergeDocumentFileName(fileName)).toBe(true);
+    expect(isRepositoryStorageCandidateFileName(fileName)).toBe(true);
   });
 
   it('hides v2 .am storage files when hideAutomergeFiles is true', () => {
@@ -289,8 +322,8 @@ describe('v2 compact .am filename filtering', () => {
   });
 
   it('does not classify unrelated .am files as Automerge storage', () => {
-    expect(isAutomergeDocumentFileName('notes.am')).toBe(false);
-    expect(isAutomergeDocumentFileName('attachment.am')).toBe(false);
+    expect(isRepositoryStorageCandidateFileName('notes.am')).toBe(false);
+    expect(isRepositoryStorageCandidateFileName('attachment.am')).toBe(false);
   });
 
   it('filters out both legacy and v2 storage files from visible entries', () => {
@@ -322,6 +355,16 @@ describe('v2 compact .am filename filtering', () => {
 
     expect(facts.isInitialized).toBe(true);
     expect(facts.documentIds).toContain(documentId);
+  });
+
+  it('keeps the deprecated Automerge alias aligned with repository candidate detection', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- targeted compatibility coverage
+    const { isAutomergeDocumentFileName } = await import('./repositoryStorageFiles');
+    const { fileName } = createV2DocumentStorageFileName();
+
+    expect(isAutomergeDocumentFileName(fileName)).toBe(
+      isRepositoryStorageCandidateFileName(fileName),
+    );
   });
 });
 

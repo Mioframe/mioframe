@@ -2,7 +2,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
-  isPlausibleRepositoryStorageCandidateFileName,
+  isPlausibleRepositoryStorageCandidateFileName as isPlausibleStorageCandidateFileName,
   storageAdapterMarkerFileName,
   type ReadOnlyStorageFilePolicyIo,
 } from '@shared/lib/automergeAdapter';
@@ -65,10 +65,20 @@ export const isRepositoryMarkerFileName = (name: string) => name === storageAdap
  * @param name - File name to classify.
  * @returns Whether the file name is a repository storage candidate file.
  */
-export const isRepositoryStorageCandidateDocumentFileName = (name: string) =>
-  isPlausibleRepositoryStorageCandidateFileName(name);
+export const isRepositoryStorageCandidateFileName = (name: string) =>
+  isPlausibleStorageCandidateFileName(name);
 
-export const isAutomergeDocumentFileName = isRepositoryStorageCandidateDocumentFileName;
+/**
+ * @deprecated Use `isRepositoryStorageCandidateFileName` instead. This alias is kept only for
+ * compatibility.
+ */
+export const isRepositoryStorageCandidateDocumentFileName = isRepositoryStorageCandidateFileName;
+
+/**
+ * @deprecated Use `isRepositoryStorageCandidateFileName` instead. This alias is kept only for
+ * compatibility.
+ */
+export const isAutomergeDocumentFileName = isRepositoryStorageCandidateFileName;
 
 /**
  * Returns whether a repository storage file should stay hidden in the file list.
@@ -78,7 +88,7 @@ export const isAutomergeDocumentFileName = isRepositoryStorageCandidateDocumentF
  */
 export const shouldHideRepositoryStorageFile = (name: string, hideAutomergeFiles: boolean) =>
   isRepositoryMarkerFileName(name) ||
-  (hideAutomergeFiles && isRepositoryStorageCandidateDocumentFileName(name));
+  (hideAutomergeFiles && isRepositoryStorageCandidateFileName(name));
 
 /**
  * Returns directory entries visible to the user after repository storage files are filtered out.
