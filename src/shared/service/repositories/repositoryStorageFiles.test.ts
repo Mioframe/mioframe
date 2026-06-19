@@ -18,6 +18,7 @@ import {
   isRepositoryMarkerFileName,
   shouldHideRepositoryStorageFile,
 } from './repositoryStorageFiles';
+import type { ChunkStorageKey } from '@shared/lib/automergeAdapter';
 
 const createStat = (type: FSNodeType): FSNodeStat => ({
   type,
@@ -36,6 +37,7 @@ const createDocumentStorageFileName = () => {
 };
 
 const SAMPLE_HEX_HASH = 'a'.repeat(64);
+const OTHER_HEX_HASH = 'b'.repeat(64);
 
 const createV2DocumentStorageFileName = () => {
   const documentId = new Repo().create({}).documentId;
@@ -124,6 +126,94 @@ describe('getRepositoryFacts', () => {
       documentIds: [documentId],
       isInitialized: true,
     });
+  });
+
+  it('does not use the 6-character v3 document prefix as the document id', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const key = [documentId, 'snapshot', SAMPLE_HEX_HASH] as const;
+    const fileName = encodePreferredV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(
+      `${path}/${fileName}`,
+      encodeV3StorageWrapper([...key], new Uint8Array([1])),
+    );
+
+    const facts = await getRepositoryFacts(vfs, path);
+
+    expect(facts.documentIds).toEqual([documentId]);
+    expect(facts.documentIds).not.toContain(documentId.slice(0, 6));
+  });
+
+  it('skips malformed, truncated, empty, and unrelated v3 candidates during repository discovery', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const validKey: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const malformedName = `${documentId.slice(0, 6)}.s.${SAMPLE_HEX_HASH.slice(0, 8)}.mf`;
+    const truncatedName = `${documentId.slice(0, 6)}.i.${OTHER_HEX_HASH.slice(0, 8)}.mf`;
+    const emptyName = `${documentId.slice(0, 6)}.s.${OTHER_HEX_HASH.slice(0, 8)}.1.mf`;
+    const unrelatedName = 'notes.mf';
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(`${path}/${malformedName}`, new Uint8Array([0xde, 0xad, 0xbe, 0xef]));
+    await vfs.writeFile(`${path}/${truncatedName}`, new Uint8Array([1]));
+    await vfs.writeFile(
+      `${path}/${emptyName}`,
+      encodeV3StorageWrapper([documentId, 'snapshot', OTHER_HEX_HASH], new Uint8Array()),
+    );
+    await vfs.writeFile(`${path}/${unrelatedName}`, new Uint8Array([1, 2, 3]));
+    await vfs.writeFile(
+      `${path}/${malformedName}.valid`,
+      encodeV3StorageWrapper(validKey, new Uint8Array([7])),
+    );
+
+    const facts = await getRepositoryFacts(vfs, path, [
+      [malformedName, createStat(FSNodeType.File)],
+      [truncatedName, createStat(FSNodeType.File)],
+      [emptyName, createStat(FSNodeType.File)],
+      [unrelatedName, createStat(FSNodeType.File)],
+      [`${malformedName}.valid`, createStat(FSNodeType.File)],
+    ]);
+
+    expect(facts).toEqual({
+      documentIds: [],
+      isInitialized: false,
+    });
+  });
+
+  it('dedupes v3, v2, and legacy entries for the same document id', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const v3Name = encodePreferredV3FileName([...key]);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', SAMPLE_HEX_HASH);
+    const legacyName = partialKeyToFileName(key);
+
+    if (!v3Name || !v2Name || !legacyName) {
+      throw new Error('Expected storage filenames');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(`${path}/${v3Name}`, encodeV3StorageWrapper([...key], new Uint8Array([1])));
+
+    const facts = await getRepositoryFacts(vfs, path, [
+      [v3Name, createStat(FSNodeType.File)],
+      [v2Name, createStat(FSNodeType.File)],
+      [legacyName, createStat(FSNodeType.File)],
+    ]);
+
+    expect(facts.documentIds).toEqual([documentId]);
   });
 });
 

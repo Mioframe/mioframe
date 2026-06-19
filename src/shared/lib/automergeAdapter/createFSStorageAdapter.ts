@@ -12,7 +12,7 @@ import {
   removeStorageEntriesByPrefix,
   removeStorageEntry,
   saveStorageEntry,
-  type StorageFilePolicyIo,
+  type MutableStorageFilePolicyIo,
 } from './storageFilePolicy';
 
 /**
@@ -31,7 +31,7 @@ export const createFSStorageAdapter = (
     return new Uint8Array(await file.arrayBuffer());
   };
 
-  const createOperationIo = (): StorageFilePolicyIo => {
+  const createOperationIo = (): MutableStorageFilePolicyIo => {
     let handlesPromise: Promise<Map<string, FileForStorageAdapter>> | undefined;
 
     const getHandles = async (): Promise<Map<string, FileForStorageAdapter>> => {

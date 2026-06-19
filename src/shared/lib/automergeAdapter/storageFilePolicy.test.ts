@@ -5,12 +5,14 @@ import { encodePreferredV3FileName } from './filenameCodecV3';
 import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
+  isPlausibleRepositoryStorageCandidateFileName,
   isRepositoryStorageCandidateFileName,
   loadStorageChunksByPrefix,
   removeStorageEntry,
   resolveStorageChunkWriteTarget,
   saveStorageEntry,
-  type StorageFilePolicyIo,
+  type MutableStorageFilePolicyIo,
+  type ReadOnlyStorageFilePolicyIo,
 } from './storageFilePolicy';
 import type { ChunkStorageKey, StorageKey } from './types';
 import { partialKeyToFileName } from './partialKeyToFileName';
@@ -23,9 +25,13 @@ const DATA_B = new Uint8Array([4, 5, 6]);
 
 const getDocumentId = () => new Repo().create({}).documentId;
 
-const createIo = (entries: Record<string, Uint8Array>): StorageFilePolicyIo => ({
+const createReadOnlyIo = (entries: Record<string, Uint8Array>): ReadOnlyStorageFilePolicyIo => ({
   listNames: () => Promise.resolve(Object.keys(entries)),
   readBytes: (name) => Promise.resolve(entries[name]),
+});
+
+const createIo = (entries: Record<string, Uint8Array>): MutableStorageFilePolicyIo => ({
+  ...createReadOnlyIo(entries),
   writeBytes: (name, data) => {
     entries[name] = new Uint8Array(data);
     return Promise.resolve();
@@ -108,8 +114,6 @@ describe('storageFilePolicy', () => {
         {
           listNames: () => Promise.resolve([fileName]),
           readBytes,
-          writeBytes: () => Promise.resolve(),
-          removeName: () => Promise.resolve(),
         },
         ['storage-adapter-id'],
       ),
@@ -131,8 +135,12 @@ describe('storageFilePolicy', () => {
     expect(isRepositoryStorageCandidateFileName(`${documentId}_snapshot_${HASH_A}.automerge`)).toBe(
       true,
     );
+    expect(
+      isPlausibleRepositoryStorageCandidateFileName(`${documentId}_snapshot_${HASH_A}.automerge`),
+    ).toBe(true);
     expect(isRepositoryStorageCandidateFileName(v2Name)).toBe(true);
     expect(isRepositoryStorageCandidateFileName(v3Name)).toBe(true);
+    expect(isPlausibleRepositoryStorageCandidateFileName(v3Name)).toBe(true);
     expect(isRepositoryStorageCandidateFileName('notes.am')).toBe(false);
     expect(isRepositoryStorageCandidateFileName('plain.json')).toBe(false);
   });

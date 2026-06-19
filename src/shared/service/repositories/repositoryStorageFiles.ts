@@ -2,9 +2,9 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
-  isRepositoryStorageCandidateFileName,
+  isPlausibleRepositoryStorageCandidateFileName,
   storageAdapterMarkerFileName,
-  type StorageFilePolicyIo,
+  type ReadOnlyStorageFilePolicyIo,
 } from '@shared/lib/automergeAdapter';
 import {
   FileSystemError,
@@ -59,12 +59,14 @@ export const getDocumentStorageFiles = async (
 export const isRepositoryMarkerFileName = (name: string) => name === storageAdapterMarkerFileName;
 
 /**
- * Returns whether a file name is a repository storage candidate file.
+ * Returns whether a file name is a plausible repository storage candidate file.
+ * For v3 `.mf`, filename matching is only a discovery prefilter; full identity still comes from
+ * decoding the wrapper payload.
  * @param name - File name to classify.
  * @returns Whether the file name is a repository storage candidate file.
  */
 export const isRepositoryStorageCandidateDocumentFileName = (name: string) =>
-  isRepositoryStorageCandidateFileName(name);
+  isPlausibleRepositoryStorageCandidateFileName(name);
 
 export const isAutomergeDocumentFileName = isRepositoryStorageCandidateDocumentFileName;
 
@@ -151,7 +153,7 @@ const createRepositoryStorageIo = (
   vfs: VirtualFileSystem,
   path: string,
   entries: readonly RepositoryDirectoryEntry[],
-): StorageFilePolicyIo => {
+): ReadOnlyStorageFilePolicyIo => {
   const fileNames = entries
     .filter(([, stat]) => stat.type === FSNodeType.File)
     .map(([name]) => name);
@@ -170,10 +172,6 @@ const createRepositoryStorageIo = (
         throw error;
       }
     },
-    writeBytes: () =>
-      Promise.reject(new Error('Repository storage discovery IO does not support writes')),
-    removeName: () =>
-      Promise.reject(new Error('Repository storage discovery IO does not support removals')),
   };
 };
 

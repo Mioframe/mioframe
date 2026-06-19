@@ -22,12 +22,16 @@ import {
 } from './v3StoragePolicy';
 import { encodeV3StorageWrapper } from './wrapperCodecV3';
 
-/** Minimal storage IO boundary shared by FS, VFS, and repository discovery. */
-export interface StorageFilePolicyIo {
+/** Read-only storage IO boundary shared by FS, VFS, and repository discovery. */
+export interface ReadOnlyStorageFilePolicyIo {
   /** Returns the current physical storage filenames visible to the policy. */
   listNames(): Promise<readonly string[]>;
   /** Reads the raw bytes for one physical storage file, or `undefined` when it is absent. */
   readBytes(name: string): Promise<Uint8Array | undefined>;
+}
+
+/** Mutable storage IO boundary used by save and remove operations. */
+export interface MutableStorageFilePolicyIo extends ReadOnlyStorageFilePolicyIo {
   /** Writes raw bytes for one physical storage file. */
   writeBytes(name: string, data: Uint8Array): Promise<void>;
   /** Removes one physical storage file when present. */
@@ -41,7 +45,7 @@ type LegacyOrV2Entry = {
 };
 
 const readValidV3Chunk = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
   name: string,
   expectedKey?: ChunkStorageKey,
 ): Promise<AMChunk | undefined> => {
@@ -55,7 +59,7 @@ const readValidV3Chunk = async (
 };
 
 const readValidLegacyOrV2Chunk = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
   entry: Pick<LegacyOrV2Entry, 'key' | 'name'>,
 ): Promise<AMChunk | undefined> => {
   const data = await io.readBytes(entry.name);
@@ -67,7 +71,7 @@ const readValidLegacyOrV2Chunk = async (
   return { data, key: entry.key };
 };
 
-const getReadableLegacyOrV2Entries = async (io: StorageFilePolicyIo) => {
+const getReadableLegacyOrV2Entries = async (io: ReadOnlyStorageFilePolicyIo) => {
   const names = await io.listNames();
 
   return selectReadableStorageEntries(names);
@@ -81,7 +85,7 @@ const getReadableLegacyOrV2Entries = async (io: StorageFilePolicyIo) => {
  * @returns Raw Automerge bytes, or `undefined` when no valid entry exists.
  */
 export const loadStorageEntry = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
   key: PartialStorageKey,
 ): Promise<Uint8Array | undefined> => {
   let names: readonly string[] | undefined;
@@ -142,7 +146,7 @@ export const loadStorageEntry = async (
  * @returns Decoded raw chunks that match the prefix.
  */
 export const loadStorageEntriesByPrefix = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
   keyPrefix: PartialStorageKey,
 ): Promise<AMChunk[]> => {
   const names = await io.listNames();
@@ -192,7 +196,7 @@ export const loadStorageEntriesByPrefix = async (
  * @returns Preferred or suffixed v3 filename that is safe to write.
  */
 export const resolveStorageChunkWriteTarget = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
   key: ChunkStorageKey,
 ): Promise<string> => {
   const names = await io.listNames();
@@ -210,7 +214,7 @@ export const resolveStorageChunkWriteTarget = async (
  * @returns Physical filenames that belong to the logical key.
  */
 export const collectStorageFileNamesForKey = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
   key: StorageKey,
 ): Promise<string[]> => {
   const names = await io.listNames();
@@ -250,7 +254,7 @@ export const collectStorageFileNamesForKey = async (
  * @returns Physical filenames that belong to the matched logical prefix.
  */
 export const collectStorageFileNamesForPrefix = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
   keyPrefix: PartialStorageKey,
 ): Promise<string[]> => {
   const names = await io.listNames();
@@ -283,8 +287,15 @@ export const collectStorageFileNamesForPrefix = async (
  * @param name - Physical filename to classify.
  * @returns Whether the filename should be treated as repository storage.
  */
-export const isRepositoryStorageCandidateFileName = (name: string): boolean =>
+export const isPlausibleRepositoryStorageCandidateFileName = (name: string): boolean =>
   fileNameToPartialKey(name) !== undefined || decodeV3CandidateFileName(name) !== undefined;
+
+/**
+ * Legacy alias for plausible repository storage candidate detection.
+ * Prefer `isPlausibleRepositoryStorageCandidateFileName` so callers do not infer verified v3 identity
+ * from filename-only matching.
+ */
+export const isRepositoryStorageCandidateFileName = isPlausibleRepositoryStorageCandidateFileName;
 
 /**
  * Discovers the full logical Automerge document ids visible through storage files.
@@ -293,7 +304,7 @@ export const isRepositoryStorageCandidateFileName = (name: string): boolean =>
  * @returns Unique document ids currently discoverable in storage.
  */
 export const discoverStorageDocumentIds = async (
-  io: StorageFilePolicyIo,
+  io: ReadOnlyStorageFilePolicyIo,
 ): Promise<AMDocumentId[]> => {
   const names = await io.listNames();
   const documentIds = new Set<AMDocumentId>();
@@ -332,7 +343,7 @@ export const discoverStorageDocumentIds = async (
  * @param data - Raw Automerge bytes to store.
  */
 export const saveStorageEntry = async (
-  io: StorageFilePolicyIo,
+  io: MutableStorageFilePolicyIo,
   key: StorageKey,
   data: Uint8Array,
 ): Promise<void> => {
@@ -359,7 +370,7 @@ export const saveStorageEntry = async (
  * @param key - Full logical storage key to remove.
  */
 export const removeStorageEntry = async (
-  io: StorageFilePolicyIo,
+  io: MutableStorageFilePolicyIo,
   key: StorageKey,
 ): Promise<void> => {
   await Promise.all(
@@ -373,7 +384,7 @@ export const removeStorageEntry = async (
  * @param keyPrefix - Logical storage-key prefix to remove.
  */
 export const removeStorageEntriesByPrefix = async (
-  io: StorageFilePolicyIo,
+  io: MutableStorageFilePolicyIo,
   keyPrefix: PartialStorageKey,
 ): Promise<void> => {
   await Promise.all(

@@ -7,7 +7,7 @@ import {
   removeStorageEntriesByPrefix,
   removeStorageEntry,
   saveStorageEntry,
-  type StorageFilePolicyIo,
+  type MutableStorageFilePolicyIo,
 } from './storageFilePolicy';
 
 /**
@@ -37,7 +37,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
     }
   };
 
-  const createOperationIo = (): StorageFilePolicyIo => {
+  const createOperationIo = (): MutableStorageFilePolicyIo => {
     let namesPromise: Promise<readonly string[]> | undefined;
 
     const getNames = async (): Promise<readonly string[]> => {

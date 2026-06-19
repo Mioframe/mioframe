@@ -47,6 +47,7 @@ export {
   collectStorageFileNamesForKey,
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
+  isPlausibleRepositoryStorageCandidateFileName,
   isRepositoryStorageCandidateFileName,
   loadStorageEntriesByPrefix,
   loadStorageEntry,
@@ -56,5 +57,7 @@ export {
   removeStorageEntry,
   resolveStorageChunkWriteTarget,
   saveStorageEntry,
-  type StorageFilePolicyIo,
+  type MutableStorageFilePolicyIo,
+  type ReadOnlyStorageFilePolicyIo,
+  type ReadOnlyStorageFilePolicyIo as StorageFilePolicyIo,
 } from './storageFilePolicy';
