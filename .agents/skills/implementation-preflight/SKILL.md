@@ -116,7 +116,7 @@ Use these rules for create/open/import/export, setup, picker, dialog, storage, p
 - Keep flow outcomes typed and local to the boundary that needs them. Avoid broad `status` protocols, command choreography, or result objects that mix field issues, transport failures, domain conflicts, and UI navigation unless several independent callers need the protocol.
 - If a feature needs a shared UI primitive change, decide whether that primitive change is a separate prerequisite. When it remains in the feature PR, keep it minimal, Material-verified, and independently tested so the feature review does not hide shared UI regressions.
 - Delete obsolete code paths, facades, providers, and tests in the same pass that introduces their replacement unless backwards compatibility is required. Do not leave dual flows for review to reconcile.
-- If review finds repeated ownership mistakes after more than two follow-ups, stop patching and redo the preflight. Update the scenario matrix, ownership matrix, and verification matrix before more edits.
+- When two consecutive review rounds uncover ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Update the scenario matrix, owner map, and verification matrix before more edits.
 - Prefer tests for domain invariants and extracted state transitions before component wiring. Component tests should verify only contracts that the component owns; browser behavior, layout, focus, gestures, and Material visual states require browser or visual verification.
 
 ## Bounded reuse search
