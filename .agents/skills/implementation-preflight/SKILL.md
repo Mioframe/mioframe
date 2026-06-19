@@ -15,42 +15,22 @@ Do not use this skill for trivial typo fixes, formatting-only changes, comments-
 
 ## Required preflight
 
-For non-local changes, write a short preflight artifact before the first production edit. Use `.agents/templates/implementation-task.md` when possible.
+For non-local changes, write a short preflight artifact before the first production edit.
 
 Required sections:
 
-- Goal
-- Non-goals
-- Change classification
-- Ownership matrix
-- Affected consumers
-- Expected final architecture or code shape
-- Tests
-- Forbidden
+0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat the full handoff. Restate only the decisions that affect the planned edits, verify the planned edits match that handoff, and do not replace it with a different architecture. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop before production edits.
+1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
+2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
+3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
+4. **Acceptance matrix**: what non-happy-path states must work in the first implementation?
+5. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
+6. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
+7. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
 
-Required change classifications:
+If any owner in the owner map is unclear for a cross-layer change, stop and resolve the architecture before editing.
 
-- local UI
-- shared UI
-- feature behavior
-- storage/data contract
-- service/API contract
-- worker/provider boundary
-- cross-layer behavior
-- infrastructure/CI
-
-Minimum content:
-
-1. **Change classification**: choose one primary class that best describes the task. Also list any secondary classifications that affect ownership, consumers, compatibility, risk, or verification.
-2. **Ownership matrix**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
-3. **Affected consumers**: list the modules, callers, fixtures, and tests that rely on the contract or behavior.
-4. **Expected final architecture or code shape**: say which module should own the finished behavior and which modules must remain thin or untouched.
-5. **Tests**: define the focused verification for the riskiest path and the final required verification.
-6. **Forbidden**: state which layers, files, or shortcut approaches must not be used.
-
-If any owner in the ownership matrix is unclear for a cross-layer change, stop and resolve the architecture before editing.
-
-For contract changes, also record:
+For contract changes such as persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, or cross-layer behavior, also record:
 
 - affected consumer inventory;
 - owner module;
@@ -168,3 +148,5 @@ The first implementation should cover the applicable matrix, not only the happy 
 Keep the written preflight concise. A useful preflight is usually 8-15 short lines plus a brief verification note.
 
 Do not repeat generic repository rules. Name only the rules and risks that apply to the current task.
+
+Before final handoff, report whether the resulting diff still matches the architecture handoff when one exists. If it does not, fix the implementation or explicitly report the architectural divergence.
