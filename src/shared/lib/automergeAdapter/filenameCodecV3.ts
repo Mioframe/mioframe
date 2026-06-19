@@ -2,8 +2,9 @@ import type { ChangedType, ChunkStorageKey } from './types';
 
 export const V3_FILE_EXTENSION = 'mf';
 export const V3_DOC_PREFIX_LENGTH = 6;
+/** Hash prefix length used only by legacy/compatibility v3 filenames, never by the primary filename. */
 export const V3_HASH_PREFIX_LENGTH = 8;
-export const V3_FINGERPRINT_LENGTH = 8;
+export const V3_FINGERPRINT_LENGTH = 12;
 export const V3_MAX_FILE_NAME_LENGTH = 31;
 
 const KIND_TO_CODE: Readonly<Record<ChangedType, string>> = {
@@ -16,141 +17,137 @@ const CODE_TO_KIND: Readonly<Record<string, ChangedType>> = {
   i: 'incremental',
 };
 
-const V3_FILENAME_RE =
-  /^(?<docPrefix>[A-Za-z0-9]{6})\.(?<kindCode>[si])\.(?<hashPrefix>[0-9a-f]{8})(?:\.(?<fingerprint>[0-9a-f]{8}))?(?<suffix>.*)\.mf$/;
-const V3_SUPPORTED_SUFFIX_RE = /^(|\.\d+| \(\d+\)| - copy(?: \(\d+\))?)$/;
+const PRIMARY_V3_FILENAME_RE =
+  /^(?<docPrefix>[A-Za-z0-9]{6})\.(?<kindCode>[si])\.(?<fingerprint>[0-9a-f]{12})\.mf$/;
 
-/** 32-bit FNV-1a offset basis. */
-const FNV_OFFSET_BASIS = 0x811c9dc5;
-/** 32-bit FNV-1a prime multiplier. */
-const FNV_PRIME = 0x01000193;
+const COMPATIBILITY_V3_FILENAME_RE =
+  /^(?<docPrefix>[A-Za-z0-9]{6})\.(?<kindCode>[si])\.(?<hashPrefix>[0-9a-f]{8})(?:\.(?<fingerprint>[0-9a-f]{8}))?(?<suffix>.*)\.mf$/;
+const COMPATIBILITY_SUFFIX_RE = /^(|\.\d+| \(\d+\)| - copy(?: \(\d+\))?)$/;
+
+/** 64-bit FNV-1a offset basis. */
+const FNV64_OFFSET_BASIS = 0xcbf29ce484222325n;
+/** 64-bit FNV-1a prime multiplier. */
+const FNV64_PRIME = 0x100000001b3n;
+const FNV64_MASK = 0xffffffffffffffffn;
 
 /**
- * Computes a deterministic, non-cryptographic 32-bit FNV-1a hash of a string.
+ * Computes a deterministic, non-cryptographic 64-bit FNV-1a hash of a string.
  * Used only to disambiguate generated v3 filenames; never used for security purposes.
  * @param input - Input string to hash.
- * @returns Unsigned 32-bit hash value.
+ * @returns Unsigned 64-bit hash value.
  */
-const fnv1a32 = (input: string): number => {
-  let hash = FNV_OFFSET_BASIS;
+const fnv1a64 = (input: string): bigint => {
+  let hash = FNV64_OFFSET_BASIS;
 
   for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, FNV_PRIME);
+    hash ^= BigInt(input.charCodeAt(i));
+    hash = (hash * FNV64_PRIME) & FNV64_MASK;
   }
 
-  return hash >>> 0;
+  return hash;
 };
 
 /**
  * Computes a short deterministic fingerprint for the full logical chunk storage key.
- * The fingerprint is stable for the same logical key and lets generated v3 filenames stay
- * distinct even when truncated documentId/hash prefixes collide between different logical keys.
+ * The fingerprint is stable for the same logical key and lets the primary generated v3 filename
+ * stay distinct even when truncated documentId prefixes collide between different logical keys.
  * @param key - Full logical Automerge chunk key.
- * @returns 8 lowercase hex character fingerprint.
+ * @returns 12 lowercase hex character fingerprint.
  */
 export const computeStorageKeyFingerprint = (key: ChunkStorageKey): string => {
   const [documentId, kind, hash] = key;
 
-  return fnv1a32(`${documentId}\x00${kind}\x00${hash}`)
+  return fnv1a64(`${documentId}\x00${kind}\x00${hash}`)
     .toString(16)
-    .padStart(V3_FINGERPRINT_LENGTH, '0');
+    .padStart(16, '0')
+    .slice(0, V3_FINGERPRINT_LENGTH);
+};
+
+/** Parsed parts of a strict primary v3 `.mf` filename. */
+export interface PrimaryV3FileNameParts {
+  /** Leading documentId prefix from the physical filename. */
+  docPrefix: string;
+  /** Logical storage kind recovered from the v3 kind code. */
+  kind: ChangedType;
+  /** Full-key fingerprint segment. */
+  fingerprint: string;
+}
+
+/**
+ * Encodes the primary deterministic `.mf` filename for a full chunk storage key.
+ * The filename is a routing hint only: `<docPrefix>.<kindCode>.<fingerprint>.mf`, where
+ * `fingerprint` is a 12 lowercase hex character hash of the full logical key. It never contains a
+ * hash prefix; the full `StorageKey` lives inside the wrapper, which remains the source of truth.
+ * @param key - Full logical Automerge chunk key.
+ * @returns Primary physical filename, or undefined when the key is invalid.
+ */
+export const encodePrimaryV3FileName = (key: ChunkStorageKey): string | undefined => {
+  const [documentId, kind] = key;
+  const kindCode = KIND_TO_CODE[kind];
+
+  if (!kindCode || documentId.length < V3_DOC_PREFIX_LENGTH) {
+    return undefined;
+  }
+
+  const docPrefix = documentId.slice(0, V3_DOC_PREFIX_LENGTH);
+  const fingerprint = computeStorageKeyFingerprint(key);
+
+  return `${docPrefix}.${kindCode}.${fingerprint}.${V3_FILE_EXTENSION}`;
 };
 
 /**
- * Parsed candidate parts for a plausible v3 `.mf` filename.
+ * Parses a filename as a strict primary v3 candidate. Used by exact load/save/remove and by
+ * normal generated v3 writes. Does not accept manual, copied, suffixed, or pre-fingerprint v3
+ * filenames; use {@link decodeCompatibilityV3CandidateFileName} for those.
+ * @param name - Physical filename to inspect.
+ * @returns Parsed primary candidate parts, or undefined when the name is not a primary v3 file.
  */
-export interface V3CandidateFileNameParts {
+export const decodePrimaryV3FileName = (name: string): PrimaryV3FileNameParts | undefined => {
+  const match = PRIMARY_V3_FILENAME_RE.exec(name);
+
+  if (!match?.groups) {
+    return undefined;
+  }
+
+  const { docPrefix, kindCode, fingerprint } = match.groups;
+  const kind = CODE_TO_KIND[kindCode ?? ''];
+
+  if (!docPrefix || !kind || !fingerprint) {
+    return undefined;
+  }
+
+  return { docPrefix, kind, fingerprint };
+};
+
+/**
+ * Parsed parts of a plausible compatibility v3 candidate filename: manual, copied, suffixed, or
+ * pre-fingerprint variants that existed before the primary filename contract was simplified.
+ */
+export interface CompatibilityV3CandidateParts {
   /** Leading documentId candidate prefix from the physical filename. */
   docPrefix: string;
   /** Logical storage kind recovered from the v3 kind code. */
   kind: ChangedType;
   /** Leading hash candidate prefix from the physical filename. */
   hashPrefix: string;
-  /** Full-key fingerprint segment, when present. Absent on pre-fingerprint legacy v3 files. */
+  /** Legacy fixed-width fingerprint segment, when present. */
   fingerprint: string | undefined;
   /** Non-semantic copied-file suffix preserved only for candidate matching. */
   suffix: string;
 }
 
 /**
- * Returns the stable short family prefix shared by every generated v3 filename variant of a key,
- * independent of the fingerprint segment. Used to recognize manual/copy/numeric-suffix v3 files
- * that were created before the fingerprint segment existed.
- * @param key - Full logical Automerge chunk key.
- * @returns `<docPrefix>.<kindCode>.<hashPrefix>` without the fingerprint, suffix, or extension.
- */
-export const encodeV3ShortFamilyPrefix = (key: ChunkStorageKey): string | undefined => {
-  const [documentId, kind, hash] = key;
-  const kindCode = KIND_TO_CODE[kind];
-
-  if (
-    !kindCode ||
-    documentId.length < V3_DOC_PREFIX_LENGTH ||
-    hash.length < V3_HASH_PREFIX_LENGTH
-  ) {
-    return undefined;
-  }
-
-  return `${documentId.slice(0, V3_DOC_PREFIX_LENGTH)}.${kindCode}.${hash.slice(0, V3_HASH_PREFIX_LENGTH)}`;
-};
-
-/**
- * Encodes the preferred short `.mf` filename for a full chunk storage key.
- * The filename includes a deterministic fingerprint of the full logical key so that different
- * logical keys do not normally compete for the same generated filename.
- * @param key - Full logical Automerge chunk key.
- * @returns Preferred short physical filename, or undefined when the key is invalid.
- */
-export const encodePreferredV3FileName = (key: ChunkStorageKey): string | undefined => {
-  const shortPrefix = encodeV3ShortFamilyPrefix(key);
-
-  if (!shortPrefix) {
-    return undefined;
-  }
-
-  return `${shortPrefix}.${computeStorageKeyFingerprint(key)}.${V3_FILE_EXTENSION}`;
-};
-
-/**
- * Encodes a v3 filename with the fixed short prefixes and an optional numeric suffix.
- * @param key - Full logical Automerge chunk key.
- * @param suffixNumber - Optional numeric suffix used for collision handling.
- * @returns Physical filename candidate, or undefined when the candidate would exceed the hard cap.
- */
-export const encodeV3FileNameWithSuffix = (
-  key: ChunkStorageKey,
-  suffixNumber?: number,
-): string | undefined => {
-  const baseName = encodePreferredV3FileName(key);
-
-  if (!baseName) {
-    return undefined;
-  }
-
-  if (suffixNumber === undefined) {
-    return baseName;
-  }
-
-  if (!Number.isSafeInteger(suffixNumber) || suffixNumber <= 0) {
-    return undefined;
-  }
-
-  const fileName = baseName.replace(
-    `.${V3_FILE_EXTENSION}`,
-    `.${suffixNumber}.${V3_FILE_EXTENSION}`,
-  );
-
-  return fileName.length <= V3_MAX_FILE_NAME_LENGTH ? fileName : undefined;
-};
-
-/**
- * Parses a plausible v3 candidate filename, including supported copied-file suffix variants.
+ * Parses a filename as a plausible compatibility v3 candidate, including manual, copied, and
+ * numeric-suffix variants. Used only by compatibility scan paths: range, discovery, and recovery
+ * fallback after the primary and v2 fast paths fail. These are fallback/recovery inputs, never
+ * normal generated storage.
  * @param name - Physical filename to inspect.
- * @returns Parsed candidate parts, or undefined when the name is not a plausible v3 file.
+ * @returns Parsed candidate parts, or undefined when the name is not a plausible compatibility v3 file.
  */
-export const decodeV3CandidateFileName = (name: string): V3CandidateFileNameParts | undefined => {
-  const match = V3_FILENAME_RE.exec(name);
+export const decodeCompatibilityV3CandidateFileName = (
+  name: string,
+): CompatibilityV3CandidateParts | undefined => {
+  const match = COMPATIBILITY_V3_FILENAME_RE.exec(name);
 
   if (!match?.groups) {
     return undefined;
@@ -163,7 +160,7 @@ export const decodeV3CandidateFileName = (name: string): V3CandidateFileNamePart
     return undefined;
   }
 
-  if (!V3_SUPPORTED_SUFFIX_RE.test(suffix ?? '')) {
+  if (!COMPATIBILITY_SUFFIX_RE.test(suffix ?? '')) {
     return undefined;
   }
 
@@ -175,3 +172,21 @@ export const decodeV3CandidateFileName = (name: string): V3CandidateFileNamePart
     suffix: suffix ?? '',
   };
 };
+
+/** Plausible v3 `.mf` candidate parts, covering both primary and compatibility filenames. */
+export interface AnyV3CandidateParts {
+  /** Leading documentId candidate prefix from the physical filename. */
+  docPrefix: string;
+  /** Logical storage kind recovered from the v3 kind code. */
+  kind: ChangedType;
+}
+
+/**
+ * Parses a filename as either a primary or a compatibility v3 candidate. Used only where both
+ * families are equally plausible, such as range/discovery scans and general repository candidate
+ * filtering.
+ * @param name - Physical filename to inspect.
+ * @returns Parsed candidate parts, or undefined when the name is not a plausible v3 file.
+ */
+export const decodeAnyV3CandidateFileName = (name: string): AnyV3CandidateParts | undefined =>
+  decodePrimaryV3FileName(name) ?? decodeCompatibilityV3CandidateFileName(name);

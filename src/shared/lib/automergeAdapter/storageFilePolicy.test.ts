@@ -1,7 +1,7 @@
 import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it, vi } from 'vitest';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
-import { encodePreferredV3FileName, encodeV3FileNameWithSuffix } from './filenameCodecV3';
+import { encodePrimaryV3FileName } from './filenameCodecV3';
 import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
@@ -10,8 +10,8 @@ import {
   loadStorageEntry,
   removeStorageEntriesByPrefix,
   removeStorageEntry,
-  resolveStorageChunkWriteTarget,
   saveStorageEntry,
+  V3StorageConflictError,
   type MutableStorageFilePolicyIo,
   type ReadOnlyStorageFilePolicyIo,
 } from './storageFilePolicy';
@@ -53,6 +53,33 @@ const createCountingIo = (entries: Record<string, Uint8Array>) => {
   };
 };
 
+/**
+ * Mutable IO with a `listNames()` call counter, used for save/remove IO-budget assertions.
+ * @param entries - Backing in-memory filename-to-bytes map.
+ * @returns Counting mutable IO boundary plus a `listNames()` call counter.
+ */
+const createCountingMutableIo = (entries: Record<string, Uint8Array>) => {
+  let listNamesCalls = 0;
+
+  const io: MutableStorageFilePolicyIo = {
+    listNames: () => {
+      listNamesCalls += 1;
+      return Promise.resolve(Object.keys(entries));
+    },
+    readBytes: (name) => Promise.resolve(entries[name]),
+    writeBytes: (name, data) => {
+      entries[name] = new Uint8Array(data);
+      return Promise.resolve();
+    },
+    removeName: (name) => {
+      Reflect.deleteProperty(entries, name);
+      return Promise.resolve();
+    },
+  };
+
+  return { io, getListNamesCalls: () => listNamesCalls };
+};
+
 const HASH_A = '0df10d48afdaa0df1a484b006e4854cec8640d416745ce0cc874c07027b69cc2';
 const HASH_B = '1af20e59befbb1e02b595c117f9965dfd7751e527856df1dd985d18138c7add3';
 const DATA_A = new Uint8Array([1, 2, 3]);
@@ -81,7 +108,7 @@ describe('storageFilePolicy', () => {
   it('discovers full document ids from valid v3 wrappers', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const fileName = encodePreferredV3FileName(key);
+    const fileName = encodePrimaryV3FileName(key);
 
     if (!fileName) {
       throw new Error('Expected v3 filename');
@@ -95,7 +122,7 @@ describe('storageFilePolicy', () => {
   it('prefers valid v3 data over fallback legacy and v2 entries for the same logical key', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
 
     if (!v3Name || !v2Name) {
@@ -114,27 +141,10 @@ describe('storageFilePolicy', () => {
     ).resolves.toEqual([{ data: new Uint8Array([9, 9, 9]), key }]);
   });
 
-  it('treats an invalid existing v3 candidate as occupied and resolves the next suffix', async () => {
-    const documentId = getDocumentId();
-    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
-
-    if (!preferredName) {
-      throw new Error('Expected v3 filename');
-    }
-
-    await expect(
-      resolveStorageChunkWriteTarget(
-        createIo({ [preferredName]: new Uint8Array([0xde, 0xad]) }),
-        key,
-      ),
-    ).resolves.toBe(encodeV3FileNameWithSuffix(key, 1));
-  });
-
   it('does not decode v3 files when removing the marker prefix', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_B];
-    const fileName = encodePreferredV3FileName(key);
+    const fileName = encodePrimaryV3FileName(key);
 
     if (!fileName) {
       throw new Error('Expected v3 filename');
@@ -160,7 +170,7 @@ describe('storageFilePolicy', () => {
   it('classifies legacy, v2, and v3 names as repository storage candidates only', () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
 
     if (!v3Name || !v2Name) {
@@ -184,7 +194,7 @@ describe('storageFilePolicy', () => {
 
     await saveStorageEntry(io, key, DATA_A);
 
-    const fileName = encodePreferredV3FileName(key);
+    const fileName = encodePrimaryV3FileName(key);
 
     if (!fileName) {
       throw new Error('Expected v3 filename');
@@ -193,24 +203,23 @@ describe('storageFilePolicy', () => {
     expect(entries[fileName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
   });
 
-  it('removes every physical file that belongs to one logical chunk key', async () => {
+  it('removes the primary v3, v2, and legacy files for one logical chunk key', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
+    const primaryName = encodePrimaryV3FileName(key);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+    const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
     const markerName =
       partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
 
-    if (!preferredName) {
-      throw new Error('Expected v3 filename');
+    if (!primaryName || !v2Name) {
+      throw new Error('Expected v3 and v2 filenames');
     }
 
     const entries: Record<string, Uint8Array> = {
-      [preferredName]: encodeV3StorageWrapper(key, DATA_A),
-      [`${documentId.slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`]: encodeV3StorageWrapper(
-        key,
-        DATA_A,
-      ),
-      [`${documentId}_snapshot_${HASH_A}.automerge`]: DATA_A,
+      [primaryName]: encodeV3StorageWrapper(key, DATA_A),
+      [v2Name]: DATA_A,
+      [legacyName]: DATA_A,
       [markerName]: new Uint8Array([1]),
     };
 
@@ -222,7 +231,7 @@ describe('storageFilePolicy', () => {
   it('loads every readable entry for an empty prefix without throwing', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
     const markerName =
       partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
 
@@ -243,7 +252,7 @@ describe('storageFilePolicy', () => {
   it('removes every physical file for an empty prefix without throwing', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
     const markerName =
       partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
 
@@ -262,50 +271,35 @@ describe('storageFilePolicy', () => {
 });
 
 describe('storageFilePolicy save fast path', () => {
-  it('writes the preferred filename without a directory-wide listNames() when it is missing', async () => {
+  it('writes the primary filename without a directory-wide listNames() when it is missing', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
+    const primaryName = encodePrimaryV3FileName(key);
 
-    if (!preferredName) {
+    if (!primaryName) {
       throw new Error('Expected v3 filename');
     }
 
     const entries: Record<string, Uint8Array> = {};
-    let listNamesCalls = 0;
-    const io: MutableStorageFilePolicyIo = {
-      listNames: () => {
-        listNamesCalls += 1;
-        return Promise.resolve(Object.keys(entries));
-      },
-      readBytes: (name) => Promise.resolve(entries[name]),
-      writeBytes: (name, data) => {
-        entries[name] = new Uint8Array(data);
-        return Promise.resolve();
-      },
-      removeName: (name) => {
-        Reflect.deleteProperty(entries, name);
-        return Promise.resolve();
-      },
-    };
+    const { io, getListNamesCalls } = createCountingMutableIo(entries);
 
     await saveStorageEntry(io, key, DATA_A);
 
-    expect(listNamesCalls).toBe(0);
-    expect(entries[preferredName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
+    expect(getListNamesCalls()).toBe(0);
+    expect(entries[primaryName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
   });
 
-  it('overwrites a valid same-key preferred filename without a directory-wide listNames()', async () => {
+  it('overwrites a valid same-key primary filename without a directory-wide listNames()', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
+    const primaryName = encodePrimaryV3FileName(key);
 
-    if (!preferredName) {
+    if (!primaryName) {
       throw new Error('Expected v3 filename');
     }
 
     const entries: Record<string, Uint8Array> = {
-      [preferredName]: encodeV3StorageWrapper(key, DATA_A),
+      [primaryName]: encodeV3StorageWrapper(key, DATA_A),
     };
     let listNamesCalls = 0;
     const io: MutableStorageFilePolicyIo = {
@@ -327,19 +321,19 @@ describe('storageFilePolicy save fast path', () => {
     await saveStorageEntry(io, key, DATA_B);
 
     expect(listNamesCalls).toBe(0);
-    expect(entries[preferredName]).toEqual(encodeV3StorageWrapper(key, DATA_B));
+    expect(entries[primaryName]).toEqual(encodeV3StorageWrapper(key, DATA_B));
   });
 
-  it('does not overwrite an invalid preferred target and falls back after a fresh listing', async () => {
+  it('does not overwrite an invalid primary target and reports a storage conflict instead of a suffix fallback', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
+    const primaryName = encodePrimaryV3FileName(key);
 
-    if (!preferredName) {
+    if (!primaryName) {
       throw new Error('Expected v3 filename');
     }
 
-    const entries: Record<string, Uint8Array> = { [preferredName]: new Uint8Array([0xde, 0xad]) };
+    const entries: Record<string, Uint8Array> = { [primaryName]: new Uint8Array([0xde, 0xad]) };
     let listNamesCalls = 0;
     const io: MutableStorageFilePolicyIo = {
       listNames: () => {
@@ -357,33 +351,26 @@ describe('storageFilePolicy save fast path', () => {
       },
     };
 
-    await saveStorageEntry(io, key, DATA_A);
+    await expect(saveStorageEntry(io, key, DATA_A)).rejects.toBeInstanceOf(V3StorageConflictError);
 
-    expect(listNamesCalls).toBe(1);
-    expect(entries[preferredName]).toEqual(new Uint8Array([0xde, 0xad]));
-
-    const fallbackName = encodeV3FileNameWithSuffix(key, 1);
-
-    if (!fallbackName) {
-      throw new Error('Expected fallback filename');
-    }
-
-    expect(entries[fallbackName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
+    expect(listNamesCalls).toBe(0);
+    expect(entries[primaryName]).toEqual(new Uint8Array([0xde, 0xad]));
+    expect(Object.keys(entries)).toEqual([primaryName]);
   });
 
-  it('does not overwrite a valid different-key preferred target and falls back after a fresh listing', async () => {
+  it('does not overwrite a valid different-key primary target and reports a storage conflict', async () => {
     const documentId = getDocumentId();
     const otherDocumentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
     const otherKey: ChunkStorageKey = [otherDocumentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
+    const primaryName = encodePrimaryV3FileName(key);
 
-    if (!preferredName) {
+    if (!primaryName) {
       throw new Error('Expected v3 filename');
     }
 
     const entries: Record<string, Uint8Array> = {
-      [preferredName]: encodeV3StorageWrapper(otherKey, DATA_B),
+      [primaryName]: encodeV3StorageWrapper(otherKey, DATA_B),
     };
     let listNamesCalls = 0;
     const io: MutableStorageFilePolicyIo = {
@@ -402,18 +389,28 @@ describe('storageFilePolicy save fast path', () => {
       },
     };
 
-    await saveStorageEntry(io, key, DATA_A);
+    await expect(saveStorageEntry(io, key, DATA_A)).rejects.toBeInstanceOf(V3StorageConflictError);
 
-    expect(listNamesCalls).toBe(1);
-    expect(entries[preferredName]).toEqual(encodeV3StorageWrapper(otherKey, DATA_B));
+    expect(listNamesCalls).toBe(0);
+    expect(entries[primaryName]).toEqual(encodeV3StorageWrapper(otherKey, DATA_B));
+    expect(Object.keys(entries)).toEqual([primaryName]);
+  });
 
-    const fallbackName = encodeV3FileNameWithSuffix(key, 1);
+  it('never produces a numeric-suffix generated filename for a normal save', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
 
-    if (!fallbackName) {
-      throw new Error('Expected fallback filename');
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
     }
 
-    expect(entries[fallbackName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
+    const entries: Record<string, Uint8Array> = { [primaryName]: new Uint8Array([0xde, 0xad]) };
+    const io = createIo(entries);
+
+    await saveStorageEntry(io, key, DATA_A).catch(() => undefined);
+
+    expect(Object.keys(entries).some((name) => /\.\d+\.mf$/.test(name))).toBe(false);
   });
 });
 
@@ -423,61 +420,99 @@ describe('storageFilePolicy remove correctness', () => {
     const otherDocumentId = getDocumentId();
     const keyA: StorageKey = [documentId, 'snapshot', HASH_A];
     const keyB: ChunkStorageKey = [otherDocumentId, 'snapshot', HASH_A];
-    const preferredNameForA = encodePreferredV3FileName(keyA);
+    const primaryNameForA = encodePrimaryV3FileName(keyA);
 
-    if (!preferredNameForA) {
+    if (!primaryNameForA) {
       throw new Error('Expected v3 filename');
     }
 
     const entries: Record<string, Uint8Array> = {
-      [preferredNameForA]: encodeV3StorageWrapper(keyB, DATA_B),
+      [primaryNameForA]: encodeV3StorageWrapper(keyB, DATA_B),
     };
 
     await removeStorageEntry(createIo(entries), keyA);
 
-    expect(entries[preferredNameForA]).toEqual(encodeV3StorageWrapper(keyB, DATA_B));
+    expect(entries[primaryNameForA]).toEqual(encodeV3StorageWrapper(keyB, DATA_B));
   });
 
   it('removes a valid same-key v3 wrapper', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
+    const primaryName = encodePrimaryV3FileName(key);
 
-    if (!preferredName) {
+    if (!primaryName) {
       throw new Error('Expected v3 filename');
     }
 
     const entries: Record<string, Uint8Array> = {
-      [preferredName]: encodeV3StorageWrapper(key, DATA_A),
+      [primaryName]: encodeV3StorageWrapper(key, DATA_A),
     };
 
     await removeStorageEntry(createIo(entries), key);
 
-    expect(entries[preferredName]).toBeUndefined();
+    expect(entries[primaryName]).toBeUndefined();
   });
 
-  it('removes invalid same-family candidates that are only filename-plausible garbage', async () => {
+  it('does not blindly remove an invalid primary v3 file', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const preferredName = encodePreferredV3FileName(key);
+    const primaryName = encodePrimaryV3FileName(key);
 
-    if (!preferredName) {
+    if (!primaryName) {
       throw new Error('Expected v3 filename');
     }
 
-    const entries: Record<string, Uint8Array> = { [preferredName]: new Uint8Array([0xde, 0xad]) };
+    const entries: Record<string, Uint8Array> = { [primaryName]: new Uint8Array([0xde, 0xad]) };
 
     await removeStorageEntry(createIo(entries), key);
 
-    expect(entries[preferredName]).toBeUndefined();
+    expect(entries[primaryName]).toEqual(new Uint8Array([0xde, 0xad]));
+  });
+
+  it('does not scan or remove broad compatibility v3 candidate families during exact remove', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+    const compatibilityName = `${documentId.slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`;
+
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {
+      [primaryName]: encodeV3StorageWrapper(key, DATA_A),
+      [compatibilityName]: encodeV3StorageWrapper(key, DATA_A),
+    };
+    let listNamesCalls = 0;
+    const io: MutableStorageFilePolicyIo = {
+      listNames: () => {
+        listNamesCalls += 1;
+        return Promise.resolve(Object.keys(entries));
+      },
+      readBytes: (name) => Promise.resolve(entries[name]),
+      writeBytes: (name, data) => {
+        entries[name] = new Uint8Array(data);
+        return Promise.resolve();
+      },
+      removeName: (name) => {
+        Reflect.deleteProperty(entries, name);
+        return Promise.resolve();
+      },
+    };
+
+    await removeStorageEntry(io, key);
+
+    expect(listNamesCalls).toBe(0);
+    expect(entries[primaryName]).toBeUndefined();
+    expect(entries[compatibilityName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
   });
 });
 
 describe('storageFilePolicy load fast path', () => {
-  it('loads an existing preferred v3 entry directly without calling listNames()', async () => {
+  it('loads an existing primary v3 entry directly without calling listNames()', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
 
     if (!v3Name) {
       throw new Error('Expected v3 filename');
@@ -491,7 +526,7 @@ describe('storageFilePolicy load fast path', () => {
     expect(getListNamesCalls()).toBe(0);
   });
 
-  it('falls back to v2 after a single listNames() scan when preferred v3 is missing', async () => {
+  it('falls back to v2 directly, without any listNames() scan, when primary v3 is missing', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
@@ -503,30 +538,43 @@ describe('storageFilePolicy load fast path', () => {
     const { io, getListNamesCalls } = createCountingIo({ [v2Name]: DATA_A });
 
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
-    expect(getListNamesCalls()).toBe(1);
+    expect(getListNamesCalls()).toBe(0);
   });
 
-  it('falls back to a directory scan for manual/suffixed v3 and legacy candidates', async () => {
+  it('does not scan compatibility v3 before v2 when the primary v3 file is simply missing', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
 
-    if (!suffixedName) {
-      throw new Error('Expected suffixed v3 filename');
+    if (!v2Name) {
+      throw new Error('Expected v2 filename');
     }
 
+    const { io, getReadCalls } = createCountingIo({ [v2Name]: DATA_A });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+    expect(getReadCalls()).toEqual(
+      expect.not.arrayContaining([expect.stringContaining(' - copy.mf')]),
+    );
+  });
+
+  it('falls back to a directory scan for compatibility v3 and legacy candidates when v2 is also missing', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const compatibilityName = `${documentId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.1.mf`;
+
     const { io, getListNamesCalls } = createCountingIo({
-      [suffixedName]: encodeV3StorageWrapper(key, DATA_A),
+      [compatibilityName]: encodeV3StorageWrapper(key, DATA_A),
     });
 
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
     expect(getListNamesCalls()).toBe(1);
   });
 
-  it('returns preferred v3 without scanning when both preferred v3 and v2 are valid', async () => {
+  it('returns primary v3 without scanning when both primary v3 and v2 are valid', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
 
     if (!v3Name || !v2Name) {
@@ -542,64 +590,43 @@ describe('storageFilePolicy load fast path', () => {
     expect(getListNamesCalls()).toBe(0);
   });
 
-  it('returns a valid suffixed v3 candidate, not v2, when the preferred v3 file is invalid', async () => {
+  it('returns a storage conflict (undefined), not v2, when the primary v3 file is invalid', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
-    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
+    const v3Name = encodePrimaryV3FileName(key);
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
 
-    if (!v3Name || !suffixedName || !v2Name) {
-      throw new Error('Expected v3 and v2 filenames');
-    }
-
-    const { io } = createCountingIo({
-      [v3Name]: new Uint8Array([0xde, 0xad]),
-      [suffixedName]: encodeV3StorageWrapper(key, DATA_A),
-      [v2Name]: DATA_B,
-    });
-
-    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
-  });
-
-  it('returns a valid same-key suffixed v3 candidate, not v2, when the preferred v3 file belongs to a different key', async () => {
-    const documentId = getDocumentId();
-    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const otherKey: ChunkStorageKey = [getDocumentId(), 'snapshot', HASH_B];
-    const v3Name = encodePreferredV3FileName(key);
-    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
-    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
-
-    if (!v3Name || !suffixedName || !v2Name) {
-      throw new Error('Expected v3 and v2 filenames');
-    }
-
-    const { io } = createCountingIo({
-      [v3Name]: encodeV3StorageWrapper(otherKey, DATA_B),
-      [suffixedName]: encodeV3StorageWrapper(key, DATA_A),
-      [v2Name]: DATA_B,
-    });
-
-    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
-  });
-
-  it('returns a valid suffixed v3 candidate, not v2, when the preferred v3 file is missing', async () => {
-    const documentId = getDocumentId();
-    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
-    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
-
-    if (!suffixedName || !v2Name) {
+    if (!v3Name || !v2Name) {
       throw new Error('Expected v3 and v2 filenames');
     }
 
     const { io, getListNamesCalls } = createCountingIo({
-      [suffixedName]: encodeV3StorageWrapper(key, DATA_A),
+      [v3Name]: new Uint8Array([0xde, 0xad]),
       [v2Name]: DATA_B,
     });
 
-    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
-    expect(getListNamesCalls()).toBe(1);
+    await expect(loadStorageEntry(io, key)).resolves.toBeUndefined();
+    expect(getListNamesCalls()).toBe(0);
+  });
+
+  it('returns a storage conflict (undefined), not v2, when the primary v3 file belongs to a different key', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const otherKey: ChunkStorageKey = [getDocumentId(), 'snapshot', HASH_B];
+    const v3Name = encodePrimaryV3FileName(key);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!v3Name || !v2Name) {
+      throw new Error('Expected v3 and v2 filenames');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({
+      [v3Name]: encodeV3StorageWrapper(otherKey, DATA_B),
+      [v2Name]: DATA_B,
+    });
+
+    await expect(loadStorageEntry(io, key)).resolves.toBeUndefined();
+    expect(getListNamesCalls()).toBe(0);
   });
 
   it('returns v2 when no v3 candidates exist', async () => {
@@ -649,7 +676,7 @@ describe('storageFilePolicy IO budget', () => {
   it('loadStorageEntriesByPrefix calls listNames exactly once per operation', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
 
     if (!v3Name) {
       throw new Error('Expected v3 filename');
@@ -668,7 +695,7 @@ describe('storageFilePolicy IO budget', () => {
   it('removeStorageEntriesByPrefix calls listNames exactly once per operation', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
 
     if (!v3Name) {
       throw new Error('Expected v3 filename');
@@ -697,10 +724,41 @@ describe('storageFilePolicy IO budget', () => {
     expect(listNamesCalls).toBe(1);
   });
 
+  it('exact save never calls listNames when the primary target is missing or already owned', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const entries: Record<string, Uint8Array> = {};
+    const { io, getListNamesCalls } = createCountingMutableIo(entries);
+
+    await saveStorageEntry(io, key, DATA_A);
+    await saveStorageEntry(io, key, DATA_B);
+
+    expect(getListNamesCalls()).toBe(0);
+  });
+
+  it('exact remove never calls listNames for a full chunk key', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {
+      [primaryName]: encodeV3StorageWrapper(key, DATA_A),
+    };
+    const { io, getListNamesCalls } = createCountingMutableIo(entries);
+
+    await removeStorageEntry(io, key);
+
+    expect(getListNamesCalls()).toBe(0);
+  });
+
   it('discoverStorageDocumentIds calls listNames exactly once per operation', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
 
     if (!v3Name) {
       throw new Error('Expected v3 filename');
@@ -718,7 +776,7 @@ describe('storageFilePolicy IO budget', () => {
   it('sequential discovery calls fetch fresh listings instead of reusing a stale one', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
 
     if (!v3Name) {
       throw new Error('Expected v3 filename');
@@ -738,7 +796,7 @@ describe('storageFilePolicy IO budget', () => {
   it('sequential range loads fetch fresh listings instead of reusing a stale one', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
 
     if (!v3Name) {
       throw new Error('Expected v3 filename');
@@ -760,7 +818,7 @@ describe('storageFilePolicy IO budget', () => {
   it('discovery reads only plausible v3 candidates and never reads v2/legacy bytes', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const v3Name = encodePreferredV3FileName(key);
+    const v3Name = encodePrimaryV3FileName(key);
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
     const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
 
@@ -786,7 +844,7 @@ describe('storageFilePolicy IO budget', () => {
 
     for (let i = 0; i < 12; i++) {
       const key: ChunkStorageKey = [documentId, 'snapshot', `${HASH_A.slice(0, 60)}${i}aaa`];
-      const name = encodePreferredV3FileName(key);
+      const name = encodePrimaryV3FileName(key);
 
       if (!name) {
         throw new Error('Expected v3 filename');
@@ -812,7 +870,7 @@ describe('storageFilePolicy IO budget', () => {
 
     for (let i = 0; i < 8; i++) {
       const key: StorageKey = [documentId, 'snapshot', `${HASH_A.slice(0, 60)}${i}aaa`];
-      const name = encodePreferredV3FileName(key);
+      const name = encodePrimaryV3FileName(key);
 
       if (!name) {
         throw new Error('Expected v3 filename');

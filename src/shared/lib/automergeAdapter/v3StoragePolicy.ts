@@ -1,9 +1,8 @@
 import type { AMChunk } from '@shared/lib/automerge';
 import {
-  decodeV3CandidateFileName,
-  encodePreferredV3FileName,
-  encodeV3FileNameWithSuffix,
-  encodeV3ShortFamilyPrefix,
+  decodeAnyV3CandidateFileName,
+  decodeCompatibilityV3CandidateFileName,
+  encodePrimaryV3FileName,
 } from './filenameCodecV3';
 import type { ChunkStorageKey, StorageKeyPrefix } from './types';
 import { decodeV3StorageWrapper } from './wrapperCodecV3';
@@ -37,12 +36,23 @@ export const decodeValidV3Chunk = (
 };
 
 /**
- * Lists plausible v3 candidate filenames for a logical chunk key.
+ * Returns whether a physical filename is the primary deterministic v3 candidate for a key.
+ * @param name - Physical filename to inspect.
+ * @param key - Full logical chunk key being resolved.
+ * @returns True when the filename is the exact primary generated filename for that key.
+ */
+export const isPrimaryV3CandidateForKey = (name: string, key: ChunkStorageKey): boolean =>
+  encodePrimaryV3FileName(key) === name;
+
+/**
+ * Lists plausible compatibility v3 candidate filenames for a logical chunk key: manual, copied,
+ * suffixed, or pre-fingerprint variants. These are fallback/recovery inputs used only after the
+ * primary and v2 fast paths fail to resolve the key.
  * @param names - Physical filenames to inspect.
  * @param key - Full logical key being searched.
  * @returns Sorted candidate filenames whose prefixes could map to the key.
  */
-export const getV3CandidateNamesForKey = (
+export const getCompatibilityV3CandidateNamesForKey = (
   names: Iterable<string>,
   key: ChunkStorageKey,
 ): string[] => {
@@ -50,7 +60,7 @@ export const getV3CandidateNamesForKey = (
   const matches: string[] = [];
 
   for (const name of names) {
-    const parsed = decodeV3CandidateFileName(name);
+    const parsed = decodeCompatibilityV3CandidateFileName(name);
 
     if (
       parsed &&
@@ -66,9 +76,9 @@ export const getV3CandidateNamesForKey = (
 };
 
 /**
- * Returns whether a physical filename is a plausible v3 candidate for a partial key prefix.
- * An empty prefix (`[]`) matches every plausible v3 candidate, because an empty range prefix
- * semantically selects all storage entries for `loadRange`/`removeRange` scans.
+ * Returns whether a physical filename is a plausible v3 candidate (primary or compatibility) for
+ * a partial key prefix. An empty prefix (`[]`) matches every plausible v3 candidate, because an
+ * empty range prefix semantically selects all storage entries for `loadRange`/`removeRange` scans.
  * @param name - Physical filename to inspect.
  * @param keyPrefix - Partial logical key used to prefilter directory scans. May be empty.
  * @returns True when the filename should be wrapper-decoded for this prefix.
@@ -77,7 +87,7 @@ export const isPlausibleV3CandidateForPrefix = (
   name: string,
   keyPrefix: StorageKeyPrefix,
 ): boolean => {
-  const parsed = decodeV3CandidateFileName(name);
+  const parsed = decodeAnyV3CandidateFileName(name);
 
   if (!parsed) {
     return false;
@@ -99,75 +109,6 @@ export const isPlausibleV3CandidateForPrefix = (
 
   return true;
 };
-
-/**
- * Resolves a writable short physical v3 `.mf` filename without expanding logical prefixes.
- * Existing invalid, unreadable, or empty candidates remain occupied so save never overwrites an
- * unknown wrapper candidate.
- * @param key - Full logical chunk key to persist.
- * @param existingNames - Current directory entry names.
- * @param readCandidateKeyId - Callback that returns a valid decoded logical key id, or undefined for invalid content.
- * @returns Preferred or suffixed filename that can be written safely.
- */
-export const resolveWritableV3FileName = async (
-  key: ChunkStorageKey,
-  existingNames: Iterable<string>,
-  readCandidateKeyId: (name: string) => Promise<string | undefined>,
-): Promise<string> => {
-  const existing = new Set(existingNames);
-  const preferredName = encodePreferredV3FileName(key);
-
-  if (!preferredName) {
-    throw new Error('Unable to encode preferred v3 Automerge storage filename');
-  }
-
-  const tryCandidate = async (name: string): Promise<string | undefined> => {
-    if (!existing.has(name)) {
-      return name;
-    }
-
-    const existingKeyId = await readCandidateKeyId(name);
-
-    if (existingKeyId === `${key[0]}\x00${key[1]}\x00${key[2]}`) {
-      return name;
-    }
-
-    return undefined;
-  };
-
-  const preferred = await tryCandidate(preferredName);
-
-  if (preferred) {
-    return preferred;
-  }
-
-  for (let suffixNumber = 1; suffixNumber <= 1000; suffixNumber++) {
-    const candidateName = encodeV3FileNameWithSuffix(key, suffixNumber);
-
-    if (!candidateName) {
-      break;
-    }
-
-    // eslint-disable-next-line no-await-in-loop -- candidate resolution must stop on the first safe short filename
-    const resolved = await tryCandidate(candidateName);
-
-    if (resolved) {
-      return resolved;
-    }
-  }
-
-  throw new Error('Unable to resolve a writable v3 Automerge storage filename');
-};
-
-/**
- * Returns the fixed short prefix used by generated v3 filenames for a chunk key.
- * Intentionally fingerprint-free so it keeps matching manual/copy/numeric-suffix v3 files that
- * were created before the fingerprint segment existed.
- * @param key - Full logical chunk key.
- * @returns `<docPrefix>.<kindCode>.<hashPrefix>` without the fingerprint or file extension.
- */
-export const getGeneratedV3PrefixForKey = (key: ChunkStorageKey): string | undefined =>
-  encodeV3ShortFamilyPrefix(key);
 
 /**
  * Discriminated outcome of inspecting one physical v3 candidate's bytes against an expected full
@@ -207,30 +148,4 @@ export const classifyV3ChunkCandidateData = (
     chunk.key[2] === expectedKey[2];
 
   return sameKey ? { kind: 'validSameKey', chunk } : { kind: 'validDifferentKey', chunk };
-};
-
-/**
- * Returns whether a filename belongs to the generated short v3 candidate family for a key.
- * The physical filename must first decode as a plausible v3 `.mf` candidate; matching the shared
- * prefix alone is not sufficient.
- * @param name - Physical filename.
- * @param key - Full logical chunk key.
- * @returns True when the filename is in the exact generated candidate family for that key.
- */
-export const isGeneratedV3CandidateForKey = (name: string, key: ChunkStorageKey): boolean => {
-  const parsed = decodeV3CandidateFileName(name);
-
-  if (!parsed) {
-    return false;
-  }
-
-  const prefix = getGeneratedV3PrefixForKey(key);
-
-  return (
-    prefix !== undefined &&
-    parsed.kind === key[1] &&
-    key[0].startsWith(parsed.docPrefix) &&
-    key[2].startsWith(parsed.hashPrefix) &&
-    name.startsWith(prefix)
-  );
 };

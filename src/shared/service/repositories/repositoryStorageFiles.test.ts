@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import {
-  encodePreferredV3FileName,
+  encodePrimaryV3FileName,
   encodeStorageKeyToV2FileName,
   partialKeyToFileName,
   storageAdapterMarkerFileName,
@@ -109,7 +109,7 @@ describe('getRepositoryFacts', () => {
     const documentId = new Repo().create({}).documentId;
     const hash = SAMPLE_HEX_HASH;
     const key = [documentId, 'snapshot', hash] as const;
-    const fileName = encodePreferredV3FileName([...key]);
+    const fileName = encodePrimaryV3FileName([...key]);
 
     if (!fileName) {
       throw new Error('Expected v3 filename');
@@ -133,7 +133,7 @@ describe('getRepositoryFacts', () => {
     const path = '/repo';
     const documentId = new Repo().create({}).documentId;
     const key = [documentId, 'snapshot', SAMPLE_HEX_HASH] as const;
-    const fileName = encodePreferredV3FileName([...key]);
+    const fileName = encodePrimaryV3FileName([...key]);
 
     if (!fileName) {
       throw new Error('Expected v3 filename');
@@ -228,7 +228,7 @@ describe('getRepositoryFacts', () => {
     const path = '/repo';
     const documentId = new Repo().create({}).documentId;
     const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
-    const v3Name = encodePreferredV3FileName([...key]);
+    const v3Name = encodePrimaryV3FileName([...key]);
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', SAMPLE_HEX_HASH);
     const legacyName = partialKeyToFileName(key);
 
@@ -367,7 +367,7 @@ describe('getDocumentStorageFiles', () => {
 
     const documentId = new Repo().create({}).documentId;
     const key = [documentId, 'snapshot', SAMPLE_HEX_HASH] as const;
-    const fileName = encodePreferredV3FileName([...key]);
+    const fileName = encodePrimaryV3FileName([...key]);
 
     if (!fileName) {
       throw new Error('Expected v3 filename');

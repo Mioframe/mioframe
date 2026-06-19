@@ -1,6 +1,6 @@
 import { zodIs } from '../validateZodScheme';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
-import { encodePreferredV3FileName } from './filenameCodecV3';
+import { encodePrimaryV3FileName } from './filenameCodecV3';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import { encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
 import type { ChunkStorageKey, PartialStorageKey, StorageKey } from './types';
@@ -51,7 +51,7 @@ export const isChunkStorageKey = (key: PartialStorageKey): key is ChunkStorageKe
 export const toWritableStorageFileName = (key: StorageKey): string | undefined => {
   if (isChunkStorageKey(key)) {
     const [part0, part1, part2] = key;
-    const v3 = encodePreferredV3FileName(key);
+    const v3 = encodePrimaryV3FileName(key);
 
     if (v3) {
       return v3;

@@ -35,16 +35,17 @@ export {
   selectReadableStorageEntries,
 } from './storageKeyHelpers';
 export {
-  decodeV3CandidateFileName,
-  encodePreferredV3FileName,
-  encodeV3FileNameWithSuffix,
+  decodeAnyV3CandidateFileName,
+  decodeCompatibilityV3CandidateFileName,
+  decodePrimaryV3FileName,
+  encodePrimaryV3FileName,
   V3_DOC_PREFIX_LENGTH,
   V3_FILE_EXTENSION,
+  V3_FINGERPRINT_LENGTH,
   V3_HASH_PREFIX_LENGTH,
   V3_MAX_FILE_NAME_LENGTH,
 } from './filenameCodecV3';
 export {
-  collectStorageFileNamesForKey,
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
   isPlausibleRepositoryStorageCandidateFileName,
@@ -53,6 +54,7 @@ export {
   removeStorageEntriesByPrefix,
   removeStorageEntry,
   saveStorageEntry,
+  V3StorageConflictError,
   type MutableStorageFilePolicyIo,
   type ReadOnlyStorageFilePolicyIo,
 } from './storageFilePolicy';

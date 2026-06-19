@@ -2,10 +2,11 @@ import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it } from 'vitest';
 import {
   computeStorageKeyFingerprint,
-  decodeV3CandidateFileName,
-  encodePreferredV3FileName,
-  encodeV3FileNameWithSuffix,
-  encodeV3ShortFamilyPrefix,
+  decodeAnyV3CandidateFileName,
+  decodeCompatibilityV3CandidateFileName,
+  decodePrimaryV3FileName,
+  encodePrimaryV3FileName,
+  V3_FINGERPRINT_LENGTH,
   V3_MAX_FILE_NAME_LENGTH,
 } from './filenameCodecV3';
 import type { ChunkStorageKey } from './types';
@@ -15,13 +16,28 @@ const HASH_B = '1af20e59befbb1e02b595c117f9965dfd7751e527856df1dd985d18138c7add3
 
 const getKey = (): ChunkStorageKey => [new Repo().create({}).documentId, 'snapshot', HASH_A];
 
-describe('filenameCodecV3', () => {
-  it('encodes the preferred filename with the short prefix and a deterministic fingerprint', () => {
+describe('filenameCodecV3 primary filename contract', () => {
+  it('encodes the primary filename as <docPrefix>.<kindCode>.<fingerprint>.mf', () => {
     const key = getKey();
-    const shortPrefix = encodeV3ShortFamilyPrefix(key);
+    const docPrefix = key[0].slice(0, 6);
     const fingerprint = computeStorageKeyFingerprint(key);
 
-    expect(encodePreferredV3FileName(key)).toBe(`${shortPrefix}.${fingerprint}.mf`);
+    expect(encodePrimaryV3FileName(key)).toBe(`${docPrefix}.s.${fingerprint}.mf`);
+  });
+
+  it('never includes a hash prefix in the primary filename', () => {
+    const key = getKey();
+    const fileName = encodePrimaryV3FileName(key);
+
+    expect(fileName).toBeDefined();
+    expect(fileName).not.toContain(HASH_A.slice(0, 8));
+  });
+
+  it('produces a fingerprint of exactly 12 lowercase hex characters', () => {
+    const fingerprint = computeStorageKeyFingerprint(getKey());
+
+    expect(fingerprint).toHaveLength(V3_FINGERPRINT_LENGTH);
+    expect(fingerprint).toMatch(/^[0-9a-f]{12}$/);
   });
 
   it('keeps the fingerprint stable for the same logical key and distinct for different keys', () => {
@@ -34,23 +50,55 @@ describe('filenameCodecV3', () => {
     expect(computeStorageKeyFingerprint(key)).not.toBe(computeStorageKeyFingerprint(otherHashKey));
   });
 
-  it('does not let two keys sharing a truncated doc/hash prefix collide on the preferred filename', () => {
+  it('does not let two keys sharing a truncated documentId prefix collide on the primary filename', () => {
     const documentId = getKey()[0];
     const keyA: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const keyB: ChunkStorageKey = [
-      documentId,
-      'snapshot',
-      `${HASH_A.slice(0, 8)}ffffffffffffffffffffffffffffffffffffffffffffffffffffffff`,
-    ];
+    const keyB: ChunkStorageKey = [documentId, 'snapshot', HASH_B];
 
-    expect(encodePreferredV3FileName(keyA)).not.toBe(encodePreferredV3FileName(keyB));
+    expect(encodePrimaryV3FileName(keyA)).not.toBe(encodePrimaryV3FileName(keyB));
   });
 
+  it('keeps the primary filename well below the hard cap', () => {
+    const fileName = encodePrimaryV3FileName(getKey());
+
+    expect(fileName).toBeDefined();
+    expect(fileName?.length).toBeLessThanOrEqual(V3_MAX_FILE_NAME_LENGTH);
+    // 6 (docPrefix) + 1 (.) + 1 (kindCode) + 1 (.) + 12 (fingerprint) + 1 (.) + 2 (mf) = 24
+    expect(fileName?.length).toBe(24);
+  });
+
+  it('parses a generated primary filename back into its parts', () => {
+    const key = getKey();
+    const fileName = encodePrimaryV3FileName(key);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    expect(decodePrimaryV3FileName(fileName)).toEqual({
+      docPrefix: key[0].slice(0, 6),
+      kind: 'snapshot',
+      fingerprint: computeStorageKeyFingerprint(key),
+    });
+  });
+
+  it('rejects manual/suffixed/pre-fingerprint compatibility filenames as primary candidates', () => {
+    const key = getKey();
+    const docPrefix = key[0].slice(0, 6);
+    const hashPrefix = HASH_A.slice(0, 8);
+
+    expect(decodePrimaryV3FileName(`${docPrefix}.s.${hashPrefix}.mf`)).toBeUndefined();
+    expect(decodePrimaryV3FileName(`${docPrefix}.s.${hashPrefix}.1.mf`)).toBeUndefined();
+    expect(decodePrimaryV3FileName(`${docPrefix}.s.${hashPrefix} - copy.mf`)).toBeUndefined();
+  });
+});
+
+describe('filenameCodecV3 compatibility candidate parsing', () => {
   it('parses suffixed copied candidates as non-semantic variants', () => {
     const key = getKey();
     const suffixed = `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`;
 
-    expect(decodeV3CandidateFileName(suffixed)).toEqual({
+    expect(decodeCompatibilityV3CandidateFileName(suffixed)).toEqual({
       docPrefix: key[0].slice(0, 6),
       kind: 'snapshot',
       hashPrefix: HASH_A.slice(0, 8),
@@ -62,17 +110,19 @@ describe('filenameCodecV3', () => {
   it('parses supported numeric and manual suffix candidates without a fingerprint segment', () => {
     const key = getKey();
 
-    expect(decodeV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}.2.mf`)).toEqual(
-      {
-        docPrefix: key[0].slice(0, 6),
-        kind: 'snapshot',
-        hashPrefix: HASH_A.slice(0, 8),
-        fingerprint: undefined,
-        suffix: '.2',
-      },
-    );
     expect(
-      decodeV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} (1).mf`),
+      decodeCompatibilityV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}.2.mf`),
+    ).toEqual({
+      docPrefix: key[0].slice(0, 6),
+      kind: 'snapshot',
+      hashPrefix: HASH_A.slice(0, 8),
+      fingerprint: undefined,
+      suffix: '.2',
+    });
+    expect(
+      decodeCompatibilityV3CandidateFileName(
+        `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} (1).mf`,
+      ),
     ).toEqual({
       docPrefix: key[0].slice(0, 6),
       kind: 'snapshot',
@@ -82,19 +132,17 @@ describe('filenameCodecV3', () => {
     });
   });
 
-  it('parses a generated filename with its fingerprint segment', () => {
+  it('parses a legacy generated filename with its 8-hex fingerprint segment', () => {
     const key = getKey();
-    const fileName = encodePreferredV3FileName(key);
+    const docPrefix = key[0].slice(0, 6);
+    const hashPrefix = HASH_A.slice(0, 8);
+    const legacyName = `${docPrefix}.s.${hashPrefix}.abcd1234.mf`;
 
-    if (!fileName) {
-      throw new Error('Expected v3 filename');
-    }
-
-    expect(decodeV3CandidateFileName(fileName)).toEqual({
-      docPrefix: key[0].slice(0, 6),
+    expect(decodeCompatibilityV3CandidateFileName(legacyName)).toEqual({
+      docPrefix,
       kind: 'snapshot',
-      hashPrefix: HASH_A.slice(0, 8),
-      fingerprint: computeStorageKeyFingerprint(key),
+      hashPrefix,
+      fingerprint: 'abcd1234',
       suffix: '',
     });
   });
@@ -103,33 +151,49 @@ describe('filenameCodecV3', () => {
     const key = getKey();
 
     expect(
-      decodeV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`),
+      decodeCompatibilityV3CandidateFileName(
+        `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`,
+      ),
     ).toBeUndefined();
   });
 
-  it('uses controlled numeric suffixes appended after the fingerprint', () => {
-    const key = getKey();
-    const fingerprint = computeStorageKeyFingerprint(key);
+  it('does not match a primary filename as a compatibility candidate', () => {
+    const fileName = encodePrimaryV3FileName(getKey());
 
-    expect(encodeV3FileNameWithSuffix(key, 2)).toBe(
-      `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}.${fingerprint}.2.mf`,
-    );
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    expect(decodeCompatibilityV3CandidateFileName(fileName)).toBeUndefined();
+  });
+});
+
+describe('decodeAnyV3CandidateFileName', () => {
+  it('matches both primary and compatibility filenames', () => {
+    const key = getKey();
+    const primaryName = encodePrimaryV3FileName(key);
+    const compatibilityName = `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`;
+
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    expect(decodeAnyV3CandidateFileName(primaryName)).toEqual({
+      docPrefix: key[0].slice(0, 6),
+      kind: 'snapshot',
+      fingerprint: computeStorageKeyFingerprint(key),
+    });
+    expect(decodeAnyV3CandidateFileName(compatibilityName)).toEqual({
+      docPrefix: key[0].slice(0, 6),
+      kind: 'snapshot',
+      hashPrefix: HASH_A.slice(0, 8),
+      fingerprint: undefined,
+      suffix: ' - copy',
+    });
   });
 
-  it('keeps generated v3 filenames under the hard cap', () => {
-    const key = getKey();
-    const preferred = encodePreferredV3FileName(key);
-    const suffixed = encodeV3FileNameWithSuffix(key, 1);
-
-    expect(preferred).toBeDefined();
-    expect(preferred?.length).toBeLessThanOrEqual(V3_MAX_FILE_NAME_LENGTH);
-    expect(suffixed).toBeDefined();
-    expect(suffixed?.length).toBeLessThanOrEqual(V3_MAX_FILE_NAME_LENGTH);
-  });
-
-  it('rejects suffixes that would exceed the hard cap once the fingerprint is included', () => {
-    const key = getKey();
-
-    expect(encodeV3FileNameWithSuffix(key, 10)).toBeUndefined();
+  it('rejects malformed and unrelated names', () => {
+    expect(decodeAnyV3CandidateFileName('not-a-v3-file.mf')).toBeUndefined();
+    expect(decodeAnyV3CandidateFileName('')).toBeUndefined();
   });
 });
