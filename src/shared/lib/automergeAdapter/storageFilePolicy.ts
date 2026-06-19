@@ -1,5 +1,6 @@
 import type { AMChunk } from '@shared/lib/automerge';
 import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
+import pLimit from 'p-limit';
 import { zodIs } from '../validateZodScheme';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
@@ -21,6 +22,58 @@ import {
   resolveWritableV3FileName,
 } from './v3StoragePolicy';
 import { encodeV3StorageWrapper } from './wrapperCodecV3';
+
+/**
+ * Maximum number of independent wrapper reads or physical removals performed concurrently for one
+ * storage policy operation. Kept small and conservative for slow/SAF/cloud-backed filesystems.
+ */
+const IO_CONCURRENCY_LIMIT = 4;
+
+/**
+ * Runs an async mapper over items with bounded concurrency.
+ * Used so discovery, range, and removal operations never issue unbounded parallel filesystem
+ * calls against potentially slow or multi-client storage.
+ * @param items - Items to process.
+ * @param fn - Async mapper invoked for each item.
+ * @returns Results in the same order as `items`.
+ */
+const mapBounded = async <T, R>(items: readonly T[], fn: (item: T) => Promise<R>): Promise<R[]> => {
+  const limit = pLimit(IO_CONCURRENCY_LIMIT);
+
+  return Promise.all(items.map((item) => limit(() => fn(item))));
+};
+
+/** Operation-scoped, IO-free classification of one directory listing snapshot. */
+interface StorageNameIndex {
+  /** Physical filenames that are plausible v3 `.mf` wrapper candidates. */
+  v3CandidateNames: string[];
+  /** Legacy/v2 entries deduplicated by logical key, preferring v2 over legacy. */
+  legacyOrV2Entries: Map<string, { name: string; key: PartialStorageKey; isV2: boolean }>;
+  /** All legacy/v2 entries without deduplication, for delete paths that must remove duplicates. */
+  allParsedEntries: { name: string; key: PartialStorageKey }[];
+}
+
+/**
+ * Classifies a directory listing snapshot once for reuse by every step of one top-level
+ * operation. Performs no IO; it only inspects already-listed names.
+ * @param names - Physical filenames from a single `listNames()` call.
+ * @returns Operation-scoped classification of the listing.
+ */
+const buildStorageNameIndex = (names: readonly string[]): StorageNameIndex => {
+  const v3CandidateNames: string[] = [];
+
+  for (const name of names) {
+    if (decodeV3CandidateFileName(name)) {
+      v3CandidateNames.push(name);
+    }
+  }
+
+  return {
+    v3CandidateNames,
+    legacyOrV2Entries: selectReadableStorageEntries(names),
+    allParsedEntries: listStorageFileEntries(names),
+  };
+};
 
 /** Read-only storage IO boundary shared by FS, VFS, and repository discovery. */
 export interface ReadOnlyStorageFilePolicyIo {
@@ -69,12 +122,6 @@ const readValidLegacyOrV2Chunk = async (
   }
 
   return { data, key: entry.key };
-};
-
-const getReadableLegacyOrV2Entries = async (io: ReadOnlyStorageFilePolicyIo) => {
-  const names = await io.listNames();
-
-  return selectReadableStorageEntries(names);
 };
 
 /**
@@ -150,39 +197,30 @@ export const loadStorageEntriesByPrefix = async (
   keyPrefix: StorageKeyPrefix,
 ): Promise<AMChunk[]> => {
   const names = await io.listNames();
+  const index = buildStorageNameIndex(names);
   const result = new Map<string, AMChunk>();
 
-  for (const name of names) {
-    if (!isPlausibleV3CandidateForPrefix(name, keyPrefix)) {
-      continue;
+  const v3Candidates = index.v3CandidateNames.filter((name) =>
+    isPlausibleV3CandidateForPrefix(name, keyPrefix),
+  );
+  const v3Chunks = await mapBounded(v3Candidates, (name) => readValidV3Chunk(io, name));
+
+  for (const chunk of v3Chunks) {
+    if (chunk && storageKeyHasPrefix(chunk.key, keyPrefix)) {
+      result.set(storageKeyToId(chunk.key), chunk);
     }
-
-    // eslint-disable-next-line no-await-in-loop -- each wrapper must decode before v3 can outrank fallback files
-    const chunk = await readValidV3Chunk(io, name);
-
-    if (!chunk || !storageKeyHasPrefix(chunk.key, keyPrefix)) {
-      continue;
-    }
-
-    result.set(storageKeyToId(chunk.key), chunk);
   }
 
-  const matched = [...(await getReadableLegacyOrV2Entries(io)).values()].filter((entry) =>
-    storageKeyHasPrefix(entry.key, keyPrefix),
+  const fallbackEntries = [...index.legacyOrV2Entries.values()].filter(
+    (entry) => storageKeyHasPrefix(entry.key, keyPrefix) && !result.has(storageKeyToId(entry.key)),
+  );
+  const fallbackChunks = await mapBounded(fallbackEntries, (entry) =>
+    readValidLegacyOrV2Chunk(io, entry),
   );
 
-  for (const entry of matched) {
-    const keyId = storageKeyToId(entry.key);
-
-    if (result.has(keyId)) {
-      continue;
-    }
-
-    // eslint-disable-next-line no-await-in-loop -- fallback reads stay lazy so valid v3 keeps precedence
-    const chunk = await readValidLegacyOrV2Chunk(io, entry);
-
+  for (const chunk of fallbackChunks) {
     if (chunk) {
-      result.set(keyId, chunk);
+      result.set(storageKeyToId(chunk.key), chunk);
     }
   }
 
@@ -218,27 +256,29 @@ export const collectStorageFileNamesForKey = async (
   key: StorageKey,
 ): Promise<string[]> => {
   const names = await io.listNames();
+  const index = buildStorageNameIndex(names);
   const matching = new Set(
-    listStorageFileEntries(names)
+    index.allParsedEntries
       .filter(({ key: entryKey }) => storageKeyToId(entryKey) === storageKeyToId(key))
       .map(({ name }) => name),
   );
 
   if (isChunkStorageKey(key)) {
-    for (const name of names) {
-      if (!isGeneratedV3CandidateForKey(name, key)) {
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop -- full-key delete must confirm wrapper identity before removing
+    const generatedCandidates = index.v3CandidateNames.filter((name) =>
+      isGeneratedV3CandidateForKey(name, key),
+    );
+    const confirmations = await mapBounded(generatedCandidates, async (name) => {
       const chunk = await readValidV3Chunk(io, name, key);
 
       if (chunk) {
-        matching.add(name);
-        continue;
+        return name;
       }
 
-      if (isPlausibleV3CandidateForPrefix(name, key)) {
+      return isPlausibleV3CandidateForPrefix(name, key) ? name : undefined;
+    });
+
+    for (const name of confirmations) {
+      if (name) {
         matching.add(name);
       }
     }
@@ -258,21 +298,24 @@ export const collectStorageFileNamesForPrefix = async (
   keyPrefix: StorageKeyPrefix,
 ): Promise<string[]> => {
   const names = await io.listNames();
+  const index = buildStorageNameIndex(names);
   const matching = new Set(
-    listStorageFileEntries(names)
+    index.allParsedEntries
       .filter(({ key }) => storageKeyHasPrefix(key, keyPrefix))
       .map(({ name }) => name),
   );
 
-  for (const name of names) {
-    if (!isPlausibleV3CandidateForPrefix(name, keyPrefix)) {
-      continue;
-    }
-
-    // eslint-disable-next-line no-await-in-loop -- wrapper identity is needed because the filename is only a hint
+  const v3Candidates = index.v3CandidateNames.filter((name) =>
+    isPlausibleV3CandidateForPrefix(name, keyPrefix),
+  );
+  const confirmations = await mapBounded(v3Candidates, async (name) => {
     const chunk = await readValidV3Chunk(io, name);
 
-    if (chunk && storageKeyHasPrefix(chunk.key, keyPrefix)) {
+    return chunk && storageKeyHasPrefix(chunk.key, keyPrefix) ? name : undefined;
+  });
+
+  for (const name of confirmations) {
+    if (name) {
       matching.add(name);
     }
   }
@@ -300,9 +343,10 @@ export const discoverStorageDocumentIds = async (
   io: ReadOnlyStorageFilePolicyIo,
 ): Promise<AMDocumentId[]> => {
   const names = await io.listNames();
+  const index = buildStorageNameIndex(names);
   const documentIds = new Set<AMDocumentId>();
 
-  for (const { key } of listStorageFileEntries(names)) {
+  for (const { key } of index.allParsedEntries) {
     const [documentId] = key;
 
     if (zodIs(documentId, zodDocumentId)) {
@@ -310,13 +354,9 @@ export const discoverStorageDocumentIds = async (
     }
   }
 
-  for (const name of names) {
-    if (!decodeV3CandidateFileName(name)) {
-      continue;
-    }
+  const v3Chunks = await mapBounded(index.v3CandidateNames, (name) => readValidV3Chunk(io, name));
 
-    // eslint-disable-next-line no-await-in-loop -- repository discovery must decode wrapper-backed ids one file at a time
-    const chunk = await readValidV3Chunk(io, name);
+  for (const chunk of v3Chunks) {
     const [documentId] = chunk?.key ?? [];
 
     if (zodIs(documentId, zodDocumentId)) {
@@ -366,9 +406,7 @@ export const removeStorageEntry = async (
   io: MutableStorageFilePolicyIo,
   key: StorageKey,
 ): Promise<void> => {
-  await Promise.all(
-    (await collectStorageFileNamesForKey(io, key)).map((name) => io.removeName(name)),
-  );
+  await mapBounded(await collectStorageFileNamesForKey(io, key), (name) => io.removeName(name));
 };
 
 /**
@@ -380,7 +418,7 @@ export const removeStorageEntriesByPrefix = async (
   io: MutableStorageFilePolicyIo,
   keyPrefix: StorageKeyPrefix,
 ): Promise<void> => {
-  await Promise.all(
-    (await collectStorageFileNamesForPrefix(io, keyPrefix)).map((name) => io.removeName(name)),
+  await mapBounded(await collectStorageFileNamesForPrefix(io, keyPrefix), (name) =>
+    io.removeName(name),
   );
 };

@@ -3,6 +3,7 @@ import {
   decodeV3CandidateFileName,
   encodePreferredV3FileName,
   encodeV3FileNameWithSuffix,
+  encodeV3ShortFamilyPrefix,
 } from './filenameCodecV3';
 import type { ChunkStorageKey, StorageKeyPrefix } from './types';
 import { decodeV3StorageWrapper } from './wrapperCodecV3';
@@ -160,18 +161,13 @@ export const resolveWritableV3FileName = async (
 
 /**
  * Returns the fixed short prefix used by generated v3 filenames for a chunk key.
+ * Intentionally fingerprint-free so it keeps matching manual/copy/numeric-suffix v3 files that
+ * were created before the fingerprint segment existed.
  * @param key - Full logical chunk key.
- * @returns `<docPrefix>.<kindCode>.<hashPrefix>` without the file extension.
+ * @returns `<docPrefix>.<kindCode>.<hashPrefix>` without the fingerprint or file extension.
  */
-export const getGeneratedV3PrefixForKey = (key: ChunkStorageKey): string | undefined => {
-  const preferredName = encodePreferredV3FileName(key);
-
-  if (!preferredName) {
-    return undefined;
-  }
-
-  return preferredName.slice(0, -'.mf'.length);
-};
+export const getGeneratedV3PrefixForKey = (key: ChunkStorageKey): string | undefined =>
+  encodeV3ShortFamilyPrefix(key);
 
 /**
  * Returns whether a filename belongs to the generated short v3 candidate family for a key.

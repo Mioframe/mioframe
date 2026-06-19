@@ -83,7 +83,7 @@ class MemoryDirectory implements DirectoryForStorageAdapter {
 }
 
 describe('createFSStorageAdapter', () => {
-  it('uses controlled numeric suffixes instead of expanding prefixes', async () => {
+  it('uses the full-key fingerprint to avoid colliding on a shared doc/hash prefix', async () => {
     const directory = new MemoryDirectory();
     const docId = getDocumentId();
     const keyA: StorageKey = [docId, 'snapshot', HASH_A];
@@ -92,15 +92,16 @@ describe('createFSStorageAdapter', () => {
       'snapshot',
       `${HASH_A.slice(0, 8)}ffffffffffffffffffffffffffffffffffffffffffffffffffffffff`,
     ];
+    const nameA = encodePreferredV3FileName(keyA);
+    const nameB = encodePreferredV3FileName(keyB);
+    if (!nameA || !nameB) throw new Error('Expected v3 filenames');
 
     const adapter = createFSStorageAdapter(directory);
     await adapter.save(keyA, DATA_A);
     await adapter.save(keyB, DATA_B);
 
-    expect([...directory.files.keys()].sort()).toEqual([
-      `${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.1.mf`,
-      `${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`,
-    ]);
+    expect(nameA).not.toBe(nameB);
+    expect([...directory.files.keys()].sort()).toEqual([nameA, nameB].sort());
   });
 
   it('does not overwrite an invalid existing .mf file during save', async () => {

@@ -1,7 +1,7 @@
 import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it, vi } from 'vitest';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
-import { encodePreferredV3FileName } from './filenameCodecV3';
+import { encodePreferredV3FileName, encodeV3FileNameWithSuffix } from './filenameCodecV3';
 import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
@@ -17,6 +17,40 @@ import {
 import type { ChunkStorageKey, StorageKey } from './types';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import { encodeV3StorageWrapper } from './wrapperCodecV3';
+
+/**
+ * Read-only IO with call counters and concurrency tracking, used for IO-budget assertions.
+ * @param entries - Backing in-memory filename-to-bytes map.
+ * @returns Counting IO boundary plus call/concurrency inspection helpers.
+ */
+const createCountingIo = (entries: Record<string, Uint8Array>) => {
+  let listNamesCalls = 0;
+  let inFlightReads = 0;
+  let maxConcurrentReads = 0;
+  const readCalls: string[] = [];
+
+  const io: ReadOnlyStorageFilePolicyIo = {
+    listNames: () => {
+      listNamesCalls += 1;
+      return Promise.resolve(Object.keys(entries));
+    },
+    readBytes: async (name) => {
+      readCalls.push(name);
+      inFlightReads += 1;
+      maxConcurrentReads = Math.max(maxConcurrentReads, inFlightReads);
+      await Promise.resolve();
+      inFlightReads -= 1;
+      return entries[name];
+    },
+  };
+
+  return {
+    io,
+    getListNamesCalls: () => listNamesCalls,
+    getReadCalls: () => readCalls,
+    getMaxConcurrentReads: () => maxConcurrentReads,
+  };
+};
 
 const HASH_A = '0df10d48afdaa0df1a484b006e4854cec8640d416745ce0cc874c07027b69cc2';
 const HASH_B = '1af20e59befbb1e02b595c117f9965dfd7751e527856df1dd985d18138c7add3';
@@ -93,7 +127,7 @@ describe('storageFilePolicy', () => {
         createIo({ [preferredName]: new Uint8Array([0xde, 0xad]) }),
         key,
       ),
-    ).resolves.toBe(`${documentId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.1.mf`);
+    ).resolves.toBe(encodeV3FileNameWithSuffix(key, 1));
   });
 
   it('does not decode v3 files when removing the marker prefix', async () => {
@@ -223,5 +257,209 @@ describe('storageFilePolicy', () => {
 
     await expect(removeStorageEntriesByPrefix(createIo(entries), [])).resolves.toBeUndefined();
     expect(Object.keys(entries)).toEqual([]);
+  });
+});
+
+describe('storageFilePolicy IO budget', () => {
+  it('loadStorageEntriesByPrefix calls listNames exactly once per operation', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({
+      [v3Name]: encodeV3StorageWrapper(key, DATA_A),
+      [encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A) ?? '']: DATA_B,
+    });
+
+    await loadStorageEntriesByPrefix(io, [documentId]);
+
+    expect(getListNamesCalls()).toBe(1);
+  });
+
+  it('removeStorageEntriesByPrefix calls listNames exactly once per operation', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = { [v3Name]: encodeV3StorageWrapper(key, DATA_A) };
+    let listNamesCalls = 0;
+    const io: MutableStorageFilePolicyIo = {
+      listNames: () => {
+        listNamesCalls += 1;
+        return Promise.resolve(Object.keys(entries));
+      },
+      readBytes: (name) => Promise.resolve(entries[name]),
+      writeBytes: (name, data) => {
+        entries[name] = new Uint8Array(data);
+        return Promise.resolve();
+      },
+      removeName: (name) => {
+        Reflect.deleteProperty(entries, name);
+        return Promise.resolve();
+      },
+    };
+
+    await removeStorageEntriesByPrefix(io, [documentId]);
+
+    expect(listNamesCalls).toBe(1);
+  });
+
+  it('discoverStorageDocumentIds calls listNames exactly once per operation', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({
+      [v3Name]: encodeV3StorageWrapper(key, DATA_A),
+    });
+
+    await discoverStorageDocumentIds(io);
+
+    expect(getListNamesCalls()).toBe(1);
+  });
+
+  it('sequential discovery calls fetch fresh listings instead of reusing a stale one', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {};
+    const { io, getListNamesCalls } = createCountingIo(entries);
+
+    await expect(discoverStorageDocumentIds(io)).resolves.toEqual([]);
+
+    entries[v3Name] = encodeV3StorageWrapper(key, DATA_A);
+
+    await expect(discoverStorageDocumentIds(io)).resolves.toEqual([documentId]);
+    expect(getListNamesCalls()).toBe(2);
+  });
+
+  it('sequential range loads fetch fresh listings instead of reusing a stale one', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {};
+    const { io, getListNamesCalls } = createCountingIo(entries);
+
+    await expect(loadStorageEntriesByPrefix(io, [documentId])).resolves.toEqual([]);
+
+    entries[v3Name] = encodeV3StorageWrapper(key, DATA_A);
+
+    await expect(loadStorageEntriesByPrefix(io, [documentId])).resolves.toEqual([
+      { data: DATA_A, key },
+    ]);
+    expect(getListNamesCalls()).toBe(2);
+  });
+
+  it('discovery reads only plausible v3 candidates and never reads v2/legacy bytes', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+    const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
+
+    if (!v3Name || !v2Name) {
+      throw new Error('Expected storage filenames');
+    }
+
+    const { io, getReadCalls } = createCountingIo({
+      [v3Name]: encodeV3StorageWrapper(key, DATA_A),
+      [v2Name]: DATA_B,
+      [legacyName]: DATA_B,
+      'notes.txt': DATA_B,
+    });
+
+    await discoverStorageDocumentIds(io);
+
+    expect(getReadCalls()).toEqual([v3Name]);
+  });
+
+  it('reads independent v3 wrapper candidates with bounded concurrency', async () => {
+    const documentId = getDocumentId();
+    const entries: Record<string, Uint8Array> = {};
+
+    for (let i = 0; i < 12; i++) {
+      const key: ChunkStorageKey = [documentId, 'snapshot', `${HASH_A.slice(0, 60)}${i}aaa`];
+      const name = encodePreferredV3FileName(key);
+
+      if (!name) {
+        throw new Error('Expected v3 filename');
+      }
+
+      entries[name] = encodeV3StorageWrapper(key, DATA_A);
+    }
+
+    const { io, getMaxConcurrentReads } = createCountingIo(entries);
+
+    await loadStorageEntriesByPrefix(io, [documentId]);
+
+    expect(getMaxConcurrentReads()).toBeGreaterThan(0);
+    expect(getMaxConcurrentReads()).toBeLessThanOrEqual(4);
+  });
+
+  it('removeRange removes only matching v3 wrapper files with bounded concurrency', async () => {
+    const documentId = getDocumentId();
+    const entries: Record<string, Uint8Array> = {};
+    const removedNames: string[] = [];
+    let inFlightRemovals = 0;
+    let maxConcurrentRemovals = 0;
+
+    for (let i = 0; i < 8; i++) {
+      const key: StorageKey = [documentId, 'snapshot', `${HASH_A.slice(0, 60)}${i}aaa`];
+      const name = encodePreferredV3FileName(key);
+
+      if (!name) {
+        throw new Error('Expected v3 filename');
+      }
+
+      entries[name] = encodeV3StorageWrapper(key, DATA_A);
+    }
+
+    entries['unrelated-noise.mf'] = new Uint8Array([0xde, 0xad]);
+
+    const io: MutableStorageFilePolicyIo = {
+      listNames: () => Promise.resolve(Object.keys(entries)),
+      readBytes: (name) => Promise.resolve(entries[name]),
+      writeBytes: (name, data) => {
+        entries[name] = new Uint8Array(data);
+        return Promise.resolve();
+      },
+      removeName: async (name) => {
+        inFlightRemovals += 1;
+        maxConcurrentRemovals = Math.max(maxConcurrentRemovals, inFlightRemovals);
+        await Promise.resolve();
+        inFlightRemovals -= 1;
+        removedNames.push(name);
+        Reflect.deleteProperty(entries, name);
+      },
+    };
+
+    await removeStorageEntriesByPrefix(io, [documentId]);
+
+    expect(removedNames).toHaveLength(8);
+    expect(Object.keys(entries)).toEqual(['unrelated-noise.mf']);
+    expect(maxConcurrentRemovals).toBeGreaterThan(0);
+    expect(maxConcurrentRemovals).toBeLessThanOrEqual(4);
   });
 });

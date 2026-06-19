@@ -4,7 +4,11 @@ import { FileSystemError, VirtualFileSystem, VfsError } from '../virtualFileSyst
 import { MemoryFileSystem } from '../virtualFileSystem/MemoryFileSystem';
 import { createVFSAdapter } from './createVFSAdapter';
 import { encodeStorageKeyToV2FileName } from './filenameCodecV2';
-import { encodePreferredV3FileName, V3_MAX_FILE_NAME_LENGTH } from './filenameCodecV3';
+import {
+  encodePreferredV3FileName,
+  encodeV3FileNameWithSuffix,
+  V3_MAX_FILE_NAME_LENGTH,
+} from './filenameCodecV3';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import type { StorageKey } from './types';
 import { decodeV3StorageWrapper, encodeV3StorageWrapper } from './wrapperCodecV3';
@@ -39,6 +43,8 @@ describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const fileName = encodePreferredV3FileName(key);
+    if (!fileName) throw new Error('Expected v3 filename');
 
     const adapter = createVFSAdapter(vfs, path);
     await adapter.save(key, DATA_A);
@@ -46,20 +52,22 @@ describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
     const entries = await vfs.readDirectory(path);
     const names = entries.map(([name]) => name);
 
-    expect(names).toContain(`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`);
+    expect(names).toContain(fileName);
   });
 
   it('saves an incremental with a short v3 filename', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const key: StorageKey = [docId, 'incremental', HASH_B];
+    const fileName = encodePreferredV3FileName(key);
+    if (!fileName) throw new Error('Expected v3 filename');
 
     const adapter = createVFSAdapter(vfs, path);
     await adapter.save(key, DATA_B);
 
     const entries = await vfs.readDirectory(path);
     const names = entries.map(([name]) => name);
-    expect(names).toContain(`${docId.slice(0, 6)}.i.${HASH_B.slice(0, 8)}.mf`);
+    expect(names).toContain(fileName);
   });
 
   it('wraps v3 files and load returns the original Automerge bytes, not the wrapper bytes', async () => {
@@ -92,7 +100,7 @@ describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
     expect(names[0]?.length).toBeLessThanOrEqual(V3_MAX_FILE_NAME_LENGTH);
   });
 
-  it('uses controlled numeric suffixes instead of expanding hash or document prefixes', async () => {
+  it('uses the full-key fingerprint to avoid colliding on a shared doc/hash prefix', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const keyA: StorageKey = [docId, 'snapshot', HASH_A];
@@ -101,14 +109,18 @@ describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
       'snapshot',
       `${HASH_A.slice(0, 8)}ffffffffffffffffffffffffffffffffffffffffffffffffffffffff`,
     ];
+    const nameA = encodePreferredV3FileName(keyA);
+    const nameB = encodePreferredV3FileName(keyB);
+    if (!nameA || !nameB) throw new Error('Expected v3 filenames');
 
     const adapter = createVFSAdapter(vfs, path);
     await adapter.save(keyA, DATA_A);
     await adapter.save(keyB, DATA_B);
 
     const names = (await vfs.readDirectory(path)).map(([name]) => name).sort();
-    expect(names).toContain(`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`);
-    expect(names).toContain(`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.1.mf`);
+    expect(nameA).not.toBe(nameB);
+    expect(names).toContain(nameA);
+    expect(names).toContain(nameB);
     expect(names).not.toContain(`${docId}.s.${HASH_A}.mf`);
   });
 
@@ -117,7 +129,8 @@ describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
     const docId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
     const preferredName = encodePreferredV3FileName(key);
-    if (!preferredName) throw new Error('Expected v3 filename');
+    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
+    if (!preferredName || !suffixedName) throw new Error('Expected v3 filenames');
     await vfs.writeFile(`${path}/${preferredName}`, new Uint8Array([0xde, 0xad]));
 
     const adapter = createVFSAdapter(vfs, path);
@@ -130,9 +143,7 @@ describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
 
     expect(invalidBytes).toEqual(new Uint8Array([0xde, 0xad]));
     expect(savedBytes).toEqual(DATA_A);
-    expect((await vfs.readDirectory(path)).map(([name]) => name)).toContain(
-      `${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.1.mf`,
-    );
+    expect((await vfs.readDirectory(path)).map(([name]) => name)).toContain(suffixedName);
   });
 
   it('overwrites a valid same-key .mf file', async () => {
