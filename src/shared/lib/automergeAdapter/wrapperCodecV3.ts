@@ -86,18 +86,30 @@ export const decodeV3StorageWrapper = (data: Uint8Array): DecodedV3StorageWrappe
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   let offset = WRAPPER_MAGIC.length;
 
+  if (offset + 2 > data.length) {
+    return undefined;
+  }
+
   const documentIdLength = view.getUint16(offset);
   offset += 2;
   if (documentIdLength <= 0 || offset + documentIdLength > data.length) {
     return undefined;
   }
 
-  const documentId = decoder.decode(data.slice(offset, offset + documentIdLength));
+  const documentId = decoder.decode(data.subarray(offset, offset + documentIdLength));
   offset += documentIdLength;
+
+  if (offset + 1 > data.length) {
+    return undefined;
+  }
 
   const kind = CODE_TO_KIND[view.getUint8(offset)];
   offset += 1;
   if (!kind) {
+    return undefined;
+  }
+
+  if (offset + 2 > data.length) {
     return undefined;
   }
 
@@ -107,8 +119,12 @@ export const decodeV3StorageWrapper = (data: Uint8Array): DecodedV3StorageWrappe
     return undefined;
   }
 
-  const hash = decoder.decode(data.slice(offset, offset + hashLength));
+  const hash = decoder.decode(data.subarray(offset, offset + hashLength));
   offset += hashLength;
+
+  if (offset + 4 > data.length) {
+    return undefined;
+  }
 
   const payloadLength = view.getUint32(offset);
   offset += 4;
@@ -116,7 +132,7 @@ export const decodeV3StorageWrapper = (data: Uint8Array): DecodedV3StorageWrappe
     return undefined;
   }
 
-  const payload = data.slice(offset, offset + payloadLength);
+  const payload = data.subarray(offset, offset + payloadLength);
 
   const key = [documentId, kind, hash];
 

@@ -1,5 +1,12 @@
-import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
-import { fileNameToPartialKey, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import {
+  collectStorageFileNamesForPrefix,
+  decodeV3CandidateFileName,
+  discoverStorageDocumentIds,
+  fileNameToPartialKey,
+  storageAdapterMarkerFileName,
+  type StorageFilePolicyIo,
+} from '@shared/lib/automergeAdapter';
 import {
   FileSystemError,
   FSNodeType,
@@ -7,7 +14,6 @@ import {
   type VirtualFileSystem,
   VfsError,
 } from '@shared/lib/virtualFileSystem';
-import { zodIs } from '@shared/lib/validateZodScheme';
 import type { RepositoryDirectoryEntry } from './repositoryContracts';
 
 /** Low-level repository facts derived from one directory listing. */
@@ -38,14 +44,12 @@ export const getDocumentStorageFiles = async (
   id: AMDocumentId,
 ) => {
   const entries = await vfs.readDirectory(path);
+  const fileEntries = entries.filter(([, stat]) => stat.type === FSNodeType.File);
+  const names = new Set(
+    await collectStorageFileNamesForPrefix(createRepositoryStorageIo(vfs, path, fileEntries), [id]),
+  );
 
-  return entries.filter(([name, stat]) => {
-    if (stat.type !== FSNodeType.File) {
-      return false;
-    }
-
-    return fileNameToPartialKey(name)?.at(0) === id;
-  });
+  return fileEntries.filter(([name]) => names.has(name));
 };
 
 /**
@@ -61,7 +65,7 @@ export const isRepositoryMarkerFileName = (name: string) => name === storageAdap
  * @returns Whether the file name is an Automerge document storage file.
  */
 export const isAutomergeDocumentFileName = (name: string) =>
-  fileNameToPartialKey(name) !== undefined;
+  fileNameToPartialKey(name) !== undefined || decodeV3CandidateFileName(name) !== undefined;
 
 /**
  * Returns whether a repository storage file should stay hidden in the file list.
@@ -85,38 +89,29 @@ export const getRegularDirectoryEntries = (
   directoryEntries.filter(([name]) => !shouldHideRepositoryStorageFile(name, hideAutomergeFiles));
 
 /**
- * Derives low-level repository facts from one directory listing.
- * @param directoryEntries - Directory entries in the current folder.
+ * Derives low-level repository facts for one repository directory.
+ * @param vfs - Mounted virtual file system used to decode wrapper-backed storage files.
+ * @param path - Absolute repository directory path.
+ * @param directoryEntries - Optional pre-read directory entries for the current folder.
  * @returns Repository initialization and document-id facts derived from the directory listing.
  */
-export const getRepositoryFacts = (
-  directoryEntries: readonly RepositoryDirectoryEntry[],
-): RepositoryFacts =>
-  directoryEntries.reduce<RepositoryFacts>(
-    (facts, [name, stat]) => {
-      if (stat.type !== FSNodeType.File) {
-        return facts;
-      }
-
-      if (isRepositoryMarkerFileName(name)) {
-        facts.isInitialized = true;
-        return facts;
-      }
-
-      const [documentId] = fileNameToPartialKey(name) ?? [];
-
-      if (zodIs(documentId, zodDocumentId) && !facts.documentIds.includes(documentId)) {
-        facts.documentIds.push(documentId);
-        facts.isInitialized = true;
-      }
-
-      return facts;
-    },
-    {
-      documentIds: [],
-      isInitialized: false,
-    },
+export const getRepositoryFacts = async (
+  vfs: VirtualFileSystem,
+  path: string,
+  directoryEntries?: readonly RepositoryDirectoryEntry[],
+): Promise<RepositoryFacts> => {
+  const entries = directoryEntries ?? (await vfs.readDirectory(path));
+  const fileEntries = entries.filter(([, stat]) => stat.type === FSNodeType.File);
+  const isInitialized = fileEntries.some(([name]) => isRepositoryMarkerFileName(name));
+  const documentIds = await discoverStorageDocumentIds(
+    createRepositoryStorageIo(vfs, path, fileEntries),
   );
+
+  return {
+    documentIds,
+    isInitialized: isInitialized || documentIds.length > 0,
+  };
+};
 
 /**
  * Removes all currently visible Automerge storage files for one document.
@@ -149,6 +144,32 @@ export const removeDocumentStorageFiles = async (
 };
 
 const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const createRepositoryStorageIo = (
+  vfs: VirtualFileSystem,
+  path: string,
+  entries: readonly RepositoryDirectoryEntry[],
+): StorageFilePolicyIo => {
+  const fileNames = entries
+    .filter(([, stat]) => stat.type === FSNodeType.File)
+    .map(([name]) => name);
+
+  return {
+    listNames: () => Promise.resolve(fileNames),
+    readBytes: async (name) => {
+      try {
+        const file = await vfs.readFile(PathUtils.join(path, name));
+        return new Uint8Array(await file.arrayBuffer());
+      } catch (error) {
+        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+          return undefined;
+        }
+
+        throw error;
+      }
+    },
+  };
+};
 
 /**
  * Repeatedly removes storage files for a deleted document until the directory stays empty

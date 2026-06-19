@@ -80,7 +80,7 @@ export const isPlausibleV3CandidateForPrefix = (
     return false;
   }
 
-  if (keyPrefix[0] !== 'storage-adapter-id' && !keyPrefix[0].startsWith(parsed.docPrefix)) {
+  if (keyPrefix[0] === 'storage-adapter-id' || !keyPrefix[0].startsWith(parsed.docPrefix)) {
     return false;
   }
 
@@ -134,7 +134,7 @@ export const resolveWritableV3FileName = async (
     return preferred;
   }
 
-  for (let suffixNumber = 1; suffixNumber < Number.MAX_SAFE_INTEGER; suffixNumber++) {
+  for (let suffixNumber = 1; suffixNumber <= 1000; suffixNumber++) {
     const candidateName = encodeV3FileNameWithSuffix(key, suffixNumber);
 
     if (!candidateName) {

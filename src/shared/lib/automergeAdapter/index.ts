@@ -34,3 +34,21 @@ export {
   toWritableStorageFileName,
   selectReadableStorageEntries,
 } from './storageKeyHelpers';
+export {
+  decodeV3CandidateFileName,
+  encodePreferredV3FileName,
+  encodeV3FileNameWithSuffix,
+  V3_DOC_PREFIX_LENGTH,
+  V3_FILE_EXTENSION,
+  V3_HASH_PREFIX_LENGTH,
+  V3_MAX_FILE_NAME_LENGTH,
+} from './filenameCodecV3';
+export {
+  collectStorageFileNamesForKey,
+  collectStorageFileNamesForPrefix,
+  discoverStorageDocumentIds,
+  loadStorageChunk,
+  loadStorageChunksByPrefix,
+  resolveStorageChunkWriteTarget,
+  type StorageFilePolicyIo,
+} from './storageFilePolicy';

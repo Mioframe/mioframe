@@ -1,14 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import {
+  encodePreferredV3FileName,
   encodeStorageKeyToV2FileName,
   partialKeyToFileName,
   storageAdapterMarkerFileName,
 } from '@shared/lib/automergeAdapter';
+import { encodeV3StorageWrapper } from '@shared/lib/automergeAdapter/wrapperCodecV3';
 import { FSNodeType, type FSNodeStat, VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import {
   cleanupDeletedDocumentStorageFiles,
+  getDocumentStorageFiles,
   getRegularDirectoryEntries,
   getRepositoryFacts,
   isAutomergeDocumentFileName,
@@ -46,9 +49,14 @@ const createV2DocumentStorageFileName = () => {
 };
 
 describe('getRepositoryFacts', () => {
-  it('detects an initialized empty repository from the marker file', () => {
+  it('detects an initialized empty repository from the marker file', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+
     expect(
-      getRepositoryFacts([
+      await getRepositoryFacts(vfs, path, [
         [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
         ['notes.txt', createStat(FSNodeType.File)],
       ]),
@@ -58,11 +66,15 @@ describe('getRepositoryFacts', () => {
     });
   });
 
-  it('treats folders with document files as initialized even without the marker file', () => {
+  it('treats folders with document files as initialized even without the marker file', async () => {
     const { documentId, fileName } = createDocumentStorageFileName();
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
 
     expect(
-      getRepositoryFacts([
+      await getRepositoryFacts(vfs, path, [
         [fileName, createStat(FSNodeType.File)],
         ['notes.txt', createStat(FSNodeType.File)],
       ]),
@@ -72,15 +84,45 @@ describe('getRepositoryFacts', () => {
     });
   });
 
-  it('treats a regular folder without repository storage as uninitialized', () => {
+  it('treats a regular folder without repository storage as uninitialized', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+
     expect(
-      getRepositoryFacts([
+      await getRepositoryFacts(vfs, path, [
         ['notes.txt', createStat(FSNodeType.File)],
         ['Nested', createStat(FSNodeType.Directory)],
       ]),
     ).toEqual({
       documentIds: [],
       isInitialized: false,
+    });
+  });
+
+  it('discovers full document ids from valid v3 wrappers', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const hash = SAMPLE_HEX_HASH;
+    const key = [documentId, 'snapshot', hash] as const;
+    const fileName = encodePreferredV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(
+      `${path}/${fileName}`,
+      encodeV3StorageWrapper([...key], new Uint8Array([1])),
+    );
+
+    await expect(getRepositoryFacts(vfs, path)).resolves.toEqual({
+      documentIds: [documentId],
+      isInitialized: true,
     });
   });
 });
@@ -179,13 +221,41 @@ describe('v2 compact .am filename filtering', () => {
     expect(result.map(([name]) => name)).toEqual(['notes.txt', 'attachment.am']);
   });
 
-  it('extracts document ids from v2 storage filenames for repository facts', () => {
+  it('extracts document ids from v2 storage filenames for repository facts', async () => {
     const { documentId, fileName } = createV2DocumentStorageFileName();
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
 
-    const facts = getRepositoryFacts([[fileName, createStat(FSNodeType.File)]]);
+    const facts = await getRepositoryFacts(vfs, path, [[fileName, createStat(FSNodeType.File)]]);
 
     expect(facts.isInitialized).toBe(true);
     expect(facts.documentIds).toContain(documentId);
+  });
+});
+
+describe('getDocumentStorageFiles', () => {
+  it('finds valid v3 storage files for the full document id', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+
+    const documentId = new Repo().create({}).documentId;
+    const key = [documentId, 'snapshot', SAMPLE_HEX_HASH] as const;
+    const fileName = encodePreferredV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    await vfs.writeFile(
+      `${path}/${fileName}`,
+      encodeV3StorageWrapper([...key], new Uint8Array([1])),
+    );
+
+    await expect(getDocumentStorageFiles(vfs, path, documentId)).resolves.toHaveLength(1);
   });
 });
 

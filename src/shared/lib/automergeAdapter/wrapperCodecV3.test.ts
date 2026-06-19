@@ -25,4 +25,14 @@ describe('wrapperCodecV3', () => {
 
     expect(decodeV3StorageWrapper(wrapped)).toBeUndefined();
   });
+
+  it('returns undefined instead of throwing for truncated wrappers', () => {
+    const key = getKey();
+    const wrapped = encodeV3StorageWrapper(key, DATA_A);
+
+    for (let length = 0; length < wrapped.length; length += 1) {
+      expect(() => decodeV3StorageWrapper(wrapped.subarray(0, length))).not.toThrow();
+      expect(decodeV3StorageWrapper(wrapped.subarray(0, length))).toBeUndefined();
+    }
+  });
 });
