@@ -142,7 +142,9 @@ const readValidLegacyOrV2Chunk = async (
  * Exact full chunk keys follow a simple deterministic priority: the primary v3 file wins when it
  * holds a valid same-key wrapper; an invalid or different-key primary file is a storage conflict
  * reported as a safe failure, never a silent fallback; a missing primary file falls back to a
- * direct v2 read, then to the released legacy filename.
+ * direct v2 read, then to the released legacy filename with extension, then to the released
+ * extension-less legacy filename. Every step is a direct read by name; no directory listing is
+ * performed for a full chunk key.
  * @param io - Storage IO boundary used for listing and reading physical files.
  * @param key - Full or partial logical storage key to load.
  * @returns Raw Automerge bytes, or `undefined` when no valid entry exists.
@@ -183,7 +185,16 @@ export const loadStorageEntry = async (
       ? await readValidLegacyOrV2Chunk(io, { key, name: legacyName })
       : undefined;
 
-    return legacyChunk?.data;
+    if (legacyChunk) {
+      return legacyChunk.data;
+    }
+
+    const extensionlessLegacyName = partialKeyToFileName(key, { withExtension: false });
+    const extensionlessLegacyChunk = extensionlessLegacyName
+      ? await readValidLegacyOrV2Chunk(io, { key, name: extensionlessLegacyName })
+      : undefined;
+
+    return extensionlessLegacyChunk?.data;
   }
 
   const names = await io.listNames();

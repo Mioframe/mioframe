@@ -683,6 +683,40 @@ describe('storageFilePolicy load fast path', () => {
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
     expect(getListNamesCalls()).toBe(0);
   });
+
+  it('falls back to the extension-less legacy filename directly, without any listNames() scan, when primary v3, v2, and with-extension legacy are all missing', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const extensionlessLegacyName = partialKeyToFileName(key, { withExtension: false });
+
+    if (!extensionlessLegacyName) {
+      throw new Error('Expected extension-less legacy filename');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({ [extensionlessLegacyName]: DATA_A });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+    expect(getListNamesCalls()).toBe(0);
+  });
+
+  it('prefers the with-extension legacy filename over the extension-less legacy filename when both exist', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
+    const extensionlessLegacyName = partialKeyToFileName(key, { withExtension: false });
+
+    if (!extensionlessLegacyName) {
+      throw new Error('Expected extension-less legacy filename');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({
+      [legacyName]: DATA_A,
+      [extensionlessLegacyName]: DATA_B,
+    });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+    expect(getListNamesCalls()).toBe(0);
+  });
 });
 
 describe('storageFilePolicy IO budget', () => {

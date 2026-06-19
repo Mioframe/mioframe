@@ -274,6 +274,18 @@ describe('createFSStorageAdapter direct read-by-name fast path', () => {
     expect(directory.entriesCalls).toBe(0);
   });
 
+  it('reads the released extension-less legacy file via readFileByName without calling entries() when v3, v2, and with-extension legacy are missing', async () => {
+    const directory = new DirectReadMemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    directory.files.set(`${docId}_snapshot_${HASH_A}`, DATA_A);
+
+    const adapter = createFSStorageAdapter(directory);
+
+    expect(await adapter.load(key)).toEqual(DATA_A);
+    expect(directory.entriesCalls).toBe(0);
+  });
+
   it('returns undefined via direct reads without calling entries() when no entry exists', async () => {
     const directory = new DirectReadMemoryDirectory();
     const docId = getDocumentId();

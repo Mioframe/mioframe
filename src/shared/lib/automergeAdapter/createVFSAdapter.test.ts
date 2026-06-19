@@ -244,17 +244,17 @@ describe('createVFSAdapter – load reads legacy files', () => {
     expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
-  it('exact load does not find an extension-less legacy file and does not scan the directory', async () => {
+  it('exact load reads an extension-less legacy file directly without scanning the directory', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
-    const scanOnlyLegacyName = `${docId}_snapshot_${HASH_A}`;
+    const extensionlessLegacyName = `${docId}_snapshot_${HASH_A}`;
     const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
-    await vfs.writeFile(`${path}/${scanOnlyLegacyName}`, DATA_A);
+    await vfs.writeFile(`${path}/${extensionlessLegacyName}`, DATA_A);
 
     const adapter = createVFSAdapter(vfs, path);
     const result = await adapter.load([docId, 'snapshot', HASH_A]);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual(DATA_A);
     expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 

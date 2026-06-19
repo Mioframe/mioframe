@@ -46,9 +46,12 @@ so there is no shipped v3 compatibility filename family to keep supporting:
     immediately. An invalid or different-key wrapper there is a storage conflict and fails safely
     (`undefined`) without falling back to v2 or legacy data for that key. Only when the primary
     filename is missing outright does `load` try the direct v2 filename next; only when v2 is also
-    missing does it try the direct released legacy filename. All three steps are direct reads by
-    deterministic filename; exact `load` never calls `listNames()`/`readDirectory()`/`entries()`,
-    and a full chunk key that matches none of the three returns `undefined` without scanning.
+    missing does it try the direct released legacy filename with the `.automerge` extension; only
+    when that with-extension legacy filename is also missing does it try the direct released
+    extension-less legacy filename. All four steps are direct reads by deterministic filename;
+    exact `load` never calls `listNames()`/`readDirectory()`/`entries()`, and a full chunk key that
+    matches none of the four returns `undefined` without scanning. When both legacy variants exist
+    for the same key, the with-extension filename wins.
   - `save` reads the primary filename directly and writes it when absent or already a valid
     wrapper for the same full key, with no directory listing. When the primary filename is
     occupied by invalid data or a valid wrapper for a different full key, `save` raises
