@@ -52,7 +52,6 @@ export {
   loadStorageEntry,
   removeStorageEntriesByPrefix,
   removeStorageEntry,
-  resolveStorageChunkWriteTarget,
   saveStorageEntry,
   type MutableStorageFilePolicyIo,
   type ReadOnlyStorageFilePolicyIo,

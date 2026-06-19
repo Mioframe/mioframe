@@ -49,19 +49,6 @@ describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
     expect(names).toContain(`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`);
   });
 
-  it('saves a snapshot with a short v3 filename', async () => {
-    const { vfs, path } = await setupVfs();
-    const docId = getDocumentId();
-    const key: StorageKey = [docId, 'snapshot', HASH_A];
-
-    const adapter = createVFSAdapter(vfs, path);
-    await adapter.save(key, DATA_A);
-
-    const entries = await vfs.readDirectory(path);
-    const names = entries.map(([name]) => name);
-    expect(names).toContain(`${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`);
-  });
-
   it('saves an incremental with a short v3 filename', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
