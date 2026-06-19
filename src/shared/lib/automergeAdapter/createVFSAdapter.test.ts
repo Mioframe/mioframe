@@ -230,7 +230,7 @@ describe('createVFSAdapter – load reads legacy files', () => {
     expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
-  it('falls back to the directory scan when primary v3 read misses and only a legacy file exists', async () => {
+  it('reads the released legacy file directly, without scanning the directory, when primary v3 read misses', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const legacyName = `${docId}_snapshot_${HASH_A}.automerge`;
@@ -241,10 +241,10 @@ describe('createVFSAdapter – load reads legacy files', () => {
     const result = await adapter.load([docId, 'snapshot', HASH_A]);
 
     expect(result).toEqual(DATA_A);
-    expect(readDirectorySpy).toHaveBeenCalledTimes(1);
+    expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
-  it('falls back to the directory scan when primary v3 read misses', async () => {
+  it('exact load does not find an extension-less legacy file and does not scan the directory', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const scanOnlyLegacyName = `${docId}_snapshot_${HASH_A}`;
@@ -254,8 +254,8 @@ describe('createVFSAdapter – load reads legacy files', () => {
     const adapter = createVFSAdapter(vfs, path);
     const result = await adapter.load([docId, 'snapshot', HASH_A]);
 
-    expect(result).toEqual(DATA_A);
-    expect(readDirectorySpy).toHaveBeenCalledTimes(1);
+    expect(result).toBeUndefined();
+    expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
   it('prefers a valid v3 file over legacy when both exist for the same full key', async () => {
@@ -278,19 +278,20 @@ describe('createVFSAdapter – load reads legacy files', () => {
     expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
-  it('still discovers externally created files through the fallback scan path', async () => {
+  it('still discovers externally created extension-less files through range scanning', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
     const scanOnlyLegacyName = `${docId}_snapshot_${HASH_A}`;
     await vfs.writeFile(`${path}/${scanOnlyLegacyName}`, DATA_A);
 
     const adapter = createVFSAdapter(vfs, path);
-    const result = await adapter.load([docId, 'snapshot', HASH_A]);
+    const result = await adapter.loadRange([docId]);
 
-    expect(result).toEqual(DATA_A);
+    expect(result).toEqual(expect.arrayContaining([{ data: DATA_A, key }]));
   });
 
-  it('keeps legacy duplicate tie-break behavior on the scan path when v2 is missing', async () => {
+  it('reads the with-extension legacy file directly without scanning when both extension variants exist', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const legacyNameWithExtension = `${docId}_snapshot_${HASH_A}.automerge`;
@@ -303,7 +304,7 @@ describe('createVFSAdapter – load reads legacy files', () => {
     const result = await adapter.load([docId, 'snapshot', HASH_A]);
 
     expect(result).toEqual(DATA_A);
-    expect(readDirectorySpy).toHaveBeenCalledTimes(1);
+    expect(readDirectorySpy).not.toHaveBeenCalled();
   });
 
   it('falls back to released legacy data when primary v3 and v2 are both missing', async () => {

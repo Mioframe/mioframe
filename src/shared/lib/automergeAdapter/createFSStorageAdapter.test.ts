@@ -262,6 +262,29 @@ describe('createFSStorageAdapter direct read-by-name fast path', () => {
     expect(await adapter.load(key)).toBeUndefined();
   });
 
+  it('reads the released legacy file via readFileByName without calling entries() when v3 and v2 are missing', async () => {
+    const directory = new DirectReadMemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    directory.files.set(`${docId}_snapshot_${HASH_A}.automerge`, DATA_A);
+
+    const adapter = createFSStorageAdapter(directory);
+
+    expect(await adapter.load(key)).toEqual(DATA_A);
+    expect(directory.entriesCalls).toBe(0);
+  });
+
+  it('returns undefined via direct reads without calling entries() when no entry exists', async () => {
+    const directory = new DirectReadMemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+
+    const adapter = createFSStorageAdapter(directory);
+
+    expect(await adapter.load(key)).toBeUndefined();
+    expect(directory.entriesCalls).toBe(0);
+  });
+
   it('keeps working through the entries()-based fallback when readFileByName is absent', async () => {
     const directory = new MemoryDirectory();
     const docId = getDocumentId();

@@ -178,15 +178,12 @@ export const loadStorageEntry = async (
       return v2Chunk.data;
     }
 
-    const matched = selectReadableStorageEntries(await io.listNames()).get(storageKeyToId(key));
+    const legacyName = partialKeyToFileName(key);
+    const legacyChunk = legacyName
+      ? await readValidLegacyOrV2Chunk(io, { key, name: legacyName })
+      : undefined;
 
-    if (!matched || matched.name === v2Name) {
-      return undefined;
-    }
-
-    const fallbackChunk = await readValidLegacyOrV2Chunk(io, matched);
-
-    return fallbackChunk?.data;
+    return legacyChunk?.data;
   }
 
   const names = await io.listNames();
