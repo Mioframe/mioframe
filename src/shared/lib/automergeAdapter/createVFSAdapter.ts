@@ -1,6 +1,6 @@
 import type { StorageAdapterInterface } from '@automerge/automerge-repo';
 import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
-import type { PartialStorageKey, StorageKey } from './types';
+import type { PartialStorageKey, StorageKey, StorageKeyPrefix } from './types';
 import {
   loadStorageEntriesByPrefix,
   loadStorageEntry,
@@ -65,10 +65,10 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
 
   return {
     load: (key: PartialStorageKey) => loadStorageEntry(createOperationIo(), key),
-    loadRange: (keyPrefix: PartialStorageKey) =>
+    loadRange: (keyPrefix: StorageKeyPrefix) =>
       loadStorageEntriesByPrefix(createOperationIo(), keyPrefix),
     remove: (key: StorageKey) => removeStorageEntry(createOperationIo(), key),
-    removeRange: (keyPrefix: PartialStorageKey) =>
+    removeRange: (keyPrefix: StorageKeyPrefix) =>
       removeStorageEntriesByPrefix(createOperationIo(), keyPrefix),
     save: (key: StorageKey, data: Uint8Array) => saveStorageEntry(createOperationIo(), key, data),
   };

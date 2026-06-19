@@ -12,7 +12,7 @@ import {
   storageKeyToId,
   toWritableStorageFileName,
 } from './storageKeyHelpers';
-import type { ChunkStorageKey, PartialStorageKey, StorageKey } from './types';
+import type { ChunkStorageKey, PartialStorageKey, StorageKey, StorageKeyPrefix } from './types';
 import {
   decodeValidV3Chunk,
   getV3CandidateNamesForKey,
@@ -147,7 +147,7 @@ export const loadStorageEntry = async (
  */
 export const loadStorageEntriesByPrefix = async (
   io: ReadOnlyStorageFilePolicyIo,
-  keyPrefix: PartialStorageKey,
+  keyPrefix: StorageKeyPrefix,
 ): Promise<AMChunk[]> => {
   const names = await io.listNames();
   const result = new Map<string, AMChunk>();
@@ -255,7 +255,7 @@ export const collectStorageFileNamesForKey = async (
  */
 export const collectStorageFileNamesForPrefix = async (
   io: ReadOnlyStorageFilePolicyIo,
-  keyPrefix: PartialStorageKey,
+  keyPrefix: StorageKeyPrefix,
 ): Promise<string[]> => {
   const names = await io.listNames();
   const matching = new Set(
@@ -378,7 +378,7 @@ export const removeStorageEntry = async (
  */
 export const removeStorageEntriesByPrefix = async (
   io: MutableStorageFilePolicyIo,
-  keyPrefix: PartialStorageKey,
+  keyPrefix: StorageKeyPrefix,
 ): Promise<void> => {
   await Promise.all(
     (await collectStorageFileNamesForPrefix(io, keyPrefix)).map((name) => io.removeName(name)),

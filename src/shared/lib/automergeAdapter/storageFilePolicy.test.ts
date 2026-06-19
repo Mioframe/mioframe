@@ -7,6 +7,7 @@ import {
   discoverStorageDocumentIds,
   isPlausibleRepositoryStorageCandidateFileName,
   loadStorageEntriesByPrefix,
+  removeStorageEntriesByPrefix,
   removeStorageEntry,
   resolveStorageChunkWriteTarget,
   saveStorageEntry,
@@ -181,5 +182,46 @@ describe('storageFilePolicy', () => {
     await removeStorageEntry(createIo(entries), key);
 
     expect(Object.keys(entries)).toEqual([markerName]);
+  });
+
+  it('loads every readable entry for an empty prefix without throwing', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    const markerName =
+      partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {
+      [v3Name]: encodeV3StorageWrapper(key, DATA_A),
+      [markerName]: new Uint8Array([1]),
+    };
+
+    await expect(loadStorageEntriesByPrefix(createIo(entries), [])).resolves.toEqual(
+      expect.arrayContaining([{ data: DATA_A, key }]),
+    );
+  });
+
+  it('removes every physical file for an empty prefix without throwing', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    const markerName =
+      partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
+
+    if (!v3Name) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {
+      [v3Name]: encodeV3StorageWrapper(key, DATA_A),
+      [markerName]: new Uint8Array([1]),
+    };
+
+    await expect(removeStorageEntriesByPrefix(createIo(entries), [])).resolves.toBeUndefined();
+    expect(Object.keys(entries)).toEqual([]);
   });
 });

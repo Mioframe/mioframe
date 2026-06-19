@@ -3,6 +3,7 @@ import type {
   FileForStorageAdapter,
   PartialStorageKey,
   StorageKey,
+  StorageKeyPrefix,
 } from './types';
 import type { AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
@@ -84,9 +85,9 @@ export const createFSStorageAdapter = (
     save: (key: StorageKey, data: Uint8Array<ArrayBuffer>) =>
       saveStorageEntry(createOperationIo(), key, data),
     remove: (key: StorageKey) => removeStorageEntry(createOperationIo(), key),
-    loadRange: (keyPrefix: PartialStorageKey) =>
+    loadRange: (keyPrefix: StorageKeyPrefix) =>
       loadStorageEntriesByPrefix(createOperationIo(), keyPrefix),
-    removeRange: (keyPrefix: PartialStorageKey) =>
+    removeRange: (keyPrefix: StorageKeyPrefix) =>
       removeStorageEntriesByPrefix(createOperationIo(), keyPrefix),
   };
 

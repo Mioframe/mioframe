@@ -4,7 +4,7 @@ import {
   encodePreferredV3FileName,
   encodeV3FileNameWithSuffix,
 } from './filenameCodecV3';
-import type { ChunkStorageKey, PartialStorageKey } from './types';
+import type { ChunkStorageKey, StorageKeyPrefix } from './types';
 import { decodeV3StorageWrapper } from './wrapperCodecV3';
 
 /**
@@ -66,13 +66,15 @@ export const getV3CandidateNamesForKey = (
 
 /**
  * Returns whether a physical filename is a plausible v3 candidate for a partial key prefix.
+ * An empty prefix (`[]`) matches every plausible v3 candidate, because an empty range prefix
+ * semantically selects all storage entries for `loadRange`/`removeRange` scans.
  * @param name - Physical filename to inspect.
- * @param keyPrefix - Partial logical key used to prefilter directory scans.
+ * @param keyPrefix - Partial logical key used to prefilter directory scans. May be empty.
  * @returns True when the filename should be wrapper-decoded for this prefix.
  */
 export const isPlausibleV3CandidateForPrefix = (
   name: string,
-  keyPrefix: PartialStorageKey,
+  keyPrefix: StorageKeyPrefix,
 ): boolean => {
   const parsed = decodeV3CandidateFileName(name);
 
@@ -80,11 +82,15 @@ export const isPlausibleV3CandidateForPrefix = (
     return false;
   }
 
-  if (keyPrefix[0] === 'storage-adapter-id' || !keyPrefix[0].startsWith(parsed.docPrefix)) {
-    return false;
+  const [documentIdPrefix, kind] = keyPrefix;
+
+  if (documentIdPrefix === undefined) {
+    return true;
   }
 
-  const [, kind] = keyPrefix;
+  if (documentIdPrefix === 'storage-adapter-id' || !documentIdPrefix.startsWith(parsed.docPrefix)) {
+    return false;
+  }
 
   if (kind !== undefined && kind !== parsed.kind) {
     return false;

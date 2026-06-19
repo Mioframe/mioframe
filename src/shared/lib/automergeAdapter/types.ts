@@ -25,6 +25,12 @@ export const zodPartialStorageKey = union([
 /** Partial storage-key tuple accepted by the filename conversion helpers. */
 export type PartialStorageKey = output<typeof zodPartialStorageKey>;
 
+/**
+ * Prefix accepted by range-style storage operations (`loadRange`, `removeRange`).
+ * Includes the empty prefix, which selects every storage entry.
+ */
+export type StorageKeyPrefix = PartialStorageKey | [];
+
 export const KEY_SEPARATE = '_';
 
 export const fileExtension = 'automerge';
