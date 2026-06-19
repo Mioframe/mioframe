@@ -11,6 +11,10 @@
 - shared:
 - service/worker:
 
+## Source of Truth
+
+## State Shape / API Contract
+
 ## User Scenarios Preserved
 
 ## Shared UI / Blast Radius
