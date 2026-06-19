@@ -40,11 +40,12 @@ export const isChunkStorageKey = (key: PartialStorageKey): key is ChunkStorageKe
 
 /**
  * Returns the preferred physical filename for a storage key.
- * Full chunk keys `[docId, kind, hash]` prefer the short v3 `.mf` filename, which stores the full
- * logical key inside the wrapper. Adapters may still resolve a different writable v3 candidate
- * later when the preferred short name is already occupied.
- * Non-chunk keys (e.g. `['storage-adapter-id']`) keep using the legacy format.
- * Read paths remain backward-compatible with v2 and legacy chunk filenames.
+ * Marker keys such as `['storage-adapter-id']` keep using the marker filename.
+ * Full chunk keys `[docId, kind, hash]` prefer the deterministic primary v3 `.mf` filename, which
+ * stores the full logical key inside the wrapper and is only the preferred physical target.
+ * When that primary v3 target is invalid or already belongs to a different full key, save policy
+ * reports a conflict-safe failure instead of resolving a different generated v3 filename.
+ * Read paths remain backward-compatible with released v2 and legacy chunk filenames.
  * @param key - Storage key to encode.
  * @returns Physical filename, or undefined when the key cannot be encoded.
  */

@@ -523,3 +523,78 @@ describe('cleanupDeletedDocumentStorageFiles privacy-safe messages', () => {
     expect(error.message).not.toContain(fileName);
   });
 });
+
+describe('cleanupDeletedDocumentStorageFiles', () => {
+  it('discovers matching files once per non-empty pass, deletes them with bounded concurrency, and preserves unrelated files', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const unrelatedDocumentId = new Repo().create({}).documentId;
+    const maxAllowedConcurrency = 4;
+    let activeDeletes = 0;
+    let maxConcurrentDeletes = 0;
+    let releaseDeletes!: () => void;
+    const deleteGate = new Promise<void>((resolve) => {
+      releaseDeletes = resolve;
+    });
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(
+      `${path}/${storageAdapterMarkerFileName}`,
+      new File(['marker'], storageAdapterMarkerFileName),
+    );
+
+    for (let i = 0; i < 9; i += 1) {
+      const { fileName, key } = createPrimaryV3StorageFileName(documentId, `${i}`.padStart(4, '0'));
+      // eslint-disable-next-line no-await-in-loop -- each fixture file must exist before discovery
+      await vfs.writeFile(
+        `${path}/${fileName}`,
+        encodeV3StorageWrapper(key, new Uint8Array([i + 1])),
+      );
+    }
+
+    const { fileName: unrelatedFileName, key: unrelatedKey } = createPrimaryV3StorageFileName(
+      unrelatedDocumentId,
+      '9999',
+    );
+    await vfs.writeFile(
+      `${path}/${unrelatedFileName}`,
+      encodeV3StorageWrapper(unrelatedKey, new Uint8Array([99])),
+    );
+    await vfs.writeFile(`${path}/notes.txt`, new File(['notes'], 'notes.txt'));
+
+    const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
+    const deleteSpy = vi.spyOn(vfs, 'delete').mockImplementation(async (filePath) => {
+      activeDeletes += 1;
+      maxConcurrentDeletes = Math.max(maxConcurrentDeletes, activeDeletes);
+      await deleteGate;
+      activeDeletes -= 1;
+
+      return VirtualFileSystem.prototype.delete.call(vfs, filePath);
+    });
+
+    const cleanupPromise = cleanupDeletedDocumentStorageFiles(vfs, path, documentId);
+
+    await vi.waitFor(() => {
+      expect(activeDeletes).toBe(maxAllowedConcurrency);
+    });
+
+    expect(readDirectorySpy).toHaveBeenCalledTimes(1);
+
+    releaseDeletes();
+
+    await cleanupPromise;
+
+    expect(deleteSpy).toHaveBeenCalledTimes(9);
+    expect(maxConcurrentDeletes).toBeLessThanOrEqual(maxAllowedConcurrency);
+    expect(maxConcurrentDeletes).toBeGreaterThan(0);
+    await expect(getDocumentStorageFiles(vfs, path, documentId)).resolves.toEqual([]);
+    await expect(getDocumentStorageFiles(vfs, path, unrelatedDocumentId)).resolves.toHaveLength(1);
+    await expect(vfs.readFile(`${path}/${storageAdapterMarkerFileName}`)).resolves.toBeInstanceOf(
+      File,
+    );
+    await expect(vfs.readFile(`${path}/${unrelatedFileName}`)).resolves.toBeInstanceOf(File);
+    await expect(vfs.readFile(`${path}/notes.txt`)).resolves.toBeInstanceOf(File);
+  });
+});

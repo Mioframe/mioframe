@@ -54,6 +54,30 @@ export const getDocumentStorageFiles = async (
   return fileEntries.filter(([name]) => names.has(name));
 };
 
+const removeResolvedDocumentStorageFiles = async (
+  vfs: VirtualFileSystem,
+  path: string,
+  documentStorageFiles: readonly RepositoryDirectoryEntry[],
+) => {
+  const limitDelete = pLimit(DOCUMENT_STORAGE_DELETE_CONCURRENCY_LIMIT);
+
+  await Promise.all(
+    documentStorageFiles.map(([name]) =>
+      limitDelete(async () => {
+        try {
+          await vfs.delete(PathUtils.join(path, name));
+        } catch (error) {
+          if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+            return;
+          }
+
+          throw error;
+        }
+      }),
+    ),
+  );
+};
+
 /**
  * Returns whether a file name is the repository storage marker file.
  * @param name - File name to classify.
@@ -132,23 +156,8 @@ export const removeDocumentStorageFiles = async (
   id: AMDocumentId,
 ) => {
   const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);
-  const limitDelete = pLimit(DOCUMENT_STORAGE_DELETE_CONCURRENCY_LIMIT);
 
-  await Promise.all(
-    documentStorageFiles.map(([name]) =>
-      limitDelete(async () => {
-        try {
-          await vfs.delete(PathUtils.join(path, name));
-        } catch (error) {
-          if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-            return;
-          }
-
-          throw error;
-        }
-      }),
-    ),
-  );
+  await removeResolvedDocumentStorageFiles(vfs, path, documentStorageFiles);
 };
 
 const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -208,7 +217,7 @@ export const cleanupDeletedDocumentStorageFiles = async (
     } else {
       emptyPassCount = 0;
       // eslint-disable-next-line no-await-in-loop -- deletion must finish before next scan
-      await removeDocumentStorageFiles(vfs, path, id);
+      await removeResolvedDocumentStorageFiles(vfs, path, documentStorageFiles);
     }
 
     if (attempt < DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS - 1) {
