@@ -29,6 +29,16 @@ You may skip this skill only for clearly bounded trivial work such as:
 
 If you skip it, be able to state why no architecture contract is needed.
 
+## Token budget
+
+Keep the handoff compact.
+
+- Prefer short bullet points over prose.
+- For small but non-trivial tasks, the handoff should usually fit in 20-40 lines.
+- Do not expand stable repository rules, FSD explanations, or Material rules unless they are directly relevant to the decision.
+- Use `N/A` for genuinely not applicable sections.
+- Do not create an architecture handoff for trivial single-file mechanical changes when ownership, source of truth, and final state are obvious.
+
 ## Required handoff structure
 
 Record the handoff with these fields:

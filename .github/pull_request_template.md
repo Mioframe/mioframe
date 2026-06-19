@@ -1,3 +1,5 @@
+<!-- Keep sections concise. Use N/A when a section is not applicable. -->
+
 ## Architecture Decision
 
 ## Ownership Matrix
