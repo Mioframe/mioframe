@@ -2,11 +2,7 @@ import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it } from 'vitest';
 import { encodePrimaryV3FileName } from './filenameCodecV3';
 import type { ChunkStorageKey } from './types';
-import {
-  getCompatibilityV3CandidateNamesForKey,
-  isPlausibleV3CandidateForPrefix,
-  isPrimaryV3CandidateForKey,
-} from './v3StoragePolicy';
+import { isPlausibleV3CandidateForPrefix, isPrimaryV3CandidateForKey } from './v3StoragePolicy';
 
 const HASH = '0df10d48afdaa0df1a484b006e4854cec8640d416745ce0cc874c07027b69cc2';
 
@@ -36,44 +32,6 @@ describe('isPrimaryV3CandidateForKey', () => {
     }
 
     expect(isPrimaryV3CandidateForKey(otherFileName, key)).toBe(false);
-  });
-});
-
-describe('getCompatibilityV3CandidateNamesForKey', () => {
-  it('matches manual/copied/suffixed compatibility names for the key', () => {
-    const documentId = getDocumentId();
-    const key: ChunkStorageKey = [documentId, 'snapshot', HASH];
-    const docPrefix = documentId.slice(0, 6);
-    const hashPrefix = HASH.slice(0, 8);
-    const names = [
-      `${docPrefix}.s.${hashPrefix}.mf`,
-      `${docPrefix}.s.${hashPrefix}.1.mf`,
-      `${docPrefix}.s.${hashPrefix} - copy.mf`,
-    ];
-
-    expect(getCompatibilityV3CandidateNamesForKey(names, key)).toEqual([...names].sort());
-  });
-
-  it('does not match the primary filename for the same key', () => {
-    const documentId = getDocumentId();
-    const key: ChunkStorageKey = [documentId, 'snapshot', HASH];
-    const primaryName = encodePrimaryV3FileName(key);
-
-    if (!primaryName) {
-      throw new Error('Expected v3 filename');
-    }
-
-    expect(getCompatibilityV3CandidateNamesForKey([primaryName], key)).toEqual([]);
-  });
-
-  it('rejects candidates for an unrelated documentId or hash', () => {
-    const documentId = getDocumentId();
-    const otherDocumentId = getDocumentId();
-    const key: ChunkStorageKey = [documentId, 'snapshot', HASH];
-    const otherDocName = `${otherDocumentId.slice(0, 6)}.s.${HASH.slice(0, 8)}.mf`;
-    const otherHashName = `${documentId.slice(0, 6)}.s.ffffffff.mf`;
-
-    expect(getCompatibilityV3CandidateNamesForKey([otherDocName, otherHashName], key)).toEqual([]);
   });
 });
 
@@ -153,11 +111,13 @@ describe('isPlausibleV3CandidateForPrefix', () => {
     expect(isPlausibleV3CandidateForPrefix(fileName, [otherDocumentId])).toBe(false);
   });
 
-  it('matches compatibility candidates the same way as primary candidates', () => {
+  it('rejects compatibility-style and hash-prefix-only .mf names', () => {
     const documentId = getDocumentId();
     const compatibilityName = `${documentId.slice(0, 6)}.s.${HASH.slice(0, 8)} - copy.mf`;
+    const hashPrefixOnlyName = `${documentId.slice(0, 6)}.s.${HASH.slice(0, 8)}.mf`;
 
-    expect(isPlausibleV3CandidateForPrefix(compatibilityName, [documentId])).toBe(true);
+    expect(isPlausibleV3CandidateForPrefix(compatibilityName, [documentId])).toBe(false);
+    expect(isPlausibleV3CandidateForPrefix(hashPrefixOnlyName, [documentId])).toBe(false);
   });
 
   it('rejects malformed, truncated, or non-v3 filenames regardless of prefix', () => {

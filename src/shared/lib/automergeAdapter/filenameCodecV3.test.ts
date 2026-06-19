@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   computeStorageKeyFingerprint,
   decodeAnyV3CandidateFileName,
-  decodeCompatibilityV3CandidateFileName,
   decodePrimaryV3FileName,
   encodePrimaryV3FileName,
   V3_FINGERPRINT_LENGTH,
@@ -82,7 +81,7 @@ describe('filenameCodecV3 primary filename contract', () => {
     });
   });
 
-  it('rejects manual/suffixed/pre-fingerprint compatibility filenames as primary candidates', () => {
+  it('rejects hash-prefix, suffixed, and copied .mf names as primary candidates', () => {
     const key = getKey();
     const docPrefix = key[0].slice(0, 6);
     const hashPrefix = HASH_A.slice(0, 8);
@@ -93,86 +92,10 @@ describe('filenameCodecV3 primary filename contract', () => {
   });
 });
 
-describe('filenameCodecV3 compatibility candidate parsing', () => {
-  it('parses suffixed copied candidates as non-semantic variants', () => {
-    const key = getKey();
-    const suffixed = `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`;
-
-    expect(decodeCompatibilityV3CandidateFileName(suffixed)).toEqual({
-      docPrefix: key[0].slice(0, 6),
-      kind: 'snapshot',
-      hashPrefix: HASH_A.slice(0, 8),
-      fingerprint: undefined,
-      suffix: ' - copy',
-    });
-  });
-
-  it('parses supported numeric and manual suffix candidates without a fingerprint segment', () => {
-    const key = getKey();
-
-    expect(
-      decodeCompatibilityV3CandidateFileName(`${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}.2.mf`),
-    ).toEqual({
-      docPrefix: key[0].slice(0, 6),
-      kind: 'snapshot',
-      hashPrefix: HASH_A.slice(0, 8),
-      fingerprint: undefined,
-      suffix: '.2',
-    });
-    expect(
-      decodeCompatibilityV3CandidateFileName(
-        `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} (1).mf`,
-      ),
-    ).toEqual({
-      docPrefix: key[0].slice(0, 6),
-      kind: 'snapshot',
-      hashPrefix: HASH_A.slice(0, 8),
-      fingerprint: undefined,
-      suffix: ' (1)',
-    });
-  });
-
-  it('parses a legacy generated filename with its 8-hex fingerprint segment', () => {
-    const key = getKey();
-    const docPrefix = key[0].slice(0, 6);
-    const hashPrefix = HASH_A.slice(0, 8);
-    const legacyName = `${docPrefix}.s.${hashPrefix}.abcd1234.mf`;
-
-    expect(decodeCompatibilityV3CandidateFileName(legacyName)).toEqual({
-      docPrefix,
-      kind: 'snapshot',
-      hashPrefix,
-      fingerprint: 'abcd1234',
-      suffix: '',
-    });
-  });
-
-  it('rejects unrelated same-prefix .mf names', () => {
-    const key = getKey();
-
-    expect(
-      decodeCompatibilityV3CandidateFileName(
-        `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}-noise.mf`,
-      ),
-    ).toBeUndefined();
-  });
-
-  it('does not match a primary filename as a compatibility candidate', () => {
-    const fileName = encodePrimaryV3FileName(getKey());
-
-    if (!fileName) {
-      throw new Error('Expected v3 filename');
-    }
-
-    expect(decodeCompatibilityV3CandidateFileName(fileName)).toBeUndefined();
-  });
-});
-
 describe('decodeAnyV3CandidateFileName', () => {
-  it('matches both primary and compatibility filenames', () => {
+  it('matches only strict primary filenames', () => {
     const key = getKey();
     const primaryName = encodePrimaryV3FileName(key);
-    const compatibilityName = `${key[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`;
 
     if (!primaryName) {
       throw new Error('Expected v3 filename');
@@ -183,17 +106,16 @@ describe('decodeAnyV3CandidateFileName', () => {
       kind: 'snapshot',
       fingerprint: computeStorageKeyFingerprint(key),
     });
-    expect(decodeAnyV3CandidateFileName(compatibilityName)).toEqual({
-      docPrefix: key[0].slice(0, 6),
-      kind: 'snapshot',
-      hashPrefix: HASH_A.slice(0, 8),
-      fingerprint: undefined,
-      suffix: ' - copy',
-    });
   });
 
   it('rejects malformed and unrelated names', () => {
     expect(decodeAnyV3CandidateFileName('not-a-v3-file.mf')).toBeUndefined();
+    expect(
+      decodeAnyV3CandidateFileName(`${getKey()[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)}.mf`),
+    ).toBeUndefined();
+    expect(
+      decodeAnyV3CandidateFileName(`${getKey()[0].slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`),
+    ).toBeUndefined();
     expect(decodeAnyV3CandidateFileName('')).toBeUndefined();
   });
 });

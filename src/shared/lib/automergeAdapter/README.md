@@ -9,7 +9,7 @@
 - `createFSStorageAdapter`
 - `createVFSAdapter`
 - repository discovery / `repositoryStorageFiles`
-- compatibility tests and storage fixtures
+- storage tests and fixtures
 
 ## Core rules
 
@@ -23,16 +23,15 @@
 - Marker file behavior is separate from chunk storage; `storage-adapter-id.automerge` must remain stable.
 - Empty chunks are invalid.
 - Malformed or truncated files are skipped, not fatal.
-- Shared storage policy owns parsing, classification, selection, compatibility, and invalid-data behavior.
+- Shared storage policy owns parsing, classification, selection, and invalid-data behavior.
 - FS and VFS adapters should remain IO wrappers.
 
 ## Storage performance contract (slow and multi-client filesystems)
 
 Mioframe targets mobile devices, slow filesystems (including Android SAF/cloud-backed
 directories), and repository directories that may be shared by multiple clients. The storage
-policy layer separates **primary** v3 storage (the normal, deterministic, generated filename) from
-**compatibility** v3 storage (manual, copied, suffixed, or pre-fingerprint files kept readable only
-as a fallback/recovery input):
+policy layer uses one strict **primary** v3 storage filename. v3 was not released before this PR,
+so there is no shipped v3 compatibility filename family to keep supporting:
 
 - The filesystem is always the source of truth. No persistent manifest, index file, or
   long-lived directory cache is ever written to storage or kept as a source of truth.
@@ -45,37 +44,34 @@ as a fallback/recovery input):
   with no directory listing in the common case:
   - `load` reads the primary filename directly. A valid same-key wrapper there returns
     immediately. An invalid or different-key wrapper there is a storage conflict and fails safely
-    (`undefined`) without falling back to v2/legacy/compatibility data for that key. Only when the
-    primary filename is missing outright does `load` try the direct v2 filename next; only when v2
-    is also missing does it fall back to a directory-wide scan for compatibility v3 or legacy
-    candidates. Compatibility v3 never outranks v2 and never forces a scan before the v2 fast path.
+    (`undefined`) without falling back to v2 or legacy data for that key. Only when the primary
+    filename is missing outright does `load` try the direct v2 filename next; only when v2 is also
+    missing does it fall back to the released legacy filename via one directory scan.
   - `save` reads the primary filename directly and writes it when absent or already a valid
     wrapper for the same full key, with no directory listing. When the primary filename is
     occupied by invalid data or a valid wrapper for a different full key, `save` raises
     `V3StorageConflictError` instead of writing a numeric-suffix fallback file.
   - `remove` removes the primary filename only when it holds a valid same-key wrapper, and removes
     the exact v2/legacy filenames for the same key directly when present. It never removes an
-    invalid primary file and never removes a valid wrapper for a different key. It never scans
-    broader compatibility v3 candidate families; that cleanup belongs to `removeRange` or explicit
-    recovery paths.
+    invalid primary file and never removes a valid wrapper for a different key.
   - When the IO provider supports direct read-by-name (e.g. `createFSStorageAdapter`'s optional
     `DirectoryForStorageAdapter.readFileByName`, or `createVFSAdapter`'s `vfs.readFile`), these
     direct primary-filename reads never trigger a directory-wide listing/scan on the underlying
     storage, even on slow browser/SAF/cloud-backed filesystems. Providers that only implement
     listing-based access (`entries()`) keep working through that fallback.
 - Operations that need directory-wide state (`loadRange`, `removeRange`, document discovery, and
-  the compatibility fallback scan described above) fetch a fresh directory listing via at most one
+  legacy fallback lookup after direct reads miss) fetch a fresh directory listing via at most one
   `listNames()` call; sequential operations never reuse a stale listing from a previous call.
-  These scans treat primary and compatibility v3 candidates equally, since both can hold data
-  written by another client or an older version.
+- These scans consider only strict primary v3 `.mf` filenames as v3 candidates. Non-primary `.mf`
+  names are ignored as unrelated or invalid storage candidates.
 - Within one operation that does list the directory, the listing may be classified once into an
   operation-scoped, IO-free in-memory index (marker/v3-candidate/v2/legacy classification). That
   index is discarded when the operation finishes; it is never reused across operations or treated
   as a cache.
 - Independent v3 wrapper reads and independent physical removals use bounded concurrency (a small
   local constant), never unbounded `Promise.all` over arbitrary file counts.
-- Existing manual, copied, and pre-fingerprint numeric-suffix v3 files remain readable as
-  compatibility candidates for `loadRange`, `removeRange`, document discovery, and the load
-  fallback scan described above. They are fallback/recovery inputs, not normal generated storage,
-  and a primary file occupied by invalid or different-key data is never replaced by writing one of
-  these compatibility-style names.
+- Supported physical formats are:
+  - strict primary v3 `.mf` files;
+  - released v2 filenames;
+  - released legacy filenames.
+- No manifest, index file, or persistent directory cache is used as a source of truth.

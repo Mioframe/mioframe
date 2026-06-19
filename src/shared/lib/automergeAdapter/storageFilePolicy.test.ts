@@ -469,7 +469,7 @@ describe('storageFilePolicy remove correctness', () => {
     expect(entries[primaryName]).toEqual(new Uint8Array([0xde, 0xad]));
   });
 
-  it('does not scan or remove broad compatibility v3 candidate families during exact remove', async () => {
+  it('does not scan or remove unrelated non-primary .mf names during exact remove', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
@@ -541,7 +541,7 @@ describe('storageFilePolicy load fast path', () => {
     expect(getListNamesCalls()).toBe(0);
   });
 
-  it('does not scan compatibility v3 before v2 when the primary v3 file is simply missing', async () => {
+  it('does not scan unrelated non-primary .mf names before v2 when the primary v3 file is simply missing', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
@@ -558,13 +558,13 @@ describe('storageFilePolicy load fast path', () => {
     );
   });
 
-  it('falls back to a directory scan for compatibility v3 and legacy candidates when v2 is also missing', async () => {
+  it('falls back to legacy when primary v3 and v2 are both missing', async () => {
     const documentId = getDocumentId();
     const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
-    const compatibilityName = `${documentId.slice(0, 6)}.s.${HASH_A.slice(0, 8)}.1.mf`;
+    const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
 
     const { io, getListNamesCalls } = createCountingIo({
-      [compatibilityName]: encodeV3StorageWrapper(key, DATA_A),
+      [legacyName]: DATA_A,
     });
 
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);

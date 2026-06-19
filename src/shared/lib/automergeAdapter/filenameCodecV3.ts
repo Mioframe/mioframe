@@ -2,8 +2,6 @@ import type { ChangedType, ChunkStorageKey } from './types';
 
 export const V3_FILE_EXTENSION = 'mf';
 export const V3_DOC_PREFIX_LENGTH = 6;
-/** Hash prefix length used only by legacy/compatibility v3 filenames, never by the primary filename. */
-export const V3_HASH_PREFIX_LENGTH = 8;
 export const V3_FINGERPRINT_LENGTH = 12;
 export const V3_MAX_FILE_NAME_LENGTH = 31;
 
@@ -19,10 +17,6 @@ const CODE_TO_KIND: Readonly<Record<string, ChangedType>> = {
 
 const PRIMARY_V3_FILENAME_RE =
   /^(?<docPrefix>[A-Za-z0-9]{6})\.(?<kindCode>[si])\.(?<fingerprint>[0-9a-f]{12})\.mf$/;
-
-const COMPATIBILITY_V3_FILENAME_RE =
-  /^(?<docPrefix>[A-Za-z0-9]{6})\.(?<kindCode>[si])\.(?<hashPrefix>[0-9a-f]{8})(?:\.(?<fingerprint>[0-9a-f]{8}))?(?<suffix>.*)\.mf$/;
-const COMPATIBILITY_SUFFIX_RE = /^(|\.\d+| \(\d+\)| - copy(?: \(\d+\))?)$/;
 
 /** 64-bit FNV-1a offset basis. */
 const FNV64_OFFSET_BASIS = 0xcbf29ce484222325n;
@@ -97,8 +91,8 @@ export const encodePrimaryV3FileName = (key: ChunkStorageKey): string | undefine
 
 /**
  * Parses a filename as a strict primary v3 candidate. Used by exact load/save/remove and by
- * normal generated v3 writes. Does not accept manual, copied, suffixed, or pre-fingerprint v3
- * filenames; use {@link decodeCompatibilityV3CandidateFileName} for those.
+ * normal generated v3 writes. Does not accept hash-prefix, copied, suffixed, or extra-segment
+ * names.
  * @param name - Physical filename to inspect.
  * @returns Parsed primary candidate parts, or undefined when the name is not a primary v3 file.
  */
@@ -119,61 +113,7 @@ export const decodePrimaryV3FileName = (name: string): PrimaryV3FileNameParts | 
   return { docPrefix, kind, fingerprint };
 };
 
-/**
- * Parsed parts of a plausible compatibility v3 candidate filename: manual, copied, suffixed, or
- * pre-fingerprint variants that existed before the primary filename contract was simplified.
- */
-export interface CompatibilityV3CandidateParts {
-  /** Leading documentId candidate prefix from the physical filename. */
-  docPrefix: string;
-  /** Logical storage kind recovered from the v3 kind code. */
-  kind: ChangedType;
-  /** Leading hash candidate prefix from the physical filename. */
-  hashPrefix: string;
-  /** Legacy fixed-width fingerprint segment, when present. */
-  fingerprint: string | undefined;
-  /** Non-semantic copied-file suffix preserved only for candidate matching. */
-  suffix: string;
-}
-
-/**
- * Parses a filename as a plausible compatibility v3 candidate, including manual, copied, and
- * numeric-suffix variants. Used only by compatibility scan paths: range, discovery, and recovery
- * fallback after the primary and v2 fast paths fail. These are fallback/recovery inputs, never
- * normal generated storage.
- * @param name - Physical filename to inspect.
- * @returns Parsed candidate parts, or undefined when the name is not a plausible compatibility v3 file.
- */
-export const decodeCompatibilityV3CandidateFileName = (
-  name: string,
-): CompatibilityV3CandidateParts | undefined => {
-  const match = COMPATIBILITY_V3_FILENAME_RE.exec(name);
-
-  if (!match?.groups) {
-    return undefined;
-  }
-
-  const { docPrefix, kindCode, hashPrefix, fingerprint, suffix } = match.groups;
-  const kind = CODE_TO_KIND[kindCode ?? ''];
-
-  if (!docPrefix || !kind || !hashPrefix) {
-    return undefined;
-  }
-
-  if (!COMPATIBILITY_SUFFIX_RE.test(suffix ?? '')) {
-    return undefined;
-  }
-
-  return {
-    docPrefix,
-    kind,
-    hashPrefix,
-    fingerprint,
-    suffix: suffix ?? '',
-  };
-};
-
-/** Plausible v3 `.mf` candidate parts, covering both primary and compatibility filenames. */
+/** Plausible strict primary v3 `.mf` candidate parts. */
 export interface AnyV3CandidateParts {
   /** Leading documentId candidate prefix from the physical filename. */
   docPrefix: string;
@@ -182,11 +122,10 @@ export interface AnyV3CandidateParts {
 }
 
 /**
- * Parses a filename as either a primary or a compatibility v3 candidate. Used only where both
- * families are equally plausible, such as range/discovery scans and general repository candidate
- * filtering.
+ * Parses a filename as a strict primary v3 candidate. Used by range/discovery scans and general
+ * repository candidate filtering.
  * @param name - Physical filename to inspect.
  * @returns Parsed candidate parts, or undefined when the name is not a plausible v3 file.
  */
 export const decodeAnyV3CandidateFileName = (name: string): AnyV3CandidateParts | undefined =>
-  decodePrimaryV3FileName(name) ?? decodeCompatibilityV3CandidateFileName(name);
+  decodePrimaryV3FileName(name);

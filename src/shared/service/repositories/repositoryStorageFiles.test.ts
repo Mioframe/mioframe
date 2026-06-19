@@ -169,7 +169,7 @@ describe('getRepositoryFacts', () => {
     expect(facts.documentIds).not.toContain(documentId.slice(0, 6));
   });
 
-  it('discovers full document ids from supported manual and copied v3 suffix candidates', async () => {
+  it('ignores unreleased manual and copied v3 suffix candidates during repository discovery', async () => {
     const vfs = new VirtualFileSystem();
     const path = '/repo';
     const documentId = new Repo().create({}).documentId;
@@ -197,8 +197,8 @@ describe('getRepositoryFacts', () => {
     );
 
     expect(facts).toEqual({
-      documentIds: [documentId],
-      isInitialized: true,
+      documentIds: [],
+      isInitialized: false,
     });
   });
 

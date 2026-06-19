@@ -154,7 +154,7 @@ describe('createFSStorageAdapter', () => {
     expect(await adapter.loadRange([docId])).toEqual([{ key, data: DATA_B }]);
   });
 
-  it('remove deletes the primary v3, v2, and legacy files but leaves compatibility copies', async () => {
+  it('remove deletes the primary v3, v2, and legacy files but leaves unrelated non-primary .mf names', async () => {
     const directory = new MemoryDirectory();
     const docId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];

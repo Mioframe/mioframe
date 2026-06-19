@@ -18,7 +18,6 @@ import type { ChunkStorageKey, PartialStorageKey, StorageKey, StorageKeyPrefix }
 import {
   classifyV3ChunkCandidateData,
   decodeValidV3Chunk,
-  getCompatibilityV3CandidateNamesForKey,
   isPlausibleV3CandidateForPrefix,
 } from './v3StoragePolicy';
 import { encodeV3StorageWrapper } from './wrapperCodecV3';
@@ -58,7 +57,7 @@ export class V3StorageConflictError extends Error {
 
 /** Operation-scoped, IO-free classification of one directory listing snapshot. */
 interface StorageNameIndex {
-  /** Physical filenames that are plausible v3 `.mf` wrapper candidates (primary or compatibility). */
+  /** Physical filenames that are strict primary v3 `.mf` wrapper candidates. */
   v3CandidateNames: string[];
   /** Legacy/v2 entries deduplicated by logical key, preferring v2 over legacy. */
   legacyOrV2Entries: Map<string, { name: string; key: PartialStorageKey; isV2: boolean }>;
@@ -143,7 +142,7 @@ const readValidLegacyOrV2Chunk = async (
  * Exact full chunk keys follow a simple deterministic priority: the primary v3 file wins when it
  * holds a valid same-key wrapper; an invalid or different-key primary file is a storage conflict
  * reported as a safe failure, never a silent fallback; a missing primary file falls back to a
- * direct v2 read; only when v2 is also missing does a compatibility v3 / legacy directory scan run.
+ * direct v2 read, then to the released legacy filename.
  * @param io - Storage IO boundary used for listing and reading physical files.
  * @param key - Full or partial logical storage key to load.
  * @returns Raw Automerge bytes, or `undefined` when no valid entry exists.
@@ -179,18 +178,7 @@ export const loadStorageEntry = async (
       return v2Chunk.data;
     }
 
-    const names = await io.listNames();
-
-    for (const candidateName of getCompatibilityV3CandidateNamesForKey(names, key)) {
-      // eslint-disable-next-line no-await-in-loop -- stop on the first valid wrapper match
-      const chunk = await readValidV3Chunk(io, candidateName, key);
-
-      if (chunk) {
-        return chunk.data;
-      }
-    }
-
-    const matched = selectReadableStorageEntries(names).get(storageKeyToId(key));
+    const matched = selectReadableStorageEntries(await io.listNames()).get(storageKeyToId(key));
 
     if (!matched || matched.name === v2Name) {
       return undefined;
@@ -391,9 +379,7 @@ export const saveStorageEntry = async (
  *
  * For full chunk keys, the primary v3 file is removed only when it holds a valid same-key
  * wrapper; an invalid or different-key primary file is left untouched. The exact v2 and legacy
- * filenames for the same key are removed directly when present. This never scans the directory or
- * touches broader compatibility v3 candidate families; that cleanup belongs to
- * {@link removeStorageEntriesByPrefix} or explicit recovery paths.
+ * filenames for the same key are removed directly when present. This never scans the directory.
  * @param io - Storage IO boundary used for reading and removing physical files.
  * @param key - Full logical storage key to remove.
  */

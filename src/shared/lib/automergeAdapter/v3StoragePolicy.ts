@@ -1,9 +1,5 @@
 import type { AMChunk } from '@shared/lib/automerge';
-import {
-  decodeAnyV3CandidateFileName,
-  decodeCompatibilityV3CandidateFileName,
-  encodePrimaryV3FileName,
-} from './filenameCodecV3';
+import { decodeAnyV3CandidateFileName, encodePrimaryV3FileName } from './filenameCodecV3';
 import type { ChunkStorageKey, StorageKeyPrefix } from './types';
 import { decodeV3StorageWrapper } from './wrapperCodecV3';
 
@@ -45,39 +41,8 @@ export const isPrimaryV3CandidateForKey = (name: string, key: ChunkStorageKey): 
   encodePrimaryV3FileName(key) === name;
 
 /**
- * Lists plausible compatibility v3 candidate filenames for a logical chunk key: manual, copied,
- * suffixed, or pre-fingerprint variants. These are fallback/recovery inputs used only after the
- * primary and v2 fast paths fail to resolve the key.
- * @param names - Physical filenames to inspect.
- * @param key - Full logical key being searched.
- * @returns Sorted candidate filenames whose prefixes could map to the key.
- */
-export const getCompatibilityV3CandidateNamesForKey = (
-  names: Iterable<string>,
-  key: ChunkStorageKey,
-): string[] => {
-  const [documentId, kind, hash] = key;
-  const matches: string[] = [];
-
-  for (const name of names) {
-    const parsed = decodeCompatibilityV3CandidateFileName(name);
-
-    if (
-      parsed &&
-      parsed.kind === kind &&
-      documentId.startsWith(parsed.docPrefix) &&
-      hash.startsWith(parsed.hashPrefix)
-    ) {
-      matches.push(name);
-    }
-  }
-
-  return matches.sort((left, right) => left.localeCompare(right));
-};
-
-/**
- * Returns whether a physical filename is a plausible v3 candidate (primary or compatibility) for
- * a partial key prefix. An empty prefix (`[]`) matches every plausible v3 candidate, because an
+ * Returns whether a physical filename is a plausible strict primary v3 candidate for a partial
+ * key prefix. An empty prefix (`[]`) matches every plausible v3 candidate, because an
  * empty range prefix semantically selects all storage entries for `loadRange`/`removeRange` scans.
  * @param name - Physical filename to inspect.
  * @param keyPrefix - Partial logical key used to prefilter directory scans. May be empty.
