@@ -17,6 +17,7 @@ Do not use this skill for trivial typo fixes, formatting-only changes, comments-
 
 Answer these before the first production edit:
 
+0. **Upstream handoff check**: if the task includes an architecture handoff, restate only the implementation-relevant decisions, verify the planned edits match that handoff, and do not replace it with a different architecture. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop before production edits.
 1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
 2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
 3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
@@ -137,3 +138,5 @@ The first implementation should cover the applicable matrix, not only the happy 
 Keep the preflight concise. A useful preflight is usually 5-10 lines plus a short verification note.
 
 Do not repeat generic repository rules. Name only the rules and risks that apply to the current task.
+
+Before final handoff, report whether the resulting diff still matches the architecture handoff when one exists. If it does not, fix the implementation or explicitly report the architectural divergence.
