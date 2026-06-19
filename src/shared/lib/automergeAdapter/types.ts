@@ -113,4 +113,11 @@ export interface DirectoryForStorageAdapter {
   writeFile?: (name: string, file?: FileSystemWriteChunkType) => Promisable<FileForStorageAdapter>;
   /** Removes a child entry by name when the backing storage supports deletion. */
   removeByName?: (name: string) => Promisable<void>;
+  /**
+   * Reads one child file directly by name, without listing the directory, when the backing
+   * storage supports direct name lookup (e.g. browser FS Access API `getFileHandle`). Returns
+   * `undefined` when the file does not exist. Adapters that only implement `entries()` simply omit
+   * this method and keep using the existing listing-based read path.
+   */
+  readFileByName?: (name: string) => Promisable<File | undefined>;
 }

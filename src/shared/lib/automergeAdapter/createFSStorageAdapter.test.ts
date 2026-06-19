@@ -82,6 +82,24 @@ class MemoryDirectory implements DirectoryForStorageAdapter {
   }
 }
 
+class DirectReadMemoryDirectory extends MemoryDirectory {
+  entriesCalls = 0;
+  readFileByNameCalls = 0;
+
+  override entries(): AsyncIterableIterator<[PropertyKey, FileForStorageAdapter]> {
+    this.entriesCalls += 1;
+    return super.entries();
+  }
+
+  async readFileByName(name: string): Promise<File | undefined> {
+    this.readFileByNameCalls += 1;
+    await Promise.resolve();
+
+    const bytes = this.files.get(name);
+    return bytes ? new File([Uint8Array.from(bytes).buffer], name) : undefined;
+  }
+}
+
 describe('createFSStorageAdapter', () => {
   it('uses the full-key fingerprint to avoid colliding on a shared doc/hash prefix', async () => {
     const directory = new MemoryDirectory();
@@ -206,5 +224,66 @@ describe('createFSStorageAdapter', () => {
     await adapter.remove(key);
 
     expect(entriesSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createFSStorageAdapter direct read-by-name fast path', () => {
+  it('reads the deterministic preferred v3 file via readFileByName without calling entries()', async () => {
+    const directory = new DirectReadMemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+    directory.files.set(preferredName, encodeV3StorageWrapper(key, DATA_A));
+
+    const adapter = createFSStorageAdapter(directory);
+
+    expect(await adapter.load(key)).toEqual(DATA_A);
+    expect(directory.readFileByNameCalls).toBeGreaterThan(0);
+    expect(directory.entriesCalls).toBe(0);
+  });
+
+  it('writes the preferred v3 filename without calling entries() when the target is missing', async () => {
+    const directory = new DirectReadMemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+
+    const adapter = createFSStorageAdapter(directory);
+    await adapter.save(key, DATA_A);
+
+    expect(directory.files.has(preferredName)).toBe(true);
+    expect(directory.entriesCalls).toBe(0);
+  });
+
+  it('falls back to a fresh directory listing when the preferred target is invalid', async () => {
+    const directory = new DirectReadMemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+    directory.files.set(preferredName, new Uint8Array([0xde, 0xad]));
+
+    const adapter = createFSStorageAdapter(directory);
+    await adapter.save(key, DATA_A);
+
+    expect(directory.entriesCalls).toBe(1);
+    expect(await adapter.load(key)).toEqual(DATA_A);
+  });
+
+  it('keeps working through the entries()-based fallback when readFileByName is absent', async () => {
+    const directory = new MemoryDirectory();
+    const docId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const preferredName = encodePreferredV3FileName(key);
+    if (!preferredName) throw new Error('Expected v3 filename');
+    directory.files.set(preferredName, encodeV3StorageWrapper(key, DATA_A));
+    const entriesSpy = vi.spyOn(directory, 'entries');
+
+    const adapter = createFSStorageAdapter(directory);
+
+    expect(await adapter.load(key)).toEqual(DATA_A);
+    expect(entriesSpy).toHaveBeenCalled();
   });
 });

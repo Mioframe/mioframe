@@ -54,6 +54,11 @@ export const createFSStorageAdapter = (
     return {
       listNames: async () => [...(await getHandles()).keys()],
       readBytes: async (name) => {
+        if (directory.readFileByName) {
+          const file = await directory.readFileByName(name);
+          return file ? new Uint8Array(await file.arrayBuffer()) : undefined;
+        }
+
         const entry = (await getHandles()).get(name);
         return entry ? readFileBytes(entry) : undefined;
       },

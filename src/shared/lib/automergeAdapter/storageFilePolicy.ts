@@ -138,23 +138,36 @@ export const loadStorageEntry = async (
 ): Promise<Uint8Array | undefined> => {
   if (isChunkStorageKey(key)) {
     const preferredV3Name = encodePreferredV3FileName(key);
+    const preferredClassification = preferredV3Name
+      ? classifyV3ChunkCandidateData(await io.readBytes(preferredV3Name), key)
+      : { kind: 'missing' as const };
 
-    if (preferredV3Name) {
-      const preferred = await readValidV3Chunk(io, preferredV3Name, key);
-
-      if (preferred) {
-        return preferred.data;
-      }
+    if (preferredClassification.kind === 'validSameKey') {
+      return preferredClassification.chunk.data;
     }
 
     const [documentId, kind, hash] = key;
     const v2Name = encodeStorageKeyToV2FileName(documentId, kind, hash);
 
-    if (v2Name) {
+    const tryV2 = async (): Promise<Uint8Array | undefined> => {
+      if (!v2Name) {
+        return undefined;
+      }
+
       const v2Chunk = await readValidLegacyOrV2Chunk(io, { key, name: v2Name });
 
-      if (v2Chunk) {
-        return v2Chunk.data;
+      return v2Chunk?.data;
+    };
+
+    // A missing preferred candidate gives no evidence that a v3 fallback exists, so a direct v2
+    // read stays a safe fast path here. An invalid or different-key preferred candidate is
+    // evidence that other v3 candidates may exist for this key, so v2 must wait until after the
+    // v3 fallback scan below to preserve v3-over-v2 priority.
+    if (preferredClassification.kind === 'missing') {
+      const v2Data = await tryV2();
+
+      if (v2Data) {
+        return v2Data;
       }
     }
 
@@ -168,6 +181,14 @@ export const loadStorageEntry = async (
 
       if (chunk) {
         return chunk.data;
+      }
+    }
+
+    if (preferredClassification.kind !== 'missing') {
+      const v2Data = await tryV2();
+
+      if (v2Data) {
+        return v2Data;
       }
     }
 

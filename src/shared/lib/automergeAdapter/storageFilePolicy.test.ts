@@ -522,6 +522,98 @@ describe('storageFilePolicy load fast path', () => {
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
     expect(getListNamesCalls()).toBe(1);
   });
+
+  it('returns preferred v3 without scanning when both preferred v3 and v2 are valid', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!v3Name || !v2Name) {
+      throw new Error('Expected v3 and v2 filenames');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({
+      [v3Name]: encodeV3StorageWrapper(key, DATA_A),
+      [v2Name]: DATA_B,
+    });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+    expect(getListNamesCalls()).toBe(0);
+  });
+
+  it('returns a valid suffixed v3 candidate, not v2, when the preferred v3 file is invalid', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePreferredV3FileName(key);
+    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!v3Name || !suffixedName || !v2Name) {
+      throw new Error('Expected v3 and v2 filenames');
+    }
+
+    const { io } = createCountingIo({
+      [v3Name]: new Uint8Array([0xde, 0xad]),
+      [suffixedName]: encodeV3StorageWrapper(key, DATA_A),
+      [v2Name]: DATA_B,
+    });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+  });
+
+  it('returns a valid same-key suffixed v3 candidate, not v2, when the preferred v3 file belongs to a different key', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const otherKey: ChunkStorageKey = [getDocumentId(), 'snapshot', HASH_B];
+    const v3Name = encodePreferredV3FileName(key);
+    const suffixedName = encodeV3FileNameWithSuffix(key, 1);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!v3Name || !suffixedName || !v2Name) {
+      throw new Error('Expected v3 and v2 filenames');
+    }
+
+    const { io } = createCountingIo({
+      [v3Name]: encodeV3StorageWrapper(otherKey, DATA_B),
+      [suffixedName]: encodeV3StorageWrapper(key, DATA_A),
+      [v2Name]: DATA_B,
+    });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+  });
+
+  it('returns v2 when no v3 candidates exist', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!v2Name) {
+      throw new Error('Expected v2 filename');
+    }
+
+    const { io } = createCountingIo({ [v2Name]: DATA_A });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+  });
+
+  it('returns v2 before legacy when both exist and no v3 candidate exists', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+    const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
+
+    if (!v2Name) {
+      throw new Error('Expected v2 filename');
+    }
+
+    const { io } = createCountingIo({
+      [v2Name]: DATA_A,
+      [legacyName]: DATA_B,
+    });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+  });
 });
 
 describe('storageFilePolicy IO budget', () => {
