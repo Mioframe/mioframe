@@ -30,6 +30,17 @@ Use this workflow when the task touches any of these areas:
 - UI-facing storage records must be narrow display or selection records. Do not expose provider capabilities, instances, clients, callbacks, or service bags through normal UI lists.
 - Any provider or service error crossing a worker/proxy boundary must use the project transfer-safe `DomainError` pattern and safe serializable metadata only.
 
+## Persistent storage format changes
+
+Apply this section when changing physical filenames, wrapper format, storage key encoding, `load`/`save`/`remove`/`loadRange` behavior, repository discovery, compatibility paths, or storage fixtures.
+
+- Inventory writers, direct readers, range readers, scanners or discovery paths, deleters, compatibility paths, tests, and fixtures before implementation.
+- Define the storage contract before editing code: logical identity, physical representation, selection rules, compatibility inputs, and invalid-data behavior.
+- Keep one owner module for parsing, classification, selection, compatibility, and invalid-data behavior.
+- Keep FS and VFS adapters as IO wrappers.
+- Make repository discovery consume the shared storage policy instead of duplicating filename or wrapper logic.
+- Do not duplicate filename parsing or logical-key extraction in services.
+
 ## Workflow
 
 1. Identify the owner of the persisted behavior: schema/service, entity, feature, widget, or shared helper.

@@ -15,17 +15,48 @@ Do not use this skill for trivial typo fixes, formatting-only changes, comments-
 
 ## Required preflight
 
-Answer these before the first production edit:
+For non-local changes, write a short preflight artifact before the first production edit. Use `.agents/templates/implementation-task.md` when possible.
 
-1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
-2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
-3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
-4. **Acceptance matrix**: what non-happy-path states must work in the first implementation?
-5. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
-6. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
-7. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
+Required sections:
 
-If any owner in the owner map is unclear for a cross-layer change, stop and resolve the architecture before editing.
+- Goal
+- Non-goals
+- Change classification
+- Ownership matrix
+- Affected consumers
+- Expected final architecture or code shape
+- Tests
+- Forbidden
+
+Required change classifications:
+
+- local UI
+- shared UI
+- feature behavior
+- storage/data contract
+- service/API contract
+- worker/provider boundary
+- cross-layer behavior
+- infrastructure/CI
+
+Minimum content:
+
+1. **Change classification**: choose the one primary class that best describes the task.
+2. **Ownership matrix**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
+3. **Affected consumers**: list the modules, callers, fixtures, and tests that rely on the contract or behavior.
+4. **Expected final architecture or code shape**: say which module should own the finished behavior and which modules must remain thin or untouched.
+5. **Tests**: define the focused verification for the riskiest path and the final required verification.
+6. **Forbidden**: state which layers, files, or shortcut approaches must not be used.
+
+If any owner in the ownership matrix is unclear for a cross-layer change, stop and resolve the architecture before editing.
+
+For contract changes, also record:
+
+- affected consumer inventory;
+- owner module;
+- compatibility decision;
+- edge-case matrix;
+- verification plan per consumer.
 
 For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification. For copy-only or wiring-only changes that keep existing components and Material behavior unchanged, record `Material impact: none` instead of doing a Material lookup.
 
@@ -105,7 +136,7 @@ Use these rules for create/open/import/export, setup, picker, dialog, storage, p
 - Keep flow outcomes typed and local to the boundary that needs them. Avoid broad `status` protocols, command choreography, or result objects that mix field issues, transport failures, domain conflicts, and UI navigation unless several independent callers need the protocol.
 - If a feature needs a shared UI primitive change, decide whether that primitive change is a separate prerequisite. When it remains in the feature PR, keep it minimal, Material-verified, and independently tested so the feature review does not hide shared UI regressions.
 - Delete obsolete code paths, facades, providers, and tests in the same pass that introduces their replacement unless backwards compatibility is required. Do not leave dual flows for review to reconcile.
-- When two consecutive review rounds uncover ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Update the scenario matrix, owner map, and verification matrix before more edits.
+- If review finds repeated ownership mistakes after more than two follow-ups, stop patching and redo the preflight. Update the scenario matrix, ownership matrix, and verification matrix before more edits.
 - Prefer tests for domain invariants and extracted state transitions before component wiring. Component tests should verify only contracts that the component owns; browser behavior, layout, focus, gestures, and Material visual states require browser or visual verification.
 
 ## Bounded reuse search
@@ -134,6 +165,6 @@ The first implementation should cover the applicable matrix, not only the happy 
 
 ## Output discipline
 
-Keep the preflight concise. A useful preflight is usually 5-10 lines plus a short verification note.
+Keep the written preflight concise. A useful preflight is usually 8-15 short lines plus a brief verification note.
 
 Do not repeat generic repository rules. Name only the rules and risks that apply to the current task.
