@@ -1,4 +1,5 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
+import pLimit from 'p-limit';
 import {
   collectStorageFileNamesForPrefix,
   discoverStorageDocumentIds,
@@ -29,6 +30,8 @@ export const DOCUMENT_DELETE_CLEANUP_RETRY_DELAY_MS = 50;
 export const DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS = 8;
 /** Number of consecutive empty scans required before cleanup is considered stable. */
 export const DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED = 2;
+/** Maximum number of concurrent repository storage-file deletes for one cleanup pass. */
+const DOCUMENT_STORAGE_DELETE_CONCURRENCY_LIMIT = 4;
 
 /**
  * Lists Automerge storage files that belong to one document inside a repository directory.
@@ -129,19 +132,22 @@ export const removeDocumentStorageFiles = async (
   id: AMDocumentId,
 ) => {
   const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);
+  const limitDelete = pLimit(DOCUMENT_STORAGE_DELETE_CONCURRENCY_LIMIT);
 
   await Promise.all(
-    documentStorageFiles.map(async ([name]) => {
-      try {
-        await vfs.delete(PathUtils.join(path, name));
-      } catch (error) {
-        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-          return;
-        }
+    documentStorageFiles.map(([name]) =>
+      limitDelete(async () => {
+        try {
+          await vfs.delete(PathUtils.join(path, name));
+        } catch (error) {
+          if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+            return;
+          }
 
-        throw error;
-      }
-    }),
+          throw error;
+        }
+      }),
+    ),
   );
 };
 
