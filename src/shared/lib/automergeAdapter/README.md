@@ -40,8 +40,9 @@ so there is no shipped v3 compatibility filename family to keep supporting:
   contains a hash prefix; the filename is a routing hint only, and the wrapper's full `StorageKey`
   remains the source of truth. Normal writes always resolve to this one deterministic filename and
   never generate a numeric-suffix or copy-style fallback name.
-- Exact `load`, `save`, and `remove` for a full chunk key resolve the primary filename directly,
-  with no directory listing in the common case:
+- Exact `load` and `save` for a full chunk key resolve the primary filename directly,
+  with no directory listing in the common case. Exact `remove` is different: it is a
+  logical-key cleanup pass that may list once to remove every physical representation for the key:
   - `load` reads the primary filename directly. A valid same-key wrapper there returns
     immediately. An invalid or different-key wrapper there is a storage conflict and fails safely
     (`undefined`) without falling back to v2 or legacy data for that key. Only when the primary
@@ -56,9 +57,12 @@ so there is no shipped v3 compatibility filename family to keep supporting:
     wrapper for the same full key, with no directory listing. When the primary filename is
     occupied by invalid data or a valid wrapper for a different full key, `save` raises
     `V3StorageConflictError` instead of writing a numeric-suffix fallback file.
-  - `remove` removes the primary filename only when it holds a valid same-key wrapper, and removes
-    the exact v2/legacy filenames for the same key directly when present. It never removes an
-    invalid primary file and never removes a valid wrapper for a different key.
+  - `remove` performs one fresh `listNames()` classification pass for a full chunk key, wrapper-
+    confirms plausible v3 `.mf` candidates with bounded concurrency, and removes every physical
+    file whose confirmed full logical key matches the requested key. This includes the primary v3
+    file, any other valid same-key v3 wrapper, released v2, released legacy with `.automerge`,
+    and released extension-less legacy variants. It never removes an invalid `.mf` wrapper blindly
+    and never removes a valid wrapper for a different key. Marker-file removal remains marker-only.
   - When the IO provider supports direct read-by-name (e.g. `createFSStorageAdapter`'s optional
     `DirectoryForStorageAdapter.readFileByName`, or `createVFSAdapter`'s `vfs.readFile`), these
     direct primary-filename reads never trigger a directory-wide listing/scan on the underlying
@@ -66,8 +70,9 @@ so there is no shipped v3 compatibility filename family to keep supporting:
     listing-based access (`entries()`) keep working through that fallback.
 - Operations that need directory-wide state (`loadRange`, `removeRange`, and document discovery)
   fetch a fresh directory listing via at most one `listNames()` call; sequential operations never
-  reuse a stale listing from a previous call. Exact full-key `load` never needs directory-wide
-  state, so it never lists the directory.
+  reuse a stale listing from a previous call. Exact full-key `remove` also uses one fresh listing
+  because cleanup is keyed by logical identity rather than one deterministic physical filename.
+  Exact full-key `load` never needs directory-wide state, so it never lists the directory.
 - These scans consider only strict primary v3 `.mf` filenames as v3 candidates. Non-primary `.mf`
   names are ignored as unrelated or invalid storage candidates.
 - Within one operation that does list the directory, the listing may be classified once into an

@@ -136,6 +136,9 @@ const readValidLegacyOrV2Chunk = async (
   return { data, key: entry.key };
 };
 
+const isSameStorageKey = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((part, index) => part === right[index]);
+
 /**
  * Loads one logical storage entry and returns the raw Automerge bytes.
  *
@@ -385,9 +388,10 @@ export const saveStorageEntry = async (
 /**
  * Removes one logical storage entry using the shared physical storage policy.
  *
- * For full chunk keys, the primary v3 file is removed only when it holds a valid same-key
- * wrapper; an invalid or different-key primary file is left untouched. The exact v2 and legacy
- * filenames for the same key are removed directly when present. This never scans the directory.
+ * For full chunk keys, removal is a logical-key cleanup pass: one fresh directory listing is
+ * classified through the shared storage policy, plausible v3 candidates are wrapper-confirmed
+ * with bounded concurrency, and every same-key physical representation is removed. Invalid or
+ * different-key `.mf` files are left untouched.
  * @param io - Storage IO boundary used for reading and removing physical files.
  * @param key - Full logical storage key to remove.
  */
@@ -396,27 +400,25 @@ export const removeStorageEntry = async (
   key: StorageKey,
 ): Promise<void> => {
   if (isChunkStorageKey(key)) {
-    const primaryName = encodePrimaryV3FileName(key);
+    const names = await io.listNames();
+    const index = buildStorageNameIndex(names);
+    const matchingNames = new Set(
+      index.allParsedEntries
+        .filter((entry) => isSameStorageKey(entry.key, key))
+        .map(({ name }) => name),
+    );
+    const v3Matches = await mapBounded(index.v3CandidateNames, async (name) => {
+      const classification = classifyV3ChunkCandidateData(await io.readBytes(name), key);
+      return classification.kind === 'validSameKey' ? name : undefined;
+    });
 
-    if (primaryName) {
-      const classification = classifyV3ChunkCandidateData(await io.readBytes(primaryName), key);
-
-      if (classification.kind === 'validSameKey') {
-        await io.removeName(primaryName);
+    for (const name of v3Matches) {
+      if (name) {
+        matchingNames.add(name);
       }
     }
 
-    const [documentId, kind, hash] = key;
-    const exactFallbackNames = [
-      encodeStorageKeyToV2FileName(documentId, kind, hash),
-      partialKeyToFileName(key),
-    ].filter((name): name is string => name !== undefined);
-
-    await mapBounded(exactFallbackNames, async (name) => {
-      if ((await io.readBytes(name)) !== undefined) {
-        await io.removeName(name);
-      }
-    });
+    await mapBounded([...matchingNames], (name) => io.removeName(name));
 
     return;
   }

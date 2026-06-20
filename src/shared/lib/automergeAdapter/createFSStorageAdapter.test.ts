@@ -162,22 +162,32 @@ describe('createFSStorageAdapter', () => {
     expect(await adapter.loadRange([docId])).toEqual([{ key, data: DATA_B }]);
   });
 
-  it('remove deletes the primary v3, v2, and legacy files but leaves unrelated non-primary .mf names', async () => {
+  it('remove deletes every same-key physical file and leaves invalid or different-key .mf files', async () => {
     const directory = new MemoryDirectory();
     const docId = getDocumentId();
+    const otherDocId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
     if (!primaryName) throw new Error('Expected v3 filename');
-    const compatibilityName = `${docId.slice(0, 6)}.s.${HASH_A.slice(0, 8)} - copy.mf`;
+    const duplicateName = 'dup001.s.abcdef123456.mf';
+    const otherKeyName = 'other1.s.123456abcdef.mf';
     directory.files.set(primaryName, encodeV3StorageWrapper(key, DATA_A));
-    directory.files.set(compatibilityName, encodeV3StorageWrapper(key, DATA_A));
+    directory.files.set(duplicateName, encodeV3StorageWrapper(key, DATA_B));
+    directory.files.set(
+      otherKeyName,
+      encodeV3StorageWrapper([otherDocId, 'snapshot', HASH_A], DATA_B),
+    );
+    directory.files.set('invalid.s.123456abcdef.mf', new Uint8Array([0xde, 0xad]));
     directory.files.set(requireV2Name(docId, 'snapshot', HASH_A), DATA_A);
     directory.files.set(`${docId}_snapshot_${HASH_A}.automerge`, DATA_A);
+    directory.files.set(`${docId}_snapshot_${HASH_A}`, DATA_B);
 
     const adapter = createFSStorageAdapter(directory);
     await adapter.remove(key);
 
-    expect([...directory.files.keys()]).toEqual([compatibilityName]);
+    expect([...directory.files.keys()].sort()).toEqual(
+      ['invalid.s.123456abcdef.mf', otherKeyName].sort(),
+    );
   });
 
   it('keeps marker file behavior unchanged', async () => {
@@ -312,21 +322,46 @@ describe('createFSStorageAdapter direct read-by-name fast path', () => {
     expect(entriesSpy).toHaveBeenCalled();
   });
 
-  it('removes the deterministic primary v3 file via removeByName without calling entries()', async () => {
+  it('removes every selected same-key file via removeByName after one entries() scan', async () => {
     const directory = new DirectReadMemoryDirectory();
     const docId = getDocumentId();
+    const otherDocId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
+    const duplicateName = 'dup001.s.abcdef123456.mf';
+    const otherKeyName = 'other1.s.123456abcdef.mf';
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
     if (!primaryName) throw new Error('Expected v3 filename');
     directory.files.set(primaryName, encodeV3StorageWrapper(key, DATA_A));
+    directory.files.set(duplicateName, encodeV3StorageWrapper(key, DATA_B));
+    directory.files.set(
+      otherKeyName,
+      encodeV3StorageWrapper([otherDocId, 'snapshot', HASH_A], DATA_B),
+    );
+    directory.files.set(v2Name, DATA_A);
+    directory.files.set(`${docId}_snapshot_${HASH_A}.automerge`, DATA_A);
+    directory.files.set(`${docId}_snapshot_${HASH_A}`, DATA_B);
 
     const adapter = createFSStorageAdapter(directory);
     await adapter.remove(key);
 
     expect(directory.files.has(primaryName)).toBe(false);
-    expect(directory.removeByNameCalls).toBe(1);
-    expect(directory.removedNames).toEqual([primaryName]);
-    expect(directory.entriesCalls).toBe(0);
+    expect(directory.files.has(duplicateName)).toBe(false);
+    expect(directory.files.has(v2Name)).toBe(false);
+    expect(directory.files.has(`${docId}_snapshot_${HASH_A}.automerge`)).toBe(false);
+    expect(directory.files.has(`${docId}_snapshot_${HASH_A}`)).toBe(false);
+    expect(directory.files.has(otherKeyName)).toBe(true);
+    expect(directory.removeByNameCalls).toBe(5);
+    expect(directory.removedNames.sort()).toEqual(
+      [
+        primaryName,
+        duplicateName,
+        v2Name,
+        `${docId}_snapshot_${HASH_A}.automerge`,
+        `${docId}_snapshot_${HASH_A}`,
+      ].sort(),
+    );
+    expect(directory.entriesCalls).toBe(1);
   });
 
   it('keeps working through the entries()-based fallback when removeByName is absent', async () => {

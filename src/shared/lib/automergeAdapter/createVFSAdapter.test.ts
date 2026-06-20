@@ -34,6 +34,30 @@ const setupVfs = async (): Promise<{ vfs: VirtualFileSystem; path: string }> => 
   return { vfs, path };
 };
 
+const trackDeleteConcurrency = (vfs: VirtualFileSystem) => {
+  const originalDelete = vfs.delete.bind(vfs);
+  let inFlightDeletes = 0;
+  let maxConcurrentDeletes = 0;
+  const deletedPaths: string[] = [];
+
+  const deleteSpy = vi
+    .spyOn(vfs, 'delete')
+    .mockImplementation(async (targetPath: string): Promise<void> => {
+      deletedPaths.push(targetPath);
+      inFlightDeletes += 1;
+      maxConcurrentDeletes = Math.max(maxConcurrentDeletes, inFlightDeletes);
+      await Promise.resolve();
+      inFlightDeletes -= 1;
+      return originalDelete(targetPath);
+    });
+
+  return {
+    deleteSpy,
+    getDeletedPaths: () => deletedPaths,
+    getMaxConcurrentDeletes: () => maxConcurrentDeletes,
+  };
+};
+
 describe('createVFSAdapter – save uses v3 mioframe filenames', () => {
   it('saves snapshot chunks using the v3 mioframe .mf filename format', async () => {
     const { vfs, path } = await setupVfs();
@@ -383,6 +407,65 @@ describe('createVFSAdapter – load reads legacy files', () => {
 
     const adapter = createVFSAdapter(vfs, path);
     expect(await adapter.load(key)).toEqual(DATA_A);
+  });
+
+  it('exact remove lists once, removes every same-key physical file, and leaves invalid or different-key .mf files', async () => {
+    const { vfs, path } = await setupVfs();
+    const docId = getDocumentId();
+    const otherDocId = getDocumentId();
+    const key: StorageKey = [docId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+    const duplicateNames = [
+      'dup001.s.abcdef123456.mf',
+      'dup002.s.abcdef123457.mf',
+      'dup003.s.abcdef123458.mf',
+      'dup004.s.abcdef123459.mf',
+      'dup005.s.abcdef12345a.mf',
+    ];
+    const otherKeyName = 'other1.s.123456abcdef.mf';
+    const invalidName = 'invalid.s.123456abcdef.mf';
+    const v2Name = requireV2Name(docId, 'snapshot', HASH_A);
+
+    if (!primaryName) throw new Error('Expected v3 filename');
+
+    await Promise.all([
+      vfs.writeFile(`${path}/${primaryName}`, encodeV3StorageWrapper(key, DATA_A)),
+      ...duplicateNames.map((name, index) =>
+        vfs.writeFile(`${path}/${name}`, encodeV3StorageWrapper(key, new Uint8Array([index + 10]))),
+      ),
+      vfs.writeFile(
+        `${path}/${otherKeyName}`,
+        encodeV3StorageWrapper([otherDocId, 'snapshot', HASH_A], DATA_B),
+      ),
+      vfs.writeFile(`${path}/${invalidName}`, new Uint8Array([0xde, 0xad])),
+      vfs.writeFile(`${path}/${v2Name}`, DATA_A),
+      vfs.writeFile(`${path}/${docId}_snapshot_${HASH_A}.automerge`, DATA_A),
+      vfs.writeFile(`${path}/${docId}_snapshot_${HASH_A}`, DATA_B),
+    ]);
+    const readDirectorySpy = vi.spyOn(vfs, 'readDirectory');
+    const { getDeletedPaths, getMaxConcurrentDeletes } = trackDeleteConcurrency(vfs);
+
+    const adapter = createVFSAdapter(vfs, path);
+    await adapter.remove(key);
+
+    expect(readDirectorySpy).toHaveBeenCalledTimes(1);
+    expect(getMaxConcurrentDeletes()).toBeLessThanOrEqual(4);
+    expect(
+      getDeletedPaths()
+        .map((target) => target.slice(path.length + 1))
+        .sort(),
+    ).toEqual(
+      [
+        primaryName,
+        ...duplicateNames,
+        v2Name,
+        `${docId}_snapshot_${HASH_A}.automerge`,
+        `${docId}_snapshot_${HASH_A}`,
+      ].sort(),
+    );
+
+    const remainingNames = (await vfs.readDirectory(path)).map(([name]) => name).sort();
+    expect(remainingNames).toEqual([invalidName, otherKeyName].sort());
   });
 });
 
