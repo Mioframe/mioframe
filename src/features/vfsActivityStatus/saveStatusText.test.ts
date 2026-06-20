@@ -68,13 +68,18 @@ describe('saveStatusText', () => {
   });
 
   it('formats a generic DomainError chain with DOMException details when present', () => {
+    const domException = new DOMException('The handle became invalid', 'InvalidStateError');
+    Object.defineProperty(domException, 'code', {
+      configurable: true,
+      value: 11,
+    });
     const copied = formatSaveStatusErrorDetails({
       operationType: 'writeFile',
       path: '/private/project/secret.txt',
       message: 'safe message only',
       cause: new DomainError('Could not start writing to this storage location.', {
         code: 'web-file-system-write-start-failed',
-        cause: new DOMException('The handle became invalid', 'InvalidStateError'),
+        cause: domException,
       }),
       occurredAt: 1_700_000_000_003,
       acknowledged: false,
@@ -86,6 +91,7 @@ describe('saveStatusText', () => {
     expect(copied).toContain('Cause class: DOMException');
     expect(copied).toContain('Browser error name: InvalidStateError');
     expect(copied).toContain('Browser error message: The handle became invalid');
+    expect(copied).not.toContain('Browser error code:');
     expect(copied).not.toContain('/private/project/secret.txt');
   });
 

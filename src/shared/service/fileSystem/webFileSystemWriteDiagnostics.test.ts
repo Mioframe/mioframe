@@ -96,7 +96,6 @@ describe('webFileSystemWriteDiagnostics', () => {
         classification: 'web-file-system-write-start-failed',
         errorClass: 'DOMException',
         domException: 'InvalidStateError',
-        domExceptionCode: 11,
         errorDetail: 'The handle became invalid',
       },
       level: 'warning',
@@ -141,7 +140,6 @@ describe('webFileSystemWriteDiagnostics', () => {
       'classification',
       'errorClass',
       'domException',
-      'domExceptionCode',
       'errorDetail',
     ]);
     for (const key of Object.keys(data)) {
@@ -186,8 +184,24 @@ describe('webFileSystemWriteDiagnostics', () => {
     const data = call?.[0]?.data ?? {};
     expect(data).not.toHaveProperty('errorClass');
     expect(data).not.toHaveProperty('domException');
-    expect(data).not.toHaveProperty('domExceptionCode');
     expect(data).not.toHaveProperty('errorDetail');
+  });
+
+  it('ignores legacy DOMException code even when the browser exposes it', () => {
+    const error = new DOMException('The handle became invalid', 'InvalidStateError');
+    Object.defineProperty(error, 'code', {
+      configurable: true,
+      value: 11,
+    });
+
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'writableOpen',
+      result: 'failed',
+      error,
+    });
+
+    const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
+    expect(call?.[0]?.data).not.toHaveProperty('domExceptionCode');
   });
 
   it('drops sensitive writableOpen error details while keeping safe classification fields', () => {
