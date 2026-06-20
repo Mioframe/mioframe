@@ -88,4 +88,29 @@ describe('saveStatusText', () => {
     expect(copied).toContain('Browser error message: The handle became invalid');
     expect(copied).not.toContain('/private/project/secret.txt');
   });
+
+  it('formats a generic Error cause with generic labels instead of browser labels', () => {
+    const copied = formatSaveStatusErrorDetails({
+      operationType: 'writeFile',
+      path: '/private/project/secret.txt',
+      message: 'safe message only',
+      cause: new DomainError('Could not start writing to this storage location.', {
+        code: 'web-file-system-write-start-failed',
+        cause: new Error('The handle became invalid'),
+      }),
+      occurredAt: 1_700_000_000_004,
+      acknowledged: false,
+    });
+
+    expect(copied).toContain('Top-level error: DomainError');
+    expect(copied).toContain('Stable code: web-file-system-write-start-failed');
+    expect(copied).toContain('Safe message: Could not start writing to this storage location.');
+    expect(copied).toContain('Cause class: Error');
+    expect(copied).toContain('Cause name: Error');
+    expect(copied).toContain('Cause message: The handle became invalid');
+    expect(copied).not.toContain('Browser error name:');
+    expect(copied).not.toContain('Browser error code:');
+    expect(copied).not.toContain('Browser error message:');
+    expect(copied).not.toContain('/private/project/secret.txt');
+  });
 });

@@ -43,24 +43,51 @@ const getErrorCode = (error: unknown): string | number | undefined =>
 const getErrorCause = (error: unknown): unknown =>
   error instanceof Error ? error.cause : undefined;
 
-const getDomExceptionLikeName = (error: unknown): string | undefined =>
-  error instanceof DOMException || error instanceof Error ? error.name : undefined;
-
-const getDomExceptionLikeCode = (error: unknown): number | undefined => {
-  if (!(error instanceof DOMException || error instanceof Error)) {
-    return undefined;
+const formatDomExceptionCauseDetails = (error: unknown): string[] => {
+  if (!(error instanceof DOMException)) {
+    return [];
   }
 
+  const lines = [`Browser error name: ${error.name}`];
   const rawCode = Reflect.get(error, 'code');
-  return typeof rawCode === 'number' && Number.isFinite(rawCode) ? rawCode : undefined;
+
+  if (typeof rawCode === 'number' && Number.isFinite(rawCode)) {
+    lines.push(`Browser error code: ${rawCode}`);
+  }
+
+  const safeMessage = sanitizePrimitiveString(error.message);
+  if (safeMessage !== undefined) {
+    lines.push(`Browser error message: ${safeMessage}`);
+  }
+
+  return lines;
 };
 
-const getDomExceptionLikeMessage = (error: unknown): string | undefined => {
-  if (!(error instanceof DOMException || error instanceof Error)) {
-    return undefined;
+const formatGenericErrorCauseDetails = (error: unknown): string[] => {
+  if (!(error instanceof Error) || error instanceof DOMException) {
+    return [];
   }
 
-  return sanitizePrimitiveString(error.message);
+  const lines = [`Cause name: ${error.name}`];
+  const safeMessage = sanitizePrimitiveString(error.message);
+
+  if (safeMessage !== undefined) {
+    lines.push(`Cause message: ${safeMessage}`);
+  }
+
+  return lines;
+};
+
+const formatErrorCauseDetails = (error: unknown): string[] => {
+  if (error instanceof DOMException) {
+    return formatDomExceptionCauseDetails(error);
+  }
+
+  if (error instanceof Error) {
+    return formatGenericErrorCauseDetails(error);
+  }
+
+  return [];
 };
 
 /**
@@ -93,9 +120,7 @@ export const formatSaveStatusErrorDetails = (
     error.cause instanceof DomainError ? normalizeSafeMessage(error.cause.message) : undefined;
   const nestedCause = getErrorCause(error.cause);
   const nestedCauseClass = getErrorClassName(nestedCause);
-  const browserErrorName = getDomExceptionLikeName(nestedCause);
-  const browserErrorCode = getDomExceptionLikeCode(nestedCause);
-  const browserErrorMessage = getDomExceptionLikeMessage(nestedCause);
+  const errorCauseDetails = formatErrorCauseDetails(nestedCause);
 
   if (topLevelErrorName !== undefined) {
     lines.push(`Top-level error: ${topLevelErrorName}`);
@@ -113,17 +138,7 @@ export const formatSaveStatusErrorDetails = (
     lines.push(`Cause class: ${nestedCauseClass}`);
   }
 
-  if (browserErrorName !== undefined) {
-    lines.push(`Browser error name: ${browserErrorName}`);
-  }
-
-  if (browserErrorCode !== undefined) {
-    lines.push(`Browser error code: ${browserErrorCode}`);
-  }
-
-  if (browserErrorMessage !== undefined) {
-    lines.push(`Browser error message: ${browserErrorMessage}`);
-  }
+  lines.push(...errorCauseDetails);
 
   return lines.join('\n');
 };
