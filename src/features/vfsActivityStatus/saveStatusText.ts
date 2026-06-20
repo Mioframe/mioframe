@@ -49,12 +49,6 @@ const formatDomExceptionCauseDetails = (error: unknown): string[] => {
   }
 
   const lines = [`Browser error name: ${error.name}`];
-  const rawCode = Reflect.get(error, 'code');
-
-  if (typeof rawCode === 'number' && Number.isFinite(rawCode)) {
-    lines.push(`Browser error code: ${rawCode}`);
-  }
-
   const safeMessage = sanitizePrimitiveString(error.message);
   if (safeMessage !== undefined) {
     lines.push(`Browser error message: ${safeMessage}`);
