@@ -1,5 +1,12 @@
-import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
-import { fileNameToPartialKey, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import pLimit from 'p-limit';
+import {
+  collectStorageFileNamesForPrefix,
+  discoverStorageDocumentIds,
+  isPlausibleRepositoryStorageCandidateFileName as isPlausibleStorageCandidateFileName,
+  storageAdapterMarkerFileName,
+  type ReadOnlyStorageFilePolicyIo,
+} from '@shared/lib/automergeAdapter';
 import {
   FileSystemError,
   FSNodeType,
@@ -7,7 +14,6 @@ import {
   type VirtualFileSystem,
   VfsError,
 } from '@shared/lib/virtualFileSystem';
-import { zodIs } from '@shared/lib/validateZodScheme';
 import type { RepositoryDirectoryEntry } from './repositoryContracts';
 
 /** Low-level repository facts derived from one directory listing. */
@@ -24,6 +30,8 @@ export const DOCUMENT_DELETE_CLEANUP_RETRY_DELAY_MS = 50;
 export const DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS = 8;
 /** Number of consecutive empty scans required before cleanup is considered stable. */
 export const DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED = 2;
+/** Maximum number of concurrent repository storage-file deletes for one cleanup pass. */
+const DOCUMENT_STORAGE_DELETE_CONCURRENCY_LIMIT = 4;
 
 /**
  * Lists Automerge storage files that belong to one document inside a repository directory.
@@ -38,14 +46,36 @@ export const getDocumentStorageFiles = async (
   id: AMDocumentId,
 ) => {
   const entries = await vfs.readDirectory(path);
+  const fileEntries = entries.filter(([, stat]) => stat.type === FSNodeType.File);
+  const names = new Set(
+    await collectStorageFileNamesForPrefix(createRepositoryStorageIo(vfs, path, fileEntries), [id]),
+  );
 
-  return entries.filter(([name, stat]) => {
-    if (stat.type !== FSNodeType.File) {
-      return false;
-    }
+  return fileEntries.filter(([name]) => names.has(name));
+};
 
-    return fileNameToPartialKey(name)?.at(0) === id;
-  });
+const removeResolvedDocumentStorageFiles = async (
+  vfs: VirtualFileSystem,
+  path: string,
+  documentStorageFiles: readonly RepositoryDirectoryEntry[],
+) => {
+  const limitDelete = pLimit(DOCUMENT_STORAGE_DELETE_CONCURRENCY_LIMIT);
+
+  await Promise.all(
+    documentStorageFiles.map(([name]) =>
+      limitDelete(async () => {
+        try {
+          await vfs.delete(PathUtils.join(path, name));
+        } catch (error) {
+          if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+            return;
+          }
+
+          throw error;
+        }
+      }),
+    ),
+  );
 };
 
 /**
@@ -56,12 +86,14 @@ export const getDocumentStorageFiles = async (
 export const isRepositoryMarkerFileName = (name: string) => name === storageAdapterMarkerFileName;
 
 /**
- * Returns whether a file name is an Automerge document storage file.
+ * Returns whether a file name is a plausible repository storage candidate file.
+ * For v3 `.mf`, filename matching is only a discovery prefilter; full identity still comes from
+ * decoding the wrapper payload.
  * @param name - File name to classify.
- * @returns Whether the file name is an Automerge document storage file.
+ * @returns Whether the file name is a repository storage candidate file.
  */
-export const isAutomergeDocumentFileName = (name: string) =>
-  fileNameToPartialKey(name) !== undefined;
+export const isRepositoryStorageCandidateFileName = (name: string) =>
+  isPlausibleStorageCandidateFileName(name);
 
 /**
  * Returns whether a repository storage file should stay hidden in the file list.
@@ -70,7 +102,8 @@ export const isAutomergeDocumentFileName = (name: string) =>
  * @returns Whether the repository storage file should stay hidden in the file list.
  */
 export const shouldHideRepositoryStorageFile = (name: string, hideAutomergeFiles: boolean) =>
-  isRepositoryMarkerFileName(name) || (hideAutomergeFiles && isAutomergeDocumentFileName(name));
+  isRepositoryMarkerFileName(name) ||
+  (hideAutomergeFiles && isRepositoryStorageCandidateFileName(name));
 
 /**
  * Returns directory entries visible to the user after repository storage files are filtered out.
@@ -85,38 +118,29 @@ export const getRegularDirectoryEntries = (
   directoryEntries.filter(([name]) => !shouldHideRepositoryStorageFile(name, hideAutomergeFiles));
 
 /**
- * Derives low-level repository facts from one directory listing.
- * @param directoryEntries - Directory entries in the current folder.
+ * Derives low-level repository facts for one repository directory.
+ * @param vfs - Mounted virtual file system used to decode wrapper-backed storage files.
+ * @param path - Absolute repository directory path.
+ * @param directoryEntries - Optional pre-read directory entries for the current folder.
  * @returns Repository initialization and document-id facts derived from the directory listing.
  */
-export const getRepositoryFacts = (
-  directoryEntries: readonly RepositoryDirectoryEntry[],
-): RepositoryFacts =>
-  directoryEntries.reduce<RepositoryFacts>(
-    (facts, [name, stat]) => {
-      if (stat.type !== FSNodeType.File) {
-        return facts;
-      }
-
-      if (isRepositoryMarkerFileName(name)) {
-        facts.isInitialized = true;
-        return facts;
-      }
-
-      const [documentId] = fileNameToPartialKey(name) ?? [];
-
-      if (zodIs(documentId, zodDocumentId) && !facts.documentIds.includes(documentId)) {
-        facts.documentIds.push(documentId);
-        facts.isInitialized = true;
-      }
-
-      return facts;
-    },
-    {
-      documentIds: [],
-      isInitialized: false,
-    },
+export const getRepositoryFacts = async (
+  vfs: VirtualFileSystem,
+  path: string,
+  directoryEntries?: readonly RepositoryDirectoryEntry[],
+): Promise<RepositoryFacts> => {
+  const entries = directoryEntries ?? (await vfs.readDirectory(path));
+  const fileEntries = entries.filter(([, stat]) => stat.type === FSNodeType.File);
+  const isInitialized = fileEntries.some(([name]) => isRepositoryMarkerFileName(name));
+  const documentIds = await discoverStorageDocumentIds(
+    createRepositoryStorageIo(vfs, path, fileEntries),
   );
+
+  return {
+    documentIds,
+    isInitialized: isInitialized || documentIds.length > 0,
+  };
+};
 
 /**
  * Removes all currently visible Automerge storage files for one document.
@@ -133,22 +157,36 @@ export const removeDocumentStorageFiles = async (
 ) => {
   const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);
 
-  await Promise.all(
-    documentStorageFiles.map(async ([name]) => {
+  await removeResolvedDocumentStorageFiles(vfs, path, documentStorageFiles);
+};
+
+const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const createRepositoryStorageIo = (
+  vfs: VirtualFileSystem,
+  path: string,
+  entries: readonly RepositoryDirectoryEntry[],
+): ReadOnlyStorageFilePolicyIo => {
+  const fileNames = entries
+    .filter(([, stat]) => stat.type === FSNodeType.File)
+    .map(([name]) => name);
+
+  return {
+    listNames: () => Promise.resolve(fileNames),
+    readBytes: async (name) => {
       try {
-        await vfs.delete(PathUtils.join(path, name));
+        const file = await vfs.readFile(PathUtils.join(path, name));
+        return new Uint8Array(await file.arrayBuffer());
       } catch (error) {
         if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-          return;
+          return undefined;
         }
 
         throw error;
       }
-    }),
-  );
+    },
+  };
 };
-
-const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * Repeatedly removes storage files for a deleted document until the directory stays empty
@@ -179,7 +217,7 @@ export const cleanupDeletedDocumentStorageFiles = async (
     } else {
       emptyPassCount = 0;
       // eslint-disable-next-line no-await-in-loop -- deletion must finish before next scan
-      await removeDocumentStorageFiles(vfs, path, id);
+      await removeResolvedDocumentStorageFiles(vfs, path, documentStorageFiles);
     }
 
     if (attempt < DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS - 1) {

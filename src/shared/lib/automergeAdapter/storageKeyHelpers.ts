@@ -1,7 +1,10 @@
+import { zodIs } from '../validateZodScheme';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
+import { encodePrimaryV3FileName } from './filenameCodecV3';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import { encodeStorageKeyToV2FileName, isV2FileName } from './filenameCodecV2';
-import type { PartialStorageKey, StorageKey } from './types';
+import type { ChunkStorageKey, PartialStorageKey, StorageKey } from './types';
+import { zodStorageKey } from './types';
 
 /**
  * Returns a stable string id for a partial storage key suitable for Map keys and deduplication.
@@ -9,7 +12,7 @@ import type { PartialStorageKey, StorageKey } from './types';
  * @param key - Partial storage key to identify.
  * @returns Canonical string id.
  */
-export const storageKeyToId = (key: PartialStorageKey): string => key.join('\x00');
+export const storageKeyToId = (key: readonly string[]): string => key.join('\x00');
 
 /**
  * Returns true when `key` begins with all elements of `prefix`.
@@ -17,7 +20,7 @@ export const storageKeyToId = (key: PartialStorageKey): string => key.join('\x00
  * @param prefix - Required prefix.
  * @returns True when key starts with all prefix elements.
  */
-export const storageKeyHasPrefix = (key: PartialStorageKey, prefix: PartialStorageKey): boolean => {
+export const storageKeyHasPrefix = (key: readonly string[], prefix: readonly string[]): boolean => {
   if (key.length < prefix.length) return false;
 
   for (let i = 0; i < prefix.length; i++) {
@@ -28,16 +31,33 @@ export const storageKeyHasPrefix = (key: PartialStorageKey, prefix: PartialStora
 };
 
 /**
- * Returns the physical filename to use when writing a storage key.
- * Full chunk keys `[docId, kind, hash]` use the v2 compact format.
- * Non-chunk keys (e.g. `['storage-adapter-id']`) fall back to the legacy format.
+ * Returns whether a partial storage key is a full chunk key suitable for v3 `.mf` storage.
+ * @param key - Storage key to inspect.
+ * @returns True when the key is a full `[documentId, kind, hash]` chunk key.
+ */
+export const isChunkStorageKey = (key: PartialStorageKey): key is ChunkStorageKey =>
+  zodIs(key, zodStorageKey) && key.length === 3;
+
+/**
+ * Returns the preferred physical filename for a storage key.
+ * Marker keys such as `['storage-adapter-id']` keep using the marker filename.
+ * Full chunk keys `[docId, kind, hash]` prefer the deterministic primary v3 `.mf` filename, which
+ * stores the full logical key inside the wrapper and is only the preferred physical target.
+ * When that primary v3 target is invalid or already belongs to a different full key, save policy
+ * reports a conflict-safe failure instead of resolving a different generated v3 filename.
+ * Read paths remain backward-compatible with released v2 and legacy chunk filenames.
  * @param key - Storage key to encode.
  * @returns Physical filename, or undefined when the key cannot be encoded.
  */
 export const toWritableStorageFileName = (key: StorageKey): string | undefined => {
-  const [part0, part1, part2] = key;
+  if (isChunkStorageKey(key)) {
+    const [part0, part1, part2] = key;
+    const v3 = encodePrimaryV3FileName(key);
 
-  if (part1 && part2) {
+    if (v3) {
+      return v3;
+    }
+
     const v2 = encodeStorageKeyToV2FileName(part0, part1, part2);
 
     if (v2) {
