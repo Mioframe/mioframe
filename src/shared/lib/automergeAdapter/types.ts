@@ -25,6 +25,12 @@ export const zodPartialStorageKey = union([
 /** Partial storage-key tuple accepted by the filename conversion helpers. */
 export type PartialStorageKey = output<typeof zodPartialStorageKey>;
 
+/**
+ * Prefix accepted by range-style storage operations (`loadRange`, `removeRange`).
+ * Includes the empty prefix, which selects every storage entry.
+ */
+export type StorageKeyPrefix = PartialStorageKey | [];
+
 export const KEY_SEPARATE = '_';
 
 export const fileExtension = 'automerge';
@@ -59,6 +65,9 @@ export const zodStorageKey = union([
 
 /** Complete storage-key tuple for persisted Automerge files. */
 export type StorageKey = output<typeof zodStorageKey>;
+
+/** Full chunk storage key for snapshot or incremental entries. */
+export type ChunkStorageKey = Extract<StorageKey, [unknown, unknown, unknown]>;
 
 export const zodPartialAutomergeFileName = union([
   zodStorageAdapterId,
@@ -104,4 +113,11 @@ export interface DirectoryForStorageAdapter {
   writeFile?: (name: string, file?: FileSystemWriteChunkType) => Promisable<FileForStorageAdapter>;
   /** Removes a child entry by name when the backing storage supports deletion. */
   removeByName?: (name: string) => Promisable<void>;
+  /**
+   * Reads one child file directly by name, without listing the directory, when the backing
+   * storage supports direct name lookup (e.g. browser FS Access API `getFileHandle`). Returns
+   * `undefined` when the file does not exist. Adapters that only implement `entries()` simply omit
+   * this method and keep using the existing listing-based read path.
+   */
+  readFileByName?: (name: string) => Promisable<File | undefined>;
 }

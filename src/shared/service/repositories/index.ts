@@ -3,7 +3,7 @@ export { RepositoryImportErrorCode } from './repositoryImportErrorCode';
 export {
   getRegularDirectoryEntries,
   getRepositoryFacts,
-  isAutomergeDocumentFileName,
+  isRepositoryStorageCandidateFileName,
   isRepositoryMarkerFileName,
   shouldHideRepositoryStorageFile,
 } from './repositoryStorageFiles';
