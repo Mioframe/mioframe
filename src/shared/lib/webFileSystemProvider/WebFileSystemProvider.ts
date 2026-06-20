@@ -21,7 +21,7 @@ import type {
   WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
-import { WebFileSystemWriteStartFailedError } from './WebFileSystemWriteStartFailedError';
+import { createWebFileSystemWriteStartFailedError } from './WebFileSystemWriteStartFailedError';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -199,7 +199,7 @@ export const WebFileSystemProvider = (
         writable = await handle.createWritable();
       } catch (error) {
         reportDiagnosticStep({ step: 'writableOpen', result: 'failed', error });
-        throw new WebFileSystemWriteStartFailedError({ cause: error });
+        throw createWebFileSystemWriteStartFailedError(error);
       }
       reportDiagnosticStep({ step: 'writableOpen', result: 'succeeded' });
       try {

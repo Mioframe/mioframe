@@ -7,8 +7,8 @@ import {
   WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
   WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
   WebFileSystemAccessRequiredError,
-  WebFileSystemWriteStartFailedError,
 } from '.';
+import { DomainError } from '../error';
 
 const createRootHandle = (
   permissionState: PermissionState = 'granted',
@@ -479,14 +479,14 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
     ).rejects.toSatisfy((error: unknown) => {
-      expect(error).toBeInstanceOf(WebFileSystemWriteStartFailedError);
-      if (!(error instanceof WebFileSystemWriteStartFailedError)) {
+      expect(error).toBeInstanceOf(DomainError);
+      if (!(error instanceof DomainError)) {
         return true;
       }
       expect(error).toMatchObject({
         code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
         cause: storageError,
-        name: 'WebFileSystemWriteStartFailedError',
+        name: 'DomainError',
       });
       expect(error.message).toContain('Could not start writing to this storage location.');
       return true;
@@ -524,7 +524,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toMatchObject({
       code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: openError,
-      name: 'WebFileSystemWriteStartFailedError',
+      name: 'DomainError',
     });
 
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
@@ -597,7 +597,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toMatchObject({
       code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: openError,
-      name: 'WebFileSystemWriteStartFailedError',
+      name: 'DomainError',
     });
 
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
@@ -629,7 +629,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toMatchObject({
       code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: openError,
-      name: 'WebFileSystemWriteStartFailedError',
+      name: 'DomainError',
     });
 
     expect(createWritableMock).toHaveBeenCalledTimes(1);
@@ -721,7 +721,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toMatchObject({
       code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: writeError,
-      name: 'WebFileSystemWriteStartFailedError',
+      name: 'DomainError',
     });
     expect(parentHandle.entriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
@@ -858,7 +858,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toMatchObject({
       code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: storageError,
-      name: 'WebFileSystemWriteStartFailedError',
+      name: 'DomainError',
     });
     expect(rootHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
@@ -866,7 +866,7 @@ describe('WebFileSystemProvider', () => {
     );
   });
 
-  it('preserves the explicit provider-owned write-start error type and safe message', async () => {
+  it('preserves the explicit provider-owned write-start code and safe message', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const storageError = new DOMException('The handle became invalid', 'InvalidStateError');
     fileHandle.createWritable = vi.fn(() => Promise.reject(storageError));
@@ -877,13 +877,13 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
     ).rejects.toSatisfy((error: unknown) => {
-      expect(error).toBeInstanceOf(WebFileSystemWriteStartFailedError);
-      if (!(error instanceof WebFileSystemWriteStartFailedError)) {
+      expect(error).toBeInstanceOf(DomainError);
+      if (!(error instanceof DomainError)) {
         return true;
       }
       expect(error).toMatchObject({
         code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
-        name: 'WebFileSystemWriteStartFailedError',
+        name: 'DomainError',
       });
       expect(error.message).toContain('Could not start writing to this storage location.');
       expect(error.cause).toBe(storageError);

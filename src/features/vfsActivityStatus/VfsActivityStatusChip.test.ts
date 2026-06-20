@@ -4,7 +4,7 @@ import { DomainError } from '@shared/lib/error';
 import type { VfsActivityState } from '@shared/lib/virtualFileSystem';
 import {
   WebFileSystemAccessRequiredError,
-  WebFileSystemWriteStartFailedError,
+  createWebFileSystemWriteStartFailedError,
 } from '@shared/lib/webFileSystemProvider';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, ref } from 'vue';
@@ -319,9 +319,9 @@ describe('VfsActivityStatusChip', () => {
   it('shows write-start failure guidance without grant write access', async () => {
     vfsState.value = createErrorState(
       createWriteError({
-        cause: new WebFileSystemWriteStartFailedError({
-          cause: new DOMException('The handle became invalid', 'InvalidStateError'),
-        }),
+        cause: createWebFileSystemWriteStartFailedError(
+          new DOMException('The handle became invalid', 'InvalidStateError'),
+        ),
       }),
     );
 

@@ -13,7 +13,7 @@ export {
   type WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
 export {
+  createWebFileSystemWriteStartFailedError,
   WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
-  WebFileSystemWriteStartFailedError,
-  type SerializedWebFileSystemWriteStartFailedError,
+  WEB_FILE_SYSTEM_WRITE_START_FAILED_MESSAGE,
 } from './WebFileSystemWriteStartFailedError';

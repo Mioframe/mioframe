@@ -5,7 +5,7 @@ import {
   WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
   WebFileSystemAccessRequiredError,
   WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
-  WebFileSystemWriteStartFailedError,
+  createWebFileSystemWriteStartFailedError,
 } from '@shared/lib/webFileSystemProvider';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
@@ -195,7 +195,7 @@ describe('workerTransformerMap', () => {
     });
   });
 
-  it('reconstructs WebFileSystemWriteStartFailedError across the service boundary', async () => {
+  it('reconstructs provider write-start DomainError across the service boundary', async () => {
     const serviceId = uid();
     const clientId = uid();
     const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
@@ -204,7 +204,7 @@ describe('workerTransformerMap', () => {
 
     createService(serviceProvider, serviceId, transformers, () => ({
       fail: () => {
-        throw new WebFileSystemWriteStartFailedError({ cause: originalCause });
+        throw createWebFileSystemWriteStartFailedError(originalCause);
       },
     }));
 
@@ -215,12 +215,12 @@ describe('workerTransformerMap', () => {
     );
 
     await expect(client.fail()).rejects.toSatisfy((error: unknown) => {
-      expect(error).toBeInstanceOf(WebFileSystemWriteStartFailedError);
+      expect(error).toBeInstanceOf(DomainError);
       expect(error).toMatchObject({
         code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
-        name: 'WebFileSystemWriteStartFailedError',
+        name: 'DomainError',
       });
-      if (!(error instanceof WebFileSystemWriteStartFailedError)) {
+      if (!(error instanceof DomainError)) {
         return true;
       }
       expect(error.cause).toMatchObject({
