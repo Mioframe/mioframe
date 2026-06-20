@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDirectoryHandleMock, createFileHandleMock } from './WebFileSystemProvider.testUtils';
 import type { VfsEvent } from '../virtualFileSystem';
-import { FileSystemError, FSNodeType } from '../virtualFileSystem';
+import { FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
-import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE, WebFileSystemAccessRequiredError } from '.';
+import {
+  WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+  WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
+  WebFileSystemAccessRequiredError,
+  WebFileSystemWriteStartFailedError,
+} from '.';
 
 const createRootHandle = (
   permissionState: PermissionState = 'granted',
@@ -462,7 +467,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('wraps createWritable failure in a VfsError when readwrite is still granted', async () => {
+  it('wraps createWritable failure in a provider-owned DomainError when readwrite is still granted', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const storageError = new DOMException('Quota exceeded', 'QuotaExceededError');
     fileHandle.createWritable = vi.fn(() => Promise.reject(storageError));
@@ -473,10 +478,18 @@ describe('WebFileSystemProvider', () => {
 
     await expect(
       provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
-    ).rejects.toMatchObject({
-      code: FileSystemError.WriteStreamOpenFailed,
-      cause: storageError,
-      name: 'VfsError',
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(WebFileSystemWriteStartFailedError);
+      if (!(error instanceof WebFileSystemWriteStartFailedError)) {
+        return true;
+      }
+      expect(error).toMatchObject({
+        code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
+        cause: storageError,
+        name: 'WebFileSystemWriteStartFailedError',
+      });
+      expect(error.message).toContain('Could not start writing to this storage location.');
+      return true;
     });
   });
 
@@ -509,9 +522,9 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toMatchObject({
-      code: FileSystemError.WriteStreamOpenFailed,
+      code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: openError,
-      name: 'VfsError',
+      name: 'WebFileSystemWriteStartFailedError',
     });
 
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
@@ -582,9 +595,9 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toMatchObject({
-      code: FileSystemError.WriteStreamOpenFailed,
+      code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: openError,
-      name: 'VfsError',
+      name: 'WebFileSystemWriteStartFailedError',
     });
 
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
@@ -614,9 +627,9 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toMatchObject({
-      code: FileSystemError.WriteStreamOpenFailed,
+      code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: openError,
-      name: 'VfsError',
+      name: 'WebFileSystemWriteStartFailedError',
     });
 
     expect(createWritableMock).toHaveBeenCalledTimes(1);
@@ -706,9 +719,9 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
     ).rejects.toMatchObject({
-      code: FileSystemError.WriteStreamOpenFailed,
+      code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: writeError,
-      name: 'VfsError',
+      name: 'WebFileSystemWriteStartFailedError',
     });
     expect(parentHandle.entriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
@@ -843,14 +856,39 @@ describe('WebFileSystemProvider', () => {
     await expect(
       provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
     ).rejects.toMatchObject({
-      code: FileSystemError.WriteStreamOpenFailed,
+      code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
       cause: storageError,
-      name: 'VfsError',
+      name: 'WebFileSystemWriteStartFailedError',
     });
     expect(rootHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
       expect.objectContaining({ step: 'freshHandleRetry' }),
     );
+  });
+
+  it('preserves the explicit provider-owned write-start error type and safe message', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const storageError = new DOMException('The handle became invalid', 'InvalidStateError');
+    fileHandle.createWritable = vi.fn(() => Promise.reject(storageError));
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(WebFileSystemWriteStartFailedError);
+      if (!(error instanceof WebFileSystemWriteStartFailedError)) {
+        return true;
+      }
+      expect(error).toMatchObject({
+        code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
+        name: 'WebFileSystemWriteStartFailedError',
+      });
+      expect(error.message).toContain('Could not start writing to this storage location.');
+      expect(error.cause).toBe(storageError);
+      return true;
+    });
   });
 
   it('does not treat access-required failures as InvalidStateError retry cases', async () => {

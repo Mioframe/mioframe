@@ -1,11 +1,7 @@
 import { dayjs } from '@shared/lib/dayjs';
+import { DomainError } from '@shared/lib/error';
 import { sanitizePrimitiveString } from '@shared/lib/diagnostics/privacySanitizer';
-import {
-  FileSystemError,
-  VfsError,
-  type VfsActivityError,
-  type VfsActivityState,
-} from '@shared/lib/virtualFileSystem';
+import type { VfsActivityError, VfsActivityState } from '@shared/lib/virtualFileSystem';
 
 export const CHIP_STATUS_LABELS: Record<Exclude<VfsActivityState['status'], 'idle'>, string> = {
   active: 'Saving…',
@@ -20,32 +16,51 @@ export const CHIP_STATUS_LABELS: Record<Exclude<VfsActivityState['status'], 'idl
 export const formatSaveStatusTimestamp = (occurredAt: number): string =>
   dayjs(occurredAt).format('lll');
 
-const isWriteStreamOpenFailed = (error: VfsActivityError | undefined): boolean =>
-  error?.operationType === 'writeFile' &&
-  error.cause instanceof VfsError &&
-  error.cause.code === FileSystemError.WriteStreamOpenFailed;
+const normalizeSafeMessage = (message: string): string =>
+  message
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join(' ');
 
-const getSafeBrowserErrorName = (error: unknown): string | undefined =>
-  error instanceof DOMException ? error.name : error instanceof Error ? error.name : undefined;
+const getErrorName = (error: unknown): string | undefined =>
+  error instanceof Error ? error.name : undefined;
 
-const getSafeBrowserErrorDetail = (error: unknown): string | undefined =>
-  error instanceof DOMException || error instanceof Error
-    ? sanitizePrimitiveString(error.message)
-    : undefined;
-
-/**
- * Identifies the save-status error branch that owns the current UI copy.
- * @param error - Last tracked VFS mutation error, if any.
- * @returns Stable save-status error kind or `generic` when no special handling applies.
- */
-export const getSaveStatusErrorKind = (
-  error: VfsActivityError | undefined,
-): 'generic' | 'writeStreamOpenFailed' => {
-  if (isWriteStreamOpenFailed(error)) {
-    return 'writeStreamOpenFailed';
+const getErrorClassName = (error: unknown): string | undefined => {
+  if (!(error instanceof Error)) {
+    return undefined;
   }
 
-  return 'generic';
+  const constructorName = error.constructor.name;
+  return typeof constructorName === 'string' && constructorName.length > 0
+    ? constructorName
+    : error.name;
+};
+
+const getErrorCode = (error: unknown): string | number | undefined =>
+  error instanceof DomainError ? error.code : undefined;
+
+const getErrorCause = (error: unknown): unknown =>
+  error instanceof Error ? error.cause : undefined;
+
+const getDomExceptionLikeName = (error: unknown): string | undefined =>
+  error instanceof DOMException || error instanceof Error ? error.name : undefined;
+
+const getDomExceptionLikeCode = (error: unknown): number | undefined => {
+  if (!(error instanceof DOMException || error instanceof Error)) {
+    return undefined;
+  }
+
+  const rawCode = Reflect.get(error, 'code');
+  return typeof rawCode === 'number' && Number.isFinite(rawCode) ? rawCode : undefined;
+};
+
+const getDomExceptionLikeMessage = (error: unknown): string | undefined => {
+  if (!(error instanceof DOMException || error instanceof Error)) {
+    return undefined;
+  }
+
+  return sanitizePrimitiveString(error.message);
 };
 
 /**
@@ -72,29 +87,43 @@ export const formatSaveStatusErrorDetails = (
     `Operation: ${operationLabel[error.operationType]}`,
     `Time: ${formatSaveStatusTimestamp(error.occurredAt)}`,
   ];
+  const topLevelErrorName = getErrorName(error.cause);
+  const stableCode = getErrorCode(error.cause);
+  const safeMessage =
+    error.cause instanceof DomainError ? normalizeSafeMessage(error.cause.message) : undefined;
+  const nestedCause = getErrorCause(error.cause);
+  const nestedCauseClass = getErrorClassName(nestedCause);
+  const browserErrorName = getDomExceptionLikeName(nestedCause);
+  const browserErrorCode = getDomExceptionLikeCode(nestedCause);
+  const browserErrorMessage = getDomExceptionLikeMessage(nestedCause);
 
-  if (getSaveStatusErrorKind(error) === 'writeStreamOpenFailed') {
-    const browserCause =
-      error.cause instanceof VfsError ? getSafeBrowserErrorName(error.cause.cause) : undefined;
-    const browserDetail =
-      error.cause instanceof VfsError ? getSafeBrowserErrorDetail(error.cause.cause) : undefined;
-
-    lines.push(
-      'Failure: write stream open failed',
-      'Phase: writableOpen',
-      'Recommendation: choose another storage location',
-    );
-
-    if (browserCause !== undefined) {
-      lines.push(`Browser error: ${browserCause}`);
-    }
-
-    if (browserDetail !== undefined) {
-      lines.push(`Browser detail: ${browserDetail}`);
-    }
+  if (topLevelErrorName !== undefined) {
+    lines.push(`Top-level error: ${topLevelErrorName}`);
   }
 
-  lines.push('Details are hidden to protect private repository data.');
+  if (stableCode !== undefined) {
+    lines.push(`Stable code: ${String(stableCode)}`);
+  }
+
+  if (safeMessage !== undefined) {
+    lines.push(`Safe message: ${safeMessage}`);
+  }
+
+  if (nestedCauseClass !== undefined) {
+    lines.push(`Cause class: ${nestedCauseClass}`);
+  }
+
+  if (browserErrorName !== undefined) {
+    lines.push(`Browser error name: ${browserErrorName}`);
+  }
+
+  if (browserErrorCode !== undefined) {
+    lines.push(`Browser error code: ${browserErrorCode}`);
+  }
+
+  if (browserErrorMessage !== undefined) {
+    lines.push(`Browser error message: ${browserErrorMessage}`);
+  }
 
   return lines.join('\n');
 };

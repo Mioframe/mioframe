@@ -1,4 +1,4 @@
-import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
+import { DomainError } from '@shared/lib/error';
 import { describe, expect, it, vi } from 'vitest';
 import { CHIP_STATUS_LABELS, formatSaveStatusErrorDetails } from './saveStatusText';
 
@@ -30,14 +30,7 @@ describe('saveStatusText', () => {
         occurredAt: 1_700_000_000_000,
         acknowledged: false,
       }),
-    ).toBe(
-      [
-        'Could not save changes',
-        'Operation: write file',
-        'Time: formatted time',
-        'Details are hidden to protect private repository data.',
-      ].join('\n'),
-    );
+    ).toBe(['Could not save changes', 'Operation: write file', 'Time: formatted time'].join('\n'));
   });
 
   it('omits private path and message details when the error does not contain one', () => {
@@ -50,12 +43,7 @@ describe('saveStatusText', () => {
         acknowledged: false,
       }),
     ).toBe(
-      [
-        'Could not save changes',
-        'Operation: delete entry',
-        'Time: formatted time',
-        'Details are hidden to protect private repository data.',
-      ].join('\n'),
+      ['Could not save changes', 'Operation: delete entry', 'Time: formatted time'].join('\n'),
     );
   });
 
@@ -79,25 +67,25 @@ describe('saveStatusText', () => {
     expect(copied).not.toContain('raw stale replay failed');
   });
 
-  it('adds controlled write-start failure details for write stream open failures', () => {
+  it('formats a generic DomainError chain with DOMException details when present', () => {
     const copied = formatSaveStatusErrorDetails({
       operationType: 'writeFile',
       path: '/private/project/secret.txt',
       message: 'safe message only',
-      cause: new VfsError(
-        FileSystemError.WriteStreamOpenFailed,
-        'Could not start writing to the selected storage location.',
-        new DOMException('The handle became invalid', 'InvalidStateError'),
-      ),
+      cause: new DomainError('Could not start writing to this storage location.', {
+        code: 'web-file-system-write-start-failed',
+        cause: new DOMException('The handle became invalid', 'InvalidStateError'),
+      }),
       occurredAt: 1_700_000_000_003,
       acknowledged: false,
     });
 
-    expect(copied).toContain('Failure: write stream open failed');
-    expect(copied).toContain('Phase: writableOpen');
-    expect(copied).toContain('Recommendation: choose another storage location');
-    expect(copied).toContain('Browser error: InvalidStateError');
-    expect(copied).toContain('Browser detail: The handle became invalid');
+    expect(copied).toContain('Top-level error: DomainError');
+    expect(copied).toContain('Stable code: web-file-system-write-start-failed');
+    expect(copied).toContain('Safe message: Could not start writing to this storage location.');
+    expect(copied).toContain('Cause class: DOMException');
+    expect(copied).toContain('Browser error name: InvalidStateError');
+    expect(copied).toContain('Browser error message: The handle became invalid');
     expect(copied).not.toContain('/private/project/secret.txt');
   });
 });

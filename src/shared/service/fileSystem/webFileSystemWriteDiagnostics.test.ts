@@ -93,7 +93,7 @@ describe('webFileSystemWriteDiagnostics', () => {
         provider: 'webFileSystem',
         result: 'failed',
         step: 'writableOpen',
-        classification: 'writeStreamOpenFailed',
+        classification: 'web-file-system-write-start-failed',
         errorClass: 'DOMException',
         domException: 'InvalidStateError',
         domExceptionCode: 11,
@@ -200,7 +200,7 @@ describe('webFileSystemWriteDiagnostics', () => {
     expect(addTechnicalBreadcrumb).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          classification: 'writeStreamOpenFailed',
+          classification: 'web-file-system-write-start-failed',
           domException: 'InvalidStateError',
         }),
       }),

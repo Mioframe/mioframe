@@ -12,3 +12,8 @@ export {
   type WebFileSystemAccessMode,
   type WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
+export {
+  WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
+  WebFileSystemWriteStartFailedError,
+  type SerializedWebFileSystemWriteStartFailedError,
+} from './WebFileSystemWriteStartFailedError';

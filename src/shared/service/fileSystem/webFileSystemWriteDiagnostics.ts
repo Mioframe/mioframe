@@ -1,6 +1,7 @@
 import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import { sanitizePrimitiveString } from '@shared/lib/diagnostics/privacySanitizer';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
+import { WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE } from '@shared/lib/webFileSystemProvider';
 
 const getSafeErrorClass = (error: unknown): string => {
   if (error instanceof DOMException) return 'DOMException';
@@ -81,7 +82,7 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
     event.error !== undefined ? getSafeDomExceptionCode(event.error) : undefined;
   const classification =
     event.step === 'writableOpen' && event.result === 'failed'
-      ? 'writeStreamOpenFailed'
+      ? WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE
       : undefined;
   const errorDetail =
     classification !== undefined && event.error !== undefined
