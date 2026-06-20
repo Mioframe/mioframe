@@ -69,9 +69,10 @@ export interface PrimaryV3FileNameParts {
 
 /**
  * Encodes the primary deterministic `.mf` filename for a full chunk storage key.
- * The filename is a routing hint only: `<docPrefix>.<kindCode>.<fingerprint>.mf`, where
+ * The filename participates in routing: `<docPrefix>.<kindCode>.<fingerprint>.mf`, where
  * `fingerprint` is a 12 lowercase hex character hash of the full logical key. It never contains a
- * hash prefix; the full `StorageKey` lives inside the wrapper, which remains the source of truth.
+ * hash prefix; the full `StorageKey` lives inside the wrapper and confirms the logical key after
+ * filename routing.
  * @param key - Full logical Automerge chunk key.
  * @returns Primary physical filename, or undefined when the key is invalid.
  */

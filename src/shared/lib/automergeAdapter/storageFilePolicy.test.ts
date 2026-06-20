@@ -227,14 +227,13 @@ describe('storageFilePolicy', () => {
     expect(entries[fileName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
   });
 
-  it('removes the primary v3, duplicate valid v3, v2, and both legacy variants for one logical chunk key', async () => {
+  it('removes the primary v3, v2, and both legacy variants for one logical chunk key', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
     const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
     const legacyName = `${documentId}_snapshot_${HASH_A}.automerge`;
     const extensionlessLegacyName = `${documentId}_snapshot_${HASH_A}`;
-    const duplicateV3Name = 'dup001.s.abcdef123456.mf';
     const markerName =
       partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
 
@@ -244,7 +243,6 @@ describe('storageFilePolicy', () => {
 
     const entries: Record<string, Uint8Array> = {
       [primaryName]: encodeV3StorageWrapper(key, DATA_A),
-      [duplicateV3Name]: encodeV3StorageWrapper(key, DATA_B),
       [v2Name]: DATA_A,
       [legacyName]: DATA_A,
       [extensionlessLegacyName]: DATA_B,
@@ -449,7 +447,6 @@ describe('storageFilePolicy remove correctness', () => {
     const keyA: StorageKey = [documentId, 'snapshot', HASH_A];
     const keyB: ChunkStorageKey = [otherDocumentId, 'snapshot', HASH_A];
     const primaryNameForA = encodePrimaryV3FileName(keyA);
-    const duplicateSameKeyName = 'dup001.s.abcdef123456.mf';
     const otherKeyName = 'other1.s.123456abcdef.mf';
     const unrelatedV2Name = encodeStorageKeyToV2FileName(otherDocumentId, 'snapshot', HASH_A);
     const unrelatedLegacyName = `${otherDocumentId}_snapshot_${HASH_A}.automerge`;
@@ -462,7 +459,6 @@ describe('storageFilePolicy remove correctness', () => {
 
     const entries: Record<string, Uint8Array> = {
       [primaryNameForA]: encodeV3StorageWrapper(keyA, DATA_A),
-      [duplicateSameKeyName]: encodeV3StorageWrapper(keyA, DATA_B),
       [otherKeyName]: encodeV3StorageWrapper(keyB, DATA_B),
       ['invalid001.s.123456abcdef.mf']: new Uint8Array([0xde, 0xad]),
       [unrelatedV2Name]: DATA_A,
@@ -473,7 +469,6 @@ describe('storageFilePolicy remove correctness', () => {
     await removeStorageEntry(createIo(entries), keyA);
 
     expect(entries[primaryNameForA]).toBeUndefined();
-    expect(entries[duplicateSameKeyName]).toBeUndefined();
     expect(entries[otherKeyName]).toEqual(encodeV3StorageWrapper(keyB, DATA_B));
     expect(entries['invalid001.s.123456abcdef.mf']).toEqual(new Uint8Array([0xde, 0xad]));
     expect(entries[unrelatedV2Name]).toEqual(DATA_A);
@@ -515,6 +510,48 @@ describe('storageFilePolicy remove correctness', () => {
     expect(entries[primaryName]).toEqual(new Uint8Array([0xde, 0xad]));
   });
 
+  it('does not remove an out-of-route .mf file even when its wrapper key matches', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+    const outOfRouteName = 'dup001.s.abcdef123456.mf';
+
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {
+      [primaryName]: encodeV3StorageWrapper(key, DATA_A),
+      [outOfRouteName]: encodeV3StorageWrapper(key, DATA_B),
+    };
+
+    await removeStorageEntry(createIo(entries), key);
+
+    expect(entries[primaryName]).toBeUndefined();
+    expect(entries[outOfRouteName]).toEqual(encodeV3StorageWrapper(key, DATA_B));
+  });
+
+  it('does not read out-of-route .mf candidates during exact remove', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+    const outOfRouteName = 'dup001.s.abcdef123456.mf';
+
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const counters = createCountingMutableIo({
+      [primaryName]: encodeV3StorageWrapper(key, DATA_A),
+      [outOfRouteName]: encodeV3StorageWrapper(key, DATA_B),
+    });
+
+    await removeStorageEntry(counters.io, key);
+
+    expect(counters.getReadCalls()).toEqual([primaryName]);
+    expect(counters.getRemoveCalls()).toEqual([primaryName]);
+  });
+
   it('lists names exactly once for exact chunk remove and bounds wrapper reads and deletes', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
@@ -551,20 +588,20 @@ describe('storageFilePolicy remove correctness', () => {
     await removeStorageEntry(counters.io, key);
 
     expect(counters.getListNamesCalls()).toBe(1);
-    expect(counters.getReadCalls().sort()).toEqual(
-      [primaryName, otherKeyName, ...duplicateNames].sort(),
-    );
+    expect(counters.getReadCalls()).toEqual([primaryName]);
     expect(counters.getMaxConcurrentReads()).toBeLessThanOrEqual(4);
     expect(counters.getMaxConcurrentRemoves()).toBeLessThanOrEqual(4);
     expect(counters.getRemoveCalls().sort()).toEqual(
       [
         primaryName,
-        ...duplicateNames,
         v2Name,
         `${documentId}_snapshot_${HASH_A}.automerge`,
         extensionlessLegacyName,
       ].sort(),
     );
+    for (const name of duplicateNames) {
+      expect(entries[name]).toBeDefined();
+    }
     expect(entries[otherKeyName]).toBeDefined();
   });
 });

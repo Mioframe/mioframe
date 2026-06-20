@@ -162,15 +162,15 @@ describe('createFSStorageAdapter', () => {
     expect(await adapter.loadRange([docId])).toEqual([{ key, data: DATA_B }]);
   });
 
-  it('remove deletes every same-key physical file and leaves invalid or different-key .mf files', async () => {
+  it('remove deletes supported same-key physical files and leaves invalid, different-key, or out-of-route .mf files', async () => {
     const directory = new MemoryDirectory();
     const docId = getDocumentId();
     const otherDocId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
-    if (!primaryName) throw new Error('Expected v3 filename');
     const duplicateName = 'dup001.s.abcdef123456.mf';
     const otherKeyName = 'other1.s.123456abcdef.mf';
+    if (!primaryName) throw new Error('Expected v3 filename');
     directory.files.set(primaryName, encodeV3StorageWrapper(key, DATA_A));
     directory.files.set(duplicateName, encodeV3StorageWrapper(key, DATA_B));
     directory.files.set(
@@ -186,7 +186,7 @@ describe('createFSStorageAdapter', () => {
     await adapter.remove(key);
 
     expect([...directory.files.keys()].sort()).toEqual(
-      ['invalid.s.123456abcdef.mf', otherKeyName].sort(),
+      ['invalid.s.123456abcdef.mf', duplicateName, otherKeyName].sort(),
     );
   });
 
@@ -346,16 +346,15 @@ describe('createFSStorageAdapter direct read-by-name fast path', () => {
     await adapter.remove(key);
 
     expect(directory.files.has(primaryName)).toBe(false);
-    expect(directory.files.has(duplicateName)).toBe(false);
+    expect(directory.files.has(duplicateName)).toBe(true);
     expect(directory.files.has(v2Name)).toBe(false);
     expect(directory.files.has(`${docId}_snapshot_${HASH_A}.automerge`)).toBe(false);
     expect(directory.files.has(`${docId}_snapshot_${HASH_A}`)).toBe(false);
     expect(directory.files.has(otherKeyName)).toBe(true);
-    expect(directory.removeByNameCalls).toBe(5);
+    expect(directory.removeByNameCalls).toBe(4);
     expect(directory.removedNames.sort()).toEqual(
       [
         primaryName,
-        duplicateName,
         v2Name,
         `${docId}_snapshot_${HASH_A}.automerge`,
         `${docId}_snapshot_${HASH_A}`,

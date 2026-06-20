@@ -18,6 +18,7 @@ import type { ChunkStorageKey, PartialStorageKey, StorageKey, StorageKeyPrefix }
 import {
   classifyV3ChunkCandidateData,
   decodeValidV3Chunk,
+  isPlausibleV3CandidateForChunkKey,
   isPlausibleV3CandidateForPrefix,
 } from './v3StoragePolicy';
 import { encodeV3StorageWrapper } from './wrapperCodecV3';
@@ -389,9 +390,10 @@ export const saveStorageEntry = async (
  * Removes one logical storage entry using the shared physical storage policy.
  *
  * For full chunk keys, removal is a logical-key cleanup pass: one fresh directory listing is
- * classified through the shared storage policy, plausible v3 candidates are wrapper-confirmed
- * with bounded concurrency, and every same-key physical representation is removed. Invalid or
- * different-key `.mf` files are left untouched.
+ * classified through the shared storage policy, strict in-route v3 candidates are
+ * wrapper-confirmed with bounded concurrency, and every same-key supported physical
+ * representation is removed. Invalid, different-key, and out-of-route `.mf` files are left
+ * untouched.
  * @param io - Storage IO boundary used for reading and removing physical files.
  * @param key - Full logical storage key to remove.
  */
@@ -407,7 +409,10 @@ export const removeStorageEntry = async (
         .filter((entry) => isSameStorageKey(entry.key, key))
         .map(({ name }) => name),
     );
-    const v3Matches = await mapBounded(index.v3CandidateNames, async (name) => {
+    const v3Candidates = index.v3CandidateNames.filter((name) =>
+      isPlausibleV3CandidateForChunkKey(name, key),
+    );
+    const v3Matches = await mapBounded(v3Candidates, async (name) => {
       const classification = classifyV3ChunkCandidateData(await io.readBytes(name), key);
       return classification.kind === 'validSameKey' ? name : undefined;
     });

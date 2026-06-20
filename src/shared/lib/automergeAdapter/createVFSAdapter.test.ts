@@ -409,13 +409,13 @@ describe('createVFSAdapter – load reads legacy files', () => {
     expect(await adapter.load(key)).toEqual(DATA_A);
   });
 
-  it('exact remove lists once, removes every same-key physical file, and leaves invalid or different-key .mf files', async () => {
+  it('exact remove lists once, removes supported same-key physical files, and leaves invalid, different-key, or out-of-route .mf files', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const otherDocId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
-    const duplicateNames = [
+    const outOfRouteNames = [
       'dup001.s.abcdef123456.mf',
       'dup002.s.abcdef123457.mf',
       'dup003.s.abcdef123458.mf',
@@ -430,7 +430,7 @@ describe('createVFSAdapter – load reads legacy files', () => {
 
     await Promise.all([
       vfs.writeFile(`${path}/${primaryName}`, encodeV3StorageWrapper(key, DATA_A)),
-      ...duplicateNames.map((name, index) =>
+      ...outOfRouteNames.map((name, index) =>
         vfs.writeFile(`${path}/${name}`, encodeV3StorageWrapper(key, new Uint8Array([index + 10]))),
       ),
       vfs.writeFile(
@@ -457,7 +457,6 @@ describe('createVFSAdapter – load reads legacy files', () => {
     ).toEqual(
       [
         primaryName,
-        ...duplicateNames,
         v2Name,
         `${docId}_snapshot_${HASH_A}.automerge`,
         `${docId}_snapshot_${HASH_A}`,
@@ -465,7 +464,7 @@ describe('createVFSAdapter – load reads legacy files', () => {
     );
 
     const remainingNames = (await vfs.readDirectory(path)).map(([name]) => name).sort();
-    expect(remainingNames).toEqual([invalidName, otherKeyName].sort());
+    expect(remainingNames).toEqual([...outOfRouteNames, invalidName, otherKeyName].sort());
   });
 });
 

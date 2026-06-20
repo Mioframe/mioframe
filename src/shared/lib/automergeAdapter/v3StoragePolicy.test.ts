@@ -2,7 +2,11 @@ import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it } from 'vitest';
 import { encodePrimaryV3FileName } from './filenameCodecV3';
 import type { ChunkStorageKey } from './types';
-import { isPlausibleV3CandidateForPrefix, isPrimaryV3CandidateForKey } from './v3StoragePolicy';
+import {
+  isPlausibleV3CandidateForChunkKey,
+  isPlausibleV3CandidateForPrefix,
+  isPrimaryV3CandidateForKey,
+} from './v3StoragePolicy';
 
 const HASH = '0df10d48afdaa0df1a484b006e4854cec8640d416745ce0cc874c07027b69cc2';
 
@@ -32,6 +36,21 @@ describe('isPrimaryV3CandidateForKey', () => {
     }
 
     expect(isPrimaryV3CandidateForKey(otherFileName, key)).toBe(false);
+  });
+});
+
+describe('isPlausibleV3CandidateForChunkKey', () => {
+  it('matches only the strict in-route primary filename for the exact key', () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH];
+    const fileName = encodePrimaryV3FileName(key);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    expect(isPlausibleV3CandidateForChunkKey(fileName, key)).toBe(true);
+    expect(isPlausibleV3CandidateForChunkKey('dup001.s.abcdef123456.mf', key)).toBe(false);
   });
 });
 

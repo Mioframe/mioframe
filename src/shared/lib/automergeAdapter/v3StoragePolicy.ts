@@ -41,6 +41,17 @@ export const isPrimaryV3CandidateForKey = (name: string, key: ChunkStorageKey): 
   encodePrimaryV3FileName(key) === name;
 
 /**
+ * Returns whether a physical filename is a plausible strict v3 candidate for an exact full chunk
+ * key remove route. The filename route participates in the v3 contract, so only the strict
+ * primary deterministic filename for that key may be wrapper-confirmed for exact-key cleanup.
+ * @param name - Physical filename to inspect.
+ * @param key - Full logical chunk key being removed.
+ * @returns True when the filename is in-route for this exact key.
+ */
+export const isPlausibleV3CandidateForChunkKey = (name: string, key: ChunkStorageKey): boolean =>
+  isPrimaryV3CandidateForKey(name, key);
+
+/**
  * Returns whether a physical filename is a plausible strict primary v3 candidate for a partial
  * key prefix. An empty prefix (`[]`) matches every plausible v3 candidate, because an
  * empty range prefix semantically selects all storage entries for `loadRange`/`removeRange` scans.
