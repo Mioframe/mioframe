@@ -401,9 +401,10 @@ export const removeStorageEntry = async (
   io: MutableStorageFilePolicyIo,
   key: StorageKey,
 ): Promise<void> => {
+  const names = await io.listNames();
+  const index = buildStorageNameIndex(names);
+
   if (isChunkStorageKey(key)) {
-    const names = await io.listNames();
-    const index = buildStorageNameIndex(names);
     const matchingNames = new Set(
       index.allParsedEntries
         .filter((entry) => isSameStorageKey(entry.key, key))
@@ -428,11 +429,12 @@ export const removeStorageEntry = async (
     return;
   }
 
-  const fileName = toWritableStorageFileName(key);
-
-  if (fileName) {
-    await io.removeName(fileName);
-  }
+  await mapBounded(
+    index.allParsedEntries
+      .filter((entry) => isSameStorageKey(entry.key, key))
+      .map(({ name }) => name),
+    (name) => io.removeName(name),
+  );
 };
 
 /**

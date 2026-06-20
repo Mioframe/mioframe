@@ -441,6 +441,54 @@ describe('storageFilePolicy save fast path', () => {
 });
 
 describe('storageFilePolicy remove correctness', () => {
+  it('removes the canonical non-chunk marker file on exact remove', async () => {
+    const markerName =
+      partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
+    const entries: Record<string, Uint8Array> = {
+      [markerName]: new Uint8Array([0xff]),
+    };
+
+    await removeStorageEntry(createIo(entries), ['storage-adapter-id']);
+
+    expect(entries[markerName]).toBeUndefined();
+  });
+
+  it('removes the extensionless legacy non-chunk marker file on exact remove', async () => {
+    const legacyMarkerName = 'storage-adapter-id';
+    const entries: Record<string, Uint8Array> = {
+      [legacyMarkerName]: new Uint8Array([0xff]),
+    };
+
+    await removeStorageEntry(createIo(entries), ['storage-adapter-id']);
+
+    expect(entries[legacyMarkerName]).toBeUndefined();
+  });
+
+  it('removes both supported non-chunk marker aliases without touching unrelated files', async () => {
+    const markerName =
+      partialKeyToFileName(['storage-adapter-id']) ?? 'storage-adapter-id.automerge';
+    const legacyMarkerName = 'storage-adapter-id';
+    const documentId = getDocumentId();
+    const unrelatedKey: StorageKey = [documentId, 'snapshot', HASH_A];
+    const unrelatedPrimaryName = encodePrimaryV3FileName(unrelatedKey);
+
+    if (!unrelatedPrimaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = {
+      [markerName]: new Uint8Array([0xff]),
+      [legacyMarkerName]: new Uint8Array([0xee]),
+      [unrelatedPrimaryName]: encodeV3StorageWrapper(unrelatedKey, DATA_A),
+    };
+
+    await removeStorageEntry(createIo(entries), ['storage-adapter-id']);
+
+    expect(entries[markerName]).toBeUndefined();
+    expect(entries[legacyMarkerName]).toBeUndefined();
+    expect(entries[unrelatedPrimaryName]).toEqual(encodeV3StorageWrapper(unrelatedKey, DATA_A));
+  });
+
   it('does not remove a valid v3 wrapper for a different full key even when filename-plausible', async () => {
     const documentId = getDocumentId();
     const otherDocumentId = getDocumentId();
