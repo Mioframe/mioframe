@@ -9,7 +9,11 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, useTemplateRef } from 'vue';
-import { CHIP_STATUS_LABELS, formatSaveStatusErrorDetails } from './saveStatusText';
+import {
+  CHIP_STATUS_LABELS,
+  formatSaveStatusErrorDetails,
+  getSaveStatusErrorKind,
+} from './saveStatusText';
 import type { VisibleVfsActivityStatus } from './useVfsActivityStatusChipVisibility';
 import { useWriteAccessRecoveryState } from './useWriteAccessRecoveryState';
 
@@ -40,6 +44,7 @@ const isError = computed(() => props.status === 'error');
 const isActive = computed(() => props.status === 'active');
 const label = computed(() => CHIP_STATUS_LABELS[props.status]);
 const errorDetails = computed(() => formatSaveStatusErrorDetails(state.value.lastError));
+const errorKind = computed(() => getSaveStatusErrorKind(state.value.lastError));
 
 const onClickTrigger = () => {
   showErrorDetails.value = true;
@@ -192,6 +197,16 @@ const onInteractionOutside = () => {
             The write access request is no longer pending. Dismiss this error and retry the
             operation.
           </p>
+        </template>
+
+        <template v-else-if="errorKind === 'writeStreamOpenFailed'">
+          <p>Could not start writing to this storage location.</p>
+          <p>
+            Mioframe has access to the selected folder, but the browser could not open a file for
+            writing. This is usually caused by the browser, the system file picker, or the selected
+            storage provider.
+          </p>
+          <p>Choose another storage location, such as a local device folder or Browser storage.</p>
         </template>
 
         <template v-else>

@@ -32,6 +32,10 @@ export enum FileSystemError {
    */
   NotSupported = 'ENOTSUP',
   /**
+   * Writable stream could not be opened for a file write (EWRITESTREAMOPEN)
+   */
+  WriteStreamOpenFailed = 'EWRITESTREAMOPEN',
+  /**
    * Directory not empty (EDIRECTORYNOTEMPTY)
    */
   DirectoryNotEmpty = 'EDIRECTORYNOTEMPTY',

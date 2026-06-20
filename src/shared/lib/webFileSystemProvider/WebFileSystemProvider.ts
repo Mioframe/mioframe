@@ -198,7 +198,11 @@ export const WebFileSystemProvider = (
         writable = await handle.createWritable();
       } catch (error) {
         reportDiagnosticStep({ step: 'writableOpen', result: 'failed', error });
-        throw error;
+        throw new VfsError(
+          FileSystemError.WriteStreamOpenFailed,
+          'Could not start writing to the selected storage location.',
+          error,
+        );
       }
       reportDiagnosticStep({ step: 'writableOpen', result: 'succeeded' });
       try {

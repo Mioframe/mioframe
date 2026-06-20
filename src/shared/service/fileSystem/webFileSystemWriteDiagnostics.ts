@@ -1,4 +1,5 @@
 import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
+import { sanitizePrimitiveString } from '@shared/lib/diagnostics/privacySanitizer';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 const getSafeErrorClass = (error: unknown): string => {
@@ -9,6 +10,23 @@ const getSafeErrorClass = (error: unknown): string => {
 
 const getSafeDomException = (error: unknown): string | undefined =>
   error instanceof DOMException ? error.name : undefined;
+
+const getSafeDomExceptionCode = (error: unknown): number | undefined => {
+  if (!(error instanceof DOMException)) {
+    return undefined;
+  }
+
+  const rawCode = Reflect.get(error, 'code');
+  return typeof rawCode === 'number' && Number.isFinite(rawCode) ? rawCode : undefined;
+};
+
+const getSafeErrorDetail = (error: unknown): string | undefined => {
+  if (!(error instanceof DOMException || error instanceof Error)) {
+    return undefined;
+  }
+
+  return sanitizePrimitiveString(error.message);
+};
 
 const operationByStep: Record<string, string> = {
   fileHandleCreate: 'createFileHandle',
@@ -59,6 +77,16 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
 
   const errorClass = event.error !== undefined ? getSafeErrorClass(event.error) : undefined;
   const domException = event.error !== undefined ? getSafeDomException(event.error) : undefined;
+  const domExceptionCode =
+    event.error !== undefined ? getSafeDomExceptionCode(event.error) : undefined;
+  const classification =
+    event.step === 'writableOpen' && event.result === 'failed'
+      ? 'writeStreamOpenFailed'
+      : undefined;
+  const errorDetail =
+    classification !== undefined && event.error !== undefined
+      ? getSafeErrorDetail(event.error)
+      : undefined;
 
   addTechnicalBreadcrumb({
     category: 'webFileSystem.write',
@@ -67,8 +95,11 @@ export const addWebFileSystemDiagnosticStepBreadcrumb = (
       provider: 'webFileSystem',
       result: event.result,
       step: event.step,
+      ...(classification !== undefined ? { classification } : {}),
       ...(errorClass !== undefined ? { errorClass } : {}),
       ...(domException !== undefined ? { domException } : {}),
+      ...(domExceptionCode !== undefined ? { domExceptionCode } : {}),
+      ...(errorDetail !== undefined ? { errorDetail } : {}),
     },
     level: event.result === 'failed' ? 'warning' : 'info',
     message,

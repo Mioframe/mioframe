@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDirectoryHandleMock, createFileHandleMock } from './WebFileSystemProvider.testUtils';
 import type { VfsEvent } from '../virtualFileSystem';
-import { FSNodeType } from '../virtualFileSystem';
+import { FileSystemError, FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE, WebFileSystemAccessRequiredError } from '.';
 
@@ -462,7 +462,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('rethrows the original error from a write-side failure when readwrite is still granted', async () => {
+  it('wraps createWritable failure in a VfsError when readwrite is still granted', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const storageError = new DOMException('Quota exceeded', 'QuotaExceededError');
     fileHandle.createWritable = vi.fn(() => Promise.reject(storageError));
@@ -473,10 +473,14 @@ describe('WebFileSystemProvider', () => {
 
     await expect(
       provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
-    ).rejects.toThrow(storageError);
+    ).rejects.toMatchObject({
+      code: FileSystemError.WriteStreamOpenFailed,
+      cause: storageError,
+      name: 'VfsError',
+    });
   });
 
-  it('rethrows createWritable failure on the optimized path without rollback deletion', async () => {
+  it('wraps createWritable failure on the optimized path without rollback deletion', async () => {
     const openError = new DOMException('quota exceeded', 'QuotaExceededError');
     const createdHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
     createdHandle.createWritable = vi.fn(() => Promise.reject(openError));
@@ -504,7 +508,11 @@ describe('WebFileSystemProvider', () => {
 
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
-    ).rejects.toBe(openError);
+    ).rejects.toMatchObject({
+      code: FileSystemError.WriteStreamOpenFailed,
+      cause: openError,
+      name: 'VfsError',
+    });
 
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
     expect(parentHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', { create: true });
@@ -573,7 +581,11 @@ describe('WebFileSystemProvider', () => {
 
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
-    ).rejects.toBe(openError);
+    ).rejects.toMatchObject({
+      code: FileSystemError.WriteStreamOpenFailed,
+      cause: openError,
+      name: 'VfsError',
+    });
 
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
   });
@@ -601,7 +613,11 @@ describe('WebFileSystemProvider', () => {
 
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
-    ).rejects.toBe(openError);
+    ).rejects.toMatchObject({
+      code: FileSystemError.WriteStreamOpenFailed,
+      cause: openError,
+      name: 'VfsError',
+    });
 
     expect(createWritableMock).toHaveBeenCalledTimes(1);
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
@@ -665,7 +681,7 @@ describe('WebFileSystemProvider', () => {
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
   });
 
-  it('preserves the original write failure without attempting optimized-path cleanup', async () => {
+  it('preserves the original createWritable cause without attempting optimized-path cleanup', async () => {
     const writeError = new DOMException('quota exceeded', 'QuotaExceededError');
     const createdHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
     createdHandle.createWritable = vi.fn(() => Promise.reject(writeError));
@@ -689,7 +705,11 @@ describe('WebFileSystemProvider', () => {
 
     await expect(
       provider.writeFile('/docs/note.txt', 'fresh', { create: true, overwrite: true }),
-    ).rejects.toBe(writeError);
+    ).rejects.toMatchObject({
+      code: FileSystemError.WriteStreamOpenFailed,
+      cause: writeError,
+      name: 'VfsError',
+    });
     expect(parentHandle.entriesMock).not.toHaveBeenCalled();
     expect(parentHandle.removeEntryMock).not.toHaveBeenCalled();
     expect(createdHandle.getFileMock).not.toHaveBeenCalled();
@@ -810,7 +830,7 @@ describe('WebFileSystemProvider', () => {
     expect(fileHandle.getFileMock).not.toHaveBeenCalled();
   });
 
-  it('does not retry non-InvalidStateError write failures', async () => {
+  it('does not retry non-InvalidStateError writable-open failures', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const storageError = new DOMException('quota', 'QuotaExceededError');
     fileHandle.createWritable = vi.fn(() => Promise.reject(storageError));
@@ -822,7 +842,11 @@ describe('WebFileSystemProvider', () => {
 
     await expect(
       provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
-    ).rejects.toThrow(storageError);
+    ).rejects.toMatchObject({
+      code: FileSystemError.WriteStreamOpenFailed,
+      cause: storageError,
+      name: 'VfsError',
+    });
     expect(rootHandle.getFileHandleMock).toHaveBeenCalledTimes(1);
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).not.toContainEqual(
       expect.objectContaining({ step: 'freshHandleRetry' }),

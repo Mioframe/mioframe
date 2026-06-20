@@ -1,6 +1,6 @@
 /* eslint-disable vue/one-component-per-file -- Focused shared status contract test with inline stubs. */
 import { flushPromises, mount } from '@vue/test-utils';
-import type { VfsActivityState } from '@shared/lib/virtualFileSystem';
+import { FileSystemError, VfsError, type VfsActivityState } from '@shared/lib/virtualFileSystem';
 import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, ref } from 'vue';
@@ -311,6 +311,29 @@ describe('VfsActivityStatusChip', () => {
 
     await wrapper.get('button').trigger('click');
 
+    expect(wrapper.text()).not.toContain('Grant write access');
+  });
+
+  it('shows write-start failure guidance without grant write access', async () => {
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new VfsError(
+          FileSystemError.WriteStreamOpenFailed,
+          'Could not start writing to the selected storage location.',
+          new DOMException('The handle became invalid', 'InvalidStateError'),
+        ),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.text()).toContain('Could not start writing to this storage location.');
+    expect(wrapper.text()).toContain(
+      'Mioframe has access to the selected folder, but the browser could not open a file for writing.',
+    );
+    expect(wrapper.text()).toContain('Choose another storage location');
     expect(wrapper.text()).not.toContain('Grant write access');
   });
 

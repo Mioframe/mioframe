@@ -1,3 +1,4 @@
+import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 import { describe, expect, it, vi } from 'vitest';
 import { CHIP_STATUS_LABELS, formatSaveStatusErrorDetails } from './saveStatusText';
 
@@ -76,5 +77,27 @@ describe('saveStatusText', () => {
     expect(copied).not.toContain('document Alpha');
     expect(copied).not.toContain('doc-123');
     expect(copied).not.toContain('raw stale replay failed');
+  });
+
+  it('adds controlled write-start failure details for write stream open failures', () => {
+    const copied = formatSaveStatusErrorDetails({
+      operationType: 'writeFile',
+      path: '/private/project/secret.txt',
+      message: 'safe message only',
+      cause: new VfsError(
+        FileSystemError.WriteStreamOpenFailed,
+        'Could not start writing to the selected storage location.',
+        new DOMException('The handle became invalid', 'InvalidStateError'),
+      ),
+      occurredAt: 1_700_000_000_003,
+      acknowledged: false,
+    });
+
+    expect(copied).toContain('Failure: write stream open failed');
+    expect(copied).toContain('Phase: writableOpen');
+    expect(copied).toContain('Recommendation: choose another storage location');
+    expect(copied).toContain('Browser error: InvalidStateError');
+    expect(copied).toContain('Browser detail: The handle became invalid');
+    expect(copied).not.toContain('/private/project/secret.txt');
   });
 });
