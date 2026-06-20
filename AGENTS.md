@@ -58,7 +58,11 @@ reason:
 
 - Prefer plan-first implementation over broad discovery.
 - Before broad repository exploration, use ByteRover local search to recall prior project decisions; use synthesized queries only when search results are insufficient.
+- For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, start from an explicit architecture handoff before implementation and use the `architect-handoff` skill.
+- The architecture handoff must cover goal, non-goals, affected scenarios, ownership matrix, source of truth, state/API shape, rejected approaches, acceptance matrix, risk matrix, required verification, and forbidden paths.
+- Treat the architecture handoff as the contract for agent tasks, implementation preflight, implementation, and PR review. If implementation details contradict the handoff, stop and resolve the mismatch instead of silently choosing a different architecture.
 - Use the `implementation-preflight` skill before non-trivial implementation work to identify owner boundaries, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
+- Persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, and cross-layer behavior must start from architecture handoff and implementation preflight; do not patch individual files before ownership, source of truth, affected consumers, compatibility, and verification are explicit.
 - Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
 - For cross-layer changes, write a compact owner map before production edits: source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner. If any owner is unclear, stop and resolve the architecture before editing.
 - Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.
@@ -129,6 +133,9 @@ reason:
 ## Implementation quality gates
 
 - Treat implementation preflight as a contract, not a planning note. Before final verification, compare the resulting diff against the preflight owner-layer plan, acceptance matrix, and risk matrix. If the diff violates the plan, either refactor it or explicitly report the remaining risk instead of claiming completion.
+- Review the complete implemented feature against the architecture handoff, not only the latest requested fix or the files changed in the last iteration.
+- Preserve known unresolved findings in one consolidated list. Do not drop earlier blockers when new issues are found.
+- A PR is not ready if it only satisfies the latest coding task but still violates the feature-level goal, ownership matrix, user scenarios, public contracts, or shared UI blast-radius constraints from the architecture handoff.
 - For cross-layer changes, final handoff must include a short architecture check: owner map respected, dependency direction respected, no page-owned domain flow, no capability leak in UI records, errors defined at the detecting boundary, and no duplicate data reads for the same state.
 - Preserve existing user scenarios unless the task explicitly removes them. When replacing a menu, navigation control, status indicator, or shared surface, list the old user actions it provided and ensure they are still reachable or intentionally removed by the task.
 - Do not treat a green `pnpm verify` as architectural approval. Verification proves that automated checks passed; it does not prove FSD ownership, Material correctness, browser behavior, accessibility, or UX acceptance unless those checks were actually covered.

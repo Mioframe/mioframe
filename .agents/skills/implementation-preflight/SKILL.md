@@ -15,8 +15,11 @@ Do not use this skill for trivial typo fixes, formatting-only changes, comments-
 
 ## Required preflight
 
-Answer these before the first production edit:
+For non-local changes, write a short preflight artifact before the first production edit.
 
+Required sections:
+
+0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat the full handoff. Restate only the decisions that affect the planned edits, verify the planned edits match that handoff, and do not replace it with a different architecture. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop before production edits.
 1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
 2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
 3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
@@ -26,6 +29,14 @@ Answer these before the first production edit:
 7. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
 
 If any owner in the owner map is unclear for a cross-layer change, stop and resolve the architecture before editing.
+
+For contract changes such as persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, or cross-layer behavior, also record:
+
+- affected consumer inventory;
+- owner module;
+- compatibility decision;
+- edge-case matrix;
+- verification plan per consumer.
 
 For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification. For copy-only or wiring-only changes that keep existing components and Material behavior unchanged, record `Material impact: none` instead of doing a Material lookup.
 
@@ -134,6 +145,8 @@ The first implementation should cover the applicable matrix, not only the happy 
 
 ## Output discipline
 
-Keep the preflight concise. A useful preflight is usually 5-10 lines plus a short verification note.
+Keep the written preflight concise. A useful preflight is usually 8-15 short lines plus a brief verification note.
 
 Do not repeat generic repository rules. Name only the rules and risks that apply to the current task.
+
+Before final handoff, report whether the resulting diff still matches the architecture handoff when one exists. If it does not, fix the implementation or explicitly report the architectural divergence.

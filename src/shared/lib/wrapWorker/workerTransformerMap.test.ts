@@ -4,6 +4,8 @@ import { createClient, createService } from '@shared/lib/proxyService';
 import {
   WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
   WebFileSystemAccessRequiredError,
+  WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
+  createWebFileSystemWriteStartFailedError,
 } from '@shared/lib/webFileSystemProvider';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
@@ -189,6 +191,42 @@ describe('workerTransformerMap', () => {
       });
       if (!(error instanceof DomainError)) return true;
       expect(error.cause).toMatchObject({ message: originalCause.message });
+      return true;
+    });
+  });
+
+  it('reconstructs provider write-start DomainError across the service boundary', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+
+    const originalCause = new DOMException('The handle became invalid', 'InvalidStateError');
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      fail: () => {
+        throw createWebFileSystemWriteStartFailedError(originalCause);
+      },
+    }));
+
+    const client = createClient<{ fail: () => Promise<void> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    await expect(client.fail()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({
+        code: WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
+        name: 'DomainError',
+      });
+      if (!(error instanceof DomainError)) {
+        return true;
+      }
+      expect(error.cause).toMatchObject({
+        message: 'The handle became invalid',
+        name: 'InvalidStateError',
+      });
       return true;
     });
   });

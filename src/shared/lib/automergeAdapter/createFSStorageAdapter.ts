@@ -3,161 +3,99 @@ import type {
   FileForStorageAdapter,
   PartialStorageKey,
   StorageKey,
+  StorageKeyPrefix,
 } from './types';
-import { from, toArray } from 'ix/Ix.asynciterable';
-import { filter, map } from 'ix/Ix.asynciterable.operators';
-import { isNil } from 'es-toolkit';
-import type { AMChunk, AMStorageAdapterInterface } from '../automerge/automergeTypes';
+import type { AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
 import {
-  listStorageFileEntries,
-  selectReadableStorageEntries,
-  storageKeyHasPrefix,
-  storageKeyToId,
-  toWritableStorageFileName,
-} from './storageKeyHelpers';
+  loadStorageEntriesByPrefix,
+  loadStorageEntry,
+  removeStorageEntriesByPrefix,
+  removeStorageEntry,
+  saveStorageEntry,
+  type MutableStorageFilePolicyIo,
+} from './storageFilePolicy';
 
 /**
  * Creates an Automerge storage adapter backed by a `DirectoryForStorageAdapter`.
- * New writes use v2 compact filenames. Reads and listings recognise both legacy and v2 files.
+ * New chunk writes use short v3 `.mf` wrapper files, while non-chunk entries such as the marker
+ * file keep their legacy filenames. Reads and listings remain backward-compatible with legacy and
+ * v2 chunk files.
  * @param directory - Directory abstraction supplying Automerge storage entries.
  * @returns Automerge storage adapter interface.
  */
 export const createFSStorageAdapter = (
   directory: DirectoryForStorageAdapter,
 ): AMStorageAdapterInterface => {
-  const collectFileHandles = async (): Promise<Map<string, FileForStorageAdapter>> => {
-    const handles = new Map<string, FileForStorageAdapter>();
-
-    for await (const [rawName, entry] of directory.entries()) {
-      if ('read' in entry) {
-        handles.set(toString(rawName), entry);
-      }
-    }
-
-    return handles;
-  };
-
-  const listDeduplicatedEntries = async (): Promise<
-    Map<
-      string,
-      { name: string; entry: FileForStorageAdapter; key: PartialStorageKey; isV2: boolean }
-    >
-  > => {
-    const handles = await collectFileHandles();
-    const deduped = selectReadableStorageEntries(handles.keys());
-    const result = new Map<
-      string,
-      { name: string; entry: FileForStorageAdapter; key: PartialStorageKey; isV2: boolean }
-    >();
-
-    for (const [keyStr, { name, key, isV2 }] of deduped) {
-      const entry = handles.get(name);
-
-      if (entry) {
-        result.set(keyStr, { name, entry, key, isV2 });
-      }
-    }
-
-    return result;
-  };
-
-  const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
-    const allEntries = await listDeduplicatedEntries();
-    const matched = allEntries.get(storageKeyToId(key));
-
-    if (!matched) {
-      return undefined;
-    }
-
-    const file = await matched.entry.read();
-
+  const readFileBytes = async (entry: FileForStorageAdapter): Promise<Uint8Array> => {
+    const file = await entry.read();
     return new Uint8Array(await file.arrayBuffer());
   };
 
-  const save = async (key: StorageKey, data: Uint8Array<ArrayBuffer>) => {
-    const fileName = toWritableStorageFileName(key);
+  const createOperationIo = (): MutableStorageFilePolicyIo => {
+    let handlesPromise: Promise<Map<string, FileForStorageAdapter>> | undefined;
 
-    if (!fileName) {
-      throw new Error('fileName is undefined');
-    }
+    const getHandles = async (): Promise<Map<string, FileForStorageAdapter>> => {
+      handlesPromise ??= (async () => {
+        const handles = new Map<string, FileForStorageAdapter>();
 
-    if (!('writeFile' in directory)) {
-      console.warn(
-        "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
-      );
-    }
+        for await (const [rawName, entry] of directory.entries()) {
+          if ('read' in entry) {
+            handles.set(toString(rawName), entry);
+          }
+        }
 
-    await directory.writeFile?.(fileName, data);
-  };
+        return handles;
+      })();
 
-  const remove = async (key: StorageKey) => {
-    const handles = await collectFileHandles();
-    const keyId = storageKeyToId(key);
-    const matching = listStorageFileEntries(handles.keys()).filter(
-      ({ key: entryKey }) => storageKeyToId(entryKey) === keyId,
-    );
+      return handlesPromise;
+    };
 
-    await Promise.all(
-      matching.map(async ({ name }) => {
-        const entry = handles.get(name);
+    return {
+      listNames: async () => [...(await getHandles()).keys()],
+      readBytes: async (name) => {
+        if (directory.readFileByName) {
+          const file = await directory.readFileByName(name);
+          return file ? new Uint8Array(await file.arrayBuffer()) : undefined;
+        }
+
+        const entry = (await getHandles()).get(name);
+        return entry ? readFileBytes(entry) : undefined;
+      },
+      writeBytes: async (name, data) => {
+        if (!directory.writeFile) {
+          console.warn(
+            "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
+          );
+          return;
+        }
+
+        await directory.writeFile(name, new Uint8Array(data));
+      },
+      removeName: async (name) => {
+        if (directory.removeByName) {
+          await directory.removeByName(name);
+          return;
+        }
+
+        const entry = (await getHandles()).get(name);
 
         if (entry?.remove) {
           await entry.remove();
-        } else {
-          await directory.removeByName?.(name);
         }
-      }),
-    );
-  };
-
-  const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
-    const allEntries = await listDeduplicatedEntries();
-
-    const matched = [...allEntries.values()].filter((entry) =>
-      storageKeyHasPrefix(entry.key, keyPrefix),
-    );
-
-    const chunkList: AMChunk[] = await toArray(
-      from(matched).pipe(
-        map(async ({ entry, key }): Promise<AMChunk | undefined> => {
-          return {
-            key,
-            data: new Uint8Array(await (await entry.read()).arrayBuffer()),
-          };
-        }),
-        filter((v) => !isNil(v)),
-      ),
-    );
-
-    return chunkList;
-  };
-
-  const removeRange = async (keyPrefix: PartialStorageKey) => {
-    const handles = await collectFileHandles();
-    const matching = listStorageFileEntries(handles.keys()).filter(({ key }) =>
-      storageKeyHasPrefix(key, keyPrefix),
-    );
-
-    await Promise.all(
-      matching.map(async ({ name }) => {
-        const entry = handles.get(name);
-
-        if (entry?.remove) {
-          await entry.remove();
-        } else {
-          await directory.removeByName?.(name);
-        }
-      }),
-    );
+      },
+    };
   };
 
   const adapter: AMStorageAdapterInterface = {
-    load,
-    save,
-    remove,
-    loadRange,
-    removeRange,
+    load: (key: PartialStorageKey) => loadStorageEntry(createOperationIo(), key),
+    save: (key: StorageKey, data: Uint8Array<ArrayBuffer>) =>
+      saveStorageEntry(createOperationIo(), key, data),
+    remove: (key: StorageKey) => removeStorageEntry(createOperationIo(), key),
+    loadRange: (keyPrefix: StorageKeyPrefix) =>
+      loadStorageEntriesByPrefix(createOperationIo(), keyPrefix),
+    removeRange: (keyPrefix: StorageKeyPrefix) =>
+      removeStorageEntriesByPrefix(createOperationIo(), keyPrefix),
   };
 
   return adapter;

@@ -16,6 +16,11 @@ describe('webFileSystemWriteDiagnostics', () => {
   });
 
   it('adds safe breadcrumbs for file handle create, file lookup, writable open, and file write steps', () => {
+    const writableOpenError = new DOMException('The handle became invalid', 'InvalidStateError');
+    Object.defineProperty(writableOpenError, 'code', {
+      configurable: true,
+      value: 11,
+    });
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'started' });
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'succeeded' });
     addWebFileSystemDiagnosticStepBreadcrumb({
@@ -27,7 +32,7 @@ describe('webFileSystemWriteDiagnostics', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'writableOpen',
       result: 'failed',
-      error: new DOMException('msg', 'InvalidStateError'),
+      error: writableOpenError,
     });
     addWebFileSystemDiagnosticStepBreadcrumb({
       step: 'fileWrite',
@@ -88,8 +93,11 @@ describe('webFileSystemWriteDiagnostics', () => {
         provider: 'webFileSystem',
         result: 'failed',
         step: 'writableOpen',
+        classification: 'web-file-system-write-start-failed',
         errorClass: 'DOMException',
         domException: 'InvalidStateError',
+        domExceptionCode: 11,
+        errorDetail: 'The handle became invalid',
       },
       level: 'warning',
       message: 'writable open failed',
@@ -130,8 +138,11 @@ describe('webFileSystemWriteDiagnostics', () => {
       'provider',
       'result',
       'step',
+      'classification',
       'errorClass',
       'domException',
+      'domExceptionCode',
+      'errorDetail',
     ]);
     for (const key of Object.keys(data)) {
       expect(allowedKeys).toContain(key);
@@ -168,12 +179,33 @@ describe('webFileSystemWriteDiagnostics', () => {
     }
   });
 
-  it('does not include errorClass or domException when no error is provided', () => {
+  it('does not include error metadata when no error is provided', () => {
     addWebFileSystemDiagnosticStepBreadcrumb({ step: 'fileHandleCreate', result: 'failed' });
 
     const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
     const data = call?.[0]?.data ?? {};
     expect(data).not.toHaveProperty('errorClass');
     expect(data).not.toHaveProperty('domException');
+    expect(data).not.toHaveProperty('domExceptionCode');
+    expect(data).not.toHaveProperty('errorDetail');
+  });
+
+  it('drops sensitive writableOpen error details while keeping safe classification fields', () => {
+    addWebFileSystemDiagnosticStepBreadcrumb({
+      step: 'writableOpen',
+      result: 'failed',
+      error: new DOMException('Failed for /private/documents/secret.txt', 'InvalidStateError'),
+    });
+
+    expect(addTechnicalBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          classification: 'web-file-system-write-start-failed',
+          domException: 'InvalidStateError',
+        }),
+      }),
+    );
+    const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
+    expect(call?.[0]?.data).not.toHaveProperty('errorDetail');
   });
 });

@@ -22,6 +22,7 @@ import {
   defer,
   finalize,
   firstValueFrom,
+  from,
   map,
   NEVER,
   type Observable,
@@ -82,12 +83,12 @@ const setupRepositoriesService = () => {
       path: string;
     }) =>
       directoryContent$({ path }).pipe(
-        map((value) => {
+        switchMap((value) => {
           if (value instanceof Error) {
-            return value;
+            return of(value);
           }
 
-          return getRepositoryFacts(value);
+          return from(getRepositoryFacts(vfs, path, value));
         }),
       ),
   );
