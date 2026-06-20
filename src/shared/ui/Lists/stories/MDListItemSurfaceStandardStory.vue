@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import MDSymbol from '../Icon/MDSymbol.vue';
-import MDList from './MDList.vue';
-import MDListItem from './MDListItem.vue';
+import MDSymbol from '../../Icon/MDSymbol.vue';
+import MDList from '../MDList.vue';
+import MDListItem from '../MDListItem.vue';
 
 const rootAttrs = { 'data-testid': 'visual-md-list-surface-standard' };
 const onAction = () => {};

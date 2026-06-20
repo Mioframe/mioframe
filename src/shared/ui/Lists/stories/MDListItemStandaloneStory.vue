@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import MDIconButton from '../Button/MDIconButton.vue';
-import MDSymbol from '../Icon/MDSymbol.vue';
-import MDListItem from './MDListItem.vue';
+import MDIconButton from '../../Button/MDIconButton.vue';
+import MDSymbol from '../../Icon/MDSymbol.vue';
+import MDListItem from '../MDListItem.vue';
 
 const rootAttrs = {
   'data-testid': 'visual-md-list-item-standalone',

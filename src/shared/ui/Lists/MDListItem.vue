@@ -333,7 +333,7 @@ defineExpose({
         :disabled="disabled"
       />
 
-      <div class="md-list-item__body">
+      <span class="md-list-item__body">
         <span v-if="hasLeading" class="md-list-item__leading" :class="leadingClass">
           <slot name="leading" />
         </span>
@@ -357,7 +357,7 @@ defineExpose({
         <span v-if="hasTrailing" class="md-list-item__trailing">
           <slot name="trailing" />
         </span>
-      </div>
+      </span>
 
       <span v-if="showTrailingActionInStaticPath" class="md-list-item__trailing-action">
         <slot name="trailingAction" />
@@ -402,9 +402,10 @@ defineExpose({
   &__trailing-action {
     justify-content: center;
     color: var(--md-comp-list-item-trailing-icon-color);
-    padding-inline: 8dp var(--md-private-list-item-content-padding-inline-end, 16dp);
-    min-width: 48dp;
-    min-height: 48dp;
+    padding-inline: var(--md-private-list-item-trailing-action-padding-inline-start, 8dp)
+      var(--md-private-list-item-content-padding-inline-end, 16dp);
+    min-width: var(--md-private-list-item-trailing-action-min-target-size, 48dp);
+    min-height: var(--md-private-list-item-trailing-action-min-target-size, 48dp);
     align-self: center;
   }
 

@@ -168,6 +168,20 @@ describe('MDListItem', () => {
     expect(wrapper.element.tagName.toLowerCase()).toBe('button');
   });
 
+  it('uses phrasing-safe standalone single-action anatomy inside the native button root', () => {
+    const wrapper = mountListItem({
+      mode: 'single-action',
+      onAction: vi.fn(),
+      overline: 'Category',
+      supportingText: 'System preferences',
+    });
+
+    const body = wrapper.get('.md-list-item__body');
+
+    expect(body.element.tagName.toLowerCase()).toBe('span');
+    expect(wrapper.find('button .md-list-item__body > div').exists()).toBe(false);
+  });
+
   it('does not render option semantics or a selection indicator without a selection list context', () => {
     const wrapper = mountListItem({}, { inList: true });
     const item = wrapper.get('.md-list-item');

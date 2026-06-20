@@ -128,7 +128,12 @@ useListSelectionKeyboard(getContainerElement, selectionActive);
   --md-private-list-item-leading-size: 20dp;
   --md-private-list-item-passive-trailing-min-size: 28dp;
   --md-private-list-item-segmented-gap: 0dp;
-  --md-private-list-item-trailing-action-reserved: 56dp; /* 8dp padding-start + 48dp min-width */
+  --md-private-list-item-trailing-action-padding-inline-start: 8dp;
+  --md-private-list-item-trailing-action-min-target-size: 48dp;
+  --md-private-list-item-trailing-action-reserved: calc(
+    var(--md-private-list-item-trailing-action-padding-inline-start) +
+      var(--md-private-list-item-trailing-action-min-target-size)
+  );
   --md-private-list-item-trailing-space: 16dp;
 
   margin: 0;

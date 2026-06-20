@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef } from 'vue';
-import MDIconButton from '../Button/MDIconButton.vue';
-import MDSymbol from '../Icon/MDSymbol.vue';
-import MDList from './MDList.vue';
-import MDListItem from './MDListItem.vue';
+import MDIconButton from '../../Button/MDIconButton.vue';
+import MDSymbol from '../../Icon/MDSymbol.vue';
+import MDList from '../MDList.vue';
+import MDListItem from '../MDListItem.vue';
 
 const statesRef = useTemplateRef<HTMLElement>('statesRef');
 const rootAttrs = {

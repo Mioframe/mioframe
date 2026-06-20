@@ -1,16 +1,16 @@
-import MDListItemConfigurationsStory from './MDListItemConfigurationsStory.vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import MDListItemConsumerPatternsStory from './MDListItemConsumerPatternsStory.vue';
-import MDListItemDomContractStory from './MDListItemDomContractStory.vue';
-import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory.vue';
-import MDListItemSelectionStory from './MDListItemSelectionStory.vue';
-import MDListItemStandaloneStory from './MDListItemStandaloneStory.vue';
-import MDListItemSurfaceRepositoryStory from './MDListItemSurfaceRepositoryStory.vue';
-import MDListItemSurfaceSegmentedDiagnosticStory from './MDListItemSurfaceSegmentedDiagnosticStory.vue';
-import MDListItemSurfaceSegmentedStory from './MDListItemSurfaceSegmentedStory.vue';
-import MDListItemSurfaceStandardStory from './MDListItemSurfaceStandardStory.vue';
-import MDListItemTrailingActionVisualStory from './MDListItemTrailingActionVisualStory.vue';
-import MDListItemVisualStatesStory from './MDListItemVisualStatesStory.vue';
+import MDListItemConfigurationsStory from './stories/MDListItemConfigurationsStory.vue';
+import MDListItemConsumerPatternsStory from './stories/MDListItemConsumerPatternsStory.vue';
+import MDListItemDomContractStory from './stories/MDListItemDomContractStory.vue';
+import MDListItemInteractionStatesStory from './stories/MDListItemInteractionStatesStory.vue';
+import MDListItemSelectionStory from './stories/MDListItemSelectionStory.vue';
+import MDListItemStandaloneStory from './stories/MDListItemStandaloneStory.vue';
+import MDListItemSurfaceRepositoryStory from './stories/MDListItemSurfaceRepositoryStory.vue';
+import MDListItemSurfaceSegmentedDiagnosticStory from './stories/MDListItemSurfaceSegmentedDiagnosticStory.vue';
+import MDListItemSurfaceSegmentedStory from './stories/MDListItemSurfaceSegmentedStory.vue';
+import MDListItemSurfaceStandardStory from './stories/MDListItemSurfaceStandardStory.vue';
+import MDListItemTrailingActionVisualStory from './stories/MDListItemTrailingActionVisualStory.vue';
+import MDListItemVisualStatesStory from './stories/MDListItemVisualStatesStory.vue';
 
 const meta = {
   title: 'Material 3/Components/Lists/MDListItem',

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import MDList from './MDList.vue';
-import MDListSelectionItem from './MDListSelectionItem.vue';
-import type { MDListModelValue } from './listContext';
+import MDList from '../MDList.vue';
+import MDListSelectionItem from '../MDListSelectionItem.vue';
+import type { MDListModelValue } from '../listContext';
 
 const rootAttrs = {
   'data-testid': 'visual-md-list-selection',
