@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useMDStateLayerForcedState } from './testing/forcedState';
+import { useMDStateLayerForcedState } from './forcedState';
 
 const props = withDefaults(
   defineProps<{

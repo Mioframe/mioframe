@@ -437,6 +437,58 @@ test.describe('MDList / Material reference forced state layer', () => {
     expect(focusColor, 'focus row must differ from the default row').not.toBe(defaultColor);
     expect(pressedColor, 'pressed row must differ from the default row').not.toBe(defaultColor);
   });
+
+  // The forced `MDStateLayer` overlay alone does not activate List-specific expressive
+  // container shape. The reference rows additionally carry the same `md-state_*` host
+  // classes the real `useStateLayer`-driven runtime rows apply (see
+  // `MDListItemVisualStatesStory.vue` for the established pattern), so this proves the
+  // List-owned shape contract — not the StateLayer overlay — renders per state.
+  test('Material reference states rows map to the documented default, hover, focused, pressed, and dragged expressive shapes', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const rows = surface.locator('.md-list-item');
+
+    const [defaultRadius, hoverRadius, focusRadius, pressedRadius, draggedRadius] =
+      await Promise.all([
+        getRadius(rows.nth(0), 'border-top-left-radius'),
+        getRadius(rows.nth(1), 'border-top-left-radius'),
+        getRadius(rows.nth(2), 'border-top-left-radius'),
+        getRadius(rows.nth(3), 'border-top-left-radius'),
+        getRadius(rows.nth(4), 'border-top-left-radius'),
+      ]);
+
+    expect(defaultRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.default}px`);
+    expect(hoverRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.hover}px`);
+    expect(focusRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.focused}px`);
+    expect(pressedRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.pressed}px`);
+    expect(draggedRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.dragged}px`);
+  });
+
+  test('Material reference states disabled row keeps the default shape and no active overlay', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const disabledRow = surface.locator('.md-list-item.md-state_disabled').first();
+
+    const [disabledRadius, stateLayerColor] = await Promise.all([
+      getRadius(disabledRow, 'border-top-left-radius'),
+      disabledRow
+        .locator('.md-state-layer')
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundColor),
+    ]);
+
+    expect(disabledRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.default}px`);
+    expect(
+      hasZeroAlpha(stateLayerColor),
+      'disabled row must not show an active interactive overlay',
+    ).toBe(true);
+  });
 });
 
 // Computed-style/geometry assertions against MD_LIST_MATERIAL_CONTRACT, whose values

@@ -24,28 +24,48 @@ const onAction = () => {};
           </template>
         </MDListItem>
         <MDStateLayerForcedStateProvider hovered>
-          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+          <MDListItem
+            class="md-state_hover"
+            mode="single-action"
+            label-text="List item"
+            @action="onAction"
+          >
             <template #leading>
               <MDSymbol name="draft" />
             </template>
           </MDListItem>
         </MDStateLayerForcedStateProvider>
         <MDStateLayerForcedStateProvider focused>
-          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+          <MDListItem
+            class="md-state_focused"
+            mode="single-action"
+            label-text="List item"
+            @action="onAction"
+          >
             <template #leading>
               <MDSymbol name="draft" />
             </template>
           </MDListItem>
         </MDStateLayerForcedStateProvider>
         <MDStateLayerForcedStateProvider pressed>
-          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+          <MDListItem
+            class="md-state_pressed"
+            mode="single-action"
+            label-text="List item"
+            @action="onAction"
+          >
             <template #leading>
               <MDSymbol name="draft" />
             </template>
           </MDListItem>
         </MDStateLayerForcedStateProvider>
         <MDStateLayerForcedStateProvider dragged>
-          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+          <MDListItem
+            class="md-state_dragged"
+            mode="single-action"
+            label-text="List item"
+            @action="onAction"
+          >
             <template #leading>
               <MDSymbol name="draft" />
             </template>

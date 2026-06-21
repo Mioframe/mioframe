@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toRefs } from 'vue';
-import { provideMDStateLayerForcedState } from './forcedState';
+import { provideMDStateLayerForcedState } from '../forcedState';
 
 /**
  * Story/test-only fragment that forces a visual state on every nested
