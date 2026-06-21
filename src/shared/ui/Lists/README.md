@@ -5,6 +5,60 @@ Material 3 / Material 3 Expressive List component family for `src/shared/ui/List
 Mioframe Lists target the current Material 3 Expressive contract. The legacy `baseline` list style is
 intentionally unsupported and has been removed from the runtime API.
 
+## Material contract vs Mioframe API extensions
+
+Material 3 Expressive is the source of truth for the **visual/token/anatomy** model: standard and segmented
+visual styles, one-line/two-line/three-line list items, anatomy roles (leading/overline/label/supporting
+text/trailing), the single-action / multi-action / single-select / multi-select list categories, and the
+token names and values documented in the [Token contract](#token-contract) section below. Anything in this
+README that maps to a `md.comp.list.*` token or a documented Material anatomy/category name is a Material
+parameter, not a Mioframe invention.
+
+The public `MDList` / `MDListItem` / `MDListSelectionItem` API additionally exposes **Mioframe-specific
+extensions** and **Vue/HTML/platform controls** that are not Material parameters. A prop existing on these
+components does not imply it is part of the Material 3 Expressive contract. The extensions are:
+
+| Prop / value                        | Component                            | Category             | What it actually is                                                                                                                    |
+| ----------------------------------- | ------------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `mode` (item-level)                 | `MDListItem`                         | Mioframe extension   | Action topology (`static` / `single-action` / `multi-action`) declared **per item**, not per list. See justification below.            |
+| `mode: 'static'`                    | `MDListItem`                         | Mioframe extension   | A non-interactive presentation row. Material does not name a "static" list mode; this is a Mioframe label for "no action surface."     |
+| `selectionMode: 'none'`             | `MDList`                             | Mioframe API control | Disables selection-list behavior/ARIA. It is the absence of selection, not a documented Material selection category.                   |
+| `leadingType: 'control'`            | `MDListItem` / `MDListSelectionItem` | Mioframe abstraction | An internal placement hint for where a selection control (checkmark) sits in the leading slot. Not a documented Material leading type. |
+| item-level `mode` on selection rows | `MDListSelectionItem`                | N/A (no `mode`)      | `MDListSelectionItem` has no `mode` prop; selection rows are always selectable options owned by the list.                              |
+| `tag`, `is`, `containerTag`         | `MDList`, `MDListItem`               | Vue/HTML/platform    | Root/container element tag overrides (e.g. `div` vs `ul`/`li`). Pure Vue/DOM rendering controls.                                       |
+| `nativeType`                        | `MDListItem`                         | Vue/HTML/platform    | Native `<button type>` passthrough for single-action rows. HTML semantics, not Material.                                               |
+| `href`                              | `MDListItem`                         | Vue/HTML/platform    | Renders the action surface as `<a>` instead of `<button>`. HTML semantics, not Material.                                               |
+| `transition`                        | `MDList`                             | Vue/HTML/platform    | Opts the list root into Vue's `TransitionGroup` for row enter/leave animation. A Vue rendering control, not a Material token.          |
+
+Treat the [Token contract](#token-contract), [Private implementation variables](#private-implementation-variables),
+and [Internal module map](#internal-module-map) sections as internal implementation details rather than
+public Material or styling API: private `--md-private-list-item-*` variables are not consumer-facing tokens,
+and the listed `.ts` modules are not part of the public component contract.
+
+### Why `mode` stays on `MDListItem`, not `MDList`
+
+Material describes action/select **categories** at the list level (a list is single-action, multi-action,
+single-select, or multi-select as a whole). Mioframe intentionally keeps action mode on `MDListItem` instead,
+so a single `MDList` can mix `static`, `single-action`, and `multi-action` rows in the same list to support
+mixed product rows and existing consumer scenarios (for example a settings list with informational rows next
+to actionable rows). This is a deliberate Mioframe extension over the Material model, not a Material
+parameter — see the "supports mixing static, single-action, and multi-action MDListItem rows in one list"
+test in [`MDList.test.ts`](./MDList.test.ts) for the contract this enables. Selection behavior itself remains
+entirely list-owned through `MDList.selectionMode`; item-level `mode` only controls non-selection action
+topology and is mutually exclusive with selection semantics (see "Unsupported combinations" below).
+
+### Unsupported / non-goals
+
+- `baseline` is not implemented. It is not part of the current Material 3 Expressive List contract used by
+  this project (legacy/reference-only), not an oversight.
+- `MDList` does not implement its own focus indicator system. It integrates with the project's global
+  keyboard focus indicator — see [Focus indicator](#focus-indicator) below.
+- `MDList` does not implement its own state-layer system. Interaction state layers are rendered through the
+  shared MD `StateLayer` pattern used across Material components in this project.
+- Private `--md-private-list-item-*` CSS variables are internal implementation details. They are not public
+  styling API; consumers outside `src/shared/ui/Lists` must not set or read them (see
+  [Private implementation variables](#private-implementation-variables)).
+
 ## Components
 
 ### MDList

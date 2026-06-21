@@ -18,6 +18,32 @@ describe('MDList', () => {
     expect(wrapper.get('.md-list').classes()).toContain('md-list_style_standard');
   });
 
+  it('supports mixing static, single-action, and multi-action MDListItem rows in one list as a Mioframe extension over per-list Material action categories', () => {
+    const onAction = vi.fn();
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="Static row" mode="static" />
+            <MDListItem label-text="Single-action row" mode="single-action" @action="onAction" />
+            <MDListItem label-text="Multi-action row" mode="multi-action" @action="onAction">
+              <template #trailingAction><button>Menu</button></template>
+            </MDListItem>
+          </MDList>
+        `,
+        setup: () => ({ onAction }),
+      },
+      { attachTo: document.body },
+    );
+
+    const rows = wrapper.findAll('[role="listitem"]');
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.find('button').exists()).toBe(false);
+    expect(rows[1]?.find('button').exists()).toBe(true);
+    expect(rows[2]?.findAll('button')).toHaveLength(2);
+  });
+
   it('exposes listbox semantics and controlled selection updates for selection lists', async () => {
     const onUpdateModelValue = vi.fn();
     const wrapper = mount(
