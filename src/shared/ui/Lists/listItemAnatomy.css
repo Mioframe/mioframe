@@ -18,22 +18,50 @@
     --md-private-list-item-container-color,
     transparent
   );
+  --md-comp-list-list-item-segmented-container-color: var(--md-sys-color-surface);
+  --md-comp-list-list-item-disabled-container-opacity: 0.38;
+  --md-comp-list-list-item-disabled-label-text-opacity: 0.38;
+  --md-comp-list-list-item-disabled-leading-icon-opacity: 0.38;
+  --md-comp-list-list-item-disabled-trailing-icon-opacity: 0.38;
+  --md-comp-list-list-item-disabled-supporting-text-opacity: 0.38;
   --md-comp-list-list-item-disabled-container-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
+    from var(--md-sys-color-on-surface) r g b /
+      var(--md-comp-list-list-item-disabled-container-opacity)
   );
   --md-comp-list-list-item-disabled-label-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
+    from var(--md-sys-color-on-surface) r g b /
+      var(--md-comp-list-list-item-disabled-label-text-opacity)
   );
   --md-comp-list-list-item-disabled-leading-icon-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
+    from var(--md-sys-color-on-surface) r g b /
+      var(--md-comp-list-list-item-disabled-leading-icon-opacity)
   );
   --md-comp-list-list-item-disabled-supporting-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
+    from var(--md-sys-color-on-surface) r g b /
+      var(--md-comp-list-list-item-disabled-supporting-text-opacity)
   );
   --md-comp-list-list-item-disabled-trailing-icon-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
+    from var(--md-sys-color-on-surface) r g b /
+      var(--md-comp-list-list-item-disabled-trailing-icon-opacity)
   );
   --md-comp-list-list-item-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-label-text-font: var(--md-sys-typescale-body-large-font);
+  --md-comp-list-list-item-label-text-size: var(--md-sys-typescale-body-large-size);
+  --md-comp-list-list-item-label-text-weight: var(--md-sys-typescale-body-large-weight);
+  --md-comp-list-list-item-label-text-line-height: var(--md-sys-typescale-body-large-line-height);
+  --md-comp-list-list-item-label-text-tracking: var(--md-sys-typescale-body-large-tracking);
+  --md-comp-list-list-item-supporting-text-font: var(--md-sys-typescale-body-medium-font);
+  --md-comp-list-list-item-supporting-text-size: var(--md-sys-typescale-body-medium-size);
+  --md-comp-list-list-item-supporting-text-weight: var(--md-sys-typescale-body-medium-weight);
+  --md-comp-list-list-item-supporting-text-line-height: var(
+    --md-sys-typescale-body-medium-line-height
+  );
+  --md-comp-list-list-item-supporting-text-tracking: var(--md-sys-typescale-body-medium-tracking);
+  --md-comp-list-list-item-overline-font: var(--md-sys-typescale-label-small-font);
+  --md-comp-list-list-item-overline-size: var(--md-sys-typescale-label-small-size);
+  --md-comp-list-list-item-overline-weight: var(--md-sys-typescale-label-small-weight);
+  --md-comp-list-list-item-overline-line-height: var(--md-sys-typescale-label-small-line-height);
+  --md-comp-list-list-item-overline-tracking: var(--md-sys-typescale-label-small-tracking);
   --md-comp-list-list-item-leading-avatar-color: var(--md-sys-color-on-secondary-container);
   --md-comp-list-list-item-leading-avatar-size: 40dp;
   --md-private-list-item-leading-control-size: 48dp;
@@ -53,8 +81,10 @@
   --md-comp-list-list-item-pressed-container-expressive-shape: 16dp;
   --md-comp-list-list-item-dragged-container-expressive-shape: 16dp;
   --md-comp-list-list-item-selected-container-color: var(--md-sys-color-secondary-container);
+  --md-comp-list-list-item-selected-disabled-container-opacity: 0.38;
   --md-comp-list-list-item-selected-disabled-container-color: rgb(
-    from var(--md-sys-color-on-surface) r g b / 0.38
+    from var(--md-sys-color-on-surface) r g b /
+      var(--md-comp-list-list-item-selected-disabled-container-opacity)
   );
   --md-comp-list-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
   --md-comp-list-list-item-selected-leading-icon-color: var(--md-sys-color-on-secondary-container);
@@ -66,6 +96,9 @@
     --md-sys-color-on-secondary-container
   );
   --md-comp-list-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-list-item-selected-hover-state-layer-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-selected-focus-state-layer-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-selected-pressed-state-layer-color: var(--md-sys-color-on-surface);
   --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-label-text-color);
   --md-comp-list-list-item-hover-state-layer-opacity: var(--md-state-hover-layer-opacity, 0.08);
   --md-comp-list-list-item-focus-state-layer-opacity: var(--md-state-focus-layer-opacity, 0.1);
@@ -77,6 +110,12 @@
   --md-comp-list-list-item-trailing-icon-expressive-size: 20dp;
   --md-comp-list-list-item-trailing-supporting-text-color: var(--md-sys-color-on-surface-variant);
   --md-comp-list-list-item-two-line-container-height: 72dp;
+  --md-comp-list-list-item-between-space: 16dp;
+  --md-comp-list-list-item-top-space: 10dp;
+  --md-comp-list-list-item-bottom-space: 10dp;
+  --md-comp-list-list-item-leading-space: 12dp;
+  --md-comp-list-list-item-trailing-space: 16dp;
+  --md-comp-list-segmented-gap: 0dp;
 
   position: relative;
   display: flex;
@@ -123,7 +162,9 @@
     --md-comp-list-list-item-selected-leading-icon-color
   );
   --md-comp-list-list-item-overline-color: var(--md-comp-list-list-item-selected-overline-color);
-  --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-selected-label-text-color);
+  --md-private-list-item-state-layer-color: var(
+    --md-comp-list-list-item-selected-hover-state-layer-color
+  );
   --md-comp-list-list-item-supporting-text-color: var(
     --md-comp-list-list-item-selected-supporting-text-color
   );
@@ -231,9 +272,8 @@
     --md-private-list-item-min-container-height,
     var(--md-private-list-item-resolved-container-height)
   );
-  padding-inline: var(--md-private-list-item-content-padding-inline-start, 16dp)
-    var(--md-private-list-item-content-padding-inline-end, 16dp);
-  padding-block: var(--md-private-list-item-content-padding-block, 10dp);
+  padding-inline: var(--md-comp-list-list-item-between-space);
+  padding-block: var(--md-comp-list-list-item-top-space) var(--md-comp-list-list-item-bottom-space);
   box-sizing: border-box;
   border-radius: var(
     --md-private-list-item-action-shape,
@@ -274,7 +314,7 @@
   width: 24dp;
   min-width: 24dp;
   color: var(--md-comp-list-list-item-leading-icon-color);
-  margin-inline-end: var(--md-private-list-item-leading-space, 12dp);
+  margin-inline-end: var(--md-comp-list-list-item-leading-space);
 }
 
 /* ─── Leading element ────────────────────────────────────────────────────── */
@@ -287,7 +327,7 @@
     var(--md-comp-list-list-item-leading-icon-expressive-size)
   );
   color: var(--md-comp-list-list-item-leading-icon-color);
-  margin-inline-end: var(--md-private-list-item-leading-space, 12dp);
+  margin-inline-end: var(--md-comp-list-list-item-leading-space);
 }
 
 .md-list-item__leading_type_icon,
@@ -342,7 +382,7 @@
   justify-content: flex-end;
   min-height: var(--md-private-list-item-passive-trailing-min-size, 28dp);
   color: var(--md-comp-list-list-item-trailing-supporting-text-color);
-  margin-inline-start: var(--md-private-list-item-trailing-space, 16dp);
+  margin-inline-start: var(--md-comp-list-list-item-trailing-space);
 }
 
 .md-list-item__trailing :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded),
@@ -368,11 +408,11 @@
 .md-list-item__overline,
 .md-list-selection-item__overline {
   color: var(--md-comp-list-list-item-overline-color);
-  font-family: var(--md-sys-typescale-label-small-font);
-  font-size: var(--md-sys-typescale-label-small-size);
-  font-weight: var(--md-sys-typescale-label-small-weight);
-  line-height: var(--md-sys-typescale-label-small-line-height);
-  letter-spacing: var(--md-sys-typescale-label-small-tracking);
+  font-family: var(--md-comp-list-list-item-overline-font);
+  font-size: var(--md-comp-list-list-item-overline-size);
+  font-weight: var(--md-comp-list-list-item-overline-weight);
+  line-height: var(--md-comp-list-list-item-overline-line-height);
+  letter-spacing: var(--md-comp-list-list-item-overline-tracking);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -381,11 +421,11 @@
 .md-list-item__label-text,
 .md-list-selection-item__label-text {
   color: var(--md-comp-list-list-item-label-text-color);
-  font-family: var(--md-sys-typescale-body-large-font);
-  font-size: var(--md-sys-typescale-body-large-size);
-  font-weight: var(--md-sys-typescale-body-large-weight);
-  line-height: var(--md-sys-typescale-body-large-line-height);
-  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+  font-family: var(--md-comp-list-list-item-label-text-font);
+  font-size: var(--md-comp-list-list-item-label-text-size);
+  font-weight: var(--md-comp-list-list-item-label-text-weight);
+  line-height: var(--md-comp-list-list-item-label-text-line-height);
+  letter-spacing: var(--md-comp-list-list-item-label-text-tracking);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -399,11 +439,11 @@
   text-overflow: ellipsis;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
-  font-family: var(--md-sys-typescale-body-medium-font);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  font-weight: var(--md-sys-typescale-body-medium-weight);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
-  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
+  font-family: var(--md-comp-list-list-item-supporting-text-font);
+  font-size: var(--md-comp-list-list-item-supporting-text-size);
+  font-weight: var(--md-comp-list-list-item-supporting-text-weight);
+  line-height: var(--md-comp-list-list-item-supporting-text-line-height);
+  letter-spacing: var(--md-comp-list-list-item-supporting-text-tracking);
 }
 
 .md-list-item__supporting-text_two-line,

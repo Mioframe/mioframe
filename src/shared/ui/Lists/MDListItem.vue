@@ -402,7 +402,7 @@ defineExpose({
     justify-content: center;
     color: var(--md-comp-list-list-item-trailing-icon-color);
     padding-inline: var(--md-private-list-item-trailing-action-padding-inline-start, 8dp)
-      var(--md-private-list-item-content-padding-inline-end, 16dp);
+      var(--md-comp-list-list-item-between-space);
     min-width: var(--md-private-list-item-trailing-action-min-target-size, 48dp);
     min-height: var(--md-private-list-item-trailing-action-min-target-size, 48dp);
     align-self: center;
@@ -421,7 +421,7 @@ defineExpose({
     inset: 0;
     flex: none;
     padding-inline-end: calc(
-      var(--md-private-list-item-content-padding-inline-end, 16dp) +
+      var(--md-comp-list-list-item-between-space) +
         var(--md-private-list-item-trailing-action-reserved, 56dp)
     );
   }

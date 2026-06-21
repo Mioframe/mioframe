@@ -524,6 +524,42 @@ test.describe('MDList / Material Expressive contract', () => {
     }
   });
 
+  test('MDList label, supporting, and overline text read typography through the documented component tokens, not only the raw system typescale', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const surface = page.getByTestId('visual-md-list-configurations');
+    const label = surface.locator('.md-list-item__label-text').first();
+    const supporting = surface.locator('.md-list-item__supporting-text').first();
+    const overline = surface.locator('.md-list-item__overline').first();
+
+    const [labelToken, supportingToken, overlineToken] = await Promise.all([
+      label.evaluate((node) =>
+        getComputedStyle(node).getPropertyValue('--md-comp-list-list-item-label-text-font').trim(),
+      ),
+      supporting.evaluate((node) =>
+        getComputedStyle(node)
+          .getPropertyValue('--md-comp-list-list-item-supporting-text-font')
+          .trim(),
+      ),
+      overline.evaluate((node) =>
+        getComputedStyle(node).getPropertyValue('--md-comp-list-list-item-overline-font').trim(),
+      ),
+    ]);
+
+    for (const [name, value] of [
+      ['label-text', labelToken],
+      ['supporting-text', supportingToken],
+      ['overline', overlineToken],
+    ]) {
+      expect(
+        value,
+        `${name} must expose a documented Material List typography component token, not only a direct --md-sys-typescale-* reference`,
+      ).not.toBe('');
+    }
+  });
+
   test('MDList content spacing keeps the documented 10px block padding and 48px trailing target', async ({
     page,
   }) => {
@@ -617,6 +653,98 @@ test.describe('MDList / Material Expressive contract', () => {
       itemColor,
       'segmented item fill must differ from the surrounding surface-container-low wrapper and use the Material list item surface color',
     ).not.toBe(surfaceColor);
+  });
+
+  test('MDList segmented item fill is wired through the documented public segmented container color token', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+    const surface = page.getByTestId('visual-md-list-surface-segmented');
+    const item = surface.locator('.md-list-item').first();
+
+    const [tokenValue, itemColor] = await Promise.all([
+      item.evaluate((node) =>
+        getComputedStyle(node)
+          .getPropertyValue('--md-comp-list-list-item-segmented-container-color')
+          .trim(),
+      ),
+      item.evaluate((node) => getComputedStyle(node).backgroundColor),
+    ]);
+
+    expect(
+      tokenValue,
+      'the documented md.comp.list.list-item.segmented.container.color token must be set, not hidden behind only a private variable',
+    ).not.toBe('');
+    expect(itemColor).not.toBe('rgba(0, 0, 0, 0)');
+  });
+
+  test('MDListItem disabled rows expose separate documented opacity tokens for label, leading icon, and trailing icon', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const disabledRow = page.locator('.md-list-item.md-state_disabled').first();
+
+    const [labelOpacity, leadingOpacity, trailingOpacity, containerOpacity] = await Promise.all([
+      disabledRow.evaluate((node) =>
+        getComputedStyle(node)
+          .getPropertyValue('--md-comp-list-list-item-disabled-label-text-opacity')
+          .trim(),
+      ),
+      disabledRow.evaluate((node) =>
+        getComputedStyle(node)
+          .getPropertyValue('--md-comp-list-list-item-disabled-leading-icon-opacity')
+          .trim(),
+      ),
+      disabledRow.evaluate((node) =>
+        getComputedStyle(node)
+          .getPropertyValue('--md-comp-list-list-item-disabled-trailing-icon-opacity')
+          .trim(),
+      ),
+      disabledRow.evaluate((node) =>
+        getComputedStyle(node)
+          .getPropertyValue('--md-comp-list-list-item-disabled-container-opacity')
+          .trim(),
+      ),
+    ]);
+
+    for (const [name, value] of [
+      ['label-text', labelOpacity],
+      ['leading-icon', leadingOpacity],
+      ['trailing-icon', trailingOpacity],
+      ['container', containerOpacity],
+    ]) {
+      expect(
+        Number(normalizeOpacityToken(value)),
+        `disabled ${name} opacity token must resolve to the documented Material disabled opacity`,
+      ).toBeCloseTo(MD_LIST_MATERIAL_CONTRACT.disabledOpacity, 2);
+    }
+  });
+
+  test('MDListSelectionItem selected hover/focus/pressed state-layer color is on-surface, not the selected label text color', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
+
+    const surface = page.getByTestId('visual-md-list-selection');
+    const selectedOption = surface.locator('[role="option"][aria-selected="true"]').first();
+
+    const [stateLayerColor, labelColor] = await Promise.all([
+      selectedOption.evaluate((node) =>
+        getComputedStyle(node).getPropertyValue('--md-private-list-item-state-layer-color').trim(),
+      ),
+      selectedOption.evaluate((node) =>
+        getComputedStyle(node)
+          .getPropertyValue('--md-comp-list-list-item-selected-label-text-color')
+          .trim(),
+      ),
+    ]);
+
+    expect(
+      stateLayerColor,
+      'selected hover/focus/pressed state-layer color must not be derived from the selected label text color',
+    ).not.toBe(labelColor);
   });
 
   test('MDList segmented first-item action surface has top corners rounded without container clipping', async ({

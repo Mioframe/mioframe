@@ -49,4 +49,5 @@ export const MD_LIST_MATERIAL_CONTRACT = {
     pressed: '0.1',
     dragged: '0.16',
   },
+  disabledOpacity: 0.38,
 } as const;

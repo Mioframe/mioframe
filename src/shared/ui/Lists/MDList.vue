@@ -121,20 +121,14 @@ useListSelectionKeyboard(getContainerElement, selectionActive, listContext.selec
   --md-private-list-item-container-color: transparent;
   --md-private-list-item-action-shape: 4dp;
   --md-private-list-item-container-shape: 4dp;
-  --md-private-list-item-content-padding-inline-start: 16dp;
-  --md-private-list-item-content-padding-inline-end: 16dp;
-  --md-private-list-item-content-padding-block: 10dp;
-  --md-private-list-item-leading-space: 12dp;
   --md-private-list-item-leading-size: 20dp;
   --md-private-list-item-passive-trailing-min-size: 28dp;
-  --md-private-list-item-segmented-gap: 0dp;
   --md-private-list-item-trailing-action-padding-inline-start: 8dp;
   --md-private-list-item-trailing-action-min-target-size: 48dp;
   --md-private-list-item-trailing-action-reserved: calc(
     var(--md-private-list-item-trailing-action-padding-inline-start) +
       var(--md-private-list-item-trailing-action-min-target-size)
   );
-  --md-private-list-item-trailing-space: 16dp;
 
   margin: 0;
   padding: 0;
@@ -149,16 +143,19 @@ useListSelectionKeyboard(getContainerElement, selectionActive, listContext.selec
        is used for visual containment only — it does not create a scroll container,
        so the explicit min-width: 0 is required to suppress the automatic grid/flex-item
        minimum size that would otherwise allow nowrap text to expand the container. */
-    --md-private-list-item-segmented-gap: 2dp;
+    --md-comp-list-segmented-gap: 2dp;
     /* M3 Expressive segmented lists use filled items separated by gaps. The list
        container has no background; visual grouping comes from the item fill and the
-       gaps that reveal the parent surface beneath. Item fill uses surface
-       per the segmented list visual model. The private token cascades to item children,
+       gaps that reveal the parent surface beneath. Item fill uses the documented
+       segmented container color token. The private token cascades to item children,
        which derive --md-comp-list-list-item-container-color from it so that item-level
        overrides (selected, dragged) can still win via the public token. */
-    --md-private-list-item-container-color: var(--md-sys-color-surface);
+    --md-private-list-item-container-color: var(
+      --md-comp-list-list-item-segmented-container-color,
+      var(--md-sys-color-surface)
+    );
 
-    gap: var(--md-private-list-item-segmented-gap);
+    gap: var(--md-comp-list-segmented-gap);
     padding: 0;
     /* min-width: 0 is required when this element is a grid or flex item so that
        white-space: nowrap content inside cannot expand the containing track. */
