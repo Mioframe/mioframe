@@ -86,6 +86,22 @@ test.describe('MDList / visual test backdrop contract', () => {
       storyId: 'material-3-components-lists-mdlistitem--standalone-public-api',
       testId: 'visual-md-list-item-standalone-consumer',
     },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--material-reference',
+      testId: 'visual-md-list-material-states',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--material-reference',
+      testId: 'visual-md-list-material-standard',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--material-reference',
+      testId: 'visual-md-list-material-segmented',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--material-reference',
+      testId: 'visual-md-list-material-configurations',
+    },
   ];
 
   for (const { storyId, testId } of visualBackdropSurfaces) {
@@ -257,38 +273,33 @@ test.describe('MDList / technical and consumer visual regression snapshots', () 
 // to the docs.
 test.describe('MDList / Material reference screenshots', () => {
   test('Material reference: list item states', async ({ page }) => {
-    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
 
-    const surface = page.getByTestId('visual-md-list-states');
+    const surface = page.getByTestId('visual-md-list-material-states');
 
     await expect(surface).toHaveScreenshot('md-list-material-states.png');
   });
 
   test('Material reference: standard list', async ({ page }) => {
-    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
 
-    const standardSample = page
-      .getByTestId('visual-md-list-surface-standard')
-      .locator('.md-list-item-surface-standard-story__section')
-      .first();
+    const surface = page.getByTestId('visual-md-list-material-standard');
 
-    await expect(standardSample).toHaveScreenshot('md-list-material-standard.png');
+    await expect(surface).toHaveScreenshot('md-list-material-standard.png');
   });
 
   test('Material reference: segmented list', async ({ page }) => {
-    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
 
-    const segmentedSample = page
-      .getByTestId('visual-md-list-surface-segmented')
-      .locator('.md-list-item-surface-segmented-story__list-surface');
+    const surface = page.getByTestId('visual-md-list-material-segmented');
 
-    await expect(segmentedSample).toHaveScreenshot('md-list-material-segmented.png');
+    await expect(surface).toHaveScreenshot('md-list-material-segmented.png');
   });
 
   test('Material reference: anatomy and configurations', async ({ page }) => {
-    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
 
-    const surface = page.getByTestId('visual-md-list-configurations');
+    const surface = page.getByTestId('visual-md-list-material-configurations');
 
     await expect(surface).toHaveScreenshot('md-list-material-configurations.png');
   });

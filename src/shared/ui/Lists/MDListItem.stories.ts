@@ -3,6 +3,7 @@ import MDListItemConfigurationsStory from './stories/MDListItemConfigurationsSto
 import MDListItemConsumerPatternsStory from './stories/MDListItemConsumerPatternsStory.vue';
 import MDListItemDomContractStory from './stories/MDListItemDomContractStory.vue';
 import MDListItemInteractionStatesStory from './stories/MDListItemInteractionStatesStory.vue';
+import MDListItemMaterialReferenceStory from './stories/MDListItemMaterialReferenceStory.vue';
 import MDListItemSelectionStory from './stories/MDListItemSelectionStory.vue';
 import MDListItemStandaloneStory from './stories/MDListItemStandaloneStory.vue';
 import MDListItemSurfaceRepositoryStory from './stories/MDListItemSurfaceRepositoryStory.vue';
@@ -129,6 +130,14 @@ export const ConsumerPatterns: Story = {
   render: () => ({
     components: { MDListItemConsumerPatternsStory },
     template: '<MDListItemConsumerPatternsStory />',
+  }),
+};
+
+export const MaterialReference: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemMaterialReferenceStory },
+    template: '<MDListItemMaterialReferenceStory />',
   }),
 };
 
