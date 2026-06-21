@@ -1,4 +1,5 @@
 import { nextTick, onMounted, onUnmounted, onUpdated, type Ref } from 'vue';
+import type { MDListSelectionRegistry } from './listContext';
 import {
   focusListSelectionItem,
   getNextEnabledListSelectionItem,
@@ -10,10 +11,12 @@ import {
  * container. Only active when `enabled` is true (i.e. when selectionMode !== 'none').
  * @param getContainer - Returns the live container element, or null when unmounted.
  * @param enabled - Whether to attach keyboard navigation (false = selection mode is none).
+ * @param selectionRegistry - Vue-owned option registry for the current MDList instance.
  */
 export const useListSelectionKeyboard = (
   getContainer: () => HTMLElement | null,
   enabled: Ref<boolean>,
+  selectionRegistry: MDListSelectionRegistry,
 ) => {
   const moveFocus = (event: KeyboardEvent, direction: 'first' | 'last' | 1 | -1) => {
     if (!enabled.value) {
@@ -27,14 +30,14 @@ export const useListSelectionKeyboard = (
       return;
     }
 
-    const nextItem = getNextEnabledListSelectionItem(container, currentTarget, direction);
+    const nextItem = getNextEnabledListSelectionItem(selectionRegistry, currentTarget, direction);
 
     if (!nextItem) {
       return;
     }
 
     event.preventDefault();
-    focusListSelectionItem(container, nextItem);
+    focusListSelectionItem(selectionRegistry, nextItem);
   };
 
   const handleFocusin = (event: Event) => {
@@ -46,11 +49,20 @@ export const useListSelectionKeyboard = (
       return;
     }
 
-    const item = event.target.closest<HTMLElement>('[data-md-list-selection-item="true"]');
+    const focusTarget = event.target;
+
+    const item =
+      selectionRegistry
+        .getItems()
+        .map((record) => record.getElement())
+        .find(
+          (element): element is HTMLElement =>
+            element instanceof HTMLElement &&
+            (element === focusTarget || element.contains(focusTarget)),
+        ) ?? null;
 
     if (item) {
-      const container = getContainer();
-      focusListSelectionItem(container ?? item.parentElement ?? item, item);
+      focusListSelectionItem(selectionRegistry, item);
     }
   };
 
@@ -78,7 +90,7 @@ export const useListSelectionKeyboard = (
   const syncTabStops = () => {
     const container = getContainer();
     if (container) {
-      syncListSelectionItemTabStops(container);
+      syncListSelectionItemTabStops(selectionRegistry);
     }
   };
 

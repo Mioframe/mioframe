@@ -1,27 +1,58 @@
-const LIST_SELECTION_ITEM_SELECTOR = '[data-md-list-selection-item="true"]';
+import type { MDListSelectionItemRecord, MDListSelectionRegistry } from './listContext';
 
-interface MDListSelectionItemRecord {
+interface MDListSelectionItemSnapshot {
   element: HTMLElement;
   isDisabled: boolean;
   isSelected: boolean;
 }
 
-const toSelectionItemRecord = (element: HTMLElement): MDListSelectionItemRecord => ({
-  element,
-  isDisabled: element.getAttribute('aria-disabled') === 'true',
-  isSelected: element.getAttribute('aria-selected') === 'true',
-});
+const compareItemOrder = (left: HTMLElement, right: HTMLElement) => {
+  if (left === right) {
+    return 0;
+  }
 
-const getSelectionItemRecords = (container: HTMLElement): MDListSelectionItemRecord[] =>
-  Array.from(
-    container.querySelectorAll<HTMLElement>(LIST_SELECTION_ITEM_SELECTOR),
-    toSelectionItemRecord,
-  );
+  return left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+};
 
-const getEnabledSelectionItemRecords = (container: HTMLElement): MDListSelectionItemRecord[] =>
-  getSelectionItemRecords(container).filter((record) => !record.isDisabled);
+const toSelectionItemSnapshot = (
+  record: MDListSelectionItemRecord,
+): MDListSelectionItemSnapshot | null => {
+  const element = record.getElement();
 
-const setActiveItem = (records: MDListSelectionItemRecord[], active: HTMLElement | null) => {
+  if (!(element instanceof HTMLElement)) {
+    return null;
+  }
+
+  return {
+    element,
+    isDisabled: record.isDisabled(),
+    isSelected: record.isSelected(),
+  };
+};
+
+const getSelectionItemSnapshots = (
+  selectionRegistry: MDListSelectionRegistry,
+): MDListSelectionItemSnapshot[] =>
+  selectionRegistry
+    .getItems()
+    .map(toSelectionItemSnapshot)
+    .filter((record): record is MDListSelectionItemSnapshot => record !== null)
+    .sort((left, right) => compareItemOrder(left.element, right.element));
+
+const getEnabledSelectionItemSnapshots = (
+  selectionRegistry: MDListSelectionRegistry,
+): MDListSelectionItemSnapshot[] =>
+  getSelectionItemSnapshots(selectionRegistry).filter((record) => !record.isDisabled);
+
+const resolveSelectionItemElement = (
+  selectionRegistry: MDListSelectionRegistry,
+  currentTarget: HTMLElement,
+): HTMLElement | null =>
+  getSelectionItemSnapshots(selectionRegistry).find(
+    (record) => record.element === currentTarget || record.element.contains(currentTarget),
+  )?.element ?? null;
+
+const setActiveItem = (records: MDListSelectionItemSnapshot[], active: HTMLElement | null) => {
   for (const record of records) {
     record.element.tabIndex = active !== null && record.element === active ? 0 : -1;
   }
@@ -30,17 +61,19 @@ const setActiveItem = (records: MDListSelectionItemRecord[], active: HTMLElement
 /**
  * Synchronizes roving tab stops for listbox selection items, preferring the active
  * enabled item, then the selected enabled item, then the first enabled item.
- * @param container - List container that owns the selection item set.
+ * @param selectionRegistry - Vue-owned registry for this list's selection items.
  */
-export const syncListSelectionItemTabStops = (container: HTMLElement) => {
-  const records = getSelectionItemRecords(container);
+export const syncListSelectionItemTabStops = (selectionRegistry: MDListSelectionRegistry) => {
+  const records = getSelectionItemSnapshots(selectionRegistry);
   const enabledRecords = records.filter((record) => !record.isDisabled);
   const activeElement =
     document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const activeItem =
+    activeElement === null ? null : resolveSelectionItemElement(selectionRegistry, activeElement);
 
   const activeEnabledItem =
-    activeElement !== null
-      ? (enabledRecords.find((record) => record.element === activeElement)?.element ?? null)
+    activeItem !== null
+      ? (enabledRecords.find((record) => record.element === activeItem)?.element ?? null)
       : null;
   const selectedEnabledItem =
     enabledRecords.find((record) => record.isSelected)?.element ??
@@ -52,15 +85,18 @@ export const syncListSelectionItemTabStops = (container: HTMLElement) => {
 
 /**
  * Moves roving focus to the requested enabled selection item.
- * @param container - List container that owns the selection item set.
+ * @param selectionRegistry - Vue-owned registry for this list's selection items.
  * @param target - Item that should receive focus.
  */
-export const focusListSelectionItem = (container: HTMLElement, target: HTMLElement) => {
-  const records = getSelectionItemRecords(container);
+export const focusListSelectionItem = (
+  selectionRegistry: MDListSelectionRegistry,
+  target: HTMLElement,
+) => {
+  const records = getSelectionItemSnapshots(selectionRegistry);
   const isTargetEnabled = records.some((record) => record.element === target && !record.isDisabled);
 
   if (!isTargetEnabled) {
-    syncListSelectionItemTabStops(container);
+    syncListSelectionItemTabStops(selectionRegistry);
     return;
   }
 
@@ -70,17 +106,19 @@ export const focusListSelectionItem = (container: HTMLElement, target: HTMLEleme
 
 /**
  * Resolves the next enabled selection item for roving keyboard navigation.
- * @param container - List container that owns the selection item set.
+ * @param selectionRegistry - Vue-owned registry for this list's selection items.
  * @param currentTarget - Current keyboard event target inside the list.
  * @param direction - Navigation direction or edge target.
  * @returns The next enabled item, or `null` when no enabled items exist.
  */
 export const getNextEnabledListSelectionItem = (
-  container: HTMLElement,
+  selectionRegistry: MDListSelectionRegistry,
   currentTarget: HTMLElement,
   direction: 'first' | 'last' | 1 | -1,
 ): HTMLElement | null => {
-  const enabledItems = getEnabledSelectionItemRecords(container).map((record) => record.element);
+  const enabledItems = getEnabledSelectionItemSnapshots(selectionRegistry).map(
+    (record) => record.element,
+  );
 
   if (!enabledItems.length) {
     return null;
@@ -94,7 +132,7 @@ export const getNextEnabledListSelectionItem = (
     return enabledItems.at(-1) ?? null;
   }
 
-  const currentItem = currentTarget.closest<HTMLElement>(LIST_SELECTION_ITEM_SELECTOR);
+  const currentItem = resolveSelectionItemElement(selectionRegistry, currentTarget);
   const currentIndex = currentItem ? enabledItems.findIndex((item) => item === currentItem) : -1;
 
   if (currentIndex === -1) {

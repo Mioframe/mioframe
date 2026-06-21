@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useSlots, useTemplateRef, warn } from 'vue';
+import { computed, onBeforeUnmount, onMounted, useSlots, useTemplateRef, warn } from 'vue';
 import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useMDListContext, type MDListSelectionValue } from './listContext';
@@ -58,6 +58,7 @@ const isSelected = computed(() =>
 const isDisabled = computed(() => props.disabled);
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
+let unregisterSelectionItem: (() => void) | null = null;
 
 // Only track interaction state when inside an active selection list. Outside that
 // context the item has no action surface and must not look or feel interactive.
@@ -98,6 +99,20 @@ const onKeydown = (event: KeyboardEvent) => {
 useRipple(
   computed(() => (isInSelectionList.value && !isDisabled.value ? rootEl.value : undefined)),
 );
+
+onMounted(() => {
+  unregisterSelectionItem =
+    listContext?.selectionRegistry.registerItem({
+      getElement: () => rootEl.value ?? null,
+      isDisabled: () => isDisabled.value,
+      isSelected: () => isSelected.value,
+    }) ?? null;
+});
+
+onBeforeUnmount(() => {
+  unregisterSelectionItem?.();
+  unregisterSelectionItem = null;
+});
 
 if (import.meta.env.DEV) {
   onMounted(() => {

@@ -114,24 +114,42 @@ The following generic tokens are **not** part of the public API and are **not** 
 
 ### Public component tokens
 
-| Token                                                | Purpose                                                                         |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `--md-comp-list-item-container-color`                | Row background; defaults to `transparent` for standard, `surface` for segmented |
-| `--md-comp-list-item-label-text-color`               | Label text color; defaults to `on-surface`                                      |
-| `--md-comp-list-item-supporting-text-color`          | Supporting text color; defaults to `on-surface-variant`                         |
-| `--md-comp-list-item-overline-color`                 | Overline text color; defaults to `on-surface-variant`                           |
-| `--md-comp-list-item-leading-icon-color`             | Leading icon and avatar color; defaults to `on-surface-variant`                 |
-| `--md-comp-list-item-trailing-icon-color`            | Trailing icon color; defaults to `on-surface-variant`                           |
-| `--md-comp-list-item-trailing-text-color`            | Trailing text color; defaults to `on-surface-variant`                           |
-| `--md-comp-list-item-state-layer-color`              | Interaction state layer color                                                   |
-| `--md-comp-list-item-selected-container-color`       | Selected row background — defaults to `secondary-container`                     |
-| `--md-comp-list-item-selected-label-text-color`      | Selected row label color — defaults to `on-secondary-container`                 |
-| `--md-comp-list-item-selected-supporting-text-color` | Selected row supporting text color                                              |
-| `--md-comp-list-item-selected-trailing-icon-color`   | Selected row trailing icon color                                                |
-| `--md-comp-list-item-disabled-label-text-color`      | Disabled row label color                                                        |
-| `--md-comp-list-item-disabled-leading-icon-color`    | Disabled row leading icon color                                                 |
-| `--md-comp-list-item-disabled-supporting-text-color` | Disabled row supporting text color                                              |
-| `--md-comp-list-item-disabled-trailing-icon-color`   | Disabled row trailing icon color                                                |
+| Token                                                   | Purpose                                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `--md-comp-list-item-container-color`                   | Row background; defaults to `transparent` for standard, `surface` for segmented |
+| `--md-comp-list-item-container-shape`                   | Default expressive row shape; defaults to `4dp`                                 |
+| `--md-comp-list-item-hovered-container-shape`           | Hover row shape; defaults to `12dp`                                             |
+| `--md-comp-list-item-focused-container-shape`           | Focus row shape; defaults to `16dp`                                             |
+| `--md-comp-list-item-pressed-container-shape`           | Pressed row shape; defaults to `16dp`                                           |
+| `--md-comp-list-item-dragged-container-shape`           | Dragged row shape; defaults to `16dp`                                           |
+| `--md-comp-list-item-selected-container-shape`          | Selected row shape; defaults to `16dp`                                          |
+| `--md-comp-list-item-label-text-color`                  | Label text color; defaults to `on-surface`                                      |
+| `--md-comp-list-item-supporting-text-color`             | Supporting text color; defaults to `on-surface-variant`                         |
+| `--md-comp-list-item-overline-color`                    | Overline text color; defaults to `on-surface-variant`                           |
+| `--md-comp-list-item-leading-icon-size`                 | Leading expressive icon size; defaults to `20dp`                                |
+| `--md-comp-list-item-trailing-icon-size`                | Trailing expressive icon size; defaults to `20dp`                               |
+| `--md-comp-list-item-leading-avatar-size`               | Leading avatar size; defaults to `40dp`                                         |
+| `--md-comp-list-item-leading-icon-color`                | Leading icon and avatar color; defaults to `on-surface-variant`                 |
+| `--md-comp-list-item-trailing-icon-color`               | Trailing icon color; defaults to `on-surface-variant`                           |
+| `--md-comp-list-item-trailing-text-color`               | Trailing text color; defaults to `on-surface-variant`                           |
+| `--md-comp-list-item-state-layer-color`                 | Interaction state layer color                                                   |
+| `--md-comp-list-item-hover-state-layer-opacity`         | Hover state-layer opacity; defaults to Material hover state                     |
+| `--md-comp-list-item-focus-state-layer-opacity`         | Focus state-layer opacity; defaults to Material focus state                     |
+| `--md-comp-list-item-pressed-state-layer-opacity`       | Pressed state-layer opacity; defaults to Material pressed state                 |
+| `--md-comp-list-item-dragged-state-layer-opacity`       | Dragged state-layer opacity; defaults to Material dragged state                 |
+| `--md-comp-list-item-selected-container-color`          | Selected row background — defaults to `secondary-container`                     |
+| `--md-comp-list-item-selected-label-text-color`         | Selected row label color — defaults to `on-secondary-container`                 |
+| `--md-comp-list-item-selected-supporting-text-color`    | Selected row supporting text color                                              |
+| `--md-comp-list-item-selected-trailing-icon-color`      | Selected row trailing icon color                                                |
+| `--md-comp-list-item-disabled-container-color`          | Disabled container color; defaults to `on-surface` with `0.38` alpha            |
+| `--md-comp-list-item-selected-disabled-container-color` | Disabled selected container color; defaults to `on-surface` with `0.38` alpha   |
+| `--md-comp-list-item-disabled-label-text-color`         | Disabled row label color                                                        |
+| `--md-comp-list-item-disabled-leading-icon-color`       | Disabled row leading icon color                                                 |
+| `--md-comp-list-item-disabled-supporting-text-color`    | Disabled row supporting text color                                              |
+| `--md-comp-list-item-disabled-trailing-icon-color`      | Disabled row trailing icon color                                                |
+| `--md-comp-list-focus-indicator-color`                  | Focus indicator color; defaults to `secondary`                                  |
+| `--md-comp-list-focus-indicator-thickness`              | Focus indicator thickness; defaults to `3dp`                                    |
+| `--md-comp-list-focus-indicator-offset`                 | Focus indicator inner offset; defaults to `-3dp`                                |
 
 ### Restricted token
 
@@ -257,7 +275,10 @@ Confirmed from specs:
 - Expressive item shapes: default `4dp`, hovered `12dp`, focused/pressed/dragged/selected `16dp`
 - Segmented item fill color: `surface`
 - Standard/segmented are visual choices only; they do not affect behavior
+- Focus indicator tokens: color `secondary`, thickness `3dp`, inner offset `-3dp`
 
 Partial / unverified:
 
 - Dragged container color token is not specified separately in the cache; the implementation keeps the default row colors and applies the documented dragged state layer plus elevation
+- No List-specific trailing supporting text slot is currently exposed, so the corresponding typography tokens are N/A for the public API
+- No List-specific elevation is documented for resting rows; only dragged elevation is applied

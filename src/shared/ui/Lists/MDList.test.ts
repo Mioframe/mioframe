@@ -237,6 +237,45 @@ describe('MDList', () => {
     }
   });
 
+  it('keeps nested selection-list options out of the parent roving focus registry', async () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList selection-mode="single" model-value="outer-two">
+            <MDListSelectionItem label-text="Outer one" value="outer-one" />
+            <MDListSelectionItem label-text="Outer two" value="outer-two" />
+            <div class="nested-owner">
+              <MDList selection-mode="single" model-value="inner-one">
+                <MDListSelectionItem label-text="Inner one" value="inner-one" />
+                <MDListSelectionItem label-text="Inner two" value="inner-two" />
+              </MDList>
+            </div>
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    await nextTick();
+
+    const allOptions = wrapper.findAll<HTMLElement>('[role="option"]');
+    const outerOptions = allOptions.slice(0, 2);
+    const innerOptions = allOptions.slice(2);
+
+    expect(outerOptions).toHaveLength(2);
+    expect(innerOptions).toHaveLength(2);
+    expect(outerOptions[0]?.element.tabIndex).toBe(-1);
+    expect(outerOptions[1]?.element.tabIndex).toBe(0);
+
+    outerOptions[1]?.element.focus();
+    await outerOptions[1]?.trigger('keydown', { key: 'ArrowDown' });
+
+    expect(document.activeElement).toBe(outerOptions[0]?.element);
+    expect(innerOptions[0]?.element.tabIndex).toBe(0);
+    expect(innerOptions[1]?.element.tabIndex).toBe(-1);
+  });
+
   it('warns in development when MDListItem is used inside a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

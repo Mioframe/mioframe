@@ -10,6 +10,24 @@ export type MDListSelectionValue = boolean | number | string;
 /** Controlled selection payload accepted by `MDList`. */
 export type MDListModelValue = MDListSelectionValue | readonly MDListSelectionValue[] | undefined;
 
+/** Live registration contract for one selection item owned by an `MDList`. */
+export interface MDListSelectionItemRecord {
+  /** Returns the current rendered option root element. */
+  getElement: () => HTMLElement | null;
+  /** Returns the current disabled state used by roving focus. */
+  isDisabled: () => boolean;
+  /** Returns the current selected state used by initial tab-stop sync. */
+  isSelected: () => boolean;
+}
+
+/** Vue-owned registry of selection items for one `MDList` listbox context. */
+export interface MDListSelectionRegistry {
+  /** Returns the current registered items for this list only. */
+  getItems: () => readonly MDListSelectionItemRecord[];
+  /** Registers one owned item and returns its unregister callback. */
+  registerItem: (item: MDListSelectionItemRecord) => () => void;
+}
+
 /** Reactive list container state shared with descendant items. */
 export interface MDListContextValue {
   /** Semantic wrapper tag each item should render. */
@@ -24,6 +42,8 @@ export interface MDListContextValue {
   isItemSelected: (value: MDListSelectionValue | undefined) => boolean;
   /** Requests a controlled selection update from the list owner. */
   selectItem: (value: MDListSelectionValue | undefined) => void;
+  /** Vue-owned selection registry for this list's option items. */
+  selectionRegistry: MDListSelectionRegistry;
 }
 
 const LIST_CONTEXT_KEY: InjectionKey<MDListContextValue> = Symbol('md-list-context');
@@ -43,6 +63,7 @@ const includesValue = (
  * @param selectionMode - Reactive selection mode.
  * @param modelValue - Reactive controlled selection state.
  * @param onUpdateModelValue - Controlled selection update callback.
+ * @returns The provided list context value for same-component consumers.
  */
 export const provideMDListContext = (
   listStyle: Ref<MDListStyle> | ComputedRef<MDListStyle>,
@@ -51,6 +72,7 @@ export const provideMDListContext = (
   modelValue: Ref<MDListModelValue> | ComputedRef<MDListModelValue>,
   onUpdateModelValue: (value: MDListModelValue) => void,
 ) => {
+  const selectionItems: MDListSelectionItemRecord[] = [];
   const selectedValues = computed<readonly MDListSelectionValue[]>(() => {
     if (selectionMode.value === 'none') {
       return [];
@@ -65,7 +87,7 @@ export const provideMDListContext = (
     return isSelectionValue(value) ? [value] : [];
   });
 
-  provide(LIST_CONTEXT_KEY, {
+  const contextValue: MDListContextValue = {
     itemTag: computed(() => (tag.value === 'ul' ? 'li' : 'div')),
     listStyle: computed(() => listStyle.value),
     selectionMode: computed(() => selectionMode.value),
@@ -93,7 +115,25 @@ export const provideMDListContext = (
 
       onUpdateModelValue(nextValues);
     },
-  });
+    selectionRegistry: {
+      getItems: () => selectionItems,
+      registerItem(item) {
+        selectionItems.push(item);
+
+        return () => {
+          const index = selectionItems.indexOf(item);
+
+          if (index >= 0) {
+            selectionItems.splice(index, 1);
+          }
+        };
+      },
+    },
+  };
+
+  provide(LIST_CONTEXT_KEY, contextValue);
+
+  return contextValue;
 };
 
 /**

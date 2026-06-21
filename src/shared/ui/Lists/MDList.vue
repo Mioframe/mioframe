@@ -65,7 +65,7 @@ useWarnSelectionListTagMismatch(
   computed(() => props.tag),
 );
 
-provideMDListContext(
+const listContext = provideMDListContext(
   resolvedListStyle,
   resolvedTag,
   computed(() => props.selectionMode),
@@ -85,7 +85,7 @@ const containerRole = computed(() => {
 
 const selectionActive = computed(() => props.selectionMode !== 'none');
 
-useListSelectionKeyboard(getContainerElement, selectionActive);
+useListSelectionKeyboard(getContainerElement, selectionActive, listContext.selectionRegistry);
 </script>
 
 <template>

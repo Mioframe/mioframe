@@ -1,38 +1,13 @@
 import { warn } from 'vue';
 
 /**
- * Emits a development warning when a single-action MDListItem lacks an action
- * listener or href, which would leave the interactive element unreachable.
- * @param hasActionListener - true when an `@action` listener is bound
- * @param hasHref - true when an `href` prop is provided
- */
-export const warnSingleActionMissingHandler = (hasActionListener: boolean, hasHref: boolean) => {
-  if (!hasActionListener && !hasHref) {
-    warn(
-      'MDListItem: mode="single-action" requires either an @action listener or an href. Use mode="static" for non-interactive rows.',
-    );
-  }
-};
-
-/**
  * Emits a development warning when a multi-action MDListItem is missing its
- * trailing action slot or primary action handler.
- *
- * Standalone multi-action is supported: an internal primary-action surface is
- * rendered as a sibling of the trailing action, just like the in-list render.
+ * trailing action slot.
  * @param hasTrailingAction - true when a `#trailingAction` slot is filled
- * @param hasActionListener - true when an `@action` listener is bound
- * @param hasHref - true when an `href` prop is provided
  */
-export const warnMultiActionMissingRequirements = (
-  hasTrailingAction: boolean,
-  hasActionListener: boolean,
-  hasHref: boolean,
-) => {
-  if (!hasTrailingAction || (!hasActionListener && !hasHref)) {
-    warn(
-      'MDListItem: mode="multi-action" requires either a real primary @action or href, plus a #trailingAction slot.',
-    );
+export const warnMultiActionMissingRequirements = (hasTrailingAction: boolean) => {
+  if (!hasTrailingAction) {
+    warn('MDListItem: mode="multi-action" requires a #trailingAction slot.');
   }
 };
 

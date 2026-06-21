@@ -228,12 +228,12 @@ describe('MDListItem', () => {
     );
   });
 
-  it('warns in development when single-action has no action listener or href', () => {
+  it('does not warn in development when single-action has no runtime-detectable action listener', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     mountListItem({ mode: 'single-action' }, { inList: true });
 
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(warnSpy).not.toHaveBeenCalledWith(
       expect.stringContaining(
         'mode="single-action" requires either an @action listener or an href',
       ),
@@ -242,12 +242,20 @@ describe('MDListItem', () => {
     warnSpy.mockRestore();
   });
 
-  it('warns in development when multi-action has no secondary action slot', () => {
+  it('does not warn in development when multi-action has no runtime-detectable primary listener', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    mountListItem({ mode: 'multi-action', onAction: vi.fn() }, { inList: true });
+    mountListItem(
+      { mode: 'multi-action' },
+      {
+        inList: true,
+        slots: {
+          trailingAction: '<button type="button">Secondary</button>',
+        },
+      },
+    );
 
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(warnSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('mode="multi-action" requires either a real primary @action or href'),
     );
 
@@ -378,15 +386,13 @@ describe('MDListItem', () => {
       expect(wrapper.find('.md-list-item__trailing-action button').text()).toBe('Edit');
     });
 
-    it('warns in development when standalone multi-action lacks the required slots or handler', () => {
+    it('warns in development when standalone multi-action lacks the required trailing action slot', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       mountListItem({ mode: 'multi-action', onAction: vi.fn() }, { inList: false });
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'mode="multi-action" requires either a real primary @action or href',
-        ),
+        expect.stringContaining('mode="multi-action" requires a #trailingAction slot'),
       );
 
       warnSpy.mockRestore();

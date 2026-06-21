@@ -4,7 +4,6 @@ import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import {
   warnListItemInsideSelectionList,
   warnMultiActionMissingRequirements,
-  warnSingleActionMissingHandler,
 } from './listItemDevWarnings';
 import { splitListItemAttrs } from './listItemAttrs';
 import { useMDListContext } from './listContext';
@@ -213,14 +212,8 @@ const onDragEnd = () => {
 
 if (import.meta.env.DEV) {
   onMounted(() => {
-    const hasActionListener = Object.keys(attrs).some((key) => key.startsWith('onAction'));
-
-    if (props.mode === 'single-action') {
-      warnSingleActionMissingHandler(hasActionListener, !!props.href);
-    }
-
     if (props.mode === 'multi-action') {
-      warnMultiActionMissingRequirements(hasTrailingAction.value, hasActionListener, !!props.href);
+      warnMultiActionMissingRequirements(hasTrailingAction.value);
     }
 
     if (selectionMode.value !== 'none') {
