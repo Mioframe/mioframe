@@ -136,7 +136,6 @@ if (import.meta.env.DEV) {
     :role="isInSelectionList ? 'option' : 'presentation'"
     :aria-selected="isInSelectionList ? String(isSelected) : undefined"
     :aria-disabled="isDisabled ? 'true' : undefined"
-    data-md-list-selection-item="true"
     :tabindex="isInSelectionList ? -1 : undefined"
     @click="onSelect"
     @keydown="onKeydown"

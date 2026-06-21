@@ -50,7 +50,7 @@ Owns selectable list item semantics and selection indicator. Must be used inside
 
 - Props: `value` (required — `boolean | number | string`), `labelText` (required), `disabled`, `lineCount`, `leadingType`, `overline`, `supportingText`
 - Slots: `leading`, `overline`, `supportingText`, `trailing`
-- Owns: `role="option"`, `aria-selected`, `aria-disabled`, `data-md-list-selection-item`, selection indicator (checkmark), click/Enter/Space → `selectItem`
+- Owns: `role="option"`, `aria-selected`, `aria-disabled`, selection indicator (checkmark), click/Enter/Space → `selectItem`
 - Does **not** have a trailing action slot (structurally invalid for options).
 
 ### MDListContainer
@@ -147,9 +147,15 @@ The following generic tokens are **not** part of the public API and are **not** 
 | `--md-comp-list-item-disabled-leading-icon-color`       | Disabled row leading icon color                                                 |
 | `--md-comp-list-item-disabled-supporting-text-color`    | Disabled row supporting text color                                              |
 | `--md-comp-list-item-disabled-trailing-icon-color`      | Disabled row trailing icon color                                                |
-| `--md-comp-list-focus-indicator-color`                  | Focus indicator color; defaults to `secondary`                                  |
-| `--md-comp-list-focus-indicator-thickness`              | Focus indicator thickness; defaults to `3dp`                                    |
-| `--md-comp-list-focus-indicator-offset`                 | Focus indicator inner offset; defaults to `-3dp`                                |
+
+### Focus indicator
+
+List composes with the project's global keyboard focus indicator (`useFocusIndicator` /
+`md-focus-indicator.css` in `src/shared/ui/State`) instead of implementing its own focus ring.
+The List family does not define `--md-comp-list-focus-indicator-*` override tokens — the
+global indicator owns focus visual language across the project, and rows opt out of it
+individually (via `md-focus-indicator_hidden`) only if a row ever needs a custom focus
+treatment, which none currently do.
 
 ### Restricted token
 

@@ -28,7 +28,7 @@ describe('MDListSelectionItem', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders with role=option, aria-selected, and data-md-list-selection-item inside a selection list', () => {
+  it('renders with role=option and aria-selected inside a selection list', () => {
     const wrapper = mountSelectionItem(
       { value: 'opt' },
       { selectionMode: 'single', modelValue: 'opt' },
@@ -37,7 +37,6 @@ describe('MDListSelectionItem', () => {
 
     expect(item.attributes('role')).toBe('option');
     expect(item.attributes('aria-selected')).toBe('true');
-    expect(item.attributes('data-md-list-selection-item')).toBe('true');
   });
 
   it('renders aria-selected=false for an unselected item', () => {

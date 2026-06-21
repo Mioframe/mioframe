@@ -13,9 +13,6 @@
 
 .md-list-item,
 .md-list-selection-item {
-  --md-comp-list-focus-indicator-color: var(--md-sys-color-secondary);
-  --md-comp-list-focus-indicator-offset: -3dp;
-  --md-comp-list-focus-indicator-thickness: 3dp;
   --md-comp-list-item-container-shape: 4dp;
   --md-comp-list-item-container-color: var(--md-private-list-item-container-color, transparent);
   --md-comp-list-item-disabled-container-color: rgb(
