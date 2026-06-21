@@ -88,7 +88,7 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 `listStyle="segmented"`: implements the M3 Expressive filled-items-with-gaps model.
 
 - The **list container has no background**. There is no plate behind the items.
-- Individual items receive a fill (`surface`) via `--md-comp-list-item-container-color`.
+- Individual items receive a fill (`surface`) via `--md-comp-list-list-item-container-color`.
 - A `2dp` gap between items reveals the parent surface, creating visible separation.
 - Items default to `4dp` expressive corners; hover expands to `12dp`; focused, pressed, dragged, and selected states expand to `16dp`.
 - First and last segmented rows keep `16dp` exposed outer corners on their action surfaces so the list container shape is represented by the items, not by parent-only clipping.
@@ -102,51 +102,74 @@ This matches M3 documentation: _"Use gaps for contained lists. Gaps leverage exp
 
 Token names in this family follow these rules:
 
-| Prefix                                                        | Meaning                                                                 | Consumer access                                                       |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `--md-comp-list-item-*`                                       | Public component-level tokens matching Material semantics               | Consumers may set these to theme the component                        |
-| `--md-private-list-item-*`                                    | Private implementation variables used internally across the List family | **Must not** be set by consumers outside `src/shared/ui/Lists`        |
-| `--md-sys-color-*`                                            | System-level Material color roles                                       | Consumed by `--md-comp-*` defaults; do not override at the item level |
-| `--md-current-container-color` / `--md-current-content-color` | Project surface-context tokens                                          | Set by surface owners (cards, sheets, panes) and inherited down       |
+| Prefix                                                        | Meaning                                                                                                                                          | Consumer access                                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `--md-comp-list-list-item-*` / `--md-comp-list-*`             | Public component-level tokens. The name is copied verbatim from the documented `md.comp.list.list-item.*` / `md.comp.list.*` Material token path | Consumers may set these to theme the component                        |
+| `--md-private-list-item-*`                                    | Private implementation variables used internally across the List family — not documented Material tokens                                         | **Must not** be set by consumers outside `src/shared/ui/Lists`        |
+| `--md-sys-color-*`                                            | System-level Material color roles                                                                                                                | Consumed by `--md-comp-*` defaults; do not override at the item level |
+| `--md-current-container-color` / `--md-current-content-color` | Project surface-context tokens                                                                                                                   | Set by surface owners (cards, sheets, panes) and inherited down       |
 
 The following generic tokens are **not** part of the public API and are **not** set by this component family:
 `--md-container-color`, `--md-content-color`. These were removed to eliminate ambiguous cascade bleed.
 
+Public token names map mechanically from the documented Material path, per [docs/material-3/component-tokens.md](../../../../docs/material-3/component-tokens.md):
+
+```text
+md.comp.list.list-item.[state].<element>.<property>
+--md-comp-list-list-item-[state]-<element>-<property>
+```
+
+The `list-item` path segment is part of the documented token and is preserved, never collapsed into a shorter `list-item-*` form. Tokens that document an `expressive` segment (the variant this family implements) keep that segment in the CSS name too, for example `md.comp.list.list-item.selected.container.expressive.shape` → `--md-comp-list-list-item-selected-container-expressive-shape`.
+
 ### Public component tokens
 
-| Token                                                   | Purpose                                                                         |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `--md-comp-list-item-container-color`                   | Row background; defaults to `transparent` for standard, `surface` for segmented |
-| `--md-comp-list-item-container-shape`                   | Default expressive row shape; defaults to `4dp`                                 |
-| `--md-comp-list-item-hovered-container-shape`           | Hover row shape; defaults to `12dp`                                             |
-| `--md-comp-list-item-focused-container-shape`           | Focus row shape; defaults to `16dp`                                             |
-| `--md-comp-list-item-pressed-container-shape`           | Pressed row shape; defaults to `16dp`                                           |
-| `--md-comp-list-item-dragged-container-shape`           | Dragged row shape; defaults to `16dp`                                           |
-| `--md-comp-list-item-selected-container-shape`          | Selected row shape; defaults to `16dp`                                          |
-| `--md-comp-list-item-label-text-color`                  | Label text color; defaults to `on-surface`                                      |
-| `--md-comp-list-item-supporting-text-color`             | Supporting text color; defaults to `on-surface-variant`                         |
-| `--md-comp-list-item-overline-color`                    | Overline text color; defaults to `on-surface-variant`                           |
-| `--md-comp-list-item-leading-icon-size`                 | Leading expressive icon size; defaults to `20dp`                                |
-| `--md-comp-list-item-trailing-icon-size`                | Trailing expressive icon size; defaults to `20dp`                               |
-| `--md-comp-list-item-leading-avatar-size`               | Leading avatar size; defaults to `40dp`                                         |
-| `--md-comp-list-item-leading-icon-color`                | Leading icon and avatar color; defaults to `on-surface-variant`                 |
-| `--md-comp-list-item-trailing-icon-color`               | Trailing icon color; defaults to `on-surface-variant`                           |
-| `--md-comp-list-item-trailing-text-color`               | Trailing text color; defaults to `on-surface-variant`                           |
-| `--md-comp-list-item-state-layer-color`                 | Interaction state layer color                                                   |
-| `--md-comp-list-item-hover-state-layer-opacity`         | Hover state-layer opacity; defaults to Material hover state                     |
-| `--md-comp-list-item-focus-state-layer-opacity`         | Focus state-layer opacity; defaults to Material focus state                     |
-| `--md-comp-list-item-pressed-state-layer-opacity`       | Pressed state-layer opacity; defaults to Material pressed state                 |
-| `--md-comp-list-item-dragged-state-layer-opacity`       | Dragged state-layer opacity; defaults to Material dragged state                 |
-| `--md-comp-list-item-selected-container-color`          | Selected row background — defaults to `secondary-container`                     |
-| `--md-comp-list-item-selected-label-text-color`         | Selected row label color — defaults to `on-secondary-container`                 |
-| `--md-comp-list-item-selected-supporting-text-color`    | Selected row supporting text color                                              |
-| `--md-comp-list-item-selected-trailing-icon-color`      | Selected row trailing icon color                                                |
-| `--md-comp-list-item-disabled-container-color`          | Disabled container color; defaults to `on-surface` with `0.38` alpha            |
-| `--md-comp-list-item-selected-disabled-container-color` | Disabled selected container color; defaults to `on-surface` with `0.38` alpha   |
-| `--md-comp-list-item-disabled-label-text-color`         | Disabled row label color                                                        |
-| `--md-comp-list-item-disabled-leading-icon-color`       | Disabled row leading icon color                                                 |
-| `--md-comp-list-item-disabled-supporting-text-color`    | Disabled row supporting text color                                              |
-| `--md-comp-list-item-disabled-trailing-icon-color`      | Disabled row trailing icon color                                                |
+| Token                                                              | Material token                                                            | Purpose                                                                         |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `--md-comp-list-list-item-container-color`                         | `md.comp.list.list-item.container.color`                                  | Row background; defaults to `transparent` for standard, `surface` for segmented |
+| `--md-comp-list-list-item-container-expressive-shape`              | `md.comp.list.list-item.container.expressive.shape`                       | Default expressive row shape; defaults to `4dp`                                 |
+| `--md-comp-list-list-item-hovered-container-expressive-shape`      | `md.comp.list.list-item.hovered.container.expressive.shape`               | Hover row shape; defaults to `12dp`                                             |
+| `--md-comp-list-list-item-focused-container-expressive-shape`      | `md.comp.list.list-item.focused.container.expressive.shape`               | Focus row shape; defaults to `16dp`                                             |
+| `--md-comp-list-list-item-pressed-container-expressive-shape`      | `md.comp.list.list-item.pressed.container.expressive.shape`               | Pressed row shape; defaults to `16dp`                                           |
+| `--md-comp-list-list-item-dragged-container-expressive-shape`      | `md.comp.list.list-item.dragged.container.expressive.shape`               | Dragged row shape; defaults to `16dp`                                           |
+| `--md-comp-list-list-item-selected-container-expressive-shape`     | `md.comp.list.list-item.selected.container.expressive.shape`              | Selected row shape; defaults to `16dp`                                          |
+| `--md-comp-list-list-item-label-text-color`                        | `md.comp.list.list-item.label-text.color`                                 | Label text color; defaults to `on-surface`                                      |
+| `--md-comp-list-list-item-supporting-text-color`                   | `md.comp.list.list-item.supporting-text.color`                            | Supporting text color; defaults to `on-surface-variant`                         |
+| `--md-comp-list-list-item-overline-color`                          | `md.comp.list.list-item.overline.color`                                   | Overline text color; defaults to `on-surface-variant`                           |
+| `--md-comp-list-list-item-leading-icon-expressive-size`            | `md.comp.list.list-item.leading-icon.expressive.size`                     | Leading expressive icon size; defaults to `20dp`                                |
+| `--md-comp-list-list-item-trailing-icon-expressive-size`           | `md.comp.list.list-item.trailing-icon.expressive.size`                    | Trailing expressive icon size; defaults to `20dp`                               |
+| `--md-comp-list-list-item-leading-avatar-size`                     | `md.comp.list.list-item.leading-avatar.size`                              | Leading avatar size; defaults to `40dp`                                         |
+| `--md-comp-list-list-item-leading-avatar-color`                    | `md.comp.list.list-item.leading-avatar.color`                             | Leading avatar fill color                                                       |
+| `--md-comp-list-list-item-leading-icon-color`                      | `md.comp.list.list-item.leading-icon.color`                               | Leading icon color; defaults to `on-surface-variant`                            |
+| `--md-comp-list-list-item-leading-image-height`                    | `md.comp.list.list-item.leading-image.height`                             | Leading media image height; defaults to `56dp`                                  |
+| `--md-comp-list-list-item-leading-image-width`                     | `md.comp.list.list-item.leading-image.width`                              | Leading media image width; defaults to `56dp`                                   |
+| `--md-comp-list-list-item-leading-image-expressive-shape`          | `md.comp.list.list-item.leading-image.expressive.shape`                   | Leading media image shape; defaults to `8dp`                                    |
+| `--md-comp-list-list-item-leading-video-shape`                     | `md.comp.list.list-item.leading-video.shape`                              | Leading media video shape; defaults to `8dp`                                    |
+| `--md-comp-list-list-item-small-leading-video-height`              | `md.comp.list.list-item.small.leading-video.height`                       | Leading media video height; defaults to `56dp`                                  |
+| `--md-comp-list-list-item-small-leading-video-width`               | `md.comp.list.list-item.small.leading-video.width`                        | Leading media video width; defaults to `100dp`                                  |
+| `--md-comp-list-list-item-trailing-icon-color`                     | `md.comp.list.list-item.trailing-icon.color`                              | Trailing icon color; defaults to `on-surface-variant`                           |
+| `--md-comp-list-list-item-trailing-supporting-text-color`          | `md.comp.list.list-item.trailing-supporting-text.color`                   | Trailing text color; defaults to `on-surface-variant`                           |
+| `--md-comp-list-list-item-hover-state-layer-opacity`               | `md.comp.list.list-item.hover.state-layer.opacity`                        | Hover state-layer opacity; defaults to Material hover state                     |
+| `--md-comp-list-list-item-focus-state-layer-opacity`               | `md.comp.list.list-item.focus.state-layer.opacity`                        | Focus state-layer opacity; defaults to Material focus state                     |
+| `--md-comp-list-list-item-pressed-state-layer-opacity`             | `md.comp.list.list-item.pressed.state-layer.opacity`                      | Pressed state-layer opacity; defaults to Material pressed state                 |
+| `--md-comp-list-list-item-dragged-state-layer-opacity`             | `md.comp.list.list-item.dragged.state-layer.opacity`                      | Dragged state-layer opacity; defaults to Material dragged state                 |
+| `--md-comp-list-list-item-selected-container-color`                | `md.comp.list.list-item.selected.container.color`                         | Selected row background — defaults to `secondary-container`                     |
+| `--md-comp-list-list-item-selected-label-text-color`               | `md.comp.list.list-item.selected.label-text.color`                        | Selected row label color — defaults to `on-secondary-container`                 |
+| `--md-comp-list-list-item-selected-supporting-text-color`          | `md.comp.list.list-item.selected.supporting-text.color`                   | Selected row supporting text color                                              |
+| `--md-comp-list-list-item-selected-overline-color`                 | `md.comp.list.list-item.selected.overline.color`                          | Selected row overline color                                                     |
+| `--md-comp-list-list-item-selected-leading-icon-color`             | `md.comp.list.list-item.selected.leading-icon.color`                      | Selected row leading icon color                                                 |
+| `--md-comp-list-list-item-selected-trailing-icon-color`            | `md.comp.list.list-item.selected.trailing-icon.color`                     | Selected row trailing icon color                                                |
+| `--md-comp-list-list-item-selected-trailing-supporting-text-color` | `md.comp.list.list-item.selected.trailing-supporting-text.color`          | Selected row trailing text color                                                |
+| `--md-comp-list-list-item-disabled-container-color`                | `md.comp.list.list-item.disabled.container.color` (+ `.opacity`)          | Disabled container color; defaults to `on-surface` with `0.38` alpha            |
+| `--md-comp-list-list-item-selected-disabled-container-color`       | `md.comp.list.list-item.selected.disabled.container.color` (+ `.opacity`) | Disabled selected container color; defaults to `on-surface` with `0.38` alpha   |
+| `--md-comp-list-list-item-disabled-label-text-color`               | `md.comp.list.list-item.disabled.label-text.color`                        | Disabled row label color                                                        |
+| `--md-comp-list-list-item-disabled-leading-icon-color`             | `md.comp.list.list-item.disabled.leading-icon.color`                      | Disabled row leading icon color                                                 |
+| `--md-comp-list-list-item-disabled-supporting-text-color`          | `md.comp.list.list-item.disabled.supporting-text.color`                   | Disabled row supporting text color                                              |
+| `--md-comp-list-list-item-disabled-trailing-icon-color`            | `md.comp.list.list-item.disabled.trailing-icon.color`                     | Disabled row trailing icon color                                                |
+| `--md-comp-list-list-item-one-line-container-height`               | `md.comp.list.list-item.one-line.container.height`                        | One-line row height; defaults to `56dp`                                         |
+| `--md-comp-list-list-item-two-line-container-height`               | `md.comp.list.list-item.two-line.container.height`                        | Two-line row height; defaults to `72dp`                                         |
+| `--md-comp-list-list-item-three-line-container-height`             | `md.comp.list.list-item.three-line.container.height`                      | Three-line row height; defaults to `88dp`                                       |
+
+There is no documented Material token for a generic leading selection-control size (checkbox/switch slot). `--md-private-list-item-leading-control-size` is a private implementation variable for that geometry, not a public Material token. Likewise, the resolved per-state interaction state-layer color is wired internally through `--md-private-list-item-state-layer-color`, not a public Material token, because Material documents the state-layer color per-state (hover/focus/pressed/dragged/selected) rather than as one generic token.
 
 ### Focus indicator
 
@@ -159,29 +182,32 @@ treatment, which none currently do.
 
 ### Restricted token
 
-| Token                                      | Status                        | Notes                                                               |
-| ------------------------------------------ | ----------------------------- | ------------------------------------------------------------------- |
-| `--md-comp-list-item-min-container-height` | Internal / compatibility-only | Do not use as a consumer sizing API. List sizing is content-driven. |
+| Token                                         | Status                        | Notes                                                               |
+| --------------------------------------------- | ----------------------------- | ------------------------------------------------------------------- |
+| `--md-private-list-item-min-container-height` | Internal / compatibility-only | Do not use as a consumer sizing API. List sizing is content-driven. |
 
 ### Private implementation variables
 
-| Token                                                         | Default (fallback) | Override by | Purpose                                                                                                                                                                                    |
-| ------------------------------------------------------------- | ------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--md-private-list-item-action-shape`                         | 4dp                | MDList      | Base shape of action surface (button/a); state modifiers raise it to 12dp or 16dp                                                                                                          |
-| `--md-private-list-item-container-shape`                      | 4dp                | MDList      | Base shape of list item root; state modifiers raise it to 12dp or 16dp                                                                                                                     |
-| `--md-private-list-item-content-padding-inline-start`         | 16dp               | MDList      | Leading inline padding                                                                                                                                                                     |
-| `--md-private-list-item-content-padding-inline-end`           | 16dp               | MDList      | Trailing inline padding                                                                                                                                                                    |
-| `--md-private-list-item-content-padding-block`                | 10dp               | MDList      | Block padding                                                                                                                                                                              |
-| `--md-private-list-item-leading-space`                        | 12dp               | MDList      | Space between leading content and body                                                                                                                                                     |
-| `--md-private-list-item-leading-size`                         | 20dp               | MDList      | Leading icon/element size                                                                                                                                                                  |
-| `--md-private-list-item-passive-trailing-min-size`            | 28dp               | MDList      | Minimum trailing element size                                                                                                                                                              |
-| `--md-private-list-item-trailing-space`                       | 16dp               | MDList      | Space before trailing content                                                                                                                                                              |
-| `--md-private-list-item-trailing-action-padding-inline-start` | 8dp                | MDList      | Start padding before the trailing action hit target                                                                                                                                        |
-| `--md-private-list-item-trailing-action-min-target-size`      | 48dp               | MDList      | Minimum trailing action hit target size                                                                                                                                                    |
-| `--md-private-list-item-trailing-action-reserved`             | `calc(8dp + 48dp)` | MDList      | Width reserved for trailing action hit zone                                                                                                                                                |
-| `--md-private-list-item-container-color`                      | (unset)            | MDList      | Item fill color; unset for standard, `surface` for segmented; items derive `--md-comp-list-item-container-color` from this so that selected-state overrides still win via the public token |
-| `--md-private-list-item-segmented-gap`                        | 0dp                | —           | Gap between segmented items; list-level only                                                                                                                                               |
-| `--md-private-list-item-resolved-container-height`            | Inline style       | —           | Computed height for current line count                                                                                                                                                     |
+| Token                                                         | Default (fallback) | Override by | Purpose                                                                                                                                                                                         |
+| ------------------------------------------------------------- | ------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--md-private-list-item-action-shape`                         | 4dp                | MDList      | Base shape of action surface (button/a); state modifiers raise it to 12dp or 16dp                                                                                                               |
+| `--md-private-list-item-container-shape`                      | 4dp                | MDList      | Base shape of list item root; state modifiers raise it to 12dp or 16dp                                                                                                                          |
+| `--md-private-list-item-content-padding-inline-start`         | 16dp               | MDList      | Leading inline padding                                                                                                                                                                          |
+| `--md-private-list-item-content-padding-inline-end`           | 16dp               | MDList      | Trailing inline padding                                                                                                                                                                         |
+| `--md-private-list-item-content-padding-block`                | 10dp               | MDList      | Block padding                                                                                                                                                                                   |
+| `--md-private-list-item-leading-space`                        | 12dp               | MDList      | Space between leading content and body                                                                                                                                                          |
+| `--md-private-list-item-leading-size`                         | 20dp               | MDList      | Leading icon/element size                                                                                                                                                                       |
+| `--md-private-list-item-leading-control-size`                 | 48dp               | MDList      | Leading selection-control (checkbox/switch) size; no documented Material List token for this generic control size                                                                               |
+| `--md-private-list-item-passive-trailing-min-size`            | 28dp               | MDList      | Minimum trailing element size                                                                                                                                                                   |
+| `--md-private-list-item-trailing-space`                       | 16dp               | MDList      | Space before trailing content                                                                                                                                                                   |
+| `--md-private-list-item-trailing-action-padding-inline-start` | 8dp                | MDList      | Start padding before the trailing action hit target                                                                                                                                             |
+| `--md-private-list-item-trailing-action-min-target-size`      | 48dp               | MDList      | Minimum trailing action hit target size                                                                                                                                                         |
+| `--md-private-list-item-trailing-action-reserved`             | `calc(8dp + 48dp)` | MDList      | Width reserved for trailing action hit zone                                                                                                                                                     |
+| `--md-private-list-item-container-color`                      | (unset)            | MDList      | Item fill color; unset for standard, `surface` for segmented; items derive `--md-comp-list-list-item-container-color` from this so that selected-state overrides still win via the public token |
+| `--md-private-list-item-segmented-gap`                        | 0dp                | —           | Gap between segmented items; list-level only                                                                                                                                                    |
+| `--md-private-list-item-resolved-container-height`            | Inline style       | —           | Computed height for current line count                                                                                                                                                          |
+| `--md-private-list-item-state-layer-color`                    | (resolved)         | —           | Resolved interaction state layer color fed into shared `MDStateLayer`; Material documents state-layer color per interaction state, not as one generic token                                     |
+| `--md-private-list-item-min-container-height`                 | (unset)            | —           | Internal/compatibility-only row height override; not a public sizing API                                                                                                                        |
 
 `MDList` may override any `--md-private-list-item-*` by setting the variable on `.md-list`, which descendants inherit.
 
@@ -203,7 +229,7 @@ The component auto-resolves line count from slot/prop presence when `lineCount` 
 - `supportingText` only → 2
 - neither → 1
 
-Use `lineCount` only when you need to declare a fixed layout that differs from the auto-resolved value. Do not use `lineCount` or `--md-comp-list-item-min-container-height` as arbitrary height-tuning controls.
+Use `lineCount` only when you need to declare a fixed layout that differs from the auto-resolved value. Do not use `lineCount` or `--md-private-list-item-min-container-height` as arbitrary height-tuning controls.
 
 ## Row sizing
 

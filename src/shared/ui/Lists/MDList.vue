@@ -154,7 +154,7 @@ useListSelectionKeyboard(getContainerElement, selectionActive, listContext.selec
        container has no background; visual grouping comes from the item fill and the
        gaps that reveal the parent surface beneath. Item fill uses surface
        per the segmented list visual model. The private token cascades to item children,
-       which derive --md-comp-list-item-container-color from it so that item-level
+       which derive --md-comp-list-list-item-container-color from it so that item-level
        overrides (selected, dragged) can still win via the public token. */
     --md-private-list-item-container-color: var(--md-sys-color-surface);
 

@@ -400,7 +400,7 @@ defineExpose({
   /* Trailing action: flex container, padding, and sizing specific to MDListItem. */
   &__trailing-action {
     justify-content: center;
-    color: var(--md-comp-list-item-trailing-icon-color);
+    color: var(--md-comp-list-list-item-trailing-icon-color);
     padding-inline: var(--md-private-list-item-trailing-action-padding-inline-start, 8dp)
       var(--md-private-list-item-content-padding-inline-end, 16dp);
     min-width: var(--md-private-list-item-trailing-action-min-target-size, 48dp);

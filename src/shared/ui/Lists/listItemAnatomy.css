@@ -13,64 +13,70 @@
 
 .md-list-item,
 .md-list-selection-item {
-  --md-comp-list-item-container-shape: 4dp;
-  --md-comp-list-item-container-color: var(--md-private-list-item-container-color, transparent);
-  --md-comp-list-item-disabled-container-color: rgb(
+  --md-comp-list-list-item-container-expressive-shape: 4dp;
+  --md-comp-list-list-item-container-color: var(
+    --md-private-list-item-container-color,
+    transparent
+  );
+  --md-comp-list-list-item-disabled-container-color: rgb(
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
-  --md-comp-list-item-disabled-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-  --md-comp-list-item-disabled-label-text-color: rgb(
+  --md-comp-list-list-item-disabled-label-text-color: rgb(
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
-  --md-comp-list-item-disabled-leading-icon-color: rgb(
+  --md-comp-list-list-item-disabled-leading-icon-color: rgb(
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
-  --md-comp-list-item-disabled-supporting-text-color: rgb(
+  --md-comp-list-list-item-disabled-supporting-text-color: rgb(
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
-  --md-comp-list-item-disabled-trailing-icon-color: rgb(
+  --md-comp-list-list-item-disabled-trailing-icon-color: rgb(
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
-  --md-comp-list-item-label-text-color: var(--md-sys-color-on-surface);
-  --md-comp-list-item-leading-avatar-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-leading-avatar-size: 40dp;
-  --md-comp-list-item-leading-control-size: 48dp;
-  --md-comp-list-item-leading-image-height: 56dp;
-  --md-comp-list-item-leading-image-shape: 8dp;
-  --md-comp-list-item-leading-image-width: 56dp;
-  --md-comp-list-item-leading-icon-size: 20dp;
-  --md-comp-list-item-leading-icon-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-leading-video-height: 56dp;
-  --md-comp-list-item-leading-video-shape: 8dp;
-  --md-comp-list-item-leading-video-width: 100dp;
-  --md-comp-list-item-one-line-container-height: 56dp;
-  --md-comp-list-item-overline-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-selected-container-shape: 16dp;
-  --md-comp-list-item-hovered-container-shape: 12dp;
-  --md-comp-list-item-focused-container-shape: 16dp;
-  --md-comp-list-item-pressed-container-shape: 16dp;
-  --md-comp-list-item-dragged-container-shape: 16dp;
-  --md-comp-list-item-selected-container-color: var(--md-sys-color-secondary-container);
-  --md-comp-list-item-selected-disabled-container-color: rgb(
+  --md-comp-list-list-item-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-leading-avatar-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-list-item-leading-avatar-size: 40dp;
+  --md-private-list-item-leading-control-size: 48dp;
+  --md-comp-list-list-item-leading-image-height: 56dp;
+  --md-comp-list-list-item-leading-image-expressive-shape: 8dp;
+  --md-comp-list-list-item-leading-image-width: 56dp;
+  --md-comp-list-list-item-leading-icon-expressive-size: 20dp;
+  --md-comp-list-list-item-leading-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-small-leading-video-height: 56dp;
+  --md-comp-list-list-item-leading-video-shape: 8dp;
+  --md-comp-list-list-item-small-leading-video-width: 100dp;
+  --md-comp-list-list-item-one-line-container-height: 56dp;
+  --md-comp-list-list-item-overline-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-selected-container-expressive-shape: 16dp;
+  --md-comp-list-list-item-hovered-container-expressive-shape: 12dp;
+  --md-comp-list-list-item-focused-container-expressive-shape: 16dp;
+  --md-comp-list-list-item-pressed-container-expressive-shape: 16dp;
+  --md-comp-list-list-item-dragged-container-expressive-shape: 16dp;
+  --md-comp-list-list-item-selected-container-color: var(--md-sys-color-secondary-container);
+  --md-comp-list-list-item-selected-disabled-container-color: rgb(
     from var(--md-sys-color-on-surface) r g b / 0.38
   );
-  --md-comp-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-leading-icon-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-overline-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-supporting-text-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-trailing-text-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
-  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-label-text-color);
-  --md-comp-list-item-hover-state-layer-opacity: var(--md-state-hover-layer-opacity, 0.08);
-  --md-comp-list-item-focus-state-layer-opacity: var(--md-state-focus-layer-opacity, 0.1);
-  --md-comp-list-item-pressed-state-layer-opacity: var(--md-state-pressed-layer-opacity, 0.1);
-  --md-comp-list-item-dragged-state-layer-opacity: var(--md-state-dragged-layer-opacity, 0.16);
-  --md-comp-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-three-line-container-height: 88dp;
-  --md-comp-list-item-trailing-icon-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-trailing-icon-size: 20dp;
-  --md-comp-list-item-trailing-text-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-item-two-line-container-height: 72dp;
+  --md-comp-list-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-list-item-selected-leading-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-list-item-selected-overline-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-list-list-item-selected-supporting-text-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-list-list-item-selected-trailing-supporting-text-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-list-list-item-selected-trailing-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-label-text-color);
+  --md-comp-list-list-item-hover-state-layer-opacity: var(--md-state-hover-layer-opacity, 0.08);
+  --md-comp-list-list-item-focus-state-layer-opacity: var(--md-state-focus-layer-opacity, 0.1);
+  --md-comp-list-list-item-pressed-state-layer-opacity: var(--md-state-pressed-layer-opacity, 0.1);
+  --md-comp-list-list-item-dragged-state-layer-opacity: var(--md-state-dragged-layer-opacity, 0.16);
+  --md-comp-list-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-three-line-container-height: 88dp;
+  --md-comp-list-list-item-trailing-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-trailing-icon-expressive-size: 20dp;
+  --md-comp-list-list-item-trailing-supporting-text-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-two-line-container-height: 72dp;
 
   position: relative;
   display: flex;
@@ -79,20 +85,20 @@
      a flex column list, so that text overflow/ellipsis on children works correctly. */
   min-width: 0;
   min-height: var(
-    --md-comp-list-item-min-container-height,
+    --md-private-list-item-min-container-height,
     var(--md-private-list-item-resolved-container-height)
   );
   border: 0;
-  --md-state-hover-layer-opacity: var(--md-comp-list-item-hover-state-layer-opacity);
-  --md-state-focus-layer-opacity: var(--md-comp-list-item-focus-state-layer-opacity);
-  --md-state-pressed-layer-opacity: var(--md-comp-list-item-pressed-state-layer-opacity);
-  --md-state-dragged-layer-opacity: var(--md-comp-list-item-dragged-state-layer-opacity);
+  --md-state-hover-layer-opacity: var(--md-comp-list-list-item-hover-state-layer-opacity);
+  --md-state-focus-layer-opacity: var(--md-comp-list-list-item-focus-state-layer-opacity);
+  --md-state-pressed-layer-opacity: var(--md-comp-list-list-item-pressed-state-layer-opacity);
+  --md-state-dragged-layer-opacity: var(--md-comp-list-list-item-dragged-state-layer-opacity);
   border-radius: var(
     --md-private-list-item-container-shape,
-    var(--md-comp-list-item-container-shape)
+    var(--md-comp-list-list-item-container-expressive-shape)
   );
-  background: var(--md-comp-list-item-container-color);
-  color: var(--md-comp-list-item-label-text-color);
+  background: var(--md-comp-list-list-item-container-color);
+  color: var(--md-comp-list-list-item-label-text-color);
   list-style: none;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
@@ -103,24 +109,40 @@
 
 .md-list-item_selected,
 .md-list-selection-item_selected {
-  --md-private-list-item-action-shape: var(--md-comp-list-item-selected-container-shape);
-  --md-private-list-item-container-shape: var(--md-comp-list-item-selected-container-shape);
-  --md-comp-list-item-container-color: var(--md-comp-list-item-selected-container-color);
-  --md-comp-list-item-label-text-color: var(--md-comp-list-item-selected-label-text-color);
-  --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-selected-leading-icon-color);
-  --md-comp-list-item-overline-color: var(--md-comp-list-item-selected-overline-color);
-  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-selected-label-text-color);
-  --md-comp-list-item-supporting-text-color: var(
-    --md-comp-list-item-selected-supporting-text-color
+  --md-private-list-item-action-shape: var(
+    --md-comp-list-list-item-selected-container-expressive-shape
   );
-  --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-selected-trailing-icon-color);
-  --md-comp-list-item-trailing-text-color: var(--md-comp-list-item-selected-trailing-text-color);
+  --md-private-list-item-container-shape: var(
+    --md-comp-list-list-item-selected-container-expressive-shape
+  );
+  --md-comp-list-list-item-container-color: var(--md-comp-list-list-item-selected-container-color);
+  --md-comp-list-list-item-label-text-color: var(
+    --md-comp-list-list-item-selected-label-text-color
+  );
+  --md-comp-list-list-item-leading-icon-color: var(
+    --md-comp-list-list-item-selected-leading-icon-color
+  );
+  --md-comp-list-list-item-overline-color: var(--md-comp-list-list-item-selected-overline-color);
+  --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-selected-label-text-color);
+  --md-comp-list-list-item-supporting-text-color: var(
+    --md-comp-list-list-item-selected-supporting-text-color
+  );
+  --md-comp-list-list-item-trailing-icon-color: var(
+    --md-comp-list-list-item-selected-trailing-icon-color
+  );
+  --md-comp-list-list-item-trailing-supporting-text-color: var(
+    --md-comp-list-list-item-selected-trailing-supporting-text-color
+  );
 }
 
 .md-list-item.md-state_hover,
 .md-list-selection-item.md-state_hover {
-  --md-private-list-item-action-shape: var(--md-comp-list-item-hovered-container-shape);
-  --md-private-list-item-container-shape: var(--md-comp-list-item-hovered-container-shape);
+  --md-private-list-item-action-shape: var(
+    --md-comp-list-list-item-hovered-container-expressive-shape
+  );
+  --md-private-list-item-container-shape: var(
+    --md-comp-list-list-item-hovered-container-expressive-shape
+  );
 }
 
 .md-list-item.md-state_focused,
@@ -128,19 +150,31 @@
 .md-list-item.md-state_dragged,
 .md-list-selection-item.md-state_focused,
 .md-list-selection-item.md-state_pressed {
-  --md-private-list-item-action-shape: var(--md-comp-list-item-focused-container-shape);
-  --md-private-list-item-container-shape: var(--md-comp-list-item-focused-container-shape);
+  --md-private-list-item-action-shape: var(
+    --md-comp-list-list-item-focused-container-expressive-shape
+  );
+  --md-private-list-item-container-shape: var(
+    --md-comp-list-list-item-focused-container-expressive-shape
+  );
 }
 
 .md-list-item.md-state_pressed,
 .md-list-selection-item.md-state_pressed {
-  --md-private-list-item-action-shape: var(--md-comp-list-item-pressed-container-shape);
-  --md-private-list-item-container-shape: var(--md-comp-list-item-pressed-container-shape);
+  --md-private-list-item-action-shape: var(
+    --md-comp-list-list-item-pressed-container-expressive-shape
+  );
+  --md-private-list-item-container-shape: var(
+    --md-comp-list-list-item-pressed-container-expressive-shape
+  );
 }
 
 .md-list-item.md-state_dragged {
-  --md-private-list-item-action-shape: var(--md-comp-list-item-dragged-container-shape);
-  --md-private-list-item-container-shape: var(--md-comp-list-item-dragged-container-shape);
+  --md-private-list-item-action-shape: var(
+    --md-comp-list-list-item-dragged-container-expressive-shape
+  );
+  --md-private-list-item-container-shape: var(
+    --md-comp-list-list-item-dragged-container-expressive-shape
+  );
 }
 
 /* ─── Disabled state (token remaps) ──────────────────────────────────────── */
@@ -150,16 +184,26 @@
 .md-list-item[aria-disabled='true'],
 .md-list-selection-item.md-state_disabled,
 .md-list-selection-item[aria-disabled='true'] {
-  --md-comp-list-item-container-color: var(--md-comp-list-item-disabled-container-color);
-  --md-comp-list-item-label-text-color: var(--md-comp-list-item-disabled-label-text-color);
-  --md-comp-list-item-leading-icon-color: var(--md-comp-list-item-disabled-leading-icon-color);
-  --md-comp-list-item-overline-color: var(--md-comp-list-item-disabled-supporting-text-color);
-  --md-comp-list-item-state-layer-color: var(--md-comp-list-item-disabled-label-text-color);
-  --md-comp-list-item-supporting-text-color: var(
-    --md-comp-list-item-disabled-supporting-text-color
+  --md-comp-list-list-item-container-color: var(--md-comp-list-list-item-disabled-container-color);
+  --md-comp-list-list-item-label-text-color: var(
+    --md-comp-list-list-item-disabled-label-text-color
   );
-  --md-comp-list-item-trailing-icon-color: var(--md-comp-list-item-disabled-trailing-icon-color);
-  --md-comp-list-item-trailing-text-color: var(--md-comp-list-item-disabled-supporting-text-color);
+  --md-comp-list-list-item-leading-icon-color: var(
+    --md-comp-list-list-item-disabled-leading-icon-color
+  );
+  --md-comp-list-list-item-overline-color: var(
+    --md-comp-list-list-item-disabled-supporting-text-color
+  );
+  --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-disabled-label-text-color);
+  --md-comp-list-list-item-supporting-text-color: var(
+    --md-comp-list-list-item-disabled-supporting-text-color
+  );
+  --md-comp-list-list-item-trailing-icon-color: var(
+    --md-comp-list-list-item-disabled-trailing-icon-color
+  );
+  --md-comp-list-list-item-trailing-supporting-text-color: var(
+    --md-comp-list-list-item-disabled-supporting-text-color
+  );
 }
 
 .md-list-item_selected.md-state_disabled,
@@ -167,7 +211,9 @@
 .md-list-item_selected[aria-disabled='true'],
 .md-list-selection-item_selected.md-state_disabled,
 .md-list-selection-item_selected[aria-disabled='true'] {
-  --md-comp-list-item-container-color: var(--md-comp-list-item-selected-disabled-container-color);
+  --md-comp-list-list-item-container-color: var(
+    --md-comp-list-list-item-selected-disabled-container-color
+  );
 }
 
 /* ─── Shared body / action surface layout ────────────────────────────────── */
@@ -182,14 +228,17 @@
   flex: 1 1 auto;
   min-width: 0;
   min-height: var(
-    --md-comp-list-item-min-container-height,
+    --md-private-list-item-min-container-height,
     var(--md-private-list-item-resolved-container-height)
   );
   padding-inline: var(--md-private-list-item-content-padding-inline-start, 16dp)
     var(--md-private-list-item-content-padding-inline-end, 16dp);
   padding-block: var(--md-private-list-item-content-padding-block, 10dp);
   box-sizing: border-box;
-  border-radius: var(--md-private-list-item-action-shape, var(--md-comp-list-item-container-shape));
+  border-radius: var(
+    --md-private-list-item-action-shape,
+    var(--md-comp-list-list-item-container-expressive-shape)
+  );
   transition: border-radius var(--md-sys-motion-duration-short4, 0.2s);
 }
 
@@ -224,7 +273,7 @@
   justify-content: center;
   width: 24dp;
   min-width: 24dp;
-  color: var(--md-comp-list-item-leading-icon-color);
+  color: var(--md-comp-list-list-item-leading-icon-color);
   margin-inline-end: var(--md-private-list-item-leading-space, 12dp);
 }
 
@@ -233,38 +282,44 @@
 .md-list-item__leading,
 .md-list-selection-item__leading {
   justify-content: center;
-  min-width: var(--md-private-list-item-leading-size, var(--md-comp-list-item-leading-icon-size));
-  color: var(--md-comp-list-item-leading-icon-color);
+  min-width: var(
+    --md-private-list-item-leading-size,
+    var(--md-comp-list-list-item-leading-icon-expressive-size)
+  );
+  color: var(--md-comp-list-list-item-leading-icon-color);
   margin-inline-end: var(--md-private-list-item-leading-space, 12dp);
 }
 
 .md-list-item__leading_type_icon,
 .md-list-selection-item__leading_type_icon {
-  min-width: var(--md-private-list-item-leading-size, var(--md-comp-list-item-leading-icon-size));
+  min-width: var(
+    --md-private-list-item-leading-size,
+    var(--md-comp-list-list-item-leading-icon-expressive-size)
+  );
 }
 
 .md-list-item__leading_type_avatar,
 .md-list-selection-item__leading_type_avatar {
-  width: var(--md-comp-list-item-leading-avatar-size);
-  min-width: var(--md-comp-list-item-leading-avatar-size);
-  height: var(--md-comp-list-item-leading-avatar-size);
-  min-height: var(--md-comp-list-item-leading-avatar-size);
+  width: var(--md-comp-list-list-item-leading-avatar-size);
+  min-width: var(--md-comp-list-list-item-leading-avatar-size);
+  height: var(--md-comp-list-list-item-leading-avatar-size);
+  min-height: var(--md-comp-list-list-item-leading-avatar-size);
   overflow: hidden;
   border-radius: var(--md-sys-shape-corner-full);
 }
 
 .md-list-item__leading_type_media,
 .md-list-selection-item__leading_type_media {
-  min-width: var(--md-comp-list-item-leading-image-width);
-  min-height: var(--md-comp-list-item-leading-image-height);
+  min-width: var(--md-comp-list-list-item-leading-image-width);
+  min-height: var(--md-comp-list-list-item-leading-image-height);
   align-self: center;
-  border-radius: var(--md-comp-list-item-leading-image-shape);
+  border-radius: var(--md-comp-list-list-item-leading-image-expressive-shape);
 }
 
 .md-list-item__leading_type_control,
 .md-list-selection-item__leading_type_control {
-  min-width: var(--md-comp-list-item-leading-control-size);
-  min-height: var(--md-comp-list-item-leading-control-size);
+  min-width: var(--md-private-list-item-leading-control-size);
+  min-height: var(--md-private-list-item-leading-control-size);
 }
 
 /* ─── Content column ─────────────────────────────────────────────────────── */
@@ -286,15 +341,15 @@
 .md-list-selection-item__trailing {
   justify-content: flex-end;
   min-height: var(--md-private-list-item-passive-trailing-min-size, 28dp);
-  color: var(--md-comp-list-item-trailing-text-color);
+  color: var(--md-comp-list-list-item-trailing-supporting-text-color);
   margin-inline-start: var(--md-private-list-item-trailing-space, 16dp);
 }
 
 .md-list-item__trailing :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded),
 .md-list-selection-item__trailing
   :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded) {
-  --md-symbol-size: var(--md-comp-list-item-trailing-icon-size);
-  font-size: var(--md-comp-list-item-trailing-icon-size);
+  --md-symbol-size: var(--md-comp-list-list-item-trailing-icon-expressive-size);
+  font-size: var(--md-comp-list-list-item-trailing-icon-expressive-size);
 }
 
 .md-list-item__leading :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded),
@@ -304,15 +359,15 @@
   :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded),
 .md-list-selection-item__selection-indicator
   :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded) {
-  --md-symbol-size: var(--md-comp-list-item-leading-icon-size);
-  font-size: var(--md-comp-list-item-leading-icon-size);
+  --md-symbol-size: var(--md-comp-list-list-item-leading-icon-expressive-size);
+  font-size: var(--md-comp-list-list-item-leading-icon-expressive-size);
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────── */
 
 .md-list-item__overline,
 .md-list-selection-item__overline {
-  color: var(--md-comp-list-item-overline-color);
+  color: var(--md-comp-list-list-item-overline-color);
   font-family: var(--md-sys-typescale-label-small-font);
   font-size: var(--md-sys-typescale-label-small-size);
   font-weight: var(--md-sys-typescale-label-small-weight);
@@ -325,7 +380,7 @@
 
 .md-list-item__label-text,
 .md-list-selection-item__label-text {
-  color: var(--md-comp-list-item-label-text-color);
+  color: var(--md-comp-list-list-item-label-text-color);
   font-family: var(--md-sys-typescale-body-large-font);
   font-size: var(--md-sys-typescale-body-large-size);
   font-weight: var(--md-sys-typescale-body-large-weight);
@@ -338,7 +393,7 @@
 
 .md-list-item__supporting-text,
 .md-list-selection-item__supporting-text {
-  color: var(--md-comp-list-item-supporting-text-color);
+  color: var(--md-comp-list-list-item-supporting-text-color);
   display: -webkit-box;
   overflow: hidden;
   text-overflow: ellipsis;
