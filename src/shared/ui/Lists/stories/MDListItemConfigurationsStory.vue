@@ -23,7 +23,7 @@ const onAction = () => {};
         <MDListItem
           label-text="Three-line item"
           overline="Category"
-          supporting-text="Supporting text can expand to two supporting lines in the three-line configuration."
+          supporting-text="Supporting text uses the supported two-line configuration for three-line rows."
         />
       </MDList>
     </section>
@@ -60,7 +60,7 @@ const onAction = () => {};
           leading-type="media"
           label-text="Three-line media item"
           overline="Playlist"
-          supporting-text="Media rows keep the content slot widest while the trailing action stays independent."
+          supporting-text="Media rows keep the content slot wide while trailing actions stay independent."
           :line-count="3"
           @action="onAction"
         >
@@ -121,7 +121,7 @@ const onAction = () => {};
   display: block;
   width: 56dp;
   height: 56dp;
-  border-radius: 12dp;
+  border-radius: 8dp;
   background:
     linear-gradient(135deg, rgb(from var(--md-sys-color-tertiary) r g b / 0.35), transparent),
     var(--md-sys-color-tertiary-container);

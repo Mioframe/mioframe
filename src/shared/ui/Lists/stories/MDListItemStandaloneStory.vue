@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
+import { useFocusIndicator } from '../../State/useFocusIndicator';
 import MDListItem from '../MDListItem.vue';
 
 const rootAttrs = {
   'data-testid': 'visual-md-list-item-standalone',
 };
 const onAction = () => {};
+
+useFocusIndicator();
 </script>
 
 <template>

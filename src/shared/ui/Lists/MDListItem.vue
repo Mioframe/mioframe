@@ -383,6 +383,12 @@ defineExpose({
     font: inherit;
     text-align: start;
     text-decoration: none;
+    outline: none;
+  }
+
+  &__primary-action:focus-visible,
+  &:is(button, a):focus-visible > &__body {
+    outline: none !important;
   }
 
   /* Pointer cursor only for enabled interactive elements. */

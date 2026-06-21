@@ -1,8 +1,37 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+import { MD_LIST_MATERIAL_CONTRACT } from './md-list-material-contract';
 import { openStory } from '../storybook';
 
-test.describe('MDList / visual parity', () => {
-  test('MDListItem visual states match baseline', async ({ page }) => {
+const getBackgroundColor = async (locator: Locator) =>
+  locator.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+const getRadius = async (locator: Locator, property: string) =>
+  locator.evaluate(
+    (node, requestedProperty) => getComputedStyle(node).getPropertyValue(requestedProperty),
+    property,
+  );
+
+const getBoundingBoxOrThrow = async (locator: Locator, message: string) => {
+  const box = await locator.boundingBox();
+  expect(box, message).not.toBeNull();
+  if (!box) {
+    throw new Error(message);
+  }
+
+  return box;
+};
+
+const expectClose = (actual: number, expected: number, tolerance: number, message: string) => {
+  expect(Math.abs(actual - expected), message).toBeLessThanOrEqual(tolerance);
+};
+
+const hasZeroAlpha = (color: string) =>
+  color.endsWith('/ 0)') || color === 'rgba(0, 0, 0, 0)' || color === 'transparent';
+
+const normalizeOpacityToken = (value: string) => (value.startsWith('.') ? `0${value}` : value);
+
+test.describe('MDList / visual regression snapshots', () => {
+  test('MDListItem visual states do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
 
     const surface = page.getByTestId('visual-md-list-states');
@@ -10,40 +39,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-states.png');
   });
 
-  test('MDListItem visual states story uses runtime root state classes and shape tokens', async ({
-    page,
-  }) => {
-    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
-
-    const hoverRow = page.locator('[data-state="hover"].md-list-item').first();
-    const focusRow = page.locator('[data-state="focus"].md-list-item').first();
-    const pressedRow = page.locator('[data-state="pressed"].md-list-item').first();
-
-    await expect(hoverRow).toHaveClass(/md-state_hover/);
-    await expect(focusRow).toHaveClass(/md-state_focused/);
-    await expect(pressedRow).toHaveClass(/md-state_pressed/);
-
-    const [hoverRadius, focusRadius, pressedRadius] = await Promise.all([
-      hoverRow.evaluate((node) => getComputedStyle(node).borderTopLeftRadius),
-      focusRow.evaluate((node) => getComputedStyle(node).borderTopLeftRadius),
-      pressedRow.evaluate((node) => getComputedStyle(node).borderTopLeftRadius),
-    ]);
-
-    expect(
-      hoverRadius,
-      'forced hover in the visual states story must use the runtime hover shape token on the root list item',
-    ).toBe('12px');
-    expect(
-      focusRadius,
-      'forced focus in the visual states story must use the runtime focus shape token on the root list item',
-    ).toBe('16px');
-    expect(
-      pressedRadius,
-      'forced pressed in the visual states story must use the runtime pressed shape token on the root list item',
-    ).toBe('16px');
-  });
-
-  test('MDListItem configurations match baseline', async ({ page }) => {
+  test('MDListItem configurations do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
 
     const surface = page.getByTestId('visual-md-list-configurations');
@@ -51,7 +47,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-configurations.png');
   });
 
-  test('MDListItem interaction states match baseline', async ({ page }) => {
+  test('MDListItem interaction states do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
 
     const surface = page.getByTestId('visual-md-list-interaction-states');
@@ -59,7 +55,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-interaction-states.png');
   });
 
-  test('MDListItem trailing action layout matches baseline', async ({ page }) => {
+  test('MDListItem trailing action layout does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
 
     const surface = page.getByTestId('visual-md-list-trailing-action');
@@ -67,7 +63,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-trailing-action.png');
   });
 
-  test('MDListItem selection modes match baseline', async ({ page }) => {
+  test('MDListItem selection modes do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
 
     const surface = page.getByTestId('visual-md-list-selection');
@@ -75,7 +71,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-selection.png');
   });
 
-  test('MDListItem surface context standard story matches baseline', async ({ page }) => {
+  test('MDListItem surface context standard story does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
 
     const surface = page.getByTestId('visual-md-list-surface-standard');
@@ -83,7 +79,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-standard.png');
   });
 
-  test('MDListItem surface context segmented story matches baseline', async ({ page }) => {
+  test('MDListItem surface context segmented story does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
     const surface = page.getByTestId('visual-md-list-surface-segmented');
@@ -91,7 +87,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented.png');
   });
 
-  test('MDListItem segmented diagnostic surface context story matches baseline', async ({
+  test('MDListItem segmented diagnostic surface context story does not regress', async ({
     page,
   }) => {
     await openStory(
@@ -104,7 +100,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented-diagnostic.png');
   });
 
-  test('MDListItem surface context repository explorer story matches baseline', async ({
+  test('MDListItem surface context repository explorer story does not regress', async ({
     page,
   }) => {
     await openStory(
@@ -117,7 +113,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-repository.png');
   });
 
-  test('MDListItem consumer patterns story matches baseline', async ({ page }) => {
+  test('MDListItem consumer patterns story does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--consumer-patterns');
 
     const surface = page.getByTestId('visual-md-list-consumer-patterns');
@@ -125,7 +121,7 @@ test.describe('MDList / visual parity', () => {
     await expect(surface).toHaveScreenshot('md-list-item-consumer-patterns.png');
   });
 
-  test('MDListItem standalone public API story matches baseline', async ({ page }) => {
+  test('MDListItem standalone public API story does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
 
     const surface = page.getByTestId('visual-md-list-item-standalone');
@@ -134,7 +130,36 @@ test.describe('MDList / visual parity', () => {
   });
 });
 
-test.describe('MDList / surface context', () => {
+test.describe('MDList / Material Expressive contract', () => {
+  test('MDListItem one-line, two-line, and three-line rows keep Material minimum heights', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const rows = page
+      .getByTestId('visual-md-list-configurations')
+      .locator('.md-list_style_standard .md-list-item');
+
+    const expectedHeights = [
+      MD_LIST_MATERIAL_CONTRACT.rowHeights.oneLine,
+      MD_LIST_MATERIAL_CONTRACT.rowHeights.twoLine,
+      MD_LIST_MATERIAL_CONTRACT.rowHeights.threeLine,
+    ];
+
+    const minHeights = await Promise.all(
+      expectedHeights.map((_, index) =>
+        rows.nth(index).evaluate((node) => getComputedStyle(node).minHeight),
+      ),
+    );
+
+    for (const [index, expectedHeight] of expectedHeights.entries()) {
+      expect(
+        minHeights[index],
+        `configuration row ${index} must keep the Material min height`,
+      ).toBe(`${expectedHeight}px`);
+    }
+  });
+
   test('MDList standard items have transparent background inheriting parent surface', async ({
     page,
   }) => {
@@ -142,7 +167,7 @@ test.describe('MDList / surface context', () => {
 
     const surface = page.getByTestId('visual-md-list-surface-standard');
     const listItems = surface.locator('.md-list_style_standard .md-list-item').first();
-    const bgColor = await listItems.evaluate((node) => getComputedStyle(node).backgroundColor);
+    const bgColor = await getBackgroundColor(listItems);
 
     expect(
       bgColor,
@@ -154,7 +179,7 @@ test.describe('MDList / surface context', () => {
     await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
 
     const standardList = page.locator('#surface-context-wrapped-standard .md-list').first();
-    const bgColor = await standardList.evaluate((node) => getComputedStyle(node).backgroundColor);
+    const bgColor = await getBackgroundColor(standardList);
 
     expect(
       bgColor,
@@ -215,12 +240,202 @@ test.describe('MDList / surface context', () => {
       .getByTestId('visual-md-list-surface-segmented')
       .locator('.md-list')
       .first();
-    const bgColor = await segmentedList.evaluate((node) => getComputedStyle(node).backgroundColor);
+    const bgColor = await getBackgroundColor(segmentedList);
 
     expect(
       bgColor,
       'M3 segmented list container must be transparent — visual grouping comes from filled items and gaps, not a list-level background plate',
     ).toBe('rgba(0, 0, 0, 0)');
+  });
+
+  test('MDList segmented layout keeps the Material 2px gap and 16px exposed outer shape', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+    const surface = page.getByTestId('visual-md-list-surface-segmented');
+    const firstItem = surface.locator('.md-list-item').first();
+    const secondItem = surface.locator('.md-list-item').nth(1);
+    const firstAction = firstItem.locator('.md-list-item__primary-action');
+
+    const [firstBox, secondBox, firstRadius, actionRadius] = await Promise.all([
+      getBoundingBoxOrThrow(firstItem, 'first segmented row must have a bounding box'),
+      getBoundingBoxOrThrow(secondItem, 'second segmented row must have a bounding box'),
+      getRadius(firstItem, 'border-top-left-radius'),
+      getRadius(firstAction, 'border-top-left-radius'),
+    ]);
+
+    expect(secondBox.y - (firstBox.y + firstBox.height), 'segmented rows must keep a 2px gap').toBe(
+      MD_LIST_MATERIAL_CONTRACT.segmentedGap,
+    );
+    expect(firstRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.segmentedContainer}px`);
+    expect(actionRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.segmentedContainer}px`);
+  });
+
+  test('MDList expressive states map to 4px default, 12px hover, and 16px focused or pressed shapes', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const enabledRow = page.locator('[data-state="enabled"].md-list-item').first();
+    const hoverRow = page.locator('[data-state="hover"].md-list-item').first();
+    const focusRow = page.locator('[data-state="focus"].md-list-item').first();
+    const pressedRow = page.locator('[data-state="pressed"].md-list-item').first();
+
+    await expect(hoverRow).toHaveClass(/md-state_hover/);
+    await expect(focusRow).toHaveClass(/md-state_focused/);
+    await expect(pressedRow).toHaveClass(/md-state_pressed/);
+
+    const [enabledRadius, hoverRadius, focusRadius, pressedRadius] = await Promise.all([
+      getRadius(enabledRow, 'border-top-left-radius'),
+      getRadius(hoverRow, 'border-top-left-radius'),
+      getRadius(focusRow, 'border-top-left-radius'),
+      getRadius(pressedRow, 'border-top-left-radius'),
+    ]);
+
+    expect(enabledRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.default}px`);
+    expect(hoverRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.hover}px`);
+    expect(focusRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.focused}px`);
+    expect(pressedRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.pressed}px`);
+  });
+
+  test('MDList configuration fixtures keep expressive avatar, media, and icon sizing', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const surface = page.getByTestId('visual-md-list-configurations');
+    const avatar = surface.locator('.md-list-item-configurations-story__avatar');
+    const media = surface.locator('.md-list-item-configurations-story__media');
+    const leadingIcon = surface.locator('.md-list-item .md-list-item__leading .md-symbol').first();
+    const trailingIcon = surface
+      .locator('.md-list-item .md-list-item__trailing .md-symbol')
+      .first();
+
+    const [avatarBox, mediaBox, mediaRadius, leadingIconSize, trailingIconSize] = await Promise.all(
+      [
+        getBoundingBoxOrThrow(avatar, 'avatar fixture must have a bounding box'),
+        getBoundingBoxOrThrow(media, 'media fixture must have a bounding box'),
+        getRadius(media, 'border-top-left-radius'),
+        leadingIcon.evaluate((node) => getComputedStyle(node).fontSize),
+        trailingIcon.evaluate((node) => getComputedStyle(node).fontSize),
+      ],
+    );
+
+    expect(avatarBox.width).toBe(MD_LIST_MATERIAL_CONTRACT.leadingSizes.avatar);
+    expect(avatarBox.height).toBe(MD_LIST_MATERIAL_CONTRACT.leadingSizes.avatar);
+    expect(mediaBox.width).toBe(MD_LIST_MATERIAL_CONTRACT.leadingSizes.media);
+    expect(mediaBox.height).toBe(MD_LIST_MATERIAL_CONTRACT.leadingSizes.media);
+    expect(mediaRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.media}px`);
+    expect(leadingIconSize).toBe(`${MD_LIST_MATERIAL_CONTRACT.leadingSizes.icon}px`);
+    expect(trailingIconSize).toBe(`${MD_LIST_MATERIAL_CONTRACT.trailingIconSize}px`);
+  });
+
+  test('MDList overline, label, and supporting text use the documented typography tokens', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const surface = page.getByTestId('visual-md-list-configurations');
+    const overline = surface.locator('.md-list-item__overline').first();
+    const label = surface.locator('.md-list-item__label-text').first();
+    const supporting = surface.locator('.md-list-item__supporting-text').first();
+
+    const styles = await Promise.all([
+      overline.evaluate((node) => {
+        const computed = getComputedStyle(node);
+        const root = getComputedStyle(document.documentElement);
+        const sample = document.createElement('div');
+        sample.style.fontSize = root.getPropertyValue('--md-sys-typescale-label-small-size');
+        sample.style.lineHeight = root.getPropertyValue(
+          '--md-sys-typescale-label-small-line-height',
+        );
+        document.body.append(sample);
+        const expectedFontSize = getComputedStyle(sample).fontSize;
+        const expectedLineHeight = getComputedStyle(sample).lineHeight;
+        sample.remove();
+        return {
+          fontSize: computed.fontSize,
+          lineHeight: computed.lineHeight,
+          expectedFontSize,
+          expectedLineHeight,
+        };
+      }),
+      label.evaluate((node) => {
+        const computed = getComputedStyle(node);
+        const root = getComputedStyle(document.documentElement);
+        const sample = document.createElement('div');
+        sample.style.fontSize = root.getPropertyValue('--md-sys-typescale-body-large-size');
+        sample.style.lineHeight = root.getPropertyValue(
+          '--md-sys-typescale-body-large-line-height',
+        );
+        document.body.append(sample);
+        const expectedFontSize = getComputedStyle(sample).fontSize;
+        const expectedLineHeight = getComputedStyle(sample).lineHeight;
+        sample.remove();
+        return {
+          fontSize: computed.fontSize,
+          lineHeight: computed.lineHeight,
+          expectedFontSize,
+          expectedLineHeight,
+        };
+      }),
+      supporting.evaluate((node) => {
+        const computed = getComputedStyle(node);
+        const root = getComputedStyle(document.documentElement);
+        const sample = document.createElement('div');
+        sample.style.fontSize = root.getPropertyValue('--md-sys-typescale-body-medium-size');
+        sample.style.lineHeight = root.getPropertyValue(
+          '--md-sys-typescale-body-medium-line-height',
+        );
+        document.body.append(sample);
+        const expectedFontSize = getComputedStyle(sample).fontSize;
+        const expectedLineHeight = getComputedStyle(sample).lineHeight;
+        sample.remove();
+        return {
+          fontSize: computed.fontSize,
+          lineHeight: computed.lineHeight,
+          expectedFontSize,
+          expectedLineHeight,
+        };
+      }),
+    ]);
+
+    for (const [index, entry] of styles.entries()) {
+      expect(
+        entry.fontSize,
+        `typography sample ${index} must match the mapped font-size token`,
+      ).toBe(entry.expectedFontSize);
+      expect(
+        entry.lineHeight,
+        `typography sample ${index} must match the mapped line-height token`,
+      ).toBe(entry.expectedLineHeight);
+    }
+  });
+
+  test('MDList content spacing keeps the documented 10px block padding and 48px trailing target', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
+
+    const row = page.getByTestId('visual-md-list-trailing-action').locator('.md-list-item').first();
+    const body = row.locator('.md-list-item__primary-action');
+    const trailingTarget = row.locator('.md-list-item__trailing-action .md-icon-button__target');
+
+    const [paddingTop, paddingBottom, targetBox] = await Promise.all([
+      body.evaluate((node) => getComputedStyle(node).paddingTop),
+      body.evaluate((node) => getComputedStyle(node).paddingBottom),
+      getBoundingBoxOrThrow(trailingTarget, 'trailing action target must have a bounding box'),
+    ]);
+
+    expect(paddingTop).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.block}px`);
+    expect(paddingBottom).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.block}px`);
+    expect(targetBox.width).toBeGreaterThanOrEqual(
+      MD_LIST_MATERIAL_CONTRACT.minTrailingActionTarget,
+    );
+    expect(targetBox.height).toBeGreaterThanOrEqual(
+      MD_LIST_MATERIAL_CONTRACT.minTrailingActionTarget,
+    );
   });
 
   test('MDList segmented parity story does not wrap MDList in a contrasting diagnostic surface', async ({
@@ -410,7 +625,88 @@ test.describe('MDList / DOM contract', () => {
   });
 });
 
-test.describe('MDList / interaction ownership', () => {
+test.describe('MDList / StateLayer integration', () => {
+  test('MDListItem mounts shared state layers on the actual interactive surfaces only', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const standaloneSingleActionRow = page.locator(
+      '#standalone-single-action-leading .md-list-item',
+    );
+    const standaloneStaticRow = page.locator('#standalone-static-leading .md-list-item');
+    const standaloneMultiActionRow = page.locator('#standalone-multi-action .md-list-item');
+
+    await expect(standaloneSingleActionRow.locator(':scope > .md-state-layer')).toHaveCount(1);
+    await expect(
+      standaloneSingleActionRow.locator('.md-list-item__primary-action .md-state-layer'),
+    ).toHaveCount(0);
+    await expect(standaloneStaticRow.locator('.md-state-layer')).toHaveCount(0);
+    await expect(
+      standaloneMultiActionRow.locator('.md-list-item__primary-action .md-state-layer'),
+    ).toHaveCount(1);
+  });
+
+  test('MDListItem trailing action keeps its own state layer separate from the row primary surface', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const row = page.getByTestId('md-list-multi-action-independence');
+    const primaryStateLayer = row.locator('.md-list-item__primary-action > .md-state-layer');
+    const trailingButton = row.getByRole('button', { name: 'Edit' });
+
+    await expect(primaryStateLayer).toHaveCount(1);
+    await expect(trailingButton.locator('.md-state-layer')).toHaveCount(1);
+  });
+
+  test('MDListItem hover and pressed states change the shared state-layer visual state', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const singleActionRow = page.locator('[data-visual-state="hover"].md-list-item').first();
+    const hoverStateLayer = singleActionRow.locator('.md-state-layer').first();
+    const pressedRow = page.locator('[data-visual-state="pressed"].md-list-item').first();
+    const pressedStateLayer = pressedRow.locator('.md-state-layer').first();
+
+    const [hoverColor, pressedColor, hoverOpacity, pressedOpacity] = await Promise.all([
+      hoverStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+      pressedStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+      hoverStateLayer.evaluate(() =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--md-sys-state-hover-state-layer-opacity')
+          .trim(),
+      ),
+      pressedStateLayer.evaluate(() =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--md-sys-state-pressed-state-layer-opacity')
+          .trim(),
+      ),
+    ]);
+
+    expect(hoverColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(pressedColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(normalizeOpacityToken(hoverOpacity)).toBe(
+      MD_LIST_MATERIAL_CONTRACT.stateLayerOpacity.hover,
+    );
+    expect(normalizeOpacityToken(pressedOpacity)).toBe(
+      MD_LIST_MATERIAL_CONTRACT.stateLayerOpacity.pressed,
+    );
+  });
+
+  test('MDListItem disabled action rows keep the shared state layer visually inactive', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const disabledRow = page.locator('.md-list-item.md-state_disabled').first();
+    const disabledStateLayer = disabledRow.locator('.md-state-layer').first();
+    const backgroundColor = await getBackgroundColor(disabledStateLayer);
+
+    expect(hasZeroAlpha(backgroundColor)).toBe(true);
+  });
+
   test('MDListItem trailing action story avoids nested native buttons', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
 
@@ -686,6 +982,107 @@ test.describe('MDList / interaction ownership', () => {
     const nestedButtons = surface.locator('button button');
 
     await expect(nestedButtons).toHaveCount(0);
+  });
+});
+
+test.describe('MDList / keyboard focus indicator integration', () => {
+  test('MDListItem pointer focus does not show the global keyboard focus indicator', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const row = page.locator('#standalone-single-action-leading .md-list-item').first();
+    const indicator = page.locator('.md-focus-indicator');
+
+    await row.click();
+    await expect(indicator).toHaveCSS('opacity', '0');
+  });
+
+  test('MDListItem keyboard focus uses the global indicator on standalone single-action rows', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const target = page.locator('#standalone-single-action-leading .md-list-item').first();
+    const indicator = page.locator('.md-focus-indicator');
+
+    await page.keyboard.press('Tab');
+    await expect(target).toBeFocused();
+    await expect(indicator).toHaveCSS('opacity', '1');
+
+    const [targetBox, indicatorBox, indicatorRadius, targetRadius, outlineWidth, outlineOffset] =
+      await Promise.all([
+        getBoundingBoxOrThrow(target, 'standalone focused row must have a bounding box'),
+        getBoundingBoxOrThrow(indicator, 'focus indicator must have a bounding box'),
+        getRadius(indicator, 'border-top-left-radius'),
+        getRadius(target, 'border-top-left-radius'),
+        indicator.evaluate((node) => getComputedStyle(node).outlineWidth),
+        indicator.evaluate((node) => getComputedStyle(node).outlineOffset),
+      ]);
+
+    expectClose(indicatorBox.x, targetBox.x, 1, 'focus indicator x must track standalone row');
+    expectClose(indicatorBox.y, targetBox.y, 1, 'focus indicator y must track standalone row');
+    expectClose(
+      indicatorBox.width,
+      targetBox.width,
+      1,
+      'focus indicator width must match standalone row',
+    );
+    expectClose(
+      indicatorBox.height,
+      targetBox.height,
+      1,
+      'focus indicator height must match standalone row',
+    );
+    expect(indicatorRadius).toBe(targetRadius);
+    expect(outlineWidth).toBe(MD_LIST_MATERIAL_CONTRACT.focusIndicator.thickness);
+    expect(outlineOffset).toBe(MD_LIST_MATERIAL_CONTRACT.focusIndicator.offset);
+  });
+
+  test('MDListItem keyboard focus tracks the primary action surface for in-list rows without a second local outline', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const primaryAction = page
+      .locator('[data-testid="md-list-multi-action-independence"] .md-list-item__primary-action')
+      .first();
+    const row = page.locator('[data-testid="md-list-multi-action-independence"]').first();
+    const indicator = page.locator('.md-focus-indicator');
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(primaryAction).toBeFocused();
+    await expect(indicator).toHaveCSS('opacity', '1');
+
+    const [targetBox, indicatorBox, indicatorRadius, targetRadius] = await Promise.all([
+      getBoundingBoxOrThrow(primaryAction, 'primary action must have a bounding box'),
+      getBoundingBoxOrThrow(indicator, 'focus indicator must have a bounding box'),
+      getRadius(indicator, 'border-top-left-radius'),
+      getRadius(primaryAction, 'border-top-left-radius'),
+    ]);
+
+    expectClose(indicatorBox.x, targetBox.x, 1, 'focus indicator x must track primary action');
+    expectClose(indicatorBox.y, targetBox.y, 1, 'focus indicator y must track primary action');
+    expectClose(
+      indicatorBox.width,
+      targetBox.width,
+      1,
+      'focus indicator width must match primary action',
+    );
+    expectClose(
+      indicatorBox.height,
+      targetBox.height,
+      1,
+      'focus indicator height must match primary action',
+    );
+    expect(indicatorRadius).toBe(targetRadius);
+    expect(targetRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.focused}px`);
+    await expect(row).toHaveClass(/md-state_focused/);
   });
 });
 

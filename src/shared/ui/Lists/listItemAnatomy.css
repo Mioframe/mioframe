@@ -296,6 +296,7 @@
 .md-list-item__trailing :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded),
 .md-list-selection-item__trailing
   :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded) {
+  --md-symbol-size: var(--md-comp-list-item-trailing-icon-size);
   font-size: var(--md-comp-list-item-trailing-icon-size);
 }
 
@@ -306,15 +307,8 @@
   :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded),
 .md-list-selection-item__selection-indicator
   :where(.md-symbol, .material-symbols-outlined, .material-symbols-rounded) {
+  --md-symbol-size: var(--md-comp-list-item-leading-icon-size);
   font-size: var(--md-comp-list-item-leading-icon-size);
-}
-
-.md-list-item.md-state_focused .md-list-item__primary-action,
-.md-list-item.md-state_focused .md-list-item__body,
-.md-list-selection-item.md-state_focused .md-list-selection-item__body {
-  outline: var(--md-comp-list-focus-indicator-thickness) solid
-    var(--md-comp-list-focus-indicator-color);
-  outline-offset: var(--md-comp-list-focus-indicator-offset);
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────── */

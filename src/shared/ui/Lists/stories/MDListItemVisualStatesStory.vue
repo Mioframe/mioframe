@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { onMounted, useTemplateRef } from 'vue';
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const statesRef = useTemplateRef<HTMLElement>('statesRef');
 const rootAttrs = {
   'data-testid': 'visual-md-list-states',
 };
@@ -14,28 +12,10 @@ const hoverAttrs = { 'data-state': 'hover' };
 const focusAttrs = { 'data-state': 'focus' };
 const pressedAttrs = { 'data-state': 'pressed' };
 const onAction = () => {};
-
-onMounted(() => {
-  const root = statesRef.value;
-  if (!root) {
-    return;
-  }
-
-  const applyForcedState = (state: 'hover' | 'focus' | 'pressed', stateClass: string) => {
-    root.querySelectorAll<HTMLElement>(`[data-state="${state}"].md-list-item`).forEach((item) => {
-      item.classList.add(stateClass);
-      item.querySelector<HTMLElement>('.md-list-item__primary-action')?.classList.add(stateClass);
-    });
-  };
-
-  applyForcedState('hover', 'md-state_hover');
-  applyForcedState('focus', 'md-state_focused');
-  applyForcedState('pressed', 'md-state_pressed');
-});
 </script>
 
 <template>
-  <div ref="statesRef" v-bind="rootAttrs" class="visual-surface md-list-item-visual-states-story">
+  <div v-bind="rootAttrs" class="visual-surface md-list-item-visual-states-story">
     <section class="md-list-item-visual-states-story__section">
       <h3 class="md-list-item-visual-states-story__title">Standard</h3>
       <MDList class="md-list-item-visual-states-story__list">
@@ -52,6 +32,7 @@ onMounted(() => {
         </MDListItem>
         <MDListItem
           v-bind="hoverAttrs"
+          class="md-state_hover"
           mode="single-action"
           label-text="Hover"
           supporting-text="State layer covers the full row action surface"
@@ -59,6 +40,7 @@ onMounted(() => {
         />
         <MDListItem
           v-bind="focusAttrs"
+          class="md-state_focused"
           mode="single-action"
           label-text="Focus"
           supporting-text="Focus stays on the row action surface"
@@ -66,6 +48,7 @@ onMounted(() => {
         />
         <MDListItem
           v-bind="pressedAttrs"
+          class="md-state_pressed"
           mode="single-action"
           label-text="Pressed"
           supporting-text="Pressed state stays inside the action shape"
@@ -104,6 +87,7 @@ onMounted(() => {
         </MDListItem>
         <MDListItem
           v-bind="hoverAttrs"
+          class="md-state_hover"
           mode="multi-action"
           label-text="Hover"
           supporting-text="Row-level state layer covers the full item container"

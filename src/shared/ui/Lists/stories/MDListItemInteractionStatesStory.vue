@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref, useTemplateRef } from 'vue';
+import { ref } from 'vue';
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
+import { useFocusIndicator } from '../../State/useFocusIndicator';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const interactionRef = useTemplateRef<HTMLElement>('interactionRef');
-const trailingHoverTarget = useTemplateRef<HTMLElement>('trailingHoverTarget');
 const rootAttrs = {
   'data-testid': 'visual-md-list-interaction-states',
 };
@@ -28,41 +27,17 @@ const onTrailingAction = () => {
   trailingActionCount.value += 1;
 };
 
-onMounted(() => {
-  const root = interactionRef.value;
-  if (!root) {
-    return;
-  }
-
-  root.querySelectorAll<HTMLElement>('[data-visual-state="hover"].md-list-item').forEach((item) => {
-    item.classList.add('md-state_hover');
-  });
-  root.querySelectorAll<HTMLElement>('[data-visual-state="focus"].md-list-item').forEach((item) => {
-    item.classList.add('md-state_focused');
-  });
-  root
-    .querySelectorAll<HTMLElement>('[data-visual-state="pressed"].md-list-item')
-    .forEach((item) => {
-      item.classList.add('md-state_pressed');
-    });
-
-  // Trailing action hover: add hover state to the icon button root via template ref so that
-  // the trailing state layer shows independently from the row-level state layer.
-  trailingHoverTarget.value?.firstElementChild?.classList.add('md-state_hover');
-});
+useFocusIndicator();
 </script>
 
 <template>
-  <div
-    ref="interactionRef"
-    v-bind="rootAttrs"
-    class="visual-surface md-list-item-interaction-states-story"
-  >
+  <div v-bind="rootAttrs" class="visual-surface md-list-item-interaction-states-story">
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
       <MDList>
         <MDListItem
           v-bind="hoverAttrs"
+          class="md-state_hover"
           mode="single-action"
           label-text="Hover"
           supporting-text="The state layer spans the row action surface"
@@ -74,6 +49,7 @@ onMounted(() => {
         </MDListItem>
         <MDListItem
           v-bind="focusAttrs"
+          class="md-state_focused"
           mode="single-action"
           label-text="Focus"
           supporting-text="Focus stays inside the row action shape"
@@ -81,6 +57,7 @@ onMounted(() => {
         />
         <MDListItem
           v-bind="pressedAttrs"
+          class="md-state_pressed"
           mode="single-action"
           label-text="Pressed"
           supporting-text="Pressed ripple stays on the row action surface"
@@ -94,6 +71,7 @@ onMounted(() => {
       <MDList list-style="segmented">
         <MDListItem
           v-bind="hoverAttrs"
+          class="md-state_hover"
           mode="multi-action"
           label-text="Primary hover"
           supporting-text="The primary surface does not collapse to just the text column"
@@ -126,14 +104,7 @@ onMounted(() => {
           @action="onAction"
         >
           <template #trailingAction>
-            <!--
-              The wrapper span is used via template ref so onMounted can add md-state_hover
-              to the icon button's root element, showing the trailing state layer is independent
-              from the row-level state layer.
-            -->
-            <span ref="trailingHoverTarget">
-              <MDIconButton tooltip="Options" md-symbol-name="more_vert" />
-            </span>
+            <MDIconButton class="md-state_hover" tooltip="Options" md-symbol-name="more_vert" />
           </template>
         </MDListItem>
       </MDList>
