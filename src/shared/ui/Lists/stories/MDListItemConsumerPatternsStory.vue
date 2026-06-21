@@ -18,7 +18,7 @@ const onCheckboxChange = () => {
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="md-list-item-consumer-patterns-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-consumer-patterns-story">
     <!--
       Home Create / Open space actions.
       Two-line items: label + supporting text, no overline.
@@ -169,8 +169,6 @@ const onCheckboxChange = () => {
   gap: 24dp;
   width: min(400dp, calc(100vw - 32dp));
   padding: 24dp;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
 }
 
 .md-list-item-consumer-patterns-story__section {

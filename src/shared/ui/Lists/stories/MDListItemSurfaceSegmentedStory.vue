@@ -9,18 +9,17 @@ const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="md-list-item-surface-segmented-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-surface-segmented-story">
     <section class="md-list-item-surface-segmented-story__section">
       <h3 class="md-list-item-surface-segmented-story__title">
         Segmented list Material parity sample
       </h3>
       <p class="md-list-item-surface-segmented-story__supporting-text">
         MDList remains transparent. This story avoids a contrasting wrapper around the list so the
-        segmented container does not read like a filled plate.
+        segmented container does not read like a filled plate — the common visual backdrop shows
+        through the segmented gaps directly.
       </p>
-      <div
-        class="md-list-item-surface-segmented-story__transparency-backdrop visual-transparency-grid"
-      >
+      <div class="md-list-item-surface-segmented-story__list-surface">
         <MDList list-style="segmented">
           <MDListItem
             mode="single-action"
@@ -55,8 +54,6 @@ const onAction = () => {};
   gap: 24dp;
   width: min(400dp, calc(100vw - 32dp));
   padding: 24dp;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
 }
 
 .md-list-item-surface-segmented-story__section {
@@ -73,7 +70,7 @@ const onAction = () => {};
   line-height: var(--md-sys-typescale-label-large-line-height);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
 }
-.md-list-item-surface-segmented-story__transparency-backdrop {
+.md-list-item-surface-segmented-story__list-surface {
   padding: 8dp;
   border-radius: 16dp;
 }

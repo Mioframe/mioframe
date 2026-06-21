@@ -10,7 +10,7 @@ const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-surface md-list-item-trailing-action-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-trailing-action-story">
     <MDList list-style="segmented">
       <MDListItem
         mode="multi-action"

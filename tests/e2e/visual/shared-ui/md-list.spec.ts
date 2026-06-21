@@ -30,6 +30,82 @@ const hasZeroAlpha = (color: string) =>
 
 const normalizeOpacityToken = (value: string) => (value.startsWith('.') ? `0${value}` : value);
 
+// Every MDList visual fixture must sit on the dedicated `.visual-list-backdrop`
+// backdrop (.storybook/visual.css) so transparent surfaces are unambiguous in
+// screenshots. The backdrop is a fixed neutral checker pattern, never an app/theme
+// color, and is scoped to MDList stories only (it must not be the shared
+// `.visual-surface` class other component fixtures rely on) — this guards against a
+// story silently regressing back to a `--md-sys-color-*` background.
+test.describe('MDList / visual test backdrop contract', () => {
+  const visualBackdropSurfaces = [
+    {
+      storyId: 'material-3-components-lists-mdlistitem--visual-states',
+      testId: 'visual-md-list-states',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--configurations',
+      testId: 'visual-md-list-configurations',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--visual-interaction-states',
+      testId: 'visual-md-list-interaction-states',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--trailing-action-layout',
+      testId: 'visual-md-list-trailing-action',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--selection-modes',
+      testId: 'visual-md-list-selection',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--surface-context-standard',
+      testId: 'visual-md-list-surface-standard',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--surface-context-segmented',
+      testId: 'visual-md-list-surface-segmented',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--surface-context-segmented-diagnostic',
+      testId: 'visual-md-list-surface-segmented-diagnostic',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
+      testId: 'visual-md-list-surface-repository',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--consumer-patterns',
+      testId: 'visual-md-list-consumer-patterns',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--standalone-public-api',
+      testId: 'visual-md-list-item-standalone',
+    },
+  ];
+
+  for (const { storyId, testId } of visualBackdropSurfaces) {
+    test(`${testId} uses the common neutral visual backdrop, not an app/theme color`, async ({
+      page,
+    }) => {
+      await openStory(page, storyId);
+
+      const surface = page.getByTestId(testId);
+
+      await expect(surface).toHaveClass(/visual-list-backdrop/);
+
+      const backgroundColor = await surface.evaluate(
+        (node) => getComputedStyle(node).backgroundColor,
+      );
+
+      expect(
+        backgroundColor,
+        'visual backdrop must resolve to the fixed neutral white, not a theme-dependent surface color',
+      ).toBe('rgb(255, 255, 255)');
+    });
+  }
+});
+
 // Pixel-diff snapshots only. These guard against unintended appearance drift and are
 // not Material contract assertions — see 'MDList / Material Expressive contract' below
 // for the computed-style/geometry checks against the material3 MCP source of truth,

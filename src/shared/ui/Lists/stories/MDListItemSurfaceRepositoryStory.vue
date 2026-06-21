@@ -9,7 +9,7 @@ const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="md-list-item-surface-repository-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-surface-repository-story">
     <section class="md-list-item-surface-repository-story__section">
       <h3 class="md-list-item-surface-repository-story__title">
         Repository Explorer documents section
@@ -64,8 +64,6 @@ const onAction = () => {};
   gap: 24dp;
   width: min(400dp, calc(100vw - 32dp));
   padding: 24dp;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
 }
 
 .md-list-item-surface-repository-story__section {

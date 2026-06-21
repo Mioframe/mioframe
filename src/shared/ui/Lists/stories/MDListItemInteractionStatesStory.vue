@@ -31,7 +31,7 @@ useFocusIndicator();
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-surface md-list-item-interaction-states-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-interaction-states-story">
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
       <MDList>

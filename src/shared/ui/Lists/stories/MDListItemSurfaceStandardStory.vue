@@ -8,11 +8,11 @@ const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="md-list-item-surface-standard-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-surface-standard-story">
     <section class="md-list-item-surface-standard-story__section">
       <h3 class="md-list-item-surface-standard-story__title">Standard list on surface</h3>
       <div
-        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface visual-transparency-grid"
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface"
       >
         <MDList>
           <MDListItem
@@ -152,8 +152,6 @@ const onAction = () => {};
   gap: 24dp;
   width: min(400dp, calc(100vw - 32dp));
   padding: 24dp;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
 }
 
 .md-list-item-surface-standard-story__section {

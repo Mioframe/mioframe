@@ -15,7 +15,7 @@ const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-surface md-list-item-visual-states-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-visual-states-story">
     <section class="md-list-item-visual-states-story__section">
       <h3 class="md-list-item-visual-states-story__title">Standard</h3>
       <MDList class="md-list-item-visual-states-story__list">

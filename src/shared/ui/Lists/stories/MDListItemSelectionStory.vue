@@ -28,7 +28,7 @@ const onMultipleSelectionChange = (value: MDListModelValue) => {
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-surface md-list-item-selection-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-selection-story">
     <section class="md-list-item-selection-story__section">
       <h3 class="md-list-item-selection-story__title">Single-select standard</h3>
       <MDList

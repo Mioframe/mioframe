@@ -18,7 +18,7 @@ const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-surface md-list-dom-contract-story">
+  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-dom-contract-story">
     <section>
       <h3 class="md-list-dom-contract-story__title">Static list</h3>
       <MDList v-bind="staticListAttrs">
