@@ -305,6 +305,140 @@ test.describe('MDList / Material reference screenshots', () => {
   });
 });
 
+// The Material reference "states" rows force visual state on the real nested
+// `MDStateLayer` via the shared story/test-only forced-state provider (see
+// `src/shared/ui/State/testing`), not via a List-specific CSS hack. These checks
+// fail if default/hover/focus/pressed render the same computed background, which
+// is what regressed before the forced-state provider existed.
+test.describe('MDList / Material reference forced state layer', () => {
+  test('Material reference states row shows an inactive state layer by default', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const defaultRow = surface.locator('.md-list-item').nth(0);
+    const stateLayer = defaultRow.locator('.md-state-layer').first();
+
+    const backgroundColor = await stateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+
+    expect(hasZeroAlpha(backgroundColor), 'default row state layer must be visually inactive').toBe(
+      true,
+    );
+  });
+
+  test('Material reference states row activates the real MDStateLayer for forced hover', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const hoverRow = surface.locator('.md-list-item').nth(1);
+    const stateLayer = hoverRow.locator('.md-state-layer').first();
+
+    const backgroundColor = await stateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+
+    expect(
+      hasZeroAlpha(backgroundColor),
+      'forced hover row must activate the real nested MDStateLayer background',
+    ).toBe(false);
+  });
+
+  test('Material reference states row activates the real MDStateLayer for forced focus', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const focusRow = surface.locator('.md-list-item').nth(2);
+    const stateLayer = focusRow.locator('.md-state-layer').first();
+
+    const backgroundColor = await stateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+
+    expect(
+      hasZeroAlpha(backgroundColor),
+      'forced focus row must activate the real nested MDStateLayer background',
+    ).toBe(false);
+  });
+
+  test('Material reference states row activates the real MDStateLayer for forced pressed', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const pressedRow = surface.locator('.md-list-item').nth(3);
+    const stateLayer = pressedRow.locator('.md-state-layer').first();
+
+    const backgroundColor = await stateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+
+    expect(
+      hasZeroAlpha(backgroundColor),
+      'forced pressed row must activate the real nested MDStateLayer background',
+    ).toBe(false);
+  });
+
+  test('Material reference states row keeps the disabled row state layer inactive', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const disabledRow = surface.locator('.md-list-item.md-state_disabled').first();
+    const stateLayer = disabledRow.locator('.md-state-layer').first();
+
+    const backgroundColor = await stateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+
+    expect(hasZeroAlpha(backgroundColor), 'disabled row state layer must stay inactive').toBe(true);
+  });
+
+  test('Material reference states hover, focus, and pressed rows render distinct, non-identical state-layer backgrounds from the default row', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const rows = surface.locator('.md-list-item');
+
+    const [defaultColor, hoverColor, focusColor, pressedColor] = await Promise.all([
+      rows
+        .nth(0)
+        .locator('.md-state-layer')
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundColor),
+      rows
+        .nth(1)
+        .locator('.md-state-layer')
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundColor),
+      rows
+        .nth(2)
+        .locator('.md-state-layer')
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundColor),
+      rows
+        .nth(3)
+        .locator('.md-state-layer')
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundColor),
+    ]);
+
+    expect(hoverColor, 'hover row must differ from the default row').not.toBe(defaultColor);
+    expect(focusColor, 'focus row must differ from the default row').not.toBe(defaultColor);
+    expect(pressedColor, 'pressed row must differ from the default row').not.toBe(defaultColor);
+  });
+});
+
 // Computed-style/geometry assertions against MD_LIST_MATERIAL_CONTRACT, whose values
 // are sourced from the `material3` MCP server (m3.material.io). These check MDList's
 // own anatomy elements, not Storybook fixture child CSS.

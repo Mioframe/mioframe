@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import MDSymbol from '../../Icon/MDSymbol.vue';
+import { MDStateLayerForcedStateProvider } from '../../State/testing';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
@@ -22,36 +23,34 @@ const onAction = () => {};
             <MDSymbol name="draft" />
           </template>
         </MDListItem>
-        <MDListItem
-          class="md-state_hover"
-          mode="single-action"
-          label-text="List item"
-          @action="onAction"
-        >
-          <template #leading>
-            <MDSymbol name="draft" />
-          </template>
-        </MDListItem>
-        <MDListItem
-          class="md-state_focused"
-          mode="single-action"
-          label-text="List item"
-          @action="onAction"
-        >
-          <template #leading>
-            <MDSymbol name="draft" />
-          </template>
-        </MDListItem>
-        <MDListItem
-          class="md-state_pressed"
-          mode="single-action"
-          label-text="List item"
-          @action="onAction"
-        >
-          <template #leading>
-            <MDSymbol name="draft" />
-          </template>
-        </MDListItem>
+        <MDStateLayerForcedStateProvider hovered>
+          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+            <template #leading>
+              <MDSymbol name="draft" />
+            </template>
+          </MDListItem>
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider focused>
+          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+            <template #leading>
+              <MDSymbol name="draft" />
+            </template>
+          </MDListItem>
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider pressed>
+          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+            <template #leading>
+              <MDSymbol name="draft" />
+            </template>
+          </MDListItem>
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider dragged>
+          <MDListItem mode="single-action" label-text="List item" @action="onAction">
+            <template #leading>
+              <MDSymbol name="draft" />
+            </template>
+          </MDListItem>
+        </MDStateLayerForcedStateProvider>
         <MDListItem mode="single-action" disabled label-text="List item" @action="onAction">
           <template #leading>
             <MDSymbol name="draft" />

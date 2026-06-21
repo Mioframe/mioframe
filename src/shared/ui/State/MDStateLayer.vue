@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useMDStateLayerForcedState } from './testing/forcedState';
+
 const props = withDefaults(
   defineProps<{
     hover?: boolean | undefined;
@@ -15,16 +18,26 @@ const props = withDefaults(
     disabled: false,
   },
 );
+
+// Story/test-only override: a forced field wins over the real runtime prop
+// only when explicitly injected. Without a provider, this is a no-op and
+// runtime behavior is unchanged.
+const forcedState = useMDStateLayerForcedState();
+
+const effectiveHover = computed(() => forcedState?.hovered?.value ?? props.hover);
+const effectiveFocused = computed(() => forcedState?.focused?.value ?? props.focused);
+const effectivePressed = computed(() => forcedState?.pressed?.value ?? props.pressed);
+const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dragged);
 </script>
 
 <template>
   <span
     class="md-state-layer"
     :class="{
-      'md-state_hover': !props.disabled && props.hover,
-      'md-state_focused': !props.disabled && props.focused,
-      'md-state_pressed': !props.disabled && props.pressed,
-      'md-state_dragged': !props.disabled && props.dragged,
+      'md-state_hover': !props.disabled && effectiveHover,
+      'md-state_focused': !props.disabled && effectiveFocused,
+      'md-state_pressed': !props.disabled && effectivePressed,
+      'md-state_dragged': !props.disabled && effectiveDragged,
       'md-state_disabled': props.disabled,
     }"
     aria-hidden="true"
