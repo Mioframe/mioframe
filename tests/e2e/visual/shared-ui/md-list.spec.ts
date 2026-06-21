@@ -80,7 +80,11 @@ test.describe('MDList / visual test backdrop contract', () => {
     },
     {
       storyId: 'material-3-components-lists-mdlistitem--standalone-public-api',
-      testId: 'visual-md-list-item-standalone',
+      testId: 'visual-md-list-item-standalone-basic',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--standalone-public-api',
+      testId: 'visual-md-list-item-standalone-consumer',
     },
   ];
 
@@ -106,12 +110,15 @@ test.describe('MDList / visual test backdrop contract', () => {
   }
 });
 
-// Pixel-diff snapshots only. These guard against unintended appearance drift and are
-// not Material contract assertions — see 'MDList / Material Expressive contract' below
-// for the computed-style/geometry checks against the material3 MCP source of truth,
-// and 'MDList / StateLayer integration' / 'keyboard focus indicator integration' for
-// shared-primitive runtime behavior checks.
-test.describe('MDList / visual regression snapshots', () => {
+// Pixel-diff snapshots only. None of these are Material documentation parity
+// screenshots — see 'MDList / Material reference screenshots' below for the compact,
+// doc-comparable set, and 'MDList / Material Expressive contract' for the
+// computed-style/geometry checks against the material3 MCP source of truth. The
+// 'MDList / StateLayer integration' / 'keyboard focus indicator integration' suites
+// cover shared-primitive runtime behavior.
+test.describe('MDList / technical and consumer visual regression snapshots', () => {
+  // Technical interaction/state-gallery regression — forced data-state fixtures, not a
+  // Material doc-comparable example (see Material reference 'states' for that).
   test('MDListItem visual states do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
 
@@ -120,6 +127,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-states.png');
   });
 
+  // Anatomy/configuration regression — implementation detail (avatar/media fixture CSS,
+  // trailing text) alongside the configuration gallery, not a Material doc-comparable crop.
   test('MDListItem configurations do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
 
@@ -128,6 +137,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-configurations.png');
   });
 
+  // Technical interaction-state regression: forced hover/pressed/focus gallery fixtures
+  // plus the real-pointer multi-action independence row.
   test('MDListItem interaction states do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
 
@@ -136,6 +147,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-interaction-states.png');
   });
 
+  // Technical interaction/ownership regression for the trailing action hit-zone, not a
+  // Material docs parity screenshot.
   test('MDListItem trailing action layout does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
 
@@ -144,6 +157,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-trailing-action.png');
   });
 
+  // Project selection regression (single/multi listbox + long-text wrapping), not strict
+  // Material checkbox/radio parity.
   test('MDListItem selection modes do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
 
@@ -152,6 +167,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-selection.png');
   });
 
+  // Technical surface-inheritance regression (wrapped/private-var-leak scenarios), not a
+  // Material doc-comparable crop — see Material reference 'standard list' for that.
   test('MDListItem surface context standard story does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
 
@@ -160,6 +177,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-standard.png');
   });
 
+  // Technical surface-context regression including its explanatory caption text, not a
+  // Material doc-comparable crop — see Material reference 'segmented list' for that.
   test('MDListItem surface context segmented story does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
 
@@ -168,6 +187,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented.png');
   });
 
+  // Harness/debug regression: the explicit contrasting diagnostic wrapper around a
+  // segmented list, never a Material doc-comparable screenshot.
   test('MDListItem segmented diagnostic surface context story does not regress', async ({
     page,
   }) => {
@@ -181,6 +202,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented-diagnostic.png');
   });
 
+  // Consumer regression: Repository Explorer's real document/folder usage, not a Material
+  // doc-comparable screenshot.
   test('MDListItem surface context repository explorer story does not regress', async ({
     page,
   }) => {
@@ -194,6 +217,8 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-repository.png');
   });
 
+  // Consumer/product regression (Settings, Home actions, etc.), not a Material doc-comparable
+  // screenshot.
   test('MDListItem consumer patterns story does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--consumer-patterns');
 
@@ -202,12 +227,70 @@ test.describe('MDList / visual regression snapshots', () => {
     await expect(surface).toHaveScreenshot('md-list-item-consumer-patterns.png');
   });
 
-  test('MDListItem standalone public API story does not regress', async ({ page }) => {
+  // Public API regression: the compact state/configuration gallery proving MDListItem works
+  // standalone without MDList, not a Material doc-comparable screenshot.
+  test('MDListItem standalone public API basic gallery does not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
 
-    const surface = page.getByTestId('visual-md-list-item-standalone');
+    const surface = page.getByTestId('visual-md-list-item-standalone-basic');
 
-    await expect(surface).toHaveScreenshot('md-list-item-standalone.png');
+    await expect(surface).toHaveScreenshot('md-list-item-standalone-basic.png');
+  });
+
+  // Consumer/product regression: the EntryAddSheet rows reproduced outside their sheet, not
+  // a Material doc-comparable screenshot.
+  test('MDListItem standalone public API consumer rows do not regress', async ({ page }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const surface = page.getByTestId('visual-md-list-item-standalone-consumer');
+
+    await expect(surface).toHaveScreenshot('md-list-item-standalone-consumer.png');
+  });
+});
+
+// Compact, documentation-like screenshots intended for manual side-by-side comparison
+// against the Material 3 Expressive List docs (material3 MCP / m3.material.io). These are
+// not exhaustive regression coverage — see 'MDList / technical and consumer visual
+// regression snapshots' above for that, and 'MDList / Material Expressive contract' for
+// the computed-style/geometry checks. Keep these fixtures free of product-specific data,
+// long explanatory copy, and diagnostic wrapper labels so they stay directly comparable
+// to the docs.
+test.describe('MDList / Material reference screenshots', () => {
+  test('Material reference: list item states', async ({ page }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const surface = page.getByTestId('visual-md-list-states');
+
+    await expect(surface).toHaveScreenshot('md-list-material-states.png');
+  });
+
+  test('Material reference: standard list', async ({ page }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
+
+    const standardSample = page
+      .getByTestId('visual-md-list-surface-standard')
+      .locator('.md-list-item-surface-standard-story__section')
+      .first();
+
+    await expect(standardSample).toHaveScreenshot('md-list-material-standard.png');
+  });
+
+  test('Material reference: segmented list', async ({ page }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
+
+    const segmentedSample = page
+      .getByTestId('visual-md-list-surface-segmented')
+      .locator('.md-list-item-surface-segmented-story__list-surface');
+
+    await expect(segmentedSample).toHaveScreenshot('md-list-material-segmented.png');
+  });
+
+  test('Material reference: anatomy and configurations', async ({ page }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const surface = page.getByTestId('visual-md-list-configurations');
+
+    await expect(surface).toHaveScreenshot('md-list-material-configurations.png');
   });
 });
 
@@ -1530,6 +1613,136 @@ test.describe('MDList / sizing and overflow', () => {
       indicatorBox.x + indicatorBox.width,
       'selection indicator must not exceed the surface right edge',
     ).toBeLessThanOrEqual(surfaceBox.x + surfaceBox.width + 1);
+  });
+
+  test('MDListItem standalone basic gallery fully contains every visible section', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const root = page.getByTestId('visual-md-list-item-standalone-basic');
+
+    const [rootBox, scrollWidth, clientWidth] = await Promise.all([
+      getBoundingBoxOrThrow(root, 'standalone basic gallery root must have a bounding box'),
+      root.evaluate((node) => node.scrollWidth),
+      root.evaluate((node) => node.clientWidth),
+    ]);
+
+    expect(
+      scrollWidth,
+      'standalone basic gallery root must not have horizontal overflow (scrollWidth must match clientWidth)',
+    ).toBeLessThanOrEqual(clientWidth);
+    expect(
+      rootBox.width,
+      'standalone basic gallery root must not be wider than the visual viewport',
+    ).toBeLessThanOrEqual(1280);
+
+    const sections = root.locator('.md-list-item-standalone-story__section');
+    const count = await sections.count();
+    expect(count, 'standalone basic gallery must render its sections').toBeGreaterThan(0);
+
+    const sectionBoxes = await Promise.all(
+      Array.from({ length: count }, (_, index) => sections.nth(index).boundingBox()),
+    );
+
+    for (const [index, sectionBox] of sectionBoxes.entries()) {
+      expect(
+        sectionBox,
+        `standalone basic section ${index} must have a bounding box`,
+      ).not.toBeNull();
+      if (!sectionBox) {
+        continue;
+      }
+
+      expect(
+        sectionBox.x,
+        `standalone basic section ${index} must not start left of the gallery root`,
+      ).toBeGreaterThanOrEqual(rootBox.x - 1);
+      expect(
+        sectionBox.x + sectionBox.width,
+        `standalone basic section ${index} must not extend past the gallery root right edge`,
+      ).toBeLessThanOrEqual(rootBox.x + rootBox.width + 1);
+      expect(
+        sectionBox.y,
+        `standalone basic section ${index} must not start above the gallery root`,
+      ).toBeGreaterThanOrEqual(rootBox.y - 1);
+      expect(
+        sectionBox.y + sectionBox.height,
+        `standalone basic section ${index} must not extend past the gallery root bottom edge`,
+      ).toBeLessThanOrEqual(rootBox.y + rootBox.height + 1);
+    }
+
+    const lastSectionBox = sectionBoxes.at(-1);
+    expect(
+      lastSectionBox,
+      'the last standalone basic section must have a bounding box',
+    ).not.toBeNull();
+    if (lastSectionBox) {
+      expect(
+        lastSectionBox.y + lastSectionBox.height,
+        'the last standalone basic section must be fully inside the gallery root bounding box, not clipped off the bottom',
+      ).toBeLessThanOrEqual(rootBox.y + rootBox.height + 1);
+    }
+  });
+
+  test('MDListItem standalone consumer rows gallery fully contains its section', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const root = page.getByTestId('visual-md-list-item-standalone-consumer');
+
+    const [rootBox, scrollWidth, clientWidth] = await Promise.all([
+      getBoundingBoxOrThrow(root, 'standalone consumer gallery root must have a bounding box'),
+      root.evaluate((node) => node.scrollWidth),
+      root.evaluate((node) => node.clientWidth),
+    ]);
+
+    expect(
+      scrollWidth,
+      'standalone consumer gallery root must not have horizontal overflow (scrollWidth must match clientWidth)',
+    ).toBeLessThanOrEqual(clientWidth);
+    expect(
+      rootBox.width,
+      'standalone consumer gallery root must not be wider than the visual viewport',
+    ).toBeLessThanOrEqual(1280);
+    expect(
+      rootBox.height,
+      'standalone consumer gallery root must not be taller than the visual viewport',
+    ).toBeLessThanOrEqual(900);
+
+    const rows = root.locator('#standalone-entry-add-sheet .md-list-item');
+    const rowCount = await rows.count();
+    expect(rowCount, 'standalone consumer gallery must render its rows').toBeGreaterThan(0);
+
+    const rowBoxes = await Promise.all(
+      Array.from({ length: rowCount }, (_, index) => rows.nth(index).boundingBox()),
+    );
+
+    for (const [index, rowBox] of rowBoxes.entries()) {
+      expect(rowBox, `standalone consumer row ${index} must have a bounding box`).not.toBeNull();
+      if (!rowBox) {
+        continue;
+      }
+
+      expect(
+        rowBox.x + rowBox.width,
+        `standalone consumer row ${index} must not extend past the gallery root right edge`,
+      ).toBeLessThanOrEqual(rootBox.x + rootBox.width + 1);
+      expect(
+        rowBox.y + rowBox.height,
+        `standalone consumer row ${index} must not extend past the gallery root bottom edge`,
+      ).toBeLessThanOrEqual(rootBox.y + rootBox.height + 1);
+    }
+
+    const lastRowBox = rowBoxes.at(-1);
+    expect(lastRowBox, 'the last standalone consumer row must have a bounding box').not.toBeNull();
+    if (lastRowBox) {
+      expect(
+        lastRowBox.y + lastRowBox.height,
+        'the last standalone consumer row must be fully inside the gallery root bounding box, not clipped off the bottom',
+      ).toBeLessThanOrEqual(rootBox.y + rootBox.height + 1);
+    }
   });
 
   test('MDListItem standalone with leading icon has measurable space between icon and content', async ({
