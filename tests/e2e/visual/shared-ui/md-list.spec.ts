@@ -30,6 +30,11 @@ const hasZeroAlpha = (color: string) =>
 
 const normalizeOpacityToken = (value: string) => (value.startsWith('.') ? `0${value}` : value);
 
+// Pixel-diff snapshots only. These guard against unintended appearance drift and are
+// not Material contract assertions — see 'MDList / Material Expressive contract' below
+// for the computed-style/geometry checks against the material3 MCP source of truth,
+// and 'MDList / StateLayer integration' / 'keyboard focus indicator integration' for
+// shared-primitive runtime behavior checks.
 test.describe('MDList / visual regression snapshots', () => {
   test('MDListItem visual states do not regress', async ({ page }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
@@ -130,6 +135,9 @@ test.describe('MDList / visual regression snapshots', () => {
   });
 });
 
+// Computed-style/geometry assertions against MD_LIST_MATERIAL_CONTRACT, whose values
+// are sourced from the `material3` MCP server (m3.material.io). These check MDList's
+// own anatomy elements, not Storybook fixture child CSS.
 test.describe('MDList / Material Expressive contract', () => {
   test('MDListItem one-line, two-line, and three-line rows keep Material minimum heights', async ({
     page,
@@ -299,24 +307,25 @@ test.describe('MDList / Material Expressive contract', () => {
     expect(pressedRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.pressed}px`);
   });
 
-  test('MDList configuration fixtures keep expressive avatar, media, and icon sizing', async ({
+  test('MDListItem anatomy keeps expressive avatar, media, and icon sizing (Material contract, not fixture CSS)', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
 
     const surface = page.getByTestId('visual-md-list-configurations');
-    const avatar = surface.locator('.md-list-item-configurations-story__avatar');
-    const media = surface.locator('.md-list-item-configurations-story__media');
-    const leadingIcon = surface.locator('.md-list-item .md-list-item__leading .md-symbol').first();
-    const trailingIcon = surface
-      .locator('.md-list-item .md-list-item__trailing .md-symbol')
-      .first();
+    // Anatomy-owned wrapper elements (MDListItem leading slot variants), not the
+    // fixture's own hardcoded avatar/media child CSS — sizing must come from the
+    // component's leading-slot anatomy, with the fixture content only filling it.
+    const avatarSlot = surface.locator('.md-list-item__leading_type_avatar').first();
+    const mediaSlot = surface.locator('.md-list-item__leading_type_media').first();
+    const leadingIcon = surface.locator('.md-list-item__leading .md-symbol').first();
+    const trailingIcon = surface.locator('.md-list-item__trailing .md-symbol').first();
 
     const [avatarBox, mediaBox, mediaRadius, leadingIconSize, trailingIconSize] = await Promise.all(
       [
-        getBoundingBoxOrThrow(avatar, 'avatar fixture must have a bounding box'),
-        getBoundingBoxOrThrow(media, 'media fixture must have a bounding box'),
-        getRadius(media, 'border-top-left-radius'),
+        getBoundingBoxOrThrow(avatarSlot, 'avatar anatomy slot must have a bounding box'),
+        getBoundingBoxOrThrow(mediaSlot, 'media anatomy slot must have a bounding box'),
+        getRadius(mediaSlot, 'border-top-left-radius'),
         leadingIcon.evaluate((node) => getComputedStyle(node).fontSize),
         trailingIcon.evaluate((node) => getComputedStyle(node).fontSize),
       ],
@@ -329,6 +338,32 @@ test.describe('MDList / Material Expressive contract', () => {
     expect(mediaRadius).toBe(`${MD_LIST_MATERIAL_CONTRACT.shapes.media}px`);
     expect(leadingIconSize).toBe(`${MD_LIST_MATERIAL_CONTRACT.leadingSizes.icon}px`);
     expect(trailingIconSize).toBe(`${MD_LIST_MATERIAL_CONTRACT.trailingIconSize}px`);
+  });
+
+  test('MDListItem leading-to-content gap is owned by anatomy spacing, not fixture child CSS', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const surface = page.getByTestId('visual-md-list-configurations');
+    const avatarItem = surface
+      .locator('.md-list-item__leading_type_avatar')
+      .first()
+      .locator('xpath=..');
+    const leadingSlot = avatarItem.locator('.md-list-item__leading');
+    const contentSlot = avatarItem.locator('.md-list-item__content');
+
+    const [leadingBox, contentBox] = await Promise.all([
+      getBoundingBoxOrThrow(leadingSlot, 'leading anatomy slot must have a bounding box'),
+      getBoundingBoxOrThrow(contentSlot, 'content anatomy slot must have a bounding box'),
+    ]);
+
+    expectClose(
+      contentBox.x - (leadingBox.x + leadingBox.width),
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.leading,
+      1,
+      'leading-to-content gap must come from MDListItem anatomy spacing, not from fixture avatar/media CSS',
+    );
   });
 
   test('MDList overline, label, and supporting text use the documented typography tokens', async ({
@@ -660,7 +695,11 @@ test.describe('MDList / StateLayer integration', () => {
     await expect(trailingButton.locator('.md-state-layer')).toHaveCount(1);
   });
 
-  test('MDListItem hover and pressed states change the shared state-layer visual state', async ({
+  // Forced `data-visual-state` classes are deterministic visual-gallery fixtures.
+  // They prove the state-layer opacity tokens render correctly for static snapshot
+  // coverage, but must not stand in for runtime `useStateLayer` interaction proof —
+  // see the real pointer-driven tests below for that.
+  test('MDListItem forced hover/pressed gallery fixtures map to the shared state-layer opacity tokens', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
@@ -693,6 +732,110 @@ test.describe('MDList / StateLayer integration', () => {
     expect(normalizeOpacityToken(pressedOpacity)).toBe(
       MD_LIST_MATERIAL_CONTRACT.stateLayerOpacity.pressed,
     );
+  });
+
+  test('MDListItem real pointer hover activates the shared primary-action state layer', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const row = page.getByTestId('md-list-multi-action-independence');
+    const primaryAction = row.locator('.md-list-item__primary-action');
+    const primaryStateLayer = primaryAction.locator('.md-state-layer').first();
+
+    const beforeColor = await primaryStateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+    await primaryAction.hover();
+    const afterColor = await primaryStateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+
+    expect(hasZeroAlpha(beforeColor), 'state layer must be inactive before pointer hover').toBe(
+      true,
+    );
+    expect(
+      hasZeroAlpha(afterColor),
+      'real pointer hover must activate the shared MDStateLayer background, not a forced fixture class',
+    ).toBe(false);
+  });
+
+  test('MDListItem real pointer press activates the shared primary-action pressed state layer', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const row = page.getByTestId('md-list-multi-action-independence');
+    const primaryAction = row.locator('.md-list-item__primary-action');
+    const primaryStateLayer = primaryAction.locator('.md-state-layer').first();
+    const box = await getBoundingBoxOrThrow(
+      primaryAction,
+      'primary action must have a bounding box',
+    );
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    const pressedColor = await primaryStateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+    await page.mouse.up();
+
+    expect(
+      hasZeroAlpha(pressedColor),
+      'real mouse-down press must activate the shared MDStateLayer pressed background, not a forced fixture class',
+    ).toBe(false);
+  });
+
+  test('MDListItem real pointer hover on the trailing action does not activate the row primary state layer', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const row = page.getByTestId('md-list-multi-action-independence');
+    const primaryStateLayer = row
+      .locator('.md-list-item__primary-action > .md-state-layer')
+      .first();
+    const trailingButton = row.getByRole('button', { name: 'Edit' });
+    const trailingStateLayer = trailingButton.locator('.md-state-layer').first();
+
+    await trailingButton.hover();
+
+    const [primaryColor, trailingColor] = await Promise.all([
+      primaryStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+      trailingStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+    ]);
+
+    expect(
+      hasZeroAlpha(primaryColor),
+      'hovering the trailing action must not activate the row primary action state layer',
+    ).toBe(true);
+    expect(
+      hasZeroAlpha(trailingColor),
+      'hovering the trailing action must activate its own shared interactive primitive state layer',
+    ).toBe(false);
+  });
+
+  test('MDListSelectionItem real pointer click selects a row and updates its container fill', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
+
+    const surface = page.getByTestId('visual-md-list-selection');
+    const pitaOption = surface.getByRole('option', { name: 'Pita' });
+
+    const beforeSelected = await pitaOption.getAttribute('aria-selected');
+    const beforeColor = await pitaOption.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+    await pitaOption.click();
+
+    await expect(pitaOption).toHaveAttribute('aria-selected', 'true');
+    const afterColor = await pitaOption.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+    expect(beforeSelected).not.toBe('true');
+    expect(
+      afterColor,
+      'a real pointer click selecting a row must change its container fill to the selected color role',
+    ).not.toBe(beforeColor);
   });
 
   test('MDListItem disabled action rows keep the shared state layer visually inactive', async ({
@@ -985,6 +1128,9 @@ test.describe('MDList / StateLayer integration', () => {
   });
 });
 
+// List does not own the global focus indicator's Material tokens (thickness/offset).
+// These tests verify boundary-level integration only: List hands focus to the existing
+// global indicator and never paints its own competing focus ring.
 test.describe('MDList / keyboard focus indicator integration', () => {
   test('MDListItem pointer focus does not show the global keyboard focus indicator', async ({
     page,
@@ -1010,15 +1156,12 @@ test.describe('MDList / keyboard focus indicator integration', () => {
     await expect(target).toBeFocused();
     await expect(indicator).toHaveCSS('opacity', '1');
 
-    const [targetBox, indicatorBox, indicatorRadius, targetRadius, outlineWidth, outlineOffset] =
-      await Promise.all([
-        getBoundingBoxOrThrow(target, 'standalone focused row must have a bounding box'),
-        getBoundingBoxOrThrow(indicator, 'focus indicator must have a bounding box'),
-        getRadius(indicator, 'border-top-left-radius'),
-        getRadius(target, 'border-top-left-radius'),
-        indicator.evaluate((node) => getComputedStyle(node).outlineWidth),
-        indicator.evaluate((node) => getComputedStyle(node).outlineOffset),
-      ]);
+    const [targetBox, indicatorBox, indicatorRadius, targetRadius] = await Promise.all([
+      getBoundingBoxOrThrow(target, 'standalone focused row must have a bounding box'),
+      getBoundingBoxOrThrow(indicator, 'focus indicator must have a bounding box'),
+      getRadius(indicator, 'border-top-left-radius'),
+      getRadius(target, 'border-top-left-radius'),
+    ]);
 
     expectClose(indicatorBox.x, targetBox.x, 1, 'focus indicator x must track standalone row');
     expectClose(indicatorBox.y, targetBox.y, 1, 'focus indicator y must track standalone row');
@@ -1035,8 +1178,41 @@ test.describe('MDList / keyboard focus indicator integration', () => {
       'focus indicator height must match standalone row',
     );
     expect(indicatorRadius).toBe(targetRadius);
-    expect(outlineWidth).toBe(MD_LIST_MATERIAL_CONTRACT.focusIndicator.thickness);
-    expect(outlineOffset).toBe(MD_LIST_MATERIAL_CONTRACT.focusIndicator.offset);
+  });
+
+  test('MDListItem keyboard-focused target does not paint its own local outline (no duplicate ring)', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const target = page.locator('#standalone-single-action-leading .md-list-item').first();
+
+    await page.keyboard.press('Tab');
+    await expect(target).toBeFocused();
+
+    const targetOutlineStyle = await target.evaluate((node) => getComputedStyle(node).outlineStyle);
+
+    expect(
+      targetOutlineStyle,
+      'the focused MDListItem surface itself must not render its own outline — only the shared global .md-focus-indicator may visualize keyboard focus',
+    ).toBe('none');
+  });
+
+  test('MDListItem standalone multi-action keyboard focus lands on the first action, not the row', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
+
+    const primaryAction = page
+      .locator('#standalone-multi-action .md-list-item__primary-action')
+      .first();
+    const indicator = page.locator('.md-focus-indicator');
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(primaryAction).toBeFocused();
+    await expect(indicator).toHaveCSS('opacity', '1');
   });
 
   test('MDListItem keyboard focus tracks the primary action surface for in-list rows without a second local outline', async ({

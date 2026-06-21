@@ -18,29 +18,33 @@ const onAction = () => {};
         MDList remains transparent. This story avoids a contrasting wrapper around the list so the
         segmented container does not read like a filled plate.
       </p>
-      <MDList list-style="segmented">
-        <MDListItem
-          mode="single-action"
-          label-text="Segmented first item"
-          supporting-text="Segmented items keep their own surface fill."
-          @action="onAction"
-        >
-          <template #leading>
-            <MDSymbol name="photo" />
-          </template>
-        </MDListItem>
-        <MDListItem
-          mode="multi-action"
-          label-text="Segmented multi-action"
-          supporting-text="Trailing action is independent of the primary surface."
-          @action="onAction"
-        >
-          <template #trailingAction>
-            <MDIconButton tooltip="More options" md-symbol-name="more_vert" />
-          </template>
-        </MDListItem>
-        <MDListItem mode="single-action" label-text="Segmented last item" @action="onAction" />
-      </MDList>
+      <div
+        class="md-list-item-surface-segmented-story__transparency-backdrop visual-transparency-grid"
+      >
+        <MDList list-style="segmented">
+          <MDListItem
+            mode="single-action"
+            label-text="Segmented first item"
+            supporting-text="Segmented items keep their own surface fill."
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="photo" />
+            </template>
+          </MDListItem>
+          <MDListItem
+            mode="multi-action"
+            label-text="Segmented multi-action"
+            supporting-text="Trailing action is independent of the primary surface."
+            @action="onAction"
+          >
+            <template #trailingAction>
+              <MDIconButton tooltip="More options" md-symbol-name="more_vert" />
+            </template>
+          </MDListItem>
+          <MDListItem mode="single-action" label-text="Segmented last item" @action="onAction" />
+        </MDList>
+      </div>
     </section>
   </div>
 </template>
@@ -69,6 +73,11 @@ const onAction = () => {};
   line-height: var(--md-sys-typescale-label-large-line-height);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
 }
+.md-list-item-surface-segmented-story__transparency-backdrop {
+  padding: 8dp;
+  border-radius: 16dp;
+}
+
 .md-list-item-surface-segmented-story__supporting-text {
   margin: 0;
   color: var(--md-sys-color-on-surface-variant);

@@ -12,7 +12,7 @@ const onAction = () => {};
     <section class="md-list-item-surface-standard-story__section">
       <h3 class="md-list-item-surface-standard-story__title">Standard list on surface</h3>
       <div
-        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface"
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface visual-transparency-grid"
       >
         <MDList>
           <MDListItem

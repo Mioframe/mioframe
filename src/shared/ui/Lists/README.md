@@ -266,7 +266,7 @@ All selectors are BEM-namespaced to `.md-list-item` and `.md-list-selection-item
 ## Known limitations
 
 - **Multi-action keyboard traversal**: keyboard traversal between primary and trailing action within one multi-action item is partial. The trailing action is only reachable by Tab; no explicit arrow-key navigation between primary and trailing action is implemented.
-- **Expressive geometry verification**: row heights, segmented gap, item shapes, and selected color roles are aligned to the current `m3-docs-cache` list specs snapshot. Full Figma Design Kit verification has not been completed.
+- **Expressive geometry verification**: row heights, segmented gap, item shapes, and selected color roles are aligned to the `material3` MCP List specs snapshot (m3.material.io). Full Figma Design Kit verification has not been completed. This README is a secondary local reference only; the `material3` MCP server remains the source of truth for Material values.
 - **Dragged state colors**: see "Dragged state" section above; pending Design Kit verification.
 
 ## Material verification status

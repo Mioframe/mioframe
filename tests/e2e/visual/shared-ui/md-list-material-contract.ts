@@ -2,11 +2,17 @@
  * Compact Material Expressive list constants used by browser assertions.
  *
  * Source notes:
- * - Current project-aligned cache summary: src/shared/ui/Lists/README.md
- * - Registry summary derived from the current m3-docs-cache List pages:
- *   docs/material-3/component-registry.md
- * - Audit notes for the same cache snapshot:
- *   docs/material-3/component-family-audit.md
+ * - Primary source of truth: the `material3` MCP server (m3.material.io List
+ *   component docs/specs — Lists Overview, Lists Specs, Lists Guidelines).
+ *   Values below were checked against MCP `get_component_docs('list')`.
+ * - Secondary local reference only (not a source of truth for Material
+ *   values): src/shared/ui/Lists/README.md.
+ *
+ * List does not own the global keyboard focus indicator's Material tokens
+ * (thickness/offset) — those belong to the existing global focus indicator
+ * mechanism and must not be asserted here. See `md-list.spec.ts`'s
+ * "keyboard focus indicator integration" suite for List's boundary-level
+ * integration checks only.
  */
 export const MD_LIST_MATERIAL_CONTRACT = {
   rowHeights: {
@@ -42,9 +48,5 @@ export const MD_LIST_MATERIAL_CONTRACT = {
     hover: '0.08',
     pressed: '0.1',
     dragged: '0.16',
-  },
-  focusIndicator: {
-    thickness: '3px',
-    offset: '2px',
   },
 } as const;
