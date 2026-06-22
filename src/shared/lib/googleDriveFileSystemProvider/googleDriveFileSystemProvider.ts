@@ -29,6 +29,7 @@ import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { firstValueFrom, skip, type Observable } from 'rxjs';
 import { createSafeErrorCause } from '@shared/lib/error';
+import { hasSafeDiagnosticDetails } from '@shared/lib/diagnostics';
 import { GoogleDriveError } from '@shared/lib/googleDrive/error';
 import {
   getGoogleDrivePathEmail,
@@ -124,7 +125,9 @@ export const googleDriveFileSystemProvider = (
 ) => {
   const { requestToken, $sessions } = providerOptions;
   const toSafeGoogleDriveCause = (error: unknown, safeMessage: string) => {
-    if (error instanceof GoogleDriveError) {
+    // Duck-typed check, not just `instanceof GoogleDriveError`: class identity can fail to
+    // survive bundling/import boundaries, which would otherwise silently discard safe details.
+    if (error instanceof GoogleDriveError || hasSafeDiagnosticDetails(error)) {
       return error;
     }
 

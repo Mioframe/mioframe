@@ -20,7 +20,14 @@ interface HasSafeDiagnosticDetails {
   safeDetails: SafeDiagnosticDetails;
 }
 
-const hasSafeDiagnosticDetails = (error: unknown): error is HasSafeDiagnosticDetails =>
+/**
+ * Duck-typed check for an opt-in `safeDetails` carrier, independent of class identity.
+ * Use this instead of `instanceof GoogleDriveError` (or similar) so safe diagnostic details
+ * survive bundling/import boundary identity mismatches.
+ * @param error - The caught value to inspect.
+ * @returns Whether `error` carries a well-formed `safeDetails` record.
+ */
+export const hasSafeDiagnosticDetails = (error: unknown): error is HasSafeDiagnosticDetails =>
   isRecord(error) && 'safeDetails' in error && isSafeDiagnosticDetails(error.safeDetails);
 
 /**
