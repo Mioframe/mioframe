@@ -559,7 +559,7 @@ describe('storageFilePolicy remove correctness', () => {
     expect(entries[primaryName]).toBeUndefined();
   });
 
-  it('does not blindly remove an invalid primary v3 file', async () => {
+  it('removes a non-empty invalid primary v3 file by filename when its full key is known', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
@@ -572,7 +572,23 @@ describe('storageFilePolicy remove correctness', () => {
 
     await removeStorageEntry(createIo(entries), key);
 
-    expect(entries[primaryName]).toEqual(new Uint8Array([0xde, 0xad]));
+    expect(entries[primaryName]).toBeUndefined();
+  });
+
+  it('removes a zero-byte primary v3 file by filename when its full key is known', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = { [primaryName]: new Uint8Array(0) };
+
+    await removeStorageEntry(createIo(entries), key);
+
+    expect(entries[primaryName]).toBeUndefined();
   });
 
   it('does not remove an out-of-route .mf file even when its wrapper key matches', async () => {
@@ -596,7 +612,7 @@ describe('storageFilePolicy remove correctness', () => {
     expect(entries[outOfRouteName]).toEqual(encodeV3StorageWrapper(key, DATA_B));
   });
 
-  it('does not read out-of-route .mf candidates during exact remove', async () => {
+  it('does not read v3 candidate bytes during exact remove', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
     const primaryName = encodePrimaryV3FileName(key);
@@ -613,7 +629,7 @@ describe('storageFilePolicy remove correctness', () => {
 
     await removeStorageEntry(counters.io, key);
 
-    expect(counters.getReadCalls()).toEqual([primaryName]);
+    expect(counters.getReadCalls()).toEqual([]);
     expect(counters.getRemoveCalls()).toEqual([primaryName]);
   });
 
@@ -653,7 +669,7 @@ describe('storageFilePolicy remove correctness', () => {
     await removeStorageEntry(counters.io, key);
 
     expect(counters.getListNamesCalls()).toBe(1);
-    expect(counters.getReadCalls()).toEqual([primaryName]);
+    expect(counters.getReadCalls()).toEqual([]);
     expect(counters.getMaxConcurrentReads()).toBeLessThanOrEqual(4);
     expect(counters.getMaxConcurrentRemoves()).toBeLessThanOrEqual(4);
     expect(counters.getRemoveCalls().sort()).toEqual(
