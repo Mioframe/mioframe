@@ -113,8 +113,11 @@ const rootRole = computed(() => {
     return undefined;
   }
 
-  const explicitRole = typeof attrs.role === 'string' ? attrs.role : undefined;
-  return explicitRole ?? (props.mode === 'static' ? 'listitem' : undefined);
+  // Standalone items have no parent MDList to own list semantics, so a standalone
+  // static row gets no implicit role="listitem" — that would assert membership in a
+  // list structure that does not exist. Only an explicit consumer-provided role is
+  // preserved.
+  return typeof attrs.role === 'string' ? attrs.role : undefined;
 });
 
 const primaryActionTag = computed<'button' | 'a'>(() => (props.href ? 'a' : 'button'));

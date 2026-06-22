@@ -115,15 +115,15 @@ Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new c
 
 ## Supported combinations
 
-| Component                    | Context                                  | Result                                                                                              |
-| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `MDListItem` (static)        | standalone                               | static visual row; `role="listitem"` by default                                                     |
-| `MDListItem` (single-action) | standalone                               | root is `button`/`a`; full interactive surface                                                      |
-| `MDListItem` (multi-action)  | standalone                               | wrapper `div`; internal `button`/`a` primary action + independent trailing action (same as in-list) |
-| `MDListItem` (static)        | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; no action surface                                                   |
-| `MDListItem` (single-action) | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; internal `button`/`a` primary action                                |
-| `MDListItem` (multi-action)  | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; internal primary action + independent trailing action               |
-| `MDListSelectionItem`        | inside `MDList` with `selectionMode` set | `div[role="option"]`; selection semantics                                                           |
+| Component                    | Context                                  | Result                                                                                                                                   |
+| ---------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `MDListItem` (static)        | standalone                               | static visual row; no implicit `role` (a standalone item has no parent list to be a member of); an explicit consumer `role` is preserved |
+| `MDListItem` (single-action) | standalone                               | root is `button`/`a`; full interactive surface                                                                                           |
+| `MDListItem` (multi-action)  | standalone                               | wrapper `div`; internal `button`/`a` primary action + independent trailing action (same as in-list)                                      |
+| `MDListItem` (static)        | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; no action surface                                                                                        |
+| `MDListItem` (single-action) | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; internal `button`/`a` primary action                                                                     |
+| `MDListItem` (multi-action)  | inside `MDList` (no selection)           | `div[role="listitem"]` or `li`; internal primary action + independent trailing action                                                    |
+| `MDListSelectionItem`        | inside `MDList` with `selectionMode` set | `div[role="option"]`; selection semantics                                                                                                |
 
 ## Unsupported combinations
 
@@ -324,6 +324,7 @@ Current Expressive minimum row heights:
 
 - Non-selectable lists: `div[role="list"]` by default, `ul` when children are guaranteed `li` wrappers.
 - Selection lists: always `div[role="listbox"]` — `tag="ul"` is overridden with a dev warning.
+- A standalone `MDListItem` (no parent `MDList`) has no implicit `role`. It is not a member of any list structure, so asserting `role="listitem"` would be misleading ARIA. An explicit consumer-provided `role` is preserved.
 - Every `MDListItem` inside a non-selection list renders `div[role="listitem"]` or `li`.
 - Every `MDListItem` inside a selection list renders `div[role="none"]` with no action surface and no trailing action (prevents invalid `listbox > listitem`).
 - Every `MDListSelectionItem` inside a selection list renders `div[role="option"]`.
@@ -346,9 +347,17 @@ This applies to the standard unselected dragged row. Selected+dragged is not sep
 
 ## `listItemAnatomy.css` scope
 
-`listItemAnatomy.css` is imported as a non-scoped `<style>` block by both `MDListItem` and `MDListSelectionItem` so that the two components share one implementation of token defaults, state modifier remaps, and element geometry instead of duplicating it in each scoped block.
+`listItemAnatomy.css` is a deliberate, narrow exception to the project's general preference for component-scoped Vue styles (see the repository `Styling` policy). It is imported as a non-scoped `<style>` block by both `MDListItem` and `MDListSelectionItem` so that the two components share one implementation of token defaults, state modifier remaps, and element geometry instead of duplicating ~480 lines of identical CSS in each scoped block. Scoped duplication was rejected because it would let the two components' shared anatomy (sizing, typography, state-token remaps) drift independently with no compiler-enforced parity.
 
-All selectors are BEM-namespaced to `.md-list-item` and `.md-list-selection-item`. They must not be used outside `src/shared/ui/Lists`. This file is **not** a global CSS module for consumers.
+This exception is constrained as follows:
+
+- **Internal to `src/shared/ui/Lists`.** The file lives in this directory and is owned exclusively by the List component family. It is not a project-wide or design-system-wide stylesheet.
+- **BEM-namespaced selectors only.** Every selector targets `.md-list-item*` or `.md-list-selection-item*`. No bare element, attribute, or generic class selector is permitted — this keeps the non-scoped CSS from leaking onto unrelated DOM even though `<style>` (not `<style scoped>`) is used.
+- **No upper-layer or product-specific selectors.** The file must never reference `entities`, `features`, `widgets`, `pages`, or any consumer-specific class, id, or data attribute. Adding a consumer-specific selector here to fix a one-off layout problem is a contract violation — fix `MDListItem`/`MDListSelectionItem` or the consumer's own scoped CSS instead.
+- **No consumer imports or targeting.** Code outside `src/shared/ui/Lists` must not `@import` this file, nor write CSS that targets `.md-list-item__*` / `.md-list-selection-item__*` selectors from outside (see the root `Styling` policy on `:deep()` and styling ownership).
+- **Private variables stay private.** The `--md-private-list-item-*` custom properties declared here are internal wiring, not public styling API — see [Private implementation variables](#private-implementation-variables). Only the public `--md-comp-list-list-item-*` tokens are consumer-facing.
+
+If a future change needs anatomy that diverges between `MDListItem` and `MDListSelectionItem` for a specific element, prefer scoping that divergent rule in the owning component's own scoped `<style>` block (already done today for dragged state and button/link resets in `MDListItem.vue`) rather than adding a conditional branch inside the shared file.
 
 ## Internal module map
 
@@ -395,6 +404,11 @@ Confirmed from specs:
 - Segmented item fill color: `surface`
 - Standard/segmented are visual choices only; they do not affect behavior
 - Focus indicator tokens: color `secondary`, thickness `3dp`, inner offset `-3dp`
+
+Confirmed from the `material3` MCP `components/lists/specs` token table (List - Common set):
+
+- `md.comp.list.list-item.disabled.container.expressive.shape` is documented as `4dp` (`md.sys.shape.corner.extra-small`) — the same value as the default/resting shape. Unselected disabled rows therefore keep the default `4dp` shape rather than expanding to a state shape (which only the interactive hover/focused/pressed/dragged states do). The current implementation matches this: the disabled CSS rule in `listItemAnatomy.css` does not remap `--md-private-list-item-action-shape` / `--md-private-list-item-container-shape`, so a disabled row keeps the default shape unless it is also selected.
+- No `md.comp.list.list-item.disabled.container.color` (or `.opacity`) token is documented for the unselected disabled state — the token table only documents `md.comp.list.list-item.selected.disabled.container.color` (+ `.opacity`) for the selected+disabled combination, which this implementation already maps (see `--md-comp-list-list-item-selected-disabled-container-color` above). This confirms, rather than leaves ambiguous, the project decision below: unselected disabled standard/segmented rows keep their enabled container color and only dim content (label, icons, supporting text, overline) via the documented `disabled-*-opacity` tokens. This is covered by the Playwright test "MDListItem unselected disabled row keeps its enabled container color, not a darkened overlay" in `tests/e2e/visual/shared-ui/md-list.spec.ts`.
 
 Partial / unverified:
 

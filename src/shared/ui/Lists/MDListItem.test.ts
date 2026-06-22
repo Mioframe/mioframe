@@ -464,6 +464,18 @@ describe('MDListItem', () => {
 
       expect(wrapper.get('.md-list-item').attributes('role')).toBe('option');
     });
+
+    it('does not give a standalone static item an implicit role="listitem"', () => {
+      const wrapper = mountListItem({});
+
+      expect(wrapper.get('.md-list-item').attributes('role')).toBeUndefined();
+    });
+
+    it('still gives an in-list static item role="listitem" when standalone has no implicit role', () => {
+      const wrapper = mountListItem({}, { inList: true });
+
+      expect(wrapper.get('.md-list-item').attributes('role')).toBe('listitem');
+    });
   });
 
   it('does not fire the primary action when clicking inside the trailing action slot', async () => {

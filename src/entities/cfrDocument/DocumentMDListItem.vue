@@ -2,7 +2,7 @@
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs, useSlots } from 'vue';
+import { computed, toRefs } from 'vue';
 import { useDocument } from './useDocument';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import { MDPlainTooltip } from '@shared/ui/Tooltips';
@@ -22,7 +22,6 @@ defineSlots<{
   leading: () => unknown;
   trailingAction: (p: { documentName?: string | undefined }) => unknown;
 }>();
-const slots = useSlots();
 
 const { documentId, path } = toRefs(props);
 
@@ -40,7 +39,7 @@ const onListItemClick = () => {
 <template>
   <MDListItem
     :mode="
-      is === 'button' && slots.trailingAction
+      is === 'button' && $slots.trailingAction
         ? 'multi-action'
         : is === 'button'
           ? 'single-action'
@@ -66,11 +65,11 @@ const onListItemClick = () => {
       </slot>
     </template>
 
-    <template v-if="!!slots.trailingAction && is === 'button'" #trailingAction>
+    <template v-if="!!$slots.trailingAction && is === 'button'" #trailingAction>
       <slot name="trailingAction" :document-name="documentName" />
     </template>
 
-    <template v-if="!!slots.trailingAction && is !== 'button'" #trailing>
+    <template v-if="!!$slots.trailingAction && is !== 'button'" #trailing>
       <slot name="trailingAction" :document-name="documentName" />
     </template>
   </MDListItem>
