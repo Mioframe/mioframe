@@ -419,7 +419,9 @@ export const update = async (auth: GoogleAuthParams, fileId: string, params: Upd
 const gDriveFileContentCache = new Cache<string, { file: File; modifiedTime: string }>({
   max: 100,
   maxSize: 100 * 1024 * 1024,
-  sizeCalculation: ({ file }) => file.size,
+  // Zero-byte Drive files (e.g. empty `.mf` artifacts) are valid downloads and must remain
+  // cacheable; `lru-cache` requires every entry to have a size of at least 1.
+  sizeCalculation: ({ file }) => Math.max(file.size, 1),
 });
 
 /**
@@ -504,7 +506,12 @@ export const download = async (
     throw toGoogleDriveDownloadError(e, 'mediaDownload');
   }
 
-  gDriveFileContentCache.set(fileId, { file, modifiedTime });
+  try {
+    gDriveFileContentCache.set(fileId, { file, modifiedTime });
+  } catch {
+    // The downloaded-file cache is an optimization, not the source of truth: a cache write
+    // failure must not turn an already-successful download into a failed read.
+  }
 
   return file;
 };
