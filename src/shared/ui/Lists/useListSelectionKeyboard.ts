@@ -3,6 +3,7 @@ import type { MDListSelectionRegistry } from './listContext';
 import {
   focusListSelectionItem,
   getNextEnabledListSelectionItem,
+  resolveOwnSelectionItemTarget,
   syncListSelectionItemTabStops,
 } from './listSelectionItemNavigation';
 
@@ -49,17 +50,7 @@ export const useListSelectionKeyboard = (
       return;
     }
 
-    const focusTarget = event.target;
-
-    const item =
-      selectionRegistry
-        .getItems()
-        .map((record) => record.getElement())
-        .find(
-          (element): element is HTMLElement =>
-            element instanceof HTMLElement &&
-            (element === focusTarget || element.contains(focusTarget)),
-        ) ?? null;
+    const item = resolveOwnSelectionItemTarget(selectionRegistry, event.target);
 
     if (item) {
       focusListSelectionItem(selectionRegistry, item);
@@ -67,24 +58,43 @@ export const useListSelectionKeyboard = (
   };
 
   const handleKeydown = (event: Event) => {
-    if (!enabled.value || !(event instanceof KeyboardEvent)) {
+    if (
+      !enabled.value ||
+      event.defaultPrevented ||
+      !(event instanceof KeyboardEvent) ||
+      !(event.target instanceof HTMLElement)
+    ) {
+      return;
+    }
+
+    // A nested MDList renders inside the DOM subtree of this list's own registered
+    // items, so a keydown originating in a nested selection list bubbles up here too.
+    // Only handle it when the event target belongs to *this* list's own registry, not
+    // merely inside an item's DOM subtree that happens to contain a nested listbox.
+    if (!resolveOwnSelectionItemTarget(selectionRegistry, event.target)) {
       return;
     }
 
     switch (event.key) {
       case 'ArrowDown':
         moveFocus(event, 1);
-        return;
+        break;
       case 'ArrowUp':
         moveFocus(event, -1);
-        return;
+        break;
       case 'Home':
         moveFocus(event, 'first');
-        return;
+        break;
       case 'End':
         moveFocus(event, 'last');
+        break;
+      default:
         return;
     }
+
+    // The roving-focus key was handled by this list. Stop it from also reaching an
+    // ancestor selection list's keydown listener.
+    event.stopPropagation();
   };
 
   const syncTabStops = () => {

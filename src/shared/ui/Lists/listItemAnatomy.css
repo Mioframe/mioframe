@@ -132,6 +132,9 @@
   --md-state-focus-layer-opacity: var(--md-comp-list-list-item-focus-state-layer-opacity);
   --md-state-pressed-layer-opacity: var(--md-comp-list-list-item-pressed-state-layer-opacity);
   --md-state-dragged-layer-opacity: var(--md-comp-list-list-item-dragged-state-layer-opacity);
+  /* Maps the list-owned state-layer token into MDStateLayer's generic private contract.
+     MDStateLayer never reads list-specific variable names directly. */
+  --md-private-state-layer-color: var(--md-private-list-item-state-layer-color);
   border-radius: var(
     --md-private-list-item-container-shape,
     var(--md-comp-list-list-item-container-expressive-shape)
@@ -216,14 +219,14 @@
  * public `md.comp.list.list-item.dragged.container.color` token exists in the Material
  * website token table, so the fill/content/state-layer colors stay private
  * implementation details mapped to system tokens instead of an invented component token.
- * `--md-content-color` is overridden here so the nested MDStateLayer (which reads
- * `--md-content-color` for its overlay color) renders the dragged overlay in
- * on-tertiary-container without MDStateLayer knowing about List or tertiary-container.
+ * The dragged state-layer color flows through the same
+ * `--md-private-list-item-state-layer-color` -> `--md-private-state-layer-color` mapping
+ * as every other list state, so MDStateLayer never needs to know about List or
+ * tertiary-container.
  */
 .md-list-item.md-state_dragged {
   --md-private-list-item-dragged-container-color: var(--md-sys-color-tertiary-container);
   --md-private-list-item-dragged-content-color: var(--md-sys-color-on-tertiary-container);
-  --md-private-list-item-dragged-state-layer-color: var(--md-sys-color-on-tertiary-container);
   --md-private-list-item-dragged-elevation: var(--md-sys-elevation-level5);
 
   --md-private-list-item-action-shape: var(
@@ -241,7 +244,7 @@
   --md-comp-list-list-item-trailing-supporting-text-color: var(
     --md-private-list-item-dragged-content-color
   );
-  --md-content-color: var(--md-private-list-item-dragged-state-layer-color);
+  --md-private-list-item-state-layer-color: var(--md-private-list-item-dragged-content-color);
 }
 
 /* ─── Disabled state (token remaps) ──────────────────────────────────────── */

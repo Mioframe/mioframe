@@ -438,6 +438,49 @@ test.describe('MDList / Material reference forced state layer', () => {
     expect(pressedColor, 'pressed row must differ from the default row').not.toBe(defaultColor);
   });
 
+  // Proves the actual wiring of the generic private StateLayer contract end-to-end: the
+  // List-owned --md-private-list-item-state-layer-color token must reach the rendered
+  // MDStateLayer overlay through --md-private-state-layer-color. Overriding the List
+  // token on a live hovered row and observing the overlay color change is the only way to
+  // prove the contract is real, as opposed to a CSS variable that is declared but never
+  // consumed (which a value-only check on the declared variable cannot detect).
+  test('List-owned state-layer color token actually drives the rendered MDStateLayer overlay', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const hoverRow = surface.locator('.md-list-item.md-state_hover').first();
+    const stateLayer = hoverRow.locator('.md-state-layer').first();
+
+    const beforeColor = await stateLayer.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+    const [afterColor, expectedColor] = await Promise.all([
+      hoverRow.evaluate((node) => {
+        node.style.setProperty('--md-private-list-item-state-layer-color', '#ff0000');
+        const layer = node.querySelector('.md-state-layer');
+        return layer ? getComputedStyle(layer).backgroundColor : '';
+      }),
+      hoverRow.evaluate(() => {
+        const sample = document.createElement('div');
+        sample.style.backgroundColor = 'rgb(from #ff0000 r g b / 0.08)';
+        document.body.append(sample);
+        const resolved = getComputedStyle(sample).backgroundColor;
+        sample.remove();
+        return resolved;
+      }),
+    ]);
+
+    expect(
+      afterColor,
+      'overriding the List-owned state-layer token must change the rendered overlay color',
+    ).not.toBe(beforeColor);
+    expect(
+      afterColor,
+      'the rendered overlay must resolve to the overridden List-owned color at the hover opacity',
+    ).toBe(expectedColor);
+  });
+
   // The forced `MDStateLayer` overlay alone does not activate List-specific expressive
   // container shape. The reference rows additionally carry the same `md-state_*` host
   // classes the real `useStateLayer`-driven runtime rows apply (see
@@ -556,12 +599,13 @@ test.describe('MDList / Material reference forced state layer', () => {
   });
 
   // Forced-state fixtures activate `.md-state_dragged` on the MDStateLayer node directly
-  // (not through MDListItem's real --md-content-color cascade), so this proves the
-  // dragged overlay color contract on a plain runtime row instead, by comparing its
-  // resolved overlay background against an on-tertiary-container sample at the documented
-  // 0.16 opacity. This is the proof that MDStateLayer's --md-content-color consumption
-  // (owned by State) picks up the List-owned dragged color override (owned by Lists),
-  // without MDStateLayer itself knowing about List or tertiary-container.
+  // (not through MDListItem's real --md-private-list-item-state-layer-color cascade), so
+  // this proves the dragged overlay color contract on a plain runtime row instead, by
+  // comparing its resolved overlay background against an on-tertiary-container sample at
+  // the documented 0.16 opacity. This is the proof that MDStateLayer's generic
+  // --md-private-state-layer-color contract (owned by State) picks up the List-owned
+  // dragged color mapped through --md-private-list-item-state-layer-color (owned by
+  // Lists), without MDStateLayer itself knowing about List or tertiary-container.
   test('Material reference states dragged row overlay resolves to on-tertiary-container at 0.16 opacity', async ({
     page,
   }) => {

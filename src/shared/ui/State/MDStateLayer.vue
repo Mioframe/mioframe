@@ -53,7 +53,9 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
   border-radius: inherit;
   z-index: 0;
   background: none;
-  background-color: rgb(from var(--md-content-color) r g b / 0);
+  background-color: rgb(
+    from var(--md-private-state-layer-color, var(--md-content-color)) r g b / 0
+  );
   transition-property: background, background-color;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
 
@@ -61,28 +63,32 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
   :global(.md-state_hover) > & {
     will-change: background-color;
     background-color: rgb(
-      from var(--md-content-color) r g b / var(--md-state-hover-layer-opacity, 0.08)
+      from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
+        var(--md-state-hover-layer-opacity, 0.08)
     );
   }
 
   &.md-state_focused,
   :global(.md-state_focused) > & {
     background-color: rgb(
-      from var(--md-content-color) r g b / var(--md-state-focus-layer-opacity, 0.1)
+      from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
+        var(--md-state-focus-layer-opacity, 0.1)
     );
   }
 
   &.md-state_pressed,
   :global(.md-state_pressed) > & {
     background-color: rgb(
-      from var(--md-content-color) r g b / var(--md-state-pressed-layer-opacity, 0.1)
+      from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
+        var(--md-state-pressed-layer-opacity, 0.1)
     );
   }
 
   &.md-state_dragged,
   :global(.md-state_dragged) > & {
     background-color: rgb(
-      from var(--md-content-color) r g b / var(--md-state-dragged-layer-opacity, 0.16)
+      from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
+        var(--md-state-dragged-layer-opacity, 0.16)
     );
   }
 
@@ -90,7 +96,9 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
   :global(.md-state_disabled) > &,
   :global(:disabled) > &,
   :global([aria-disabled='true']) > & {
-    background-color: rgb(from var(--md-content-color) r g b / 0);
+    background-color: rgb(
+      from var(--md-private-state-layer-color, var(--md-content-color)) r g b / 0
+    );
   }
 }
 </style>

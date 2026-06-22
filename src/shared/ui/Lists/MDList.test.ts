@@ -302,6 +302,46 @@ describe('MDList', () => {
     expect(innerOptions[1]?.element.tabIndex).toBe(-1);
   });
 
+  it('does not let a nested selection list nested inside a parent item move the parent roving focus', async () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList selection-mode="single" model-value="outer-two">
+            <MDListSelectionItem label-text="Outer one" value="outer-one" />
+            <MDListSelectionItem label-text="Outer two" value="outer-two">
+              <template #trailing>
+                <MDList selection-mode="single" model-value="inner-one">
+                  <MDListSelectionItem label-text="Inner one" value="inner-one" />
+                  <MDListSelectionItem label-text="Inner two" value="inner-two" />
+                </MDList>
+              </template>
+            </MDListSelectionItem>
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    await nextTick();
+
+    const allOptions = wrapper.findAll<HTMLElement>('[role="option"]');
+    const outerOptions = allOptions.slice(0, 2);
+    const innerOptions = allOptions.slice(2);
+
+    expect(outerOptions).toHaveLength(2);
+    expect(innerOptions).toHaveLength(2);
+
+    innerOptions[0]?.element.focus();
+    await innerOptions[0]?.trigger('keydown', { key: 'ArrowDown' });
+
+    // The inner list must handle its own ArrowDown without the bubbled event also
+    // moving the outer list's roving focus or tab stops, even though the inner list is
+    // nested inside one of the outer list's own item DOM subtrees.
+    expect(document.activeElement).toBe(innerOptions[1]?.element);
+    expect(outerOptions[1]?.element.tabIndex).toBe(0);
+  });
+
   it('warns in development when MDListItem is used inside a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

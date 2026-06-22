@@ -77,6 +77,15 @@ The supported customization surface for shared Material components is:
 
 Consumers should not depend on private class names or private local component variables for styling.
 
+## Shared primitive private contracts
+
+A shared low-level primitive (such as `MDStateLayer`) that is reused by many component families must expose a generic `--md-private-*` contract, never a component-specific one.
+
+- The primitive defines one private variable for the value it needs (for example `--md-private-state-layer-color`) with a safe fallback to an existing generic role (for example `var(--md-private-state-layer-color, var(--md-content-color))`).
+- The primitive must not read a consumer's `--md-comp-*` or `--md-private-<component>-*` token directly. Doing so couples the primitive to one consumer and breaks reuse by every other consumer.
+- A component family (List, Menu, Button, etc.) maps its own official `--md-comp-*` tokens into the primitive's generic `--md-private-*` contract by setting that variable in its own scoped CSS. The component owns the mapping; the primitive owns the contract.
+- `--md-sys-*` remains for theme-role system tokens; `--md-comp-*` is reserved for documented Material component tokens confirmed via Material3 MCP (or the cache fallback) — do not invent a `--md-comp-*` name that has no official source. When no public token exists for a value (e.g. a dragged-state color with no published component token), keep it as a `--md-private-*` implementation variable resolved from existing `--md-sys-*`/`--md-comp-*` tokens instead of inventing a documented-looking public token.
+
 ## Pilot requirement
 
 The first converted component family should define this pattern end-to-end before the pattern is applied widely. Buttons are the preferred pilot because the current API already maps closely to the Material 3 button model.

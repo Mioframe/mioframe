@@ -80,6 +80,8 @@ Selection-list keyboard contract for the current vertical `listbox`:
 
 Horizontal listbox behavior is intentionally unsupported until the component exposes explicit orientation support and `aria-orientation`.
 
+Nested selection lists (an `MDList` rendered inside another selection list's item content) are containment-safe: `useListSelectionKeyboard` ignores `event.defaultPrevented`, resolves ownership against this list's own Vue-owned registry only (`resolveOwnSelectionItemTarget` in `listSelectionItemNavigation.ts`), and stops propagation once it handles a roving-focus key, so a bubbled keydown or focusin from a nested list never moves the outer list's focus or tab stops.
+
 There is no public `variant` prop. The current Material / Expressive row geometry is the only supported implementation.
 
 ### MDListItem
@@ -242,7 +244,7 @@ The `list-item` path segment is part of the documented token and is preserved, n
 | `--md-comp-list-list-item-supporting-text-font` / `-size` / `-weight` / `-line-height` / `-tracking` | `md.comp.list.list-item.supporting-text.*`                                | Supporting text typography; defaults to `body-medium`                                  |
 | `--md-comp-list-list-item-overline-font` / `-size` / `-weight` / `-line-height` / `-tracking`        | `md.comp.list.list-item.overline.*`                                       | Overline typography; defaults to `label-small`                                         |
 
-There is no documented Material token for a generic leading selection-control size (checkbox/switch slot). `--md-private-list-item-leading-control-size` is a private implementation variable for that geometry, not a public Material token. The resolved per-state interaction state-layer color is wired internally through `--md-private-list-item-state-layer-color`, which reads the selected-state color tokens above when the row is selected.
+There is no documented Material token for a generic leading selection-control size (checkbox/switch slot). `--md-private-list-item-leading-control-size` is a private implementation variable for that geometry, not a public Material token. The resolved per-state interaction state-layer color is wired internally through `--md-private-list-item-state-layer-color`, which reads the selected-state color tokens above when the row is selected, and is mapped into the shared `MDStateLayer` primitive's generic `--md-private-state-layer-color` contract (see [Material token policy](../State/README.md) / `docs/material-3/`).
 
 There is no exposed trailing supporting text slot in the implemented anatomy, so the documented `md.comp.list.list-item.trailing-supporting-text.font` / `.size` / `.weight` / `.line-height` / `.tracking` typography tokens are N/A for the public API (the trailing-supporting-text **color** token is still represented because it is reused by the existing trailing slot color role).
 
@@ -282,7 +284,7 @@ treatment, which none currently do.
 | `--md-private-list-item-state-layer-color`                    | (resolved)                             | —           | Resolved interaction state layer color fed into shared `MDStateLayer`; reads the public per-state color tokens (label-text-color normally, the selected-state-layer-color tokens when selected, disabled-label-text-color when disabled)                                 |
 | `--md-private-list-item-dragged-container-color`              | `--md-sys-color-tertiary-container`    | MDListItem  | Dragged drag-preview fill; not a public Material component token (none exists in the website token table)                                                                                                                                                                |
 | `--md-private-list-item-dragged-content-color`                | `--md-sys-color-on-tertiary-container` | MDListItem  | Dragged drag-preview label/icon/overline/supporting-text color                                                                                                                                                                                                           |
-| `--md-private-list-item-dragged-state-layer-color`            | `--md-sys-color-on-tertiary-container` | MDListItem  | Dragged state-layer color, applied via a local `--md-content-color` override consumed by the nested `MDStateLayer`                                                                                                                                                       |
+| (none — see `--md-private-list-item-state-layer-color`)       | —                                      | —           | Dragged state-layer color reuses `--md-private-list-item-dragged-content-color` directly via the `--md-private-list-item-state-layer-color` remap below, instead of a dedicated variable or a `--md-content-color` override                                              |
 | `--md-private-list-item-dragged-elevation`                    | `--md-sys-elevation-level5`            | MDListItem  | Dragged drag-preview elevation `box-shadow`, applied in `MDListItem.vue`'s scoped style                                                                                                                                                                                  |
 
 The former `--md-private-list-item-content-padding-inline-start`, `-content-padding-inline-end`, `-content-padding-block`, `-leading-space`, `-trailing-space`, and `-segmented-gap` private variables were removed. Their spacing is now owned directly by the public `--md-comp-list-list-item-between-space` / `-top-space` / `-bottom-space` / `-leading-space` / `-trailing-space` and `--md-comp-list-segmented-gap` tokens documented above — there is no private duplicate sitting in front of them.
@@ -334,11 +336,11 @@ Current Expressive minimum row heights:
 
 ## Dragged state
 
-`MDListItem` supports a `dragged` visual state, rendered as a filled, elevated drag preview per the Material 3 Expressive Figma Kit (not a transparent row with only a state-layer overlay). The website token table does not expose a `md.comp.list.list-item.dragged.container.color` component token, so the fill/content/state-layer colors are wired as private implementation variables (`--md-private-list-item-dragged-container-color`, `--md-private-list-item-dragged-content-color`, `--md-private-list-item-dragged-state-layer-color`, `--md-private-list-item-dragged-elevation`) scoped to `.md-list-item.md-state_dragged` in `listItemAnatomy.css`, mapped to system tokens:
+`MDListItem` supports a `dragged` visual state, rendered as a filled, elevated drag preview per the Material 3 Expressive Figma Kit (not a transparent row with only a state-layer overlay). The website token table does not expose a `md.comp.list.list-item.dragged.container.color` component token, so the fill/content/state-layer colors are wired as private implementation variables (`--md-private-list-item-dragged-container-color`, `--md-private-list-item-dragged-content-color`, `--md-private-list-item-dragged-elevation`) scoped to `.md-list-item.md-state_dragged` in `listItemAnatomy.css`, mapped to system tokens:
 
 - container fill: `--md-sys-color-tertiary-container`
 - content/icon color (label text, leading/trailing icon, overline, supporting text): `--md-sys-color-on-tertiary-container`
-- state-layer color: `--md-sys-color-on-tertiary-container`, applied via a local `--md-content-color` override so the nested `MDStateLayer` renders the overlay correctly without knowing about List or tertiary-container
+- state-layer color: `--md-sys-color-on-tertiary-container`, reused as `--md-private-list-item-state-layer-color`, which flows into the shared `MDStateLayer` primitive's generic `--md-private-state-layer-color` contract like every other list state — `MDStateLayer` never reads a List-specific or `--md-content-color` override for this
 - state-layer opacity: the existing Material dragged state-layer opacity (`0.16`)
 - elevation: `md.sys.elevation.level5`, applied as `box-shadow` in `MDListItem.vue`'s scoped style
 

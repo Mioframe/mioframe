@@ -52,6 +52,34 @@ const resolveSelectionItemElement = (
     (record) => record.element === currentTarget || record.element.contains(currentTarget),
   )?.element ?? null;
 
+/**
+ * Resolves the selection item that owns a DOM event, scoped to this list's own registry
+ * only. A nested `MDList` renders inside the DOM subtree of one of this list's items, so a
+ * bubbled event whose nearest `[role="option"]` ancestor is not itself one of this list's
+ * registered items originated in a nested selection list and must be ignored here.
+ * @param selectionRegistry - Vue-owned registry for this list's selection items.
+ * @param eventTarget - The DOM event target to resolve ownership for.
+ * @returns The owning item element, or `null` when the event belongs to a nested list.
+ */
+export const resolveOwnSelectionItemTarget = (
+  selectionRegistry: MDListSelectionRegistry,
+  eventTarget: HTMLElement,
+): HTMLElement | null => {
+  const candidate = resolveSelectionItemElement(selectionRegistry, eventTarget);
+
+  if (!candidate) {
+    return null;
+  }
+
+  const nearestOption = eventTarget.closest('[role="option"]');
+
+  if (nearestOption && nearestOption !== candidate) {
+    return null;
+  }
+
+  return candidate;
+};
+
 const setActiveItem = (records: MDListSelectionItemSnapshot[], active: HTMLElement | null) => {
   for (const record of records) {
     record.element.tabIndex = active !== null && record.element === active ? 0 : -1;
