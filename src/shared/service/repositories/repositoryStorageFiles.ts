@@ -7,7 +7,7 @@ import {
   storageAdapterMarkerFileName,
   type ReadOnlyStorageFilePolicyIo,
 } from '@shared/lib/automergeAdapter';
-import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { captureDiagnosticException, getSafeDiagnosticDetails } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
 import {
   FileSystemError,
@@ -207,6 +207,7 @@ const createRepositoryStorageIo = (
         if (tolerateCandidateReadFailures) {
           if (!hasCapturedCandidateReadFailure) {
             hasCapturedCandidateReadFailure = true;
+            const safeDetails = getSafeDiagnosticDetails(error);
             captureDiagnosticException(
               new DomainError('Could not read a repository storage candidate', {
                 cause: error,
@@ -216,6 +217,7 @@ const createRepositoryStorageIo = (
                 operation: 'repositoryFactsDiscovery',
                 failureClassification: 'candidateReadFailedSkipped',
                 feature: 'repositoryFacts',
+                ...(safeDetails !== undefined ? { safeDetails } : {}),
               },
             );
           }

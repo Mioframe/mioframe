@@ -24,11 +24,14 @@ describe('simplifiedAPI error handling', () => {
 
     const { getGFileMetaList } = await import('./simplifiedAPI');
 
-    // This should throw a GoogleDriveError (the empty catch block returns {} which will fail zod parsing)
-    // The mutation on line 62 changes the empty object to undefined, but both cause zod parse errors
+    // The body fails JSON parsing, so the error falls back to a GoogleDriveError carrying the
+    // raw HTTP status instead of losing the failure to an unrelated zod parse error.
     await expect(
       getGFileMetaList({ ACCESS_TOKEN: 'token' }, { q: {}, spaces: [], fetchAll: true }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      name: 'GoogleDriveError',
+      code: HttpStatusCode.INTERNAL_SERVER_ERROR,
+    });
 
     // Due to retry logic, fetch may be called multiple times (1 initial + up to 3 retries)
     expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1);
@@ -48,10 +51,14 @@ describe('simplifiedAPI error handling', () => {
 
     const { getGFileMetaList } = await import('./simplifiedAPI');
 
-    // This should throw a GoogleDriveError (the empty catch block returns {} which will fail zod parsing)
+    // The body fails JSON parsing, so the error falls back to a GoogleDriveError carrying the
+    // raw HTTP status instead of losing the failure to an unrelated zod parse error.
     await expect(
       getGFileMetaList({ ACCESS_TOKEN: 'token' }, { q: {}, spaces: [], fetchAll: true }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      name: 'GoogleDriveError',
+      code: HttpStatusCode.BAD_REQUEST,
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

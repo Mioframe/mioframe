@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { encodePrimaryV3FileName } from './filenameCodecV3';
 import type { ChunkStorageKey } from './types';
 import {
+  classifyV3ChunkCandidateData,
   isPlausibleV3CandidateForChunkKey,
   isPlausibleV3CandidateForPrefix,
   isPrimaryV3CandidateForKey,
 } from './v3StoragePolicy';
+import { encodeV3StorageWrapper } from './wrapperCodecV3';
 
 const HASH = '0df10d48afdaa0df1a484b006e4854cec8640d416745ce0cc874c07027b69cc2';
 
@@ -143,5 +145,44 @@ describe('isPlausibleV3CandidateForPrefix', () => {
     expect(isPlausibleV3CandidateForPrefix('not-a-v3-file.mf', [])).toBe(false);
     expect(isPlausibleV3CandidateForPrefix('', [])).toBe(false);
     expect(isPlausibleV3CandidateForPrefix('storage-adapter-id.automerge', [])).toBe(false);
+  });
+});
+
+describe('classifyV3ChunkCandidateData', () => {
+  const getKey = (): ChunkStorageKey => [getDocumentId(), 'snapshot', HASH];
+
+  it('classifies undefined data as missing', () => {
+    expect(classifyV3ChunkCandidateData(undefined, getKey())).toEqual({ kind: 'missing' });
+  });
+
+  it('classifies zero-byte data as missing, not invalid', () => {
+    const result = classifyV3ChunkCandidateData(new Uint8Array(0), getKey());
+
+    expect(result).toEqual({ kind: 'missing' });
+  });
+
+  it('classifies non-empty undecodable data as invalid', () => {
+    const result = classifyV3ChunkCandidateData(new Uint8Array([1, 2, 3]), getKey());
+
+    expect(result).toEqual({ kind: 'invalid' });
+  });
+
+  it('classifies a valid wrapper for the expected key as validSameKey', () => {
+    const key = getKey();
+    const data = encodeV3StorageWrapper(key, new Uint8Array([9, 9, 9]));
+
+    const result = classifyV3ChunkCandidateData(data, key);
+
+    expect(result.kind).toBe('validSameKey');
+  });
+
+  it('classifies a valid wrapper for a different key as validDifferentKey', () => {
+    const key = getKey();
+    const otherKey = getKey();
+    const data = encodeV3StorageWrapper(otherKey, new Uint8Array([9, 9, 9]));
+
+    const result = classifyV3ChunkCandidateData(data, key);
+
+    expect(result.kind).toBe('validDifferentKey');
   });
 });

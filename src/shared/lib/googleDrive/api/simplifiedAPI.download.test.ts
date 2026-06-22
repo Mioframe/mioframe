@@ -37,6 +37,15 @@ describe('simplifiedAPI download failure diagnostics', () => {
       name: 'GoogleDriveError',
       message: 'Google Drive download failed',
       code: HttpStatusCode.FORBIDDEN,
+      safeDetails: {
+        providerOperation: 'googleDrive.download',
+        providerPhase: 'metadata',
+        providerStatus: HttpStatusCode.FORBIDDEN,
+        providerReason: 'insufficientFilePermissions',
+        providerDomain: 'global',
+        providerRetryable: 'false',
+        providerErrorCode: 'permissionDenied',
+      },
       cause: expect.objectContaining({
         message:
           'Google Drive download failed (operation=googleDrive.download phase=metadata status=403 reason=insufficientFilePermissions domain=global retryable=false code=permissionDenied)',
@@ -79,6 +88,15 @@ describe('simplifiedAPI download failure diagnostics', () => {
       name: 'GoogleDriveError',
       message: 'Google Drive download failed',
       code: HttpStatusCode.NOT_FOUND,
+      safeDetails: {
+        providerOperation: 'googleDrive.download',
+        providerPhase: 'mediaDownload',
+        providerStatus: HttpStatusCode.NOT_FOUND,
+        providerReason: 'notFound',
+        providerDomain: 'global',
+        providerRetryable: 'false',
+        providerErrorCode: 'notFound',
+      },
       cause: expect.objectContaining({
         message:
           'Google Drive download failed (operation=googleDrive.download phase=mediaDownload status=404 reason=notFound domain=global retryable=false code=notFound)',
@@ -215,5 +233,45 @@ describe('simplifiedAPI download failure diagnostics', () => {
     expect(safeMessage).not.toContain('Private Taxes.pdf');
     expect(safeMessage).not.toContain('/user@example.com');
     expect(safeMessage).not.toContain('not found at');
+
+    const safeDetailsJson = JSON.stringify(
+      error && typeof error === 'object' && 'safeDetails' in error ? error.safeDetails : undefined,
+    );
+    expect(safeDetailsJson).not.toContain('gd-secret-id');
+    expect(safeDetailsJson).not.toContain('Private Taxes.pdf');
+    expect(safeDetailsJson).not.toContain('/user@example.com');
+    expect(error).toMatchObject({
+      safeDetails: expect.objectContaining({ providerStatus: HttpStatusCode.NOT_FOUND }),
+    });
+  });
+
+  it('preserves the HTTP status in safe details even when the error body is non-JSON', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'gd-123',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-01T00:00:00.000Z',
+        }),
+      )
+      .mockResolvedValue(
+        new Response('<html>not json</html>', { status: HttpStatusCode.SERVICE_UNAVAILABLE }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { download } = await import('./simplifiedAPI');
+
+    const error: unknown = await download({ ACCESS_TOKEN: 'token' }, 'gd-123').catch(
+      (caughtError: unknown) => caughtError,
+    );
+
+    expect(error).toMatchObject({
+      safeDetails: expect.objectContaining({
+        providerPhase: 'mediaDownload',
+        providerStatus: HttpStatusCode.SERVICE_UNAVAILABLE,
+      }),
+    });
   });
 });

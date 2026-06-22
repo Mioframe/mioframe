@@ -1,3 +1,4 @@
+import type { SafeDiagnosticDetails } from '../diagnostics';
 import { DomainError } from '../error';
 import { HttpStatusCode } from '../error/httpStatus';
 
@@ -15,6 +16,8 @@ type GoogleDriveErrorInit = {
   reason?: string | undefined;
   /** Google API error domain token (e.g. `global`), when available. */
   domain?: string | undefined;
+  /** Safe structured diagnostic details, opt-in carried for `captureDiagnosticException`. */
+  safeDetails?: SafeDiagnosticDetails | undefined;
 };
 
 /**
@@ -36,6 +39,8 @@ export class GoogleDriveError extends DomainError<HttpStatusCode> {
   reason?: string | undefined;
   /** Google API error domain token, when safely available. Not guaranteed to be present. */
   domain?: string | undefined;
+  /** Safe structured diagnostic details, opt-in carried for `captureDiagnosticException`. */
+  safeDetails?: SafeDiagnosticDetails | undefined;
   /**
    * Creates a Google Drive error from either an init object or a plain message.
    * @param options - Full error details or a fallback message.
@@ -46,11 +51,12 @@ export class GoogleDriveError extends DomainError<HttpStatusCode> {
       super(options, { cause });
       this.code = HttpStatusCode.INTERNAL_SERVER_ERROR;
     } else {
-      const { code, message, reason, domain } = options;
+      const { code, message, reason, domain, safeDetails } = options;
       super(message, { cause });
       this.code = code;
       this.reason = reason;
       this.domain = domain;
+      this.safeDetails = safeDetails;
     }
   }
 }

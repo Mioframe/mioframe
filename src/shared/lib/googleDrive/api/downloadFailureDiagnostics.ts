@@ -1,3 +1,4 @@
+import type { SafeDiagnosticDetails } from '../../diagnostics';
 import { HttpStatusCode } from '../../error/httpStatus';
 
 /** Conservative retryability classification for a Google Drive download failure. */
@@ -114,3 +115,25 @@ export const buildGoogleDriveDownloadFailureMessage = ({
 
   return `Google Drive download failed (${parts.join(' ')})`;
 };
+
+/**
+ * Builds privacy-safe structured diagnostic details for a Google Drive download failure, suitable
+ * for attaching to `captureDiagnosticException` as visible top-level Sentry context fields.
+ * Only structural fields are included — never raw API messages, file ids, or paths.
+ * @param details - Structural failure details.
+ * @returns Safe structured diagnostic details.
+ */
+export const buildGoogleDriveDownloadFailureSafeDetails = ({
+  phase,
+  status,
+  reason,
+  domain,
+}: GoogleDriveDownloadFailureDetails): SafeDiagnosticDetails => ({
+  providerOperation: 'googleDrive.download',
+  providerPhase: phase,
+  providerStatus: status ?? null,
+  providerReason: toSafeToken(reason) ?? null,
+  providerDomain: toSafeToken(domain) ?? null,
+  providerRetryable: classifyGoogleDriveDownloadRetryable(status),
+  providerErrorCode: classifyGoogleDriveDownloadErrorCode(status),
+});

@@ -1,3 +1,4 @@
+import type { SafeDiagnosticDetails } from './safeDiagnosticDetails';
 import { useSentry } from './sentryRuntime';
 
 /**
@@ -16,6 +17,12 @@ export interface DiagnosticExceptionContext {
   feature?: string;
   /** Safe Sentry action tag. */
   action?: string;
+  /**
+   * Optional safe structured details collected from the error (e.g. a provider boundary's
+   * operation/phase/status). Merged as visible top-level fields into the Sentry `diagnostic`
+   * context so they stay legible even when Sentry collapses nested cause messages.
+   */
+  safeDetails?: SafeDiagnosticDetails;
 }
 
 const NON_ERROR_MESSAGE = 'Captured non-error value';
@@ -48,12 +55,13 @@ export const captureDiagnosticException = (
 ): void => {
   try {
     const resolvedError = resolveError(error);
-    const { operation, failureClassification, feature, action } = context ?? {};
+    const { operation, failureClassification, feature, action, safeDetails } = context ?? {};
 
     const diagnosticCtx: Record<string, unknown> = {};
     if (operation !== undefined) diagnosticCtx.operation = operation;
     if (failureClassification !== undefined)
       diagnosticCtx.failureClassification = failureClassification;
+    if (safeDetails !== undefined) Object.assign(diagnosticCtx, safeDetails);
 
     const tags: Record<string, string> = {
       eventKind: 'handledException',

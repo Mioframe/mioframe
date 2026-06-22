@@ -11,6 +11,7 @@ import { createSafeErrorCause } from '../../error';
 import { dedupe } from '../../dedupe';
 import {
   buildGoogleDriveDownloadFailureMessage,
+  buildGoogleDriveDownloadFailureSafeDetails,
   type GoogleDriveDownloadPhase,
 } from './downloadFailureDiagnostics';
 import type {
@@ -49,6 +50,56 @@ const apiFetch = (url: Input, options?: KyOptions) => apiClient(url, options);
 const dedupeApiFetch = dedupe(apiFetch);
 
 /**
+ * Parses a failed Drive API response body into Google's structured error shape.
+ * Returns undefined when the body is missing, non-JSON, or does not match the expected shape, so
+ * callers can still fall back to the HTTP status code instead of losing the failure entirely.
+ * @param response - The failed Drive API response.
+ * @returns Parsed Google error payload, or undefined when the body could not be parsed.
+ */
+const parseGoogleErrorBody = async (response: Response) => {
+  const errorBody = await response
+    .clone()
+    .json()
+    .catch(() => undefined);
+
+  if (errorBody === undefined) {
+    return undefined;
+  }
+
+  const parsed = zodGoogleErrorResponse.safeParse(errorBody);
+
+  return parsed.success ? parsed.data.error : undefined;
+};
+
+/**
+ * Returns the raw HTTP status as the project's numeric `HttpStatusCode` type.
+ * @param status - Raw numeric HTTP status from a fetch `Response`.
+ * @returns The status as `HttpStatusCode`.
+ */
+const toHttpStatusCode = (status: number): HttpStatusCode => status;
+
+/**
+ * Normalizes a failed Drive API response into a `GoogleDriveError`.
+ * Falls back to the response's HTTP status code when the error body is missing, non-JSON, or
+ * does not match Google's structured error shape, so the status is never lost.
+ * @param response - The failed Drive API response.
+ * @returns Normalized Google Drive error.
+ */
+const toGoogleDriveErrorFromResponse = async (response: Response): Promise<GoogleDriveError> => {
+  const googleError = await parseGoogleErrorBody(response);
+
+  return new GoogleDriveError(
+    {
+      code: googleError?.code ?? toHttpStatusCode(response.status),
+      message: 'Google Drive request failed',
+      reason: googleError?.errors?.[0]?.reason ?? googleError?.reason,
+      domain: googleError?.errors?.[0]?.domain,
+    },
+    { cause: createSafeErrorCause('Google Drive API request failed') },
+  );
+};
+
+/**
  * Internal request handler with error normalization.
  * @param url - Request URL or Request object for the Google Drive API call.
  * @param options - Optional request options, including auth and query parameters.
@@ -61,47 +112,13 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
       : await apiFetch(url, options);
 
     if (!response.ok) {
-      const errorBody = await response
-        .clone()
-        .json()
-        .catch(() => ({}));
-
-      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
-
-      const { code, reason, errors } = googleError;
-
-      throw new GoogleDriveError(
-        {
-          code,
-          message: 'Google Drive request failed',
-          reason: errors?.[0]?.reason ?? reason,
-          domain: errors?.[0]?.domain,
-        },
-        { cause: createSafeErrorCause('Google Drive API request failed') },
-      );
+      throw await toGoogleDriveErrorFromResponse(response);
     }
 
     return response;
   } catch (e) {
     if (e instanceof HTTPError) {
-      const errorBody = await e.response
-        .clone()
-        .json()
-        .catch(() => ({}));
-
-      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
-
-      const { code, reason, errors } = googleError;
-
-      throw new GoogleDriveError(
-        {
-          code,
-          message: 'Google Drive request failed',
-          reason: errors?.[0]?.reason ?? reason,
-          domain: errors?.[0]?.domain,
-        },
-        { cause: createSafeErrorCause('Google Drive API request failed') },
-      );
+      throw await toGoogleDriveErrorFromResponse(e.response);
     }
 
     throw e;
@@ -425,6 +442,7 @@ const toGoogleDriveDownloadError = (
     {
       code: status ?? HttpStatusCode.INTERNAL_SERVER_ERROR,
       message: 'Google Drive download failed',
+      safeDetails: buildGoogleDriveDownloadFailureSafeDetails({ phase, status, reason, domain }),
     },
     {
       cause: new Error(buildGoogleDriveDownloadFailureMessage({ phase, status, reason, domain }), {

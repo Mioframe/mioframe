@@ -9,6 +9,8 @@ import {
 } from '@shared/lib/automergeAdapter';
 import { encodeV3StorageWrapper } from '@shared/lib/automergeAdapter/wrapperCodecV3';
 import { DomainError } from '@shared/lib/error';
+import { HttpStatusCode } from '@shared/lib/error/httpStatus';
+import { GoogleDriveError } from '@shared/lib/googleDrive/error';
 import {
   FileSystemError,
   FSNodeType,
@@ -337,6 +339,70 @@ describe('getRepositoryFacts', () => {
 
     const [capturedError] = captureDiagnosticExceptionMock.mock.lastCall ?? [];
     expect(capturedError).toBeInstanceOf(DomainError);
+  });
+
+  it('forwards safe Google Drive provider details as visible diagnostic context fields', async () => {
+    captureDiagnosticExceptionMock.mockClear();
+
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const fileName = encodePrimaryV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(
+      `${path}/${fileName}`,
+      encodeV3StorageWrapper([...key], new Uint8Array([1])),
+    );
+
+    const providerError = new GoogleDriveError({
+      code: HttpStatusCode.FORBIDDEN,
+      message: 'Google Drive download failed',
+      safeDetails: {
+        providerOperation: 'googleDrive.download',
+        providerPhase: 'mediaDownload',
+        providerStatus: HttpStatusCode.FORBIDDEN,
+        providerReason: 'insufficientFilePermissions',
+        providerDomain: 'global',
+        providerRetryable: 'false',
+        providerErrorCode: 'permissionDenied',
+      },
+    });
+    const readError = new VfsError(
+      FileSystemError.Unknown,
+      'Google Drive download operation failed',
+      providerError,
+    );
+    vi.spyOn(vfs, 'readFile').mockRejectedValue(readError);
+
+    await getRepositoryFacts(vfs, path, [[fileName, createStat(FSNodeType.File)]]);
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [, context] = captureDiagnosticExceptionMock.mock.lastCall ?? [];
+
+    expect(context).toMatchObject({
+      operation: 'repositoryFactsDiscovery',
+      safeDetails: {
+        providerOperation: 'googleDrive.download',
+        providerPhase: 'mediaDownload',
+        providerStatus: HttpStatusCode.FORBIDDEN,
+        providerReason: 'insufficientFilePermissions',
+        providerDomain: 'global',
+        providerRetryable: 'false',
+        providerErrorCode: 'permissionDenied',
+      },
+    });
+
+    const serializedContext = JSON.stringify(context);
+    expect(serializedContext).not.toContain(path);
+    expect(serializedContext).not.toContain(documentId);
+    expect(serializedContext).not.toContain(fileName);
   });
 
   it('does not throw and reports diagnostics for an unreadable v3 candidate without a marker file', async () => {

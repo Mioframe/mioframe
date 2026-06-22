@@ -422,6 +422,23 @@ describe('storageFilePolicy save fast path', () => {
     expect(Object.keys(entries)).toEqual([primaryName]);
   });
 
+  it('overwrites a zero-byte primary target instead of reporting a storage conflict', async () => {
+    const documentId = getDocumentId();
+    const key: StorageKey = [documentId, 'snapshot', HASH_A];
+    const primaryName = encodePrimaryV3FileName(key);
+
+    if (!primaryName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    const entries: Record<string, Uint8Array> = { [primaryName]: new Uint8Array(0) };
+    const io = createIo(entries);
+
+    await saveStorageEntry(io, key, DATA_A);
+
+    expect(entries[primaryName]).toEqual(encodeV3StorageWrapper(key, DATA_A));
+  });
+
   it('never produces a numeric-suffix generated filename for a normal save', async () => {
     const documentId = getDocumentId();
     const key: StorageKey = [documentId, 'snapshot', HASH_A];
@@ -682,6 +699,25 @@ describe('storageFilePolicy load fast path', () => {
     }
 
     const { io, getListNamesCalls } = createCountingIo({ [v2Name]: DATA_A });
+
+    await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
+    expect(getListNamesCalls()).toBe(0);
+  });
+
+  it('falls back to v2 when the primary v3 file is zero bytes, instead of treating it as a conflict', async () => {
+    const documentId = getDocumentId();
+    const key: ChunkStorageKey = [documentId, 'snapshot', HASH_A];
+    const v3Name = encodePrimaryV3FileName(key);
+    const v2Name = encodeStorageKeyToV2FileName(documentId, 'snapshot', HASH_A);
+
+    if (!v3Name || !v2Name) {
+      throw new Error('Expected v3 and v2 filenames');
+    }
+
+    const { io, getListNamesCalls } = createCountingIo({
+      [v3Name]: new Uint8Array(0),
+      [v2Name]: DATA_A,
+    });
 
     await expect(loadStorageEntry(io, key)).resolves.toEqual(DATA_A);
     expect(getListNamesCalls()).toBe(0);
