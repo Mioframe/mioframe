@@ -8,7 +8,13 @@ import {
   storageAdapterMarkerFileName,
 } from '@shared/lib/automergeAdapter';
 import { encodeV3StorageWrapper } from '@shared/lib/automergeAdapter/wrapperCodecV3';
-import { FSNodeType, type FSNodeStat, VirtualFileSystem } from '@shared/lib/virtualFileSystem';
+import {
+  FileSystemError,
+  FSNodeType,
+  type FSNodeStat,
+  VirtualFileSystem,
+  VfsError,
+} from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import {
   cleanupDeletedDocumentStorageFiles,
@@ -21,6 +27,16 @@ import {
   shouldHideRepositoryStorageFile,
 } from './repositoryStorageFiles';
 import type { ChunkStorageKey } from '@shared/lib/automergeAdapter';
+
+const captureDiagnosticExceptionMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
+  return {
+    ...actual,
+    captureDiagnosticException: captureDiagnosticExceptionMock,
+  };
+});
 
 const createStat = (type: FSNodeType): FSNodeStat => ({
   type,
@@ -265,6 +281,123 @@ describe('getRepositoryFacts', () => {
 
     expect(facts.documentIds).toEqual([documentId]);
   });
+
+  it('treats a marker-only repository as initialized when an unrelated v3 candidate is unreadable', async () => {
+    captureDiagnosticExceptionMock.mockClear();
+
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const fileName = encodePrimaryV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(
+      `${path}/${storageAdapterMarkerFileName}`,
+      new File(['marker'], storageAdapterMarkerFileName),
+    );
+    await vfs.writeFile(
+      `${path}/${fileName}`,
+      encodeV3StorageWrapper([...key], new Uint8Array([1])),
+    );
+
+    const readError = new VfsError(FileSystemError.Unknown, 'Google Drive download request failed');
+    vi.spyOn(vfs, 'readFile').mockImplementation(async (filePath) => {
+      if (filePath === `${path}/${fileName}`) {
+        throw readError;
+      }
+
+      return VirtualFileSystem.prototype.readFile.call(vfs, filePath);
+    });
+
+    const facts = await getRepositoryFacts(vfs, path, [
+      [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
+      [fileName, createStat(FSNodeType.File)],
+    ]);
+
+    expect(facts).toEqual({
+      documentIds: [],
+      isInitialized: true,
+    });
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
+      readError,
+      expect.objectContaining({ operation: 'repositoryFactsDiscovery' }),
+    );
+  });
+
+  it('does not throw and reports diagnostics for an unreadable v3 candidate without a marker file', async () => {
+    captureDiagnosticExceptionMock.mockClear();
+
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const fileName = encodePrimaryV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(
+      `${path}/${fileName}`,
+      encodeV3StorageWrapper([...key], new Uint8Array([1])),
+    );
+
+    const readError = new VfsError(FileSystemError.Unknown, 'Google Drive download request failed');
+    vi.spyOn(vfs, 'readFile').mockRejectedValue(readError);
+
+    const facts = await getRepositoryFacts(vfs, path, [[fileName, createStat(FSNodeType.File)]]);
+
+    expect(facts).toEqual({
+      documentIds: [],
+      isInitialized: false,
+    });
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+
+    const [, context] = captureDiagnosticExceptionMock.mock.lastCall ?? [];
+    const serializedContext = JSON.stringify(context);
+
+    expect(serializedContext).not.toContain(path);
+    expect(serializedContext).not.toContain(documentId);
+    expect(serializedContext).not.toContain(fileName);
+  });
+
+  it('treats a FileNotFound candidate race as a normal skip without diagnostics', async () => {
+    captureDiagnosticExceptionMock.mockClear();
+
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const documentId = new Repo().create({}).documentId;
+    const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const fileName = encodePrimaryV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+
+    vi.spyOn(vfs, 'readFile').mockRejectedValue(
+      new VfsError(FileSystemError.FileNotFound, 'Not found'),
+    );
+
+    const facts = await getRepositoryFacts(vfs, path, [[fileName, createStat(FSNodeType.File)]]);
+
+    expect(facts).toEqual({
+      documentIds: [],
+      isInitialized: false,
+    });
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('getRegularDirectoryEntries', () => {
@@ -396,6 +529,31 @@ describe('getDocumentStorageFiles', () => {
     );
 
     await expect(getDocumentStorageFiles(vfs, path, documentId)).resolves.toHaveLength(1);
+  });
+
+  it('propagates non-file-not-found read failures instead of skipping the candidate', async () => {
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+
+    const documentId = new Repo().create({}).documentId;
+    const key = [documentId, 'snapshot', SAMPLE_HEX_HASH] as const;
+    const fileName = encodePrimaryV3FileName([...key]);
+
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
+    }
+
+    await vfs.writeFile(
+      `${path}/${fileName}`,
+      encodeV3StorageWrapper([...key], new Uint8Array([1])),
+    );
+
+    const readError = new VfsError(FileSystemError.Unknown, 'read failed');
+    vi.spyOn(vfs, 'readFile').mockRejectedValue(readError);
+
+    await expect(getDocumentStorageFiles(vfs, path, documentId)).rejects.toBe(readError);
   });
 });
 

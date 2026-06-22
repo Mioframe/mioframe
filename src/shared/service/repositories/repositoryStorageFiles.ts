@@ -7,6 +7,7 @@ import {
   storageAdapterMarkerFileName,
   type ReadOnlyStorageFilePolicyIo,
 } from '@shared/lib/automergeAdapter';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import {
   FileSystemError,
   FSNodeType,
@@ -133,7 +134,7 @@ export const getRepositoryFacts = async (
   const fileEntries = entries.filter(([, stat]) => stat.type === FSNodeType.File);
   const isInitialized = fileEntries.some(([name]) => isRepositoryMarkerFileName(name));
   const documentIds = await discoverStorageDocumentIds(
-    createRepositoryStorageIo(vfs, path, fileEntries),
+    createRepositoryStorageIo(vfs, path, fileEntries, { tolerateCandidateReadFailures: true }),
   );
 
   return {
@@ -162,14 +163,31 @@ export const removeDocumentStorageFiles = async (
 
 const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Creates the storage IO boundary used to read repository storage candidates from a directory.
+ *
+ * Repository facts discovery is a tolerant read path: with
+ * `tolerateCandidateReadFailures`, a non-`FileNotFound` candidate read failure is captured as a
+ * privacy-safe diagnostic exception and treated as a skipped candidate instead of a fatal error,
+ * so one unreadable v3 storage candidate cannot block the whole repository view. Every other
+ * caller (cleanup, document storage lookups) keeps the strict default, where non-`FileNotFound`
+ * read failures still propagate.
+ * @param vfs - Mounted virtual file system used by the repository storage adapter.
+ * @param path - Absolute repository directory path.
+ * @param entries - Directory entries visible in the current folder.
+ * @param options - Read tolerance options for the created storage IO boundary.
+ * @returns Storage IO boundary for the shared storage file policy.
+ */
 const createRepositoryStorageIo = (
   vfs: VirtualFileSystem,
   path: string,
   entries: readonly RepositoryDirectoryEntry[],
+  options?: { tolerateCandidateReadFailures?: boolean },
 ): ReadOnlyStorageFilePolicyIo => {
   const fileNames = entries
     .filter(([, stat]) => stat.type === FSNodeType.File)
     .map(([name]) => name);
+  const tolerateCandidateReadFailures = options?.tolerateCandidateReadFailures ?? false;
 
   return {
     listNames: () => Promise.resolve(fileNames),
@@ -179,6 +197,16 @@ const createRepositoryStorageIo = (
         return new Uint8Array(await file.arrayBuffer());
       } catch (error) {
         if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+          return undefined;
+        }
+
+        if (tolerateCandidateReadFailures) {
+          captureDiagnosticException(error, {
+            operation: 'repositoryFactsDiscovery',
+            failureClassification: 'candidateReadFailedSkipped',
+            feature: 'repositoryFacts',
+          });
+
           return undefined;
         }
 
