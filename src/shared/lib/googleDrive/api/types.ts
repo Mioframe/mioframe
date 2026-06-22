@@ -103,15 +103,6 @@ export const zodGoogleErrorResponse = z.object({
     code: z.enum(HttpStatusCode),
     location: z.optional(z.string()),
     reason: z.optional(z.string()),
-    /** Per-error detail entries; `errors[0].domain`/`errors[0].reason` are the most specific safe tokens Google provides. */
-    errors: z.optional(
-      z.array(
-        z.object({
-          domain: z.optional(z.string()),
-          reason: z.optional(z.string()),
-        }),
-      ),
-    ),
   }),
 });
 

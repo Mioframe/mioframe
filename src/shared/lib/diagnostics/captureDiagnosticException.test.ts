@@ -87,38 +87,4 @@ describe('captureDiagnosticException', () => {
       tags: { eventKind: 'handledException' },
     });
   });
-
-  it('merges safeDetails as visible top-level diagnostic context fields', async () => {
-    const { captureDiagnosticException } = await import('./captureDiagnosticException');
-    const error = new Error('boom');
-
-    captureDiagnosticException(error, {
-      operation: 'repositoryFactsDiscovery',
-      safeDetails: {
-        providerOperation: 'googleDrive.download',
-        providerPhase: 'mediaDownload',
-        providerStatus: 403,
-        providerReason: null,
-        providerDomain: null,
-        providerRetryable: 'false',
-        providerErrorCode: 'permissionDenied',
-      },
-    });
-
-    expect(captureExceptionMock).toHaveBeenCalledWith(error, {
-      tags: { eventKind: 'handledException' },
-      contexts: {
-        diagnostic: {
-          operation: 'repositoryFactsDiscovery',
-          providerOperation: 'googleDrive.download',
-          providerPhase: 'mediaDownload',
-          providerStatus: 403,
-          providerReason: null,
-          providerDomain: null,
-          providerRetryable: 'false',
-          providerErrorCode: 'permissionDenied',
-        },
-      },
-    });
-  });
 });

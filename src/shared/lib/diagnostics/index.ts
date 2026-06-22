@@ -7,8 +7,6 @@ export {
 } from './reportDiagnosticEvent';
 export { captureDiagnosticException } from './captureDiagnosticException';
 export type { DiagnosticExceptionContext } from './captureDiagnosticException';
-export { getSafeDiagnosticDetails, hasSafeDiagnosticDetails } from './safeDiagnosticDetails';
-export type { SafeDiagnosticDetails, SafeDiagnosticDetailValue } from './safeDiagnosticDetails';
 export { addTechnicalBreadcrumb } from './addTechnicalBreadcrumb';
 export type { AddTechnicalBreadcrumbParams } from './addTechnicalBreadcrumb';
 

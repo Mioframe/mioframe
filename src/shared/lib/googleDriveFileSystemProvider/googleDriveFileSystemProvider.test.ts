@@ -550,45 +550,6 @@ describe('googleDriveFileSystemProvider', () => {
     );
   });
 
-  it('preserves safe diagnostic details on a download failure that is not a GoogleDriveError instance', async () => {
-    const requestToken = vi.fn(() => Promise.resolve('token'));
-    const provider = googleDriveFileSystemProvider({
-      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
-      requestToken,
-    });
-
-    getGFileMetaListMock.mockResolvedValue({
-      files: [
-        {
-          id: 'file-id',
-          name: 'notes.txt',
-          mimeType: 'text/plain',
-          modifiedTime: '2024-01-02T00:00:00.000Z',
-          parents: ['root'],
-        },
-      ],
-    });
-
-    // Project-controlled but not an instance of GoogleDriveError: simulates a class identity
-    // mismatch across a bundling/import boundary while still carrying opt-in safe details.
-    class DuckTypedSafeError extends Error {
-      safeDetails = {
-        providerOperation: 'googleDrive.download',
-        providerPhase: 'mediaDownload',
-        providerStatus: 403,
-        providerRetryable: 'false',
-        providerErrorCode: 'permissionDenied',
-      };
-    }
-    const downloadFailure = new DuckTypedSafeError('Google Drive download request failed');
-    downloadMock.mockRejectedValue(downloadFailure);
-
-    await expect(provider.readFile('/user@example.com/My Drive/notes.txt')).rejects.toMatchObject({
-      code: FileSystemError.Unknown,
-      cause: downloadFailure,
-    });
-  });
-
   it('rejects reading a directory as a file without downloading', async () => {
     const requestToken = vi.fn(() => Promise.resolve('token'));
     const provider = googleDriveFileSystemProvider({
