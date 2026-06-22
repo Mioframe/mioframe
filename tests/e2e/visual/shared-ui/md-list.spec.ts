@@ -489,6 +489,136 @@ test.describe('MDList / Material reference forced state layer', () => {
       'disabled row must not show an active interactive overlay',
     ).toBe(true);
   });
+
+  // Dragged must render as a filled, elevated drag preview (Material 3 Expressive Figma
+  // Kit), not a transparent row with only a state-layer overlay. These checks resolve the
+  // expected colors from the live system tokens (via a throwaway sample element) so the
+  // assertions hold in both light and dark themes instead of hardcoding a Figma hex value.
+  test('Material reference states dragged row renders a filled tertiary-container drag preview, not a transparent row', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const draggedRow = surface.locator('.md-list-item.md-state_dragged').first();
+
+    const [draggedBackground, expectedContainerColor] = await Promise.all([
+      draggedRow.evaluate((node) => getComputedStyle(node).backgroundColor),
+      draggedRow.evaluate((node) => {
+        const sample = document.createElement('div');
+        sample.style.backgroundColor = getComputedStyle(node).getPropertyValue(
+          '--md-sys-color-tertiary-container',
+        );
+        document.body.append(sample);
+        const resolved = getComputedStyle(sample).backgroundColor;
+        sample.remove();
+        return resolved;
+      }),
+    ]);
+
+    expect(
+      hasZeroAlpha(draggedBackground),
+      'dragged row must render a filled drag preview, not a transparent container',
+    ).toBe(false);
+    expect(
+      draggedBackground,
+      'dragged row fill must resolve to md.sys.color.tertiary-container',
+    ).toBe(expectedContainerColor);
+  });
+
+  test('Material reference states dragged row label text resolves to on-tertiary-container', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const draggedRow = surface.locator('.md-list-item.md-state_dragged').first();
+    const label = draggedRow.locator('.md-list-item__label-text').first();
+
+    const [labelColor, expectedContentColor] = await Promise.all([
+      label.evaluate((node) => getComputedStyle(node).color),
+      draggedRow.evaluate((node) => {
+        const sample = document.createElement('div');
+        sample.style.color = getComputedStyle(node).getPropertyValue(
+          '--md-sys-color-on-tertiary-container',
+        );
+        document.body.append(sample);
+        const resolved = getComputedStyle(sample).color;
+        sample.remove();
+        return resolved;
+      }),
+    ]);
+
+    expect(
+      labelColor,
+      'dragged row label text must resolve to md.sys.color.on-tertiary-container',
+    ).toBe(expectedContentColor);
+  });
+
+  // Forced-state fixtures activate `.md-state_dragged` on the MDStateLayer node directly
+  // (not through MDListItem's real --md-content-color cascade), so this proves the
+  // dragged overlay color contract on a plain runtime row instead, by comparing its
+  // resolved overlay background against an on-tertiary-container sample at the documented
+  // 0.16 opacity. This is the proof that MDStateLayer's --md-content-color consumption
+  // (owned by State) picks up the List-owned dragged color override (owned by Lists),
+  // without MDStateLayer itself knowing about List or tertiary-container.
+  test('Material reference states dragged row overlay resolves to on-tertiary-container at 0.16 opacity', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const draggedRow = surface.locator('.md-list-item.md-state_dragged').first();
+    const stateLayer = draggedRow.locator('.md-state-layer').first();
+
+    const [overlayColor, expectedOverlayColor] = await Promise.all([
+      stateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+      draggedRow.evaluate((node) => {
+        const onTertiaryContainer = getComputedStyle(node).getPropertyValue(
+          '--md-sys-color-on-tertiary-container',
+        );
+        const sample = document.createElement('div');
+        sample.style.backgroundColor = `rgb(from ${onTertiaryContainer} r g b / 0.16)`;
+        document.body.append(sample);
+        const resolved = getComputedStyle(sample).backgroundColor;
+        sample.remove();
+        return resolved;
+      }),
+    ]);
+
+    expect(
+      overlayColor,
+      'dragged row overlay must resolve to on-tertiary-container at the documented 0.16 dragged opacity',
+    ).toBe(expectedOverlayColor);
+  });
+
+  test('Material reference states dragged row is elevated to the Material elevation level 5 equivalent', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
+
+    const surface = page.getByTestId('visual-md-list-material-states');
+    const draggedRow = surface.locator('.md-list-item.md-state_dragged').first();
+
+    const [boxShadow, expectedBoxShadow] = await Promise.all([
+      draggedRow.evaluate((node) => getComputedStyle(node).boxShadow),
+      draggedRow.evaluate((node) => {
+        const level5 = getComputedStyle(node).getPropertyValue('--md-sys-elevation-level5');
+        const sample = document.createElement('div');
+        sample.style.boxShadow = level5;
+        document.body.append(sample);
+        const resolved = getComputedStyle(sample).boxShadow;
+        sample.remove();
+        return resolved;
+      }),
+    ]);
+
+    expect(boxShadow, 'dragged row must render an elevated drag-preview shadow').not.toBe('none');
+    expect(
+      boxShadow,
+      'dragged row elevation must resolve to the project md.sys.elevation.level5 equivalent of Material Elevation 5',
+    ).toBe(expectedBoxShadow);
+  });
 });
 
 // Computed-style/geometry assertions against MD_LIST_MATERIAL_CONTRACT, whose values

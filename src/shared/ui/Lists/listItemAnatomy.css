@@ -209,13 +209,39 @@
   );
 }
 
+/*
+ * Dragged preview composition (Material 3 Expressive Figma Kit): the dragged row
+ * renders as a filled, elevated drag preview, not a transparent row with only a state
+ * layer overlay. These private variables are scoped to MDListItem dragged only — no
+ * public `md.comp.list.list-item.dragged.container.color` token exists in the Material
+ * website token table, so the fill/content/state-layer colors stay private
+ * implementation details mapped to system tokens instead of an invented component token.
+ * `--md-content-color` is overridden here so the nested MDStateLayer (which reads
+ * `--md-content-color` for its overlay color) renders the dragged overlay in
+ * on-tertiary-container without MDStateLayer knowing about List or tertiary-container.
+ */
 .md-list-item.md-state_dragged {
+  --md-private-list-item-dragged-container-color: var(--md-sys-color-tertiary-container);
+  --md-private-list-item-dragged-content-color: var(--md-sys-color-on-tertiary-container);
+  --md-private-list-item-dragged-state-layer-color: var(--md-sys-color-on-tertiary-container);
+  --md-private-list-item-dragged-elevation: var(--md-sys-elevation-level5);
+
   --md-private-list-item-action-shape: var(
     --md-comp-list-list-item-dragged-container-expressive-shape
   );
   --md-private-list-item-container-shape: var(
     --md-comp-list-list-item-dragged-container-expressive-shape
   );
+  --md-comp-list-list-item-container-color: var(--md-private-list-item-dragged-container-color);
+  --md-comp-list-list-item-label-text-color: var(--md-private-list-item-dragged-content-color);
+  --md-comp-list-list-item-leading-icon-color: var(--md-private-list-item-dragged-content-color);
+  --md-comp-list-list-item-overline-color: var(--md-private-list-item-dragged-content-color);
+  --md-comp-list-list-item-supporting-text-color: var(--md-private-list-item-dragged-content-color);
+  --md-comp-list-list-item-trailing-icon-color: var(--md-private-list-item-dragged-content-color);
+  --md-comp-list-list-item-trailing-supporting-text-color: var(
+    --md-private-list-item-dragged-content-color
+  );
+  --md-content-color: var(--md-private-list-item-dragged-state-layer-color);
 }
 
 /* ─── Disabled state (token remaps) ──────────────────────────────────────── */
