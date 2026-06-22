@@ -9,6 +9,10 @@ import { HttpStatusCode } from '../../error/httpStatus';
 import { GoogleDriveError } from '../error';
 import { createSafeErrorCause } from '../../error';
 import { dedupe } from '../../dedupe';
+import {
+  buildGoogleDriveDownloadFailureMessage,
+  type GoogleDriveDownloadPhase,
+} from './downloadFailureDiagnostics';
 import type {
   CreateResource,
   DownloadParams,
@@ -64,12 +68,14 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
 
       const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
 
-      const { code } = googleError;
+      const { code, reason, errors } = googleError;
 
       throw new GoogleDriveError(
         {
           code,
           message: 'Google Drive request failed',
+          reason: errors?.[0]?.reason ?? reason,
+          domain: errors?.[0]?.domain,
         },
         { cause: createSafeErrorCause('Google Drive API request failed') },
       );
@@ -85,12 +91,14 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
 
       const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
 
-      const { code } = googleError;
+      const { code, reason, errors } = googleError;
 
       throw new GoogleDriveError(
         {
           code,
           message: 'Google Drive request failed',
+          reason: errors?.[0]?.reason ?? reason,
+          domain: errors?.[0]?.domain,
         },
         { cause: createSafeErrorCause('Google Drive API request failed') },
       );
@@ -398,6 +406,35 @@ const gDriveFileContentCache = new Cache<string, { file: File; modifiedTime: str
 });
 
 /**
+ * Normalizes a Google Drive download failure into a `GoogleDriveError` carrying a privacy-safe
+ * structured diagnostic message (operation, phase, HTTP status, Google error reason/domain
+ * tokens, retryable classification, and stable code) instead of the raw caught error.
+ * @param error - The error caught while fetching metadata or media for a download.
+ * @param phase - Which part of the download flow failed.
+ * @returns A `GoogleDriveError` with the original error preserved as a nested cause.
+ */
+const toGoogleDriveDownloadError = (
+  error: unknown,
+  phase: GoogleDriveDownloadPhase,
+): GoogleDriveError => {
+  const status = error instanceof GoogleDriveError ? error.code : undefined;
+  const reason = error instanceof GoogleDriveError ? error.reason : undefined;
+  const domain = error instanceof GoogleDriveError ? error.domain : undefined;
+
+  return new GoogleDriveError(
+    {
+      code: status ?? HttpStatusCode.INTERNAL_SERVER_ERROR,
+      message: 'Google Drive download failed',
+    },
+    {
+      cause: new Error(buildGoogleDriveDownloadFailureMessage({ phase, status, reason, domain }), {
+        cause: error,
+      }),
+    },
+  );
+};
+
+/**
  * Downloads file content as a File object.
  * @param auth - Google auth parameters for the request.
  * @param fileId - Google Drive file id.
@@ -410,7 +447,14 @@ export const download = async (
   params: DownloadParams = {},
 ): Promise<File> => {
   const { onDownloadProgress } = params;
-  const { name, modifiedTime } = await getGDriveFileMeta(auth, fileId);
+
+  let name: string;
+  let modifiedTime: string;
+  try {
+    ({ name, modifiedTime } = await getGDriveFileMeta(auth, fileId));
+  } catch (e) {
+    throw toGoogleDriveDownloadError(e, 'metadata');
+  }
 
   const cachedFile = gDriveFileContentCache.get(fileId);
 
@@ -418,24 +462,29 @@ export const download = async (
     return cachedFile.file;
   }
 
-  const file = await googleRequest(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-    method: 'get',
-    headers: {
-      Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
-    },
-    searchParams: {
-      alt: 'media',
-    },
-    ...(onDownloadProgress ? { onDownloadProgress } : {}),
-    dedupe: !onDownloadProgress,
-  })
-    .then((r) => r.clone().blob())
-    .then(
-      (blob) =>
-        new File([blob], name, {
-          type: blob.type,
-        }),
-    );
+  let file: File;
+  try {
+    file = await googleRequest(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+      method: 'get',
+      headers: {
+        Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
+      },
+      searchParams: {
+        alt: 'media',
+      },
+      ...(onDownloadProgress ? { onDownloadProgress } : {}),
+      dedupe: !onDownloadProgress,
+    })
+      .then((r) => r.clone().blob())
+      .then(
+        (blob) =>
+          new File([blob], name, {
+            type: blob.type,
+          }),
+      );
+  } catch (e) {
+    throw toGoogleDriveDownloadError(e, 'mediaDownload');
+  }
 
   gDriveFileContentCache.set(fileId, { file, modifiedTime });
 
