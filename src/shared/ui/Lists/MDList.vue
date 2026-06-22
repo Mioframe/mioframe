@@ -20,13 +20,11 @@ const props = withDefaults(
     listStyle?: MDListStyle | undefined;
     selectionMode?: MDListSelectionMode | undefined;
     tag?: 'div' | 'ul' | undefined;
-    transition?: boolean | undefined;
   }>(),
   {
     listStyle: 'standard',
     selectionMode: 'none',
     tag: 'div',
-    transition: false,
   },
 );
 
@@ -89,22 +87,8 @@ useListSelectionKeyboard(getContainerElement, selectionActive, listContext.selec
 </script>
 
 <template>
-  <TransitionGroup
-    v-if="transition"
-    ref="containerEl"
-    :tag="resolvedTag"
-    v-bind="$attrs"
-    class="md-list"
-    :class="[`md-list_style_${resolvedListStyle}`, `md-list_selection-mode_${selectionMode}`]"
-    :role="containerRole"
-    :aria-multiselectable="selectionMode === 'multiple' ? 'true' : undefined"
-  >
-    <slot />
-  </TransitionGroup>
-
   <component
     :is="resolvedTag"
-    v-else
     ref="containerEl"
     v-bind="$attrs"
     class="md-list"

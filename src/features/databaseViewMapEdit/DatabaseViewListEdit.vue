@@ -78,7 +78,7 @@ const onClickView = (id: DatabaseViewId) => {
 </script>
 
 <template>
-  <MDList ref="viewListEl" list-style="segmented" transition class="db-view-map-edit">
+  <MDList ref="viewListEl" list-style="segmented" class="db-view-map-edit">
     <MDListItem
       v-for="[id, view] in orderedViewList"
       :key="id"

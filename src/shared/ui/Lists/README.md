@@ -28,7 +28,6 @@ components does not imply it is part of the Material 3 Expressive contract. The 
 | `tag`, `is`, `containerTag`         | `MDList`, `MDListItem`               | Vue/HTML/platform    | Root/container element tag overrides (e.g. `div` vs `ul`/`li`). Pure Vue/DOM rendering controls.                                       |
 | `nativeType`                        | `MDListItem`                         | Vue/HTML/platform    | Native `<button type>` passthrough for single-action rows. HTML semantics, not Material.                                               |
 | `href`                              | `MDListItem`                         | Vue/HTML/platform    | Renders the action surface as `<a>` instead of `<button>`. HTML semantics, not Material.                                               |
-| `transition`                        | `MDList`                             | Vue/HTML/platform    | Opts the list root into Vue's `TransitionGroup` for row enter/leave animation. A Vue rendering control, not a Material token.          |
 
 Treat the [Token contract](#token-contract), [Private implementation variables](#private-implementation-variables),
 and [Internal module map](#internal-module-map) sections as internal implementation details rather than
@@ -58,6 +57,9 @@ topology and is mutually exclusive with selection semantics (see "Unsupported co
 - Private `--md-private-list-item-*` CSS variables are internal implementation details. They are not public
   styling API; consumers outside `src/shared/ui/Lists` must not set or read them (see
   [Private implementation variables](#private-implementation-variables)).
+- `MDList` and `MDMenuBase` do not support row/item enter-leave transitions. Transitions are intentionally out
+  of scope for the current Material List contract and may be reintroduced later with an explicit animation
+  contract, tests, and visual verification.
 
 ## Components
 
@@ -65,7 +67,7 @@ topology and is mutually exclusive with selection semantics (see "Unsupported co
 
 Owns list-level style, semantics, and selection context.
 
-- Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`), `is`, `transition`
+- Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`), `is`
 - Emits: `update:modelValue`
 - Provides: list context to descendant items via `provideMDListContext`
 - Owns: `listbox` / `list` container role, roving keyboard focus for selection lists
@@ -80,7 +82,7 @@ Selection-list keyboard contract for the current vertical `listbox`:
 
 Horizontal listbox behavior is intentionally unsupported until the component exposes explicit orientation support and `aria-orientation`.
 
-Nested selection lists (an `MDList` rendered inside another selection list's item content) are containment-safe: `useListSelectionKeyboard` ignores `event.defaultPrevented`, resolves ownership against this list's own Vue-owned registry only (`resolveOwnSelectionItemTarget` in `listSelectionItemNavigation.ts`), and stops propagation once it handles a roving-focus key, so a bubbled keydown or focusin from a nested list never moves the outer list's focus or tab stops.
+Nested selection lists (an `MDList` rendered inside another selection list's item content) are containment-safe: `useListSelectionKeyboard` respects `event.defaultPrevented` (a keydown already handled and prevented elsewhere is skipped), resolves ownership against this list's own Vue-owned registry only (`resolveOwnSelectionItemTarget` in `listSelectionItemNavigation.ts`), and stops propagation once it handles a roving-focus key, so a bubbled keydown or focusin from a nested list never moves the outer list's focus or tab stops.
 
 There is no public `variant` prop. The current Material / Expressive row geometry is the only supported implementation.
 

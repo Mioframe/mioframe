@@ -13,13 +13,11 @@ withDefaults(
     modelValue?: MDListModelValue;
     selectionMode?: MDListSelectionMode | undefined;
     tag?: 'div' | 'ul' | undefined;
-    transition?: boolean | undefined;
   }>(),
   {
     listStyle: 'standard',
     selectionMode: 'none',
     tag: 'div',
-    transition: false,
   },
 );
 
@@ -43,7 +41,6 @@ const onUpdateModelValue = (value: MDListModelValue) => {
     :model-value="modelValue"
     :selection-mode="selectionMode"
     :tag="tag"
-    :transition="transition"
     v-bind="$attrs"
     @update:model-value="onUpdateModelValue"
   >

@@ -11,7 +11,6 @@ const props = withDefaults(
   defineProps<{
     target: MaybeElement;
     btns?: MenuButtonList<T> | undefined;
-    transition?: boolean | undefined;
     outsideIgnore?: MaybeElement[] | undefined;
     disabledTeleport?: boolean | undefined;
     placement?: 'bottom-start' | 'right-start' | undefined;
@@ -51,7 +50,6 @@ const onMenuInteractionOutside = () => {
   <MDMenuBase
     v-model:show="showModel"
     :target="target"
-    :transition="transition"
     :outside-ignore="outsideIgnore"
     :disabled-teleport="disabledTeleport"
     :placement="placement"

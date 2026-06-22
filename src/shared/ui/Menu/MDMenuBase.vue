@@ -19,7 +19,6 @@ const showModel = defineModel<boolean>('show', { required: true });
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
-    transition?: boolean | undefined;
     outsideIgnore?: MaybeElement[] | undefined;
     disabledTeleport?: boolean | undefined;
     placement?: 'bottom-start' | 'right-start' | undefined;
@@ -169,20 +168,8 @@ useOnBackNavigationStackedWhen(showModel, () => {
     :disabled="disabledTeleport"
     :container="listContainerRef"
   >
-    <TransitionGroup
-      v-if="showModel && transition"
-      ref="listContainerRef"
-      tag="div"
-      class="md md-menu"
-      :style="containerStyle"
-      :aria-label="ariaLabel"
-      :role="role"
-    >
-      <slot />
-    </TransitionGroup>
-
     <div
-      v-else-if="showModel"
+      v-if="showModel"
       ref="listContainerRef"
       class="md md-menu"
       :style="containerStyle"
