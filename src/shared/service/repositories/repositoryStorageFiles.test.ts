@@ -8,6 +8,7 @@ import {
   storageAdapterMarkerFileName,
 } from '@shared/lib/automergeAdapter';
 import { encodeV3StorageWrapper } from '@shared/lib/automergeAdapter/wrapperCodecV3';
+import { DomainError } from '@shared/lib/error';
 import {
   FileSystemError,
   FSNodeType,
@@ -16,6 +17,7 @@ import {
   VfsError,
 } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
+import { RepositoryFactsErrorCode } from './repositoryFactsErrorCode';
 import {
   cleanupDeletedDocumentStorageFiles,
   getDocumentStorageFiles,
@@ -326,9 +328,15 @@ describe('getRepositoryFacts', () => {
     });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(
-      readError,
+      expect.objectContaining({
+        cause: readError,
+        code: RepositoryFactsErrorCode.storageCandidateReadFailed,
+      }),
       expect.objectContaining({ operation: 'repositoryFactsDiscovery' }),
     );
+
+    const [capturedError] = captureDiagnosticExceptionMock.mock.lastCall ?? [];
+    expect(capturedError).toBeInstanceOf(DomainError);
   });
 
   it('does not throw and reports diagnostics for an unreadable v3 candidate without a marker file', async () => {
@@ -362,12 +370,65 @@ describe('getRepositoryFacts', () => {
     });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
 
-    const [, context] = captureDiagnosticExceptionMock.mock.lastCall ?? [];
+    const [capturedError, context] = captureDiagnosticExceptionMock.mock.lastCall ?? [];
     const serializedContext = JSON.stringify(context);
 
     expect(serializedContext).not.toContain(path);
     expect(serializedContext).not.toContain(documentId);
     expect(serializedContext).not.toContain(fileName);
+
+    if (!(capturedError instanceof DomainError)) {
+      throw new Error('Expected a DomainError');
+    }
+
+    expect(capturedError.message).not.toContain(path);
+    expect(capturedError.message).not.toContain(documentId);
+    expect(capturedError.message).not.toContain(fileName);
+    expect(capturedError.cause).toBe(readError);
+    expect(capturedError.code).toBe(RepositoryFactsErrorCode.storageCandidateReadFailed);
+  });
+
+  it('captures diagnostics only once per discovery pass when multiple candidates fail to read', async () => {
+    captureDiagnosticExceptionMock.mockClear();
+
+    const vfs = new VirtualFileSystem();
+    const path = '/repo';
+    const firstDocumentId = new Repo().create({}).documentId;
+    const secondDocumentId = new Repo().create({}).documentId;
+    const firstKey: ChunkStorageKey = [firstDocumentId, 'snapshot', SAMPLE_HEX_HASH];
+    const secondKey: ChunkStorageKey = [secondDocumentId, 'snapshot', SAMPLE_HEX_HASH];
+    const firstFileName = encodePrimaryV3FileName([...firstKey]);
+    const secondFileName = encodePrimaryV3FileName([...secondKey]);
+
+    if (!firstFileName || !secondFileName) {
+      throw new Error('Expected v3 filenames');
+    }
+
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory(path);
+    await vfs.writeFile(
+      `${path}/${firstFileName}`,
+      encodeV3StorageWrapper([...firstKey], new Uint8Array([1])),
+    );
+    await vfs.writeFile(
+      `${path}/${secondFileName}`,
+      encodeV3StorageWrapper([...secondKey], new Uint8Array([1])),
+    );
+
+    vi.spyOn(vfs, 'readFile').mockRejectedValue(
+      new VfsError(FileSystemError.Unknown, 'Google Drive download request failed'),
+    );
+
+    const facts = await getRepositoryFacts(vfs, path, [
+      [firstFileName, createStat(FSNodeType.File)],
+      [secondFileName, createStat(FSNodeType.File)],
+    ]);
+
+    expect(facts).toEqual({
+      documentIds: [],
+      isInitialized: false,
+    });
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
 
   it('treats a FileNotFound candidate race as a normal skip without diagnostics', async () => {

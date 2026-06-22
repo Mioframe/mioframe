@@ -8,6 +8,7 @@ import {
   type ReadOnlyStorageFilePolicyIo,
 } from '@shared/lib/automergeAdapter';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { DomainError } from '@shared/lib/error';
 import {
   FileSystemError,
   FSNodeType,
@@ -16,6 +17,7 @@ import {
   VfsError,
 } from '@shared/lib/virtualFileSystem';
 import type { RepositoryDirectoryEntry } from './repositoryContracts';
+import { RepositoryFactsErrorCode } from './repositoryFactsErrorCode';
 
 /** Low-level repository facts derived from one directory listing. */
 export type RepositoryFacts = {
@@ -167,11 +169,12 @@ const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(res
  * Creates the storage IO boundary used to read repository storage candidates from a directory.
  *
  * Repository facts discovery is a tolerant read path: with
- * `tolerateCandidateReadFailures`, a non-`FileNotFound` candidate read failure is captured as a
- * privacy-safe diagnostic exception and treated as a skipped candidate instead of a fatal error,
- * so one unreadable v3 storage candidate cannot block the whole repository view. Every other
- * caller (cleanup, document storage lookups) keeps the strict default, where non-`FileNotFound`
- * read failures still propagate.
+ * `tolerateCandidateReadFailures`, a non-`FileNotFound` candidate read failure is wrapped in a
+ * `DomainError`, captured as a privacy-safe diagnostic exception at most once per discovery pass,
+ * and treated as a skipped candidate instead of a fatal error, so one unreadable v3 storage
+ * candidate cannot block the whole repository view. Every other caller (cleanup, document
+ * storage lookups) keeps the strict default, where non-`FileNotFound` read failures still
+ * propagate.
  * @param vfs - Mounted virtual file system used by the repository storage adapter.
  * @param path - Absolute repository directory path.
  * @param entries - Directory entries visible in the current folder.
@@ -188,6 +191,7 @@ const createRepositoryStorageIo = (
     .filter(([, stat]) => stat.type === FSNodeType.File)
     .map(([name]) => name);
   const tolerateCandidateReadFailures = options?.tolerateCandidateReadFailures ?? false;
+  let hasCapturedCandidateReadFailure = false;
 
   return {
     listNames: () => Promise.resolve(fileNames),
@@ -201,11 +205,20 @@ const createRepositoryStorageIo = (
         }
 
         if (tolerateCandidateReadFailures) {
-          captureDiagnosticException(error, {
-            operation: 'repositoryFactsDiscovery',
-            failureClassification: 'candidateReadFailedSkipped',
-            feature: 'repositoryFacts',
-          });
+          if (!hasCapturedCandidateReadFailure) {
+            hasCapturedCandidateReadFailure = true;
+            captureDiagnosticException(
+              new DomainError('Could not read a repository storage candidate', {
+                cause: error,
+                code: RepositoryFactsErrorCode.storageCandidateReadFailed,
+              }),
+              {
+                operation: 'repositoryFactsDiscovery',
+                failureClassification: 'candidateReadFailedSkipped',
+                feature: 'repositoryFacts',
+              },
+            );
+          }
 
           return undefined;
         }
