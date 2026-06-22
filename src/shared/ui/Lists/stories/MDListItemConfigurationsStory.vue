@@ -60,7 +60,7 @@ const onAction = () => {};
           leading-type="media"
           label-text="Three-line media item"
           overline="Playlist"
-          supporting-text="Media rows keep the content slot wide while trailing actions stay independent."
+          supporting-text="Keeps the content slot wide."
           :line-count="3"
           @action="onAction"
         >

@@ -19,15 +19,10 @@
     transparent
   );
   --md-comp-list-list-item-segmented-container-color: var(--md-sys-color-surface);
-  --md-comp-list-list-item-disabled-container-opacity: 0.38;
   --md-comp-list-list-item-disabled-label-text-opacity: 0.38;
   --md-comp-list-list-item-disabled-leading-icon-opacity: 0.38;
   --md-comp-list-list-item-disabled-trailing-icon-opacity: 0.38;
   --md-comp-list-list-item-disabled-supporting-text-opacity: 0.38;
-  --md-comp-list-list-item-disabled-container-color: rgb(
-    from var(--md-sys-color-on-surface) r g b /
-      var(--md-comp-list-list-item-disabled-container-opacity)
-  );
   --md-comp-list-list-item-disabled-label-text-color: rgb(
     from var(--md-sys-color-on-surface) r g b /
       var(--md-comp-list-list-item-disabled-label-text-opacity)
@@ -254,7 +249,6 @@
 .md-list-item[aria-disabled='true'],
 .md-list-selection-item.md-state_disabled,
 .md-list-selection-item[aria-disabled='true'] {
-  --md-comp-list-list-item-container-color: var(--md-comp-list-list-item-disabled-container-color);
   --md-comp-list-list-item-label-text-color: var(
     --md-comp-list-list-item-disabled-label-text-color
   );

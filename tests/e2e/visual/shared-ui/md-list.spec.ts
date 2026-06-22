@@ -698,6 +698,35 @@ test.describe('MDList / Material Expressive contract', () => {
     }
   });
 
+  // Guards against the last segmented configuration row (a multi-line, multi-action,
+  // media-leading row) rendering with its last text line pressed against the row's own
+  // bottom edge — the row must keep at least the documented 10px block padding below its
+  // tallest content (the supporting text), not just satisfy the height floor.
+  test('MDList last configuration row keeps Material block padding below its tallest content', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const lastRow = page
+      .getByTestId('visual-md-list-configurations')
+      .locator('.md-list_style_segmented .md-list-item')
+      .last();
+    const supportingText = lastRow.locator('.md-list-item__supporting-text').first();
+
+    const [rowBox, supportingBox] = await Promise.all([
+      getBoundingBoxOrThrow(lastRow, 'last configuration row must have a bounding box'),
+      getBoundingBoxOrThrow(
+        supportingText,
+        'last configuration row supporting text must have a bounding box',
+      ),
+    ]);
+
+    expect(
+      rowBox.y + rowBox.height - (supportingBox.y + supportingBox.height),
+      'the last configuration row must keep at least the documented block padding below its supporting text, not clip it against the row boundary',
+    ).toBeGreaterThanOrEqual(MD_LIST_MATERIAL_CONTRACT.contentSpacing.block - 1);
+  });
+
   test('MDList standard items have transparent background inheriting parent surface', async ({
     page,
   }) => {
@@ -741,6 +770,55 @@ test.describe('MDList / Material Expressive contract', () => {
       itemColor,
       'intermediate wrappers must not inject a background or break inherited surface context',
     ).toBe('rgba(0, 0, 0, 0)');
+  });
+
+  // The wrapper divs around this row exist only to prove surface-color inheritance survives
+  // intermediate DOM nesting (see the test above), not to add visual spacing — a previous
+  // regression added wrapper padding that made this row render visibly taller than the
+  // other one-line rows in this story, which read as a row-height/sizing bug even though
+  // MDListItem itself was unaffected.
+  test('MDList wrapped standard row is not inflated by intermediate wrapper padding', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
+
+    const surface = page.getByTestId('visual-md-list-surface-standard');
+    const wrappedRow = surface.locator('#surface-context-wrapped-standard .md-list-item').first();
+    const plainRow = surface.locator('.md-list-item').first();
+
+    const [wrappedBox, plainBox] = await Promise.all([
+      getBoundingBoxOrThrow(wrappedRow, 'wrapped standard row must have a bounding box'),
+      getBoundingBoxOrThrow(plainRow, 'plain standard row must have a bounding box'),
+    ]);
+
+    expectClose(
+      wrappedBox.height,
+      plainBox.height,
+      1,
+      'a one-line row wrapped in intermediate surface-inheritance divs must render at the same height as an unwrapped one-line row, not taller',
+    );
+  });
+
+  test('MDList standard fixtures keep items contiguous (no accidental segmented gap)', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-standard');
+
+    const surface = page.getByTestId('visual-md-list-surface-standard');
+    const rows = surface.locator('.md-list_style_standard .md-list-item');
+    const firstBox = await getBoundingBoxOrThrow(
+      rows.first(),
+      'first standard row must have a bounding box',
+    );
+    const secondBox = await getBoundingBoxOrThrow(
+      rows.nth(1),
+      'second standard row must have a bounding box',
+    );
+
+    expect(
+      secondBox.y - (firstBox.y + firstBox.height),
+      'standard list rows must stay contiguous — no segmented-style gap between them',
+    ).toBeLessThanOrEqual(0.5);
   });
 
   test('MDList resets private item fill variables on its root to block parent leakage', async ({
@@ -1140,7 +1218,7 @@ test.describe('MDList / Material Expressive contract', () => {
 
     const disabledRow = page.locator('.md-list-item.md-state_disabled').first();
 
-    const [labelOpacity, leadingOpacity, trailingOpacity, containerOpacity] = await Promise.all([
+    const [labelOpacity, leadingOpacity, trailingOpacity] = await Promise.all([
       disabledRow.evaluate((node) =>
         getComputedStyle(node)
           .getPropertyValue('--md-comp-list-list-item-disabled-label-text-opacity')
@@ -1156,24 +1234,41 @@ test.describe('MDList / Material Expressive contract', () => {
           .getPropertyValue('--md-comp-list-list-item-disabled-trailing-icon-opacity')
           .trim(),
       ),
-      disabledRow.evaluate((node) =>
-        getComputedStyle(node)
-          .getPropertyValue('--md-comp-list-list-item-disabled-container-opacity')
-          .trim(),
-      ),
     ]);
 
     for (const [name, value] of [
       ['label-text', labelOpacity],
       ['leading-icon', leadingOpacity],
       ['trailing-icon', trailingOpacity],
-      ['container', containerOpacity],
     ]) {
       expect(
         Number(normalizeOpacityToken(value)),
         `disabled ${name} opacity token must resolve to the documented Material disabled opacity`,
       ).toBeCloseTo(MD_LIST_MATERIAL_CONTRACT.disabledOpacity, 2);
     }
+  });
+
+  // Unselected disabled list items have no documented `md.comp.list.list-item.disabled.container.*`
+  // token (Material only dims the container for the selected/disabled state) — the container
+  // must keep whatever color the enabled row already resolves (transparent for standard,
+  // the segmented surface fill for segmented), not a darkened on-surface overlay.
+  test('MDListItem unselected disabled row keeps its enabled container color, not a darkened overlay', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const enabledRow = page.locator('[data-state="enabled"].md-list-item').first();
+    const disabledRow = page.locator('.md-list-item.md-state_disabled').first();
+
+    const [enabledColor, disabledColor] = await Promise.all([
+      getBackgroundColor(enabledRow),
+      getBackgroundColor(disabledRow),
+    ]);
+
+    expect(
+      disabledColor,
+      'unselected disabled row container color must match the enabled row container color',
+    ).toBe(enabledColor);
   });
 
   test('MDListSelectionItem selected hover/focus/pressed state-layer color is on-surface, not the selected label text color', async ({
@@ -1506,6 +1601,102 @@ test.describe('MDList / StateLayer integration', () => {
     const backgroundColor = await getBackgroundColor(disabledStateLayer);
 
     expect(hasZeroAlpha(backgroundColor)).toBe(true);
+  });
+
+  // The visual-states gallery forces hover/focus/pressed/dragged through
+  // MDStateLayerForcedStateProvider (combined with the md-state_* host class for shape) —
+  // this proves the forced rows actually activate the real MDStateLayer overlay, not just
+  // the shape, so the screenshot visibly distinguishes each state.
+  test('MDListItem visual states gallery activates a visible state-layer overlay for hover, focus, pressed, and dragged', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const enabledLayer = page
+      .locator('[data-state="enabled"].md-list-item')
+      .first()
+      .locator('.md-state-layer')
+      .first();
+    const hoverLayer = page
+      .locator('[data-state="hover"].md-list-item')
+      .first()
+      .locator('.md-state-layer')
+      .first();
+    const focusLayer = page
+      .locator('[data-state="focus"].md-list-item')
+      .first()
+      .locator('.md-state-layer')
+      .first();
+    const pressedLayer = page
+      .locator('[data-state="pressed"].md-list-item')
+      .first()
+      .locator('.md-state-layer')
+      .first();
+    const draggedLayer = page
+      .locator('.md-list-item.md-state_dragged')
+      .first()
+      .locator('.md-state-layer')
+      .first();
+
+    const [enabledColor, hoverColor, focusColor, pressedColor, draggedColor] = await Promise.all([
+      getBackgroundColor(enabledLayer),
+      getBackgroundColor(hoverLayer),
+      getBackgroundColor(focusLayer),
+      getBackgroundColor(pressedLayer),
+      getBackgroundColor(draggedLayer),
+    ]);
+
+    expect(hasZeroAlpha(enabledColor), 'default row state layer must be visually inactive').toBe(
+      true,
+    );
+    for (const [name, color] of [
+      ['hover', hoverColor],
+      ['focus', focusColor],
+      ['pressed', pressedColor],
+      ['dragged', draggedColor],
+    ]) {
+      expect(
+        hasZeroAlpha(color),
+        `forced ${name} row must activate a visible state-layer overlay, not stay inactive`,
+      ).toBe(false);
+    }
+  });
+
+  // The interaction-states gallery forces hover/focus/pressed through
+  // MDStateLayerForcedStateProvider for both single-action and multi-action rows — this
+  // proves the multi-action hover row (where the state layer is nested under
+  // .md-list-item__primary-action, not a direct child) also gets a real overlay, which a
+  // bare md-state_* host class cannot guarantee through CSS alone.
+  test('MDListItem interaction-states gallery activates a visible state-layer overlay for single-action and multi-action rows', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const singleActionHoverLayer = page
+      .locator('[data-visual-state="hover"].md-list-item')
+      .first()
+      .locator('.md-state-layer')
+      .first();
+    const multiActionHoverLayer = page
+      .locator('.md-list-item.md-state_hover')
+      .filter({ hasText: 'Primary hover' })
+      .first()
+      .locator('.md-list-item__primary-action .md-state-layer')
+      .first();
+
+    const [singleColor, multiColor] = await Promise.all([
+      getBackgroundColor(singleActionHoverLayer),
+      getBackgroundColor(multiActionHoverLayer),
+    ]);
+
+    expect(
+      hasZeroAlpha(singleColor),
+      'forced hover on the single-action row must activate a visible state-layer overlay',
+    ).toBe(false);
+    expect(
+      hasZeroAlpha(multiColor),
+      'forced hover on the multi-action row must activate a visible state-layer overlay on the nested primary-action state layer',
+    ).toBe(false);
   });
 
   test('MDListItem trailing action story avoids nested native buttons', async ({ page }) => {

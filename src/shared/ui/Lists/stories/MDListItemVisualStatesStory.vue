@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
+import { MDStateLayerForcedStateProvider } from '../../State/testing';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
@@ -30,38 +31,46 @@ const onAction = () => {};
             <MDSymbol name="draft" />
           </template>
         </MDListItem>
-        <MDListItem
-          v-bind="hoverAttrs"
-          class="md-state_hover"
-          mode="single-action"
-          label-text="Hover"
-          supporting-text="State layer covers the full row action surface"
-          @action="onAction"
-        />
-        <MDListItem
-          v-bind="focusAttrs"
-          class="md-state_focused"
-          mode="single-action"
-          label-text="Focus"
-          supporting-text="Focus stays on the row action surface"
-          @action="onAction"
-        />
-        <MDListItem
-          v-bind="pressedAttrs"
-          class="md-state_pressed"
-          mode="single-action"
-          label-text="Pressed"
-          supporting-text="Pressed state stays inside the action shape"
-          @action="onAction"
-        />
-        <MDListItem
-          mode="single-action"
-          class="md-state_dragged"
-          draggable
-          label-text="Dragged"
-          supporting-text="Dragged state changes the whole row container"
-          @action="onAction"
-        />
+        <MDStateLayerForcedStateProvider hovered>
+          <MDListItem
+            v-bind="hoverAttrs"
+            class="md-state_hover"
+            mode="single-action"
+            label-text="Hover"
+            supporting-text="State layer covers the full row action surface"
+            @action="onAction"
+          />
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider focused>
+          <MDListItem
+            v-bind="focusAttrs"
+            class="md-state_focused"
+            mode="single-action"
+            label-text="Focus"
+            supporting-text="Focus stays on the row action surface"
+            @action="onAction"
+          />
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider pressed>
+          <MDListItem
+            v-bind="pressedAttrs"
+            class="md-state_pressed"
+            mode="single-action"
+            label-text="Pressed"
+            supporting-text="Pressed state stays inside the action shape"
+            @action="onAction"
+          />
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider dragged>
+          <MDListItem
+            mode="single-action"
+            class="md-state_dragged"
+            draggable
+            label-text="Dragged"
+            supporting-text="Dragged state changes the whole row container"
+            @action="onAction"
+          />
+        </MDStateLayerForcedStateProvider>
         <MDListItem
           mode="single-action"
           disabled
@@ -85,18 +94,20 @@ const onAction = () => {};
             <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
           </template>
         </MDListItem>
-        <MDListItem
-          v-bind="hoverAttrs"
-          class="md-state_hover"
-          mode="multi-action"
-          label-text="Hover"
-          supporting-text="Row-level state layer covers the full item container"
-          @action="onAction"
-        >
-          <template #trailingAction>
-            <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
-          </template>
-        </MDListItem>
+        <MDStateLayerForcedStateProvider hovered>
+          <MDListItem
+            v-bind="hoverAttrs"
+            class="md-state_hover"
+            mode="multi-action"
+            label-text="Hover"
+            supporting-text="Row-level state layer covers the full item container"
+            @action="onAction"
+          >
+            <template #trailingAction>
+              <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
+            </template>
+          </MDListItem>
+        </MDStateLayerForcedStateProvider>
         <MDListItem
           mode="multi-action"
           disabled

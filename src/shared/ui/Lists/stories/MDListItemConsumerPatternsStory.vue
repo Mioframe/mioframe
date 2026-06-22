@@ -19,6 +19,10 @@ const onCheckboxChange = () => {
 
 <template>
   <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-consumer-patterns-story">
+    <p class="md-list-item-consumer-patterns-story__caption">
+      Every list below is intentionally a standard (contiguous) list — items have no gap between
+      them by design. Grouping comes from the rounded surface, not from list spacing.
+    </p>
     <!--
       Home Create / Open space actions.
       Two-line items: label + supporting text, no overline.
@@ -184,6 +188,16 @@ const onCheckboxChange = () => {
   font-weight: var(--md-sys-typescale-label-large-weight);
   line-height: var(--md-sys-typescale-label-large-line-height);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+
+.md-list-item-consumer-patterns-story__caption {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  letter-spacing: var(--md-sys-typescale-body-small-tracking);
 }
 
 .md-list-item-consumer-patterns-story__surface {

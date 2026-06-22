@@ -349,11 +349,12 @@ describe('MDListItem', () => {
     warnSpy.mockRestore();
   });
 
-  // Trailing-area padding fires primary action via CSS geometry: the primary action is
-  // position: absolute; inset: 0, and the trailing-action container is pointer-events:
-  // none on its background (direct slot content restores pointer-events: auto). In JSDOM
-  // CSS hit-testing is not simulated, so this contract is covered by the Playwright
-  // browser test 'MDListItem multi-action trailing padding fires primary action' instead.
+  // Trailing-area padding fires primary action via CSS geometry: the primary action and
+  // trailing action are stacked in the same grid cell, and the trailing-action container
+  // is pointer-events: none on its background (direct slot content restores
+  // pointer-events: auto). In JSDOM CSS hit-testing is not simulated, so this contract is
+  // covered by the Playwright browser test 'MDListItem multi-action trailing padding
+  // fires primary action' instead.
   it('does not attach a native click handler to the trailing-action container', () => {
     const onAction = vi.fn();
     const wrapper = mountListItem(

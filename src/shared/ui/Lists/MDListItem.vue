@@ -411,17 +411,26 @@ defineExpose({
   }
 
   /*
-   * Multi-action geometry: primary action covers the full row via position: absolute;
-   * inset: 0. Trailing action sits on top as an absolute overlay with pointer-events:
-   * none so empty padding falls through to the primary action hit-target underneath.
+   * Multi-action geometry: primary action and trailing action are stacked in the same
+   * grid cell (instead of position: absolute) so the primary action still covers the
+   * full row and the trailing action still overlays it with pointer-events: none so
+   * empty padding falls through to the primary-action hit-target underneath. Grid
+   * stacking (unlike absolute positioning) keeps both children in normal flow for
+   * sizing purposes, so the row's auto height grows to fit primary-action content taller
+   * than the resolved Material min-height token (e.g. a wrapped three-line row) instead
+   * of capping the row at that token and clipping the overflow against the boundary.
    * Slot content (icon button) restores its own pointer-events via browser default.
    * useLastHover(primaryActionEl) sees hover only when pointer is NOT inside the icon
    * button, giving correct per-region hover state without root-level tracking.
    */
+  &_has-trailing-action {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
   &_has-trailing-action &__primary-action {
-    position: absolute;
-    inset: 0;
-    flex: none;
+    grid-area: 1 / 1;
     padding-inline-end: calc(
       var(--md-comp-list-list-item-between-space) +
         var(--md-private-list-item-trailing-action-reserved, 56dp)
@@ -429,10 +438,9 @@ defineExpose({
   }
 
   &_has-trailing-action &__trailing-action {
-    position: absolute;
-    inset-inline-end: 0;
-    inset-block: 0;
-    flex: none;
+    grid-area: 1 / 1;
+    justify-self: end;
+    align-self: stretch;
     /* Container background is transparent to pointer events: empty trailing padding
        falls through to the primary-action hit target underneath. */
     pointer-events: none;

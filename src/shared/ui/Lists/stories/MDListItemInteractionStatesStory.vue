@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
 import { useFocusIndicator } from '../../State/useFocusIndicator';
+import { MDStateLayerForcedStateProvider } from '../../State/testing';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
@@ -35,52 +36,60 @@ useFocusIndicator();
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
       <MDList>
-        <MDListItem
-          v-bind="hoverAttrs"
-          class="md-state_hover"
-          mode="single-action"
-          label-text="Hover"
-          supporting-text="The state layer spans the row action surface"
-          @action="onAction"
-        >
-          <template #leading>
-            <MDSymbol name="draft" />
-          </template>
-        </MDListItem>
-        <MDListItem
-          v-bind="focusAttrs"
-          class="md-state_focused"
-          mode="single-action"
-          label-text="Focus"
-          supporting-text="Focus stays inside the row action shape"
-          @action="onAction"
-        />
-        <MDListItem
-          v-bind="pressedAttrs"
-          class="md-state_pressed"
-          mode="single-action"
-          label-text="Pressed"
-          supporting-text="Pressed ripple stays on the row action surface"
-          @action="onAction"
-        />
+        <MDStateLayerForcedStateProvider hovered>
+          <MDListItem
+            v-bind="hoverAttrs"
+            class="md-state_hover"
+            mode="single-action"
+            label-text="Hover"
+            supporting-text="The state layer spans the row action surface"
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="draft" />
+            </template>
+          </MDListItem>
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider focused>
+          <MDListItem
+            v-bind="focusAttrs"
+            class="md-state_focused"
+            mode="single-action"
+            label-text="Focus"
+            supporting-text="Focus stays inside the row action shape"
+            @action="onAction"
+          />
+        </MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider pressed>
+          <MDListItem
+            v-bind="pressedAttrs"
+            class="md-state_pressed"
+            mode="single-action"
+            label-text="Pressed"
+            supporting-text="Pressed ripple stays on the row action surface"
+            @action="onAction"
+          />
+        </MDStateLayerForcedStateProvider>
       </MDList>
     </section>
 
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Multi-action surface</h3>
       <MDList list-style="segmented">
-        <MDListItem
-          v-bind="hoverAttrs"
-          class="md-state_hover"
-          mode="multi-action"
-          label-text="Primary hover"
-          supporting-text="The primary surface does not collapse to just the text column"
-          @action="onAction"
-        >
-          <template #trailingAction>
-            <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
-          </template>
-        </MDListItem>
+        <MDStateLayerForcedStateProvider hovered>
+          <MDListItem
+            v-bind="hoverAttrs"
+            class="md-state_hover"
+            mode="multi-action"
+            label-text="Primary hover"
+            supporting-text="The primary surface does not collapse to just the text column"
+            @action="onAction"
+          >
+            <template #trailingAction>
+              <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
+            </template>
+          </MDListItem>
+        </MDStateLayerForcedStateProvider>
         <MDListItem
           v-bind="multiActionIndependenceAttrs"
           mode="multi-action"

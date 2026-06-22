@@ -174,17 +174,14 @@ const onAction = () => {};
   overflow: clip;
 }
 
+/* Zero padding on purpose: these wrappers exist only to prove that surface-color
+   inheritance survives intermediate DOM nesting (see the "intermediate wrappers" test
+   below), not to add visual spacing. Any padding here changes the rendered row height
+   in the screenshot and reads as a sizing regression unrelated to the surface contract
+   this fixture tests. */
 .md-list-item-surface-standard-story__wrapper,
 .md-list-item-surface-standard-story__wrapper-inner {
   display: grid;
-}
-
-.md-list-item-surface-standard-story__wrapper {
-  padding: 8dp;
-}
-
-.md-list-item-surface-standard-story__wrapper-inner {
-  padding: 8dp 0;
 }
 
 .md-list-item-surface-standard-story__surface_color_surface {

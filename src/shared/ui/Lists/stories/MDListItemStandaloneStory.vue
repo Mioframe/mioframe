@@ -119,8 +119,12 @@ useFocusIndicator();
     <div v-bind="consumerAttrs" class="visual-list-backdrop md-list-item-standalone-story__group">
       <section class="md-list-item-standalone-story__section">
         <h3 class="md-list-item-standalone-story__title">
-          EntryAddSheet consumer rows (standalone)
+          EntryAddSheet consumer rows (standalone, contiguous by design)
         </h3>
+        <p class="md-list-item-standalone-story__caption">
+          These rows render without an MDList wrapper, the same way EntryAddSheet uses them —
+          contiguous, with no item gap.
+        </p>
         <div id="standalone-entry-add-sheet" class="md-list-item-standalone-story__surface">
           <MDListItem
             mode="single-action"
@@ -188,6 +192,16 @@ useFocusIndicator();
   font-weight: var(--md-sys-typescale-label-large-weight);
   line-height: var(--md-sys-typescale-label-large-line-height);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+
+.md-list-item-standalone-story__caption {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  letter-spacing: var(--md-sys-typescale-body-small-tracking);
 }
 
 .md-list-item-standalone-story__surface {

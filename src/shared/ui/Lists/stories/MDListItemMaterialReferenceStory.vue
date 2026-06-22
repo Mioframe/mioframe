@@ -18,7 +18,7 @@ const onAction = () => {};
       class="visual-list-backdrop md-list-item-material-reference-story__group"
     >
       <MDList class="md-list-item-material-reference-story__list">
-        <MDListItem mode="single-action" label-text="List item" @action="onAction">
+        <MDListItem mode="single-action" label-text="Default" @action="onAction">
           <template #leading>
             <MDSymbol name="draft" />
           </template>
@@ -27,7 +27,7 @@ const onAction = () => {};
           <MDListItem
             class="md-state_hover"
             mode="single-action"
-            label-text="List item"
+            label-text="Hover"
             @action="onAction"
           >
             <template #leading>
@@ -39,7 +39,7 @@ const onAction = () => {};
           <MDListItem
             class="md-state_focused"
             mode="single-action"
-            label-text="List item"
+            label-text="Focus"
             @action="onAction"
           >
             <template #leading>
@@ -51,7 +51,7 @@ const onAction = () => {};
           <MDListItem
             class="md-state_pressed"
             mode="single-action"
-            label-text="List item"
+            label-text="Pressed"
             @action="onAction"
           >
             <template #leading>
@@ -63,7 +63,7 @@ const onAction = () => {};
           <MDListItem
             class="md-state_dragged"
             mode="single-action"
-            label-text="List item"
+            label-text="Dragged"
             @action="onAction"
           >
             <template #leading>
@@ -71,7 +71,7 @@ const onAction = () => {};
             </template>
           </MDListItem>
         </MDStateLayerForcedStateProvider>
-        <MDListItem mode="single-action" disabled label-text="List item" @action="onAction">
+        <MDListItem mode="single-action" disabled label-text="Disabled" @action="onAction">
           <template #leading>
             <MDSymbol name="draft" />
           </template>

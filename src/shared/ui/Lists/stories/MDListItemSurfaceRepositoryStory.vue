@@ -14,6 +14,9 @@ const onAction = () => {};
       <h3 class="md-list-item-surface-repository-story__title">
         Repository Explorer documents section
       </h3>
+      <p class="md-list-item-surface-repository-story__caption">
+        Standard list — rows are intentionally contiguous, no item gap.
+      </p>
       <div
         id="surface-context-repository-documents"
         class="md-list-item-surface-repository-story__surface md-list-item-surface-repository-story__surface_color_surface"
@@ -79,6 +82,16 @@ const onAction = () => {};
   font-weight: var(--md-sys-typescale-label-large-weight);
   line-height: var(--md-sys-typescale-label-large-line-height);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+
+.md-list-item-surface-repository-story__caption {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  letter-spacing: var(--md-sys-typescale-body-small-tracking);
 }
 
 .md-list-item-surface-repository-story__surface {
