@@ -372,8 +372,9 @@ defineExpose({
 <style scoped>
 .md-list-item {
   /* Dragged state is MDListItem-only (selection items do not support drag). Elevation
-     matches the Figma Material 3 Expressive Kit's dragged preview (M3 Elevation 5); the
-     fill/content/state-layer colors are wired in listItemAnatomy.css. */
+     matches the documented md.comp.list.list-item.dragged.container.elevation token
+     (M3 Elevation 4); the content/state-layer color remaps are wired in
+     listItemAnatomy.css. */
   &.md-state_dragged {
     box-shadow: var(--md-private-list-item-dragged-elevation);
   }

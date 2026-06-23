@@ -533,43 +533,33 @@ test.describe('MDList / Material reference forced state layer', () => {
     ).toBe(true);
   });
 
-  // Dragged must render as a filled, elevated drag preview (Material 3 Expressive Figma
-  // Kit), not a transparent row with only a state-layer overlay. These checks resolve the
-  // expected colors from the live system tokens (via a throwaway sample element) so the
-  // assertions hold in both light and dark themes instead of hardcoding a Figma hex value.
-  test('Material reference states dragged row renders a filled tertiary-container drag preview, not a transparent row', async ({
+  // Dragged keeps its resting container color and only gains elevation/shape/content-color
+  // remaps, per the documented md.comp.list.list-item.dragged.* List Common spec (verified
+  // via the material3 MCP cache): there is no dragged.container.color token. These checks
+  // resolve the expected colors from the live system tokens (via a throwaway sample
+  // element) so the assertions hold in both light and dark themes instead of hardcoding a
+  // hex value.
+  test('Material reference states dragged row keeps its resting container color, not a filled drag preview', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
 
     const surface = page.getByTestId('visual-md-list-material-states');
     const draggedRow = surface.locator('.md-list-item.md-state_dragged').first();
+    const restingRow = surface.locator('.md-list-item').first();
 
-    const [draggedBackground, expectedContainerColor] = await Promise.all([
+    const [draggedBackground, restingBackground] = await Promise.all([
       draggedRow.evaluate((node) => getComputedStyle(node).backgroundColor),
-      draggedRow.evaluate((node) => {
-        const sample = document.createElement('div');
-        sample.style.backgroundColor = getComputedStyle(node).getPropertyValue(
-          '--md-sys-color-tertiary-container',
-        );
-        document.body.append(sample);
-        const resolved = getComputedStyle(sample).backgroundColor;
-        sample.remove();
-        return resolved;
-      }),
+      restingRow.evaluate((node) => getComputedStyle(node).backgroundColor),
     ]);
 
     expect(
-      hasZeroAlpha(draggedBackground),
-      'dragged row must render a filled drag preview, not a transparent container',
-    ).toBe(false);
-    expect(
       draggedBackground,
-      'dragged row fill must resolve to md.sys.color.tertiary-container',
-    ).toBe(expectedContainerColor);
+      'dragged row container color must match the resting row container color (no documented dragged.container.color token)',
+    ).toBe(restingBackground);
   });
 
-  test('Material reference states dragged row label text resolves to on-tertiary-container', async ({
+  test('Material reference states dragged row label text resolves to on-surface', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
@@ -582,9 +572,7 @@ test.describe('MDList / Material reference forced state layer', () => {
       label.evaluate((node) => getComputedStyle(node).color),
       draggedRow.evaluate((node) => {
         const sample = document.createElement('div');
-        sample.style.color = getComputedStyle(node).getPropertyValue(
-          '--md-sys-color-on-tertiary-container',
-        );
+        sample.style.color = getComputedStyle(node).getPropertyValue('--md-sys-color-on-surface');
         document.body.append(sample);
         const resolved = getComputedStyle(sample).color;
         sample.remove();
@@ -592,21 +580,20 @@ test.describe('MDList / Material reference forced state layer', () => {
       }),
     ]);
 
-    expect(
-      labelColor,
-      'dragged row label text must resolve to md.sys.color.on-tertiary-container',
-    ).toBe(expectedContentColor);
+    expect(labelColor, 'dragged row label text must resolve to md.sys.color.on-surface').toBe(
+      expectedContentColor,
+    );
   });
 
   // Forced-state fixtures activate `.md-state_dragged` on the MDStateLayer node directly
   // (not through MDListItem's real --md-private-list-item-state-layer-color cascade), so
   // this proves the dragged overlay color contract on a plain runtime row instead, by
-  // comparing its resolved overlay background against an on-tertiary-container sample at
-  // the documented 0.16 opacity. This is the proof that MDStateLayer's generic
+  // comparing its resolved overlay background against an on-surface sample at the
+  // documented 0.16 opacity. This is the proof that MDStateLayer's generic
   // --md-private-state-layer-color contract (owned by State) picks up the List-owned
   // dragged color mapped through --md-private-list-item-state-layer-color (owned by
-  // Lists), without MDStateLayer itself knowing about List or tertiary-container.
-  test('Material reference states dragged row overlay resolves to on-tertiary-container at 0.16 opacity', async ({
+  // Lists), without MDStateLayer itself knowing about List.
+  test('Material reference states dragged row overlay resolves to on-surface at 0.16 opacity', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
@@ -618,11 +605,9 @@ test.describe('MDList / Material reference forced state layer', () => {
     const [overlayColor, expectedOverlayColor] = await Promise.all([
       stateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
       draggedRow.evaluate((node) => {
-        const onTertiaryContainer = getComputedStyle(node).getPropertyValue(
-          '--md-sys-color-on-tertiary-container',
-        );
+        const onSurface = getComputedStyle(node).getPropertyValue('--md-sys-color-on-surface');
         const sample = document.createElement('div');
-        sample.style.backgroundColor = `rgb(from ${onTertiaryContainer} r g b / 0.16)`;
+        sample.style.backgroundColor = `rgb(from ${onSurface} r g b / 0.16)`;
         document.body.append(sample);
         const resolved = getComputedStyle(sample).backgroundColor;
         sample.remove();
@@ -632,11 +617,11 @@ test.describe('MDList / Material reference forced state layer', () => {
 
     expect(
       overlayColor,
-      'dragged row overlay must resolve to on-tertiary-container at the documented 0.16 dragged opacity',
+      'dragged row overlay must resolve to on-surface at the documented 0.16 dragged opacity',
     ).toBe(expectedOverlayColor);
   });
 
-  test('Material reference states dragged row is elevated to the Material elevation level 5 equivalent', async ({
+  test('Material reference states dragged row is elevated to the Material elevation level 4 equivalent', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--material-reference');
@@ -647,9 +632,9 @@ test.describe('MDList / Material reference forced state layer', () => {
     const [boxShadow, expectedBoxShadow] = await Promise.all([
       draggedRow.evaluate((node) => getComputedStyle(node).boxShadow),
       draggedRow.evaluate((node) => {
-        const level5 = getComputedStyle(node).getPropertyValue('--md-sys-elevation-level5');
+        const level4 = getComputedStyle(node).getPropertyValue('--md-sys-elevation-level4');
         const sample = document.createElement('div');
-        sample.style.boxShadow = level5;
+        sample.style.boxShadow = level4;
         document.body.append(sample);
         const resolved = getComputedStyle(sample).boxShadow;
         sample.remove();
@@ -657,10 +642,10 @@ test.describe('MDList / Material reference forced state layer', () => {
       }),
     ]);
 
-    expect(boxShadow, 'dragged row must render an elevated drag-preview shadow').not.toBe('none');
+    expect(boxShadow, 'dragged row must render an elevated drag shadow').not.toBe('none');
     expect(
       boxShadow,
-      'dragged row elevation must resolve to the project md.sys.elevation.level5 equivalent of Material Elevation 5',
+      'dragged row elevation must resolve to the documented md.comp.list.list-item.dragged.container.elevation (Material Elevation 4)',
     ).toBe(expectedBoxShadow);
   });
 });
@@ -974,6 +959,23 @@ test.describe('MDList / Material Expressive contract', () => {
     );
   });
 
+  test('MDListItem row-edge content padding uses the documented between-space token (12dp)', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const surface = page.getByTestId('visual-md-list-configurations');
+    const body = surface.locator('.md-list-item__body, .md-list-item__primary-action').first();
+
+    const [paddingLeft, paddingRight] = await Promise.all([
+      body.evaluate((node) => getComputedStyle(node).paddingLeft),
+      body.evaluate((node) => getComputedStyle(node).paddingRight),
+    ]);
+
+    expect(paddingLeft).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.between}px`);
+    expect(paddingRight).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.between}px`);
+  });
+
   test('MDList overline, label, and supporting text use the documented typography tokens', async ({
     page,
   }) => {
@@ -1245,6 +1247,63 @@ test.describe('MDList / Material Expressive contract', () => {
         Number(normalizeOpacityToken(value)),
         `disabled ${name} opacity token must resolve to the documented Material disabled opacity`,
       ).toBeCloseTo(MD_LIST_MATERIAL_CONTRACT.disabledOpacity, 2);
+    }
+  });
+
+  // Material defines disabled color and disabled opacity as separate component tokens
+  // (md.comp.list.list-item.disabled.*.color / .opacity). The public *-color tokens must
+  // stay a raw color role (on-surface), not an alpha-composed `rgb(from on-surface ... /
+  // opacity)` value — the alpha composition belongs only to the private
+  // --md-private-list-item-disabled-*-color implementation variables that the disabled-state
+  // remap actually paints with.
+  test('MDListItem disabled rows keep public disabled-*-color tokens as raw on-surface, not alpha-composed', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const disabledRow = page.locator('.md-list-item.md-state_disabled').first();
+
+    const [labelTextColor, leadingIconColor, trailingIconColor, supportingTextColor, onSurface] =
+      await Promise.all([
+        disabledRow.evaluate((node) =>
+          getComputedStyle(node)
+            .getPropertyValue('--md-comp-list-list-item-disabled-label-text-color')
+            .trim(),
+        ),
+        disabledRow.evaluate((node) =>
+          getComputedStyle(node)
+            .getPropertyValue('--md-comp-list-list-item-disabled-leading-icon-color')
+            .trim(),
+        ),
+        disabledRow.evaluate((node) =>
+          getComputedStyle(node)
+            .getPropertyValue('--md-comp-list-list-item-disabled-trailing-icon-color')
+            .trim(),
+        ),
+        disabledRow.evaluate((node) =>
+          getComputedStyle(node)
+            .getPropertyValue('--md-comp-list-list-item-disabled-supporting-text-color')
+            .trim(),
+        ),
+        disabledRow.evaluate((node) =>
+          getComputedStyle(node).getPropertyValue('--md-sys-color-on-surface').trim(),
+        ),
+      ]);
+
+    for (const [name, value] of [
+      ['label-text', labelTextColor],
+      ['leading-icon', leadingIconColor],
+      ['trailing-icon', trailingIconColor],
+      ['supporting-text', supportingTextColor],
+    ]) {
+      expect(
+        value,
+        `public disabled ${name} color token must not bake in an alpha channel`,
+      ).not.toMatch(/^rgb\(\s*from/);
+      expect(
+        value,
+        `public disabled ${name} color token must equal the raw md.sys.color.on-surface role`,
+      ).toBe(onSurface);
     }
   });
 

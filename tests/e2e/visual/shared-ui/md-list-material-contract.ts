@@ -4,7 +4,10 @@
  * Source notes:
  * - Primary source of truth: the `material3` MCP server (m3.material.io List
  *   component docs/specs — Lists Overview, Lists Specs, Lists Guidelines).
- *   Values below were checked against MCP `get_component_docs('list')`.
+ *   `contentSpacing.between`/`.leading`/`.trailing` were re-verified against the
+ *   literal List Common spec token table (`md.comp.list.list-item.between-space` =
+ *   12dp, `.leading-space` = 16dp, `.trailing-space` = 16dp) — the previous 16dp/12dp
+ *   values had between-space and leading-space swapped.
  * - Secondary local reference only (not a source of truth for Material
  *   values): src/shared/ui/Lists/README.md.
  *
@@ -40,7 +43,8 @@ export const MD_LIST_MATERIAL_CONTRACT = {
   minTrailingActionTarget: 48,
   contentSpacing: {
     block: 10,
-    leading: 12,
+    between: 12,
+    leading: 16,
     trailing: 16,
     trailingActionStart: 8,
   },

@@ -19,24 +19,33 @@
     transparent
   );
   --md-comp-list-list-item-segmented-container-color: var(--md-sys-color-surface);
+  /* Material defines disabled color and opacity as separate component tokens
+     (md.comp.list.list-item.disabled.*.color / .opacity, both resolving to on-surface /
+     0.38). Public tokens stay raw color roles + numeric opacity; the alpha-composed CSS
+     color consumers actually need lives in --md-private-list-item-disabled-*-color so the
+     public *-color tokens never bake in an alpha channel. */
   --md-comp-list-list-item-disabled-label-text-opacity: 0.38;
   --md-comp-list-list-item-disabled-leading-icon-opacity: 0.38;
   --md-comp-list-list-item-disabled-trailing-icon-opacity: 0.38;
   --md-comp-list-list-item-disabled-supporting-text-opacity: 0.38;
-  --md-comp-list-list-item-disabled-label-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b /
+  --md-comp-list-list-item-disabled-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-disabled-leading-icon-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-disabled-supporting-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-disabled-trailing-icon-color: var(--md-sys-color-on-surface);
+  --md-private-list-item-disabled-label-text-color: rgb(
+    from var(--md-comp-list-list-item-disabled-label-text-color) r g b /
       var(--md-comp-list-list-item-disabled-label-text-opacity)
   );
-  --md-comp-list-list-item-disabled-leading-icon-color: rgb(
-    from var(--md-sys-color-on-surface) r g b /
+  --md-private-list-item-disabled-leading-icon-color: rgb(
+    from var(--md-comp-list-list-item-disabled-leading-icon-color) r g b /
       var(--md-comp-list-list-item-disabled-leading-icon-opacity)
   );
-  --md-comp-list-list-item-disabled-supporting-text-color: rgb(
-    from var(--md-sys-color-on-surface) r g b /
+  --md-private-list-item-disabled-supporting-text-color: rgb(
+    from var(--md-comp-list-list-item-disabled-supporting-text-color) r g b /
       var(--md-comp-list-list-item-disabled-supporting-text-opacity)
   );
-  --md-comp-list-list-item-disabled-trailing-icon-color: rgb(
-    from var(--md-sys-color-on-surface) r g b /
+  --md-private-list-item-disabled-trailing-icon-color: rgb(
+    from var(--md-comp-list-list-item-disabled-trailing-icon-color) r g b /
       var(--md-comp-list-list-item-disabled-trailing-icon-opacity)
   );
   --md-comp-list-list-item-label-text-color: var(--md-sys-color-on-surface);
@@ -75,6 +84,11 @@
   --md-comp-list-list-item-focused-container-expressive-shape: 16dp;
   --md-comp-list-list-item-pressed-container-expressive-shape: 16dp;
   --md-comp-list-list-item-dragged-container-expressive-shape: 16dp;
+  --md-comp-list-list-item-dragged-container-elevation: var(--md-sys-elevation-level4);
+  --md-comp-list-list-item-dragged-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-dragged-leading-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-dragged-trailing-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-dragged-state-layer-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-selected-container-color: var(--md-sys-color-secondary-container);
   --md-comp-list-list-item-selected-disabled-container-opacity: 0.38;
   --md-comp-list-list-item-selected-disabled-container-color: rgb(
@@ -105,10 +119,10 @@
   --md-comp-list-list-item-trailing-icon-expressive-size: 20dp;
   --md-comp-list-list-item-trailing-supporting-text-color: var(--md-sys-color-on-surface-variant);
   --md-comp-list-list-item-two-line-container-height: 72dp;
-  --md-comp-list-list-item-between-space: 16dp;
+  --md-comp-list-list-item-between-space: 12dp;
   --md-comp-list-list-item-top-space: 10dp;
   --md-comp-list-list-item-bottom-space: 10dp;
-  --md-comp-list-list-item-leading-space: 12dp;
+  --md-comp-list-list-item-leading-space: 16dp;
   --md-comp-list-list-item-trailing-space: 16dp;
   --md-comp-list-segmented-gap: 0dp;
 
@@ -208,21 +222,23 @@
 }
 
 /*
- * Dragged preview composition (Material 3 Expressive Figma Kit): the dragged row
- * renders as a filled, elevated drag preview, not a transparent row with only a state
- * layer overlay. These private variables are scoped to MDListItem dragged only — no
- * public `md.comp.list.list-item.dragged.container.color` token exists in the Material
- * website token table, so the fill/content/state-layer colors stay private
- * implementation details mapped to system tokens instead of an invented component token.
- * The dragged state-layer color flows through the same
- * `--md-private-list-item-state-layer-color` -> `--md-private-state-layer-color` mapping
- * as every other list state, so MDStateLayer never needs to know about List or
- * tertiary-container.
+ * Dragged state (md.comp.list.list-item.dragged.* — List Common spec, verified through the
+ * material3 MCP cache of m3.material.io): an elevated row, not a filled drag-preview chip.
+ * The Common spec documents dragged.label-text.color / dragged.leading-icon.icon.color /
+ * dragged.trailing-icon.icon.color / dragged.state-layer.color (on-surface /
+ * on-surface-variant / on-surface-variant / on-surface) and dragged.container.elevation
+ * (md.sys.elevation.level4) but no dragged.container.color token, so the row keeps its
+ * resting container color (transparent/segmented-surface) and only gains elevation, shape,
+ * and the documented content-color remaps. The Figma Material 3 Design Kit (parent List
+ * node and its dragged child variant) could not be re-checked this pass — the Figma MCP
+ * tool hit its plan rate limit — so this implementation follows the documented Common spec
+ * rather than the previously-claimed tertiary-container/Elevation-5 Expressive treatment.
+ * See README.md "Dragged state" for the verification note.
  */
 .md-list-item.md-state_dragged {
-  --md-private-list-item-dragged-container-color: var(--md-sys-color-tertiary-container);
-  --md-private-list-item-dragged-content-color: var(--md-sys-color-on-tertiary-container);
-  --md-private-list-item-dragged-elevation: var(--md-sys-elevation-level5);
+  --md-private-list-item-dragged-elevation: var(
+    --md-comp-list-list-item-dragged-container-elevation
+  );
 
   --md-private-list-item-action-shape: var(
     --md-comp-list-list-item-dragged-container-expressive-shape
@@ -230,16 +246,14 @@
   --md-private-list-item-container-shape: var(
     --md-comp-list-list-item-dragged-container-expressive-shape
   );
-  --md-comp-list-list-item-container-color: var(--md-private-list-item-dragged-container-color);
-  --md-comp-list-list-item-label-text-color: var(--md-private-list-item-dragged-content-color);
-  --md-comp-list-list-item-leading-icon-color: var(--md-private-list-item-dragged-content-color);
-  --md-comp-list-list-item-overline-color: var(--md-private-list-item-dragged-content-color);
-  --md-comp-list-list-item-supporting-text-color: var(--md-private-list-item-dragged-content-color);
-  --md-comp-list-list-item-trailing-icon-color: var(--md-private-list-item-dragged-content-color);
-  --md-comp-list-list-item-trailing-supporting-text-color: var(
-    --md-private-list-item-dragged-content-color
+  --md-comp-list-list-item-label-text-color: var(--md-comp-list-list-item-dragged-label-text-color);
+  --md-comp-list-list-item-leading-icon-color: var(
+    --md-comp-list-list-item-dragged-leading-icon-color
   );
-  --md-private-list-item-state-layer-color: var(--md-private-list-item-dragged-content-color);
+  --md-comp-list-list-item-trailing-icon-color: var(
+    --md-comp-list-list-item-dragged-trailing-icon-color
+  );
+  --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-dragged-state-layer-color);
 }
 
 /* ─── Disabled state (token remaps) ──────────────────────────────────────── */
@@ -249,24 +263,22 @@
 .md-list-item[aria-disabled='true'],
 .md-list-selection-item.md-state_disabled,
 .md-list-selection-item[aria-disabled='true'] {
-  --md-comp-list-list-item-label-text-color: var(
-    --md-comp-list-list-item-disabled-label-text-color
-  );
+  --md-comp-list-list-item-label-text-color: var(--md-private-list-item-disabled-label-text-color);
   --md-comp-list-list-item-leading-icon-color: var(
-    --md-comp-list-list-item-disabled-leading-icon-color
+    --md-private-list-item-disabled-leading-icon-color
   );
   --md-comp-list-list-item-overline-color: var(
-    --md-comp-list-list-item-disabled-supporting-text-color
+    --md-private-list-item-disabled-supporting-text-color
   );
   --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-disabled-label-text-color);
   --md-comp-list-list-item-supporting-text-color: var(
-    --md-comp-list-list-item-disabled-supporting-text-color
+    --md-private-list-item-disabled-supporting-text-color
   );
   --md-comp-list-list-item-trailing-icon-color: var(
-    --md-comp-list-list-item-disabled-trailing-icon-color
+    --md-private-list-item-disabled-trailing-icon-color
   );
   --md-comp-list-list-item-trailing-supporting-text-color: var(
-    --md-comp-list-list-item-disabled-supporting-text-color
+    --md-private-list-item-disabled-supporting-text-color
   );
 }
 
