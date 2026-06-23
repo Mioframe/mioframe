@@ -39,7 +39,7 @@ const onClosed = () => {
 
 const { confirm } = useDialog();
 
-const { remove: removeView } = useDatabaseViews(path, documentId);
+const { views: viewList, remove: removeView } = useDatabaseViews(path, documentId);
 
 const onChangeExplicitViewId = (viewId: DatabaseViewId, checked?: boolean) => {
   if (checked) {
@@ -146,6 +146,7 @@ const onRenameViewCompleted = () => {
 
       <div class="db-views-sheet__body">
         <DatabaseViewListEdit
+          v-if="viewList?.length"
           class="db-views-sheet__list"
           :directory-path="path"
           :document-id="documentId"

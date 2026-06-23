@@ -87,7 +87,7 @@ const onClickView = (id: DatabaseViewId) => {
       :label-text="view.name"
       class="db-view-map-edit__view-item"
       :class="{
-        'md-state_drag': draggedViewId === id,
+        'md-state_dragged': draggedViewId === id,
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
       @action="() => onClickView(id)"

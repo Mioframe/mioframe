@@ -14,7 +14,7 @@ const slots = defineSlots<{
 </script>
 
 <template>
-  <MDListItem mode="static" :label-text="props.name" class="directory-content-entry">
+  <MDListItem mode="static" :label-text="props.name">
     <template #leading>
       <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 
@@ -26,9 +26,3 @@ const slots = defineSlots<{
     </template>
   </MDListItem>
 </template>
-
-<style lang="css" scoped>
-.directory-content-entry {
-  border-radius: 8px;
-}
-</style>

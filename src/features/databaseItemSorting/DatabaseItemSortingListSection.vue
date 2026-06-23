@@ -107,7 +107,7 @@ const onInteractionOutside = () => {
         :view-id="viewId"
         :property-id="propertyId"
         :class="{
-          'md-state_drag': draggedSortingId === propertyId,
+          'md-state_dragged': draggedSortingId === propertyId,
         }"
       >
         <template #trailingAction>
