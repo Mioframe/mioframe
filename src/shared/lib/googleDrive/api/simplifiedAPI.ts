@@ -45,12 +45,6 @@ const apiFetch = (url: Input, options?: KyOptions) => apiClient(url, options);
 const dedupeApiFetch = dedupe(apiFetch);
 
 /**
- * Internal request handler with error normalization.
- * @param url - Request URL or Request object for the Google Drive API call.
- * @param options - Optional request options, including auth and query parameters.
- * @returns Successful response or a normalized GoogleDriveError.
- */
-/**
  * Parses a Google Drive error response body into a stable HTTP-like code.
  * Falls back to a generic code when the body is missing or does not match
  * the expected Google error shape, instead of letting a parse error escape unwrapped.
@@ -133,30 +127,28 @@ const authorizedRequest = async <R>(
   options: ApiOptions = {},
   responseSchema: ZodMiniType<R>,
 ): Promise<{ result: R }> => {
-  const response = await (
-    await googleRequest(
-      url,
-      toMerged(
-        {
-          method,
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-          },
-          searchParams: {
-            key: API_KEY,
-          },
+  const rawResponse = await googleRequest(
+    url,
+    toMerged(
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
         },
-        options,
-      ),
-    )
-  )
-    .clone()
-    .json();
+        searchParams: {
+          key: API_KEY,
+        },
+      },
+      options,
+    ),
+  );
 
   let result: R;
 
   try {
-    result = responseSchema.parse(response);
+    const responseBody: unknown = await rawResponse.clone().json();
+
+    result = responseSchema.parse(responseBody);
   } catch {
     throw new GoogleDriveError(
       {
