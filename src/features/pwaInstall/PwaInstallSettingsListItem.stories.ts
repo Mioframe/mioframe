@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { onUnmounted } from 'vue';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import PwaInstallSettingsListItem from './PwaInstallSettingsListItem.vue';
 import { usePwaInstallRuntime } from './pwaInstallRuntime';
 
@@ -27,8 +27,8 @@ export const WithInstallPrompt: Story = {
         retainedPrompt.value = null;
       });
     },
-    components: { PwaInstallSettingsListItem, MDListContainer },
-    template: '<MDListContainer is="div"><PwaInstallSettingsListItem /></MDListContainer>',
+    components: { PwaInstallSettingsListItem, MDList },
+    template: '<MDList is="div"><PwaInstallSettingsListItem /></MDList>',
   }),
 };
 
@@ -39,7 +39,7 @@ export const WithoutInstallPrompt: Story = {
       const { retainedPrompt } = usePwaInstallRuntime();
       retainedPrompt.value = null;
     },
-    components: { PwaInstallSettingsListItem, MDListContainer },
-    template: '<MDListContainer is="div"><PwaInstallSettingsListItem /></MDListContainer>',
+    components: { PwaInstallSettingsListItem, MDList },
+    template: '<MDList is="div"><PwaInstallSettingsListItem /></MDList>',
   }),
 };

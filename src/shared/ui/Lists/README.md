@@ -111,10 +111,6 @@ Owns selectable list item semantics and selection indicator. Must be used inside
 - Owns: `role="option"`, `aria-selected`, `aria-disabled`, selection indicator (checkmark), click/Enter/Space → `selectItem`
 - Does **not** have a trailing action slot (structurally invalid for options).
 
-### MDListContainer
-
-Thin wrapper forwarding all props to `MDList`. Prefer `MDList` directly in new code.
-
 ## Supported combinations
 
 | Component                    | Context                                  | Result                                                                                                                                   |
@@ -390,7 +386,7 @@ If a future change needs anatomy that diverges between `MDListItem` and `MDListS
 - `baseline` list style: legacy / reference-only, not a current Material recommendation
 - Expandable / swipe list variants
 - Radio/checkbox controls as selection indicators (checkmark only)
-- Project-specific grid layout on MDList/MDListContainer
+- Project-specific grid layout on MDList
 
 ## Relation to Menu
 

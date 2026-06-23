@@ -21,8 +21,8 @@ vi.mock('@shared/ui/Sheets', () => ({
 }));
 
 vi.mock('@shared/ui/Lists', () => ({
-  MDListContainer: defineComponent({
-    name: 'MDListContainerStub',
+  MDList: defineComponent({
+    name: 'MDListStub',
     setup(_props, { slots }) {
       return () => slots.default?.();
     },

@@ -61,14 +61,13 @@ Gaps:
 
 Verdict: include in Buttons pilot after base buttons and icon buttons.
 
-## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`, `MDListContainer`
+## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`
 
 Material cache confirms lists help users find and act on items; items should be scannable and consistently formatted; M3 Expressive adds standard/segmented styles, state-dependent expressive shape, segmented gaps, and improved selection states. The legacy `baseline` style is reference-only and intentionally unsupported in this PR.
 
 Current state:
 
 - `MDList` owns list style through `listStyle: 'standard' | 'segmented'`; there is no public `variant` prop — the current Material / Expressive row geometry is the only supported implementation; `baseline` is removed from the runtime API;
-- `MDListContainer` is a thin compatibility alias over `MDList`, not a separate layout owner;
 - `MDListItem` uses Material slot vocabulary: `leading`, `overline`, `supportingText`, `trailing`, and `trailingAction`;
 - list modes are explicit through `static`, `single-action`, and `multi-action`;
 - list-level selection is controlled through `selectionMode` plus `modelValue`, with `role="listbox"` and `role="option"` semantics, disabled-aware roving tab stops, a vertical keyboard contract (`ArrowDown`/`ArrowUp`/`Home`/`End`; not `ArrowLeft`/`ArrowRight`), and a visible check indicator that does not rely on color alone;
@@ -166,7 +165,7 @@ Material cache confirms menus are temporary action sets; persistent actions belo
 Current state:
 
 - uses `useOverlayContainer`, `TeleportContainer`, `onInteractionOutside`, Floating UI, focus trap, keyboard search, escape stack, and browser back stack;
-- renders its own menu container with default `role="menu"` and menu-specific CSS; it no longer depends on `MDListContainer`.
+- renders its own menu container with default `role="menu"` and menu-specific CSS; it does not depend on `MDList`.
 
 Gaps:
 

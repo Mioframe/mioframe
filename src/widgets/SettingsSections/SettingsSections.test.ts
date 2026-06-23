@@ -61,8 +61,8 @@ vi.mock('@shared/config', () => ({
 }));
 
 vi.mock('@shared/ui/Lists', () => ({
-  MDListContainer: defineComponent({
-    name: 'MDListContainerStub',
+  MDList: defineComponent({
+    name: 'MDListStub',
     setup(_props, { slots }) {
       return () => h('div', { role: 'list' }, slots.default?.());
     },

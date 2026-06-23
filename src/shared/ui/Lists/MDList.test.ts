@@ -2,7 +2,6 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, nextTick, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import MDList from './MDList.vue';
-import MDListContainer from './MDListContainer.vue';
 import MDListItem from './MDListItem.vue';
 import MDListSelectionItem from './MDListSelectionItem.vue';
 
@@ -386,23 +385,5 @@ describe('MDList', () => {
     );
 
     warnSpy.mockRestore();
-  });
-
-  it('forwards attrs exactly once through MDListContainer', () => {
-    const wrapper = mount(MDListContainer, {
-      attrs: {
-        class: 'compat-list',
-        'data-track': 'consumer',
-      },
-      slots: {
-        default: '<div>Row</div>',
-      },
-    });
-
-    const list = wrapper.get('.md-list');
-
-    expect(list.classes().filter((className) => className === 'compat-list')).toHaveLength(1);
-    expect(list.attributes('data-track')).toBe('consumer');
-    expect(list.attributes('role')).toBe('list');
   });
 });

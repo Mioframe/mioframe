@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useBrowserStoragePersistence } from '@entity/browserStoragePersistence';
 import { useBrowserStoragePersistenceFeedback } from '@feature/browserStoragePersistenceEnable';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
@@ -47,7 +47,7 @@ const onChange = async () => {
 
 <template>
   <SettingsSection title="Storage">
-    <MDListContainer is="div">
+    <MDList is="div">
       <SettingsCheckboxListItem
         headline="More reliable browser storage"
         :supporting-text="supportingText"
@@ -57,6 +57,6 @@ const onChange = async () => {
         :lines="2"
         @change="onChange"
       />
-    </MDListContainer>
+    </MDList>
   </SettingsSection>
 </template>

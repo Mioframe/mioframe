@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { MDSymbol } from '@shared/ui/Icon';
 
@@ -42,7 +42,7 @@ const onClosed = () => {
         <p class="entry-add-sheet__supporting-text">Choose what to add to this folder.</p>
       </div>
 
-      <MDListContainer>
+      <MDList>
         <MDListItem
           mode="single-action"
           label-text="Create document"
@@ -75,7 +75,7 @@ const onClosed = () => {
             <MDSymbol name="create_new_folder" />
           </template>
         </MDListItem>
-      </MDListContainer>
+      </MDList>
     </MDBottomSheetSection>
   </MDBottomSheet>
 </template>

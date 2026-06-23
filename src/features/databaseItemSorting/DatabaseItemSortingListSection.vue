@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { SORT_DIRECTION } from '@shared/lib/databaseDocument';
 import {
@@ -97,7 +97,7 @@ const onInteractionOutside = () => {
   <section class="db-item-sorting-list-section">
     <MDCircularProgressIndicator v-if="isLoading && !sortingIdList" />
 
-    <MDListContainer v-if="displaySortingIdList.length" ref="container">
+    <MDList v-if="displaySortingIdList.length" ref="container">
       <DatabaseSortingListItem
         v-for="propertyId in displaySortingIdList"
         :key="propertyId"
@@ -120,7 +120,7 @@ const onInteractionOutside = () => {
           />
         </template>
       </DatabaseSortingListItem>
-    </MDListContainer>
+    </MDList>
 
     <div class="db-item-sorting-list-section__actions">
       <MDButton
