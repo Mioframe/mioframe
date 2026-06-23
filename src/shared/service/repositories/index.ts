@@ -1,5 +1,6 @@
 export { useRepositoriesService } from './repositoriesService';
 export { RepositoryImportErrorCode } from './repositoryImportErrorCode';
+export { RepositoryFactsErrorCode } from './repositoryFactsErrorCode';
 export {
   getRegularDirectoryEntries,
   getRepositoryFacts,

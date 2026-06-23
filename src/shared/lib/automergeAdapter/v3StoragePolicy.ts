@@ -99,7 +99,9 @@ export type V3ChunkCandidateClassification =
 
 /**
  * Classifies already-read candidate bytes against an expected full logical chunk key.
- * Performs no IO; callers supply the bytes from a single `readBytes()` call.
+ * Performs no IO; callers supply the bytes from a single `readBytes()` call. A zero-byte file is
+ * classified as `missing` (a recoverable write artifact), distinct from a non-empty file that
+ * fails to decode (`invalid`).
  * @param data - Raw bytes read from the candidate file, or undefined when absent.
  * @param expectedKey - Full logical chunk key the caller is resolving for.
  * @returns Discriminated classification distinguishing missing, invalid, same-key, and different-key wrappers.
@@ -108,7 +110,10 @@ export const classifyV3ChunkCandidateData = (
   data: Uint8Array | undefined,
   expectedKey: ChunkStorageKey,
 ): V3ChunkCandidateClassification => {
-  if (!data) {
+  // A zero-byte physical file is a recoverable write artifact (e.g. an interrupted save), not a
+  // real conflict: treat it as absent before the wrapper is even decoded, so load can fall back
+  // and save can overwrite it. A non-empty file that still fails to decode stays 'invalid'.
+  if (!data || data.length === 0) {
     return { kind: 'missing' };
   }
 
