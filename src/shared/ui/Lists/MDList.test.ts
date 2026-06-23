@@ -364,6 +364,170 @@ describe('MDList', () => {
     document.body.innerHTML = '';
   });
 
+  it('warns in development when a selection listbox is missing an accessible name', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList selection-mode="single">
+            <MDListSelectionItem label-text="One" value="one" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    expect(
+      warnSpy.mock.calls.some((call) => String(call[0]).includes('missing an accessible name')),
+    ).toBe(true);
+
+    warnSpy.mockRestore();
+    document.body.innerHTML = '';
+  });
+
+  it('does not warn when a selection listbox has an accessible name', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList selection-mode="single" aria-label="Colors">
+            <MDListSelectionItem label-text="One" value="one" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('accessible name'));
+
+    warnSpy.mockRestore();
+    document.body.innerHTML = '';
+  });
+
+  it('does not warn about accessible name for non-selection lists', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mount(MDList, {
+      attachTo: document.body,
+      slots: { default: '<div>Row</div>' },
+    });
+
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('accessible name'));
+
+    warnSpy.mockRestore();
+    document.body.innerHTML = '';
+  });
+
+  it('moves focus vertically between enabled single-action rows and skips disabled rows', async () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="One" mode="single-action" />
+            <MDListItem label-text="Two" mode="single-action" disabled />
+            <MDListItem label-text="Three" mode="single-action" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    const actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    expect(actions).toHaveLength(3);
+
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[2]?.element);
+
+    await actions[2]?.trigger('keydown', { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(actions[0]?.element);
+
+    await actions[0]?.trigger('keydown', { key: 'End' });
+    expect(document.activeElement).toBe(actions[2]?.element);
+
+    await actions[2]?.trigger('keydown', { key: 'Home' });
+    expect(document.activeElement).toBe(actions[0]?.element);
+
+    document.body.innerHTML = '';
+  });
+
+  it('activates the focused single-action row primary action via Enter', async () => {
+    const onAction = vi.fn();
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="One" mode="single-action" @action="onAction" />
+          </MDList>
+        `,
+        setup: () => ({ onAction }),
+      },
+      { attachTo: document.body },
+    );
+
+    const action = wrapper.get<HTMLElement>('button.md-list-item__primary-action');
+    action.element.focus();
+    await action.trigger('click');
+
+    expect(onAction).toHaveBeenCalledOnce();
+
+    document.body.innerHTML = '';
+  });
+
+  it('traverses primary and trailing actions within a multi-action row and between rows', async () => {
+    const onPrimaryAction = vi.fn();
+    const onTrailingAction = vi.fn();
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="One" mode="multi-action" @action="onPrimaryAction">
+              <template #trailingAction>
+                <button @click="onTrailingAction">Menu</button>
+              </template>
+            </MDListItem>
+            <MDListItem label-text="Two" mode="multi-action" @action="onPrimaryAction">
+              <template #trailingAction>
+                <button @click="onTrailingAction">Menu</button>
+              </template>
+            </MDListItem>
+          </MDList>
+        `,
+        setup: () => ({ onPrimaryAction, onTrailingAction }),
+      },
+      { attachTo: document.body },
+    );
+
+    const primaryActions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    const trailingActions = wrapper.findAll<HTMLElement>('.md-list-item__trailing-action button');
+    expect(primaryActions).toHaveLength(2);
+    expect(trailingActions).toHaveLength(2);
+
+    primaryActions[0]?.element.focus();
+    await primaryActions[0]?.trigger('keydown', { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(trailingActions[0]?.element);
+
+    await trailingActions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(trailingActions[1]?.element);
+
+    await trailingActions[1]?.trigger('keydown', { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(primaryActions[1]?.element);
+
+    // Trailing action click must not trigger the primary action's own handler.
+    await trailingActions[1]?.trigger('click');
+    expect(onTrailingAction).toHaveBeenCalledOnce();
+    expect(onPrimaryAction).not.toHaveBeenCalled();
+
+    document.body.innerHTML = '';
+  });
+
   it('warns in development when tag="ul" is requested for a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

@@ -38,7 +38,9 @@ Examples:
 
 When official Material 3 component specs list component tokens, use those names and meanings.
 
-When the official docs describe a component measurement or role but the exact token is missing from the cache, define the closest Material-compatible `--md-comp-*` token at the component definition boundary and document the mapping in the component policy or Storybook docs.
+Define a public `--md-comp-*` token only when an exact official Material token path exists in the cache for that part/state/property. Map the name mechanically from the documented path; do not shorten, normalize, or drop any path segment (for example `md.comp.list.list-item.dragged.leading-icon.icon.color` must keep its `icon` segment as `--md-comp-list-list-item-dragged-leading-icon-icon-color`, not collapse it to `...-leading-icon-color`).
+
+When the official docs describe a component measurement or role but no exact token path exists in the cache, do not invent an approximate or "closest compatible" public `--md-comp-*` token. Use a `--md-private-*` implementation variable resolved from existing `--md-sys-*`/`--md-comp-*` tokens, a system token directly, or an app/project token depending on ownership, and document the mapping and the missing-token gap in the component policy or Storybook docs.
 
 Do not invent local `--md-comp-*` tokens for app-specific behavior. Use the neutral `--app-*` namespace for app-specific extensions.
 

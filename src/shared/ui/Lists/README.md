@@ -70,7 +70,7 @@ Owns list-level style, semantics, and selection context.
 - Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`), `is`
 - Emits: `update:modelValue`
 - Provides: list context to descendant items via `provideMDListContext`
-- Owns: `listbox` / `list` container role, roving keyboard focus for selection lists
+- Owns: `listbox` / `list` container role, roving keyboard focus for selection lists, and keyboard navigation for single-action/multi-action rows
 
 Selection-list keyboard contract for the current vertical `listbox`:
 
@@ -81,6 +81,16 @@ Selection-list keyboard contract for the current vertical `listbox`:
 - `ArrowLeft` / `ArrowRight`: not handled as vertical listbox navigation
 
 Horizontal listbox behavior is intentionally unsupported until the component exposes explicit orientation support and `aria-orientation`.
+
+A selection-mode `MDList` renders `role="listbox"` and must have an accessible name via `aria-label` or `aria-labelledby`. In development, a missing accessible name triggers a `console.warn`; this is not enforceable at the type level because attribute fallthrough is not visible to props typing.
+
+Non-selection-mode keyboard contract for `single-action` and `multi-action` `MDListItem` rows (the action surfaces remain individually part of the normal Tab order; these keys are an additional Material List navigation layer on top of Tab, not a roving-tabindex composite widget):
+
+- `ArrowDown` / `ArrowUp`: move focus to the next/previous enabled row's action in the same column (primary stays primary, trailing stays trailing when the target row has one, otherwise falls back to that row's primary action)
+- `ArrowLeft` / `ArrowRight`: move focus between a multi-action row's primary action and its trailing action (no-op when the row has no trailing action)
+- `Home` / `End`: move focus to the first/last enabled row's action in the current column
+- `Space` / `Enter`: activates the focused action through the native button/link element itself; trailing and primary actions remain fully independent and neither one activates the other
+- Disabled rows are skipped
 
 Nested selection lists (an `MDList` rendered inside another selection list's item content) are containment-safe: `useListSelectionKeyboard` respects `event.defaultPrevented` (a keydown already handled and prevented elsewhere is skipped), resolves ownership against this list's own Vue-owned registry only (`resolveOwnSelectionItemTarget` in `listSelectionItemNavigation.ts`), and stops propagation once it handles a roving-focus key, so a bubbled keydown or focusin from a nested list never moves the outer list's focus or tab stops.
 
@@ -187,8 +197,8 @@ The `list-item` path segment is part of the documented token and is preserved, n
 | `--md-comp-list-list-item-dragged-container-expressive-shape`                                        | `md.comp.list.list-item.dragged.container.expressive.shape`               | Dragged row shape; defaults to `16dp`                                                        |
 | `--md-comp-list-list-item-dragged-container-elevation`                                               | `md.comp.list.list-item.dragged.container.elevation`                      | Dragged row elevation; defaults to `md.sys.elevation.level4`                                 |
 | `--md-comp-list-list-item-dragged-label-text-color`                                                  | `md.comp.list.list-item.dragged.label-text.color`                         | Dragged row label color; defaults to `on-surface`                                            |
-| `--md-comp-list-list-item-dragged-leading-icon-color`                                                | `md.comp.list.list-item.dragged.leading-icon.icon.color`                  | Dragged row leading icon color; defaults to `on-surface-variant`                             |
-| `--md-comp-list-list-item-dragged-trailing-icon-color`                                               | `md.comp.list.list-item.dragged.trailing-icon.icon.color`                 | Dragged row trailing icon color; defaults to `on-surface-variant`                            |
+| `--md-comp-list-list-item-dragged-leading-icon-icon-color`                                           | `md.comp.list.list-item.dragged.leading-icon.icon.color`                  | Dragged row leading icon color; defaults to `on-surface-variant`                             |
+| `--md-comp-list-list-item-dragged-trailing-icon-icon-color`                                          | `md.comp.list.list-item.dragged.trailing-icon.icon.color`                 | Dragged row trailing icon color; defaults to `on-surface-variant`                            |
 | `--md-comp-list-list-item-dragged-state-layer-color`                                                 | `md.comp.list.list-item.dragged.state-layer.color`                        | Dragged row state-layer color; defaults to `on-surface`                                      |
 | `--md-comp-list-list-item-selected-container-expressive-shape`                                       | `md.comp.list.list-item.selected.container.expressive.shape`              | Selected row shape; defaults to `16dp`                                                       |
 | `--md-comp-list-list-item-label-text-color`                                                          | `md.comp.list.list-item.label-text.color`                                 | Label text color; defaults to `on-surface`                                                   |
@@ -223,6 +233,8 @@ The `list-item` path segment is part of the documented token and is preserved, n
 | `--md-comp-list-list-item-disabled-leading-icon-color`                                               | `md.comp.list.list-item.disabled.leading-icon.color`                      | Disabled row leading icon color                                                              |
 | `--md-comp-list-list-item-disabled-supporting-text-color`                                            | `md.comp.list.list-item.disabled.supporting-text.color`                   | Disabled row supporting text color                                                           |
 | `--md-comp-list-list-item-disabled-trailing-icon-color`                                              | `md.comp.list.list-item.disabled.trailing-icon.color`                     | Disabled row trailing icon color                                                             |
+| `--md-comp-list-list-item-disabled-overline-color`                                                   | `md.comp.list.list-item.disabled.overline.color`                          | Disabled row overline color                                                                  |
+| `--md-comp-list-list-item-disabled-overline-opacity`                                                 | `md.comp.list.list-item.disabled.overline.opacity`                        | Disabled overline alpha; defaults to `0.38`                                                  |
 | `--md-comp-list-list-item-one-line-container-height`                                                 | `md.comp.list.list-item.one-line.container.height`                        | One-line row height; defaults to `56dp`                                                      |
 | `--md-comp-list-list-item-two-line-container-height`                                                 | `md.comp.list.list-item.two-line.container.height`                        | Two-line row height; defaults to `72dp`                                                      |
 | `--md-comp-list-list-item-three-line-container-height`                                               | `md.comp.list.list-item.three-line.container.height`                      | Three-line row height; defaults to `88dp`                                                    |
@@ -284,7 +296,8 @@ treatment, which none currently do.
 | `--md-private-list-item-disabled-label-text-color`       | (resolved)                  | —           | Alpha-composed `rgb(from on-surface ... / 0.38)` actually painted for disabled label text; the public `--md-comp-list-list-item-disabled-label-text-color` token itself stays a raw color role per the documented color/opacity token split                                                                                                                                                              |
 | `--md-private-list-item-disabled-leading-icon-color`     | (resolved)                  | —           | Alpha-composed disabled leading icon color, same color/opacity split as above                                                                                                                                                                                                                                                                                                                            |
 | `--md-private-list-item-disabled-trailing-icon-color`    | (resolved)                  | —           | Alpha-composed disabled trailing icon color, same color/opacity split as above                                                                                                                                                                                                                                                                                                                           |
-| `--md-private-list-item-disabled-supporting-text-color`  | (resolved)                  | —           | Alpha-composed disabled supporting-text/overline color, same color/opacity split as above                                                                                                                                                                                                                                                                                                                |
+| `--md-private-list-item-disabled-supporting-text-color`  | (resolved)                  | —           | Alpha-composed disabled supporting-text color, same color/opacity split as above                                                                                                                                                                                                                                                                                                                         |
+| `--md-private-list-item-disabled-overline-color`         | (resolved)                  | —           | Alpha-composed disabled overline color, resolved from the public `--md-comp-list-list-item-disabled-overline-color`/`-opacity` tokens (overline has its own documented disabled color/opacity pair, distinct from supporting-text)                                                                                                                                                                       |
 | `--md-private-list-item-dragged-elevation`               | `--md-sys-elevation-level4` | MDListItem  | Dragged elevation `box-shadow`, applied in `MDListItem.vue`'s scoped style; resolves the public `--md-comp-list-list-item-dragged-container-elevation` token                                                                                                                                                                                                                                             |
 
 The former `--md-private-list-item-content-padding-inline-start`, `-content-padding-inline-end`, `-content-padding-block`, `-leading-space`, `-trailing-space`, and `-segmented-gap` private variables were removed. Their spacing is now owned directly by the public `--md-comp-list-list-item-between-space` / `-top-space` / `-bottom-space` / `-leading-space` / `-trailing-space` and `--md-comp-list-segmented-gap` tokens documented above — there is no private duplicate sitting in front of them.
@@ -380,6 +393,8 @@ If a future change needs anatomy that diverges between `MDListItem` and `MDListS
 | `useListItemAnatomy.ts`          | Shared anatomy computeds (slot detection, line count, host style) used by MDListItem and MDListSelectionItem |
 | `listSelectionItemNavigation.ts` | Roving tab-stop and keyboard navigation for listbox selection items                                          |
 | `useListSelectionKeyboard.ts`    | Composable that wires keyboard/focus lifecycle into MDList                                                   |
+| `listActionItemNavigation.ts`    | Primary/trailing action target resolution for single-action/multi-action keyboard navigation                 |
+| `useListActionKeyboard.ts`       | Composable that wires single-action/multi-action keyboard navigation into MDList                             |
 
 ## Intentionally unsupported
 
@@ -394,7 +409,6 @@ If a future change needs anatomy that diverges between `MDListItem` and `MDListS
 
 ## Known limitations
 
-- **Multi-action keyboard traversal**: keyboard traversal between primary and trailing action within one multi-action item is partial. The trailing action is only reachable by Tab; no explicit arrow-key navigation between primary and trailing action is implemented.
 - **Expressive geometry verification**: row heights, segmented gap, item shapes, and selected color roles are aligned to the `material3` MCP List specs snapshot (m3.material.io). Full Figma Design Kit verification has not been completed. This README is a secondary local reference only; the `material3` MCP server remains the source of truth for Material values.
 - **Dragged state colors**: see "Dragged state" section above. Implemented from the literal `material3` MCP List Common spec token table (resting container color, on-surface/on-surface-variant content, M3 Elevation 4). The Figma Material 3 Expressive Kit's dragged child node could not be re-verified this pass (Figma MCP tool call limit reached) — do not treat this as Figma-confirmed.
 

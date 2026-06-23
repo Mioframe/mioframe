@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useAttrs, useSlots, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useAttrs, useSlots, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import {
   warnListItemInsideSelectionList,
@@ -126,6 +126,17 @@ const buttonType = computed(() => (props.href ? undefined : props.nativeType));
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const primaryActionEl = useTemplateRef<HTMLElement>('primaryActionEl');
+const trailingActionEl = useTemplateRef<HTMLElement>('trailingActionEl');
+
+/**
+ * Resolves the focusable element inside the trailing action slot. Bounded to this row's
+ * own trailing wrapper only — the slot content is consumer-owned (typically one icon
+ * button), so this narrow lookup resolves which element keyboard traversal should focus
+ * without MDListItem needing to know the consumer's markup shape.
+ * @returns The focusable trailing action element, or `null` when absent.
+ */
+const getTrailingFocusableElement = (): HTMLElement | null =>
+  trailingActionEl.value?.querySelector<HTMLElement>('button, a[href], [tabindex]') ?? null;
 const interactiveSurfaceEl = computed(() => {
   if (usesInternalActionSurface.value) {
     return primaryActionEl.value;
@@ -226,6 +237,24 @@ if (import.meta.env.DEV) {
   });
 }
 
+let unregisterActionItem: (() => void) | null = null;
+
+onMounted(() => {
+  if (usesInternalActionSurface.value && inList.value) {
+    unregisterActionItem =
+      listContext?.actionRegistry.registerItem({
+        getPrimaryElement: () => primaryActionEl.value ?? null,
+        getTrailingElement: getTrailingFocusableElement,
+        isPrimaryDisabled: () => props.disabled,
+      }) ?? null;
+  }
+});
+
+onBeforeUnmount(() => {
+  unregisterActionItem?.();
+  unregisterActionItem = null;
+});
+
 useRipple(computed(() => (!props.disabled ? interactiveSurfaceEl.value : undefined)));
 
 defineExpose({
@@ -310,7 +339,7 @@ defineExpose({
         the primary action (grid-stacked underneath, see listItemAnatomy.css). The slot
         content (icon button) restores its own pointer-events via the browser default.
       -->
-      <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
+      <span v-if="hasTrailingAction" ref="trailingActionEl" class="md-list-item__trailing-action">
         <slot name="trailingAction" />
       </span>
     </template>

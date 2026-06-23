@@ -28,6 +28,24 @@ export interface MDListSelectionRegistry {
   registerItem: (item: MDListSelectionItemRecord) => () => void;
 }
 
+/** Live registration contract for one single-action/multi-action row owned by an `MDList`. */
+export interface MDListActionItemRecord {
+  /** Returns the current primary action element, or null when not yet mounted. */
+  getPrimaryElement: () => HTMLElement | null;
+  /** Returns the current trailing action's focusable element, or null when absent. */
+  getTrailingElement: () => HTMLElement | null;
+  /** Returns whether the primary action is currently disabled. */
+  isPrimaryDisabled: () => boolean;
+}
+
+/** Vue-owned registry of single-action/multi-action rows for one `MDList` instance. */
+export interface MDListActionRegistry {
+  /** Returns the current registered rows for this list only. */
+  getItems: () => readonly MDListActionItemRecord[];
+  /** Registers one owned row and returns its unregister callback. */
+  registerItem: (item: MDListActionItemRecord) => () => void;
+}
+
 /** Reactive list container state shared with descendant items. */
 export interface MDListContextValue {
   /** Semantic wrapper tag each item should render. */
@@ -44,6 +62,8 @@ export interface MDListContextValue {
   selectItem: (value: MDListSelectionValue | undefined) => void;
   /** Vue-owned selection registry for this list's option items. */
   selectionRegistry: MDListSelectionRegistry;
+  /** Vue-owned registry for this list's single-action/multi-action rows. */
+  actionRegistry: MDListActionRegistry;
 }
 
 const LIST_CONTEXT_KEY: InjectionKey<MDListContextValue> = Symbol('md-list-context');
@@ -73,6 +93,7 @@ export const provideMDListContext = (
   onUpdateModelValue: (value: MDListModelValue) => void,
 ) => {
   const selectionItems: MDListSelectionItemRecord[] = [];
+  const actionItems: MDListActionItemRecord[] = [];
   const selectedValues = computed<readonly MDListSelectionValue[]>(() => {
     if (selectionMode.value === 'none') {
       return [];
@@ -125,6 +146,20 @@ export const provideMDListContext = (
 
           if (index >= 0) {
             selectionItems.splice(index, 1);
+          }
+        };
+      },
+    },
+    actionRegistry: {
+      getItems: () => actionItems,
+      registerItem(item) {
+        actionItems.push(item);
+
+        return () => {
+          const index = actionItems.indexOf(item);
+
+          if (index >= 0) {
+            actionItems.splice(index, 1);
           }
         };
       },

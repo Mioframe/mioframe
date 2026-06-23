@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
-import { useWarnSelectionListTagMismatch } from './listDevWarnings';
+import { computed, useAttrs, useTemplateRef } from 'vue';
+import {
+  useWarnSelectionListMissingAccessibleName,
+  useWarnSelectionListTagMismatch,
+} from './listDevWarnings';
 import {
   provideMDListContext,
   type MDListModelValue,
   type MDListSelectionMode,
   type MDListStyle,
 } from './listContext';
+import { useListActionKeyboard } from './useListActionKeyboard';
 import { useListSelectionKeyboard } from './useListSelectionKeyboard';
 
 defineOptions({
@@ -84,6 +88,22 @@ const containerRole = computed(() => {
 const selectionActive = computed(() => props.selectionMode !== 'none');
 
 useListSelectionKeyboard(getContainerElement, selectionActive, listContext.selectionRegistry);
+
+const attrs = useAttrs();
+const hasAccessibleName = computed(
+  () => typeof attrs['aria-label'] === 'string' || typeof attrs['aria-labelledby'] === 'string',
+);
+
+useWarnSelectionListMissingAccessibleName(
+  computed(() => containerRole.value === 'listbox'),
+  hasAccessibleName,
+);
+
+useListActionKeyboard(
+  getContainerElement,
+  computed(() => !selectionActive.value),
+  listContext.actionRegistry,
+);
 </script>
 
 <template>

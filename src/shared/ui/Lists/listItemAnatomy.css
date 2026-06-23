@@ -28,10 +28,12 @@
   --md-comp-list-list-item-disabled-leading-icon-opacity: 0.38;
   --md-comp-list-list-item-disabled-trailing-icon-opacity: 0.38;
   --md-comp-list-list-item-disabled-supporting-text-opacity: 0.38;
+  --md-comp-list-list-item-disabled-overline-opacity: 0.38;
   --md-comp-list-list-item-disabled-label-text-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-disabled-leading-icon-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-disabled-supporting-text-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-disabled-trailing-icon-color: var(--md-sys-color-on-surface);
+  --md-comp-list-list-item-disabled-overline-color: var(--md-sys-color-on-surface);
   --md-private-list-item-disabled-label-text-color: rgb(
     from var(--md-comp-list-list-item-disabled-label-text-color) r g b /
       var(--md-comp-list-list-item-disabled-label-text-opacity)
@@ -47,6 +49,10 @@
   --md-private-list-item-disabled-trailing-icon-color: rgb(
     from var(--md-comp-list-list-item-disabled-trailing-icon-color) r g b /
       var(--md-comp-list-list-item-disabled-trailing-icon-opacity)
+  );
+  --md-private-list-item-disabled-overline-color: rgb(
+    from var(--md-comp-list-list-item-disabled-overline-color) r g b /
+      var(--md-comp-list-list-item-disabled-overline-opacity)
   );
   --md-comp-list-list-item-label-text-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-label-text-font: var(--md-sys-typescale-body-large-font);
@@ -86,8 +92,8 @@
   --md-comp-list-list-item-dragged-container-expressive-shape: 16dp;
   --md-comp-list-list-item-dragged-container-elevation: var(--md-sys-elevation-level4);
   --md-comp-list-list-item-dragged-label-text-color: var(--md-sys-color-on-surface);
-  --md-comp-list-list-item-dragged-leading-icon-color: var(--md-sys-color-on-surface-variant);
-  --md-comp-list-list-item-dragged-trailing-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-dragged-leading-icon-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-comp-list-list-item-dragged-trailing-icon-icon-color: var(--md-sys-color-on-surface-variant);
   --md-comp-list-list-item-dragged-state-layer-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-selected-container-color: var(--md-sys-color-secondary-container);
   --md-comp-list-list-item-selected-disabled-container-opacity: 0.38;
@@ -248,10 +254,10 @@
   );
   --md-comp-list-list-item-label-text-color: var(--md-comp-list-list-item-dragged-label-text-color);
   --md-comp-list-list-item-leading-icon-color: var(
-    --md-comp-list-list-item-dragged-leading-icon-color
+    --md-comp-list-list-item-dragged-leading-icon-icon-color
   );
   --md-comp-list-list-item-trailing-icon-color: var(
-    --md-comp-list-list-item-dragged-trailing-icon-color
+    --md-comp-list-list-item-dragged-trailing-icon-icon-color
   );
   --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-dragged-state-layer-color);
 }
@@ -267,9 +273,7 @@
   --md-comp-list-list-item-leading-icon-color: var(
     --md-private-list-item-disabled-leading-icon-color
   );
-  --md-comp-list-list-item-overline-color: var(
-    --md-private-list-item-disabled-supporting-text-color
-  );
+  --md-comp-list-list-item-overline-color: var(--md-private-list-item-disabled-overline-color);
   --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-disabled-label-text-color);
   --md-comp-list-list-item-supporting-text-color: var(
     --md-private-list-item-disabled-supporting-text-color
