@@ -341,6 +341,49 @@ describe('MDList', () => {
     expect(outerOptions[1]?.element.tabIndex).toBe(0);
   });
 
+  it('lets a nested action list handle its own ArrowDown/ArrowUp without moving the parent action list focus', async () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="Outer one" mode="single-action" />
+            <MDListItem label-text="Outer two" mode="multi-action">
+              <template #trailingAction>
+                <MDList>
+                  <MDListItem label-text="Inner one" mode="single-action" />
+                  <MDListItem label-text="Inner two" mode="single-action" />
+                </MDList>
+              </template>
+            </MDListItem>
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    const allActions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    const outerActions = allActions.filter(
+      (action) => !action.element.closest('.md-list-item__trailing-action'),
+    );
+    const innerActions = allActions.filter((action) =>
+      action.element.closest('.md-list-item__trailing-action'),
+    );
+
+    expect(outerActions).toHaveLength(2);
+    expect(innerActions).toHaveLength(2);
+
+    innerActions[0]?.element.focus();
+    await innerActions[0]?.trigger('keydown', { key: 'ArrowDown' });
+
+    // The inner list owns this row's traversal and must not move the outer list's
+    // roving focus, even though the inner list is nested inside the outer row's own
+    // trailing-action DOM subtree.
+    expect(document.activeElement).toBe(innerActions[1]?.element);
+
+    document.body.innerHTML = '';
+  });
+
   it('warns in development when MDListItem is used inside a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -708,6 +751,91 @@ describe('MDList', () => {
     expect(document.activeElement).toBe(actions[1]?.element);
 
     warnSpy.mockRestore();
+    document.body.innerHTML = '';
+  });
+
+  it('keeps keyboard listeners attached across a tag="ul" + selectionMode round trip that swaps the root element', async () => {
+    const selectionMode = ref<'none' | 'single'>('none');
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        setup: () => ({ selectionMode }),
+        template: `
+          <MDList tag="ul" :selection-mode="selectionMode" aria-label="Rows">
+            <MDListItem label-text="One" mode="single-action" />
+            <MDListItem label-text="Two" mode="single-action" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    // tag="ul": root renders as a UL and action rows take part in keyboard navigation.
+    expect(wrapper.element.tagName).toBe('UL');
+    let actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[1]?.element);
+
+    // selectionMode="single": MDList swaps its root tag to DIV regardless of `tag`. The
+    // listener must follow the new live root rather than staying attached to the
+    // discarded UL.
+    selectionMode.value = 'single';
+    await nextTick();
+    expect(wrapper.element.tagName).toBe('DIV');
+
+    // Back to selectionMode="none": the root swaps back to UL. Keyboard traversal must
+    // still work on the new live root, proving the listener followed both swaps and was
+    // not left stale on a detached element.
+    selectionMode.value = 'none';
+    await nextTick();
+    expect(wrapper.element.tagName).toBe('UL');
+    actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[1]?.element);
+
+    await actions[1]?.trigger('keydown', { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(actions[0]?.element);
+
+    document.body.innerHTML = '';
+  });
+
+  it('does not duplicate keyboard handling after repeated tag/selectionMode root-element swaps', async () => {
+    const selectionMode = ref<'none' | 'single'>('none');
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        setup: () => ({ selectionMode }),
+        template: `
+          <MDList tag="ul" :selection-mode="selectionMode" aria-label="Rows">
+            <MDListItem label-text="One" mode="single-action" />
+            <MDListItem label-text="Two" mode="single-action" />
+            <MDListItem label-text="Three" mode="single-action" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    for (let i = 0; i < 3; i += 1) {
+      selectionMode.value = 'single';
+      // eslint-disable-next-line no-await-in-loop -- each iteration must settle the root-element swap before the next toggle
+      await nextTick();
+      selectionMode.value = 'none';
+      // eslint-disable-next-line no-await-in-loop -- each iteration must settle the root-element swap before the next toggle
+      await nextTick();
+    }
+
+    const actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+
+    // A duplicated listener would call preventDefault()/focus() more than once per
+    // dispatch, which getNextEnabledActionTarget's single-step navigation would surface
+    // as landing two rows down instead of one.
+    expect(document.activeElement).toBe(actions[1]?.element);
+
     document.body.innerHTML = '';
   });
 

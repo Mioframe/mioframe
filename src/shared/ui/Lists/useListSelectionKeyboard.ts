@@ -10,12 +10,13 @@ import {
 /**
  * Wires roving keyboard navigation and tab-stop synchronization for a listbox
  * container. Only active when `enabled` is true (i.e. when selectionMode !== 'none').
- * @param getContainer - Returns the live container element, or null when unmounted.
+ * @param containerRef - Live container element ref; the listener follows the element when
+ * `MDList` swaps its root tag (e.g. `selectionMode`/`tag` changes), null when unmounted.
  * @param enabled - Whether to attach keyboard navigation (false = selection mode is none).
  * @param selectionRegistry - Vue-owned option registry for the current MDList instance.
  */
 export const useListSelectionKeyboard = (
-  getContainer: () => HTMLElement | null,
+  containerRef: Readonly<Ref<HTMLElement | null>>,
   enabled: Ref<boolean>,
   selectionRegistry: MDListSelectionRegistry,
 ) => {
@@ -24,7 +25,7 @@ export const useListSelectionKeyboard = (
       return;
     }
 
-    const container = getContainer();
+    const container = containerRef.value;
     const currentTarget = event.target;
 
     if (!(container && currentTarget instanceof HTMLElement)) {
@@ -98,26 +99,40 @@ export const useListSelectionKeyboard = (
   };
 
   const syncTabStops = () => {
-    const container = getContainer();
-    if (container) {
+    if (containerRef.value) {
       syncListSelectionItemTabStops(selectionRegistry);
     }
   };
 
-  onMounted(() => {
-    const container = getContainer();
-    container?.addEventListener('focusin', handleFocusin);
-    container?.addEventListener('keydown', handleKeydown);
-    void nextTick(syncTabStops);
-  });
+  let attachedContainer: HTMLElement | null = null;
+
+  const syncContainer = () => {
+    const nextContainer = containerRef.value;
+
+    if (nextContainer === attachedContainer) {
+      return;
+    }
+
+    attachedContainer?.removeEventListener('focusin', handleFocusin);
+    attachedContainer?.removeEventListener('keydown', handleKeydown);
+    nextContainer?.addEventListener('focusin', handleFocusin);
+    nextContainer?.addEventListener('keydown', handleKeydown);
+    attachedContainer = nextContainer;
+
+    if (nextContainer) {
+      void nextTick(syncTabStops);
+    }
+  };
+
+  onMounted(syncContainer);
 
   onUnmounted(() => {
-    const container = getContainer();
-    container?.removeEventListener('focusin', handleFocusin);
-    container?.removeEventListener('keydown', handleKeydown);
+    attachedContainer?.removeEventListener('focusin', handleFocusin);
+    attachedContainer?.removeEventListener('keydown', handleKeydown);
   });
 
   onUpdated(() => {
+    syncContainer();
     void nextTick(syncTabStops);
   });
 };

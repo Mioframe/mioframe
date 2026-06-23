@@ -41,8 +41,6 @@ defineSlots<{
 
 const containerEl = useTemplateRef<HTMLElement>('containerEl');
 
-const getContainerElement = (): HTMLElement | null => containerEl.value;
-
 const resolvedListStyle = computed<MDListStyle>(() => props.listStyle);
 
 const resolvedTag = computed<'div' | 'ul'>(() =>
@@ -74,7 +72,7 @@ const containerRole = computed(() => {
 
 const selectionActive = computed(() => props.selectionMode !== 'none');
 
-useListSelectionKeyboard(getContainerElement, selectionActive, listContext.selectionRegistry);
+useListSelectionKeyboard(containerEl, selectionActive, listContext.selectionRegistry);
 
 const attrs = useAttrs();
 const hasAccessibleName = computed(
@@ -87,7 +85,7 @@ useWarnSelectionListMissingAccessibleName(
 );
 
 useListActionKeyboard(
-  getContainerElement,
+  containerEl,
   computed(() => !selectionActive.value),
   listContext.actionRegistry,
 );

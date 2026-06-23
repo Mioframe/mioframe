@@ -86,11 +86,15 @@ const getRowSnapshots = (registry: MDListActionRegistry): MDListActionRowSnapsho
     .filter((row): row is MDListActionRowSnapshot => row !== null)
     .sort((left, right) => compareItemOrder(left.primaryElement, right.primaryElement));
 
+/** Stable marker classes that exist on every MDListItem action surface, own or nested. */
+const ACTION_SURFACE_SELECTOR = '.md-list-item__primary-action, .md-list-item__trailing-action';
+
 /**
  * Resolves the row and column a DOM event target belongs to, scoped to this list's own
- * registry only. A nested `MDList` renders inside one row's primary/trailing DOM subtree,
- * so an event whose nearest registered row element does not equal the bubbled target's own
- * closest action element originated in a nested list and must be ignored here.
+ * registry only. A nested `MDList` can render inside one row's primary/trailing DOM
+ * subtree, so a bubbled event whose nearest action-surface ancestor is not itself this
+ * row's own primary/trailing surface originated in a nested list and must be ignored here
+ * — symmetric to the selection-list `[role="option"]` ownership guard.
  * @param registry - Vue-owned registry for this list's action rows.
  * @param eventTarget - The DOM event target to resolve ownership for.
  * @returns The owning row and column, or `null` when the event belongs to a nested list.
@@ -100,17 +104,20 @@ export const resolveOwnActionItemTarget = (
   eventTarget: HTMLElement,
 ): { row: MDListActionRowSnapshot; column: MDListActionColumn } | null => {
   const rows = getRowSnapshots(registry);
+  const nearestSurface = eventTarget.closest<HTMLElement>(ACTION_SURFACE_SELECTOR);
 
   for (const row of rows) {
     if (row.primaryElement === eventTarget || row.primaryElement.contains(eventTarget)) {
-      return { row, column: 'primary' };
+      return nearestSurface === row.primaryElement ? { row, column: 'primary' } : null;
     }
 
     if (
       row.trailingElement &&
       (row.trailingElement === eventTarget || row.trailingElement.contains(eventTarget))
     ) {
-      return { row, column: 'trailing' };
+      const trailingSurface = row.trailingElement.closest<HTMLElement>(ACTION_SURFACE_SELECTOR);
+
+      return nearestSurface === trailingSurface ? { row, column: 'trailing' } : null;
     }
   }
 

@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, type Ref } from 'vue';
+import { onMounted, onUnmounted, onUpdated, type Ref } from 'vue';
 import type { MDListActionRegistry } from './listContext';
 import {
   getActionRowCounterpart,
@@ -12,12 +12,13 @@ import {
  * same action column, `ArrowLeft`/`ArrowRight` move between a row's primary and trailing
  * action, and `Home`/`End` move to the first/last enabled row in the current column.
  * `Space`/`Enter` activation is handled by the focused native button/link itself.
- * @param getContainer - Returns the live container element, or null when unmounted.
+ * @param containerRef - Live container element ref; the listener follows the element when
+ * `MDList` swaps its root tag (e.g. `selectionMode`/`tag` changes), null when unmounted.
  * @param enabled - Whether to attach keyboard navigation (false = selection mode is active).
  * @param actionRegistry - Vue-owned row registry for the current MDList instance.
  */
 export const useListActionKeyboard = (
-  getContainer: () => HTMLElement | null,
+  containerRef: Readonly<Ref<HTMLElement | null>>,
   enabled: Ref<boolean>,
   actionRegistry: MDListActionRegistry,
 ) => {
@@ -85,11 +86,24 @@ export const useListActionKeyboard = (
     event.stopPropagation();
   };
 
-  onMounted(() => {
-    getContainer()?.addEventListener('keydown', handleKeydown);
-  });
+  let attachedContainer: HTMLElement | null = null;
+
+  const syncContainer = () => {
+    const nextContainer = containerRef.value;
+
+    if (nextContainer === attachedContainer) {
+      return;
+    }
+
+    attachedContainer?.removeEventListener('keydown', handleKeydown);
+    nextContainer?.addEventListener('keydown', handleKeydown);
+    attachedContainer = nextContainer;
+  };
+
+  onMounted(syncContainer);
+  onUpdated(syncContainer);
 
   onUnmounted(() => {
-    getContainer()?.removeEventListener('keydown', handleKeydown);
+    attachedContainer?.removeEventListener('keydown', handleKeydown);
   });
 };
