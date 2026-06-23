@@ -50,6 +50,21 @@ const dedupeApiFetch = dedupe(apiFetch);
  * @param options - Optional request options, including auth and query parameters.
  * @returns Successful response or a normalized GoogleDriveError.
  */
+/**
+ * Parses a Google Drive error response body into a stable HTTP-like code.
+ * Falls back to a generic code when the body is missing or does not match
+ * the expected Google error shape, instead of letting a parse error escape unwrapped.
+ * @param errorBody - Parsed JSON body of a failed Google Drive response (or `{}`).
+ * @returns Stable HTTP-like status code for the failure.
+ */
+const parseGoogleErrorCode = (errorBody: unknown): HttpStatusCode => {
+  try {
+    return zodGoogleErrorResponse.parse(errorBody).error.code;
+  } catch {
+    return HttpStatusCode.BAD_GATEWAY;
+  }
+};
+
 const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response> => {
   try {
     const response = options?.dedupe
@@ -62,13 +77,9 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
         .json()
         .catch(() => ({}));
 
-      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
-
-      const { code } = googleError;
-
       throw new GoogleDriveError(
         {
-          code,
+          code: parseGoogleErrorCode(errorBody),
           message: 'Google Drive request failed',
         },
         { cause: createSafeErrorCause('Google Drive API request failed') },
@@ -83,20 +94,26 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
         .json()
         .catch(() => ({}));
 
-      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
-
-      const { code } = googleError;
-
       throw new GoogleDriveError(
         {
-          code,
+          code: parseGoogleErrorCode(errorBody),
           message: 'Google Drive request failed',
         },
         { cause: createSafeErrorCause('Google Drive API request failed') },
       );
     }
 
-    throw e;
+    if (e instanceof GoogleDriveError) {
+      throw e;
+    }
+
+    throw new GoogleDriveError(
+      {
+        code: HttpStatusCode.SERVICE_UNAVAILABLE,
+        message: 'Google Drive request failed',
+      },
+      { cause: createSafeErrorCause('Google Drive network request failed') },
+    );
   }
 };
 
@@ -136,7 +153,19 @@ const authorizedRequest = async <R>(
     .clone()
     .json();
 
-  const result = responseSchema.parse(response);
+  let result: R;
+
+  try {
+    result = responseSchema.parse(response);
+  } catch {
+    throw new GoogleDriveError(
+      {
+        code: HttpStatusCode.BAD_GATEWAY,
+        message: 'Google Drive response was malformed',
+      },
+      { cause: createSafeErrorCause('Google Drive response could not be parsed') },
+    );
+  }
 
   return { result };
 };
