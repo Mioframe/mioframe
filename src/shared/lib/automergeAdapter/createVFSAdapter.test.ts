@@ -766,7 +766,7 @@ describe('createVFSAdapter – remove deletes matching legacy and v2 files', () 
     expect(names).toEqual([copiedName]);
   });
 
-  it('does not blindly remove an invalid primary v3 file', async () => {
+  it('removes a non-empty invalid primary v3 file by filename when its full key is known', async () => {
     const { vfs, path } = await setupVfs();
     const docId = getDocumentId();
     const key: StorageKey = [docId, 'snapshot', HASH_A];
@@ -778,7 +778,7 @@ describe('createVFSAdapter – remove deletes matching legacy and v2 files', () 
     await adapter.remove(key);
 
     const names = (await vfs.readDirectory(path)).map(([name]) => name);
-    expect(names).toEqual([primaryName]);
+    expect(names).toEqual([]);
   });
 });
 
