@@ -28,7 +28,7 @@ export const WithInstallPrompt: Story = {
       });
     },
     components: { PwaInstallSettingsListItem, MDList },
-    template: '<MDList is="div"><PwaInstallSettingsListItem /></MDList>',
+    template: '<MDList tag="div"><PwaInstallSettingsListItem /></MDList>',
   }),
 };
 
@@ -40,6 +40,6 @@ export const WithoutInstallPrompt: Story = {
       retainedPrompt.value = null;
     },
     components: { PwaInstallSettingsListItem, MDList },
-    template: '<MDList is="div"><PwaInstallSettingsListItem /></MDList>',
+    template: '<MDList tag="div"><PwaInstallSettingsListItem /></MDList>',
   }),
 };

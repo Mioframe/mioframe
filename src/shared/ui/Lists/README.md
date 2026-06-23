@@ -25,7 +25,7 @@ components does not imply it is part of the Material 3 Expressive contract. The 
 | `selectionMode: 'none'`             | `MDList`                             | Mioframe API control | Disables selection-list behavior/ARIA. It is the absence of selection, not a documented Material selection category.                   |
 | `leadingType: 'control'`            | `MDListItem` / `MDListSelectionItem` | Mioframe abstraction | An internal placement hint for where a selection control (checkmark) sits in the leading slot. Not a documented Material leading type. |
 | item-level `mode` on selection rows | `MDListSelectionItem`                | N/A (no `mode`)      | `MDListSelectionItem` has no `mode` prop; selection rows are always selectable options owned by the list.                              |
-| `tag`, `is`, `containerTag`         | `MDList`, `MDListItem`               | Vue/HTML/platform    | Root/container element tag overrides (e.g. `div` vs `ul`/`li`). Pure Vue/DOM rendering controls.                                       |
+| `tag`, `containerTag`               | `MDList`, `MDListItem`               | Vue/HTML/platform    | Root/container element tag overrides (e.g. `div` vs `ul`/`li`). Pure Vue/DOM rendering controls.                                       |
 | `nativeType`                        | `MDListItem`                         | Vue/HTML/platform    | Native `<button type>` passthrough for single-action rows. HTML semantics, not Material.                                               |
 | `href`                              | `MDListItem`                         | Vue/HTML/platform    | Renders the action surface as `<a>` instead of `<button>`. HTML semantics, not Material.                                               |
 
@@ -67,7 +67,7 @@ topology and is mutually exclusive with selection semantics (see "Unsupported co
 
 Owns list-level style, semantics, and selection context.
 
-- Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`), `is`
+- Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`)
 - Emits: `update:modelValue`
 - Provides: list context to descendant items via `provideMDListContext`
 - Owns: `listbox` / `list` container role, roving keyboard focus for selection lists, and keyboard navigation for single-action/multi-action rows

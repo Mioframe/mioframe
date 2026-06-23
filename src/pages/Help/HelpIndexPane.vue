@@ -34,7 +34,7 @@ const onSelectArticle = async (slug: string) => {
         Read data storage, backup, restore, and troubleshooting guides.
       </p>
 
-      <MDList is="div">
+      <MDList tag="div">
         <MDListItem
           v-for="article in helpCatalog"
           :key="article.slug"

@@ -19,7 +19,6 @@ defineOptions({
 
 const props = withDefaults(
   defineProps<{
-    is?: 'div' | 'ul' | undefined;
     modelValue?: MDListModelValue;
     listStyle?: MDListStyle | undefined;
     selectionMode?: MDListSelectionMode | undefined;
@@ -40,26 +39,14 @@ defineSlots<{
   default: () => unknown;
 }>();
 
-const containerEl = useTemplateRef('containerEl');
+const containerEl = useTemplateRef<HTMLElement>('containerEl');
 
-const getContainerElement = (): HTMLElement | null => {
-  const value = containerEl.value;
-
-  if (value instanceof HTMLElement) {
-    return value;
-  }
-
-  if (value && typeof value === 'object' && '$el' in value && value.$el instanceof HTMLElement) {
-    return value.$el;
-  }
-
-  return null;
-};
+const getContainerElement = (): HTMLElement | null => containerEl.value;
 
 const resolvedListStyle = computed<MDListStyle>(() => props.listStyle);
 
 const resolvedTag = computed<'div' | 'ul'>(() =>
-  props.selectionMode === 'none' ? (props.is ?? props.tag) : 'div',
+  props.selectionMode === 'none' ? props.tag : 'div',
 );
 
 useWarnSelectionListTagMismatch(

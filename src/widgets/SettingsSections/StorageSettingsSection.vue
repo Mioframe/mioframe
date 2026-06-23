@@ -47,7 +47,7 @@ const onChange = async () => {
 
 <template>
   <SettingsSection title="Storage">
-    <MDList is="div">
+    <MDList tag="div">
       <SettingsCheckboxListItem
         headline="More reliable browser storage"
         :supporting-text="supportingText"

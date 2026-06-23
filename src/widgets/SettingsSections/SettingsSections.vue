@@ -56,13 +56,13 @@ const onClickAboutMioframe = () => {
     <StorageSettingsSection />
 
     <SettingsSection v-if="isSettingsEntryVisible" title="App">
-      <MDList is="div">
+      <MDList tag="div">
         <PwaInstallSettingsListItem />
       </MDList>
     </SettingsSection>
 
     <SettingsSection title="Privacy & diagnostics">
-      <MDList is="div">
+      <MDList tag="div">
         <SettingsCheckboxListItem
           headline="Error diagnostics"
           :supporting-text="
@@ -78,7 +78,7 @@ const onClickAboutMioframe = () => {
     </SettingsSection>
 
     <SettingsSection title="Integrations">
-      <MDList is="div">
+      <MDList tag="div">
         <SettingsCheckboxListItem
           headline="Google Drive"
           :supporting-text="
@@ -98,7 +98,7 @@ const onClickAboutMioframe = () => {
     </SettingsSection>
 
     <SettingsSection title="Home screen">
-      <MDList is="div">
+      <MDList tag="div">
         <SettingsCheckboxListItem
           headline="Starter examples"
           supporting-text="Show starter examples on the home screen."
@@ -109,7 +109,7 @@ const onClickAboutMioframe = () => {
     </SettingsSection>
 
     <SettingsSection title="Help">
-      <MDList is="div">
+      <MDList tag="div">
         <MDListItem mode="single-action" label-text="Privacy policy" @action="onClickPrivacyPolicy">
           <template #supportingText> Read how Mioframe handles privacy and diagnostics. </template>
         </MDListItem>
