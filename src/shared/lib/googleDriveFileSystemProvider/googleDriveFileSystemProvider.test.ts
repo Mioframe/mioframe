@@ -10,6 +10,8 @@ import {
 import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google/errors';
+import { GoogleDriveError } from '@shared/lib/googleDrive/error';
+import { HttpStatusCode } from '@shared/lib/error';
 
 const {
   createMock,
@@ -415,6 +417,39 @@ describe('googleDriveFileSystemProvider', () => {
       'cause.message',
       'Download failed for gd-123 at /user@example.com/My Drive/Taxes 2025.pdf',
     );
+  });
+
+  it('preserves the coded GoogleDriveError as the VfsError cause for media request failures', async () => {
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken: vi.fn().mockResolvedValue('token'),
+    });
+    getGFileMetaListMock.mockResolvedValueOnce({
+      files: [
+        {
+          id: 'gd-123',
+          name: 'Taxes 2025.pdf',
+          mimeType: 'application/pdf',
+          modifiedTime: '2024-01-01T00:00:00.000Z',
+        } satisfies GDriveFileMeta,
+      ],
+    });
+    const mediaRequestFailure = new GoogleDriveError({
+      code: HttpStatusCode.SERVICE_UNAVAILABLE,
+      message: 'Google Drive request failed',
+    });
+    downloadMock.mockRejectedValueOnce(mediaRequestFailure);
+
+    const error = await provider
+      .readFile('/user@example.com/My Drive/Taxes 2025.pdf')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.Unknown,
+      message: 'Google Drive download operation failed',
+      cause: mediaRequestFailure,
+    });
   });
 
   it('sanitizes raw upload failures during rollback while preserving the VfsError code', async () => {

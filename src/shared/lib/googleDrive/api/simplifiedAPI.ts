@@ -45,11 +45,20 @@ const apiFetch = (url: Input, options?: KyOptions) => apiClient(url, options);
 const dedupeApiFetch = dedupe(apiFetch);
 
 /**
- * Internal request handler with error normalization.
- * @param url - Request URL or Request object for the Google Drive API call.
- * @param options - Optional request options, including auth and query parameters.
- * @returns Successful response or a normalized GoogleDriveError.
+ * Parses a Google Drive error response body into a stable HTTP-like code.
+ * Falls back to a generic code when the body is missing or does not match
+ * the expected Google error shape, instead of letting a parse error escape unwrapped.
+ * @param errorBody - Parsed JSON body of a failed Google Drive response (or `{}`).
+ * @returns Stable HTTP-like status code for the failure.
  */
+const parseGoogleErrorCode = (errorBody: unknown): HttpStatusCode => {
+  try {
+    return zodGoogleErrorResponse.parse(errorBody).error.code;
+  } catch {
+    return HttpStatusCode.BAD_GATEWAY;
+  }
+};
+
 const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response> => {
   try {
     const response = options?.dedupe
@@ -62,13 +71,9 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
         .json()
         .catch(() => ({}));
 
-      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
-
-      const { code } = googleError;
-
       throw new GoogleDriveError(
         {
-          code,
+          code: parseGoogleErrorCode(errorBody),
           message: 'Google Drive request failed',
         },
         { cause: createSafeErrorCause('Google Drive API request failed') },
@@ -83,20 +88,26 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
         .json()
         .catch(() => ({}));
 
-      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
-
-      const { code } = googleError;
-
       throw new GoogleDriveError(
         {
-          code,
+          code: parseGoogleErrorCode(errorBody),
           message: 'Google Drive request failed',
         },
         { cause: createSafeErrorCause('Google Drive API request failed') },
       );
     }
 
-    throw e;
+    if (e instanceof GoogleDriveError) {
+      throw e;
+    }
+
+    throw new GoogleDriveError(
+      {
+        code: HttpStatusCode.SERVICE_UNAVAILABLE,
+        message: 'Google Drive request failed',
+      },
+      { cause: createSafeErrorCause('Google Drive network request failed') },
+    );
   }
 };
 
@@ -116,27 +127,37 @@ const authorizedRequest = async <R>(
   options: ApiOptions = {},
   responseSchema: ZodMiniType<R>,
 ): Promise<{ result: R }> => {
-  const response = await (
-    await googleRequest(
-      url,
-      toMerged(
-        {
-          method,
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-          },
-          searchParams: {
-            key: API_KEY,
-          },
+  const rawResponse = await googleRequest(
+    url,
+    toMerged(
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
         },
-        options,
-      ),
-    )
-  )
-    .clone()
-    .json();
+        searchParams: {
+          key: API_KEY,
+        },
+      },
+      options,
+    ),
+  );
 
-  const result = responseSchema.parse(response);
+  let result: R;
+
+  try {
+    const responseBody: unknown = await rawResponse.clone().json();
+
+    result = responseSchema.parse(responseBody);
+  } catch {
+    throw new GoogleDriveError(
+      {
+        code: HttpStatusCode.BAD_GATEWAY,
+        message: 'Google Drive response was malformed',
+      },
+      { cause: createSafeErrorCause('Google Drive response could not be parsed') },
+    );
+  }
 
   return { result };
 };
@@ -394,7 +415,9 @@ export const update = async (auth: GoogleAuthParams, fileId: string, params: Upd
 const gDriveFileContentCache = new Cache<string, { file: File; modifiedTime: string }>({
   max: 100,
   maxSize: 100 * 1024 * 1024,
-  sizeCalculation: ({ file }) => file.size,
+  // Zero-byte Drive files (e.g. empty `.mf` artifacts) are valid downloads and must remain
+  // cacheable; `lru-cache` requires every entry to have a size of at least 1.
+  sizeCalculation: ({ file }) => Math.max(file.size, 1),
 });
 
 /**
@@ -437,7 +460,12 @@ export const download = async (
         }),
     );
 
-  gDriveFileContentCache.set(fileId, { file, modifiedTime });
+  try {
+    gDriveFileContentCache.set(fileId, { file, modifiedTime });
+  } catch {
+    // The downloaded-file cache is an optimization, not the source of truth: a cache write
+    // failure must not turn an already-successful download into a failed read.
+  }
 
   return file;
 };
