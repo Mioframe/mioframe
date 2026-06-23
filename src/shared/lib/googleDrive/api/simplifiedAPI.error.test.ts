@@ -209,4 +209,103 @@ describe('simplifiedAPI error handling', () => {
       'File gd-123 "Tax 2025" was not found in folder Private',
     );
   });
+
+  it('wraps a network/unknown fetch failure into a GoogleDriveError with a stable code', async () => {
+    const networkFailure = new TypeError('Failed to fetch');
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(networkFailure);
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getGFileMetaList } = await import('./simplifiedAPI');
+
+    const error = await getGFileMetaList(
+      { ACCESS_TOKEN: 'token' },
+      { q: {}, spaces: [], fetchAll: true },
+    ).catch((caughtError: unknown) => caughtError);
+
+    expect(error).toMatchObject({
+      name: 'GoogleDriveError',
+      code: HttpStatusCode.SERVICE_UNAVAILABLE,
+      message: 'Google Drive request failed',
+    });
+    // The raw network error must not leak through as-is; only a safe synthetic cause.
+    expect(error).not.toMatchObject({ cause: networkFailure });
+  });
+
+  it('wraps a malformed/unexpected Google API response into a GoogleDriveError with a stable code', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(JSON.stringify({ files: 'not-an-array' }), {
+        status: HttpStatusCode.OK,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getGFileMetaList } = await import('./simplifiedAPI');
+
+    const error = await getGFileMetaList(
+      { ACCESS_TOKEN: 'token' },
+      { q: {}, spaces: [], fetchAll: true },
+    ).catch((caughtError: unknown) => caughtError);
+
+    expect(error).toMatchObject({
+      name: 'GoogleDriveError',
+      code: HttpStatusCode.BAD_GATEWAY,
+      message: 'Google Drive response was malformed',
+    });
+    // No raw response body/zod issue details should be exposed.
+    expect(JSON.stringify(error)).not.toContain('not-an-array');
+  });
+
+  it('wraps a non-JSON successful response into a coded GoogleDriveError', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response('<html>not json</html>', {
+        status: HttpStatusCode.OK,
+        headers: { 'Content-Type': 'text/html' },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getGFileMetaList } = await import('./simplifiedAPI');
+
+    const error = await getGFileMetaList(
+      { ACCESS_TOKEN: 'token' },
+      { q: {}, spaces: [], fetchAll: true },
+    ).catch((caughtError: unknown) => caughtError);
+
+    expect(error).toMatchObject({
+      name: 'GoogleDriveError',
+      code: HttpStatusCode.BAD_GATEWAY,
+      message: 'Google Drive response was malformed',
+    });
+    expect(error).not.toBeInstanceOf(SyntaxError);
+    expect(JSON.stringify(error)).not.toContain('not json');
+  });
+
+  it('wraps a malformed JSON successful response into a coded GoogleDriveError', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response('{ files: [ }', {
+        status: HttpStatusCode.OK,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getGFileMetaList } = await import('./simplifiedAPI');
+
+    const error = await getGFileMetaList(
+      { ACCESS_TOKEN: 'token' },
+      { q: {}, spaces: [], fetchAll: true },
+    ).catch((caughtError: unknown) => caughtError);
+
+    expect(error).toMatchObject({
+      name: 'GoogleDriveError',
+      code: HttpStatusCode.BAD_GATEWAY,
+      message: 'Google Drive response was malformed',
+    });
+    expect(error).not.toBeInstanceOf(SyntaxError);
+  });
 });
