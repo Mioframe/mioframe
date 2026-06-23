@@ -478,6 +478,58 @@ describe('MDListItem', () => {
     });
   });
 
+  describe('disabled action topology (Option A)', () => {
+    it('disables the primary action of a disabled single-action in-list row', () => {
+      const wrapper = mountListItem(
+        { mode: 'single-action', disabled: true, onAction: vi.fn() },
+        { inList: true },
+      );
+      const action = wrapper.get<HTMLButtonElement>('button.md-list-item__primary-action');
+
+      expect(action.element.disabled).toBe(true);
+    });
+
+    it('disables the primary action and makes the trailing action inert for a disabled multi-action row', () => {
+      const wrapper = mountListItem(
+        { mode: 'multi-action', disabled: true, onAction: vi.fn() },
+        {
+          inList: true,
+          slots: { trailingAction: '<button type="button">Edit</button>' },
+        },
+      );
+      const primaryAction = wrapper.get<HTMLButtonElement>('button.md-list-item__primary-action');
+      const trailingWrapper = wrapper.get('.md-list-item__trailing-action');
+
+      expect(primaryAction.element.disabled).toBe(true);
+      // Option A: the whole row topology is disabled, so the consumer-owned trailing
+      // control is made inert by the row rather than left interactive.
+      expect(trailingWrapper.attributes('inert')).toBeDefined();
+    });
+
+    it('keeps the trailing action interactive for an enabled multi-action row', () => {
+      const wrapper = mountListItem(
+        { mode: 'multi-action', onAction: vi.fn() },
+        {
+          inList: true,
+          slots: { trailingAction: '<button type="button">Edit</button>' },
+        },
+      );
+      const trailingWrapper = wrapper.get('.md-list-item__trailing-action');
+
+      expect(trailingWrapper.attributes('inert')).toBeUndefined();
+    });
+
+    it('makes a standalone disabled multi-action trailing action inert', () => {
+      const wrapper = mountListItem(
+        { mode: 'multi-action', disabled: true, onAction: vi.fn() },
+        { inList: false, slots: { trailingAction: '<button type="button">Edit</button>' } },
+      );
+      const trailingWrapper = wrapper.get('.md-list-item__trailing-action');
+
+      expect(trailingWrapper.attributes('inert')).toBeDefined();
+    });
+  });
+
   it('does not fire the primary action when clicking inside the trailing action slot', async () => {
     const onAction = vi.fn();
     const wrapper = mountListItem(

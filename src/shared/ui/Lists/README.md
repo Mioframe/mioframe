@@ -63,6 +63,8 @@ topology and is mutually exclusive with selection semantics (see "Unsupported co
 
 ## Components
 
+The public runtime exports of this family are exactly `MDList`, `MDListItem`, and `MDListSelectionItem` (see [`index.ts`](./index.ts)). The earlier `MDListContainer` primitive has been **removed** from the public runtime API; `MDList` is the shared List container that replaces it. There is no compatibility wrapper or re-export for `MDListContainer` — consumers compose `MDList` directly.
+
 ### MDList
 
 Owns list-level style, semantics, and selection context.
@@ -90,7 +92,7 @@ Non-selection-mode keyboard contract for `single-action` and `multi-action` `MDL
 - `ArrowLeft` / `ArrowRight`: move focus between a multi-action row's primary action and its trailing action (no-op when the row has no trailing action)
 - `Home` / `End`: move focus to the first/last enabled row's action in the current column
 - `Space` / `Enter`: activates the focused action through the native button/link element itself; trailing and primary actions remain fully independent and neither one activates the other
-- Disabled rows are skipped
+- Disabled rows are skipped in both columns: a row with `disabled` disables its whole action topology (Option A — see [Disabled behavior](#disabled-behavior)), so traversal never lands on either the primary or the trailing action of a disabled row. A trailing action that is individually unfocusable (its own consumer control is `disabled`, `aria-disabled`, hidden, inert, or negative-`tabindex`) is skipped in the trailing column only, while that row's enabled primary action stays reachable.
 
 Nested selection lists (an `MDList` rendered inside another selection list's item content) are containment-safe: `useListSelectionKeyboard` respects `event.defaultPrevented` (a keydown already handled and prevented elsewhere is skipped), resolves ownership against this list's own Vue-owned registry only (`resolveOwnSelectionItemTarget` in `listSelectionItemNavigation.ts`), and stops propagation once it handles a roving-focus key, so a bubbled keydown or focusin from a nested list never moves the outer list's focus or tab stops.
 
@@ -111,6 +113,16 @@ Owns static, single-action, and multi-action list item anatomy.
 - Inside `MDList`: the list container provides its own values for the private anatomy variables, which override the item's built-in fallbacks.
 
 Consumers must not add local spacing or padding CSS to compensate for broken `MDListItem` layout. If the item renders incorrectly standalone, it is a bug in the shared UI, not a consumer responsibility.
+
+#### Disabled behavior
+
+`MDListItem` implements **Option A**: `disabled` disables the row's whole action topology, not just the primary action. This is deliberate so consumers do not have to remember to disable a `#trailingAction` control separately.
+
+- `static`: `disabled` only applies the disabled visual state (no action surface exists).
+- `single-action`: the primary action (root button/link standalone, or the internal `button`/`a` in a list) is disabled.
+- `multi-action`: the internal primary action is disabled **and** the `#trailingAction` wrapper is rendered with the native `inert` attribute, so the consumer-owned trailing control inside it cannot be clicked, focused, or reached by List keyboard traversal even though the consumer did not disable it themselves. Keyboard traversal skips both the primary and the trailing target of a disabled row.
+
+This is the only place row-level `disabled` reaches into the consumer-owned `trailingAction` surface. An **enabled** `multi-action` row leaves `trailingAction` fully independent and consumer-owned: its interactivity, its own `disabled`/`aria-disabled` state, and its activation are the consumer's responsibility (a disabled-but-not-inert consumer control is still skipped by trailing-column keyboard traversal via the focusability check, but the row itself stays enabled).
 
 ### MDListSelectionItem
 

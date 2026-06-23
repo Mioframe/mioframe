@@ -573,6 +573,53 @@ describe('MDList', () => {
     document.body.innerHTML = '';
   });
 
+  it('skips a fully disabled multi-action row in both the primary and trailing columns', async () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="One" mode="multi-action" @action="() => {}">
+              <template #trailingAction><button>Menu</button></template>
+            </MDListItem>
+            <MDListItem label-text="Two" mode="multi-action" disabled @action="() => {}">
+              <template #trailingAction><button>Menu</button></template>
+            </MDListItem>
+            <MDListItem label-text="Three" mode="multi-action" @action="() => {}">
+              <template #trailingAction><button>Menu</button></template>
+            </MDListItem>
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    const primaryActions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    const trailingActions = wrapper.findAll<HTMLElement>('.md-list-item__trailing-action button');
+    const trailingWrappers = wrapper.findAll('.md-list-item__trailing-action');
+    expect(primaryActions).toHaveLength(3);
+    expect(trailingActions).toHaveLength(3);
+
+    // The disabled row's primary action is disabled and its trailing action is inert, so
+    // neither column can be a focus target for List keyboard traversal.
+    expect(primaryActions[1]?.attributes('disabled')).toBeDefined();
+    expect(trailingWrappers[1]?.attributes('inert')).toBeDefined();
+
+    // Primary column: ArrowDown from row one skips the disabled row two and lands on row
+    // three's primary action.
+    primaryActions[0]?.element.focus();
+    await primaryActions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(primaryActions[2]?.element);
+
+    // Trailing column: ArrowDown from row one's trailing action skips the disabled row
+    // two's trailing action and lands on row three's trailing action.
+    trailingActions[0]?.element.focus();
+    await trailingActions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(trailingActions[2]?.element);
+
+    document.body.innerHTML = '';
+  });
+
   it('warns in development when tag="ul" is requested for a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

@@ -240,16 +240,28 @@ if (import.meta.env.DEV) {
 
 let unregisterActionItem: (() => void) | null = null;
 
+// Register once per in-list item and let the registry getters read live reactive state
+// (Approach 1). This stays correct when `mode`, the list's `selectionMode`, or
+// action-surface availability changes after mount: a row with no current primary-action
+// element (static row, suppressed selection-list row) reports `getPrimaryElement() ===
+// null`, so `listActionItemNavigation` filters it out instead of the registration itself
+// going stale. Re-registering on every topology change would add unregister/re-register
+// ordering edge cases that this approach avoids entirely.
 onMounted(() => {
-  if (usesInternalActionSurface.value && inList.value) {
-    unregisterActionItem =
-      listContext?.actionRegistry.registerItem({
-        getPrimaryElement: () => primaryActionEl.value ?? null,
-        getTrailingElement: getTrailingFocusableElement,
-        isPrimaryDisabled: () => props.disabled,
-        isTrailingDisabled: () => !isFocusableActionElement(getTrailingFocusableElement()),
-      }) ?? null;
+  if (!inList.value) {
+    return;
   }
+
+  unregisterActionItem =
+    listContext?.actionRegistry.registerItem({
+      getPrimaryElement: () => primaryActionEl.value ?? null,
+      getTrailingElement: getTrailingFocusableElement,
+      // Option A: `disabled` disables the whole row topology, so a disabled row reports
+      // both columns disabled and keyboard traversal skips both targets.
+      isPrimaryDisabled: () => Boolean(props.disabled),
+      isTrailingDisabled: () =>
+        Boolean(props.disabled) || !isFocusableActionElement(getTrailingFocusableElement()),
+    }) ?? null;
 });
 
 onBeforeUnmount(() => {
@@ -341,7 +353,12 @@ defineExpose({
         the primary action (grid-stacked underneath, see listItemAnatomy.css). The slot
         content (icon button) restores its own pointer-events via the browser default.
       -->
-      <span v-if="hasTrailingAction" ref="trailingActionEl" class="md-list-item__trailing-action">
+      <span
+        v-if="hasTrailingAction"
+        ref="trailingActionEl"
+        class="md-list-item__trailing-action"
+        :inert="disabled || undefined"
+      >
         <slot name="trailingAction" />
       </span>
     </template>
@@ -387,7 +404,11 @@ defineExpose({
         </span>
       </span>
 
-      <span v-if="showTrailingActionInStaticPath" class="md-list-item__trailing-action">
+      <span
+        v-if="showTrailingActionInStaticPath"
+        class="md-list-item__trailing-action"
+        :inert="disabled || undefined"
+      >
         <slot name="trailingAction" />
       </span>
     </template>
