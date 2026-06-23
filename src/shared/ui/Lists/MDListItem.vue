@@ -139,12 +139,13 @@ const interactiveSurfaceEl = computed(() => {
 });
 
 const dragged = ref(false);
-// Multi-action full-row hover: primary action is positioned absolute (inset: 0) so it
-// covers the full visual row width. useLastHover(primaryActionEl) naturally handles
-// trailing-action isolation: when the trailing slot content (icon button) becomes the
-// last hovered element in the global hover list, the primary action is no longer last →
-// hover = false. Empty trailing space has pointer-events: none on the container, so
-// events fall through to the primary action → hover = true.
+// Multi-action full-row hover: primary action and trailing action are stacked in the
+// same grid cell (see listItemAnatomy.css/_has-trailing-action), so the primary action
+// still covers the full visual row width. useLastHover(primaryActionEl) naturally
+// handles trailing-action isolation: when the trailing slot content (icon button)
+// becomes the last hovered element in the global hover list, the primary action is no
+// longer last → hover = false. Empty trailing space has pointer-events: none on the
+// container, so events fall through to the primary action → hover = true.
 const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
 
 const rootClass = computed(() => ({
@@ -306,7 +307,7 @@ defineExpose({
 
       <!--
         Trailing action: pointer-events: none via CSS so empty padding falls through to
-        the primary action (which is position: absolute; inset: 0 underneath). The slot
+        the primary action (grid-stacked underneath, see listItemAnatomy.css). The slot
         content (icon button) restores its own pointer-events via the browser default.
       -->
       <span v-if="hasTrailingAction" class="md-list-item__trailing-action">
@@ -403,13 +404,29 @@ defineExpose({
     cursor: pointer;
   }
 
-  /* Trailing action: flex container, padding, and sizing specific to MDListItem. */
+  /*
+   * Trailing action: flex container, padding, and sizing specific to MDListItem.
+   * Anatomy: [between-space gap to content][min-target-size button][trailing-space gap
+   * to row edge] — the inline padding places the 48dp hit target 12dp from the content
+   * and 16dp from the row's outer edge, matching the primary-action reserve below.
+   * The project's global box-sizing: border-box reset (modern-normalize) means a plain
+   * `min-width: 48dp` only floors the *padded* box, not the content area inside the
+   * padding — so min-width must include the padding it sits alongside (between-space +
+   * target size + trailing-space) to actually guarantee a 48dp content slot flush with
+   * both paddings, keeping the visible button (and the invisible enlarged hit target
+   * centered on it) aligned with the documented edge/gap geometry instead of drifting by
+   * however much narrower the button's own visual size is than the 48dp target.
+   */
   &__trailing-action {
     justify-content: center;
     color: var(--md-comp-list-list-item-trailing-icon-color);
-    padding-inline: var(--md-private-list-item-trailing-action-padding-inline-start, 8dp)
-      var(--md-comp-list-list-item-between-space);
-    min-width: var(--md-private-list-item-trailing-action-min-target-size, 48dp);
+    padding-inline: var(--md-comp-list-list-item-between-space)
+      var(--md-comp-list-list-item-trailing-space);
+    min-width: calc(
+      var(--md-comp-list-list-item-between-space) +
+        var(--md-private-list-item-trailing-action-min-target-size, 48dp) +
+        var(--md-comp-list-list-item-trailing-space)
+    );
     min-height: var(--md-private-list-item-trailing-action-min-target-size, 48dp);
     align-self: center;
   }
@@ -433,11 +450,15 @@ defineExpose({
     grid-template-rows: auto;
   }
 
+  /* Reserve must mirror the trailing-action container's own anatomy exactly:
+     between-space (content gap) + the target's own min size + trailing-space (row-edge
+     padding), so the right edge lands at trailing-space, not between-space. */
   &_has-trailing-action &__primary-action {
     grid-area: 1 / 1;
     padding-inline-end: calc(
       var(--md-comp-list-list-item-between-space) +
-        var(--md-private-list-item-trailing-action-reserved, 56dp)
+        var(--md-private-list-item-trailing-action-min-target-size, 48dp) +
+        var(--md-comp-list-list-item-trailing-space)
     );
   }
 

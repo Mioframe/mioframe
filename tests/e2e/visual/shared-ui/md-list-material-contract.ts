@@ -46,7 +46,6 @@ export const MD_LIST_MATERIAL_CONTRACT = {
     between: 12,
     leading: 16,
     trailing: 16,
-    trailingActionStart: 8,
   },
   stateLayerOpacity: {
     hover: '0.08',

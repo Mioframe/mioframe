@@ -933,47 +933,176 @@ test.describe('MDList / Material Expressive contract', () => {
     expect(trailingIconSize).toBe(`${MD_LIST_MATERIAL_CONTRACT.trailingIconSize}px`);
   });
 
-  test('MDListItem leading-to-content gap is owned by anatomy spacing, not fixture child CSS', async ({
+  // Anatomy: leading-space/trailing-space are the row's own outer edge padding, applied
+  // whether or not a leading/trailing slot is present. between-space is only the gap
+  // between actual content slots. A row with neither slot must keep the full 16dp edge
+  // padding on both sides, not the 12dp between-space and not a doubled-up value.
+  test('MDListItem row without leading or trailing keeps 16dp edge padding on both sides, not between-space', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
 
-    const surface = page.getByTestId('visual-md-list-configurations');
-    const avatarItem = surface
-      .locator('.md-list-item__leading_type_avatar')
-      .first()
-      .locator('xpath=..');
-    const leadingSlot = avatarItem.locator('.md-list-item__leading');
-    const contentSlot = avatarItem.locator('.md-list-item__content');
-
-    const [leadingBox, contentBox] = await Promise.all([
-      getBoundingBoxOrThrow(leadingSlot, 'leading anatomy slot must have a bounding box'),
-      getBoundingBoxOrThrow(contentSlot, 'content anatomy slot must have a bounding box'),
-    ]);
-
-    expectClose(
-      contentBox.x - (leadingBox.x + leadingBox.width),
-      MD_LIST_MATERIAL_CONTRACT.contentSpacing.leading,
-      1,
-      'leading-to-content gap must come from MDListItem anatomy spacing, not from fixture avatar/media CSS',
-    );
-  });
-
-  test('MDListItem row-edge content padding uses the documented between-space token (12dp)', async ({
-    page,
-  }) => {
-    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
-
-    const surface = page.getByTestId('visual-md-list-configurations');
-    const body = surface.locator('.md-list-item__body, .md-list-item__primary-action').first();
+    const row = page
+      .getByTestId('visual-md-list-configurations')
+      .locator('.md-list_style_standard .md-list-item')
+      .first();
+    const body = row.locator('.md-list-item__body, .md-list-item__primary-action').first();
 
     const [paddingLeft, paddingRight] = await Promise.all([
       body.evaluate((node) => getComputedStyle(node).paddingLeft),
       body.evaluate((node) => getComputedStyle(node).paddingRight),
     ]);
 
-    expect(paddingLeft).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.between}px`);
-    expect(paddingRight).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.between}px`);
+    expect(
+      paddingLeft,
+      'row body left padding must be leading-space (16dp), not between-space',
+    ).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.leading}px`);
+    expect(
+      paddingRight,
+      'row body right padding must be trailing-space (16dp), not between-space',
+    ).toBe(`${MD_LIST_MATERIAL_CONTRACT.contentSpacing.trailing}px`);
+  });
+
+  // The avatar row (segmented configurations, leading avatar + trailing chevron) exercises
+  // both edges at once: leading-space from the row edge to the leading slot, between-space
+  // from the leading slot to content, between-space from content to trailing, and
+  // trailing-space from trailing to the row edge.
+  test('MDListItem leading row keeps leading-space at the row edge and between-space to content', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const row = page
+      .getByTestId('visual-md-list-configurations')
+      .locator('.md-list-item__leading_type_avatar')
+      .first()
+      .locator(
+        'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " md-list-item ")][1]',
+      );
+    const leadingSlot = row.locator('.md-list-item__leading');
+    const contentSlot = row.locator('.md-list-item__content');
+
+    const [rowBox, leadingBox, contentBox] = await Promise.all([
+      getBoundingBoxOrThrow(row, 'leading row must have a bounding box'),
+      getBoundingBoxOrThrow(leadingSlot, 'leading anatomy slot must have a bounding box'),
+      getBoundingBoxOrThrow(contentSlot, 'content anatomy slot must have a bounding box'),
+    ]);
+
+    expectClose(
+      leadingBox.x - rowBox.x,
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.leading,
+      1,
+      'row left edge to leading slot must be leading-space (16dp)',
+    );
+    expectClose(
+      contentBox.x - (leadingBox.x + leadingBox.width),
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.between,
+      1,
+      'leading-to-content gap must be between-space (12dp), not leading-space',
+    );
+  });
+
+  // Same avatar row also carries a trailing chevron slot.
+  test('MDListItem trailing row keeps between-space to content and trailing-space at the row edge', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--configurations');
+
+    const row = page
+      .getByTestId('visual-md-list-configurations')
+      .locator('.md-list-item__leading_type_avatar')
+      .first()
+      .locator(
+        'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " md-list-item ")][1]',
+      );
+    const contentSlot = row.locator('.md-list-item__content');
+    const trailingSlot = row.locator('.md-list-item__trailing');
+
+    const [rowBox, contentBox, trailingBox] = await Promise.all([
+      getBoundingBoxOrThrow(row, 'trailing row must have a bounding box'),
+      getBoundingBoxOrThrow(contentSlot, 'content anatomy slot must have a bounding box'),
+      getBoundingBoxOrThrow(trailingSlot, 'trailing anatomy slot must have a bounding box'),
+    ]);
+
+    expectClose(
+      trailingBox.x - (contentBox.x + contentBox.width),
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.between,
+      1,
+      'content-to-trailing gap must be between-space (12dp), not trailing-space',
+    );
+    expectClose(
+      rowBox.x + rowBox.width - (trailingBox.x + trailingBox.width),
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.trailing,
+      1,
+      'trailing slot to row right edge must be trailing-space (16dp)',
+    );
+  });
+
+  // Multi-action geometry must mirror the same edge model as a passive trailing slot: the
+  // 48dp target sits between-space (12dp) from content and trailing-space (16dp) from the
+  // row's own right edge, so the reserve on the primary action does not double- or
+  // under-count the right edge padding.
+  test('MDListItem multi-action trailing target keeps between-space to content and trailing-space at the row edge', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--trailing-action-layout');
+
+    const row = page.getByTestId('visual-md-list-trailing-action').locator('.md-list-item').first();
+    const content = row.locator('.md-list-item__content');
+    const target = row.locator('.md-list-item__trailing-action .md-icon-button__target');
+
+    const [rowBox, contentBox, targetBox] = await Promise.all([
+      getBoundingBoxOrThrow(row, 'multi-action row must have a bounding box'),
+      getBoundingBoxOrThrow(content, 'multi-action row content must have a bounding box'),
+      getBoundingBoxOrThrow(target, 'trailing action target must have a bounding box'),
+    ]);
+
+    expectClose(
+      targetBox.x - (contentBox.x + contentBox.width),
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.between,
+      1,
+      'content to trailing action target must be between-space (12dp)',
+    );
+    expectClose(
+      rowBox.x + rowBox.width - (targetBox.x + targetBox.width),
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.trailing,
+      1,
+      'trailing action target to row right edge must be trailing-space (16dp), not between-space',
+    );
+  });
+
+  // Selection rows use the always-present selection indicator as their leading visual slot
+  // and must follow the same edge/gap model as MDListItem's leading slot.
+  test('MDListSelectionItem selection indicator keeps leading-space at the row edge and between-space to content', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--selection-modes');
+
+    const row = page
+      .getByTestId('visual-md-list-selection')
+      .locator('.md-list-selection-item')
+      .first();
+    const indicator = row.locator('.md-list-selection-item__selection-indicator');
+    const content = row.locator('.md-list-selection-item__content');
+
+    const [rowBox, indicatorBox, contentBox] = await Promise.all([
+      getBoundingBoxOrThrow(row, 'selection row must have a bounding box'),
+      getBoundingBoxOrThrow(indicator, 'selection indicator must have a bounding box'),
+      getBoundingBoxOrThrow(content, 'selection row content must have a bounding box'),
+    ]);
+
+    expectClose(
+      indicatorBox.x - rowBox.x,
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.leading,
+      1,
+      'row left edge to selection indicator must be leading-space (16dp)',
+    );
+    expectClose(
+      contentBox.x - (indicatorBox.x + indicatorBox.width),
+      MD_LIST_MATERIAL_CONTRACT.contentSpacing.between,
+      1,
+      'selection indicator to content gap must be between-space (12dp), not leading-space',
+    );
   });
 
   test('MDList overline, label, and supporting text use the documented typography tokens', async ({
