@@ -7,6 +7,7 @@ import {
 } from './listItemDevWarnings';
 import { splitListItemAttrs } from './listItemAttrs';
 import { useMDListContext } from './listContext';
+import { isFocusableActionElement } from './listActionItemNavigation';
 import { useListItemAnatomy } from './useListItemAnatomy';
 
 type MDListItemMode = 'static' | 'single-action' | 'multi-action';
@@ -246,6 +247,7 @@ onMounted(() => {
         getPrimaryElement: () => primaryActionEl.value ?? null,
         getTrailingElement: getTrailingFocusableElement,
         isPrimaryDisabled: () => props.disabled,
+        isTrailingDisabled: () => !isFocusableActionElement(getTrailingFocusableElement()),
       }) ?? null;
   }
 });

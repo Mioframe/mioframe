@@ -7,7 +7,54 @@ interface MDListActionRowSnapshot {
   primaryElement: HTMLElement;
   trailingElement: HTMLElement | null;
   isPrimaryDisabled: boolean;
+  isTrailingDisabled: boolean;
 }
+
+/**
+ * Checks whether a candidate trailing-action element is safe to receive keyboard focus
+ * during List traversal. Consumer-owned trailing controls (icon buttons, menu triggers)
+ * can become unfocusable in several ways; traversal must skip all of them so focus never
+ * lands on a control that cannot actually receive or act on it.
+ * @param element - The resolved trailing focus target, or `null` when absent.
+ * @returns `false` when the element is missing, disabled, aria-disabled, hidden, inert, or
+ * has a negative tabindex; `true` otherwise.
+ */
+export const isFocusableActionElement = (element: HTMLElement | null): boolean => {
+  if (!element) {
+    return false;
+  }
+
+  if (element.hidden || element.closest('[hidden]')) {
+    return false;
+  }
+
+  if ('inert' in element && (element.inert || element.closest('[inert]'))) {
+    return false;
+  }
+
+  if (element.getAttribute('aria-disabled') === 'true') {
+    return false;
+  }
+
+  if (
+    (element instanceof HTMLButtonElement ||
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLSelectElement ||
+      element instanceof HTMLTextAreaElement ||
+      element instanceof HTMLFieldSetElement) &&
+    element.disabled
+  ) {
+    return false;
+  }
+
+  const tabindexAttr = element.getAttribute('tabindex');
+
+  if (tabindexAttr !== null && Number(tabindexAttr) < 0) {
+    return false;
+  }
+
+  return true;
+};
 
 const compareItemOrder = (left: HTMLElement, right: HTMLElement) => {
   if (left === right) {
@@ -28,6 +75,7 @@ const toRowSnapshot = (record: MDListActionItemRecord): MDListActionRowSnapshot 
     primaryElement,
     trailingElement: record.getTrailingElement(),
     isPrimaryDisabled: record.isPrimaryDisabled(),
+    isTrailingDisabled: record.isTrailingDisabled(),
   };
 };
 
@@ -77,7 +125,9 @@ const getColumnElement = (
 /**
  * Resolves the next enabled row in the same action column for vertical roving navigation.
  * Falls back to the primary action when the target row has no element in the requested
- * column (e.g. moving past a row with no trailing action).
+ * column (e.g. moving past a row with no trailing action). Rows whose primary action is
+ * disabled are always excluded; when traversing the trailing column, rows whose trailing
+ * action is disabled or otherwise unfocusable are excluded too.
  * @param registry - Vue-owned registry for this list's action rows.
  * @param currentTarget - Current keyboard event target inside the list.
  * @param column - Active action column to keep when moving vertically.
@@ -90,7 +140,9 @@ export const getNextEnabledActionTarget = (
   column: MDListActionColumn,
   direction: 'first' | 'last' | 1 | -1,
 ): HTMLElement | null => {
-  const enabledRows = getRowSnapshots(registry).filter((row) => !row.isPrimaryDisabled);
+  const enabledRows = getRowSnapshots(registry).filter(
+    (row) => !row.isPrimaryDisabled && !(column === 'trailing' && row.isTrailingDisabled),
+  );
 
   if (!enabledRows.length) {
     return null;
@@ -125,7 +177,8 @@ export const getNextEnabledActionTarget = (
 /**
  * Resolves the counterpart action within the same row for horizontal primary/trailing
  * traversal. Returns `null` when the row has no element in the requested column (e.g. a
- * row with no trailing action has no horizontal counterpart).
+ * row with no trailing action has no horizontal counterpart) or when moving toward a
+ * trailing action that is disabled or otherwise unfocusable.
  * @param registry - Vue-owned registry for this list's action rows.
  * @param currentTarget - Current keyboard event target inside the list.
  * @returns The counterpart element, or `null` when there is none.
@@ -142,6 +195,10 @@ export const getActionRowCounterpart = (
 
   const counterpartColumn: MDListActionColumn =
     target.column === 'primary' ? 'trailing' : 'primary';
+
+  if (counterpartColumn === 'trailing' && target.row.isTrailingDisabled) {
+    return null;
+  }
 
   return getColumnElement(target.row, counterpartColumn);
 };

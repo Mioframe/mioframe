@@ -1601,6 +1601,86 @@ test.describe('MDList / DOM contract', () => {
   });
 });
 
+// Real native <button>/<a> Enter/Space keyboard activation is a browser default action,
+// not something MDListItem implements in JS for non-href rows — happy-dom (the unit-test
+// environment) does not reproduce it, so it can only be proven against a real browser
+// engine here. Activation is observed through a page-level click listener rather than the
+// story's own handlers, so these checks stay independent of any particular story wiring.
+test.describe('MDList / keyboard activation', () => {
+  const observeClicks = (locator: Locator) =>
+    locator.evaluate((node) => {
+      node.dataset.clicked = 'false';
+      node.addEventListener('click', () => {
+        node.dataset.clicked = 'true';
+      });
+    });
+
+  const wasClicked = (locator: Locator) =>
+    locator.evaluate((node) => node.dataset.clicked === 'true');
+
+  test('Enter activates a focused single-action row primary action', async ({ page }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--dom-contract');
+
+    const action = page.locator('#dom-single-item .md-list-item__primary-action');
+    await observeClicks(action);
+    await action.focus();
+    await page.keyboard.press('Enter');
+
+    expect(await wasClicked(action)).toBe(true);
+  });
+
+  test('Space activates a focused single-action row primary action', async ({ page }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--dom-contract');
+
+    const action = page.locator('#dom-single-item .md-list-item__primary-action');
+    await observeClicks(action);
+    await action.focus();
+    await page.keyboard.press(' ');
+
+    expect(await wasClicked(action)).toBe(true);
+  });
+
+  test('a disabled single-action row primary action is not activated by Enter or Space', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const action = page
+      .locator('.md-list-item.md-state_disabled .md-list-item__primary-action')
+      .first();
+    await observeClicks(action);
+
+    // A native disabled button cannot receive focus, so this also proves the row is
+    // unreachable by keyboard traversal, not only unresponsive to the key itself.
+    await action.evaluate((node) => {
+      node.focus();
+    });
+    await page.keyboard.press('Enter');
+    await page.keyboard.press(' ');
+
+    expect(await wasClicked(action)).toBe(false);
+  });
+
+  test('trailing action keyboard activation does not trigger the row primary action', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-interaction-states');
+
+    const row = page.getByTestId('md-list-multi-action-independence');
+    const primaryAction = row.locator('.md-list-item__primary-action');
+    const trailingButton = row.getByRole('button', { name: 'Edit' });
+
+    await observeClicks(primaryAction);
+    await observeClicks(trailingButton);
+
+    await trailingButton.focus();
+    await page.keyboard.press('Enter');
+
+    expect(await wasClicked(trailingButton)).toBe(true);
+    expect(await wasClicked(primaryAction)).toBe(false);
+  });
+});
+
 test.describe('MDList / StateLayer integration', () => {
   test('MDListItem mounts shared state layers on the actual interactive surfaces only', async ({
     page,

@@ -97,8 +97,9 @@
   --md-comp-list-list-item-dragged-state-layer-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-selected-container-color: var(--md-sys-color-secondary-container);
   --md-comp-list-list-item-selected-disabled-container-opacity: 0.38;
-  --md-comp-list-list-item-selected-disabled-container-color: rgb(
-    from var(--md-sys-color-on-surface) r g b /
+  --md-comp-list-list-item-selected-disabled-container-color: var(--md-sys-color-on-surface);
+  --md-private-list-item-selected-disabled-container-color: rgb(
+    from var(--md-comp-list-list-item-selected-disabled-container-color) r g b /
       var(--md-comp-list-list-item-selected-disabled-container-opacity)
   );
   --md-comp-list-list-item-selected-label-text-color: var(--md-sys-color-on-secondary-container);
@@ -292,7 +293,7 @@
 .md-list-selection-item_selected.md-state_disabled,
 .md-list-selection-item_selected[aria-disabled='true'] {
   --md-comp-list-list-item-container-color: var(
-    --md-comp-list-list-item-selected-disabled-container-color
+    --md-private-list-item-selected-disabled-container-color
   );
 }
 

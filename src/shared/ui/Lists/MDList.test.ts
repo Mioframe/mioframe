@@ -456,14 +456,22 @@ describe('MDList', () => {
     document.body.innerHTML = '';
   });
 
-  it('activates the focused single-action row primary action via Enter', async () => {
+  // happy-dom does not implement the browser's native default action that turns a
+  // focused <button>'s Enter/Space keydown into a click — that translation is pure
+  // browser behavior, not something MDListItem's own JS implements for non-href rows.
+  // The href-rendered path IS implemented in JS (onActionKeydown dispatches a
+  // synthetic click for Space, since anchors have no native Space activation), so
+  // that path is the one real keyboard-driven activation this suite can verify
+  // without relying on a browser engine. Native button Enter/Space activation is
+  // covered by the Playwright keyboard-activation suite in md-list.spec.ts instead.
+  it('activates the focused href-rendered single-action row primary action via Space', async () => {
     const onAction = vi.fn();
     const wrapper = mount(
       {
         components: { MDList, MDListItem },
         template: `
           <MDList>
-            <MDListItem label-text="One" mode="single-action" @action="onAction" />
+            <MDListItem label-text="One" mode="single-action" href="#one" @action="onAction" />
           </MDList>
         `,
         setup: () => ({ onAction }),
@@ -471,16 +479,40 @@ describe('MDList', () => {
       { attachTo: document.body },
     );
 
-    const action = wrapper.get<HTMLElement>('button.md-list-item__primary-action');
+    const action = wrapper.get<HTMLElement>('a.md-list-item__primary-action');
     action.element.focus();
-    await action.trigger('click');
+    await action.trigger('keydown', { key: ' ' });
 
     expect(onAction).toHaveBeenCalledOnce();
 
     document.body.innerHTML = '';
   });
 
-  it('traverses primary and trailing actions within a multi-action row and between rows', async () => {
+  it('does not activate a disabled href-rendered single-action row via Space', async () => {
+    const onAction = vi.fn();
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="One" mode="single-action" href="#one" disabled @action="onAction" />
+          </MDList>
+        `,
+        setup: () => ({ onAction }),
+      },
+      { attachTo: document.body },
+    );
+
+    const action = wrapper.get<HTMLElement>('a.md-list-item__primary-action');
+    action.element.focus();
+    await action.trigger('keydown', { key: ' ' });
+
+    expect(onAction).not.toHaveBeenCalled();
+
+    document.body.innerHTML = '';
+  });
+
+  it('traverses primary and trailing actions within a multi-action row and between rows, skipping a disabled trailing action', async () => {
     const onPrimaryAction = vi.fn();
     const onTrailingAction = vi.fn();
     const wrapper = mount(
@@ -495,6 +527,11 @@ describe('MDList', () => {
             </MDListItem>
             <MDListItem label-text="Two" mode="multi-action" @action="onPrimaryAction">
               <template #trailingAction>
+                <button disabled @click="onTrailingAction">Menu</button>
+              </template>
+            </MDListItem>
+            <MDListItem label-text="Three" mode="multi-action" @action="onPrimaryAction">
+              <template #trailingAction>
                 <button @click="onTrailingAction">Menu</button>
               </template>
             </MDListItem>
@@ -507,21 +544,29 @@ describe('MDList', () => {
 
     const primaryActions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
     const trailingActions = wrapper.findAll<HTMLElement>('.md-list-item__trailing-action button');
-    expect(primaryActions).toHaveLength(2);
-    expect(trailingActions).toHaveLength(2);
+    expect(primaryActions).toHaveLength(3);
+    expect(trailingActions).toHaveLength(3);
 
     primaryActions[0]?.element.focus();
     await primaryActions[0]?.trigger('keydown', { key: 'ArrowRight' });
     expect(document.activeElement).toBe(trailingActions[0]?.element);
 
-    await trailingActions[0]?.trigger('keydown', { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(trailingActions[1]?.element);
-
-    await trailingActions[1]?.trigger('keydown', { key: 'ArrowLeft' });
+    // Row two's trailing action is disabled, so ArrowRight on its primary action must
+    // not move focus there.
+    primaryActions[1]?.element.focus();
+    await primaryActions[1]?.trigger('keydown', { key: 'ArrowRight' });
     expect(document.activeElement).toBe(primaryActions[1]?.element);
 
+    // Vertical roving in the trailing column must skip row two's disabled trailing
+    // action and land on row three's enabled trailing action.
+    await trailingActions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(trailingActions[2]?.element);
+
+    await trailingActions[2]?.trigger('keydown', { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(primaryActions[2]?.element);
+
     // Trailing action click must not trigger the primary action's own handler.
-    await trailingActions[1]?.trigger('click');
+    await trailingActions[0]?.trigger('click');
     expect(onTrailingAction).toHaveBeenCalledOnce();
     expect(onPrimaryAction).not.toHaveBeenCalled();
 

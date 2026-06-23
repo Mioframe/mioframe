@@ -36,6 +36,8 @@ export interface MDListActionItemRecord {
   getTrailingElement: () => HTMLElement | null;
   /** Returns whether the primary action is currently disabled. */
   isPrimaryDisabled: () => boolean;
+  /** Returns whether the trailing action is currently disabled or otherwise unfocusable. */
+  isTrailingDisabled: () => boolean;
 }
 
 /** Vue-owned registry of single-action/multi-action rows for one `MDList` instance. */
