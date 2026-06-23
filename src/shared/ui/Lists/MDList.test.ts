@@ -620,6 +620,161 @@ describe('MDList', () => {
     document.body.innerHTML = '';
   });
 
+  it('discovers a row primary action that appears after a post-mount mode change and drops it when it reverts to static', async () => {
+    const secondMode = ref<'static' | 'single-action'>('static');
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        setup: () => ({ secondMode }),
+        template: `
+          <MDList>
+            <MDListItem label-text="One" mode="single-action" />
+            <MDListItem label-text="Two" :mode="secondMode" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    // Row two starts static, so only row one has a primary action and vertical roving
+    // cycles back to it.
+    let actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    expect(actions).toHaveLength(1);
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[0]?.element);
+
+    // Row two becomes single-action after mount: the one-time registration's live getter
+    // must expose the newly rendered primary action so navigation can discover it.
+    secondMode.value = 'single-action';
+    await nextTick();
+    actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    expect(actions).toHaveLength(2);
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[1]?.element);
+
+    // Reverting row two to static must drop it from navigation again, proving the getter
+    // reads live state rather than a value captured at mount.
+    secondMode.value = 'static';
+    await nextTick();
+    actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    expect(actions).toHaveLength(1);
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[0]?.element);
+
+    document.body.innerHTML = '';
+  });
+
+  it('suppresses and restores action navigation when the list selectionMode toggles after mount', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const selectionMode = ref<'none' | 'single'>('none');
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        setup: () => ({ selectionMode }),
+        template: `
+          <MDList :selection-mode="selectionMode" aria-label="Rows">
+            <MDListItem label-text="One" mode="single-action" />
+            <MDListItem label-text="Two" mode="single-action" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    // selectionMode="none": both action rows participate in keyboard navigation.
+    let actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    expect(actions).toHaveLength(2);
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[1]?.element);
+
+    // selectionMode="single": MDListItem suppresses its action surfaces, so no
+    // primary-action target survives for keyboard navigation to land on.
+    selectionMode.value = 'single';
+    await nextTick();
+    expect(wrapper.findAll('button.md-list-item__primary-action')).toHaveLength(0);
+
+    // Back to "none": the one-time registration must still drive navigation after the
+    // round trip, with action surfaces restored.
+    selectionMode.value = 'none';
+    await nextTick();
+    actions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    expect(actions).toHaveLength(2);
+    actions[0]?.element.focus();
+    await actions[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(actions[1]?.element);
+
+    warnSpy.mockRestore();
+    document.body.innerHTML = '';
+  });
+
+  it('skips and re-includes a multi-action row in keyboard traversal when its disabled state toggles after mount', async () => {
+    const middleDisabled = ref(false);
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        setup: () => ({ middleDisabled }),
+        template: `
+          <MDList>
+            <MDListItem label-text="One" mode="multi-action" @action="() => {}">
+              <template #trailingAction><button>Menu</button></template>
+            </MDListItem>
+            <MDListItem label-text="Two" mode="multi-action" :disabled="middleDisabled" @action="() => {}">
+              <template #trailingAction><button>Menu</button></template>
+            </MDListItem>
+            <MDListItem label-text="Three" mode="multi-action" @action="() => {}">
+              <template #trailingAction><button>Menu</button></template>
+            </MDListItem>
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    const primaryActions = () =>
+      wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    const trailingActions = () =>
+      wrapper.findAll<HTMLElement>('.md-list-item__trailing-action button');
+
+    // Middle row enabled: both columns can reach it.
+    primaryActions()[0]?.element.focus();
+    await primaryActions()[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(primaryActions()[1]?.element);
+
+    trailingActions()[0]?.element.focus();
+    await trailingActions()[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(trailingActions()[1]?.element);
+
+    // Disable the middle row after mount: live getters must report both columns disabled
+    // so primary and trailing traversal skip it.
+    middleDisabled.value = true;
+    await nextTick();
+    primaryActions()[0]?.element.focus();
+    await primaryActions()[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(primaryActions()[2]?.element);
+
+    trailingActions()[0]?.element.focus();
+    await trailingActions()[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(trailingActions()[2]?.element);
+
+    // Re-enable the middle row: traversal reaches it again, proving the disabled getters
+    // are not stuck at the mount-time value.
+    middleDisabled.value = false;
+    await nextTick();
+    primaryActions()[0]?.element.focus();
+    await primaryActions()[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(primaryActions()[1]?.element);
+
+    trailingActions()[0]?.element.focus();
+    await trailingActions()[0]?.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(trailingActions()[1]?.element);
+
+    document.body.innerHTML = '';
+  });
+
   it('warns in development when tag="ul" is requested for a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
