@@ -102,7 +102,7 @@ There is no public `variant` prop. The current Material / Expressive row geometr
 
 Owns static, single-action, and multi-action list item anatomy.
 
-- Props: `labelText` (required), `mode` (`static` | `single-action` | `multi-action`), `disabled`, `href`, `nativeType`, `lineCount`, `leadingType`, `overline`, `supportingText`, `containerTag`, `draggable`
+- Props: `labelText` (required), `mode` (`static` | `single-action` | `multi-action`), `disabled`, `href`, `nativeType`, `lineCount`, `leadingType`, `overline`, `supportingText`, `containerTag`, `draggable`, `dragged`
 - Emits: `action`
 - Slots: `leading`, `overline`, `supportingText`, `trailing`, `trailingAction`
 - Does **not** own selection semantics or a `value` prop.
@@ -373,6 +373,22 @@ Current Expressive minimum row heights:
 - `dragged.state-layer.opacity`: `0.16`
 
 There is no documented `dragged.container.color` token, so the row keeps its resting container color (`transparent` for standard, the segmented surface fill for segmented) — dragged only changes elevation, shape, and the content/state-layer color remaps above. These are wired as public `--md-comp-list-list-item-dragged-*` tokens (mirroring the documented path 1:1) plus the private `--md-private-list-item-dragged-elevation` implementation variable that resolves the elevation token into the `box-shadow` applied in `MDListItem.vue`'s scoped style. The dragged state-layer color flows through the same `--md-private-list-item-state-layer-color` → `--md-private-state-layer-color` mapping as every other list state, so `MDStateLayer` never needs to know about List.
+
+### External vs internal dragged API
+
+`MDListItem` exposes a public `dragged?: boolean` prop as the only supported external control for the dragged visual state. Sortable/reorder consumers (e.g. `useReorderSurface`) own which row is currently dragged and pass that fact in explicitly:
+
+```vue
+<MDListItem :dragged="draggedId === id" ... />
+```
+
+A wrapper component placed between a sortable consumer and `MDListItem` must add its own explicit `dragged?: boolean` prop and forward it — it must not let the dragged fact disappear at the wrapper boundary.
+
+`MDListItem` combines this external `dragged` prop with its own local `dragstart`/`dragend`/`drop` handling into one internal `effectiveDragged` state. That single state drives both the root `md-state_dragged` implementation class and every nested `MDStateLayer` (including the one inside the internal primary-action surface for `single-action`/`multi-action` rows).
+
+`md-state_dragged` itself is an **internal implementation class**, not a consumer-facing API. Do not pass `:class="{ 'md-state_dragged': ... }"` (or any other class) into `MDListItem` to control dragged visuals — for action rows the real `MDStateLayer` lives nested inside the internal primary-action surface, so an externally-applied root class does not reliably reach it. Use the `dragged` prop instead. `md-state_dragged` remains visible only in this component's own implementation, stories, and tests that assert on internal classes/remaps.
+
+Hover, focus, and pressed state remain entirely internal: there is no external prop for them, and they stay owned by `MDListItem` / `useStateLayer`. `dragged` is deliberately the only externally controllable interaction state, because it is the only one a consumer (not the pointer/keyboard itself) can know about ahead of time.
 
 **Verification status**: a previous pass implemented dragged using `tertiary-container` / `on-tertiary-container` / `md.sys.elevation.level5`, attributing it to the Figma Material 3 Design Kit's Expressive dragged variant. This pass attempted to re-confirm that Figma treatment against the parent List node (and its dragged child variant) but the Figma MCP tool hit its plan's rate limit before any node could be inspected, so the prior Figma claim could not be re-verified this session. Per the project's source-of-truth order (official Material tokens first, Figma only to resolve what the token table leaves ambiguous), the implementation now follows the literal documented List Common spec values above instead of carrying forward an unverifiable Figma-only claim. If a future pass re-confirms the Figma Expressive Kit's dragged child node genuinely overrides the Common spec with `tertiary-container`/Elevation 5, restore that treatment through the same public-token-first pattern and update this section to cite the specific Figma node and screenshot evidence, not just a verbal claim.
 

@@ -3,12 +3,6 @@
     "material3": {
       "command": "npx",
       "args": ["-y", "github:Vyachean/m3-docs-mcp", "serve"]
-    },
-    "figma-mcp-go": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@vkhanhqui/figma-mcp-go@latest"],
-      "env": {}
     }
   }
 }

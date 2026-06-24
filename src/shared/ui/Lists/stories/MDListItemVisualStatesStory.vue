@@ -12,6 +12,7 @@ const enabledAttrs = { 'data-state': 'enabled' };
 const hoverAttrs = { 'data-state': 'hover' };
 const focusAttrs = { 'data-state': 'focus' };
 const pressedAttrs = { 'data-state': 'pressed' };
+const sortableDraggedAttrs = { 'data-testid': 'sortable-like-dragged-row' };
 const onAction = () => {};
 </script>
 
@@ -117,6 +118,24 @@ const onAction = () => {};
         >
           <template #trailingAction>
             <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" disabled />
+          </template>
+        </MDListItem>
+        <!--
+          Real sortable-like dragged path: `:dragged="true"` is the public prop a consumer
+          such as `useReorderSurface` passes, not `MDStateLayerForcedStateProvider`. This
+          proves the nested MDStateLayer inside the internal primary-action surface
+          actually activates from the prop, the same boundary sortable consumers use.
+        -->
+        <MDListItem
+          v-bind="sortableDraggedAttrs"
+          mode="multi-action"
+          dragged
+          label-text="Dragged (sortable)"
+          supporting-text="Activated via the public dragged prop, not a forced-state fixture"
+          @action="onAction"
+        >
+          <template #trailingAction>
+            <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
           </template>
         </MDListItem>
       </MDList>

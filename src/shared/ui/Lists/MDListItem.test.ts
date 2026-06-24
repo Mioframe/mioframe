@@ -546,4 +546,80 @@ describe('MDListItem', () => {
 
     expect(onAction).not.toHaveBeenCalled();
   });
+
+  describe('dragged state', () => {
+    it('activates root and nested state-layer dragged state for an in-list single-action row via the dragged prop', () => {
+      const wrapper = mountListItem(
+        { mode: 'single-action', dragged: true, onAction: vi.fn() },
+        { inList: true },
+      );
+      const item = wrapper.get('.md-list-item');
+      const stateLayer = wrapper.get('.md-state-layer');
+
+      expect(item.classes()).toContain('md-state_dragged');
+      expect(stateLayer.classes()).toContain('md-state_dragged');
+    });
+
+    it('activates root and nested state-layer dragged state for an in-list multi-action row with a trailing action via the dragged prop', () => {
+      const wrapper = mountListItem(
+        { mode: 'multi-action', dragged: true, onAction: vi.fn() },
+        {
+          inList: true,
+          slots: { trailingAction: '<button type="button">Edit</button>' },
+        },
+      );
+      const item = wrapper.get('.md-list-item');
+      const stateLayer = wrapper.get('.md-list-item__primary-action .md-state-layer');
+
+      expect(item.classes()).toContain('md-state_dragged');
+      expect(stateLayer.classes()).toContain('md-state_dragged');
+    });
+
+    it('does not render an active state-layer dragged overlay for a disabled action row even when dragged is true', () => {
+      const wrapper = mountListItem(
+        { mode: 'single-action', disabled: true, dragged: true, onAction: vi.fn() },
+        { inList: true },
+      );
+      const stateLayer = wrapper.get('.md-state-layer');
+
+      expect(stateLayer.classes()).not.toContain('md-state_dragged');
+      expect(stateLayer.classes()).toContain('md-state_disabled');
+    });
+
+    it('still sets and clears the effective dragged state from local dragstart/dragend events', async () => {
+      const wrapper = mountListItem(
+        { mode: 'single-action', draggable: true, onAction: vi.fn() },
+        { inList: true },
+      );
+      const item = wrapper.get('.md-list-item');
+      const stateLayer = wrapper.get('.md-state-layer');
+
+      expect(item.classes()).not.toContain('md-state_dragged');
+
+      await item.trigger('dragstart');
+
+      expect(item.classes()).toContain('md-state_dragged');
+      expect(stateLayer.classes()).toContain('md-state_dragged');
+
+      await item.trigger('dragend');
+
+      expect(item.classes()).not.toContain('md-state_dragged');
+      expect(stateLayer.classes()).not.toContain('md-state_dragged');
+    });
+
+    it('does not fire the primary action when clicking inside the trailing action slot of a dragged multi-action row', async () => {
+      const onAction = vi.fn();
+      const wrapper = mountListItem(
+        { mode: 'multi-action', dragged: true, onAction },
+        {
+          inList: true,
+          slots: { trailingAction: '<button type="button">Edit</button>' },
+        },
+      );
+
+      await wrapper.get('.md-list-item__trailing-action button').trigger('click');
+
+      expect(onAction).not.toHaveBeenCalled();
+    });
+  });
 });

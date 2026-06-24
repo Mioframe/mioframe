@@ -106,9 +106,7 @@ const onInteractionOutside = () => {
         :document-id="documentId"
         :view-id="viewId"
         :property-id="propertyId"
-        :class="{
-          'md-state_dragged': draggedSortingId === propertyId,
-        }"
+        :dragged="draggedSortingId === propertyId"
       >
         <template #trailingAction>
           <MDIconButton

@@ -16,6 +16,7 @@ const props = defineProps<{
   documentId: AMDocumentId;
   viewId: DatabaseViewId;
   propertyId: DatabasePropertyId;
+  dragged?: boolean;
 }>();
 
 defineSlots<{
@@ -45,6 +46,7 @@ const onClick = async () => {
   <MDListItem
     :mode="slots.trailingAction ? 'multi-action' : 'single-action'"
     :label-text="headline"
+    :dragged="dragged"
     class="db-sorting-item"
     @action="onClick"
   >

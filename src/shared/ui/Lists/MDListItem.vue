@@ -22,6 +22,9 @@ const props = withDefaults(
     containerTag?: 'div' | 'li' | undefined;
     disabled?: boolean | undefined;
     draggable?: boolean | undefined;
+    // External controlled dragged state for sortable/reorder consumers. Combined with the
+    // component's own dragstart/dragend/drop handling via `effectiveDragged` below.
+    dragged?: boolean | undefined;
     href?: string | undefined;
     labelText: string;
     // eslint-disable-next-line vue/no-unused-properties -- consumed by useListItemAnatomy via props object; rule cannot trace indirect composable usage
@@ -150,7 +153,7 @@ const interactiveSurfaceEl = computed(() => {
   return null;
 });
 
-const dragged = ref(false);
+const localDragged = ref(false);
 // Multi-action full-row hover: primary action and trailing action are stacked in the
 // same grid cell (see listItemAnatomy.css/_has-trailing-action), so the primary action
 // still covers the full visual row width. useLastHover(primaryActionEl) naturally
@@ -158,7 +161,13 @@ const dragged = ref(false);
 // becomes the last hovered element in the global hover list, the primary action is no
 // longer last → hover = false. Empty trailing space has pointer-events: none on the
 // container, so events fall through to the primary action → hover = true.
-const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, { dragged });
+const { hover, focused, durationPressedState } = useStateLayer(interactiveSurfaceEl, {
+  dragged: localDragged,
+});
+// Single effective dragged state driving both the root implementation class and every
+// nested MDStateLayer: external consumers (e.g. sortable) control `props.dragged`, while
+// native drag events still set `localDragged` for unmanaged usage.
+const effectiveDragged = computed(() => props.dragged || localDragged.value);
 
 const rootClass = computed(() => ({
   'md-list-item': true,
@@ -173,7 +182,7 @@ const rootClass = computed(() => ({
   'md-state_hover': showVisualState.value && hover.value,
   'md-state_focused': showVisualState.value && focused.value,
   'md-state_pressed': showVisualState.value && durationPressedState.value,
-  'md-state_dragged': showVisualState.value && dragged.value,
+  'md-state_dragged': showVisualState.value && effectiveDragged.value,
   'md-state_disabled': props.disabled,
 }));
 
@@ -218,12 +227,12 @@ const onRootKeydown = (event: KeyboardEvent) => {
 
 const onDragStart = () => {
   if (!props.disabled) {
-    dragged.value = true;
+    localDragged.value = true;
   }
 };
 
 const onDragEnd = () => {
-  dragged.value = false;
+  localDragged.value = false;
 };
 
 if (import.meta.env.DEV) {
@@ -319,7 +328,7 @@ defineExpose({
           :hover="hover"
           :focused="focused"
           :pressed="durationPressedState"
-          :dragged="dragged"
+          :dragged="effectiveDragged"
           :disabled="disabled"
         />
 
@@ -374,7 +383,7 @@ defineExpose({
         :hover="hover"
         :focused="focused"
         :pressed="durationPressedState"
-        :dragged="dragged"
+        :dragged="effectiveDragged"
         :disabled="disabled"
       />
 

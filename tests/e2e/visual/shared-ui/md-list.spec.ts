@@ -1930,6 +1930,29 @@ test.describe('MDList / StateLayer integration', () => {
     }
   });
 
+  // The sortable-like row uses the public `dragged` prop directly (the same boundary
+  // sortable consumers such as useReorderSurface use), not MDStateLayerForcedStateProvider
+  // — this proves the nested MDStateLayer inside the multi-action row's internal
+  // primary-action surface actually activates from the prop-based path, closing the gap
+  // a forced-state-only fixture cannot prove.
+  test('MDListItem sortable-like row activates the nested state layer via the public dragged prop', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
+
+    const draggedRow = page.locator('[data-testid="sortable-like-dragged-row"]').first();
+    const nestedStateLayer = draggedRow.locator('.md-state-layer').first();
+
+    await expect(draggedRow).toHaveClass(/md-state_dragged/);
+
+    const backgroundColor = await getBackgroundColor(nestedStateLayer);
+
+    expect(
+      hasZeroAlpha(backgroundColor),
+      'sortable-like dragged row must activate a visible nested state-layer overlay from the public dragged prop',
+    ).toBe(false);
+  });
+
   // The interaction-states gallery forces hover/focus/pressed through
   // MDStateLayerForcedStateProvider for both single-action and multi-action rows — this
   // proves the multi-action hover row (where the state layer is nested under

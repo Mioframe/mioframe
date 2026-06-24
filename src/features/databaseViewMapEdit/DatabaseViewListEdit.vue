@@ -85,9 +85,9 @@ const onClickView = (id: DatabaseViewId) => {
       v-reorder-item="id"
       :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
       :label-text="view.name"
+      :dragged="draggedViewId === id"
       class="db-view-map-edit__view-item"
       :class="{
-        'md-state_dragged': draggedViewId === id,
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
       @action="() => onClickView(id)"
