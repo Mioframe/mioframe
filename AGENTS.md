@@ -132,7 +132,7 @@ reason:
 
 ## Shared UI implementation
 
-Use the `material3-guidelines` skill before implementing shared Material/list-family components; it links the detailed shared-UI implementation workflow.
+Use both the `material3-guidelines` skill (Material 3 source-of-truth workflow) and the `shared-ui-implementation` skill (Vue implementation-quality workflow) before implementing shared Material/list-family components.
 
 - Prefer small, named `computed` states (for example `isAction`, `isLinkAction`, `usesPrimaryActionSurface`) over inline boolean algebra for static render conditions. Do not introduce a central topology/state-machine resolver object unless the component has real workflow transitions or impossible intermediate states.
 - Keep component-owned DOM-critical attrs (`href`, `type`, `disabled`, `tabindex`, `role`, `aria-*`) explicit in the template. Object `v-bind` bags are acceptable only for controlled fallthrough-attrs forwarding, never for these attrs.

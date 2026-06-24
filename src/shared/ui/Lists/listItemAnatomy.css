@@ -472,12 +472,14 @@
   text-overflow: ellipsis;
 }
 
-/* Multi-line clamp: verified via the project's pinned cross-browser visual regression
-   suite that the unprefixed standard `line-clamp` property alone does not clamp in the
-   project's supported/pinned browser baseline (rows kept growing instead of clamping),
-   so `-webkit-line-clamp` is a documented, verified compatibility requirement here, not
-   a leftover hack. The standard property is included alongside it for forward
-   compatibility once the baseline browser support is confirmed sufficient. */
+/* Multi-line clamp: the standard unprefixed `line-clamp` property alone does not clamp
+   in the project's pinned Chromium visual-test image (rows kept growing instead of
+   clamping; confirmed by reverting to it and rerunning
+   tests/e2e/visual/shared-ui/md-list.spec.ts), so `-webkit-line-clamp` stays required
+   here. The project's Playwright visual suite (playwright.visual.config.ts) only runs a
+   pinned Chromium engine, so this is Chromium-pinned-image verification, not
+   Firefox/WebKit cross-browser proof — treat the standard `line-clamp` as the forward-
+   compatible fallback, not as already proven sufficient. */
 .md-list-item__supporting-text,
 .md-list-selection-item__supporting-text {
   color: var(--md-comp-list-list-item-supporting-text-color);

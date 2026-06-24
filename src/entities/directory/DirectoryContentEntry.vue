@@ -9,7 +9,7 @@ const props = defineProps<{
 }>();
 
 const slots = defineSlots<{
-  trailingAction: unknown;
+  trailingAction(): unknown;
 }>();
 </script>
 
