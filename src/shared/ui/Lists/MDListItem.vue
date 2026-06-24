@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
+// eslint-disable-next-line no-restricted-imports -- MDListItem is a documented transparent host/adaptor: it renders a polymorphic native element (`is`) and forwarding $attrs to that host is part of its public contract.
 import { computed, ref, useAttrs, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 

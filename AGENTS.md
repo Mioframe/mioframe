@@ -78,6 +78,7 @@ reason:
 - Do not split files by line count alone. Keep one cohesive module intact when splitting would hide invariants, create noisy pass-through modules, or make imports harder to trace.
 - For Vue components, keep templates focused on declarative layout and explicit component contracts. Extract complex browser interaction state, data mapping, derived state, and persistence orchestration into named composables or pure helpers before adding more template and script complexity.
 - Use the `vue-component-implementation` skill before implementing or materially changing `.vue` components or UI composables, to define the component contract and avoid imperative DOM-style coordination, `dispatchEvent`/`querySelector` communication, broad `v-bind` prop bags, and unjustified `:deep()` overrides.
+- `!important` is forbidden in CSS, including Vue SFC `<style>` blocks. This is currently a documented review rule, not yet enforced by automated CSS linting.
 - Keep composables, helpers, and services focused on one capability. Split lifecycle setup, pure derivation, boundary validation, and storage or network side effects when they start changing for different reasons.
 - Test files may be larger than production files when scenarios are uniform. Split tests by behavior when setup becomes conditional, fixtures become hard to localize, or failures no longer point to one behavior.
 - For large refactors, keep behavior-preserving extraction separate from behavior changes. Verify the extraction first, then make functional changes in a smaller diff.

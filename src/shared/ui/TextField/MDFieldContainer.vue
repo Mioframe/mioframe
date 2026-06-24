@@ -361,8 +361,8 @@ const onFocusOut = () => {
     .md-field-container.md-field-container_empty:not(:focus-within):not(.md-field-container_focused)
       & {
       opacity: 0;
-      height: 0 !important;
-      min-height: 0 !important;
+      height: 0;
+      min-height: 0;
       transform: scaleY(0);
     }
 

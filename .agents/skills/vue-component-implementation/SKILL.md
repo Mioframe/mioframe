@@ -25,7 +25,7 @@ Write this short contract before the first production edit. Keep it to a few lin
 2. **Props**: typed props this component accepts (`defineProps` with type-based declaration).
 3. **Emits**: typed emits this component raises (`defineEmits` with type-based declaration), named for the user action/selection, not a parent command.
 4. **Slots**: slots exposed, and any slot props forwarded (`defineSlots`).
-5. **Attrs forwarding**: whether `$attrs`/`v-bind="attrs"` is forwarded transparently, and to which root/child element.
+5. **Attrs forwarding**: whether `$attrs`/`useAttrs()`/`v-bind="attrs"` is forwarded transparently; this is allowed only for a documented transparent host/adaptor contract, and must state which root/child element receives it.
 6. **Derived state/computed plan**: which values are `computed` from props/state, and why no manual state machine is needed.
 7. **Interaction ownership**: which user actions this component owns vs. which it delegates to a parent via emit.
 8. **DOM access/ref justification**: any `useTemplateRef`/DOM access and the concrete browser API need (focus, measurement, scroll, third-party integration).
@@ -56,8 +56,20 @@ If any item is unclear, resolve it before editing `.vue` files; do not start wit
 
 ## v-bind and attrs rules
 
-- `v-bind="$attrs"`/`v-bind="attrs"` transparent forwarding and slot-prop `v-bind` are allowed.
+- Do not use `$attrs`, `useAttrs()`, or bare `v-bind` as a generic escape hatch. Attribute forwarding is allowed only for documented transparent host/adaptor components where forwarding is part of the public contract. Prefer explicit props, emits, and slots.
 - Do not bind a broad, untyped object (`v-bind="someConfigObject"`) to hide the component's real prop/emit contract. Spell out the props the component actually accepts.
+
+## Architecture-sensitive rules (not enforced by lint)
+
+These PR #98 lessons are not safe to enforce syntactically; review them explicitly.
+
+- Do not pass the whole `props` object into shared UI composables. Pass explicit refs/values or a narrow typed options object.
+- Runtime dev warnings must not replace a strict public API. Prefer types, explicit props, emits, slots, and composition boundaries first.
+- Do not use `defineExpose` as a normal component API. It is allowed only for documented browser/focus integration APIs.
+- Do not use `pointer-events` pass-through or overlay stacking to route interactions unless the component contract explicitly owns this geometry and browser/visual verification covers hover, focus, click, touch, and disabled states.
+- Do not suppress focus visuals. Shared UI may delegate focus rendering only to the project focus/state-layer system, and browser verification must cover it.
+- Non-scoped CSS in shared UI is allowed only for documented component-family internals or token/theme files. Ordinary component implementation styles must stay scoped.
+- `!important` is forbidden.
 
 ## Testing/verification rules
 
@@ -76,6 +88,20 @@ Reject or send back for rework when:
 5. The component has a normal empty/hidden render path instead of the parent deciding visibility.
 6. Template logic builds an ad hoc state machine where `computed` derived state would do.
 7. Root render contract is unstable (fragment root, conditional root shape, wrapper added only to satisfy single-root linting).
+8. `$attrs`/`useAttrs()` forwarding is present without a documented transparent host/adaptor contract.
+
+## Review checklist
+
+- `$attrs` / `useAttrs()` forwarding is either absent or documented as a transparent host/adaptor contract.
+
+## Forbidden
+
+- Do not treat `$attrs` forwarding as a default allowed Vue pattern.
+- Do not pass the whole `props` object into shared UI composables.
+- Do not use `defineExpose` as a normal component API outside a documented browser/focus integration.
+- Do not suppress focus visuals.
+- Do not use non-scoped CSS in shared UI components without a documented component-family contract.
+- `!important` is forbidden.
 
 ## Wrong/right examples
 

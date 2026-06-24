@@ -22,7 +22,7 @@ const vueUiCommunicationFiles = [
 export default defineConfigWithVueTs(
   {
     linterOptions: {
-      reportUnusedDisableDirectives: 'warn',
+      reportUnusedDisableDirectives: 'error',
     },
   },
 
@@ -99,6 +99,35 @@ export default defineConfigWithVueTs(
   },
 
   {
+    files: ['src/**/*.vue'],
+    ignores: ['**/*.test.vue', '**/*.stories.vue'],
+    name: 'app/vue-no-attrs-forwarding-by-default',
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'vue',
+              importNames: ['useAttrs'],
+              message:
+                'Do not use useAttrs as a default forwarding escape hatch. Use explicit props/emits/slots, or document a transparent host/adaptor contract with a local lint exception.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    files: ['src/**/*.stories.{ts,mts,tsx,vue}', 'src/**/*.test.{ts,mts,tsx,vue}'],
+    name: 'app/vue-stories-tests-relaxed-handler-style',
+    rules: {
+      'vue/v-on-handler-style': ['warn', ['method', 'inline-function']],
+    },
+  },
+
+  {
     files: ['**/*.{ts,mts,tsx,vue}'],
     rules: {
       '@typescript-eslint/consistent-type-assertions': [
@@ -114,7 +143,7 @@ export default defineConfigWithVueTs(
       '@typescript-eslint/no-deprecated': 'error',
       'no-await-in-loop': 'warn',
       'vue/camelcase': 'off',
-      'vue/component-api-style': ['warn', ['script-setup']],
+      'vue/component-api-style': ['error', ['script-setup']],
       'vue/component-name-in-template-casing': [
         'warn',
         'PascalCase',
@@ -142,7 +171,7 @@ export default defineConfigWithVueTs(
       'vue/no-literals-in-template': 'warn',
       'vue/no-multiple-objects-in-class': 'warn',
       'vue/no-ref-object-reactivity-loss': 'error',
-      'vue/no-root-v-if': 'warn',
+      'vue/no-root-v-if': 'error',
       'vue/no-setup-props-reactivity-loss': 'error',
       'vue/no-static-inline-styles': 'warn',
       'vue/no-template-target-blank': [
@@ -167,7 +196,7 @@ export default defineConfigWithVueTs(
       'vue/prefer-use-template-ref': 'error',
       'vue/require-default-prop': 'off',
       'vue/require-explicit-slots': 'error',
-      'vue/v-on-handler-style': ['warn', ['method', 'inline-function']],
+      'vue/v-on-handler-style': ['error', ['method', 'inline-function']],
       '@typescript-eslint/prefer-promise-reject-errors': 'error',
     },
   },
