@@ -48,6 +48,14 @@ If any item is unclear, resolve it before editing `.vue` files; do not start wit
 - Do not use `querySelector`/`querySelectorAll` to coordinate with sibling or child components; use refs, props, emits, or provide/inject instead.
 - Template refs and direct DOM access are allowed only for real browser API needs: focus, measurement, scrolling, or third-party widget integration. State that justification in the contract.
 
+## Event handler rules
+
+- Prefer named handlers from `<script setup>`: `@click="onClick"`.
+- Named handler calls with local template context (e.g. `v-for`/slot scope) are allowed when they keep the component contract explicit: `@click="onClickItem(item.id)"`, `@keydown="onKeydown($event, item.id)"`.
+- Anonymous inline arrow or function handlers are forbidden: `@click="() => onClickItem(item.id)"`, `@click="function () { onClickItem(item.id) }"`.
+- Direct inline mutations in event expressions are forbidden: `@click="selectedId = item.id"`, `@click="count++"`. Move the mutation into a named handler in `<script setup>`.
+- Non-trivial event logic (more than a single call) belongs in a named `<script setup>` handler, not inline in the template.
+
 ## Styling and deep selector rules
 
 - `:deep()` is allowed only at an explicit, documented integration boundary (e.g. styling a known third-party node). State the boundary and blast radius in the contract or an inline comment; do not use it to casually reach into unrelated child internals.
@@ -88,10 +96,12 @@ Reject or send back for rework when:
 5. The component has a normal empty/hidden render path instead of the parent deciding visibility.
 6. Template logic builds an ad hoc state machine where `computed` derived state would do.
 7. Root render contract is unstable (fragment root, conditional root shape, wrapper added only to satisfy single-root linting).
+8. Event bindings use anonymous inline functions or inline mutations instead of named handlers.
 
 Pass condition:
 
 - `$attrs` / `useAttrs()` forwarding is either absent or documented as a transparent host/adaptor contract.
+- Event bindings use named handlers or named handler calls with local context; anonymous inline functions and inline mutations are absent.
 
 ## Forbidden
 
@@ -136,8 +146,14 @@ const onOpen = () => {
 Right — props/emit-driven state owned by the parent:
 
 ```vue
+<script setup lang="ts">
+const onCloseMenu = () => {
+  isMenuOpen.value = false;
+};
+</script>
+
 <template>
-  <MDMenu :open="isMenuOpen" @close="isMenuOpen = false" />
+  <MDMenu :open="isMenuOpen" @close="onCloseMenu" />
 </template>
 ```
 
@@ -151,4 +167,21 @@ Right — explicit props:
 
 ```vue
 <MDButton :label="label" :disabled="isDisabled" @click="onClick" />
+```
+
+Wrong — anonymous inline handler and inline mutation:
+
+```vue
+<li v-for="item in items" :key="item.id">
+  <MDButton @click="() => onSelectItem(item.id)" />
+  <MDButton @click="selectedId = item.id" />
+</li>
+```
+
+Right — named handler call with local `v-for` context:
+
+```vue
+<li v-for="item in items" :key="item.id">
+  <MDButton @click="onSelectItem(item.id)" />
+</li>
 ```

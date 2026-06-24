@@ -189,6 +189,33 @@ export default defineConfigWithVueTs(
       'vue/require-default-prop': 'off',
       'vue/require-explicit-slots': 'error',
       'vue/v-on-handler-style': ['error', ['method', 'inline']],
+      'vue/no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer ArrowFunctionExpression",
+          message:
+            'Do not use anonymous inline arrow handlers in Vue templates. Use a named handler from <script setup>, e.g. @click="onClickItem(item.id)".',
+        },
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer FunctionExpression",
+          message:
+            'Do not use anonymous inline function handlers in Vue templates. Use a named handler from <script setup>.',
+        },
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer AssignmentExpression",
+          message:
+            'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
+        },
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer UpdateExpression",
+          message:
+            'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
+        },
+      ],
       '@typescript-eslint/prefer-promise-reject-errors': 'error',
     },
   },
