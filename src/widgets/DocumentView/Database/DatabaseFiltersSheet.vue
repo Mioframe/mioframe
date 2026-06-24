@@ -62,7 +62,7 @@ const onUpdateProperty = async (
               :property-id="propertyId"
               autofocus
               @update:value="updateValue"
-              @update:property="($event) => onUpdateProperty(propertyId, $event)"
+              @update:property="onUpdateProperty(propertyId, $event)"
             />
           </template>
         </DatabaseFilterForm>

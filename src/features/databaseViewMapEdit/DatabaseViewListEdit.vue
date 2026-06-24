@@ -86,7 +86,7 @@ const onClickView = (id: DatabaseViewId) => {
         'md-state_drag': draggedViewId === id,
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
-      @click="() => onClickView(id)"
+      @click="onClickView(id)"
     >
       <template v-if="!!slots.leadingIcon" #leadingIcon>
         <slot name="leadingIcon" :view-id="id" />

@@ -19,15 +19,20 @@ export const openStory = async (page: Page, storyId: string) => {
  * @param page - The Playwright page used by the visual test.
  */
 export const stabilizeVisualPage = async (page: Page) => {
+  await page.evaluate(() => {
+    document.documentElement.dataset.visualStable = 'true';
+  });
   await page.addStyleTag({
     content: `
-      *, *::before, *::after {
-        animation-duration: 0s !important;
-        animation-delay: 0s !important;
-        transition-duration: 0s !important;
-        transition-delay: 0s !important;
-        scroll-behavior: auto !important;
-        caret-color: transparent !important;
+      html[data-visual-stable='true'] body *,
+      html[data-visual-stable='true'] body *::before,
+      html[data-visual-stable='true'] body *::after {
+        animation-duration: 0s;
+        animation-delay: 0s;
+        transition-duration: 0s;
+        transition-delay: 0s;
+        scroll-behavior: auto;
+        caret-color: transparent;
       }
     `,
   });

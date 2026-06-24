@@ -41,7 +41,7 @@ const onSelectArticle = async (slug: string) => {
           :key="article.slug"
           type="button"
           :headline="article.title"
-          @click="() => onSelectArticle(article.slug)"
+          @click="onSelectArticle(article.slug)"
         />
       </MDListContainer>
     </div>

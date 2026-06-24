@@ -185,7 +185,7 @@ const hasProperties = computed(() => {
           :directory-path="path"
           :autofocus="!index"
           @update:value="update"
-          @update:property="($event) => onUpdateProperty(propertyId, $event)"
+          @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
     </DbItemAddDialog>

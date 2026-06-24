@@ -147,7 +147,7 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
           :tooltip="`remove object ${filterPath.join('.')}`"
           md-symbol-name="delete"
           size="extra-small"
-          @click="() => onClickRemove(filterPath)"
+          @click="onClickRemove(filterPath)"
         />
       </template>
 

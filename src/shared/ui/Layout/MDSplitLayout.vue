@@ -182,7 +182,7 @@ const bodyStyle = computed(
           }"
           type="button"
           aria-label="resize pane"
-          @pointerdown="($event) => onResizePointerDown(paneIndex, $event)"
+          @pointerdown="onResizePointerDown(paneIndex, $event)"
           @pointerup="onResizePointerEnd"
           @pointercancel="onResizePointerEnd"
           @lostpointercapture="onResizeLostPointerCapture"
