@@ -12,6 +12,13 @@ import tsdoc from 'eslint-plugin-tsdoc';
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
+const vueUiCommunicationFiles = [
+  'src/**/*.vue',
+  'src/shared/ui/**/*.{ts,mts,tsx}',
+  'src/{app,pages,widgets,features,entities}/**/use*.{ts,mts,tsx}',
+  'src/{app,pages,widgets,features,entities}/**/setup*.{ts,mts,tsx}',
+];
+
 export default defineConfigWithVueTs(
   {
     linterOptions: {
@@ -55,20 +62,37 @@ export default defineConfigWithVueTs(
   },
 
   {
-    files: ['**/*.vue'],
-    name: 'app/vue-component-communication',
+    files: vueUiCommunicationFiles,
+    ignores: ['**/*.test.{ts,mts,tsx}', '**/*.testUtils.{ts,mts,tsx}', '**/*.stories.{ts,mts,tsx}'],
+    name: 'app/vue-ui-imperative-dom-communication',
     rules: {
       'no-restricted-syntax': [
         'error',
         {
           selector: "CallExpression[callee.property.name='dispatchEvent']",
           message:
-            'Do not use dispatchEvent for Vue component communication. Use defineEmits/emit instead.',
+            'Do not use dispatchEvent for Vue component communication. Use typed emits, props, slots, or provide/inject.',
         },
         {
-          selector: 'CallExpression[callee.property.name=/^querySelectorAll?$/]',
+          selector: 'CallExpression[callee.property.name=/^querySelector(All)?$/]',
           message:
-            'Do not use querySelector/querySelectorAll to coordinate with other components. Use refs, props, emits, or provide/inject. If this is a justified low-level browser/DOM integration, use an inline eslint-disable-next-line with a reason.',
+            'Do not use querySelector/querySelectorAll to coordinate Vue components. Use template refs for justified DOM APIs, or props/emits/slots/provide-inject for component communication.',
+        },
+      ],
+    },
+  },
+
+  {
+    files: ['src/**/*.vue'],
+    name: 'app/vue-component-contract-v-bind',
+    rules: {
+      'vue/no-restricted-v-bind': [
+        'error',
+        {
+          argument: null,
+          element: '/^[A-Z]/',
+          message:
+            'Do not spread broad object prop bags into Vue components. Spell out component props, except for documented transparent forwarding contracts.',
         },
       ],
     },

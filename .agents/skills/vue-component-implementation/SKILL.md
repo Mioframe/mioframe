@@ -38,7 +38,8 @@ If any item is unclear, resolve it before editing `.vue` files; do not start wit
 
 - Prefer named `computed` values over complex inline template expressions or v-if chains.
 - Do not build a custom state machine when derived `computed` state from existing reactive sources is enough.
-- Move non-trivial derived state and side effects into a composable or pure helper instead of inlining them in `<script setup>` or the template.
+- Move non-trivial pure derivation into named `computed` values or pure helpers.
+- Move lifecycle-managed side effects into composables that own setup and cleanup.
 
 ## Component communication rules
 
