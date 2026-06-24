@@ -12,10 +12,17 @@ import tsdoc from 'eslint-plugin-tsdoc';
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
+const vueUiCommunicationFiles = [
+  'src/**/*.vue',
+  'src/shared/ui/**/*.{ts,mts,tsx}',
+  'src/{app,pages,widgets,features,entities}/**/use*.{ts,mts,tsx}',
+  'src/{app,pages,widgets,features,entities}/**/setup*.{ts,mts,tsx}',
+];
+
 export default defineConfigWithVueTs(
   {
     linterOptions: {
-      reportUnusedDisableDirectives: 'warn',
+      reportUnusedDisableDirectives: 'error',
     },
   },
 
@@ -55,6 +62,64 @@ export default defineConfigWithVueTs(
   },
 
   {
+    files: vueUiCommunicationFiles,
+    ignores: ['**/*.test.{ts,mts,tsx}', '**/*.testUtils.{ts,mts,tsx}', '**/*.stories.{ts,mts,tsx}'],
+    name: 'app/vue-ui-imperative-dom-communication',
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='dispatchEvent']",
+          message:
+            'Do not use dispatchEvent for Vue component communication. Use typed emits, props, slots, or provide/inject.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name=/^querySelector(All)?$/]',
+          message:
+            'Do not use querySelector/querySelectorAll to coordinate Vue components. Use template refs for justified DOM APIs, or props/emits/slots/provide-inject for component communication.',
+        },
+      ],
+    },
+  },
+
+  {
+    files: ['src/**/*.vue'],
+    name: 'app/vue-component-contract-v-bind',
+    rules: {
+      'vue/no-restricted-v-bind': [
+        'error',
+        {
+          argument: null,
+          element: '/^[A-Z]/',
+          message:
+            'Do not spread broad object prop bags into Vue components. Spell out component props, except for documented transparent forwarding contracts.',
+        },
+      ],
+    },
+  },
+
+  {
+    files: ['src/**/*.vue'],
+    ignores: ['**/*.test.vue', '**/*.stories.vue'],
+    name: 'app/vue-no-attrs-forwarding-by-default',
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'vue',
+              importNames: ['useAttrs'],
+              message:
+                'Do not use useAttrs as a default forwarding escape hatch. Use explicit props/emits/slots, or document a transparent host/adaptor contract with a local lint exception.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
     files: ['**/*.{ts,mts,tsx,vue}'],
     rules: {
       '@typescript-eslint/consistent-type-assertions': [
@@ -70,7 +135,7 @@ export default defineConfigWithVueTs(
       '@typescript-eslint/no-deprecated': 'error',
       'no-await-in-loop': 'warn',
       'vue/camelcase': 'off',
-      'vue/component-api-style': ['warn', ['script-setup']],
+      'vue/component-api-style': ['error', ['script-setup']],
       'vue/component-name-in-template-casing': [
         'warn',
         'PascalCase',
@@ -98,7 +163,7 @@ export default defineConfigWithVueTs(
       'vue/no-literals-in-template': 'warn',
       'vue/no-multiple-objects-in-class': 'warn',
       'vue/no-ref-object-reactivity-loss': 'error',
-      'vue/no-root-v-if': 'warn',
+      'vue/no-root-v-if': 'error',
       'vue/no-setup-props-reactivity-loss': 'error',
       'vue/no-static-inline-styles': 'warn',
       'vue/no-template-target-blank': [
@@ -123,7 +188,34 @@ export default defineConfigWithVueTs(
       'vue/prefer-use-template-ref': 'error',
       'vue/require-default-prop': 'off',
       'vue/require-explicit-slots': 'error',
-      'vue/v-on-handler-style': ['warn', ['method', 'inline-function']],
+      'vue/v-on-handler-style': ['error', ['method', 'inline']],
+      'vue/no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer ArrowFunctionExpression",
+          message:
+            'Do not use anonymous inline arrow handlers in Vue templates. Use a named handler from <script setup>, e.g. @click="onClickItem(item.id)".',
+        },
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer FunctionExpression",
+          message:
+            'Do not use anonymous inline function handlers in Vue templates. Use a named handler from <script setup>.',
+        },
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer AssignmentExpression",
+          message:
+            'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
+        },
+        {
+          selector:
+            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer UpdateExpression",
+          message:
+            'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
+        },
+      ],
       '@typescript-eslint/prefer-promise-reject-errors': 'error',
     },
   },

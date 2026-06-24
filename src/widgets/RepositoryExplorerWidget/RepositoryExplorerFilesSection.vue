@@ -69,7 +69,7 @@ const emptyText = computed(() =>
         :can-change-path="capabilities?.canChangePath"
         :can-delete="capabilities?.canDelete"
         class="repository-explorer-files-section__list-item"
-        @click="(clickedName) => onClickEntry(clickedName, nodeType)"
+        @click="onClickEntry($event, nodeType)"
       />
     </MDListContainer>
 

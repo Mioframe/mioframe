@@ -44,6 +44,6 @@ const onClickUnaryInLogical = (
     :directory-path="path"
     :document-id="documentId"
     :property-id="propertyId"
-    @click-unary="(e) => onClickUnaryInLogical(e, operator)"
+    @click-unary="onClickUnaryInLogical($event, operator)"
   />
 </template>

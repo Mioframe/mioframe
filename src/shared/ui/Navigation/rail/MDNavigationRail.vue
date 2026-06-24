@@ -67,7 +67,7 @@ const showMenuBtn = computed(() => props.hasMenu);
       :active="active === button"
       :type="buttonType"
       :has-ripple="railType === RAIL_TYPE.expanded"
-      @click="() => onClick(button)"
+      @click="onClick(button)"
     />
   </section>
 </template>

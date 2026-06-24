@@ -154,7 +154,7 @@ const onRenameViewCompleted = () => {
           <template #leadingIcon="{ viewId }">
             <MDCheckbox
               :model-value="viewId === effectiveViewId"
-              @update:model-value="($event) => onChangeExplicitViewId(viewId, $event)"
+              @update:model-value="onChangeExplicitViewId(viewId, $event)"
             />
           </template>
 
@@ -162,7 +162,7 @@ const onRenameViewCompleted = () => {
             <MDContextMenuButton
               :btns="viewContextMenu"
               tooltip="settings view"
-              @click="($event) => onClickViewContextMenu(viewId, $event)"
+              @click="onClickViewContextMenu(viewId, $event)"
             />
           </template>
         </DatabaseViewListEdit>

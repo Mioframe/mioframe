@@ -43,7 +43,7 @@ const containerTag = computed((): 'ul' | 'div' => (itemTag.value === 'li' ? 'ul'
         :key="item.key"
         :headline="item.headline"
         :supporting-text="item.supportingText"
-        @click="() => onClickItem(item, index)"
+        @click="onClickItem(item, index)"
       >
         <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
           <slot name="leadingAvatarContainer" :item="item" :index="index" />
