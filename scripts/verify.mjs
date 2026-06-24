@@ -8,6 +8,7 @@ import { withExpensiveCommandLock, withVerifyCommandLock } from './lib/commandLo
 import { applyProcessResult } from './lib/processResult.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
+import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 
 applyProjectEnv();
 
@@ -1032,13 +1033,14 @@ function createE2EInstallCommand(reason) {
   };
 }
 
-function createE2ECommand(extraArgs = []) {
+function createE2ECommand(extraArgs = [], note = null) {
   return {
     kind: 'run',
     label: 'e2e',
     command: 'pnpm',
     args: ['e2e:container', ...extraArgs],
     weight: classifyCommandWeight({ label: 'e2e' }),
+    note,
   };
 }
 
@@ -1057,13 +1059,7 @@ function buildCommands(changedFiles) {
       filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
   );
   const hasVisualRelevantChanges = changedFiles.some(isVisualRelevantFile);
-  const changedE2ESpecs = changedFiles.filter(
-    (filePath) =>
-      filePath.startsWith('tests/e2e/') &&
-      !filePath.startsWith('tests/e2e/visual/') &&
-      filePath.endsWith('.ts') &&
-      fileExists(filePath),
-  );
+  const appE2EPlan = resolveAppE2EPlan(changedFiles);
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
@@ -1166,10 +1162,25 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (changedFiles.includes('playwright.config.ts')) {
-    addE2ECommands(commands, createE2ECommand());
-  } else if (changedE2ESpecs.length > 0) {
-    addE2ECommands(commands, createE2ECommand(changedE2ESpecs));
+  if (appE2EPlan.mode === 'full') {
+    addE2ECommands(commands, createE2ECommand([], appE2EPlan.reasons.join('; ')));
+  } else if (appE2EPlan.mode === 'focused') {
+    const existingFocusedSpecs = appE2EPlan.specs.filter(fileExists);
+
+    if (existingFocusedSpecs.length > 0) {
+      addE2ECommands(
+        commands,
+        createE2ECommand(existingFocusedSpecs, appE2EPlan.reasons.join('; ')),
+      );
+    } else {
+      commands.push(createE2EInstallCommand('empty e2e scope'));
+      commands.push({
+        kind: 'skipped',
+        label: 'e2e',
+        command: 'pnpm e2e:container',
+        reason: 'focused e2e specs no longer exist on disk',
+      });
+    }
   } else {
     commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
@@ -1287,6 +1298,10 @@ function printSummary(changedFiles, scope, results) {
 
     const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
     console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.displayCommand})`);
+
+    if (result.label === 'e2e' && result.note) {
+      console.log(`  e2e triggered by: ${result.note}`);
+    }
   }
 
   console.log('action required:');
@@ -1369,6 +1384,10 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
         applyProcessResult({ signal: result.terminatedBySignal });
       }
     }
+    if (entry.note) {
+      result.note = entry.note;
+    }
+
     results.push(result);
     completedRunnableChecks += 1;
 
