@@ -21,6 +21,7 @@ const onAction = () => {};
   <div v-bind="rootAttrs" class="visual-list-backdrop md-list-dom-contract-story">
     <section>
       <h3 class="md-list-dom-contract-story__title">Static list</h3>
+      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDList/MDListItem $attrs forwarding contract; assigns only a DOM contract test id -->
       <MDList v-bind="staticListAttrs">
         <MDListItem
           v-bind="staticItemAttrs"
@@ -28,10 +29,12 @@ const onAction = () => {};
           supporting-text="No row action"
         />
       </MDList>
+      <!-- eslint-enable vue/no-restricted-v-bind -->
     </section>
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Single-action list</h3>
+      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDList/MDListItem $attrs forwarding contract; assigns only a DOM contract test id -->
       <MDList v-bind="singleListAttrs">
         <MDListItem
           v-bind="singleItemAttrs"
@@ -45,10 +48,12 @@ const onAction = () => {};
           </template>
         </MDListItem>
       </MDList>
+      <!-- eslint-enable vue/no-restricted-v-bind -->
     </section>
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Multi-action list</h3>
+      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDList/MDListItem $attrs forwarding contract; assigns only a DOM contract test id -->
       <MDList v-bind="multiListAttrs">
         <MDListItem
           v-bind="multiItemAttrs"
@@ -62,10 +67,12 @@ const onAction = () => {};
           </template>
         </MDListItem>
       </MDList>
+      <!-- eslint-enable vue/no-restricted-v-bind -->
     </section>
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Segmented list</h3>
+      <!-- eslint-disable-next-line vue/no-restricted-v-bind -- documented MDList $attrs forwarding contract; assigns only a DOM contract test id -->
       <MDList v-bind="segmentedListAttrs" list-style="segmented">
         <MDListItem label-text="Segment one" />
         <MDListItem label-text="Segment two" />

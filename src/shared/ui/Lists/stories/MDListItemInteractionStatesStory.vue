@@ -35,6 +35,7 @@ useFocusIndicator();
   <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-interaction-states-story">
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
+      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDListItem $attrs forwarding contract; assigns only a visual-state DOM hook -->
       <MDList>
         <MDStateLayerForcedStateProvider hovered>
           <MDListItem
@@ -71,11 +72,13 @@ useFocusIndicator();
           />
         </MDStateLayerForcedStateProvider>
       </MDList>
+      <!-- eslint-enable vue/no-restricted-v-bind -->
     </section>
 
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Multi-action surface</h3>
       <MDList list-style="segmented">
+        <!-- eslint-disable vue/no-restricted-v-bind -- documented MDListItem $attrs forwarding contract; assigns only a visual-state/test DOM hook -->
         <MDStateLayerForcedStateProvider hovered>
           <MDListItem
             v-bind="hoverAttrs"
@@ -106,6 +109,7 @@ useFocusIndicator();
             />
           </template>
         </MDListItem>
+        <!-- eslint-enable vue/no-restricted-v-bind -->
         <MDListItem
           mode="multi-action"
           label-text="Trailing action hover"

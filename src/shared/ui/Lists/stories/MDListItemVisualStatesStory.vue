@@ -21,6 +21,7 @@ const onAction = () => {};
     <section class="md-list-item-visual-states-story__section">
       <h3 class="md-list-item-visual-states-story__title">Standard</h3>
       <MDList class="md-list-item-visual-states-story__list">
+        <!-- eslint-disable vue/no-restricted-v-bind -- documented MDListItem $attrs forwarding contract; assigns only a visual-state DOM hook -->
         <MDListItem
           v-bind="enabledAttrs"
           mode="single-action"
@@ -62,6 +63,7 @@ const onAction = () => {};
             @action="onAction"
           />
         </MDStateLayerForcedStateProvider>
+        <!-- eslint-enable vue/no-restricted-v-bind -->
         <MDStateLayerForcedStateProvider dragged>
           <MDListItem
             mode="single-action"
@@ -95,6 +97,7 @@ const onAction = () => {};
             <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
           </template>
         </MDListItem>
+        <!-- eslint-disable vue/no-restricted-v-bind -- documented MDListItem $attrs forwarding contract; assigns only a visual-state DOM hook -->
         <MDStateLayerForcedStateProvider hovered>
           <MDListItem
             v-bind="hoverAttrs"
@@ -109,6 +112,7 @@ const onAction = () => {};
             </template>
           </MDListItem>
         </MDStateLayerForcedStateProvider>
+        <!-- eslint-enable vue/no-restricted-v-bind -->
         <MDListItem
           mode="multi-action"
           disabled
@@ -126,6 +130,7 @@ const onAction = () => {};
           proves the nested MDStateLayer inside the internal primary-action surface
           actually activates from the prop, the same boundary sortable consumers use.
         -->
+        <!-- eslint-disable vue/no-restricted-v-bind -- documented MDListItem $attrs forwarding contract; assigns only a test DOM hook -->
         <MDListItem
           v-bind="sortableDraggedAttrs"
           mode="multi-action"
@@ -138,6 +143,7 @@ const onAction = () => {};
             <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
           </template>
         </MDListItem>
+        <!-- eslint-enable vue/no-restricted-v-bind -->
       </MDList>
     </section>
   </div>
