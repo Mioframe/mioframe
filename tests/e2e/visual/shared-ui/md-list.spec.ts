@@ -453,6 +453,16 @@ test.describe('MDList / Material reference forced state layer', () => {
     const hoverRow = surface.locator('.md-list-item.md-state_hover').first();
     const stateLayer = hoverRow.locator('.md-state-layer').first();
 
+    // MDStateLayer's own scoped style attribute selector outranks this harness's global
+    // transition-disabling override (an extra Vue `[data-v-*]` attribute selector beats the
+    // harness rule's specificity), so overriding the color CSS variable here would otherwise
+    // be read mid-transition. Pin `transition: none` inline on this one node — inline style
+    // always wins over any stylesheet rule, no `!important` needed — so the override below
+    // resolves to its final value immediately instead of an in-flight oklab interpolation.
+    await stateLayer.evaluate((node) => {
+      node.style.setProperty('transition', 'none');
+    });
+
     const beforeColor = await stateLayer.evaluate((node) => getComputedStyle(node).backgroundColor);
 
     const [afterColor, expectedColor] = await Promise.all([
@@ -1768,17 +1778,25 @@ test.describe('MDList / StateLayer integration', () => {
       (node) => getComputedStyle(node).backgroundColor,
     );
     await primaryAction.hover();
-    const afterColor = await primaryStateLayer.evaluate(
-      (node) => getComputedStyle(node).backgroundColor,
-    );
 
     expect(hasZeroAlpha(beforeColor), 'state layer must be inactive before pointer hover').toBe(
       true,
     );
-    expect(
-      hasZeroAlpha(afterColor),
-      'real pointer hover must activate the shared MDStateLayer background, not a forced fixture class',
-    ).toBe(false);
+    // MDStateLayer's background-color transitions over
+    // --md-sys-motion-duration-short4 (~0.2s); poll instead of a single immediate read so this
+    // assertion isn't racing the in-flight transition under CPU-constrained CI containers.
+    await expect
+      .poll(
+        async () =>
+          hasZeroAlpha(
+            await primaryStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+          ),
+        {
+          message:
+            'real pointer hover must activate the shared MDStateLayer background, not a forced fixture class',
+        },
+      )
+      .toBe(false);
   });
 
   test('MDListItem real pointer press activates the shared primary-action pressed state layer', async ({
@@ -1821,19 +1839,31 @@ test.describe('MDList / StateLayer integration', () => {
 
     await trailingButton.hover();
 
-    const [primaryColor, trailingColor] = await Promise.all([
-      primaryStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
-      trailingStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
-    ]);
+    // MDStateLayer's background-color transitions over
+    // --md-sys-motion-duration-short4 (~0.2s); poll for the trailing activation instead of a
+    // single immediate read so this assertion isn't racing the in-flight transition under
+    // CPU-constrained CI containers.
+    await expect
+      .poll(
+        async () =>
+          hasZeroAlpha(
+            await trailingStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+          ),
+        {
+          message:
+            'hovering the trailing action must activate its own shared interactive primitive state layer',
+        },
+      )
+      .toBe(false);
+
+    const primaryColor = await primaryStateLayer.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
 
     expect(
       hasZeroAlpha(primaryColor),
       'hovering the trailing action must not activate the row primary action state layer',
     ).toBe(true);
-    expect(
-      hasZeroAlpha(trailingColor),
-      'hovering the trailing action must activate its own shared interactive primitive state layer',
-    ).toBe(false);
   });
 
   test('MDListSelectionItem real pointer click selects a row and updates its container fill', async ({

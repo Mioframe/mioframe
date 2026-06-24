@@ -6,9 +6,6 @@ import MDSymbol from '../../Icon/MDSymbol.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = {
-  'data-testid': 'visual-md-list-consumer-patterns',
-};
 const onAction = () => {};
 const checkboxChecked = ref(false);
 const checkboxDisabledChecked = ref(true);
@@ -18,7 +15,10 @@ const onCheckboxChange = () => {
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-consumer-patterns-story">
+  <div
+    data-testid="visual-md-list-consumer-patterns"
+    class="visual-list-backdrop md-list-item-consumer-patterns-story"
+  >
     <p class="md-list-item-consumer-patterns-story__caption">
       Every list below is intentionally a standard (contiguous) list — items have no gap between
       them by design. Grouping comes from the rounded surface, not from list spacing.

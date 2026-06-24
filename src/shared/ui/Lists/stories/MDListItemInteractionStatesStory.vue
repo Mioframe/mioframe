@@ -7,15 +7,6 @@ import { MDStateLayerForcedStateProvider } from '../../State/testing';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = {
-  'data-testid': 'visual-md-list-interaction-states',
-};
-const hoverAttrs = { 'data-visual-state': 'hover' };
-const focusAttrs = { 'data-visual-state': 'focus' };
-const pressedAttrs = { 'data-visual-state': 'pressed' };
-const multiActionIndependenceAttrs = {
-  'data-testid': 'md-list-multi-action-independence',
-};
 const onAction = () => {};
 const primaryActionCount = ref(0);
 const trailingActionCount = ref(0);
@@ -32,14 +23,16 @@ useFocusIndicator();
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-interaction-states-story">
+  <div
+    data-testid="visual-md-list-interaction-states"
+    class="visual-list-backdrop md-list-item-interaction-states-story"
+  >
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Single-action surface</h3>
-      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDListItem $attrs forwarding contract; assigns only a visual-state DOM hook -->
       <MDList>
         <MDStateLayerForcedStateProvider hovered>
           <MDListItem
-            v-bind="hoverAttrs"
+            data-visual-state="hover"
             class="md-state_hover"
             mode="single-action"
             label-text="Hover"
@@ -53,7 +46,7 @@ useFocusIndicator();
         </MDStateLayerForcedStateProvider>
         <MDStateLayerForcedStateProvider focused>
           <MDListItem
-            v-bind="focusAttrs"
+            data-visual-state="focus"
             class="md-state_focused"
             mode="single-action"
             label-text="Focus"
@@ -63,7 +56,7 @@ useFocusIndicator();
         </MDStateLayerForcedStateProvider>
         <MDStateLayerForcedStateProvider pressed>
           <MDListItem
-            v-bind="pressedAttrs"
+            data-visual-state="pressed"
             class="md-state_pressed"
             mode="single-action"
             label-text="Pressed"
@@ -72,16 +65,14 @@ useFocusIndicator();
           />
         </MDStateLayerForcedStateProvider>
       </MDList>
-      <!-- eslint-enable vue/no-restricted-v-bind -->
     </section>
 
     <section class="md-list-item-interaction-states-story__section">
       <h3 class="md-list-item-interaction-states-story__title">Multi-action surface</h3>
       <MDList list-style="segmented">
-        <!-- eslint-disable vue/no-restricted-v-bind -- documented MDListItem $attrs forwarding contract; assigns only a visual-state/test DOM hook -->
         <MDStateLayerForcedStateProvider hovered>
           <MDListItem
-            v-bind="hoverAttrs"
+            data-visual-state="hover"
             class="md-state_hover"
             mode="multi-action"
             label-text="Primary hover"
@@ -94,7 +85,7 @@ useFocusIndicator();
           </MDListItem>
         </MDStateLayerForcedStateProvider>
         <MDListItem
-          v-bind="multiActionIndependenceAttrs"
+          data-testid="md-list-multi-action-independence"
           mode="multi-action"
           label-text="Trailing action independence"
           supporting-text="The secondary action keeps its own target and hit area"
@@ -109,7 +100,6 @@ useFocusIndicator();
             />
           </template>
         </MDListItem>
-        <!-- eslint-enable vue/no-restricted-v-bind -->
         <MDListItem
           mode="multi-action"
           label-text="Trailing action hover"

@@ -23,6 +23,7 @@
   },
   "vueCompilerOptions": {
     "strictTemplates": true,
-    "checkUnknownProps": true
+    "checkUnknownProps": true,
+    "dataAttributes": ["data-*"]
   }
 }

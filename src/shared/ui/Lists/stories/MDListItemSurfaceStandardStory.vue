@@ -3,12 +3,14 @@ import MDSymbol from '../../Icon/MDSymbol.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = { 'data-testid': 'visual-md-list-surface-standard' };
 const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-surface-standard-story">
+  <div
+    data-testid="visual-md-list-surface-standard"
+    class="visual-list-backdrop md-list-item-surface-standard-story"
+  >
     <section class="md-list-item-surface-standard-story__section">
       <h3 class="md-list-item-surface-standard-story__title">Standard list on surface</h3>
       <div

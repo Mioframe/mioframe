@@ -4,12 +4,14 @@ import MDSymbol from '../../Icon/MDSymbol.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = { 'data-testid': 'visual-md-list-surface-segmented' };
 const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-surface-segmented-story">
+  <div
+    data-testid="visual-md-list-surface-segmented"
+    class="visual-list-backdrop md-list-item-surface-segmented-story"
+  >
     <section class="md-list-item-surface-segmented-story__section">
       <h3 class="md-list-item-surface-segmented-story__title">
         Segmented list Material parity sample

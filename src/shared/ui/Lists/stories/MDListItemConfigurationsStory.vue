@@ -4,14 +4,14 @@ import MDSymbol from '../../Icon/MDSymbol.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = {
-  'data-testid': 'visual-md-list-configurations',
-};
 const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-configurations-story">
+  <div
+    data-testid="visual-md-list-configurations"
+    class="visual-list-backdrop md-list-item-configurations-story"
+  >
     <section class="md-list-item-configurations-story__section">
       <h3 class="md-list-item-configurations-story__title">Standard</h3>
       <MDList class="md-list-item-configurations-story__list">

@@ -4,17 +4,13 @@ import { MDStateLayerForcedStateProvider } from '../../State/testing';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const statesAttrs = { 'data-testid': 'visual-md-list-material-states' };
-const standardAttrs = { 'data-testid': 'visual-md-list-material-standard' };
-const segmentedAttrs = { 'data-testid': 'visual-md-list-material-segmented' };
-const configurationsAttrs = { 'data-testid': 'visual-md-list-material-configurations' };
 const onAction = () => {};
 </script>
 
 <template>
   <div class="md-list-item-material-reference-story">
     <div
-      v-bind="statesAttrs"
+      data-testid="visual-md-list-material-states"
       class="visual-list-backdrop md-list-item-material-reference-story__group"
     >
       <MDList class="md-list-item-material-reference-story__list">
@@ -80,7 +76,7 @@ const onAction = () => {};
     </div>
 
     <div
-      v-bind="standardAttrs"
+      data-testid="visual-md-list-material-standard"
       class="visual-list-backdrop md-list-item-material-reference-story__group"
     >
       <MDList class="md-list-item-material-reference-story__list">
@@ -114,7 +110,7 @@ const onAction = () => {};
     </div>
 
     <div
-      v-bind="segmentedAttrs"
+      data-testid="visual-md-list-material-segmented"
       class="visual-list-backdrop md-list-item-material-reference-story__group"
     >
       <MDList list-style="segmented" class="md-list-item-material-reference-story__list">
@@ -148,7 +144,7 @@ const onAction = () => {};
     </div>
 
     <div
-      v-bind="configurationsAttrs"
+      data-testid="visual-md-list-material-configurations"
       class="visual-list-backdrop md-list-item-material-reference-story__group"
     >
       <MDList class="md-list-item-material-reference-story__list">

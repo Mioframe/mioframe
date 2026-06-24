@@ -4,10 +4,6 @@ import MDList from '../MDList.vue';
 import MDListSelectionItem from '../MDListSelectionItem.vue';
 import type { MDListModelValue } from '../listContext';
 
-const rootAttrs = {
-  'data-testid': 'visual-md-list-selection',
-};
-
 const singleSelection = ref<'bread' | 'rice' | 'pita'>('rice');
 const multipleSelection = ref<Array<'alerts' | 'docs' | 'notes'>>(['alerts', 'notes']);
 
@@ -28,7 +24,10 @@ const onMultipleSelectionChange = (value: MDListModelValue) => {
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-selection-story">
+  <div
+    data-testid="visual-md-list-selection"
+    class="visual-list-backdrop md-list-item-selection-story"
+  >
     <section class="md-list-item-selection-story__section">
       <h3 class="md-list-item-selection-story__title">Single-select standard</h3>
       <MDList

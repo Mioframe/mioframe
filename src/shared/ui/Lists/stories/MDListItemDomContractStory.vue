@@ -4,27 +4,31 @@ import MDSymbol from '../../Icon/MDSymbol.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = {
-  'data-testid': 'md-list-dom-contract',
-};
-const staticListAttrs = { id: 'dom-static-list' };
-const staticItemAttrs = { id: 'dom-static-item' };
-const singleListAttrs = { id: 'dom-single-list' };
-const singleItemAttrs = { id: 'dom-single-item' };
-const multiListAttrs = { id: 'dom-multi-list' };
-const multiItemAttrs = { id: 'dom-multi-item' };
-const segmentedListAttrs = { id: 'dom-segmented-list' };
 const onAction = () => {};
+
+// MDList/MDListItem forward an `id` to their rendered host element via $attrs; this story's
+// entire purpose is to prove that forwarding contract end-to-end (see
+// `MDList / DOM contract` in md-list.spec.ts), so `id` is a genuine transparent-forwarding
+// boundary case, not a convenience shortcut for a literal attribute. `id` is a global HTML
+// attribute, not a `data-*` one, so it falls outside the project's `dataAttributes` allowlist
+// and must go through `v-bind` to type-check against these strictly-typed components.
+const staticListId = { id: 'dom-static-list' };
+const staticItemId = { id: 'dom-static-item' };
+const singleListId = { id: 'dom-single-list' };
+const singleItemId = { id: 'dom-single-item' };
+const multiListId = { id: 'dom-multi-list' };
+const multiItemId = { id: 'dom-multi-item' };
+const segmentedListId = { id: 'dom-segmented-list' };
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-dom-contract-story">
+  <div data-testid="md-list-dom-contract" class="visual-list-backdrop md-list-dom-contract-story">
     <section>
       <h3 class="md-list-dom-contract-story__title">Static list</h3>
-      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDList/MDListItem $attrs forwarding contract; assigns only a DOM contract test id -->
-      <MDList v-bind="staticListAttrs">
+      <!-- eslint-disable vue/no-restricted-v-bind -- transparent $attrs forwarding boundary under test (see script comment); `id` is not a `data-*` attribute so it cannot be written literally under this project's strict component typing -->
+      <MDList v-bind="staticListId">
         <MDListItem
-          v-bind="staticItemAttrs"
+          v-bind="staticItemId"
           label-text="Static item"
           supporting-text="No row action"
         />
@@ -34,10 +38,10 @@ const onAction = () => {};
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Single-action list</h3>
-      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDList/MDListItem $attrs forwarding contract; assigns only a DOM contract test id -->
-      <MDList v-bind="singleListAttrs">
+      <!-- eslint-disable vue/no-restricted-v-bind -- transparent $attrs forwarding boundary under test (see script comment); `id` is not a `data-*` attribute so it cannot be written literally under this project's strict component typing -->
+      <MDList v-bind="singleListId">
         <MDListItem
-          v-bind="singleItemAttrs"
+          v-bind="singleItemId"
           mode="single-action"
           label-text="Single action"
           supporting-text="Primary action lives inside the list item"
@@ -53,10 +57,10 @@ const onAction = () => {};
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Multi-action list</h3>
-      <!-- eslint-disable vue/no-restricted-v-bind -- documented MDList/MDListItem $attrs forwarding contract; assigns only a DOM contract test id -->
-      <MDList v-bind="multiListAttrs">
+      <!-- eslint-disable vue/no-restricted-v-bind -- transparent $attrs forwarding boundary under test (see script comment); `id` is not a `data-*` attribute so it cannot be written literally under this project's strict component typing -->
+      <MDList v-bind="multiListId">
         <MDListItem
-          v-bind="multiItemAttrs"
+          v-bind="multiItemId"
           mode="multi-action"
           label-text="Multi action"
           supporting-text="Primary and secondary actions are siblings"
@@ -72,8 +76,8 @@ const onAction = () => {};
 
     <section>
       <h3 class="md-list-dom-contract-story__title">Segmented list</h3>
-      <!-- eslint-disable-next-line vue/no-restricted-v-bind -- documented MDList $attrs forwarding contract; assigns only a DOM contract test id -->
-      <MDList v-bind="segmentedListAttrs" list-style="segmented">
+      <!-- eslint-disable-next-line vue/no-restricted-v-bind -- transparent $attrs forwarding boundary under test (see script comment); `id` is not a `data-*` attribute so it cannot be written literally under this project's strict component typing -->
+      <MDList v-bind="segmentedListId" list-style="segmented">
         <MDListItem label-text="Segment one" />
         <MDListItem label-text="Segment two" />
         <MDListItem label-text="Segment three" />

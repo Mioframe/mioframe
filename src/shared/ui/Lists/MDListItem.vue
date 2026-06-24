@@ -454,11 +454,6 @@ defineExpose({
     outline: none;
   }
 
-  &__primary-action:focus-visible,
-  &:is(button, a):focus-visible > &__body {
-    outline: none !important;
-  }
-
   /* Pointer cursor only for enabled interactive elements. */
   &__primary-action:is(button:not(:disabled), a:not([aria-disabled='true'])),
   &:is(button:not(:disabled), a:not([aria-disabled='true'])) {

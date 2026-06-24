@@ -4,12 +4,14 @@ import MDSymbol from '../../Icon/MDSymbol.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = { 'data-testid': 'visual-md-list-surface-repository' };
 const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-surface-repository-story">
+  <div
+    data-testid="visual-md-list-surface-repository"
+    class="visual-list-backdrop md-list-item-surface-repository-story"
+  >
     <section class="md-list-item-surface-repository-story__section">
       <h3 class="md-list-item-surface-repository-story__title">
         Repository Explorer documents section

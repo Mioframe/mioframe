@@ -3,14 +3,14 @@ import MDIconButton from '../../Button/MDIconButton.vue';
 import MDList from '../MDList.vue';
 import MDListItem from '../MDListItem.vue';
 
-const rootAttrs = {
-  'data-testid': 'visual-md-list-trailing-action',
-};
 const onAction = () => {};
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-list-backdrop md-list-item-trailing-action-story">
+  <div
+    data-testid="visual-md-list-trailing-action"
+    class="visual-list-backdrop md-list-item-trailing-action-story"
+  >
     <MDList list-style="segmented">
       <MDListItem
         mode="multi-action"

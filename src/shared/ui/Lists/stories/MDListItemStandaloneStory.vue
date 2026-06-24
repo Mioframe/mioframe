@@ -4,8 +4,6 @@ import MDSymbol from '../../Icon/MDSymbol.vue';
 import { useFocusIndicator } from '../../State/useFocusIndicator';
 import MDListItem from '../MDListItem.vue';
 
-const basicAttrs = { 'data-testid': 'visual-md-list-item-standalone-basic' };
-const consumerAttrs = { 'data-testid': 'visual-md-list-item-standalone-consumer' };
 const onAction = () => {};
 
 useFocusIndicator();
@@ -13,7 +11,10 @@ useFocusIndicator();
 
 <template>
   <div class="md-list-item-standalone-story">
-    <div v-bind="basicAttrs" class="visual-list-backdrop md-list-item-standalone-story__group">
+    <div
+      data-testid="visual-md-list-item-standalone-basic"
+      class="visual-list-backdrop md-list-item-standalone-story__group"
+    >
       <section class="md-list-item-standalone-story__section">
         <h3 class="md-list-item-standalone-story__title">Static item with leading icon</h3>
         <div id="standalone-static-leading" class="md-list-item-standalone-story__surface">
@@ -116,7 +117,10 @@ useFocusIndicator();
       target so this product-pattern regression stays visually separate from the compact
       public-API state gallery above.
     -->
-    <div v-bind="consumerAttrs" class="visual-list-backdrop md-list-item-standalone-story__group">
+    <div
+      data-testid="visual-md-list-item-standalone-consumer"
+      class="visual-list-backdrop md-list-item-standalone-story__group"
+    >
       <section class="md-list-item-standalone-story__section">
         <h3 class="md-list-item-standalone-story__title">
           EntryAddSheet consumer rows (standalone, contiguous by design)
