@@ -104,7 +104,7 @@ const onCancelCreateProperty = () => {
           <MDContextMenuButton
             :btns="propertyContextBtns"
             :tooltip="`options ${property?.name}`"
-            @click="(payload) => onClickPropertyContextAction(payload, propertyId)"
+            @click="onClickPropertyContextAction($event, propertyId)"
           />
         </template>
       </DatabasePropertyList>

@@ -116,7 +116,7 @@ const onInteractionOutside = () => {
             color="standard"
             tooltip="remove"
             md-symbol-name="delete"
-            @click="() => onClickRemoveItem(propertyId)"
+            @click="onClickRemoveItem(propertyId)"
           />
         </template>
       </DatabaseSortingListItem>
@@ -147,7 +147,7 @@ const onInteractionOutside = () => {
         :property-id="propertyId"
         :path="path"
         :document-id="documentId"
-        @click="() => onClickAddSortingMenu(propertyId)"
+        @click="onClickAddSortingMenu(propertyId)"
       />
     </MDMenuBase>
   </section>

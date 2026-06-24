@@ -65,7 +65,7 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
         :label="label"
         :selected="isSelected(viewId)"
         :autofocus="!index ? autofocus : undefined"
-        @click="() => onClickViewChip(viewId)"
+        @click="onClickViewChip(viewId)"
       />
     </template>
 
@@ -75,7 +75,7 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
         :key="viewId"
         :label="label"
         :autofocus="!index ? autofocus : undefined"
-        @click="() => onClickViewChip(viewId)"
+        @click="onClickViewChip(viewId)"
       />
     </template>
 
@@ -85,7 +85,7 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
         :key="viewId"
         :label="label"
         :autofocus="!index ? autofocus : undefined"
-        @click="() => onClickViewChip(viewId)"
+        @click="onClickViewChip(viewId)"
       />
     </template>
   </div>

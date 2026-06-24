@@ -120,14 +120,6 @@ export default defineConfigWithVueTs(
   },
 
   {
-    files: ['src/**/*.stories.{ts,mts,tsx,vue}', 'src/**/*.test.{ts,mts,tsx,vue}'],
-    name: 'app/vue-stories-tests-relaxed-handler-style',
-    rules: {
-      'vue/v-on-handler-style': ['warn', ['method', 'inline-function']],
-    },
-  },
-
-  {
     files: ['**/*.{ts,mts,tsx,vue}'],
     rules: {
       '@typescript-eslint/consistent-type-assertions': [
@@ -196,7 +188,7 @@ export default defineConfigWithVueTs(
       'vue/prefer-use-template-ref': 'error',
       'vue/require-default-prop': 'off',
       'vue/require-explicit-slots': 'error',
-      'vue/v-on-handler-style': ['error', ['method', 'inline-function']],
+      'vue/v-on-handler-style': ['error', ['method', 'inline']],
       '@typescript-eslint/prefer-promise-reject-errors': 'error',
     },
   },

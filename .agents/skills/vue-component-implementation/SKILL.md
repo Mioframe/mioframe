@@ -88,9 +88,8 @@ Reject or send back for rework when:
 5. The component has a normal empty/hidden render path instead of the parent deciding visibility.
 6. Template logic builds an ad hoc state machine where `computed` derived state would do.
 7. Root render contract is unstable (fragment root, conditional root shape, wrapper added only to satisfy single-root linting).
-8. `$attrs`/`useAttrs()` forwarding is present without a documented transparent host/adaptor contract.
 
-## Review checklist
+Pass condition:
 
 - `$attrs` / `useAttrs()` forwarding is either absent or documented as a transparent host/adaptor contract.
 

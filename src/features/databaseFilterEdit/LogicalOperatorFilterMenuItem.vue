@@ -81,7 +81,7 @@ const onClickUnaryInProperty = (
         :directory-path="path"
         :document-id="documentId"
         :property-id="propertyId"
-        @click-unary="($event) => onClickUnaryInLogical($event, subOperator)"
+        @click-unary="onClickUnaryInLogical($event, subOperator)"
       />
 
       <template v-if="propertyId">
@@ -89,7 +89,7 @@ const onClickUnaryInProperty = (
           v-for="subOperator in UNARY_FILTER_OPERATOR"
           :key="subOperator"
           :operator="subOperator"
-          @click="() => onClickUnary(subOperator)"
+          @click="onClickUnary(subOperator)"
         />
       </template>
 
@@ -100,7 +100,7 @@ const onClickUnaryInProperty = (
           :path="path"
           :document-id="documentId"
           :property-id="subPropertyId"
-          @click-unary="($event) => onClickUnaryInProperty($event, subPropertyId)"
+          @click-unary="onClickUnaryInProperty($event, subPropertyId)"
         />
       </template>
     </template>

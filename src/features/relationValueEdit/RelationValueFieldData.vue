@@ -58,7 +58,7 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
     <template #action="{ itemId }">
       <MDCheckbox
         :model-value="selectedValue.includes(itemId)"
-        @update:model-value="() => onUpdateSelectedValue(itemId)"
+        @update:model-value="onUpdateSelectedValue(itemId)"
       />
     </template>
   </DatabaseDataTable>

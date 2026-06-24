@@ -36,7 +36,7 @@ const enableList = computed(() => (isArray(enable) ? enable : [enable]));
       :class="{
         item_enable: enableList?.includes(item),
       }"
-      @click="() => emit('click', item)"
+      @click="emit('click', item)"
     >
       <div class="item__icon">
         <slot name="icon" :item="item">
