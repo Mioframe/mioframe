@@ -222,8 +222,8 @@ function getScenariosForPath(filePath) {
 }
 
 /**
- * @param {typeof E2E_SCENARIO_SCOPES} scenarios Scenario registry entries to flatten into a spec list.
- * @returns {string[]} Sorted unique spec paths referenced by the scenario registry.
+ * @param scenarios Scenario registry entries to flatten into a spec list.
+ * @returns Sorted unique spec paths referenced by the scenario registry.
  */
 function getAllRegistrySpecs(scenarios) {
   return uniqSorted(scenarios.flatMap((scenario) => scenario.specs));
