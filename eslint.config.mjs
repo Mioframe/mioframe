@@ -55,6 +55,26 @@ export default defineConfigWithVueTs(
   },
 
   {
+    files: ['**/*.vue'],
+    name: 'app/vue-component-communication',
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='dispatchEvent']",
+          message:
+            'Do not use dispatchEvent for Vue component communication. Use defineEmits/emit instead.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name=/^querySelectorAll?$/]',
+          message:
+            'Do not use querySelector/querySelectorAll to coordinate with other components. Use refs, props, emits, or provide/inject. If this is a justified low-level browser/DOM integration, use an inline eslint-disable-next-line with a reason.',
+        },
+      ],
+    },
+  },
+
+  {
     files: ['**/*.{ts,mts,tsx,vue}'],
     rules: {
       '@typescript-eslint/consistent-type-assertions': [
