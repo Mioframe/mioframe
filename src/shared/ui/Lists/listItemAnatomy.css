@@ -457,6 +457,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Direct flex children with nowrap text report their full unwrapped text width as a
+     content-based minimum to ancestor auto-sized tracks (flex/grid). Explicit min-width: 0
+     overrides that floor so this element only ever asks its own box for its actual
+     (clipped) width, never forcing a wider host list/track. */
+  min-width: 0;
 }
 
 .md-list-item__label-text,
@@ -470,6 +475,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* One-line and two-line supporting text both clamp to a single rendered line, so a plain
@@ -485,6 +491,7 @@
   font-weight: var(--md-comp-list-list-item-supporting-text-weight);
   line-height: var(--md-comp-list-list-item-supporting-text-line-height);
   letter-spacing: var(--md-comp-list-list-item-supporting-text-tracking);
+  min-width: 0;
 }
 
 /* Three-line layout clamps supporting text to 2 wrapped lines using a browser-neutral
@@ -500,6 +507,7 @@
 .md-list-selection-item__supporting-text_three-line {
   display: block;
   width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: clip;
   white-space: normal;

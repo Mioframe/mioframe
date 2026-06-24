@@ -79,12 +79,14 @@ const onAction = () => {};
 <style scoped>
 .md-list-item-configurations-story {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24dp;
   width: min(360dp, calc(100vw - 32dp));
 }
 
 .md-list-item-configurations-story__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8dp;
 }
 

@@ -2699,3 +2699,78 @@ test.describe('MDList / sizing and overflow', () => {
     );
   });
 });
+
+// Geometry guard, independent of pixel snapshots: a row that escapes its visual surface
+// can still pass a stale/updated screenshot baseline if the baseline was captured while
+// already broken. These assertions fail on horizontal overflow before any snapshot
+// comparison runs, for every story that previously regressed when list-item text lost
+// its width containment.
+test.describe('MDList / row overflow containment', () => {
+  const overflowGuardSurfaces = [
+    {
+      storyId: 'material-3-components-lists-mdlistitem--configurations',
+      testId: 'visual-md-list-configurations',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--consumer-patterns',
+      testId: 'visual-md-list-consumer-patterns',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--visual-interaction-states',
+      testId: 'visual-md-list-interaction-states',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--visual-states',
+      testId: 'visual-md-list-states',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--surface-context-segmented-diagnostic',
+      testId: 'visual-md-list-surface-segmented-diagnostic',
+    },
+    {
+      storyId: 'material-3-components-lists-mdlistitem--surface-context-standard',
+      testId: 'visual-md-list-surface-standard',
+    },
+  ];
+
+  const tolerancePx = 1;
+
+  for (const { storyId, testId } of overflowGuardSurfaces) {
+    test(`${testId} keeps every row inside the surface bounds`, async ({ page }) => {
+      await openStory(page, storyId);
+
+      const surface = page.getByTestId(testId);
+      const surfaceBox = await getBoundingBoxOrThrow(surface, `${testId} has no bounding box`);
+
+      const rows = surface.locator('.md-list-item, .md-list-selection-item');
+      const rowCount = await rows.count();
+      expect(rowCount, `${testId} must render at least one row`).toBeGreaterThan(0);
+
+      const rowBoxes = await Promise.all(
+        Array.from({ length: rowCount }, (_unused, index) =>
+          getBoundingBoxOrThrow(rows.nth(index), `${testId} row ${index} has no bounding box`),
+        ),
+      );
+
+      rowBoxes.forEach((rowBox, index) => {
+        expect(
+          rowBox.x,
+          `${testId} row ${index} must not start left of the surface`,
+        ).toBeGreaterThanOrEqual(surfaceBox.x - tolerancePx);
+        expect(
+          rowBox.x + rowBox.width,
+          `${testId} row ${index} must not extend right of the surface`,
+        ).toBeLessThanOrEqual(surfaceBox.x + surfaceBox.width + tolerancePx);
+      });
+
+      const surfaceOverflow = await surface.evaluate((node) => ({
+        scrollWidth: node.scrollWidth,
+        clientWidth: node.clientWidth,
+      }));
+      expect(
+        surfaceOverflow.scrollWidth,
+        `${testId} content must not scroll wider than the surface`,
+      ).toBeLessThanOrEqual(surfaceOverflow.clientWidth + tolerancePx);
+    });
+  }
+});

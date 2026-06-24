@@ -170,6 +170,7 @@ const onCheckboxChange = () => {
 <style scoped>
 .md-list-item-consumer-patterns-story {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24dp;
   width: min(400dp, calc(100vw - 32dp));
   padding: 24dp;
@@ -177,6 +178,7 @@ const onCheckboxChange = () => {
 
 .md-list-item-consumer-patterns-story__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8dp;
 }
 
