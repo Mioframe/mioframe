@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { isLowLevelE2EPath, isUnmappedSourcePath, resolveAppE2EPlan } from './e2eRisk.mjs';
+import {
+  APP_E2E_STANDALONE_SPECS,
+  E2E_SCENARIO_SCOPES,
+  isLowLevelE2EPath,
+  isUnmappedSourcePath,
+  resolveAppE2EPlan,
+  validateE2EScenarioRegistry,
+} from './e2eRisk.mjs';
 
 describe('isLowLevelE2EPath', () => {
   it('flags playwright config and verify tooling', () => {
     expect(isLowLevelE2EPath('playwright.config.ts')).toBe(true);
     expect(isLowLevelE2EPath('scripts/verify.mjs')).toBe(true);
+    expect(isLowLevelE2EPath('scripts/lib/e2eRisk.mjs')).toBe(true);
     expect(isLowLevelE2EPath('package.json')).toBe(true);
     expect(isLowLevelE2EPath('tsconfig.app.json')).toBe(true);
   });
@@ -50,12 +58,96 @@ describe('isUnmappedSourcePath', () => {
   });
 });
 
+describe('validateE2EScenarioRegistry', () => {
+  it('passes for the current registry and standalone exception list', () => {
+    const validation = validateE2EScenarioRegistry();
+
+    expect(validation).toEqual({ valid: true, errors: [] });
+  });
+
+  it('covers every existing app e2e spec via the registry or the standalone list', () => {
+    const registrySpecs = new Set(E2E_SCENARIO_SCOPES.flatMap((scenario) => scenario.specs));
+    const coveredSpecs = new Set([...registrySpecs, ...APP_E2E_STANDALONE_SPECS]);
+
+    expect(coveredSpecs.has('tests/e2e/appSmoke.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/browserStoragePersistenceSmoke.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/databaseItemFlows.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/databasePersistenceSmoke.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/databasePropertyFlows.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/databaseViewsAndQueryFlows.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/repoExplorerScreen.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/repositoryFlows.spec.ts')).toBe(true);
+  });
+
+  it('never includes a visual spec in the registry or standalone list', () => {
+    const registrySpecs = E2E_SCENARIO_SCOPES.flatMap((scenario) => scenario.specs);
+
+    for (const spec of [...registrySpecs, ...APP_E2E_STANDALONE_SPECS]) {
+      expect(spec.startsWith('tests/e2e/visual/')).toBe(false);
+    }
+  });
+
+  it('fails when a scenario references a spec missing from disk', () => {
+    const validation = validateE2EScenarioRegistry({
+      scenarios: [
+        {
+          name: 'stale scenario',
+          sourcePrefixes: ['src/entities/doesNotExist/'],
+          specs: ['tests/e2e/doesNotExist.spec.ts'],
+        },
+      ],
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) =>
+        error.includes('missing spec tests/e2e/doesNotExist.spec.ts'),
+      ),
+    ).toBe(true);
+  });
+
+  it('fails when a scenario references a visual spec', () => {
+    const validation = validateE2EScenarioRegistry({
+      scenarios: [
+        {
+          name: 'bad scenario',
+          sourcePrefixes: ['src/entities/whatever/'],
+          specs: ['tests/e2e/visual/shared-ui.spec.ts'],
+        },
+      ],
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) => error.includes('must not reference visual spec')),
+    ).toBe(true);
+  });
+
+  it('fails when an existing app e2e spec is not covered by the registry or standalone list', () => {
+    const validation = validateE2EScenarioRegistry({ scenarios: [], standaloneSpecs: [] });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) =>
+        error.includes('tests/e2e/appSmoke.spec.ts is not covered'),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe('resolveAppE2EPlan', () => {
   it('runs full app e2e for playwright config changes', () => {
     const plan = resolveAppE2EPlan(['playwright.config.ts']);
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('low-level path playwright.config.ts');
+  });
+
+  it('runs full app e2e when e2eRisk.mjs itself changes', () => {
+    const plan = resolveAppE2EPlan(['scripts/lib/e2eRisk.mjs']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('low-level path scripts/lib/e2eRisk.mjs');
   });
 
   it('runs full app e2e for shared service changes', () => {

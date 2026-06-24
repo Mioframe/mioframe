@@ -1,18 +1,29 @@
+import fs from 'node:fs';
 import path from 'node:path';
 
 const VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
 const E2E_DIR_PREFIX = 'tests/e2e/';
+const APP_E2E_SPEC_DIR = 'tests/e2e';
 const STORIES_PATTERN = /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/;
 
 const LOW_LEVEL_E2E_EXACT_FILES = new Set([
   'playwright.config.ts',
   'scripts/e2eContainer.mjs',
   'scripts/e2eHost.mjs',
+  'scripts/lib/e2eRisk.mjs',
   'scripts/verify.mjs',
   'vite.config.ts',
   'package.json',
   'pnpm-lock.yaml',
 ]);
+
+/**
+ * App e2e specs that are intentionally not covered by {@link E2E_SCENARIO_SCOPES}.
+ * Keep this list small; every entry must explain why it has no scenario mapping.
+ * Adding a new `tests/e2e/*.spec.ts` file requires either a registry entry or an
+ * explicit, justified addition here, or {@link validateE2EScenarioRegistry} fails.
+ */
+export const APP_E2E_STANDALONE_SPECS = [];
 
 // Broad blast-radius areas: app bootstrap, background services, proxy clients,
 // shared infra, and shared UI interaction primitives reused across scenarios.
@@ -211,6 +222,93 @@ function getScenariosForPath(filePath) {
 }
 
 /**
+ * @param {typeof E2E_SCENARIO_SCOPES} scenarios Scenario registry entries to flatten into a spec list.
+ * @returns {string[]} Sorted unique spec paths referenced by the scenario registry.
+ */
+function getAllRegistrySpecs(scenarios) {
+  return uniqSorted(scenarios.flatMap((scenario) => scenario.specs));
+}
+
+function isExistingFile(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function findAppE2ESpecFiles(specDir) {
+  return uniqSorted(
+    fs
+      .readdirSync(specDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.spec.ts'))
+      .map((entry) => `${specDir}/${entry.name}`),
+  );
+}
+
+/**
+ * Validate the scenario registry and standalone exception list as a
+ * verification contract: every referenced spec must exist, none may be a
+ * visual spec, and every existing app e2e spec on disk must be covered by
+ * the registry or the standalone list. A broken registry must fail
+ * verification rather than degrade to a skipped app e2e run.
+ * @param overrides Test-only overrides for the scenario registry, standalone
+ * exception list, and app e2e spec directory. Production callers should omit
+ * this argument so the real registry and exception list are validated.
+ * @returns Validation result with `valid` and human-readable `errors`.
+ */
+export function validateE2EScenarioRegistry(overrides = {}) {
+  const scenarios = overrides.scenarios ?? E2E_SCENARIO_SCOPES;
+  const standaloneSpecs = overrides.standaloneSpecs ?? APP_E2E_STANDALONE_SPECS;
+  const specDir = overrides.specDir ?? APP_E2E_SPEC_DIR;
+  const errors = [];
+  const registrySpecs = getAllRegistrySpecs(scenarios);
+
+  for (const spec of registrySpecs) {
+    if (isVisualE2ESpecPath(spec)) {
+      errors.push(`scenario registry must not reference visual spec ${spec}`);
+      continue;
+    }
+
+    if (!isExistingFile(spec)) {
+      errors.push(`scenario registry references missing spec ${spec}`);
+    }
+  }
+
+  for (const spec of standaloneSpecs) {
+    if (isVisualE2ESpecPath(spec)) {
+      errors.push(`APP_E2E_STANDALONE_SPECS must not reference visual spec ${spec}`);
+      continue;
+    }
+
+    if (!isExistingFile(spec)) {
+      errors.push(`APP_E2E_STANDALONE_SPECS references missing spec ${spec}`);
+    }
+  }
+
+  let appSpecFiles;
+
+  try {
+    appSpecFiles = findAppE2ESpecFiles(specDir);
+  } catch (error) {
+    errors.push(`unable to list ${specDir}/*.spec.ts: ${error.message}`);
+    appSpecFiles = [];
+  }
+
+  const coveredSpecs = new Set([...registrySpecs, ...standaloneSpecs]);
+
+  for (const spec of appSpecFiles) {
+    if (!coveredSpecs.has(spec)) {
+      errors.push(
+        `app e2e spec ${spec} is not covered by E2E_SCENARIO_SCOPES or APP_E2E_STANDALONE_SPECS in scripts/lib/e2eRisk.mjs`,
+      );
+    }
+  }
+
+  return { valid: errors.length === 0, errors: uniqSorted(errors) };
+}
+
+/**
  * Check whether a changed `src/**` path has no low-level or scenario
  * classification. Unmapped paths must not silently skip e2e.
  * @param filePath Repository-relative changed file path.
@@ -240,14 +338,21 @@ export function isUnmappedSourcePath(filePath) {
 
 /**
  * Resolve the app e2e mode for the given changed files, in priority order:
- * full (low-level/unmapped/e2e-support risk), focused (scenario registry
- * matches and/or changed app e2e specs), or skip (no app e2e relevant
- * changes). Visual specs and visual-relevant paths never feed this
- * resolver; visual selection stays independent.
+ * invalid (scenario registry failed self-validation; fail closed instead of
+ * silently skipping), full (low-level/unmapped/e2e-support risk), focused
+ * (scenario registry matches and/or changed app e2e specs), or skip (no app
+ * e2e relevant changes). Visual specs and visual-relevant paths never feed
+ * this resolver; visual selection stays independent.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
  */
 export function resolveAppE2EPlan(changedFiles) {
+  const registryValidation = validateE2EScenarioRegistry();
+
+  if (!registryValidation.valid) {
+    return { mode: 'invalid', specs: [], reasons: registryValidation.errors };
+  }
+
   const lowLevelHit = changedFiles.find(isLowLevelE2EPath);
   const unmappedHit = changedFiles.find(isUnmappedSourcePath);
   const supportHit = changedFiles.find(isAppE2ESupportPath);

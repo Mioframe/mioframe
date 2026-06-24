@@ -1019,6 +1019,22 @@ function createSkippedResult(entry, reason = entry.reason) {
   };
 }
 
+function createFailedResult(entry, reason = entry.reason) {
+  return {
+    label: entry.label,
+    command: entry.command,
+    displayCommand: entry.command,
+    status: 'failed',
+    reason,
+    note: reason,
+    exitCode: null,
+    stdout: '',
+    stderr: '',
+    hasWarnings: false,
+    warningSummary: '',
+  };
+}
+
 function addE2ECommands(commands, e2eCommand) {
   commands.push(createE2EInstallCommand());
   commands.push(e2eCommand);
@@ -1162,25 +1178,18 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (appE2EPlan.mode === 'full') {
+  if (appE2EPlan.mode === 'invalid') {
+    commands.push(createE2EInstallCommand('app e2e scope is invalid; e2e check fails closed'));
+    commands.push({
+      kind: 'failed',
+      label: 'e2e',
+      command: 'pnpm e2e:container',
+      reason: `invalid app e2e scenario registry state: ${appE2EPlan.reasons.join('; ')}`,
+    });
+  } else if (appE2EPlan.mode === 'full') {
     addE2ECommands(commands, createE2ECommand([], appE2EPlan.reasons.join('; ')));
   } else if (appE2EPlan.mode === 'focused') {
-    const existingFocusedSpecs = appE2EPlan.specs.filter(fileExists);
-
-    if (existingFocusedSpecs.length > 0) {
-      addE2ECommands(
-        commands,
-        createE2ECommand(existingFocusedSpecs, appE2EPlan.reasons.join('; ')),
-      );
-    } else {
-      commands.push(createE2EInstallCommand('empty e2e scope'));
-      commands.push({
-        kind: 'skipped',
-        label: 'e2e',
-        command: 'pnpm e2e:container',
-        reason: 'focused e2e specs no longer exist on disk',
-      });
-    }
+    addE2ECommands(commands, createE2ECommand(appE2EPlan.specs, appE2EPlan.reasons.join('; ')));
   } else {
     commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
@@ -1255,6 +1264,10 @@ function getActionRequired(results) {
 
   for (const result of failedResults) {
     actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
+
+    if (result.exitCode === null && result.reason) {
+      actions.push(`Reason: ${result.reason}`);
+    }
   }
 
   if (failedResults.length > 0) {
@@ -1333,6 +1346,12 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
       results.push(createSkippedResult(entry));
+      continue;
+    }
+
+    if (entry.kind === 'failed') {
+      results.push(createFailedResult(entry));
+      hasFailed = true;
       continue;
     }
 
