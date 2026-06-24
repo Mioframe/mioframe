@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useAttrs, useSlots, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useAttrs, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import {
   warnListItemInsideSelectionList,
@@ -48,7 +48,7 @@ const emit = defineEmits<{
   action: [event: MouseEvent];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   leading: () => unknown;
   overline: () => unknown;
   supportingText: () => unknown;
@@ -56,7 +56,6 @@ defineSlots<{
   trailingAction: () => unknown;
 }>();
 
-const slots = useSlots();
 const attrs = useAttrs();
 const listContext = useMDListContext();
 

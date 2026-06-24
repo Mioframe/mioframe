@@ -9,7 +9,7 @@ import {
 } from '@shared/lib/databaseDocument';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs, useSlots } from 'vue';
+import { computed, toRefs } from 'vue';
 
 const props = defineProps<{
   path: string;
@@ -19,10 +19,9 @@ const props = defineProps<{
   dragged?: boolean;
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   trailingAction: () => unknown;
 }>();
-const slots = useSlots();
 
 const { documentId, path, viewId, propertyId } = toRefs(props);
 
@@ -44,7 +43,7 @@ const onClick = async () => {
 
 <template>
   <MDListItem
-    :mode="slots.trailingAction ? 'multi-action' : 'single-action'"
+    :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
     :label-text="headline"
     :dragged="dragged"
     class="db-sorting-item"

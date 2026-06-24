@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs, useSlots } from 'vue';
+import { computed, toRefs } from 'vue';
 import { useDatabaseProperty } from './useDatabaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 
@@ -11,10 +11,9 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   trailingAction: (p: { property?: Readonly<DatabaseUnknownProperty> | undefined }) => unknown;
 }>();
-const slots = useSlots();
 
 const { path, documentId, propertyId } = toRefs(props);
 

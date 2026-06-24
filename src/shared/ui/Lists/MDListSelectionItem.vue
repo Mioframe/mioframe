@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, useSlots, useTemplateRef, warn } from 'vue';
+import { computed, onBeforeUnmount, onMounted, useTemplateRef, warn } from 'vue';
 import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useMDListContext, type MDListSelectionValue } from './listContext';
@@ -25,14 +25,13 @@ const props = withDefaults(
   },
 );
 
-defineSlots<{
+const slots = defineSlots<{
   leading: () => unknown;
   overline: () => unknown;
   supportingText: () => unknown;
   trailing: () => unknown;
 }>();
 
-const slots = useSlots();
 const listContext = useMDListContext();
 
 const {

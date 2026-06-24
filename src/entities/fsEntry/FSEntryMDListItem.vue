@@ -2,7 +2,7 @@
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { toRefs, useSlots } from 'vue';
+import { toRefs } from 'vue';
 
 const props = defineProps<{
   name: string;
@@ -15,10 +15,9 @@ const emit = defineEmits<{
   click: [name: string];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   trailingAction(): unknown;
 }>();
-const slots = useSlots();
 
 const { name } = toRefs(props);
 
@@ -30,7 +29,7 @@ const onListItemClick = () => {
 <template>
   <MDListItem
     :mode="
-      isButton && slots.trailingAction ? 'multi-action' : isButton ? 'single-action' : 'static'
+      isButton && !!slots.trailingAction ? 'multi-action' : isButton ? 'single-action' : 'static'
     "
     :label-text="name"
     :supporting-text="supportingText"

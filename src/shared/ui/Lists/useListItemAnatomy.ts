@@ -1,4 +1,4 @@
-import { computed, type Slots } from 'vue';
+import { computed } from 'vue';
 import { buildListItemHostStyle, resolveListItemLineCount } from './listItemLayout';
 import { MD_LIST_ITEM_MIN_HEIGHTS } from './listItemSizing';
 
@@ -12,10 +12,10 @@ interface ListItemAnatomyProps {
 }
 
 interface ListItemAnatomySlots {
-  leading?: Slots[string] | undefined;
-  overline?: Slots[string] | undefined;
-  supportingText?: Slots[string] | undefined;
-  trailing?: Slots[string] | undefined;
+  leading?: (() => unknown) | undefined;
+  overline?: (() => unknown) | undefined;
+  supportingText?: (() => unknown) | undefined;
+  trailing?: (() => unknown) | undefined;
 }
 
 /**
@@ -25,7 +25,7 @@ interface ListItemAnatomySlots {
  * derived CSS class/style values that are identical between `MDListItem` and
  * `MDListSelectionItem`.
  * @param props - Anatomy-relevant props from the host component.
- * @param slots - Slot map from the host component (via `useSlots()`).
+ * @param slots - Slot map from the host component (via `defineSlots()`).
  * @param blockClass - BEM block class name used as prefix for element classes.
  * @returns Reactive anatomy computeds ready for use in the component template.
  */
