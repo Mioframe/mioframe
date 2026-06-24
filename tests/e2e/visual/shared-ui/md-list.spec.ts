@@ -1940,8 +1940,8 @@ test.describe('MDList / StateLayer integration', () => {
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--visual-states');
 
-    const draggedRow = page.locator('[data-testid="sortable-like-dragged-row"]').first();
-    const nestedStateLayer = draggedRow.locator('.md-state-layer').first();
+    const draggedRow = page.getByTestId('sortable-like-dragged-row');
+    const nestedStateLayer = draggedRow.locator('.md-list-item__primary-action .md-state-layer');
 
     await expect(draggedRow).toHaveClass(/md-state_dragged/);
 
