@@ -472,23 +472,14 @@
   text-overflow: ellipsis;
 }
 
-/* Multi-line clamp: the standard unprefixed `line-clamp` property alone does not clamp
-   in the project's pinned Chromium visual-test image (rows kept growing instead of
-   clamping; confirmed by reverting to it and rerunning
-   tests/e2e/visual/shared-ui/md-list.spec.ts), so `-webkit-line-clamp` stays required
-   here. The project's Playwright visual suite (playwright.visual.config.ts) only runs a
-   pinned Chromium engine, so this is Chromium-pinned-image verification, not
-   Firefox/WebKit cross-browser proof — treat the standard `line-clamp` as the forward-
-   compatible fallback, not as already proven sufficient. */
+/* Single-line supporting text (default and two-line items): the row height contract only
+   reserves one supporting-text line, so a single nowrap+ellipsis line matches it exactly. */
 .md-list-item__supporting-text,
 .md-list-selection-item__supporting-text {
   color: var(--md-comp-list-list-item-supporting-text-color);
-  display: -webkit-box;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
   font-family: var(--md-comp-list-list-item-supporting-text-font);
   font-size: var(--md-comp-list-list-item-supporting-text-size);
   font-weight: var(--md-comp-list-list-item-supporting-text-weight);
@@ -496,14 +487,13 @@
   letter-spacing: var(--md-comp-list-list-item-supporting-text-tracking);
 }
 
-.md-list-item__supporting-text_two-line,
-.md-list-selection-item__supporting-text_two-line {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-}
-
+/* Three-line items reserve exactly two supporting-text lines (md.comp.list.list-item.
+   three-line-container-height). Without a clamp property, wrapped text is bounded by
+   max-height instead of truncated with a trailing ellipsis; that bounded-but-unmarked
+   overflow is the accepted standard-CSS tradeoff for dropping the WebKit line-clamp hack. */
 .md-list-item__supporting-text_three-line,
 .md-list-selection-item__supporting-text_three-line {
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  max-height: calc(var(--md-comp-list-list-item-supporting-text-line-height) * 2);
 }
