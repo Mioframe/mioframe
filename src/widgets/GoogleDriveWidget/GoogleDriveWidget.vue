@@ -18,7 +18,7 @@ const { sessionList } = useGoogleSessions();
         v-for="session in sessionList"
         :key="session.email"
         :session="session"
-        @click="() => emit('clickUser', session.email)"
+        @click="emit('clickUser', session.email)"
       >
         <template #trailingAction>
           <GoogleSessionManageMenuButton :email="session.email" />

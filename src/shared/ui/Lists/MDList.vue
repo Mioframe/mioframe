@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// eslint-disable-next-line no-restricted-imports -- used only to read aria-label/aria-labelledby for the listbox accessible-name dev warning, not as a forwarding escape hatch
 import { computed, useAttrs, useTemplateRef } from 'vue';
 import {
   useWarnSelectionListMissingAccessibleName,

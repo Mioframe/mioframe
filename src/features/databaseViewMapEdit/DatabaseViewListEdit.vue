@@ -90,7 +90,7 @@ const onClickView = (id: DatabaseViewId) => {
       :class="{
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
-      @action="() => onClickView(id)"
+      @action="onClickView(id)"
     >
       <template v-if="!!slots.leading" #leading>
         <slot name="leading" :view-id="id" />

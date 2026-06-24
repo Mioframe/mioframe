@@ -160,7 +160,7 @@ const onRenameViewCompleted = () => {
             <MDContextMenuButton
               :btns="viewContextMenu"
               tooltip="settings view"
-              @click="($event) => onClickViewContextMenu(viewId, $event)"
+              @click="onClickViewContextMenu(viewId, $event)"
             />
           </template>
         </DatabaseViewListEdit>

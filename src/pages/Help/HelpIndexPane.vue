@@ -40,7 +40,7 @@ const onSelectArticle = async (slug: string) => {
           :key="article.slug"
           mode="single-action"
           :label-text="article.title"
-          @action="() => onSelectArticle(article.slug)"
+          @action="onSelectArticle(article.slug)"
         />
       </MDList>
     </div>

@@ -12,6 +12,13 @@ const emit = defineEmits<{
   click: [event: MouseEvent];
   clickClose: [event: MouseEvent];
 }>();
+
+const onClick = (event: MouseEvent) => {
+  emit('click', event);
+};
+const onClickClose = (event: MouseEvent) => {
+  emit('clickClose', event);
+};
 </script>
 
 <template>
@@ -23,7 +30,7 @@ const emit = defineEmits<{
     :autofocus="autofocus"
     :disabled="disabled"
     :close-tooltip="closeTooltip"
-    @click="(event) => emit('click', event)"
-    @click-close="(event) => emit('clickClose', event)"
+    @click="onClick"
+    @click-close="onClickClose"
   />
 </template>

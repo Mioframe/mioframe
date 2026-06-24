@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// eslint-disable-next-line no-restricted-imports -- MDListItem is a documented transparent host/adaptor: it renders a polymorphic native element (`rootTag`) and forwards $attrs to that host as part of its public contract.
 import { computed, onBeforeUnmount, onMounted, ref, useAttrs, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import {
@@ -153,6 +154,7 @@ const trailingActionEl = useTemplateRef<HTMLElement>('trailingActionEl');
  * @returns The focusable trailing action element, or `null` when absent.
  */
 const getTrailingFocusableElement = (): HTMLElement | null =>
+  // eslint-disable-next-line no-restricted-syntax -- justified DOM lookup, not component coordination: scoped to this row's own trailing wrapper to find a focus target inside consumer-owned slot content whose markup MDListItem does not control.
   trailingActionEl.value?.querySelector<HTMLElement>('button, a[href], [tabindex]') ?? null;
 const interactiveSurfaceEl = computed(() => {
   if (usesPrimaryActionSurface.value) {
