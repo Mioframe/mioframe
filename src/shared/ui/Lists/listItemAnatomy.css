@@ -472,25 +472,14 @@
   text-overflow: ellipsis;
 }
 
-/* Multi-line clamp: the standard unprefixed `line-clamp` property alone does not clamp
-   in the project's pinned Chromium visual-test image (rows kept growing instead of
-   clamping; confirmed by reverting to it and rerunning
-   tests/e2e/visual/shared-ui/md-list.spec.ts), so `-webkit-line-clamp` stays required
-   here. The project's Playwright visual suite (playwright.visual.config.ts) only runs a
-   pinned Chromium engine, so this is Chromium-pinned-image verification, not
-   Firefox/WebKit cross-browser proof — treat the standard `line-clamp` as the forward-
-   compatible fallback, not as already proven sufficient. This compatibility declaration is
-   scoped narrowly to text-clamping line-count behavior; it is not a general license for
-   other `-webkit-*` hacks in this file. */
+/* One-line and two-line supporting text both clamp to a single rendered line, so a plain
+   single-line ellipsis (no box-layout clamp needed) covers them. */
 .md-list-item__supporting-text,
 .md-list-selection-item__supporting-text {
   color: var(--md-comp-list-list-item-supporting-text-color);
-  display: -webkit-box;
   overflow: hidden;
   text-overflow: ellipsis;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
+  white-space: nowrap;
   font-family: var(--md-comp-list-list-item-supporting-text-font);
   font-size: var(--md-comp-list-list-item-supporting-text-size);
   font-weight: var(--md-comp-list-list-item-supporting-text-weight);
@@ -498,14 +487,21 @@
   letter-spacing: var(--md-comp-list-list-item-supporting-text-tracking);
 }
 
-.md-list-item__supporting-text_two-line,
-.md-list-selection-item__supporting-text_two-line {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-}
-
+/* Three-line layout clamps supporting text to 2 wrapped lines using a browser-neutral
+   max-height fallback (line-height * line count + overflow: hidden) instead of the
+   `line-clamp` property: this build's pinned visual-test engine breaks lines slightly
+   differently under `line-clamp`, clipping mid-word on the boundary line even when the
+   full text would otherwise wrap into the available 2 lines, so the line count is
+   enforced purely through normal block wrapping bounded by max-height. No vendor-prefixed
+   declarations are used; multi-line truncation cuts at the line boundary instead of
+   rendering an ellipsis, since there is no standard way to ellipsize after wrapped lines
+   without vendor-specific box layout. */
 .md-list-item__supporting-text_three-line,
 .md-list-selection-item__supporting-text_three-line {
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: normal;
+  max-height: calc(var(--md-comp-list-list-item-supporting-text-line-height) * 2);
 }
