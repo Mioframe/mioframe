@@ -472,6 +472,12 @@
   text-overflow: ellipsis;
 }
 
+/* Multi-line clamp: verified via the project's pinned cross-browser visual regression
+   suite that the unprefixed standard `line-clamp` property alone does not clamp in the
+   project's supported/pinned browser baseline (rows kept growing instead of clamping),
+   so `-webkit-line-clamp` is a documented, verified compatibility requirement here, not
+   a leftover hack. The standard property is included alongside it for forward
+   compatibility once the baseline browser support is confirmed sufficient. */
 .md-list-item__supporting-text,
 .md-list-selection-item__supporting-text {
   color: var(--md-comp-list-list-item-supporting-text-color);
@@ -480,6 +486,7 @@
   text-overflow: ellipsis;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   font-family: var(--md-comp-list-list-item-supporting-text-font);
   font-size: var(--md-comp-list-list-item-supporting-text-size);
   font-weight: var(--md-comp-list-list-item-supporting-text-weight);
@@ -490,9 +497,11 @@
 .md-list-item__supporting-text_two-line,
 .md-list-selection-item__supporting-text_two-line {
   -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
 .md-list-item__supporting-text_three-line,
 .md-list-selection-item__supporting-text_three-line {
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }

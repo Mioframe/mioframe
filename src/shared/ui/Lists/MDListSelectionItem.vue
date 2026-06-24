@@ -34,6 +34,8 @@ const slots = defineSlots<{
 
 const listContext = useMDListContext();
 
+const listStyle = computed(() => listContext?.listStyle.value ?? 'standard');
+
 const {
   hasLeading,
   hasOverline,
@@ -69,6 +71,8 @@ const { hover, focused, durationPressedState } = useStateLayer(interactiveEl, {}
 const rootClass = computed(() => ({
   'md-list-selection-item': true,
   'md-list-selection-item_in-list': isInSelectionList.value,
+  'md-list-selection-item_list-style_segmented':
+    isInSelectionList.value && listStyle.value === 'segmented',
   'md-list-selection-item_line-count_1': resolvedLineCount.value === 1,
   'md-list-selection-item_line-count_2': resolvedLineCount.value === 2,
   'md-list-selection-item_line-count_3': resolvedLineCount.value === 3,
@@ -193,6 +197,34 @@ if (import.meta.env.DEV) {
   /* Pointer cursor only when inside an active selection list and not disabled. */
   &_in-list:not(.md-state_disabled, [aria-disabled='true']) {
     cursor: pointer;
+  }
+
+  /* Segmented-list shape: each item owns its own corner rounding based on its position
+     among siblings inside the segmented MDList. The parent list only signals the
+     segmented variant (via listContext.listStyle → the _list-style_segmented class);
+     it does not reach into this component's internals to apply the shape itself. */
+  &_list-style_segmented:first-child {
+    border-start-start-radius: 16dp;
+    border-start-end-radius: 16dp;
+  }
+
+  &_list-style_segmented:last-child {
+    border-end-start-radius: 16dp;
+    border-end-end-radius: 16dp;
+  }
+
+  &_list-style_segmented:first-child:last-child {
+    border-radius: 16dp;
+  }
+
+  &_list-style_segmented:first-child &__body {
+    border-start-start-radius: 16dp;
+    border-start-end-radius: 16dp;
+  }
+
+  &_list-style_segmented:last-child &__body {
+    border-end-start-radius: 16dp;
+    border-end-end-radius: 16dp;
   }
 }
 </style>

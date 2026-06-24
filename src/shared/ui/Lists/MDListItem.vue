@@ -60,25 +60,39 @@ const attrs = useAttrs();
 const listContext = useMDListContext();
 
 const hasTrailingAction = computed(() => props.mode === 'multi-action' && !!slots.trailingAction);
-const inList = computed(() => listContext?.usesListSemantics.value ?? false);
+const isInList = computed(() => listContext?.usesListSemantics.value ?? false);
 const selectionMode = computed(() => listContext?.selectionMode.value ?? 'none');
+const listStyle = computed(() => listContext?.listStyle.value ?? 'standard');
+// Selection lists nest options with role="option"; an item rendered in that context must
+// drop its own list-item/action semantics so it does not assert a conflicting ARIA role.
+const isSelectionListItem = computed(() => isInList.value && selectionMode.value !== 'none');
+const isAction = computed(() => props.mode !== 'static');
+const isLinkAction = computed(() => isAction.value && !!props.href);
+const isButtonAction = computed(() => isAction.value && !props.href);
 // Suppress trailing action when inside a selection list to prevent interactive controls
 // from rendering inside a listbox (invalid ARIA and confusing interaction geometry).
-const showTrailingActionInStaticPath = computed(
-  () => hasTrailingAction.value && (!inList.value || selectionMode.value === 'none'),
+const allowsTrailingAction = computed(
+  () => hasTrailingAction.value && (!isInList.value || selectionMode.value === 'none'),
 );
-const hasPrimaryAction = computed(() => props.mode !== 'static');
 // Render the internal primary-action surface when:
 // - inside a non-selection list (single-action or multi-action in list context), OR
 // - standalone multi-action (needs a real primary-action button/a separate from the root
 //   so the trailing action slot remains an independent hit target).
 // Standalone single-action is excluded: root IS the interactive surface (button/a).
 // Selection lists are excluded: nesting an interactive control inside listbox is invalid ARIA.
-const usesInternalActionSurface = computed(
+const usesPrimaryActionSurface = computed(
   () =>
-    hasPrimaryAction.value &&
-    (inList.value ? selectionMode.value === 'none' : props.mode === 'multi-action'),
+    isAction.value && (isInList.value ? !isSelectionListItem.value : props.mode === 'multi-action'),
 );
+// Standalone single-action only: there is no separate primary-action element, so the root
+// itself is the interactive surface (button/a) and carries the action attrs/handlers.
+const usesRootActionSurface = computed(
+  () => isAction.value && !isInList.value && !usesPrimaryActionSurface.value,
+);
+// A disabled link must stay focusable-but-inert per the component's link contract: it does
+// not navigate, but unlike a disabled button it cannot use the native `disabled` attribute
+// (links ignore it), so aria-disabled + tabindex=-1 carry the suppressed semantics instead.
+const isDisabledLinkAction = computed(() => isLinkAction.value && props.disabled);
 
 const {
   hasLeading,
@@ -92,11 +106,11 @@ const {
 } = useListItemAnatomy(props, slots, 'md-list-item');
 
 const rootTag = computed(() => {
-  if (inList.value) {
+  if (isInList.value) {
     return listContext?.itemTag.value ?? 'div';
   }
 
-  if (props.mode === 'single-action') {
+  if (usesRootActionSurface.value) {
     return props.href ? 'a' : 'button';
   }
 
@@ -104,8 +118,8 @@ const rootTag = computed(() => {
 });
 
 const rootRole = computed(() => {
-  if (inList.value) {
-    if (selectionMode.value !== 'none') {
+  if (isInList.value) {
+    if (isSelectionListItem.value) {
       return 'none';
     }
 
@@ -124,7 +138,7 @@ const rootRole = computed(() => {
 });
 
 const primaryActionTag = computed<'button' | 'a'>(() => (props.href ? 'a' : 'button'));
-const showVisualState = computed(() => hasPrimaryAction.value && !props.disabled);
+const showVisualState = computed(() => isAction.value && !props.disabled);
 const buttonType = computed(() => (props.href ? undefined : props.nativeType));
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
@@ -141,11 +155,11 @@ const trailingActionEl = useTemplateRef<HTMLElement>('trailingActionEl');
 const getTrailingFocusableElement = (): HTMLElement | null =>
   trailingActionEl.value?.querySelector<HTMLElement>('button, a[href], [tabindex]') ?? null;
 const interactiveSurfaceEl = computed(() => {
-  if (usesInternalActionSurface.value) {
+  if (usesPrimaryActionSurface.value) {
     return primaryActionEl.value;
   }
 
-  if (props.mode === 'single-action') {
+  if (usesRootActionSurface.value) {
     return rootEl.value;
   }
 
@@ -170,7 +184,8 @@ const effectiveDragged = computed(() => props.dragged || localDragged.value);
 
 const rootClass = computed(() => ({
   'md-list-item': true,
-  'md-list-item_in-list': inList.value,
+  'md-list-item_in-list': isInList.value,
+  'md-list-item_list-style_segmented': isInList.value && listStyle.value === 'segmented',
   'md-list-item_has-trailing-action': hasTrailingAction.value,
   'md-list-item_mode_static': props.mode === 'static',
   'md-list-item_mode_single-action': props.mode === 'single-action',
@@ -185,7 +200,7 @@ const rootClass = computed(() => ({
   'md-state_disabled': props.disabled,
 }));
 
-const splitAttrs = computed(() => splitListItemAttrs(attrs, usesInternalActionSurface.value));
+const splitAttrs = computed(() => splitListItemAttrs(attrs, usesPrimaryActionSurface.value));
 const rootAttrs = computed(() => splitAttrs.value.rootAttrs);
 const interactiveAttrs = computed(() => splitAttrs.value.interactiveAttrs);
 
@@ -202,25 +217,11 @@ const onAction = (event: MouseEvent) => {
   emit('action', event);
 };
 
-const onActionKeydown = (event: KeyboardEvent) => {
-  if (props.href && event.key === ' ') {
-    event.preventDefault();
-
-    if (!props.disabled) {
-      event.currentTarget?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }
-  }
-};
-
+// Native button/link semantics already give correct keyboard activation (Enter for both,
+// Space for buttons only) — no synthetic keydown→click bridging is needed or wanted.
 const onRootClick = (event: MouseEvent) => {
-  if (!inList.value && props.mode === 'single-action') {
+  if (usesRootActionSurface.value) {
     onAction(event);
-  }
-};
-
-const onRootKeydown = (event: KeyboardEvent) => {
-  if (!inList.value && props.mode === 'single-action') {
-    onActionKeydown(event);
   }
 };
 
@@ -256,7 +257,7 @@ let unregisterActionItem: (() => void) | null = null;
 // going stale. Re-registering on every topology change would add unregister/re-register
 // ordering edge cases that this approach avoids entirely.
 onMounted(() => {
-  if (!inList.value) {
+  if (!isInList.value) {
     return;
   }
 
@@ -297,19 +298,18 @@ defineExpose({
     :class="rootClass"
     :style="hostStyle"
     :role="rootRole"
-    :aria-disabled="!inList && mode === 'single-action' && href && disabled ? 'true' : undefined"
-    :href="!inList && mode === 'single-action' ? href : undefined"
-    :type="!inList && mode === 'single-action' ? buttonType : undefined"
-    :disabled="!inList && mode === 'single-action' && !href && disabled ? true : undefined"
-    :tabindex="!inList && mode === 'single-action' && href && disabled ? -1 : undefined"
+    :aria-disabled="usesRootActionSurface && isDisabledLinkAction ? 'true' : undefined"
+    :href="usesRootActionSurface ? href : undefined"
+    :type="usesRootActionSurface ? buttonType : undefined"
+    :disabled="usesRootActionSurface && isButtonAction && disabled ? true : undefined"
+    :tabindex="usesRootActionSurface && isDisabledLinkAction ? -1 : undefined"
     :draggable="!disabled ? draggable : undefined"
     @click="onRootClick"
-    @keydown="onRootKeydown"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
     @drop="onDragEnd"
   >
-    <template v-if="usesInternalActionSurface">
+    <template v-if="usesPrimaryActionSurface">
       <component
         :is="primaryActionTag"
         ref="primaryActionEl"
@@ -317,11 +317,10 @@ defineExpose({
         class="md-list-item__primary-action"
         :href="href"
         :type="buttonType"
-        :disabled="!href && disabled ? true : undefined"
-        :aria-disabled="href && disabled ? 'true' : undefined"
-        :tabindex="href && disabled ? -1 : undefined"
+        :disabled="isButtonAction && disabled ? true : undefined"
+        :aria-disabled="isDisabledLinkAction ? 'true' : undefined"
+        :tabindex="isDisabledLinkAction ? -1 : undefined"
         @click="onAction"
-        @keydown="onActionKeydown"
       >
         <MDStateLayer
           :hover="hover"
@@ -362,7 +361,7 @@ defineExpose({
         content (icon button) restores its own pointer-events via the browser default.
       -->
       <span
-        v-if="hasTrailingAction"
+        v-if="allowsTrailingAction"
         ref="trailingActionEl"
         class="md-list-item__trailing-action"
         :inert="disabled || undefined"
@@ -378,7 +377,7 @@ defineExpose({
         is structurally suppressed to static appearance (role=none).
       -->
       <MDStateLayer
-        v-if="mode === 'single-action' && !inList"
+        v-if="usesRootActionSurface"
         :hover="hover"
         :focused="focused"
         :pressed="durationPressedState"
@@ -413,7 +412,7 @@ defineExpose({
       </span>
 
       <span
-        v-if="showTrailingActionInStaticPath"
+        v-if="allowsTrailingAction"
         class="md-list-item__trailing-action"
         :inert="disabled || undefined"
       >
@@ -535,6 +534,39 @@ defineExpose({
     > * {
       pointer-events: auto;
     }
+  }
+
+  /* Segmented-list shape: each item owns its own corner rounding based on its position
+     among siblings inside the segmented MDList. The parent list only signals the
+     segmented variant (via listContext.listStyle → the _list-style_segmented class);
+     it does not reach into this component's internals to apply the shape itself. */
+  &_list-style_segmented:first-child {
+    border-start-start-radius: 16dp;
+    border-start-end-radius: 16dp;
+  }
+
+  &_list-style_segmented:last-child {
+    border-end-start-radius: 16dp;
+    border-end-end-radius: 16dp;
+  }
+
+  &_list-style_segmented:first-child:last-child {
+    border-radius: 16dp;
+  }
+
+  /* Action-surface rounding: MDStateLayer and the ripple element both use
+     border-radius: inherit, so shaping the action surface directly gives state
+     layers and ripples the correct shape without container overflow clipping. */
+  &_list-style_segmented:first-child &__primary-action,
+  &_list-style_segmented:first-child &__body {
+    border-start-start-radius: 16dp;
+    border-start-end-radius: 16dp;
+  }
+
+  &_list-style_segmented:last-child &__primary-action,
+  &_list-style_segmented:last-child &__body {
+    border-end-start-radius: 16dp;
+    border-end-end-radius: 16dp;
   }
 }
 </style>

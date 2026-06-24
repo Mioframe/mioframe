@@ -14,7 +14,7 @@ const TrailingButton = defineComponent({
 });
 
 const mountEntry = (
-  props: { name: string; type: FSNodeType; isButton?: boolean; supportingText?: string },
+  props: { name: string; type: FSNodeType; isOpenable?: boolean; supportingText?: string },
   slots: { trailingAction?: () => unknown } = {},
 ) =>
   mount(FSEntryMDListItem, {
@@ -38,7 +38,7 @@ const mountEntryInList = (
                 FSEntryMDListItem,
                 {
                   ...props,
-                  isButton: true,
+                  isOpenable: true,
                   onClick: () => undefined,
                 },
                 slots,
@@ -57,7 +57,7 @@ describe('FSEntryMDListItem', () => {
   });
 
   it('renders a non-interactive row for a non-openable file with no trailing action', () => {
-    const wrapper = mountEntry({ name: 'readme.txt', type: FSNodeType.File, isButton: false });
+    const wrapper = mountEntry({ name: 'readme.txt', type: FSNodeType.File, isOpenable: false });
 
     expect(wrapper.find('button').exists()).toBe(false);
   });
@@ -73,7 +73,7 @@ describe('FSEntryMDListItem', () => {
 
   it('does not render a primary action button for a non-openable file that has a trailing action', () => {
     const wrapper = mountEntry(
-      { name: 'note.txt', type: FSNodeType.File, isButton: false },
+      { name: 'note.txt', type: FSNodeType.File, isOpenable: false },
       { trailingAction: () => h(TrailingButton) },
     );
 

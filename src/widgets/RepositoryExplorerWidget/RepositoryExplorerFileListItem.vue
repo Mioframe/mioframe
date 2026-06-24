@@ -55,7 +55,7 @@ const onClickEntry = (name: string) => {
 
 <template>
   <FSEntryMDListItem
-    :is-button="
+    :is-openable="
       entryType === FSNodeType.Directory ||
       (entryType === FSNodeType.File && name.toLowerCase().endsWith('.json'))
     "

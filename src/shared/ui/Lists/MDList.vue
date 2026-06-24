@@ -152,43 +152,5 @@ useListActionKeyboard(
     overflow: clip;
     border-radius: 16dp;
   }
-
-  /* Item-root rounding for first/last/single — keeps selected-item container backgrounds
-     correctly shaped when the item has a non-transparent background. */
-  &_style_segmented :deep(.md-list-item_in-list:first-child),
-  &_style_segmented :deep(.md-list-selection-item_in-list:first-child) {
-    border-start-start-radius: 16dp;
-    border-start-end-radius: 16dp;
-  }
-
-  &_style_segmented :deep(.md-list-item_in-list:last-child),
-  &_style_segmented :deep(.md-list-selection-item_in-list:last-child) {
-    border-end-start-radius: 16dp;
-    border-end-end-radius: 16dp;
-  }
-
-  &_style_segmented :deep(.md-list-item_in-list:first-child:last-child),
-  &_style_segmented :deep(.md-list-selection-item_in-list:first-child:last-child) {
-    border-radius: 16dp;
-  }
-
-  /* Action-surface rounding: MDStateLayer and the ripple element both use
-     border-radius: inherit, so shaping the action surface directly gives state layers
-     and ripples the correct shape without container overflow clipping. */
-  &_style_segmented :deep(.md-list-item_in-list:first-child .md-list-item__primary-action),
-  &_style_segmented :deep(.md-list-item_in-list:first-child .md-list-item__body),
-  &_style_segmented
-    :deep(.md-list-selection-item_in-list:first-child .md-list-selection-item__body) {
-    border-start-start-radius: 16dp;
-    border-start-end-radius: 16dp;
-  }
-
-  &_style_segmented :deep(.md-list-item_in-list:last-child .md-list-item__primary-action),
-  &_style_segmented :deep(.md-list-item_in-list:last-child .md-list-item__body),
-  &_style_segmented
-    :deep(.md-list-selection-item_in-list:last-child .md-list-selection-item__body) {
-    border-end-start-radius: 16dp;
-    border-end-end-radius: 16dp;
-  }
 }
 </style>

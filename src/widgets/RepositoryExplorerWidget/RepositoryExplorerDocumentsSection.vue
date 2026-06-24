@@ -84,7 +84,6 @@ const emptySupportingText = computed(() => {
 
     <MDList v-if="documentIds.length > 0" class="repository-explorer-documents-section__list">
       <CFRDocumentMDListItem
-        is="button"
         v-for="documentId in documentIds"
         :key="documentId"
         :document-id="documentId"

@@ -42,7 +42,7 @@ vi.mock('@entity/fsEntry', () => ({
     name: 'FSEntryMDListItemStub',
     props: {
       name: { type: String, required: true },
-      isButton: { type: Boolean, default: false },
+      isOpenable: { type: Boolean, default: false },
       type: { type: Number, required: true },
       supportingText: { type: String, default: undefined },
     },
@@ -50,9 +50,9 @@ vi.mock('@entity/fsEntry', () => ({
     setup(props, { emit, slots }) {
       return () =>
         h(
-          props.isButton ? 'button' : 'div',
+          props.isOpenable ? 'button' : 'div',
           {
-            ...(props.isButton
+            ...(props.isOpenable
               ? {
                   type: 'button',
                   onClick: () => {

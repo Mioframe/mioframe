@@ -507,7 +507,7 @@ describe('MDList', () => {
   // that path is the one real keyboard-driven activation this suite can verify
   // without relying on a browser engine. Native button Enter/Space activation is
   // covered by the Playwright keyboard-activation suite in md-list.spec.ts instead.
-  it('activates the focused href-rendered single-action row primary action via Space', async () => {
+  it('does not create a synthetic click for an href-rendered single-action row on Space', async () => {
     const onAction = vi.fn();
     const wrapper = mount(
       {
@@ -526,7 +526,9 @@ describe('MDList', () => {
     action.element.focus();
     await action.trigger('keydown', { key: ' ' });
 
-    expect(onAction).toHaveBeenCalledOnce();
+    // Links activate via Enter/click per native semantics; Space must not be bridged into
+    // a synthetic click (no dispatchEvent activation in MDListItem).
+    expect(onAction).not.toHaveBeenCalled();
 
     document.body.innerHTML = '';
   });
