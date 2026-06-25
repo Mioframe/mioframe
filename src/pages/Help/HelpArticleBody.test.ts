@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { computed, nextTick } from 'vue';
 import HelpArticleBody from './HelpArticleBody.vue';
 
@@ -12,9 +12,19 @@ vi.mock('@shared/ui/Layout', () => ({
 }));
 
 const scrollIntoView = vi.fn();
-HTMLElement.prototype.scrollIntoView = scrollIntoView;
+let originalScrollIntoView: typeof HTMLElement.prototype.scrollIntoView;
 
 describe('HelpArticleBody', () => {
+  beforeAll(() => {
+    // oxlint-disable-next-line unbound-method -- stored only for restoration, never called unbound.
+    originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  });
+
+  afterAll(() => {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
   afterEach(() => {
     scrollIntoView.mockClear();
     scrollTo.mockClear();

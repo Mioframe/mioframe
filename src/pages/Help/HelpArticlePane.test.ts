@@ -1,5 +1,5 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick } from 'vue';
 
 declare global {
@@ -132,11 +132,20 @@ const mountPane = async (slug: string) => {
 };
 
 describe('HelpArticlePane', () => {
+  let originalDisableMainFrameNavigation: boolean;
+
   beforeAll(() => {
+    originalDisableMainFrameNavigation =
+      window.happyDOM.settings.navigation.disableMainFrameNavigation;
     // Un-hijacked external links must keep the browser's native click behavior; disable
     // happy-dom's actual main-frame navigation so that native behavior doesn't perform a real
     // network request in this Node test environment.
     window.happyDOM.settings.navigation.disableMainFrameNavigation = true;
+  });
+
+  afterAll(() => {
+    window.happyDOM.settings.navigation.disableMainFrameNavigation =
+      originalDisableMainFrameNavigation;
   });
 
   afterEach(() => {
