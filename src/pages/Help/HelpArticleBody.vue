@@ -59,7 +59,7 @@ watch(() => [props.markdown, props.anchor] as const, scrollToAnchorOrTop, { flus
 </script>
 
 <template>
-  <div class="help-article-body" ref="contentEl" @click="onContentClick">
+  <div ref="contentEl" class="help-article-body" @click="onContentClick">
     <MarkdownContent
       :source="content"
       variant="article"
