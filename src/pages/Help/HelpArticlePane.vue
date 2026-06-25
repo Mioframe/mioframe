@@ -63,7 +63,7 @@ const onContentClick = async (event: MouseEvent) => {
 </script>
 
 <template>
-  <MDPane :class="article ? 'help-article-pane' : undefined" allow-bottom-navigation>
+  <MDPane class="help-article-pane" allow-bottom-navigation>
     <template v-if="article">
       <HelpArticleContent
         :headline="article.title"
