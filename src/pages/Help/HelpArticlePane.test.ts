@@ -75,7 +75,7 @@ vi.mock('./HelpArticleBody.vue', () => ({
     emits: ['contentClick'],
     setup(props, { emit }) {
       return () =>
-        h('div', { class: 'help-article-body__content' }, [
+        h('div', { class: 'help-article-body' }, [
           h('p', props.markdown),
           h(
             'a',
