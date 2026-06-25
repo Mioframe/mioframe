@@ -66,9 +66,9 @@ vi.mock('@shared/ui/AppBar', () => ({
   }),
 }));
 
-vi.mock('@page/MarkdownHelpPane/MarkdownHelpPane.vue', () => ({
+vi.mock('./HelpArticleContent.vue', () => ({
   default: defineComponent({
-    name: 'MarkdownHelpPaneStub',
+    name: 'HelpArticleContentStub',
     props: {
       headline: { type: String, required: true },
       markdown: { type: String, required: true },
@@ -82,7 +82,7 @@ vi.mock('@page/MarkdownHelpPane/MarkdownHelpPane.vue', () => ({
             h('h1', props.headline),
             h('div', { 'data-slot': 'trailing-elements' }, slots.appBarTrailing?.()),
           ]),
-          h('div', { class: 'markdown-help-pane__content' }, [
+          h('div', { class: 'help-article-content__content' }, [
             h('p', props.markdown),
             h(
               'a',

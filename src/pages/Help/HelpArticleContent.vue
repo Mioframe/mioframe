@@ -32,7 +32,7 @@ const contentEl = useTemplateRef<HTMLElement>('contentEl');
 const paneContainer = usePaneContainer();
 
 /**
- * Finds the heading element matching `anchor` inside this pane's own rendered Markdown
+ * Finds the heading element matching `anchor` inside this component's own rendered Markdown
  * content. Scoped DOM lookup for anchor scrolling only, not component coordination.
  * @param anchor - Heading id to look up.
  * @returns The matching heading element, or `null` when no heading has that id.
@@ -58,15 +58,15 @@ const scrollToAnchorOrTop = () => {
 };
 
 // `onMounted` covers the initial render: a `watch({ immediate: true })` callback runs
-// synchronously during setup, before this pane's first render has produced the `contentEl`
-// and heading DOM that anchor lookup depends on.
+// synchronously during setup, before this component's first render has produced the
+// `contentEl` and heading DOM that anchor lookup depends on.
 onMounted(scrollToAnchorOrTop);
 
 watch(() => [props.markdown, props.anchor] as const, scrollToAnchorOrTop, { flush: 'post' });
 </script>
 
 <template>
-  <div class="markdown-help-pane">
+  <div class="help-article-content">
     <MDAppBar :headline="headline">
       <template #leadingButton>
         <slot name="navigationButton" />
@@ -77,7 +77,7 @@ watch(() => [props.markdown, props.anchor] as const, scrollToAnchorOrTop, { flus
       </template>
     </MDAppBar>
 
-    <div ref="contentEl" class="markdown-help-pane__content" @click="onContentClick">
+    <div ref="contentEl" class="help-article-content__content" @click="onContentClick">
       <MarkdownContent
         :source="content"
         variant="article"
@@ -89,12 +89,12 @@ watch(() => [props.markdown, props.anchor] as const, scrollToAnchorOrTop, { flus
 </template>
 
 <style scoped>
-.markdown-help-pane {
+.help-article-content {
   display: flex;
   flex-direction: column;
 }
 
-.markdown-help-pane__content {
+.help-article-content__content {
   padding: 16px;
 }
 </style>

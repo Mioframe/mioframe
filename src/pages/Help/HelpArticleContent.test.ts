@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, nextTick } from 'vue';
-import MarkdownHelpPane from './MarkdownHelpPane.vue';
+import HelpArticleContent from './HelpArticleContent.vue';
 
 vi.mock('@shared/ui/AppBar', () => ({
   MDAppBar: defineComponent({
@@ -24,14 +24,14 @@ vi.mock('@shared/ui/Layout', () => ({
 const scrollIntoView = vi.fn();
 HTMLElement.prototype.scrollIntoView = scrollIntoView;
 
-describe('MarkdownHelpPane', () => {
+describe('HelpArticleContent', () => {
   afterEach(() => {
     scrollIntoView.mockClear();
     scrollTo.mockClear();
   });
 
   it('renders deterministic heading ids for in-page anchor scrolling', () => {
-    const wrapper = mount(MarkdownHelpPane, {
+    const wrapper = mount(HelpArticleContent, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\nText.',
@@ -42,7 +42,7 @@ describe('MarkdownHelpPane', () => {
   });
 
   it('scrolls to the matching heading when an anchor is provided', async () => {
-    const wrapper = mount(MarkdownHelpPane, {
+    const wrapper = mount(HelpArticleContent, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\nText.',
@@ -56,7 +56,7 @@ describe('MarkdownHelpPane', () => {
   });
 
   it('falls back to scrolling the pane container to the top when no anchor is provided', () => {
-    mount(MarkdownHelpPane, {
+    mount(HelpArticleContent, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\nText.',
@@ -69,7 +69,7 @@ describe('MarkdownHelpPane', () => {
   });
 
   it('falls back to scrolling the pane container to the top when the anchor heading is missing', () => {
-    mount(MarkdownHelpPane, {
+    mount(HelpArticleContent, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\nText.',
@@ -83,7 +83,7 @@ describe('MarkdownHelpPane', () => {
   });
 
   it('scrolls to the new anchor when the anchor changes within the same article', async () => {
-    const wrapper = mount(MarkdownHelpPane, {
+    const wrapper = mount(HelpArticleContent, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\n## Step Two',
@@ -98,7 +98,7 @@ describe('MarkdownHelpPane', () => {
   });
 
   it('scrolls the pane container to top when navigating to a different article without an anchor', async () => {
-    const wrapper = mount(MarkdownHelpPane, {
+    const wrapper = mount(HelpArticleContent, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One',

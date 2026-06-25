@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import MarkdownHelpPane from '@page/MarkdownHelpPane/MarkdownHelpPane.vue';
 import { useStackNavigation } from '@page/routes';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
+import HelpArticleContent from './HelpArticleContent.vue';
 import { getHelpArticleBySlug, resolveHelpArticleHref } from './helpCatalog';
 
 const props = defineProps<{ slug: string; anchor?: string | undefined }>();
@@ -65,7 +65,7 @@ const onContentClick = async (event: MouseEvent) => {
 <template>
   <MDPane :class="article ? 'help-article-pane' : undefined" allow-bottom-navigation>
     <template v-if="article">
-      <MarkdownHelpPane
+      <HelpArticleContent
         :headline="article.title"
         :markdown="article.markdown"
         :anchor="anchor"
@@ -78,7 +78,7 @@ const onContentClick = async (event: MouseEvent) => {
         <template #appBarTrailing>
           <slot name="appBarTrailing" />
         </template>
-      </MarkdownHelpPane>
+      </HelpArticleContent>
     </template>
 
     <template v-else>
