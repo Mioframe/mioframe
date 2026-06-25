@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
-import type { NonEmptyMenuButtonList } from '@feature/entryManage';
+import type { NonEmptyMenuButtonList } from '@shared/ui/Menu';
 import { defineMenuButtonList } from '@shared/ui/Menu';
 
 const canEditDirectoryContents = ref<boolean | undefined>(true);

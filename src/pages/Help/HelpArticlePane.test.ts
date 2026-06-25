@@ -23,7 +23,7 @@ vi.mock('./helpCatalog', () => ({
       : null,
   resolveHelpArticleHref: (currentPath: string, href: string) =>
     currentPath === 'data/01-data-storage.md' && href === './02-backup-and-restore.md'
-      ? 'data/backup-and-restore'
+      ? { slug: 'data/backup-and-restore', anchor: null }
       : null,
 }));
 
@@ -159,7 +159,7 @@ describe('HelpArticlePane', () => {
 
     expect(open).toHaveBeenCalledWith(
       'helpArticle',
-      { slug: 'data/backup-and-restore' },
+      { slug: 'data/backup-and-restore', anchor: undefined },
       { target: 'helpArticle' },
     );
 

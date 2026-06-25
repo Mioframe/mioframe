@@ -6,7 +6,7 @@ import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
 import { getHelpArticleBySlug, resolveHelpArticleHref } from './helpCatalog';
 
-const props = defineProps<{ slug: string }>();
+const props = defineProps<{ slug: string; anchor?: string | undefined }>();
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -44,17 +44,21 @@ const onContentClick = async (event: MouseEvent) => {
     return;
   }
 
-  const targetSlug = resolveHelpArticleHref(
+  const resolvedLink = resolveHelpArticleHref(
     currentArticle.sourcePath,
     link.getAttribute('href') ?? '',
   );
 
-  if (!targetSlug) {
+  if (!resolvedLink) {
     return;
   }
 
   event.preventDefault();
-  await open('helpArticle', { slug: targetSlug }, { target: 'helpArticle' });
+  await open(
+    'helpArticle',
+    { slug: resolvedLink.slug, anchor: resolvedLink.anchor ?? undefined },
+    { target: 'helpArticle' },
+  );
 };
 </script>
 
@@ -63,6 +67,7 @@ const onContentClick = async (event: MouseEvent) => {
     v-if="article"
     :headline="article.title"
     :markdown="article.markdown"
+    :anchor="anchor"
     pane-class="help-article-pane"
     @content-click="onContentClick"
   >

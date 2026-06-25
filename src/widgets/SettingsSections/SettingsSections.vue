@@ -67,9 +67,10 @@ const onClickAboutMioframe = () => {
           headline="Error diagnostics"
           :supporting-text="
             SENTRY_DIAGNOSTICS_AVAILABLE
-              ? 'Send technical error reports to help developers fix crashes and unexpected failures.'
+              ? 'Send technical error reports. Documents, file names, and folder paths are not sent.'
               : 'Diagnostics are not available in this build.'
           "
+          :lines="3"
           :checked="SENTRY_DIAGNOSTICS_AVAILABLE ? diagnosticsEnabled : false"
           :disabled="!SENTRY_DIAGNOSTICS_AVAILABLE"
           @change="onToggleDiagnostics"

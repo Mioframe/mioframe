@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FSEntryManageMenuButton } from '@feature/entryManage';
-import type { NonEmptyMenuButtonList } from '@feature/entryManage';
+import type { NonEmptyMenuButtonList } from '@shared/ui/Menu';
 
 defineProps<{
   path: string;

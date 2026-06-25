@@ -9,10 +9,13 @@ const props = withDefaults(
     source: string;
     variant?: MarkdownContentVariant;
     openExternalLinksInNewTab?: boolean;
+    /** Adds a deterministic id to every rendered heading for in-page anchor scrolling. */
+    generateHeadingIds?: boolean;
   }>(),
   {
     variant: 'body',
     openExternalLinksInNewTab: false,
+    generateHeadingIds: false,
   },
 );
 
@@ -23,6 +26,7 @@ const renderedMarkdown = computed(() =>
   renderMarkdown(props.source, {
     openExternalLinksInNewTab: props.openExternalLinksInNewTab,
     tableWrapperClassName,
+    generateHeadingIds: props.generateHeadingIds,
   }),
 );
 </script>

@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
-import type { NonEmptyMenuButtonList } from './useFSEntryManageActions';
+import type { NonEmptyMenuButtonList } from '@shared/ui/Menu';
 
 const { selectedLabel, renderedLabels } = vi.hoisted(() => ({
   selectedLabel: { value: 'Import JSON' },
