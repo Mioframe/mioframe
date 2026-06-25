@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useStackNavigation } from '@page/routes';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
-import HelpArticleContent from './HelpArticleContent.vue';
+import HelpArticleBody from './HelpArticleBody.vue';
 import { getHelpArticleBySlug, resolveHelpArticleHref } from './helpCatalog';
 
 const props = defineProps<{ slug: string; anchor?: string | undefined }>();
@@ -64,34 +64,25 @@ const onContentClick = async (event: MouseEvent) => {
 
 <template>
   <MDPane class="help-article-pane" allow-bottom-navigation>
+    <MDAppBar :headline="article ? article.title : 'Help article not found'">
+      <template #leadingButton>
+        <slot name="navigationButton" />
+      </template>
+
+      <template #trailingElements>
+        <slot name="appBarTrailing" />
+      </template>
+    </MDAppBar>
+
     <template v-if="article">
-      <HelpArticleContent
-        :headline="article.title"
+      <HelpArticleBody
         :markdown="article.markdown"
         :anchor="anchor"
         @content-click="onContentClick"
-      >
-        <template #navigationButton>
-          <slot name="navigationButton" />
-        </template>
-
-        <template #appBarTrailing>
-          <slot name="appBarTrailing" />
-        </template>
-      </HelpArticleContent>
+      />
     </template>
 
     <template v-else>
-      <MDAppBar headline="Help article not found">
-        <template #leadingButton>
-          <slot name="navigationButton" />
-        </template>
-
-        <template #trailingElements>
-          <slot name="appBarTrailing" />
-        </template>
-      </MDAppBar>
-
       <div class="help-article-pane__not-found">The requested help article could not be found.</div>
     </template>
   </MDPane>

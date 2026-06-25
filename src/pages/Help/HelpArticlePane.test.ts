@@ -66,57 +66,49 @@ vi.mock('@shared/ui/AppBar', () => ({
   }),
 }));
 
-vi.mock('./HelpArticleContent.vue', () => ({
+vi.mock('./HelpArticleBody.vue', () => ({
   default: defineComponent({
-    name: 'HelpArticleContentStub',
+    name: 'HelpArticleBodyStub',
     props: {
-      headline: { type: String, required: true },
       markdown: { type: String, required: true },
     },
     emits: ['contentClick'],
-    setup(props, { emit, slots }) {
+    setup(props, { emit }) {
       return () =>
-        h('section', [
-          h('header', [
-            h('div', { 'data-slot': 'leading-button' }, slots.navigationButton?.()),
-            h('h1', props.headline),
-            h('div', { 'data-slot': 'trailing-elements' }, slots.appBarTrailing?.()),
-          ]),
-          h('div', { class: 'help-article-content__content' }, [
-            h('p', props.markdown),
-            h(
-              'a',
-              {
-                href: './02-backup-and-restore.md',
-                onClick: (event: MouseEvent) => {
-                  emit('contentClick', event);
-                },
+        h('div', { class: 'help-article-body__content' }, [
+          h('p', props.markdown),
+          h(
+            'a',
+            {
+              href: './02-backup-and-restore.md',
+              onClick: (event: MouseEvent) => {
+                emit('contentClick', event);
               },
-              'Backup',
-            ),
-            h(
-              'a',
-              {
-                href: './02-backup-and-restore.md#export-json',
-                onClick: (event: MouseEvent) => {
-                  emit('contentClick', event);
-                },
+            },
+            'Backup',
+          ),
+          h(
+            'a',
+            {
+              href: './02-backup-and-restore.md#export-json',
+              onClick: (event: MouseEvent) => {
+                emit('contentClick', event);
               },
-              'Export JSON section',
-            ),
-            h(
-              'a',
-              {
-                href: 'https://example.com/help',
-                target: '_blank',
-                rel: 'noopener noreferrer',
-                onClick: (event: MouseEvent) => {
-                  emit('contentClick', event);
-                },
+            },
+            'Export JSON section',
+          ),
+          h(
+            'a',
+            {
+              href: 'https://example.com/help',
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              onClick: (event: MouseEvent) => {
+                emit('contentClick', event);
               },
-              'External help',
-            ),
-          ]),
+            },
+            'External help',
+          ),
         ]);
     },
   }),
