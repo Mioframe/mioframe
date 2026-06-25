@@ -24,11 +24,13 @@ test('internal link without an anchor opens the target article scrolled to the t
   // Baseline: the resting scroll position of a freshly opened article, before any link
   // click scrolls the container. A sticky app bar can reserve a few pixels of scroll-margin,
   // so "scrolled to the top" means returning to this resting position, not a literal 0.
-  const contentEl = page.locator('.help-article-pane .help-article-body');
-  const topRestingScrollTop = await contentEl.evaluate((el) => el.scrollTop);
+  // `MDPane` owns the actual scroll container (`paneContainer`, target of `scrollTo`),
+  // which is distinct from `.help-article-body`, the link/content lookup scope.
+  const paneContentEl = page.locator('.help-article-pane .__content');
+  const topRestingScrollTop = await paneContentEl.evaluate((el) => el.scrollTop);
 
-  const articleContent = page.locator('.help-article-pane .help-article-body');
-  await articleContent.getByRole('link', { name: /^backup and restore$/i }).click();
+  const articleBody = page.locator('.help-article-pane .help-article-body');
+  await articleBody.getByRole('link', { name: /^backup and restore$/i }).click();
 
   await expect(
     page.locator('.help-article-pane .md-app-bar__headline', { hasText: /^backup and restore$/i }),
@@ -37,15 +39,15 @@ test('internal link without an anchor opens the target article scrolled to the t
   // The click scrolled the source link into view before activating it; the navigated-to
   // article resets scroll asynchronously (post-flush watcher), so poll instead of reading
   // scrollTop once right after the click.
-  await expect.poll(() => contentEl.evaluate((el) => el.scrollTop)).toBe(topRestingScrollTop);
+  await expect.poll(() => paneContentEl.evaluate((el) => el.scrollTop)).toBe(topRestingScrollTop);
 });
 
 test('internal link with an anchor scrolls the target heading into view', async ({ page }) => {
   await openHelpIndex(page);
   await openArticle(page, /^data storage$/i);
 
-  const articleContent = page.locator('.help-article-pane .help-article-body');
-  await articleContent.getByRole('link', { name: /^backup expectations$/i }).click();
+  const articleBody = page.locator('.help-article-pane .help-article-body');
+  await articleBody.getByRole('link', { name: /^backup expectations$/i }).click();
 
   const heading = page.getByRole('heading', { name: /^backup expectations$/i, level: 2 });
   await expect(heading).toBeInViewport();
@@ -55,8 +57,8 @@ test('external links are not hijacked by in-app help navigation', async ({ page 
   await openHelpIndex(page);
   await openArticle(page, /^troubleshooting data problems$/i);
 
-  const articleContent = page.locator('.help-article-pane .help-article-body');
-  const externalLink = articleContent.getByRole('link', { name: /^github discussions$/i });
+  const articleBody = page.locator('.help-article-pane .help-article-body');
+  const externalLink = articleBody.getByRole('link', { name: /^github discussions$/i });
 
   await expect(externalLink).toHaveAttribute('href', /^https:\/\/github\.com\//);
   await expect(externalLink).toHaveAttribute('target', '_blank');
