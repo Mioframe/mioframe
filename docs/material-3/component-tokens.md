@@ -38,7 +38,9 @@ Examples:
 
 When official Material 3 component specs list component tokens, use those names and meanings.
 
-When the official docs describe a component measurement or role but the exact token is missing from the cache, define the closest Material-compatible `--md-comp-*` token at the component definition boundary and document the mapping in the component policy or Storybook docs.
+Define a public `--md-comp-*` token only when an exact official Material token path exists in the cache for that part/state/property. Map the name mechanically from the documented path; do not shorten, normalize, or drop any path segment (for example `md.comp.list.list-item.dragged.leading-icon.icon.color` must keep its `icon` segment as `--md-comp-list-list-item-dragged-leading-icon-icon-color`, not collapse it to `...-leading-icon-color`).
+
+When the official docs describe a component measurement or role but no exact token path exists in the cache, do not invent an approximate or "closest compatible" public `--md-comp-*` token. Use a `--md-private-*` implementation variable resolved from existing `--md-sys-*`/`--md-comp-*` tokens, a system token directly, or an app/project token depending on ownership, and document the mapping and the missing-token gap in the component policy or Storybook docs.
 
 Do not invent local `--md-comp-*` tokens for app-specific behavior. Use the neutral `--app-*` namespace for app-specific extensions.
 
@@ -76,6 +78,15 @@ The supported customization surface for shared Material components is:
 4. `--app-*` for app-specific behavior that is not part of the Material token model.
 
 Consumers should not depend on private class names or private local component variables for styling.
+
+## Shared primitive private contracts
+
+A shared low-level primitive (such as `MDStateLayer`) that is reused by many component families must expose a generic `--md-private-*` contract, never a component-specific one.
+
+- The primitive defines one private variable for the value it needs (for example `--md-private-state-layer-color`) with a safe fallback to an existing generic role (for example `var(--md-private-state-layer-color, var(--md-content-color))`).
+- The primitive must not read a consumer's `--md-comp-*` or `--md-private-<component>-*` token directly. Doing so couples the primitive to one consumer and breaks reuse by every other consumer.
+- A component family (List, Menu, Button, etc.) maps its own official `--md-comp-*` tokens into the primitive's generic `--md-private-*` contract by setting that variable in its own scoped CSS. The component owns the mapping; the primitive owns the contract.
+- `--md-sys-*` remains for theme-role system tokens; `--md-comp-*` is reserved for documented Material component tokens confirmed via Material3 MCP (or the cache fallback) — do not invent a `--md-comp-*` name that has no official source. When no public token exists for a value (e.g. a dragged-state color with no published component token), keep it as a `--md-private-*` implementation variable resolved from existing `--md-sys-*`/`--md-comp-*` tokens instead of inventing a documented-looking public token.
 
 ## Pilot requirement
 

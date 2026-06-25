@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MDListItem } from '@shared/ui/Lists';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { MDSymbol } from '@shared/ui/Icon';
 
@@ -42,38 +42,40 @@ const onClosed = () => {
         <p class="entry-add-sheet__supporting-text">Choose what to add to this folder.</p>
       </div>
 
-      <MDListItem
-        is="button"
-        headline="Create document"
-        supporting-text="Start a new document."
-        @click="onClickCreateDocument"
-      >
-        <template #leadingIcon>
-          <MDSymbol name="edit_document" />
-        </template>
-      </MDListItem>
+      <MDList>
+        <MDListItem
+          mode="single-action"
+          label-text="Create document"
+          supporting-text="Start a new document."
+          @action="onClickCreateDocument"
+        >
+          <template #leading>
+            <MDSymbol name="edit_document" />
+          </template>
+        </MDListItem>
 
-      <MDListItem
-        is="button"
-        headline="Import document"
-        supporting-text="Import a JSON document."
-        @click="onClickImportDocument"
-      >
-        <template #leadingIcon>
-          <MDSymbol name="upload_file" />
-        </template>
-      </MDListItem>
+        <MDListItem
+          mode="single-action"
+          label-text="Import document"
+          supporting-text="Import a JSON document."
+          @action="onClickImportDocument"
+        >
+          <template #leading>
+            <MDSymbol name="upload_file" />
+          </template>
+        </MDListItem>
 
-      <MDListItem
-        is="button"
-        headline="Create directory"
-        supporting-text="Add a new folder here."
-        @click="onClickCreateDirectory"
-      >
-        <template #leadingIcon>
-          <MDSymbol name="create_new_folder" />
-        </template>
-      </MDListItem>
+        <MDListItem
+          mode="single-action"
+          label-text="Create directory"
+          supporting-text="Add a new folder here."
+          @action="onClickCreateDirectory"
+        >
+          <template #leading>
+            <MDSymbol name="create_new_folder" />
+          </template>
+        </MDListItem>
+      </MDList>
     </MDBottomSheetSection>
   </MDBottomSheet>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { SORT_DIRECTION } from '@shared/lib/databaseDocument';
 import {
@@ -28,7 +28,7 @@ const props = defineProps<{
 }>();
 
 defineSlots<{
-  trailingIcon: (p: { propertyId: DatabasePropertyId; direction: SORT_DIRECTION }) => unknown;
+  trailingAction: (p: { propertyId: DatabasePropertyId; direction: SORT_DIRECTION }) => unknown;
 }>();
 
 const { path, documentId, viewId } = toRefs(props);
@@ -97,7 +97,7 @@ const onInteractionOutside = () => {
   <section class="db-item-sorting-list-section">
     <MDCircularProgressIndicator v-if="isLoading && !sortingIdList" />
 
-    <MDListContainer v-if="displaySortingIdList.length" ref="container">
+    <MDList v-if="displaySortingIdList.length" ref="container">
       <DatabaseSortingListItem
         v-for="propertyId in displaySortingIdList"
         :key="propertyId"
@@ -106,11 +106,9 @@ const onInteractionOutside = () => {
         :document-id="documentId"
         :view-id="viewId"
         :property-id="propertyId"
-        :class="{
-          'md-state_drag': draggedSortingId === propertyId,
-        }"
+        :dragged="draggedSortingId === propertyId"
       >
-        <template #trailingIcon>
+        <template #trailingAction>
           <MDIconButton
             v-reorder-ignore
             color="standard"
@@ -120,7 +118,7 @@ const onInteractionOutside = () => {
           />
         </template>
       </DatabaseSortingListItem>
-    </MDListContainer>
+    </MDList>
 
     <div class="db-item-sorting-list-section__actions">
       <MDButton

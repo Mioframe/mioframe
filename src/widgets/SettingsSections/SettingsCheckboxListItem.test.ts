@@ -19,22 +19,18 @@ vi.mock('@shared/ui/Lists', () => ({
     name: 'MDListItemStub',
     inheritAttrs: false,
     props: {
-      headline: { type: String, required: true },
-      is: { type: String, default: 'div' },
-      type: { default: undefined },
-      itemRole: { type: String, default: undefined },
+      labelText: { type: String, required: true },
+      mode: { type: String, default: 'static' },
       disabled: { type: Boolean, default: false },
-      lines: { type: Number, default: undefined },
+      lineCount: { type: Number, default: undefined },
     },
-    emits: ['click', 'keydown'],
+    emits: ['action'],
     setup(
       props: {
-        headline: string;
-        is: string;
-        type: unknown;
-        itemRole?: string;
+        labelText: string;
+        mode: string;
         disabled?: boolean;
-        lines?: number;
+        lineCount?: number;
       },
       {
         attrs,
@@ -48,20 +44,15 @@ vi.mock('@shared/ui/Lists', () => ({
     ) {
       return () =>
         h(
-          props.is,
+          props.mode === 'single-action' ? 'button' : 'div',
           {
             ...attrs,
-            role: props.itemRole ?? undefined,
-            type: typeof props.type === 'string' ? props.type : undefined,
-            'data-lines': props.lines,
+            'data-line-count': props.lineCount,
             onClick: (e: MouseEvent) => {
-              if (!props.disabled) emit('click', e);
-            },
-            onKeydown: (e: KeyboardEvent) => {
-              if (!props.disabled) emit('keydown', e);
+              if (!props.disabled) emit('action', e);
             },
           },
-          [slots['supportingText']?.(), slots['trailingIcon']?.()],
+          [h('span', props.labelText), slots.trailing?.()],
         );
     },
   },
@@ -118,7 +109,6 @@ describe('SettingsCheckboxListItem', () => {
     const row = getCheckboxRow(root);
 
     expect(row?.tagName).toBe('BUTTON');
-    expect(row?.getAttribute('type')).toBe('button');
     expect(row?.getAttribute('aria-checked')).toBe('false');
     expect(row?.querySelector('input')).toBeNull();
     expect(row?.querySelector('label')).toBeNull();
@@ -134,18 +124,6 @@ describe('SettingsCheckboxListItem', () => {
     await nextTick();
     expect(onChange).toHaveBeenCalledTimes(1);
 
-    row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-    await nextTick();
-    expect(onChange).toHaveBeenCalledTimes(2);
-
-    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    await nextTick();
-    expect(onChange).toHaveBeenCalledTimes(3);
-
-    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-    await nextTick();
-    expect(onChange).toHaveBeenCalledTimes(3);
-
     unmount();
   });
 
@@ -159,14 +137,12 @@ describe('SettingsCheckboxListItem', () => {
 
     const row = getCheckboxRow(root);
 
-    expect(row?.tagName).toBe('DIV');
+    expect(row?.tagName).toBe('BUTTON');
     expect(row?.getAttribute('aria-checked')).toBe('true');
     expect(row?.getAttribute('aria-disabled')).toBe('true');
     expect(row?.hasAttribute('tabindex')).toBe(false);
 
     row?.click();
-    row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await nextTick();
 
     expect(onChange).not.toHaveBeenCalled();
@@ -183,7 +159,7 @@ describe('SettingsCheckboxListItem', () => {
 
     const row = getCheckboxRow(root);
 
-    expect(row?.tagName).toBe('DIV');
+    expect(row?.tagName).toBe('BUTTON');
     expect(row?.getAttribute('aria-busy')).toBe('true');
     expect(row?.getAttribute('aria-disabled')).toBe('true');
     // loading indicator present
@@ -192,8 +168,6 @@ describe('SettingsCheckboxListItem', () => {
     expect(root.querySelector('.md-checkbox')).toBeNull();
 
     row?.click();
-    row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await nextTick();
 
     expect(onChange).not.toHaveBeenCalled();
@@ -205,7 +179,7 @@ describe('SettingsCheckboxListItem', () => {
     const { root, unmount } = await mountSettingsCheckboxListItem({ lines: 2 });
 
     const row = root.querySelector<HTMLElement>('[role="checkbox"]');
-    expect(row?.getAttribute('data-lines')).toBe('2');
+    expect(row?.getAttribute('data-line-count')).toBe('2');
 
     unmount();
   });

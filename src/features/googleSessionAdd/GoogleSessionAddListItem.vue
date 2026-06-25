@@ -9,12 +9,12 @@ const { addAccount, isLoading } = useGoogleSessionAdd();
 
 <template>
   <MDListItem
-    is="button"
-    headline="Add Google Account"
+    mode="single-action"
+    label-text="Add Google Account"
     supporting-text="Connect a Google Drive account to browse and mount its storage"
-    @click="addAccount"
+    @action="addAccount"
   >
-    <template #leadingAvatarContainer>
+    <template #leading>
       <MDCircularProgressIndicator v-if="isLoading" :size="24" />
 
       <MDSymbol v-else name="add" />

@@ -132,6 +132,18 @@ reason:
 - When a native interactive element is visually reset, restore required interaction affordances in the owning component, including an appropriate cursor for clickable enabled states and visible focus/state-layer behavior. Do not make disabled or non-action states look clickable.
 - Treat shared UI style changes as blast-radius changes: inspect consumers, preserve the public visual contract by default, and update Storybook/visual coverage when appearance, layout, interaction affordance, or Material state rendering changes.
 
+## Shared UI implementation
+
+Use both the `material3-guidelines` skill (Material 3 source-of-truth workflow) and the `shared-ui-implementation` skill (Vue implementation-quality workflow) before implementing shared Material/list-family components.
+
+- Prefer small, named `computed` states (for example `isAction`, `isLinkAction`, `usesPrimaryActionSurface`) over inline boolean algebra for static render conditions. Do not introduce a central topology/state-machine resolver object unless the component has real workflow transitions or impossible intermediate states.
+- Keep component-owned DOM-critical attrs (`href`, `type`, `disabled`, `tabindex`, `role`, `aria-*`) explicit in the template. Object `v-bind` bags are acceptable only for controlled fallthrough-attrs forwarding, never for these attrs.
+- Shared UI runtime code must not use `dispatchEvent()` or other synthetic DOM events to emulate user activation. Rely on native button/link keyboard and pointer semantics.
+- Shared Material component source CSS must use standard CSS properties with a non-prefixed form; handwritten vendor-prefixed runtime CSS (`-webkit-*`, `-moz-*`, etc.) for such properties is forbidden, with no narrow compatibility exception. Browser prefixes and fallback transforms are owned by the build pipeline (PostCSS/browserslist), not component source. If a standard property does not render the required layout in a verification environment, replace it with a standard-CSS fallback that preserves the same layout contract; do not hardcode a prefix and do not drop the layout/clamping behavior. Genuinely non-standardized vendor-only APIs with no standard equivalent (e.g. `-webkit-tap-highlight-color`) are not covered by this rule.
+- A parent shared UI component must not use `:deep()` to style a child component's internal classes. Child components own their own internal anatomy/state styling; pass shape-relevant facts down through props or list/provide context instead.
+- Supported externally controlled component states must be explicit props (for example `dragged`). Internal CSS classes such as `md-state_*` are implementation details, not a public state API.
+- Do not preserve removed shared UI component props as wrapper compatibility aliases (for example `is` / `isButton`). Migrate wrapper consumers to the current API or a domain-intent prop in the same change.
+
 ## Implementation quality gates
 
 - Treat implementation preflight as a contract, not a planning note. Before final verification, compare the resulting diff against the preflight owner-layer plan, acceptance matrix, and risk matrix. If the diff violates the plan, either refactor it or explicitly report the remaining risk instead of claiming completion.

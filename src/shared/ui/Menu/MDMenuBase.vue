@@ -2,7 +2,6 @@
 import type { MaybeElement } from '@vueuse/core';
 import { computed, nextTick, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { tryOnBeforeUnmount, unrefElement, useEventListener } from '@vueuse/core';
-import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription } from './types';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
@@ -20,7 +19,6 @@ const showModel = defineModel<boolean>('show', { required: true });
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
-    transition?: boolean | undefined;
     outsideIgnore?: MaybeElement[] | undefined;
     disabledTeleport?: boolean | undefined;
     placement?: 'bottom-start' | 'right-start' | undefined;
@@ -170,18 +168,16 @@ useOnBackNavigationStackedWhen(showModel, () => {
     :disabled="disabledTeleport"
     :container="listContainerRef"
   >
-    <MDListContainer
-      is="div"
+    <div
       v-if="showModel"
       ref="listContainerRef"
       class="md md-menu"
       :style="containerStyle"
-      :transition="transition"
       :aria-label="ariaLabel"
       :role="role"
     >
       <slot />
-    </MDListContainer>
+    </div>
   </TeleportContainer>
 </template>
 
@@ -194,21 +190,8 @@ useOnBackNavigationStackedWhen(showModel, () => {
 
   border-radius: var(--md-sys-shape-corner-extra-small);
   box-shadow: var(--md-sys-elevation-level2);
-  --md-container-color: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-container);
   display: flex;
   flex-direction: column;
-
-  --md-list-container-border-radius: 0px;
-
-  --md-list-item-horizontal-gap: 12px;
-  --md-list-item-min-height: 48px;
-
-  --md-list-item-container-color: var(--md-container-color);
-
-  :deep() {
-    .md-list-item__headline::first-letter {
-      text-transform: uppercase;
-    }
-  }
 }
 </style>

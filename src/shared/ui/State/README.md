@@ -5,7 +5,7 @@
 - `useStateLayer` only collects hover, focus-visible, pressed, and dragged state from the host element.
 - `useRipple` is an explicit opt-in host behavior. Hosts decide whether ripple is enabled.
 - Only one state layer should be visually active at a time unless a component intentionally combines states according to Material 3.
-- State layer color is derived from host content color via `--md-content-color`.
+- State layer color is resolved from `--md-private-state-layer-color`, falling back to host content color via `--md-content-color` when unset: `var(--md-private-state-layer-color, var(--md-content-color))`. `--md-private-state-layer-color` is `MDStateLayer`'s own generic private contract — it must never read a component-specific variable name (e.g. a List, Menu, or Button token) directly. Components that need a non-default state-layer color (such as List's selected/dragged rows) set `--md-private-state-layer-color` on their own private token first, then let it cascade down to the nested `MDStateLayer`.
 - Default state-layer opacities are hover `0.08`, focus `0.1`, pressed `0.1`, and dragged `0.16`.
 - Disabled components suppress interactive state layers.
 - `MDStateLayer` also supports a host parent-class protocol for deterministic rendering:

@@ -39,8 +39,8 @@ vi.mock('@shared/ui/AppBar', () => ({
 }));
 
 vi.mock('@shared/ui/Lists', () => ({
-  MDListContainer: defineComponent({
-    name: 'MDListContainerStub',
+  MDList: defineComponent({
+    name: 'MDListStub',
     setup(_props, { slots }) {
       return () => h('div', slots.default?.());
     },
@@ -48,22 +48,19 @@ vi.mock('@shared/ui/Lists', () => ({
   MDListItem: defineComponent({
     name: 'MDListItemStub',
     props: {
-      headline: { type: String, required: true },
-      is: { type: String, required: true },
-      type: { type: String, default: undefined },
+      labelText: { type: String, required: true },
     },
-    emits: ['click'],
+    emits: ['action'],
     setup(props, { emit }) {
       return () =>
         h(
-          props.is,
+          'button',
           {
-            type: props.type,
             onClick: () => {
-              emit('click');
+              emit('action');
             },
           },
-          props.headline,
+          props.labelText,
         );
     },
   }),

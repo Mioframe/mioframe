@@ -14,11 +14,10 @@ const onClickInstall = () => {
 
 <template>
   <MDListItem
-    is="button"
+    mode="single-action"
     class="pwa-install-settings-list-item"
-    type="button"
-    headline="Install app"
-    @click="onClickInstall"
+    label-text="Install app"
+    @action="onClickInstall"
   >
     <template #supportingText>{{ actionLabel }}</template>
   </MDListItem>

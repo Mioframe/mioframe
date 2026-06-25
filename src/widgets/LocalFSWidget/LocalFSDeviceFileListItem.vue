@@ -25,12 +25,17 @@ const onClickDisconnect = (event: MouseEvent) => {
 </script>
 
 <template>
-  <MDListItem is="button" :headline="name" :supporting-text="description" @click="onClickItem">
-    <template #leadingIcon>
+  <MDListItem
+    :mode="canDisconnect ? 'multi-action' : 'single-action'"
+    :label-text="name"
+    :supporting-text="description"
+    @action="onClickItem"
+  >
+    <template #leading>
       <MDSymbol name="folder_managed" />
     </template>
 
-    <template v-if="canDisconnect" #trailingIcon>
+    <template v-if="canDisconnect" #trailingAction>
       <MDIconButton
         tooltip="Disconnect Mioframe space"
         md-symbol-name="link_off"

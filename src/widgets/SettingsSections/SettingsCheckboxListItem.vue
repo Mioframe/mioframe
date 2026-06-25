@@ -23,36 +23,22 @@ const onChange = () => {
 
   emit('change');
 };
-
-const onKeydown = (event: KeyboardEvent) => {
-  if (disabled || loading || !['Enter', ' '].includes(event.key)) {
-    return;
-  }
-
-  event.preventDefault();
-  onChange();
-};
 </script>
 
 <template>
   <MDListItem
-    :is="disabled || loading ? 'div' : 'button'"
-    :type="disabled || loading ? false : 'button'"
-    item-role="checkbox"
-    :headline="headline"
+    mode="single-action"
+    role="checkbox"
+    :label-text="headline"
+    :supporting-text="supportingText"
     :disabled="disabled || loading"
-    :lines="lines"
+    :line-count="lines"
     :aria-checked="checked"
     :aria-disabled="disabled || loading ? 'true' : undefined"
     :aria-busy="loading ? 'true' : undefined"
-    @click="onChange"
-    @keydown="onKeydown"
+    @action="onChange"
   >
-    <template #supportingText>
-      {{ supportingText }}
-    </template>
-
-    <template #trailingIcon>
+    <template #trailing>
       <MDCircularProgressIndicator v-if="loading" :size="24" />
       <MDCheckbox v-else presentation :model-value="checked" :disabled="disabled" />
     </template>
