@@ -99,9 +99,11 @@ export const useListSelectionKeyboard = (
   };
 
   const syncTabStops = () => {
-    if (containerRef.value) {
-      syncListSelectionItemTabStops(selectionRegistry);
+    if (!enabled.value || !containerRef.value) {
+      return;
     }
+
+    syncListSelectionItemTabStops(selectionRegistry);
   };
 
   let attachedContainer: HTMLElement | null = null;

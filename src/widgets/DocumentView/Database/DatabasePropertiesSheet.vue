@@ -104,6 +104,7 @@ const onCancelCreateProperty = () => {
         class="db-properties-sheet__property-list"
         :directory-path="directoryPath"
         :document-id="documentId"
+        :property-id-list="propertiesIdList"
       >
         <template #trailingAction="{ propertyId, property }">
           <MDContextMenuButton

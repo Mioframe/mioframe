@@ -1,7 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import MDList from './MDList.vue';
-import MDListItem from './MDListItem.vue';
+import { MDList, MDListItem } from '.';
 
 const mountListItem = (
   props: Record<string, unknown> = {},

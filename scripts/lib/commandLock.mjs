@@ -75,8 +75,14 @@ function shouldSkipLock(kind, processEnv = process.env) {
   }
 
   // Children of a standalone expensive command (e.g. Playwright webServer spawning storybook
-  // build) also skip reacquisition — the parent already holds the machine lock.
-  if (processEnv[MACHINE_LOCK_ENV_FLAG] === '1' && processEnv[EXPENSIVE_LOCK_ENV_FLAG] === '1') {
+  // build) also skip reacquisition — the parent already holds the machine lock. This must
+  // only apply to expensive children: a verify run must never inherit an expensive parent's
+  // bypass and skip reacquiring the verify lock.
+  if (
+    kind === 'expensive' &&
+    processEnv[MACHINE_LOCK_ENV_FLAG] === '1' &&
+    processEnv[EXPENSIVE_LOCK_ENV_FLAG] === '1'
+  ) {
     return true;
   }
 

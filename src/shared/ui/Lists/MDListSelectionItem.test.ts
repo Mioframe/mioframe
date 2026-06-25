@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import MDList from './MDList.vue';
-import MDListSelectionItem from './MDListSelectionItem.vue';
+import { nextTick } from 'vue';
+import { MDList, MDListSelectionItem } from '.';
 
 const mountSelectionItem = (
   props: Record<string, unknown> = {},
@@ -211,9 +211,21 @@ describe('MDListSelectionItem', () => {
     warnSpy.mockRestore();
   });
 
-  it('sets tabindex=-1 when inside an active selection list', () => {
+  it('does not set a tabindex attribute via its own template inside an active selection list', () => {
+    // Roving tabindex inside a selection list is owned exclusively by
+    // useListSelectionKeyboard's JS-managed sync, not by this component's template, so
+    // re-rendering MDListSelectionItem must never overwrite the DOM-managed tab stop.
     const wrapper = mountSelectionItem({ value: 'opt' });
-    expect(wrapper.get('.md-list-selection-item').attributes('tabindex')).toBe('-1');
+    expect(wrapper.get('.md-list-selection-item').attributes('tabindex')).toBeUndefined();
+  });
+
+  it('becomes the roving tab stop via JS-managed sync once mounted inside an active selection list', async () => {
+    const wrapper = mountSelectionItem({ value: 'opt' });
+
+    await nextTick();
+    await nextTick();
+
+    expect(wrapper.get<HTMLElement>('.md-list-selection-item').element.tabIndex).toBe(0);
   });
 
   it('warns in development when rendered outside a selection list', () => {
@@ -254,6 +266,21 @@ describe('MDListSelectionItem', () => {
 
     expect(item.attributes('role')).toBe('presentation');
     expect(item.attributes('aria-selected')).toBeUndefined();
+
+    warnSpy.mockRestore();
+  });
+
+  it('never becomes a tabbable roving stop when selectionMode=none', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const wrapper = mountSelectionItem({ value: 'opt' }, { selectionMode: 'none' });
+
+    await nextTick();
+    await nextTick();
+
+    const item = wrapper.get<HTMLElement>('.md-list-selection-item');
+    expect(item.attributes('tabindex')).toBeUndefined();
+    expect(item.element.tabIndex).toBe(-1);
 
     warnSpy.mockRestore();
   });

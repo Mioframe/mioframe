@@ -4,8 +4,7 @@ import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
 import { useFocusIndicator } from '../../State/useFocusIndicator';
 import { MDStateLayerForcedStateProvider } from '../../State/testing';
-import MDList from '../MDList.vue';
-import MDListItem from '../MDListItem.vue';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 
 const onAction = () => {};
 const primaryActionCount = ref(0);

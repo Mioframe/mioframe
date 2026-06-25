@@ -14,6 +14,10 @@ import { computed, toRefs, useTemplateRef } from 'vue';
 const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
+  // Accessible current-view state owned by the caller's view-selection composition.
+  // Forwarded onto the row as `aria-current` so assistive tech can tell which view is
+  // active without depending on a presentation-only leading control.
+  currentViewId?: DatabaseViewId | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -86,6 +90,7 @@ const onClickView = (id: DatabaseViewId) => {
       :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
       :label-text="view.name"
       :dragged="draggedViewId === id"
+      :aria-current="id === currentViewId ? 'true' : undefined"
       class="db-view-map-edit__view-item"
       :class="{
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',

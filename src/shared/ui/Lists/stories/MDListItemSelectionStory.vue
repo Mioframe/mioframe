@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import MDList from '../MDList.vue';
-import MDListSelectionItem from '../MDListSelectionItem.vue';
+import { MDList, MDListSelectionItem } from '@shared/ui/Lists';
 import type { MDListModelValue } from '../listContext';
 
 const singleSelection = ref<'bread' | 'rice' | 'pita'>('rice');

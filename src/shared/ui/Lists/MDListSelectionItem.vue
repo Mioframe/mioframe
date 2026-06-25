@@ -139,7 +139,6 @@ if (import.meta.env.DEV) {
     :role="isInSelectionList ? 'option' : 'presentation'"
     :aria-selected="isInSelectionList ? String(isSelected) : undefined"
     :aria-disabled="isDisabled ? 'true' : undefined"
-    :tabindex="isInSelectionList ? -1 : undefined"
     @click="onSelect"
     @keydown="onKeydown"
   >
@@ -184,13 +183,6 @@ if (import.meta.env.DEV) {
     </div>
   </component>
 </template>
-
-<style>
-/* Shared List-family anatomy: token defaults, state modifiers, body layout, element
-   geometry, and typography. Imported as a non-scoped block so MDListItem and
-   MDListSelectionItem share one implementation instead of duplicating it. */
-@import './listItemAnatomy.css';
-</style>
 
 <style scoped>
 .md-list-selection-item {

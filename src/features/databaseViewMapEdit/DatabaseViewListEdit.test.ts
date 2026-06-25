@@ -25,12 +25,16 @@ vi.mock('@shared/lib/sortable', () => ({
   vReorderItem: { mounted() {}, updated() {}, unmounted() {} },
 }));
 
-const mountEdit = (slots: Record<string, () => unknown> = {}) =>
+const mountEdit = (
+  slots: Record<string, () => unknown> = {},
+  props: Record<string, unknown> = {},
+) =>
   mount(DatabaseViewListEdit, {
     attachTo: document.body,
     props: {
       directoryPath: '/db',
       documentId: FAKE_DOC_ID,
+      ...props,
     },
     slots,
   });
@@ -70,5 +74,17 @@ describe('DatabaseViewListEdit', () => {
     const primaryAction = wrapper.find('.md-list-item__primary-action');
     expect(primaryAction.exists()).toBe(true);
     expect(primaryAction.find('button[data-testid="trailing-btn"]').exists()).toBe(false);
+  });
+
+  it('exposes the current view accessibly via aria-current on the row', () => {
+    const wrapper = mountEdit({}, { currentViewId: FAKE_VIEW_ID });
+
+    expect(wrapper.get('.md-list-item__primary-action').attributes('aria-current')).toBe('true');
+  });
+
+  it('does not set aria-current when the view is not the current one', () => {
+    const wrapper = mountEdit();
+
+    expect(wrapper.get('.md-list-item__primary-action').attributes('aria-current')).toBeUndefined();
   });
 });

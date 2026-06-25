@@ -39,14 +39,16 @@ export const useListActionKeyboard = (
     }
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      // This row belongs to this list's own registry, so this list owns the horizontal
+      // key regardless of whether a counterpart exists — stop it from also reaching an
+      // ancestor action list whose own item DOM subtree happens to contain this one.
       const counterpart = getActionRowCounterpart(actionRegistry, event.target);
 
-      if (!counterpart) {
-        return;
+      if (counterpart) {
+        event.preventDefault();
+        counterpart.focus();
       }
 
-      event.preventDefault();
-      counterpart.focus();
       event.stopPropagation();
       return;
     }

@@ -1,9 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { defineComponent, nextTick, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import MDList from './MDList.vue';
-import MDListItem from './MDListItem.vue';
-import MDListSelectionItem from './MDListSelectionItem.vue';
+import { MDList, MDListItem, MDListSelectionItem } from '.';
 
 describe('MDList', () => {
   it('renders the list root with the md-list block class', () => {
@@ -380,6 +378,53 @@ describe('MDList', () => {
     // roving focus, even though the inner list is nested inside the outer row's own
     // trailing-action DOM subtree.
     expect(document.activeElement).toBe(innerActions[1]?.element);
+
+    document.body.innerHTML = '';
+  });
+
+  it('keeps ArrowLeft/ArrowRight contained inside a nested action list with no same-row counterpart', async () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList>
+            <MDListItem label-text="Outer one" mode="single-action" />
+            <MDListItem label-text="Outer two" mode="multi-action">
+              <template #trailingAction>
+                <MDList>
+                  <MDListItem label-text="Inner one" mode="single-action" />
+                  <MDListItem label-text="Inner two" mode="single-action" />
+                </MDList>
+              </template>
+            </MDListItem>
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    const allActions = wrapper.findAll<HTMLElement>('button.md-list-item__primary-action');
+    const outerActions = allActions.filter(
+      (action) => !action.element.closest('.md-list-item__trailing-action'),
+    );
+    const innerActions = allActions.filter((action) =>
+      action.element.closest('.md-list-item__trailing-action'),
+    );
+
+    expect(outerActions).toHaveLength(2);
+    expect(innerActions).toHaveLength(2);
+
+    innerActions[0]?.element.focus();
+    const keydownEvent = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true });
+    innerActions[0]?.element.dispatchEvent(keydownEvent);
+    await nextTick();
+
+    // The inner single-action row has no trailing counterpart, but the inner list still
+    // owns this key once the target resolves to its own registry: it must not bubble out
+    // and let the outer row's (incorrectly inherited) trailing-column resolution steal
+    // focus onto an outer action. preventDefault is only called when focus actually moves.
+    expect(document.activeElement).toBe(innerActions[0]?.element);
+    expect(keydownEvent.defaultPrevented).toBe(false);
 
     document.body.innerHTML = '';
   });

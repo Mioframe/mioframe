@@ -150,6 +150,7 @@ const onRenameViewCompleted = () => {
           class="db-views-sheet__list"
           :directory-path="path"
           :document-id="documentId"
+          :current-view-id="effectiveViewId"
           @click-view="onSelectViewPreset"
         >
           <template #leading="{ viewId }">

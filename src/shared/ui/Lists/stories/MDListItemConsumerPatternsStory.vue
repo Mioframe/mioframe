@@ -3,8 +3,7 @@ import { ref } from 'vue';
 import MDCheckbox from '../../Checkbox/MDCheckbox.vue';
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
-import MDList from '../MDList.vue';
-import MDListItem from '../MDListItem.vue';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 
 const onAction = () => {};
 const checkboxChecked = ref(false);

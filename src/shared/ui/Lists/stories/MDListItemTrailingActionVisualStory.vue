@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import MDIconButton from '../../Button/MDIconButton.vue';
-import MDList from '../MDList.vue';
-import MDListItem from '../MDListItem.vue';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 
 const onAction = () => {};
 </script>

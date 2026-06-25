@@ -412,24 +412,9 @@ defineExpose({
           <slot name="trailing" />
         </span>
       </span>
-
-      <span
-        v-if="allowsTrailingAction"
-        class="md-list-item__trailing-action"
-        :inert="disabled || undefined"
-      >
-        <slot name="trailingAction" />
-      </span>
     </template>
   </component>
 </template>
-
-<style>
-/* Shared List-family anatomy: token defaults, state modifiers, body layout, element
-   geometry, and typography. Imported as a non-scoped block so MDListItem and
-   MDListSelectionItem share one implementation instead of duplicating it. */
-@import './listItemAnatomy.css';
-</style>
 
 <style scoped>
 .md-list-item {

@@ -756,6 +756,48 @@ describe('machine lock bypass: env-flag combinations', () => {
     );
   });
 
+  it('MIOFRAME_MACHINE_LOCK_HELD=1 + MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD=1 does not bypass for a verify command', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-held-expensive-verify-'));
+    tempDirs.push(baseDir);
+    const machineLockDir = path.join(baseDir, 'machine.lock');
+    fs.mkdirSync(machineLockDir, { recursive: true });
+    writeTestMetadata(machineLockDir, {
+      kind: 'expensive',
+      command: 'node scripts/storybook.mjs build',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'storybook:build',
+      lockPath: machineLockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_MACHINE_LOCK_HELD: '1',
+        MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        // A verify run must never inherit an expensive parent's bypass: it must still
+        // try to acquire the machine lock and fail fast against the active expensive lock.
+        await expect(
+          withVerifyCommandLock(
+            { command: 'pnpm verify', label: 'verify', logPath: '.verify/logs' },
+            async () => {},
+            { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+          ),
+        ).rejects.toThrow(
+          'Cannot start pnpm verify while an expensive local verification command is already running.',
+        );
+      },
+    );
+  });
+
   it('MIOFRAME_VERIFY_LOCK_HELD=1 alone (legacy) still bypasses expensive verify children', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-verify-legacy-'));
     tempDirs.push(baseDir);

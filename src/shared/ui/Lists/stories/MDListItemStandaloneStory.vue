@@ -2,7 +2,7 @@
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
 import { useFocusIndicator } from '../../State/useFocusIndicator';
-import MDListItem from '../MDListItem.vue';
+import { MDListItem } from '@shared/ui/Lists';
 
 const onAction = () => {};
 

@@ -2,13 +2,14 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { MDList } from '@shared/ui/Lists';
-import { toRefs } from 'vue';
-import { useDatabaseProperties } from './useDatabaseProperties';
 import DatabasePropertyListItem from './DatabasePropertyListItem.vue';
 
 const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
+  // Already-read property IDs, owned by the caller's own useDatabaseProperties read.
+  // Accepting them explicitly avoids this list re-subscribing to the same entity read.
+  propertyIdList: DatabasePropertyId[];
 }>();
 
 const slots = defineSlots<{
@@ -17,19 +18,15 @@ const slots = defineSlots<{
     propertyId: DatabasePropertyId;
   }) => unknown;
 }>();
-
-const { documentId, directoryPath: path } = toRefs(props);
-
-const { propertiesIdList: properties } = useDatabaseProperties(path, documentId);
 </script>
 
 <template>
   <MDList list-style="segmented">
     <DatabasePropertyListItem
-      v-for="propertyId in properties"
+      v-for="propertyId in props.propertyIdList"
       :key="propertyId"
-      :path="path"
-      :document-id="documentId"
+      :path="props.directoryPath"
+      :document-id="props.documentId"
       :property-id="propertyId"
     >
       <template v-if="!!slots.trailingAction" #trailingAction="{ property }">
