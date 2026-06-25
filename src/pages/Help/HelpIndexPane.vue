@@ -2,7 +2,7 @@
 import { useStackNavigation } from '@page/routes';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 import { helpCatalog } from './helpCatalog';
 
 defineSlots<{
@@ -34,16 +34,15 @@ const onSelectArticle = async (slug: string) => {
         Read data storage, backup, restore, and troubleshooting guides.
       </p>
 
-      <MDListContainer is="div">
+      <MDList tag="div">
         <MDListItem
-          is="button"
           v-for="article in helpCatalog"
           :key="article.slug"
-          type="button"
-          :headline="article.title"
-          @click="onSelectArticle(article.slug)"
+          mode="single-action"
+          :label-text="article.title"
+          @action="onSelectArticle(article.slug)"
         />
-      </MDListContainer>
+      </MDList>
     </div>
   </MDPane>
 </template>

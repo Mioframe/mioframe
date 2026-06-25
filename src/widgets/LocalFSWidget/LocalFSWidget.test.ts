@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
+import LocalFSWidget from './LocalFSWidget.vue';
 
 const deviceFiles = ref<Array<{ name: string; description?: string; canDisconnect: boolean }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
@@ -101,8 +102,8 @@ vi.mock('@shared/ui/Icon', () => ({
 }));
 
 vi.mock('@shared/ui/Lists', () => ({
-  MDListContainer: defineComponent({
-    name: 'MDListContainerStub',
+  MDList: defineComponent({
+    name: 'MDListStub',
     setup(_props, { slots }) {
       return () => h('section', slots.default?.());
     },
@@ -110,11 +111,11 @@ vi.mock('@shared/ui/Lists', () => ({
   MDListItem: defineComponent({
     name: 'MDListItemStub',
     props: {
-      is: {
+      mode: {
         type: String,
-        default: 'div',
+        default: 'static',
       },
-      headline: {
+      labelText: {
         type: String,
         required: true,
       },
@@ -127,38 +128,35 @@ vi.mock('@shared/ui/Lists', () => ({
         default: false,
       },
     },
-    emits: ['click'],
+    emits: ['action'],
     setup(props, { emit, slots }) {
       return () =>
         h(
-          props.is === 'button' ? 'button' : 'div',
+          props.mode === 'single-action' ? 'button' : 'div',
           {
-            'data-headline': props.headline,
+            'data-label-text': props.labelText,
             disabled: props.disabled || undefined,
             onClick: () => {
-              emit('click');
+              emit('action');
             },
           },
           [
-            h('span', props.headline),
+            h('span', props.labelText),
             props.supportingText ? h('span', props.supportingText) : null,
-            slots.leadingIcon?.(),
+            slots.leading?.(),
             slots.supportingText?.(),
-            slots.trailingIcon?.(),
+            slots.selectionControl?.(),
+            slots.trailingAction?.(),
           ],
         );
     },
   }),
 }));
 
-const mountLocalFSWidget = async () => {
-  const { default: LocalFSWidget } = await import('./LocalFSWidget.vue');
-  return mount(LocalFSWidget);
-};
+const mountLocalFSWidget = () => mount(LocalFSWidget);
 
 describe('LocalFSWidget', () => {
   afterEach(() => {
-    vi.resetModules();
     deviceFiles.value = [];
     persistenceStatus.value = 'checking';
     isRequesting.value = false;
@@ -168,8 +166,8 @@ describe('LocalFSWidget', () => {
     document.body.innerHTML = '';
   });
 
-  it('mounts Mioframe create and open flows as feature-owned list items', async () => {
-    const wrapper = await mountLocalFSWidget();
+  it('mounts Mioframe create and open flows as feature-owned list items', () => {
+    const wrapper = mountLocalFSWidget();
 
     expect(wrapper.findAll('[data-testid="mioframe-create-space-list-item"]')).toHaveLength(1);
     expect(wrapper.findAll('[data-testid="mioframe-open-space-list-item"]')).toHaveLength(1);
@@ -182,8 +180,8 @@ describe('LocalFSWidget', () => {
     expect(wrapper.find('[data-testid="mioframe-space-pick-dialogs"]').exists()).toBe(false);
   });
 
-  it('does not know Mioframe space picker internals', async () => {
-    const wrapper = await mountLocalFSWidget();
+  it('does not know Mioframe space picker internals', () => {
+    const wrapper = mountLocalFSWidget();
 
     expect(wrapper.text()).not.toContain('Name new space');
     expect(wrapper.text()).not.toContain('Create or open Mioframe space');
@@ -194,12 +192,12 @@ describe('LocalFSWidget', () => {
     expect(wrapper.text()).not.toContain('stored directly in that folder');
   });
 
-  it('renders mounted local-space descriptions from the entity contract', async () => {
+  it('renders mounted local-space descriptions from the entity contract', () => {
     deviceFiles.value = [
       { name: 'My Space', description: 'Mioframe space on this device', canDisconnect: true },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
     expect(wrapper.text()).toContain('My Space');
     expect(wrapper.text()).toContain('Mioframe space on this device');
@@ -208,7 +206,7 @@ describe('LocalFSWidget', () => {
     expect(wrapper.text()).not.toContain('Grant access');
   });
 
-  it('keeps the browser-saved space description for the built-in browser entry', async () => {
+  it('keeps the browser-saved space description for the built-in browser entry', () => {
     deviceFiles.value = [
       {
         name: 'Browser Storage',
@@ -217,7 +215,7 @@ describe('LocalFSWidget', () => {
       },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
     expect(wrapper.text()).toContain('Saved directly in your browser on this device');
     expect(wrapper.text()).not.toContain('Mioframe space on this device');
@@ -237,7 +235,7 @@ describe('LocalFSWidget', () => {
       },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
     const disconnectButtons = wrapper.findAll('button[title="Disconnect Mioframe space"]');
 
     expect(wrapper.text()).toContain('Browser Storage');
@@ -253,7 +251,7 @@ describe('LocalFSWidget', () => {
       { name: 'My Space', description: 'Mioframe space on this device', canDisconnect: true },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
     await wrapper.get('button[title="Disconnect Mioframe space"]').trigger('click');
 
@@ -261,7 +259,7 @@ describe('LocalFSWidget', () => {
     expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 
-  it('shows "Enable more reliable storage" action above Browser Storage nav in ordinary state', async () => {
+  it('shows "Enable more reliable storage" action above Browser Storage nav in ordinary state', () => {
     persistenceStatus.value = 'ordinary';
     deviceFiles.value = [
       {
@@ -271,10 +269,10 @@ describe('LocalFSWidget', () => {
       },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
-    const enableButton = wrapper.find('[data-headline="Enable more reliable storage"]');
-    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+    const enableButton = wrapper.find('[data-label-text="Enable more reliable storage"]');
+    const browserStorageNav = wrapper.find('[data-label-text="Browser Storage"]');
 
     expect(enableButton.exists()).toBe(true);
     expect(enableButton.element.tagName).toBe('BUTTON');
@@ -299,9 +297,9 @@ describe('LocalFSWidget', () => {
       },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
-    await wrapper.find('[data-headline="Enable more reliable storage"]').trigger('click');
+    await wrapper.find('[data-label-text="Enable more reliable storage"]').trigger('click');
 
     expect(enableStorageMock).toHaveBeenCalledTimes(1);
     expect(showFeedbackMock).toHaveBeenCalledOnce();
@@ -309,7 +307,7 @@ describe('LocalFSWidget', () => {
     expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 
-  it('shows no extra item for the browser entry in persistent state, Browser Storage nav remains', async () => {
+  it('shows no extra item for the browser entry in persistent state, Browser Storage nav remains', () => {
     persistenceStatus.value = 'persistent';
     deviceFiles.value = [
       {
@@ -319,14 +317,14 @@ describe('LocalFSWidget', () => {
       },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
-    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
+    expect(wrapper.find('[data-label-text="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="Browser Storage"]').exists()).toBe(true);
   });
 
-  it('shows "More reliable storage unavailable" warning above Browser Storage nav in unsupported state', async () => {
+  it('shows "More reliable storage unavailable" warning above Browser Storage nav in unsupported state', () => {
     persistenceStatus.value = 'unsupported';
     deviceFiles.value = [
       {
@@ -336,10 +334,10 @@ describe('LocalFSWidget', () => {
       },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
-    const warningItem = wrapper.find('[data-headline="More reliable storage unavailable"]');
-    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+    const warningItem = wrapper.find('[data-label-text="More reliable storage unavailable"]');
+    const browserStorageNav = wrapper.find('[data-label-text="Browser Storage"]');
 
     expect(warningItem.exists()).toBe(true);
     expect(browserStorageNav.exists()).toBe(true);
@@ -352,7 +350,7 @@ describe('LocalFSWidget', () => {
     expect(warningBeforeNav).toBe(true);
   });
 
-  it('shows no persistence status item while checking, Browser Storage nav remains', async () => {
+  it('shows no persistence status item while checking, Browser Storage nav remains', () => {
     persistenceStatus.value = 'checking';
     deviceFiles.value = [
       {
@@ -362,14 +360,14 @@ describe('LocalFSWidget', () => {
       },
     ];
 
-    const wrapper = await mountLocalFSWidget();
+    const wrapper = mountLocalFSWidget();
 
-    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
-    expect(wrapper.find('[data-headline="More reliable storage unavailable"]').exists()).toBe(
+    expect(wrapper.find('[data-label-text="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-label-text="More reliable storage unavailable"]').exists()).toBe(
       false,
     );
-    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
+    expect(wrapper.find('[data-label-text="Browser Storage"]').exists()).toBe(true);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

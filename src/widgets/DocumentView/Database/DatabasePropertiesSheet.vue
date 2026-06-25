@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DatabasePropertyList } from '@entity/databaseProperty';
+import { DatabasePropertyList, useDatabaseProperties } from '@entity/databaseProperty';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
@@ -9,12 +9,12 @@ import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
-import { ref } from 'vue';
+import { ref, toRefs } from 'vue';
 import DatabasePropertySettingsSection from './DatabasePropertySettingsSection.vue';
 import DatabasePropertyValueField from './DatabasePropertyValueField.vue';
 import PropertyCreateDialogWidget from './PropertyCreateDialogWidget.vue';
 
-defineProps<{
+const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
 }>();
@@ -22,6 +22,10 @@ defineProps<{
 const emit = defineEmits<{
   closed: [];
 }>();
+
+const { directoryPath, documentId } = toRefs(props);
+
+const { propertiesIdList } = useDatabaseProperties(directoryPath, documentId);
 
 enum PROPERTY_ACTION {
   remove,
@@ -96,11 +100,13 @@ const onCancelCreateProperty = () => {
       <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
 
       <DatabasePropertyList
+        v-if="propertiesIdList?.length"
         class="db-properties-sheet__property-list"
         :directory-path="directoryPath"
         :document-id="documentId"
+        :property-id-list="propertiesIdList"
       >
-        <template #trailingIcon="{ propertyId, property }">
+        <template #trailingAction="{ propertyId, property }">
           <MDContextMenuButton
             :btns="propertyContextBtns"
             :tooltip="`options ${property?.name}`"
@@ -170,12 +176,6 @@ const onCancelCreateProperty = () => {
     flex-direction: column;
     gap: 4step;
     padding: 0 4step 4step;
-  }
-
-  &__property-list {
-    &:empty {
-      display: none;
-    }
   }
 
   &__actions {

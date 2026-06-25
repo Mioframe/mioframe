@@ -282,11 +282,7 @@ watch(
   }
 
   &_presentation {
-    cursor: default;
-
-    .md-checkbox__container {
-      cursor: default;
-    }
+    pointer-events: none;
   }
 }
 </style>

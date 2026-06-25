@@ -2,6 +2,8 @@
 
 Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and its descendants until a deeper `AGENTS.md` overrides it.
 
+Use the `shared-ui-implementation` skill for detailed guidance on Vue state composition, DOM-critical attrs, native activation semantics, parent/child styling boundaries, and browser-specific CSS when implementing or reviewing shared UI / Material primitives.
+
 ## Contains
 
 - Shared presentation primitives, layout building blocks, overlay infrastructure, and interaction helpers.

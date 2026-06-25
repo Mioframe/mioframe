@@ -12,7 +12,7 @@ const props = defineProps<{
 }>();
 
 const slots = defineSlots<{
-  trailingIcon: (p: { property?: Readonly<DatabaseUnknownProperty> | undefined }) => unknown;
+  trailingAction: (p: { property?: Readonly<DatabaseUnknownProperty> | undefined }) => unknown;
 }>();
 
 const { path, documentId, propertyId } = toRefs(props);
@@ -25,9 +25,9 @@ const supportingText = computed(() => property.value?.type);
 </script>
 
 <template>
-  <MDListItem :headline="headline" :supporting-text="supportingText">
-    <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" :property="property" />
+  <MDListItem mode="static" :label-text="headline" :supporting-text="supportingText">
+    <template v-if="!!slots.trailingAction" #trailing>
+      <slot name="trailingAction" :property="property" />
     </template>
   </MDListItem>
 </template>

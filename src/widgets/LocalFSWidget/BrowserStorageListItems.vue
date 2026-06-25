@@ -29,15 +29,14 @@ const onEnableStorage = async () => {
 
 <template>
   <MDListItem
-    is="button"
     v-if="status === 'ordinary'"
-    type="button"
-    headline="Enable more reliable storage"
+    mode="single-action"
+    label-text="Enable more reliable storage"
     :disabled="isRequesting"
-    :lines="2"
-    @click="onEnableStorage"
+    :line-count="3"
+    @action="onEnableStorage"
   >
-    <template #leadingIcon>
+    <template #leading>
       <MDSymbol name="shield" />
     </template>
     <template #supportingText>
@@ -47,12 +46,11 @@ const onEnableStorage = async () => {
   </MDListItem>
 
   <MDListItem
-    is="div"
     v-else-if="status === 'unsupported'"
-    headline="More reliable storage unavailable"
-    :lines="2"
+    label-text="More reliable storage unavailable"
+    :line-count="3"
   >
-    <template #leadingIcon>
+    <template #leading>
       <MDSymbol name="shield" />
     </template>
     <template #supportingText>

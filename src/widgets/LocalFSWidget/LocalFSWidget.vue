@@ -2,7 +2,7 @@
 import { DEVICE_FILES, useFileSystem } from '@entity/mountedDirectories';
 import { useDisconnectDeviceDirectory } from '@feature/deviceDirectoryDisconnect';
 import { MioframeSpaceCreateListItem, MioframeSpaceOpenListItem } from '@feature/mioframeSpacePick';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '@shared/service';
 import LocalFSDeviceFileListItem from './LocalFSDeviceFileListItem.vue';
@@ -25,7 +25,7 @@ const onDisconnectDeviceFile = (name: string) => {
 </script>
 
 <template>
-  <MDListContainer is="div">
+  <MDList>
     <template v-for="deviceFile in deviceFiles ?? []" :key="deviceFile.name">
       <BrowserStorageListItems
         v-if="deviceFile.name === OPFSName"
@@ -45,5 +45,5 @@ const onDisconnectDeviceFile = (name: string) => {
 
     <MioframeSpaceCreateListItem />
     <MioframeSpaceOpenListItem />
-  </MDListContainer>
+  </MDList>
 </template>

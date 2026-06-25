@@ -9,7 +9,7 @@ import MDToolbarContainer from './MDToolbarContainer.vue';
 import { MDIconButton } from '../Button';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import { MDPane } from '../Layout';
-import { MDListContainer, MDListItem } from '../Lists';
+import { MDList, MDListItem } from '../Lists';
 
 type State = {
   type: 'docked' | 'floating';
@@ -57,9 +57,9 @@ const layoutOptions = [undefined, 'horizontal', 'vertical'] as const;
 
     <template #space>
       <MDPane class="container">
-        <MDListContainer>
-          <MDListItem v-for="i in state.numberItems" :key="i" :headline="`item ${i}`" />
-        </MDListContainer>
+        <MDList>
+          <MDListItem v-for="i in state.numberItems" :key="i" :label-text="`item ${i}`" />
+        </MDList>
 
         <MDToolbarContainer
           :type="state.type"
