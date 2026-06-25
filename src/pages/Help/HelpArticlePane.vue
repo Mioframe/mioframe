@@ -63,35 +63,37 @@ const onContentClick = async (event: MouseEvent) => {
 </script>
 
 <template>
-  <MarkdownHelpPane
-    v-if="article"
-    :headline="article.title"
-    :markdown="article.markdown"
-    :anchor="anchor"
-    pane-class="help-article-pane"
-    @content-click="onContentClick"
-  >
-    <template #navigationButton>
-      <slot name="navigationButton" />
+  <MDPane :class="article ? 'help-article-pane' : undefined" allow-bottom-navigation>
+    <template v-if="article">
+      <MarkdownHelpPane
+        :headline="article.title"
+        :markdown="article.markdown"
+        :anchor="anchor"
+        @content-click="onContentClick"
+      >
+        <template #navigationButton>
+          <slot name="navigationButton" />
+        </template>
+
+        <template #appBarTrailing>
+          <slot name="appBarTrailing" />
+        </template>
+      </MarkdownHelpPane>
     </template>
 
-    <template #appBarTrailing>
-      <slot name="appBarTrailing" />
+    <template v-else>
+      <MDAppBar headline="Help article not found">
+        <template #leadingButton>
+          <slot name="navigationButton" />
+        </template>
+
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+
+      <div class="help-article-pane__not-found">The requested help article could not be found.</div>
     </template>
-  </MarkdownHelpPane>
-
-  <MDPane v-else allow-bottom-navigation>
-    <MDAppBar headline="Help article not found">
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
-
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
-
-    <div class="help-article-pane__not-found">The requested help article could not be found.</div>
   </MDPane>
 </template>
 

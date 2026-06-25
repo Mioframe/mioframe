@@ -72,12 +72,11 @@ vi.mock('@page/MarkdownHelpPane/MarkdownHelpPane.vue', () => ({
     props: {
       headline: { type: String, required: true },
       markdown: { type: String, required: true },
-      paneClass: { type: String, required: true },
     },
     emits: ['contentClick'],
     setup(props, { emit, slots }) {
       return () =>
-        h('section', { class: props.paneClass }, [
+        h('section', [
           h('header', [
             h('div', { 'data-slot': 'leading-button' }, slots.navigationButton?.()),
             h('h1', props.headline),

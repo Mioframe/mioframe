@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch } from 'vue';
 import { MDAppBar } from '@shared/ui/AppBar';
-import { MDPane } from '@shared/ui/Layout';
+import { usePaneContainer } from '@shared/ui/Layout';
 import { MarkdownContent } from '@shared/ui/MarkdownContent';
 import { stripMarkdownTitle } from './stripMarkdownTitle';
 
 const props = defineProps<{
   headline: string;
   markdown: string;
-  paneClass: string;
   /** Heading id to scroll to once the article renders; falls back to the pane top. */
   anchor?: string | undefined;
 }>();
@@ -30,6 +29,8 @@ const onContentClick = (event: MouseEvent) => {
 
 const contentEl = useTemplateRef<HTMLElement>('contentEl');
 
+const paneContainer = usePaneContainer();
+
 /**
  * Finds the heading element matching `anchor` inside this pane's own rendered Markdown
  * content. Scoped DOM lookup for anchor scrolling only, not component coordination.
@@ -47,8 +48,13 @@ const findAnchorElement = (anchor: string): HTMLElement | null => {
 };
 
 const scrollToAnchorOrTop = () => {
-  const target = (props.anchor ? findAnchorElement(props.anchor) : null) ?? contentEl.value;
-  target?.scrollIntoView({ block: 'start' });
+  const target = props.anchor ? findAnchorElement(props.anchor) : null;
+  if (target) {
+    target.scrollIntoView({ block: 'start' });
+    return;
+  }
+
+  paneContainer.value?.scrollTo({ top: 0 });
 };
 
 // `onMounted` covers the initial render: a `watch({ immediate: true })` callback runs
@@ -60,7 +66,7 @@ watch(() => [props.markdown, props.anchor] as const, scrollToAnchorOrTop, { flus
 </script>
 
 <template>
-  <MDPane :class="paneClass" allow-bottom-navigation>
+  <div class="markdown-help-pane">
     <MDAppBar :headline="headline">
       <template #leadingButton>
         <slot name="navigationButton" />
@@ -79,10 +85,15 @@ watch(() => [props.markdown, props.anchor] as const, scrollToAnchorOrTop, { flus
         generate-heading-ids
       />
     </div>
-  </MDPane>
+  </div>
 </template>
 
 <style scoped>
+.markdown-help-pane {
+  display: flex;
+  flex-direction: column;
+}
+
 .markdown-help-pane__content {
   padding: 16px;
 }
