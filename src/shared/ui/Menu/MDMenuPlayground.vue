@@ -5,15 +5,18 @@ import { MDButton } from '../Button';
 import { ref, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
 import { faker } from '@faker-js/faker';
-import { defineMenuButtonList } from './defineMenuButtonList';
-import type { MenuButtonDescription } from './types';
+import type { BaseMenuButton, MenuButtonDescription, NonEmptyMenuButtonList } from './types';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 
 const targetEl = useTemplateRef<MaybeElement>('targetEl');
 
 const state = ref({ show: false });
 
-const generateBtn = () => {
+interface PlaygroundMenuButton extends BaseMenuButton {
+  submenu?: NonEmptyMenuButtonList<PlaygroundMenuButton>;
+}
+
+const generateBtn = (): PlaygroundMenuButton => {
   const label = faker.lorem.words({ min: 1, max: 3 });
   return {
     label,
@@ -22,7 +25,7 @@ const generateBtn = () => {
   };
 };
 
-const btns = defineMenuButtonList([
+const btns: NonEmptyMenuButtonList<PlaygroundMenuButton> = [
   generateBtn(),
   {
     ...generateBtn(),
@@ -43,7 +46,7 @@ const btns = defineMenuButtonList([
   generateBtn(),
   generateBtn(),
   generateBtn(),
-]);
+];
 
 const onClick = (item: MenuButtonDescription) => {
   console.log('onClick', item);

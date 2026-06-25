@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch } from 'vue';
 import { MDAppBar } from '@shared/ui/AppBar';
-import { MDPane, usePaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 import { MarkdownContent } from '@shared/ui/MarkdownContent';
 import { stripMarkdownTitle } from './stripMarkdownTitle';
 
@@ -29,7 +29,6 @@ const onContentClick = (event: MouseEvent) => {
 };
 
 const contentEl = useTemplateRef<HTMLElement>('contentEl');
-const paneContainer = usePaneContainer();
 
 /**
  * Finds the heading element matching `anchor` inside this pane's own rendered Markdown
@@ -44,24 +43,12 @@ const findAnchorElement = (anchor: string): HTMLElement | null => {
   }
 
   // eslint-disable-next-line no-restricted-syntax -- local anchor-scroll lookup inside this pane's own rendered markdown content, not component coordination.
-  for (const heading of root.querySelectorAll<HTMLElement>('[id]')) {
-    if (heading.id === anchor) {
-      return heading;
-    }
-  }
-
-  return null;
+  return root.querySelector<HTMLElement>(`#${CSS.escape(anchor)}`);
 };
 
 const scrollToAnchorOrTop = () => {
-  const target = props.anchor ? findAnchorElement(props.anchor) : null;
-
-  if (target) {
-    target.scrollIntoView({ block: 'start' });
-    return;
-  }
-
-  paneContainer.value?.scrollTo({ top: 0 });
+  const target = (props.anchor ? findAnchorElement(props.anchor) : null) ?? contentEl.value;
+  target?.scrollIntoView({ block: 'start' });
 };
 
 // `onMounted` covers the initial render: a `watch({ immediate: true })` callback runs
@@ -69,7 +56,7 @@ const scrollToAnchorOrTop = () => {
 // and heading DOM that anchor lookup depends on.
 onMounted(scrollToAnchorOrTop);
 
-watch(() => `${props.markdown}::${props.anchor ?? ''}`, scrollToAnchorOrTop, { flush: 'post' });
+watch(() => [props.markdown, props.anchor] as const, scrollToAnchorOrTop, { flush: 'post' });
 </script>
 
 <template>

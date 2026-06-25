@@ -123,11 +123,16 @@ const createMarkdownRenderer = (renderOptions: RenderMarkdownOptions = {}) => {
   }
 
   if (generateHeadingIds) {
-    const usedHeadingIds = new Set<string>();
     const defaultHeadingOpenRenderer =
       markdown.renderer.rules.heading_open ?? fallbackHeadingOpenRenderer;
 
-    markdown.renderer.rules.heading_open = (tokens, idx, rendererOptions, env, self) => {
+    markdown.renderer.rules.heading_open = (
+      tokens,
+      idx,
+      rendererOptions,
+      env: { usedHeadingIds?: Set<string> },
+      self,
+    ) => {
       const token = tokens[idx];
       const inlineToken = tokens[idx + 1];
 
@@ -139,6 +144,12 @@ const createMarkdownRenderer = (renderOptions: RenderMarkdownOptions = {}) => {
           .filter((child) => child.type === 'text' || child.type === 'code_inline')
           .map((child) => child.content)
           .join('');
+
+        // Heading-id collision tracking lives in the per-render `env`, not in this
+        // renderer-rule closure, so concurrent or repeated `render()` calls each start
+        // from an empty id set instead of sharing state across renders.
+        const usedHeadingIds = env.usedHeadingIds ?? new Set<string>();
+        env.usedHeadingIds = usedHeadingIds;
 
         token.attrSet(
           'id',

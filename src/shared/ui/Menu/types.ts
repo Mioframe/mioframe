@@ -12,8 +12,8 @@ export interface BaseMenuButton {
 export interface MenuButtonDescription<
   T extends MenuButtonDescription<T> = BaseMenuButton,
 > extends BaseMenuButton {
-  /** Optional nested menu shown for this button. */
-  submenu?: MenuButtonList<T>;
+  /** Optional nested menu shown for this button. Never empty when present. */
+  submenu?: NonEmptyMenuButtonList<T>;
 }
 
 /** A list of menu button descriptions, possibly empty. */

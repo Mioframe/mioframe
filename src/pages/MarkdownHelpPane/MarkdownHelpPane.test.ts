@@ -21,18 +21,14 @@ vi.mock('@shared/ui/Layout', () => ({
       return () => h('section', slots.default?.());
     },
   }),
-  usePaneContainer: () => ({ value: document.body }),
 }));
 
 const scrollIntoView = vi.fn();
-const scrollTo = vi.fn();
 HTMLElement.prototype.scrollIntoView = scrollIntoView;
-HTMLElement.prototype.scrollTo = scrollTo;
 
 describe('MarkdownHelpPane', () => {
   afterEach(() => {
     scrollIntoView.mockClear();
-    scrollTo.mockClear();
   });
 
   it('renders deterministic heading ids for in-page anchor scrolling', () => {
@@ -48,7 +44,7 @@ describe('MarkdownHelpPane', () => {
   });
 
   it('scrolls to the matching heading when an anchor is provided', async () => {
-    mount(MarkdownHelpPane, {
+    const wrapper = mount(MarkdownHelpPane, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\nText.',
@@ -59,11 +55,11 @@ describe('MarkdownHelpPane', () => {
     await nextTick();
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
-    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scrollIntoView.mock.instances[0]).toBe(wrapper.find('#step-one').element);
   });
 
-  it('falls back to scrolling to top when no anchor is provided', () => {
-    mount(MarkdownHelpPane, {
+  it('falls back to scrolling its own content container to the top when no anchor is provided', () => {
+    const wrapper = mount(MarkdownHelpPane, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\nText.',
@@ -71,12 +67,15 @@ describe('MarkdownHelpPane', () => {
       },
     });
 
-    expect(scrollIntoView).not.toHaveBeenCalled();
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    expect(scrollIntoView.mock.instances[0]).toBe(
+      wrapper.find('.markdown-help-pane__content').element,
+    );
   });
 
   it('falls back to scrolling to top when the anchor heading is missing', () => {
-    mount(MarkdownHelpPane, {
+    const wrapper = mount(MarkdownHelpPane, {
       props: {
         headline: 'Guide',
         markdown: '# Guide\n\n## Step One\n\nText.',
@@ -85,8 +84,10 @@ describe('MarkdownHelpPane', () => {
       },
     });
 
-    expect(scrollIntoView).not.toHaveBeenCalled();
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.instances[0]).toBe(
+      wrapper.find('.markdown-help-pane__content').element,
+    );
   });
 
   it('scrolls to the new anchor when the anchor changes within the same article', async () => {
@@ -97,11 +98,12 @@ describe('MarkdownHelpPane', () => {
         paneClass: 'help-article-pane',
       },
     });
-    scrollTo.mockClear();
+    scrollIntoView.mockClear();
 
     await wrapper.setProps({ anchor: 'step-two' });
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.instances[0]).toBe(wrapper.find('#step-two').element);
   });
 
   it('scrolls to top when navigating to a different article without an anchor', async () => {
@@ -114,7 +116,6 @@ describe('MarkdownHelpPane', () => {
       },
     });
     scrollIntoView.mockClear();
-    scrollTo.mockClear();
 
     await wrapper.setProps({
       headline: 'Other',
@@ -122,8 +123,10 @@ describe('MarkdownHelpPane', () => {
       anchor: undefined,
     });
 
-    expect(scrollIntoView).not.toHaveBeenCalled();
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.instances[0]).toBe(
+      wrapper.find('.markdown-help-pane__content').element,
+    );
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stub used in this file. */

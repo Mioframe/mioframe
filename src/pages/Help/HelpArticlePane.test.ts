@@ -1,6 +1,13 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick } from 'vue';
+
+declare global {
+  interface Window {
+    /** Present only in the happy-dom test environment. */
+    happyDOM: { settings: { navigation: { disableMainFrameNavigation: boolean } } };
+  }
+}
 
 const open = vi.fn();
 
@@ -21,10 +28,18 @@ vi.mock('./helpCatalog', () => ({
           sourceDir: 'data',
         }
       : null,
-  resolveHelpArticleHref: (currentPath: string, href: string) =>
-    currentPath === 'data/01-data-storage.md' && href === './02-backup-and-restore.md'
-      ? { slug: 'data/backup-and-restore', anchor: null }
-      : null,
+  resolveHelpArticleHref: (currentPath: string, href: string) => {
+    if (currentPath !== 'data/01-data-storage.md') {
+      return null;
+    }
+    if (href === './02-backup-and-restore.md') {
+      return { slug: 'data/backup-and-restore', anchor: null };
+    }
+    if (href === './02-backup-and-restore.md#export-json') {
+      return { slug: 'data/backup-and-restore', anchor: 'export-json' };
+    }
+    return null;
+  },
 }));
 
 vi.mock('@shared/ui/Layout', () => ({
@@ -80,6 +95,28 @@ vi.mock('@page/MarkdownHelpPane/MarkdownHelpPane.vue', () => ({
               },
               'Backup',
             ),
+            h(
+              'a',
+              {
+                href: './02-backup-and-restore.md#export-json',
+                onClick: (event: MouseEvent) => {
+                  emit('contentClick', event);
+                },
+              },
+              'Export JSON section',
+            ),
+            h(
+              'a',
+              {
+                href: 'https://example.com/help',
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                onClick: (event: MouseEvent) => {
+                  emit('contentClick', event);
+                },
+              },
+              'External help',
+            ),
           ]),
         ]);
     },
@@ -104,6 +141,13 @@ const mountPane = async (slug: string) => {
 };
 
 describe('HelpArticlePane', () => {
+  beforeAll(() => {
+    // Un-hijacked external links must keep the browser's native click behavior; disable
+    // happy-dom's actual main-frame navigation so that native behavior doesn't perform a real
+    // network request in this Node test environment.
+    window.happyDOM.settings.navigation.disableMainFrameNavigation = true;
+  });
+
   afterEach(() => {
     vi.resetModules();
     open.mockReset();
@@ -162,6 +206,39 @@ describe('HelpArticlePane', () => {
       { slug: 'data/backup-and-restore', anchor: undefined },
       { target: 'helpArticle' },
     );
+
+    unmount();
+  });
+
+  it('opens in-app help navigation with the resolved anchor for a heading link', async () => {
+    const { root, unmount } = await mountPane('data/data-storage');
+
+    root
+      .querySelectorAll('a')[1]
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await nextTick();
+
+    expect(open).toHaveBeenCalledWith(
+      'helpArticle',
+      { slug: 'data/backup-and-restore', anchor: 'export-json' },
+      { target: 'helpArticle' },
+    );
+
+    unmount();
+  });
+
+  it('does not hijack an external link: no in-app navigation and the click stays unprevented', async () => {
+    const { root, unmount } = await mountPane('data/data-storage');
+
+    const externalLink = root.querySelectorAll('a')[2];
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    externalLink?.dispatchEvent(clickEvent);
+    await nextTick();
+
+    expect(open).not.toHaveBeenCalled();
+    expect(clickEvent.defaultPrevented).toBe(false);
+    expect(externalLink?.getAttribute('target')).toBe('_blank');
+    expect(externalLink?.getAttribute('rel')).toBe('noopener noreferrer');
 
     unmount();
   });
