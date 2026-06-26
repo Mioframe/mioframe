@@ -7,7 +7,7 @@ import { useOverlayContainer } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 import { useMainContentAriaHidden } from '../AriaHidden';
-import { usePaneContainer } from '../Layout/useMDContainer';
+import { usePaneScrollContainer } from '../Layout';
 
 const props = defineProps<{
   /** Hides the floating action while scrolling down and restores it on upward scroll or focus. */
@@ -49,7 +49,7 @@ const show = computed(
 
 const overlayContainerEl = useOverlayContainer();
 
-const paneContainerEl = usePaneContainer();
+const paneContainerEl = usePaneScrollContainer();
 
 const { floatingStyles } = useFloating(paneContainerEl, fabContainerEl, {
   placement: 'bottom-end',

@@ -122,25 +122,27 @@ const onClickReturnHome = async () => {
 
 <template>
   <MDPane>
-    <MDAppBar v-if="title" :headline="title">
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
+    <template #topBar>
+      <MDAppBar v-if="title" :headline="title">
+        <template #leadingButton>
+          <slot name="navigationButton" />
+        </template>
 
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
 
-        <RepositoryExplorerEntryManageButton
-          v-if="hasDirectoryManageActions && directoryManageActions"
-          :key="directoryPath"
-          :path="directoryPath"
-          :actions="directoryManageActions"
-          @select-create-directory="onSelectCreateDirectory"
-          @select-rename="onManageSelectRename"
-          @select-remove="onManageSelectRemove"
-        />
-      </template>
-    </MDAppBar>
+          <RepositoryExplorerEntryManageButton
+            v-if="hasDirectoryManageActions && directoryManageActions"
+            :key="directoryPath"
+            :path="directoryPath"
+            :actions="directoryManageActions"
+            @select-create-directory="onSelectCreateDirectory"
+            @select-rename="onManageSelectRename"
+            @select-remove="onManageSelectRemove"
+          />
+        </template>
+      </MDAppBar>
+    </template>
 
     <RepositoryExplorerWidget
       :directory-path="directoryPath"
