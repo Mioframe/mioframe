@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import MarkdownHelpPane from '@page/MarkdownHelpPane/MarkdownHelpPane.vue';
 import { useStackNavigation } from '@page/routes';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
+import HelpArticleBody from './HelpArticleBody.vue';
 import { getHelpArticleBySlug, resolveHelpArticleHref } from './helpCatalog';
 
-const props = defineProps<{ slug: string }>();
+const props = defineProps<{ slug: string; anchor?: string | undefined }>();
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -44,39 +44,27 @@ const onContentClick = async (event: MouseEvent) => {
     return;
   }
 
-  const targetSlug = resolveHelpArticleHref(
+  const resolvedLink = resolveHelpArticleHref(
     currentArticle.sourcePath,
     link.getAttribute('href') ?? '',
   );
 
-  if (!targetSlug) {
+  if (!resolvedLink) {
     return;
   }
 
   event.preventDefault();
-  await open('helpArticle', { slug: targetSlug }, { target: 'helpArticle' });
+  await open(
+    'helpArticle',
+    { slug: resolvedLink.slug, anchor: resolvedLink.anchor ?? undefined },
+    { target: 'helpArticle' },
+  );
 };
 </script>
 
 <template>
-  <MarkdownHelpPane
-    v-if="article"
-    :headline="article.title"
-    :markdown="article.markdown"
-    pane-class="help-article-pane"
-    @content-click="onContentClick"
-  >
-    <template #navigationButton>
-      <slot name="navigationButton" />
-    </template>
-
-    <template #appBarTrailing>
-      <slot name="appBarTrailing" />
-    </template>
-  </MarkdownHelpPane>
-
-  <MDPane v-else allow-bottom-navigation>
-    <MDAppBar headline="Help article not found">
+  <MDPane class="help-article-pane" allow-bottom-navigation>
+    <MDAppBar :headline="article ? article.title : 'Help article not found'">
       <template #leadingButton>
         <slot name="navigationButton" />
       </template>
@@ -86,7 +74,17 @@ const onContentClick = async (event: MouseEvent) => {
       </template>
     </MDAppBar>
 
-    <div class="help-article-pane__not-found">The requested help article could not be found.</div>
+    <template v-if="article">
+      <HelpArticleBody
+        :markdown="article.markdown"
+        :anchor="anchor"
+        @content-click="onContentClick"
+      />
+    </template>
+
+    <template v-else>
+      <div class="help-article-pane__not-found">The requested help article could not be found.</div>
+    </template>
   </MDPane>
 </template>
 

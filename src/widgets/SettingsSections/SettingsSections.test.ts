@@ -261,7 +261,7 @@ describe('SettingsSections', () => {
     expect(root.textContent).toContain('Home screen');
     expect(root.textContent).toContain('Help');
     expect(root.textContent).toContain(
-      'Send technical error reports to help developers fix crashes and unexpected failures.',
+      'Send technical error reports. Documents, file names, and folder paths are not sent.',
     );
     expect(root.textContent).toContain('Read how Mioframe handles privacy and diagnostics.');
     expect(root.textContent).toContain(
@@ -340,7 +340,7 @@ describe('SettingsSections', () => {
     const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
 
     expect(root.textContent).toContain(
-      'Send technical error reports to help developers fix crashes and unexpected failures.',
+      'Send technical error reports. Documents, file names, and folder paths are not sent.',
     );
     expect(errorDiagnosticsButton).not.toBeNull();
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { MDContextMenuButton } from '@shared/ui/Menu';
-import type { NonEmptyMenuButtonList } from './useFSEntryManageActions';
+import { MDContextMenuButton, type NonEmptyMenuButtonList } from '@shared/ui/Menu';
 import { computed } from 'vue';
 
 type FSEntryManageMenuButtonProps = {

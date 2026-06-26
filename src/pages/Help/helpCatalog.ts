@@ -87,26 +87,41 @@ export const helpCatalog = createHelpCatalog(helpDocs);
 export const getHelpArticleBySlug = (slug: string) =>
   helpCatalog.find((article) => article.slug === slug);
 
+/** Resolved in-app target for a Help article Markdown link. */
+export interface ResolvedHelpArticleLink {
+  /** Target help article slug (same as the current article for a same-article anchor). */
+  slug: string;
+  /** Optional heading anchor fragment, without the leading `#`. */
+  anchor: string | null;
+}
+
 /**
- * Resolves a relative Markdown href to another in-app help article slug when possible.
+ * Resolves an internal Markdown href (same-article anchor or relative `.md` link, optionally
+ * with an anchor) to an in-app help article target. External, mailto, tel, and non-Markdown
+ * links are left for native browser handling and resolve to `null`.
  * @param currentSourcePath - Current article path relative to `docs/user`.
  * @param href - Raw link href from rendered Markdown.
  * @param catalog - Candidate help articles that may match the resolved path.
- * @returns The target help article slug when the href resolves to another help doc.
+ * @returns The resolved in-app link target, or `null` when the href is not an internal help link.
  */
 export const resolveHelpArticleHref = (
   currentSourcePath: string,
   href: string,
   catalog: readonly HelpArticle[] = helpCatalog,
-) => {
+): ResolvedHelpArticleLink | null => {
+  if (href.length === 0 || /^(?:https?:|mailto:|tel:)/i.test(href)) {
+    return null;
+  }
+
+  if (href.startsWith('#')) {
+    const currentSlug = getSlug(currentSourcePath);
+    const anchor = href.slice(1);
+    return { slug: currentSlug, anchor: anchor.length > 0 ? anchor : null };
+  }
+
   const normalizedHref = href.split(/[?#]/u, 1)[0] ?? '';
 
-  if (
-    href.length === 0 ||
-    href.startsWith('#') ||
-    /^(?:https?:|mailto:|tel:)/i.test(href) ||
-    !MARKDOWN_EXTENSION_PATTERN.test(normalizedHref)
-  ) {
+  if (!MARKDOWN_EXTENSION_PATTERN.test(normalizedHref)) {
     return null;
   }
 
@@ -120,7 +135,13 @@ export const resolveHelpArticleHref = (
 
     const resolvedPath = resolvedUrl.pathname.replace(/^\/docs\/user\//, '');
     const target = catalog.find((article) => article.sourcePath === resolvedPath);
-    return target?.slug ?? null;
+
+    if (!target) {
+      return null;
+    }
+
+    const anchor = resolvedUrl.hash.slice(1);
+    return { slug: target.slug, anchor: anchor.length > 0 ? anchor : null };
   } catch {
     return null;
   }

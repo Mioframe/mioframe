@@ -249,4 +249,35 @@ describe('renderMarkdown', () => {
     expect(rendered).toContain('<a href="/docs/getting-started">Internal</a>');
     expect(rendered).toContain('<a href="#section">Anchor</a>');
   });
+
+  it('does not add heading ids by default', () => {
+    expect(renderMarkdown('# Title')).toBe('<h1>Title</h1>\n');
+  });
+
+  it('adds deterministic slug ids to headings when generateHeadingIds is enabled', () => {
+    const rendered = renderMarkdown(['# Getting Started', '## Step One!'].join('\n\n'), {
+      generateHeadingIds: true,
+    });
+
+    expect(rendered).toContain('<h1 id="getting-started">Getting Started</h1>');
+    expect(rendered).toContain('<h2 id="step-one">Step One!</h2>');
+  });
+
+  it('dedupes heading ids that slugify to the same value', () => {
+    const rendered = renderMarkdown(['# Notes', '## Notes', '## Notes'].join('\n\n'), {
+      generateHeadingIds: true,
+    });
+
+    expect(rendered).toContain('<h1 id="notes">Notes</h1>');
+    expect(rendered).toContain('<h2 id="notes-1">Notes</h2>');
+    expect(rendered).toContain('<h2 id="notes-2">Notes</h2>');
+  });
+
+  it('slugifies heading text from inline markup using plain text only', () => {
+    const rendered = renderMarkdown('## `code` and **bold** text', {
+      generateHeadingIds: true,
+    });
+
+    expect(rendered).toContain('id="code-and-bold-text"');
+  });
 });

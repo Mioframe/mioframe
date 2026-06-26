@@ -2,9 +2,8 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-import type { NonEmptyMenuButtonList } from '@feature/entryManage';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { defineMenuButtonList } from '@shared/ui/Menu';
+import { defineMenuButtonList, type NonEmptyMenuButtonList } from '@shared/ui/Menu';
 
 const hasActionsRef = ref(false);
 const nonEmptyActionButtonsRef = ref<NonEmptyMenuButtonList | null>(
