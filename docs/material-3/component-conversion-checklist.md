@@ -19,8 +19,14 @@ Use this checklist when converting or creating a shared Material component famil
 ## 3. Tokens
 
 - [ ] Audited existing `--md-*` tokens used by the component.
+- [ ] Checked every touched component part/state/property against official Material component token paths.
 - [ ] Classified local variables as public component tokens, private implementation variables, compatibility aliases, app-specific tokens, or obsolete tokens.
 - [ ] Added required `--md-comp-*` tokens.
+- [ ] Existing official component token paths are exposed as mechanically named `--md-comp-*` tokens.
+- [ ] Component CSS uses `--md-comp-*` as the component override surface, resolving them to `--md-sys-*` where appropriate.
+- [ ] The component is not implemented as sys-token-only when official component tokens exist.
+- [ ] Direct `--md-sys-*` usage inside component internals is limited to values without an official component token path or true foundation-level roles.
+- [ ] Missing official component token paths are documented as gaps or deviations.
 - [ ] Moved app-specific values to `--app-*` where needed.
 - [ ] Avoided raw hardcoded colors unless the official spec requires a direct value.
 

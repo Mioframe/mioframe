@@ -62,6 +62,10 @@ Avoid:
 
 Hardcoded values are acceptable only when the official component spec defines a direct measurement such as `40dp`, `12dp`, or `0dp`.
 
+Using only `--md-sys-*` tokens inside a shared Material component is not a complete component token contract when official component token paths exist for the touched parts, states, or measurements. The component should expose `--md-comp-*` tokens as the public override surface and resolve those component tokens to system tokens where appropriate.
+
+Direct `--md-sys-*` usage inside component internals is acceptable only for values with no exact official component token path, true foundation-level roles, or private fallback mappings that are documented as missing-token gaps.
+
 ## Local implementation variables
 
 Local component variables are allowed only as private implementation details. They should not become the public styling contract when a Material component token exists or can be derived from the official docs.
