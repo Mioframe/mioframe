@@ -7,7 +7,7 @@ const props = defineProps<{
   allowBottomNavigation?: boolean;
 }>();
 
-const slots = defineSlots<{
+defineSlots<{
   default: () => unknown;
   /** Pane-local non-scrolling top bar region, e.g. a pane-scoped `MDAppBar`. */
   topBar?: () => unknown;
@@ -25,7 +25,7 @@ defineAllowedBottomNavigation(allowBottomNavigation);
 <template>
   <div class="md-pane">
     <div class="md md-pane__surface">
-      <div v-if="slots.topBar" class="md-pane__top-bar">
+      <div v-if="$slots.topBar" class="md-pane__top-bar">
         <slot name="topBar" />
       </div>
 

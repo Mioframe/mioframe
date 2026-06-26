@@ -74,42 +74,29 @@ vi.mock('./HelpArticleBody.vue', () => ({
     },
     emits: ['contentClick'],
     setup(props, { emit }) {
+      // Matches the real component: a single click listener on the article container, relying
+      // on native event bubbling, so the guard logic in `onContentClick` is exercised the same
+      // way it is in production (clicks on plain text vs. on a nested anchor).
       return () =>
-        h('div', { class: 'help-article-body' }, [
-          h('p', props.markdown),
-          h(
-            'a',
-            {
-              href: './02-backup-and-restore.md',
-              onClick: (event: MouseEvent) => {
-                emit('contentClick', event);
-              },
+        h(
+          'div',
+          {
+            class: 'help-article-body',
+            onClick: (event: MouseEvent) => {
+              emit('contentClick', event);
             },
-            'Backup',
-          ),
-          h(
-            'a',
-            {
-              href: './02-backup-and-restore.md#export-json',
-              onClick: (event: MouseEvent) => {
-                emit('contentClick', event);
-              },
-            },
-            'Export JSON section',
-          ),
-          h(
-            'a',
-            {
-              href: 'https://example.com/help',
-              target: '_blank',
-              rel: 'noopener noreferrer',
-              onClick: (event: MouseEvent) => {
-                emit('contentClick', event);
-              },
-            },
-            'External help',
-          ),
-        ]);
+          },
+          [
+            h('p', props.markdown),
+            h('a', { href: './02-backup-and-restore.md' }, 'Backup'),
+            h('a', { href: './02-backup-and-restore.md#export-json' }, 'Export JSON section'),
+            h(
+              'a',
+              { href: 'https://example.com/help', target: '_blank', rel: 'noopener noreferrer' },
+              'External help',
+            ),
+          ],
+        );
     },
   }),
 }));
@@ -239,6 +226,63 @@ describe('HelpArticlePane', () => {
     expect(clickEvent.defaultPrevented).toBe(false);
     expect(externalLink?.getAttribute('target')).toBe('_blank');
     expect(externalLink?.getAttribute('rel')).toBe('noopener noreferrer');
+
+    unmount();
+  });
+
+  it('does not navigate when the click lands on plain text rather than on a link', async () => {
+    const { root, unmount } = await mountPane('data/data-storage');
+
+    root
+      .querySelector('p')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await nextTick();
+
+    expect(open).not.toHaveBeenCalled();
+
+    unmount();
+  });
+
+  it('does not navigate when the click event was already default-prevented', async () => {
+    const { root, unmount } = await mountPane('data/data-storage');
+
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    clickEvent.preventDefault();
+    root.querySelector('a')?.dispatchEvent(clickEvent);
+    await nextTick();
+
+    expect(open).not.toHaveBeenCalled();
+
+    unmount();
+  });
+
+  it('does not navigate on a non-primary mouse button click', async () => {
+    const { root, unmount } = await mountPane('data/data-storage');
+
+    root
+      .querySelector('a')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 1 }));
+    await nextTick();
+
+    expect(open).not.toHaveBeenCalled();
+
+    unmount();
+  });
+
+  it.each([
+    ['metaKey', { metaKey: true }],
+    ['ctrlKey', { ctrlKey: true }],
+    ['shiftKey', { shiftKey: true }],
+    ['altKey', { altKey: true }],
+  ] as const)('does not navigate when %s is held during the click', async (_name, modifier) => {
+    const { root, unmount } = await mountPane('data/data-storage');
+
+    root
+      .querySelector('a')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...modifier }));
+    await nextTick();
+
+    expect(open).not.toHaveBeenCalled();
 
     unmount();
   });

@@ -17,7 +17,7 @@ import { zodQuery } from './model';
 // eslint-disable-next-line vue/define-props-declaration -- z.infer output is too complex for Vue macro runtime inference
 const props = defineProps(zodToVueProps(zodQuery));
 
-const slots = defineSlots<{
+defineSlots<{
   navigationButton: () => unknown;
   appBarTrailing: () => unknown;
 }>();
@@ -74,7 +74,7 @@ const onCloseRenameDocument = () => {
   <MDPane class="document-view-pane">
     <template #topBar>
       <MDAppBar :headline="documentName">
-        <template v-if="!!slots.navigationButton" #leadingButton>
+        <template v-if="$slots.navigationButton" #leadingButton>
           <slot name="navigationButton" />
         </template>
 

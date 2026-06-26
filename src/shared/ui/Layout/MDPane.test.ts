@@ -69,5 +69,19 @@ describe('MDPane', () => {
     const probe = wrapper.find('[data-probe]');
     expect(probe.attributes('data-probe')).toContain('md-pane__content');
   });
+
+  it('wraps both the top bar and the content inside .md.md-pane__surface', () => {
+    const wrapper = mountPane({
+      topBar: () => h('div', { class: 'stub-top-bar' }, 'top bar'),
+      default: () => h('div', { class: 'stub-body' }, 'body'),
+    });
+
+    const surface = wrapper.find('.md.md-pane__surface');
+    expect(surface.exists()).toBe(true);
+    expect(surface.find('.md-pane__top-bar').exists()).toBe(true);
+    expect(surface.find('.md-pane__content').exists()).toBe(true);
+    expect(surface.find('.stub-top-bar').exists()).toBe(true);
+    expect(surface.find('.stub-body').exists()).toBe(true);
+  });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

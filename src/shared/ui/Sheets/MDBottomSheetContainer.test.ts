@@ -14,7 +14,7 @@ vi.mock('../AriaHidden', () => ({
   useModalAriaHidden: () => 'false',
 }));
 
-vi.mock('../Layout/paneScrollContainer', () => ({
+vi.mock('../Layout', () => ({
   usePaneScrollContainer: () => undefined,
 }));
 

@@ -241,6 +241,70 @@ it('shows a failure snackbar when clipboard write fails', async () => {
   unmount();
 });
 
+it('shows the clipboard-unavailable snackbar and never calls writeText when navigator.clipboard is absent', async () => {
+  type NavigatorWithClipboard = Omit<Navigator, 'clipboard'> & { clipboard?: unknown };
+  const navigatorWithClipboard: NavigatorWithClipboard = navigator;
+  const navigatorPrototypeWithClipboard: NavigatorWithClipboard = Navigator.prototype;
+  const originalPrototypeDescriptor = Object.getOwnPropertyDescriptor(
+    Navigator.prototype,
+    'clipboard',
+  );
+  // oxlint-disable-next-line no-restricted-syntax -- intentionally removing the own and prototype clipboard accessors only within this isolated test, to simulate a browser without the Clipboard API.
+  delete navigatorWithClipboard.clipboard;
+  // oxlint-disable-next-line no-restricted-syntax -- see above.
+  delete navigatorPrototypeWithClipboard.clipboard;
+
+  const { root, unmount } = await mountAboutMioframePane();
+
+  root.querySelector('button')?.click();
+  await nextTick();
+
+  expect(clipboardWriteTextMock).not.toHaveBeenCalled();
+  expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Clipboard is not available' });
+
+  unmount();
+
+  if (originalPrototypeDescriptor) {
+    Object.defineProperty(Navigator.prototype, 'clipboard', originalPrototypeDescriptor);
+  }
+});
+
+it('shows diagnostics as disabled when diagnostics are available but turned off by the user', async () => {
+  sentryDiagnosticsAvailable = true;
+  diagnosticsEnabled.value = false;
+  const { root, unmount } = await mountAboutMioframePane();
+
+  root.querySelector('button')?.click();
+  await nextTick();
+
+  const copiedText = clipboardWriteTextMock.mock.calls[0]?.[0] ?? '';
+  expect(copiedText).toContain('Diagnostics available: yes');
+  expect(copiedText).toContain('Diagnostics enabled: no');
+
+  unmount();
+});
+
+it.each([
+  ['userAgentData is absent', undefined],
+  ['userAgentData is not an object', 'not-an-object'],
+  ['platform is an empty string', { platform: '' }],
+  ['platform is not a string', { platform: 42 }],
+])('does not include a platform line in copied diagnostics when %s', async (_name, value) => {
+  Object.defineProperty(navigator, 'userAgentData', {
+    configurable: true,
+    value,
+  });
+  const { root, unmount } = await mountAboutMioframePane();
+
+  root.querySelector('button')?.click();
+  await nextTick();
+
+  const copiedText = clipboardWriteTextMock.mock.calls[0]?.[0] ?? '';
+  expect(copiedText).not.toContain('Platform:');
+
+  unmount();
+});
+
 afterEach(() => {
   appBuildId = 'sha-1234567';
   sentryDiagnosticsAvailable = true;
@@ -253,6 +317,12 @@ afterEach(() => {
     configurable: true,
     value: {
       platform: 'UnitTestOS',
+    },
+  });
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      writeText: clipboardWriteTextMock,
     },
   });
 });

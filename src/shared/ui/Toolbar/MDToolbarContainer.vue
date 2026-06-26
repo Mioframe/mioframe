@@ -7,7 +7,7 @@ import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { useOverlayContainer } from '../Overlay';
 import { findClosestElement } from '@shared/lib/useClosestElement';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
-import { usePaneScrollContainer } from '../Layout/paneScrollContainer';
+import { usePaneScrollContainer } from '../Layout';
 
 const props = withDefaults(
   defineProps<{

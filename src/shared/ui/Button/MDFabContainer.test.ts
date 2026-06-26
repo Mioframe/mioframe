@@ -20,7 +20,7 @@ vi.mock('@shared/ui/AriaHidden', () => ({
   useMainContentAriaHidden: () => computed(() => false),
 }));
 
-vi.mock('../Layout/paneScrollContainer', () => ({
+vi.mock('../Layout', () => ({
   usePaneScrollContainer: () => computed(() => document.body),
 }));
 

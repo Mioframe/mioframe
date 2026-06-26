@@ -1,9 +1,11 @@
 /* eslint-disable vue/one-component-per-file -- Focused pane contract test with inline stubs. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ComputedRef } from 'vue';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import type { NonEmptyMenuButtonList } from '@shared/ui/Menu';
 import { defineMenuButtonList } from '@shared/ui/Menu';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 
 const canEditDirectoryContents = ref<boolean | undefined>(true);
 const hasDirectoryManageActionsRef = ref(true);
@@ -13,16 +15,37 @@ const directoryManageActionsRef = ref<NonEmptyMenuButtonList | null>(
 const openMock = vi.fn();
 const importDocumentMock = vi.fn();
 
+const directoryStatRef = ref<
+  | {
+      capabilities?:
+        | { canEditChildren?: boolean; canChangePath?: boolean; canDelete?: boolean }
+        | undefined;
+    }
+  | undefined
+>(undefined);
+
+type FSEntryManageActionsArgs = {
+  entryType: ComputedRef<unknown>;
+  canEditChildren: ComputedRef<boolean | undefined>;
+  canChangePath: ComputedRef<boolean | undefined>;
+  canDelete: ComputedRef<boolean | undefined>;
+  showDocumentActions: ComputedRef<boolean>;
+};
+const useFSEntryManageActionsMock = vi.fn<(args: FSEntryManageActionsArgs) => unknown>();
+
 vi.mock('@entity/fsEntry', () => ({
-  useFSNodeStat: () => ({ data: ref(undefined) }),
+  useFSNodeStat: () => ({ data: directoryStatRef }),
 }));
 
 vi.mock('@feature/entryManage', () => ({
-  useFSEntryManageActions: () => ({
-    hasActions: hasDirectoryManageActionsRef,
-    actionButtons: ref([]),
-    nonEmptyActionButtons: directoryManageActionsRef,
-  }),
+  useFSEntryManageActions: (args: FSEntryManageActionsArgs) => {
+    useFSEntryManageActionsMock(args);
+    return {
+      hasActions: hasDirectoryManageActionsRef,
+      actionButtons: ref([]),
+      nonEmptyActionButtons: directoryManageActionsRef,
+    };
+  },
   useEntryManageDialogState: () => ({
     showRenameDialog: ref(false),
     onSelectRename: vi.fn(),
@@ -40,8 +63,29 @@ vi.mock('@page/routes', () => ({
 vi.mock('@feature/directoryCreate', () => ({
   DirectoryCreateDialog: defineComponent({
     name: 'DirectoryCreateDialogStub',
-    setup() {
-      return () => h('div', { 'data-testid': 'directory-create-dialog' });
+    emits: ['cancel', 'created'],
+    setup(_props, { emit }) {
+      return () =>
+        h('div', { 'data-testid': 'directory-create-dialog' }, [
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('cancel');
+              },
+            },
+            'Cancel directory create',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('created');
+              },
+            },
+            'Confirm directory create',
+          ),
+        ]);
     },
   }),
 }));
@@ -97,8 +141,29 @@ vi.mock('@feature/entryAdd', () => ({
 vi.mock('@feature/documentCreate', () => ({
   DocumentCreationDialog: defineComponent({
     name: 'DocumentCreationDialogStub',
-    setup() {
-      return () => h('div', { 'data-testid': 'document-create-dialog' });
+    emits: ['cancel', 'created'],
+    setup(_props, { emit }) {
+      return () =>
+        h('div', { 'data-testid': 'document-create-dialog' }, [
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('cancel');
+              },
+            },
+            'Cancel document create',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('created');
+              },
+            },
+            'Confirm document create',
+          ),
+        ]);
     },
   }),
 }));
@@ -247,6 +312,8 @@ describe('RepoExplorerPane', () => {
     ] as const);
     openMock.mockReset();
     importDocumentMock.mockReset();
+    directoryStatRef.value = undefined;
+    useFSEntryManageActionsMock.mockClear();
     document.body.innerHTML = '';
   });
 
@@ -393,6 +460,96 @@ describe('RepoExplorerPane', () => {
         target: 'document',
       },
     );
+  });
+
+  it('derives directory management capabilities as undefined when the directory stat has no capabilities object', async () => {
+    directoryStatRef.value = { capabilities: undefined };
+
+    await mountPane();
+
+    const args = useFSEntryManageActionsMock.mock.calls.at(-1)?.[0];
+    expect(args?.canEditChildren.value).toBeUndefined();
+    expect(args?.canChangePath.value).toBeUndefined();
+    expect(args?.canDelete.value).toBeUndefined();
+  });
+
+  it('derives directory management capabilities from the directory stat capabilities when present', async () => {
+    directoryStatRef.value = {
+      capabilities: { canEditChildren: true, canChangePath: false, canDelete: true },
+    };
+
+    await mountPane();
+
+    const args = useFSEntryManageActionsMock.mock.calls.at(-1)?.[0];
+    expect(args?.canEditChildren.value).toBe(true);
+    expect(args?.canChangePath.value).toBe(false);
+    expect(args?.canDelete.value).toBe(true);
+  });
+
+  it('derives directory management capabilities as undefined when there is no directory stat at all', async () => {
+    directoryStatRef.value = undefined;
+
+    await mountPane();
+
+    const args = useFSEntryManageActionsMock.mock.calls.at(-1)?.[0];
+    expect(args?.canEditChildren.value).toBeUndefined();
+    expect(args?.canChangePath.value).toBeUndefined();
+    expect(args?.canDelete.value).toBeUndefined();
+  });
+
+  it('requests directory-scoped manage actions without document actions', async () => {
+    await mountPane();
+
+    const args = useFSEntryManageActionsMock.mock.calls.at(-1)?.[0];
+    expect(args?.entryType.value).toBe(FSNodeType.Directory);
+    expect(args?.showDocumentActions.value).toBe(false);
+  });
+
+  it('closes the add sheet when it emits close', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="entry-add-sheet"] button:last-of-type').trigger('click');
+
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').exists()).toBe(false);
+  });
+
+  it('closes the create directory dialog when it emits cancel or created', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    await wrapper.get('[data-testid="entry-add-sheet"] button').trigger('click');
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="directory-create-dialog"] button').trigger('click');
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    await wrapper.get('[data-testid="entry-add-sheet"] button').trigger('click');
+    await wrapper
+      .get('[data-testid="directory-create-dialog"] button:last-of-type')
+      .trigger('click');
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
+  });
+
+  it('closes the create document dialog when it emits cancel or created', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    await wrapper.findAll('[data-testid="entry-add-sheet"] button')[1]?.trigger('click');
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="document-create-dialog"] button').trigger('click');
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    await wrapper.findAll('[data-testid="entry-add-sheet"] button')[1]?.trigger('click');
+    await wrapper
+      .get('[data-testid="document-create-dialog"] button:last-of-type')
+      .trigger('click');
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */
