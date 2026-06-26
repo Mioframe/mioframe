@@ -122,7 +122,7 @@ vi.mock('@shared/ui/Layout', () => ({
   MDPane: defineComponent({
     name: 'MDPaneStub',
     setup(_props, { slots }) {
-      return () => h('section', slots.default?.());
+      return () => h('section', [slots.topBar?.(), slots.default?.()]);
     },
   }),
 }));

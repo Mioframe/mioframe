@@ -4,7 +4,7 @@ import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
 import { useModalAriaHidden } from '../AriaHidden';
-import { usePaneContainer } from '../Layout/useMDContainer';
+import { usePaneScrollContainer } from '../Layout/useMDContainer';
 import { tryOnBeforeUnmount, useElementBounding, useElementSize } from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
@@ -110,7 +110,7 @@ watch(
 
 tryOnBeforeUnmount(unlockFocus);
 
-const paneContainer = usePaneContainer();
+const paneContainer = usePaneScrollContainer();
 
 const { left: paneLeft, width: paneWidth } = useElementBounding(paneContainer, {
   updateTiming: 'next-frame',

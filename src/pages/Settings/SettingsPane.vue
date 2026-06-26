@@ -26,11 +26,13 @@ const onSelectAboutMioframe = async () => {
 
 <template>
   <MDPane allow-bottom-navigation>
-    <MDAppBar headline="Settings">
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
+    <template #topBar>
+      <MDAppBar headline="Settings">
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+    </template>
 
     <SettingsSections
       @select-privacy-policy="onSelectPrivacyPolicy"

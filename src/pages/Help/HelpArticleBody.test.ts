@@ -8,7 +8,7 @@ const scrollTo = vi.fn();
 paneContainerEl.scrollTo = scrollTo;
 
 vi.mock('@shared/ui/Layout', () => ({
-  usePaneContainer: () => computed(() => paneContainerEl),
+  usePaneScrollContainer: () => computed(() => paneContainerEl),
 }));
 
 const scrollIntoView = vi.fn();

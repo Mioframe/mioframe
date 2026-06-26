@@ -73,15 +73,17 @@ const onClickCopyDiagnostics = async () => {
 
 <template>
   <MDPane class="about-mioframe-pane" allow-bottom-navigation>
-    <MDAppBar headline="About Mioframe">
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
+    <template #topBar>
+      <MDAppBar headline="About Mioframe">
+        <template #leadingButton>
+          <slot name="navigationButton" />
+        </template>
 
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+    </template>
 
     <div class="about-mioframe-pane__content">
       <section class="about-mioframe-pane__section" aria-label="About Mioframe details">

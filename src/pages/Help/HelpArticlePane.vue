@@ -64,15 +64,17 @@ const onContentClick = async (event: MouseEvent) => {
 
 <template>
   <MDPane class="help-article-pane" allow-bottom-navigation>
-    <MDAppBar :headline="article ? article.title : 'Help article not found'">
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
+    <template #topBar>
+      <MDAppBar :headline="article ? article.title : 'Help article not found'">
+        <template #leadingButton>
+          <slot name="navigationButton" />
+        </template>
 
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+    </template>
 
     <template v-if="article">
       <HelpArticleBody

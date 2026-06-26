@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { defineComponent, h, ref } from 'vue';
 import MDFabContainer from './MDFabContainer.vue';
 import MDExtendedFab from './MDExtendedFab.vue';
-import { definePaneContainer } from '../Layout/useMDContainer';
+import { definePaneScrollContainer } from '../Layout/useMDContainer';
 
 /**
  * A minimal pane host for stories. Provides the pane container context that
@@ -17,7 +17,7 @@ const StoryPaneHost = defineComponent({
   },
   setup(props, { slots }) {
     const paneEl = ref<HTMLElement | null>(null);
-    definePaneContainer(paneEl);
+    definePaneScrollContainer(paneEl);
 
     return () =>
       h(

@@ -22,11 +22,11 @@ test('internal link without an anchor opens the target article scrolled to the t
   await openArticle(page, /^data storage$/i);
 
   // Baseline: the resting scroll position of a freshly opened article, before any link
-  // click scrolls the container. A sticky app bar can reserve a few pixels of scroll-margin,
-  // so "scrolled to the top" means returning to this resting position, not a literal 0.
+  // click scrolls the container. The pane-local app bar lives in `.md-pane__top-bar`,
+  // outside `.md-pane__content`, so it never affects the scroll baseline.
   // `MDPane` owns the actual scroll container (`paneContainer`, target of `scrollTo`),
   // which is distinct from `.help-article-body`, the link/content lookup scope.
-  const paneContentEl = page.locator('.help-article-pane .__content');
+  const paneContentEl = page.locator('.help-article-pane .md-pane__content');
   const topRestingScrollTop = await paneContentEl.evaluate((el) => el.scrollTop);
 
   const articleBody = page.locator('.help-article-pane .help-article-body');
@@ -51,6 +51,26 @@ test('internal link with an anchor scrolls the target heading into view', async 
 
   const heading = page.getByRole('heading', { name: /^backup expectations$/i, level: 2 });
   await expect(heading).toBeInViewport();
+});
+
+test('the pane-local app bar stays fixed while the article body scrolls', async ({ page }) => {
+  await openHelpIndex(page);
+  await openArticle(page, /^data storage$/i);
+
+  const topBar = page.locator('.help-article-pane .md-pane__top-bar');
+  const paneContentEl = page.locator('.help-article-pane .md-pane__content');
+
+  const topBarBoxBefore = await topBar.boundingBox();
+  expect(topBarBoxBefore).not.toBeNull();
+
+  await paneContentEl.evaluate((el) => {
+    el.scrollTo({ top: el.scrollHeight });
+  });
+  await expect.poll(() => paneContentEl.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+
+  const topBarBoxAfter = await topBar.boundingBox();
+  expect(topBarBoxAfter).not.toBeNull();
+  expect(topBarBoxAfter?.y).toBe(topBarBoxBefore?.y);
 });
 
 test('external links are not hijacked by in-app help navigation', async ({ page }) => {

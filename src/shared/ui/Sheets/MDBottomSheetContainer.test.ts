@@ -15,7 +15,7 @@ vi.mock('../AriaHidden', () => ({
 }));
 
 vi.mock('../Layout/useMDContainer', () => ({
-  usePaneContainer: () => undefined,
+  usePaneScrollContainer: () => undefined,
 }));
 
 vi.mock('@vueuse/integrations/useFocusTrap', () => ({
