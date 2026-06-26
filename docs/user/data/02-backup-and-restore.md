@@ -1,13 +1,13 @@
 # Backup and restore
 
-This page explains how to back up or restore one document at a time in Mioframe.
+This page explains how to back up one document at a time in Mioframe, and what happens when you import that backup.
 
 ## What Export JSON and Import JSON do
 
-- **Export JSON** saves one document to a JSON file.
-- **Import JSON** restores or adds one document from a JSON file.
+- **Export JSON** saves the current content of one document as a JSON file. This is a document snapshot, not a copy of Mioframe's internal storage.
+- **Import JSON** creates a new Mioframe document from a JSON file. It does not restore the original document's storage identity or history — importing always adds a separate document.
 
-These actions are document-level only. They are not a full workspace backup or full workspace restore.
+These actions are document-level only. They are not a full workspace backup or full workspace restore. For how a document is stored on disk, see [Data storage](./01-data-storage.md).
 
 ## When to export a JSON backup
 
@@ -36,18 +36,19 @@ Keep exported backups somewhere you control and can find again, such as:
 
 If a document is important, keep more than one copy in places you manage.
 
-## How to restore or import one document
+## How to import a JSON document
 
 1. Open the target folder in the app.
 2. Open the folder options menu.
 3. Choose **Import JSON**.
 4. Choose the JSON file.
 
-If the file is valid and the target location is available, Mioframe imports that one document.
+If the file is valid and the target location is available, Mioframe creates a new document in that folder from the JSON file.
 
 ## Important limits
 
 - Export JSON and Import JSON work on one document at a time.
+- Importing always creates a new document; it does not restore the original document's storage identity, `.mf` chunks, or edit history.
 - They do not restore an entire workspace, folder structure, or browser storage state.
 - Mioframe cannot recreate data that was never exported or otherwise preserved.
 
