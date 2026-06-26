@@ -1,6 +1,6 @@
 ---
 name: material3-guidelines
-description: 'Use this skill before planning or implementing UI/UX changes to verify component choice, layout, interaction behavior, accessibility, visual states, tokens, and public UI APIs against official Material 3 guidance and the project Material 3 policies.'
+description: 'Use this skill before planning, implementing, or reviewing Material-related UI/UX work, especially any new or materially changed shared MD* component. Verifies official Material 3 source lookup, component choice, token/component-token mapping, public UI API, interaction states, accessibility, layout, Storybook, deviations, and focused verification.'
 ---
 
 # Material 3 guidelines
