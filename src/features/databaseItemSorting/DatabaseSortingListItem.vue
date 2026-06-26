@@ -16,10 +16,11 @@ const props = defineProps<{
   documentId: AMDocumentId;
   viewId: DatabaseViewId;
   propertyId: DatabasePropertyId;
+  dragged?: boolean;
 }>();
 
 const slots = defineSlots<{
-  trailingIcon: () => unknown;
+  trailingAction: () => unknown;
 }>();
 
 const { documentId, path, viewId, propertyId } = toRefs(props);
@@ -41,8 +42,14 @@ const onClick = async () => {
 </script>
 
 <template>
-  <MDListItem is="button" :headline="headline" class="db-sorting-item" @click="onClick">
-    <template #leadingIcon>
+  <MDListItem
+    :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
+    :label-text="headline"
+    :dragged="dragged"
+    class="db-sorting-item"
+    @action="onClick"
+  >
+    <template #leading>
       <MDSymbol
         class="db-sorting-item__symbol"
         name="sort"
@@ -52,8 +59,8 @@ const onClick = async () => {
       />
     </template>
 
-    <template v-if="slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" />
+    <template v-if="slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" />
     </template>
   </MDListItem>
 </template>

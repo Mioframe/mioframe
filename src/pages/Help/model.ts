@@ -1,6 +1,6 @@
-import { object, string, type output } from 'zod/v4-mini';
+import { object, optional, string, type output } from 'zod/v4-mini';
 
-export const zodQuery = object({ slug: string() });
+export const zodQuery = object({ slug: string(), anchor: optional(string()) });
 
 /**
  * Query props accepted by the generic help article pane.

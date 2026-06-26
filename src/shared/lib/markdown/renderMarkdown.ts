@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it';
+import { resolveUniqueHeadingId, slugifyHeadingText } from './headingId';
 
 /**
  * Additional rendering behavior for shared markdown output.
@@ -13,6 +14,12 @@ export interface RenderMarkdownOptions {
    * Optional class name applied to a div that wraps rendered tables.
    */
   readonly tableWrapperClassName?: string;
+  /**
+   * Adds a deterministic, unique `id` attribute to every rendered heading, derived from its
+   * text. Used by consumers that need stable in-page anchor targets (e.g. Help article
+   * cross-links); generic Markdown rendering otherwise has no anchor/routing concept.
+   */
+  readonly generateHeadingIds?: boolean;
 }
 
 const isExternalLinkHref = (href: string): boolean => /^(?:https?:|\/\/)/iu.test(href);
@@ -59,8 +66,19 @@ const createMarkdownRenderer = (renderOptions: RenderMarkdownOptions = {}) => {
   });
   const defaultValidateLink = markdown.validateLink.bind(markdown);
   markdown.validateLink = (url) => defaultValidateLink(url) && isAllowedMarkdownLink(url);
-  const { openExternalLinksInNewTab = false, tableWrapperClassName } = renderOptions;
+  const {
+    openExternalLinksInNewTab = false,
+    tableWrapperClassName,
+    generateHeadingIds = false,
+  } = renderOptions;
 
+  const fallbackHeadingOpenRenderer: NonNullable<typeof markdown.renderer.rules.heading_open> = (
+    tokens,
+    idx,
+    rendererOptions,
+    _env,
+    self,
+  ) => self.renderToken(tokens, idx, rendererOptions);
   const fallbackLinkOpenRenderer: NonNullable<typeof markdown.renderer.rules.link_open> = (
     tokens,
     idx,
@@ -102,6 +120,45 @@ const createMarkdownRenderer = (renderOptions: RenderMarkdownOptions = {}) => {
 
     markdown.renderer.rules.table_close = (tokens, idx, rendererOptions, env, self) =>
       `${defaultTableCloseRenderer(tokens, idx, rendererOptions, env, self)}</div>`;
+  }
+
+  if (generateHeadingIds) {
+    const defaultHeadingOpenRenderer =
+      markdown.renderer.rules.heading_open ?? fallbackHeadingOpenRenderer;
+
+    markdown.renderer.rules.heading_open = (
+      tokens,
+      idx,
+      rendererOptions,
+      env: { usedHeadingIds?: Set<string> },
+      self,
+    ) => {
+      const token = tokens[idx];
+      const inlineToken = tokens[idx + 1];
+
+      if (token !== undefined && inlineToken?.type === 'inline') {
+        // Plain-text-only children are enough for a stable slug; markup tokens (emphasis,
+        // links, etc.) are skipped rather than rendered, since the id only needs to be
+        // deterministic and human-readable, not a full text reconstruction.
+        const headingText = (inlineToken.children ?? [])
+          .filter((child) => child.type === 'text' || child.type === 'code_inline')
+          .map((child) => child.content)
+          .join('');
+
+        // Heading-id collision tracking lives in the per-render `env`, not in this
+        // renderer-rule closure, so concurrent or repeated `render()` calls each start
+        // from an empty id set instead of sharing state across renders.
+        const usedHeadingIds = env.usedHeadingIds ?? new Set<string>();
+        env.usedHeadingIds = usedHeadingIds;
+
+        token.attrSet(
+          'id',
+          resolveUniqueHeadingId(slugifyHeadingText(headingText), usedHeadingIds),
+        );
+      }
+
+      return defaultHeadingOpenRenderer(tokens, idx, rendererOptions, env, self);
+    };
   }
 
   if (!openExternalLinksInNewTab) {

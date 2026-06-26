@@ -132,8 +132,8 @@ const selectId = sessionUniqueId('select');
                 v-for="value in modelValue"
                 :key="valueToString(value)"
                 :label="valueToString(value)"
-                @click="() => onClickValue(value)"
-                @click-close="() => onClickValue(value)"
+                @click="onClickValue(value)"
+                @click-close="onClickValue(value)"
               />
             </template>
 

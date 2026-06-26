@@ -7,6 +7,10 @@ defineProps<MDChipCommonProps>();
 const emit = defineEmits<{
   click: [event: MouseEvent];
 }>();
+
+const onClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -17,6 +21,6 @@ const emit = defineEmits<{
     :draggable="draggable"
     :autofocus="autofocus"
     :disabled="disabled"
-    @click="(event) => emit('click', event)"
+    @click="onClick"
   />
 </template>

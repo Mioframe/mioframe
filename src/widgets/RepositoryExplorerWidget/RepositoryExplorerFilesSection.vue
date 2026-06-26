@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import { computed } from 'vue';
 import RepositoryExplorerFileListItem from './RepositoryExplorerFileListItem.vue';
 
@@ -53,11 +53,7 @@ const emptyText = computed(() =>
       <p class="repository-explorer-files-section__supporting-text">{{ supportingText }}</p>
     </div>
 
-    <MDListContainer
-      is="div"
-      v-if="hasRegularFiles"
-      class="repository-explorer-files-section__list"
-    >
+    <MDList v-if="hasRegularFiles" class="repository-explorer-files-section__list">
       <RepositoryExplorerFileListItem
         v-for="[name, { description, type: nodeType, capabilities }] in regularFileEntries"
         :key="PathUtils.join(directoryPath, name)"
@@ -69,9 +65,9 @@ const emptyText = computed(() =>
         :can-change-path="capabilities?.canChangePath"
         :can-delete="capabilities?.canDelete"
         class="repository-explorer-files-section__list-item"
-        @click="(clickedName) => onClickEntry(clickedName, nodeType)"
+        @click="onClickEntry($event, nodeType)"
       />
-    </MDListContainer>
+    </MDList>
 
     <p v-else class="repository-explorer-files-section__empty-text">{{ emptyText }}</p>
   </section>
@@ -106,11 +102,6 @@ const emptyText = computed(() =>
     line-height: var(--md-sys-typescale-body-small-line-height);
     letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
-
-  &__list-item {
-    --md-list-item-border-radius: 8px;
-  }
-
   &__empty-text {
     margin: 0;
     padding: 0 16px;

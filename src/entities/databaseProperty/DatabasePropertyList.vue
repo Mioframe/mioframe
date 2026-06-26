@@ -1,40 +1,37 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
-import { MDListContainer } from '@shared/ui/Lists';
-import { toRefs } from 'vue';
-import { useDatabaseProperties } from './useDatabaseProperties';
+import { MDList } from '@shared/ui/Lists';
 import DatabasePropertyListItem from './DatabasePropertyListItem.vue';
 
 const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
+  // Already-read property IDs, owned by the caller's own useDatabaseProperties read.
+  // Accepting them explicitly avoids this list re-subscribing to the same entity read.
+  propertyIdList: DatabasePropertyId[];
 }>();
 
 const slots = defineSlots<{
-  trailingIcon: (p: {
+  trailingAction: (p: {
     property?: DatabaseUnknownProperty | undefined;
     propertyId: DatabasePropertyId;
   }) => unknown;
 }>();
-
-const { documentId, directoryPath: path } = toRefs(props);
-
-const { propertiesIdList: properties } = useDatabaseProperties(path, documentId);
 </script>
 
 <template>
-  <MDListContainer>
+  <MDList list-style="segmented">
     <DatabasePropertyListItem
-      v-for="propertyId in properties"
+      v-for="propertyId in props.propertyIdList"
       :key="propertyId"
-      :path="path"
-      :document-id="documentId"
+      :path="props.directoryPath"
+      :document-id="props.documentId"
       :property-id="propertyId"
     >
-      <template v-if="!!slots.trailingIcon" #trailingIcon="{ property }">
-        <slot name="trailingIcon" :property-id="propertyId" :property="property" />
+      <template v-if="!!slots.trailingAction" #trailingAction="{ property }">
+        <slot name="trailingAction" :property-id="propertyId" :property="property" />
       </template>
     </DatabasePropertyListItem>
-  </MDListContainer>
+  </MDList>
 </template>

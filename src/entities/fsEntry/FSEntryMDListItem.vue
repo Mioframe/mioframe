@@ -8,7 +8,9 @@ const props = defineProps<{
   name: string;
   type: FSNodeType;
   supportingText?: string | undefined;
-  isButton?: boolean;
+  // Domain intent: whether this entry can be opened (e.g. a directory or an importable
+  // file). Drives whether the row renders as an actionable MDListItem.
+  isOpenable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -16,7 +18,7 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<{
-  trailingIcon(): unknown;
+  trailingAction(): unknown;
 }>();
 
 const { name } = toRefs(props);
@@ -28,12 +30,18 @@ const onListItemClick = () => {
 
 <template>
   <MDListItem
-    :is="isButton ? 'button' : undefined"
-    :headline="name"
+    :mode="
+      isOpenable && !!slots.trailingAction
+        ? 'multi-action'
+        : isOpenable
+          ? 'single-action'
+          : 'static'
+    "
+    :label-text="name"
     :supporting-text="supportingText"
-    @click="onListItemClick"
+    @action="onListItemClick"
   >
-    <template #leadingIcon>
+    <template #leading>
       <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 
       <MDSymbol v-else-if="type === FSNodeType.File" name="draft" />
@@ -41,8 +49,12 @@ const onListItemClick = () => {
       <MDSymbol v-else name="insert_page_break" />
     </template>
 
-    <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" :entry="name" />
+    <template v-if="isOpenable && !!slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" :entry="name" />
+    </template>
+
+    <template v-else-if="!isOpenable && !!slots.trailingAction" #trailing>
+      <slot name="trailingAction" :entry="name" />
     </template>
   </MDListItem>
 </template>

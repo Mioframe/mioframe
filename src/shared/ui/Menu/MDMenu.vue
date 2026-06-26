@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
 import type { MaybeElement } from '@vueuse/core';
 import { computed, toRefs } from 'vue';
-import type { MenuButtonDescription, MenuButtonList } from './types';
+import type { MenuButtonDescription, NonEmptyMenuButtonList } from './types';
 import MDMenuItem from './MDMenuItem.vue';
 import MDMenuBase from './MDMenuBase.vue';
 
@@ -10,8 +10,7 @@ const showModel = defineModel<boolean>('show', { required: true });
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
-    btns?: MenuButtonList<T> | undefined;
-    transition?: boolean | undefined;
+    btns: NonEmptyMenuButtonList<T>;
     outsideIgnore?: MaybeElement[] | undefined;
     disabledTeleport?: boolean | undefined;
     placement?: 'bottom-start' | 'right-start' | undefined;
@@ -51,7 +50,6 @@ const onMenuInteractionOutside = () => {
   <MDMenuBase
     v-model:show="showModel"
     :target="target"
-    :transition="transition"
     :outside-ignore="outsideIgnore"
     :disabled-teleport="disabledTeleport"
     :placement="placement"

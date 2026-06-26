@@ -1,0 +1,206 @@
+<script setup lang="ts">
+import MDSymbol from '../../Icon/MDSymbol.vue';
+import { MDList, MDListItem } from '@shared/ui/Lists';
+
+const onAction = () => {};
+</script>
+
+<template>
+  <div
+    data-testid="visual-md-list-surface-standard"
+    class="visual-list-backdrop md-list-item-surface-standard-story"
+  >
+    <section class="md-list-item-surface-standard-story__section">
+      <h3 class="md-list-item-surface-standard-story__title">Standard list on surface</h3>
+      <div
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface"
+      >
+        <MDList>
+          <MDListItem
+            mode="single-action"
+            label-text="Row on surface"
+            supporting-text="List items are transparent; this background comes from the parent."
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="draft" />
+            </template>
+          </MDListItem>
+          <MDListItem mode="single-action" label-text="Second row on surface" @action="onAction">
+            <template #leading>
+              <MDSymbol name="folder" />
+            </template>
+          </MDListItem>
+        </MDList>
+      </div>
+    </section>
+
+    <section class="md-list-item-surface-standard-story__section">
+      <h3 class="md-list-item-surface-standard-story__title">Standard list on surface-container</h3>
+      <div
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface-container"
+      >
+        <MDList>
+          <MDListItem
+            mode="single-action"
+            label-text="Row on surface-container"
+            supporting-text="Transparent list item inherits the container surface color."
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="settings" />
+            </template>
+          </MDListItem>
+          <MDListItem
+            mode="single-action"
+            label-text="Second row on surface-container"
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="info" />
+            </template>
+          </MDListItem>
+        </MDList>
+      </div>
+    </section>
+
+    <section class="md-list-item-surface-standard-story__section">
+      <h3 class="md-list-item-surface-standard-story__title">
+        Standard list inherits through wrappers
+      </h3>
+      <div
+        id="surface-context-wrapped-standard"
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface-container"
+      >
+        <div class="md-list-item-surface-standard-story__wrapper">
+          <div class="md-list-item-surface-standard-story__wrapper-inner">
+            <MDList>
+              <MDListItem
+                mode="single-action"
+                label-text="Wrapped standard row"
+                supporting-text="Intermediate layout wrappers must not break surface inheritance."
+                @action="onAction"
+              >
+                <template #leading>
+                  <MDSymbol name="layers" />
+                </template>
+              </MDListItem>
+            </MDList>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="md-list-item-surface-standard-story__section">
+      <h3 class="md-list-item-surface-standard-story__title">
+        Parent private variables do not leak into MDList
+      </h3>
+      <div
+        id="surface-context-private-var-wrapper"
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface-container-high md-list-item-surface-standard-story__surface_private-var-leak"
+      >
+        <MDList>
+          <MDListItem
+            mode="single-action"
+            label-text="Private variable leak guard"
+            supporting-text="MDList must reset private item fill vars on its own root."
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="shield" />
+            </template>
+          </MDListItem>
+        </MDList>
+      </div>
+    </section>
+
+    <section class="md-list-item-surface-standard-story__section">
+      <h3 class="md-list-item-surface-standard-story__title">
+        Standard list on surface-container-high
+      </h3>
+      <div
+        class="md-list-item-surface-standard-story__surface md-list-item-surface-standard-story__surface_color_surface-container-high"
+      >
+        <MDList>
+          <MDListItem
+            mode="single-action"
+            label-text="Row on surface-container-high"
+            supporting-text="Transparent item shows elevation difference between list and parent."
+            @action="onAction"
+          >
+            <template #leading>
+              <MDSymbol name="home" />
+            </template>
+          </MDListItem>
+          <MDListItem
+            mode="single-action"
+            label-text="Second row on surface-container-high"
+            disabled
+          >
+            <template #leading>
+              <MDSymbol name="block" />
+            </template>
+          </MDListItem>
+        </MDList>
+      </div>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.md-list-item-surface-standard-story {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24dp;
+  width: min(400dp, calc(100vw - 32dp));
+  padding: 24dp;
+}
+
+.md-list-item-surface-standard-story__section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8dp;
+}
+
+.md-list-item-surface-standard-story__title {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+
+.md-list-item-surface-standard-story__surface {
+  border-radius: 12dp;
+  overflow: clip;
+}
+
+/* Zero padding on purpose: these wrappers exist only to prove that surface-color
+   inheritance survives intermediate DOM nesting (see the "intermediate wrappers" test
+   below), not to add visual spacing. Any padding here changes the rendered row height
+   in the screenshot and reads as a sizing regression unrelated to the surface contract
+   this fixture tests. */
+.md-list-item-surface-standard-story__wrapper,
+.md-list-item-surface-standard-story__wrapper-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.md-list-item-surface-standard-story__surface_color_surface {
+  background: var(--md-sys-color-surface);
+}
+
+.md-list-item-surface-standard-story__surface_color_surface-container {
+  background: var(--md-sys-color-surface-container);
+}
+
+.md-list-item-surface-standard-story__surface_color_surface-container-high {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.md-list-item-surface-standard-story__surface_private-var-leak {
+  --md-private-list-item-container-color: rgb(255 0 0);
+}
+</style>

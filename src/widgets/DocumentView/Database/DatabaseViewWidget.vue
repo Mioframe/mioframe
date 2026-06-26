@@ -155,14 +155,14 @@ const onUpdatedEditItemDialog = () => {
           :property-id="propertyId"
           :document-id="documentId"
           :directory-path="path"
-          @update:property="($event) => onUpdateProperty(propertyId, $event)"
+          @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
 
       <template #action="{ itemId }">
         <MDContextMenuButton
           :btns="itemContextualButtons"
-          @click="($event) => onClickItemContextBtn($event, itemId)"
+          @click="onClickItemContextBtn($event, itemId)"
         />
       </template>
 
@@ -193,7 +193,7 @@ const onUpdatedEditItemDialog = () => {
           :directory-path="path"
           :autofocus="!index"
           @update:value="update"
-          @update:property="($event) => onUpdateProperty(propertyId, $event)"
+          @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
     </DatabaseItemEditDialog>
@@ -244,10 +244,6 @@ const onUpdatedEditItemDialog = () => {
 
   &__body {
     padding: 16px;
-  }
-
-  &__property-list {
-    --md-list-container-border-radius: 16px;
   }
 }
 </style>

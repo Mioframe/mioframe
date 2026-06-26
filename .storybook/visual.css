@@ -19,3 +19,26 @@
   display: grid;
   gap: 16px;
 }
+
+/*
+ * MDList-only test/story backdrop. Renders a fixed, contrasty checker pattern using
+ * neutral colors only (never `--md-sys-color-*` or other app/theme tokens) so any
+ * transparent MDList/MDListItem surface placed on top of it is unambiguous in
+ * screenshots, instead of blending into a flat theme-dependent color. Scoped to a
+ * dedicated class (not `.visual-surface`) so it never changes the shared backdrop
+ * other component visual fixtures rely on. This is never applied to MDList/
+ * MDListItem runtime components themselves — only to Storybook wrapper/surface
+ * elements used by MDList visual fixtures.
+ */
+.visual-list-backdrop {
+  box-sizing: border-box;
+  display: grid;
+  gap: 16px;
+  width: fit-content;
+  min-width: 320px;
+  padding: 24px;
+  color: #000000;
+  background-color: #ffffff;
+  background-image: repeating-conic-gradient(#d2d2d2 0% 25%, transparent 0% 50%);
+  background-size: 28px 28px;
+}

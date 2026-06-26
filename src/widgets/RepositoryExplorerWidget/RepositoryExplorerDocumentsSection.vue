@@ -5,7 +5,7 @@ import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDList } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { computed, shallowRef, toRefs } from 'vue';
 
@@ -82,13 +82,8 @@ const emptySupportingText = computed(() => {
       />
     </div>
 
-    <MDListContainer
-      is="div"
-      v-if="documentIds.length > 0"
-      class="repository-explorer-documents-section__list"
-    >
+    <MDList v-if="documentIds.length > 0" class="repository-explorer-documents-section__list">
       <CFRDocumentMDListItem
-        is="button"
         v-for="documentId in documentIds"
         :key="documentId"
         :document-id="documentId"
@@ -96,11 +91,11 @@ const emptySupportingText = computed(() => {
         class="repository-explorer-documents-section__list-item"
         @click="onSelectDocument"
       >
-        <template #trailingIcon>
+        <template #trailingAction>
           <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />
         </template>
       </CFRDocumentMDListItem>
-    </MDListContainer>
+    </MDList>
 
     <MDEmptyState
       v-else-if="emptyHeadline"
@@ -155,11 +150,6 @@ const emptySupportingText = computed(() => {
     line-height: var(--md-sys-typescale-body-small-line-height);
     letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
-
-  &__list-item {
-    --md-list-item-border-radius: 8px;
-  }
-
   &__empty-state {
     padding: 0 16px;
   }

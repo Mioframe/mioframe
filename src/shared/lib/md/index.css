@@ -8,6 +8,8 @@
   --one-step: 4px;
   --md-container-color: var(--md-sys-color-surface-container);
   --md-content-color: var(--md-sys-color-on-surface);
+  --md-current-container-color: var(--md-container-color);
+  --md-current-content-color: var(--md-content-color);
 }
 
 html,

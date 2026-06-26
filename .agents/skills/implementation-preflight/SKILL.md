@@ -40,6 +40,8 @@ For contract changes such as persisted formats, public APIs, shared UI contracts
 
 For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification. For copy-only or wiring-only changes that keep existing components and Material behavior unchanged, record `Material impact: none` instead of doing a Material lookup.
 
+For `.vue`, UI composable, shared UI, widget, pane/page, or feature UI changes, also run the `vue-component-implementation` skill before production edits and include its component contract (root/render, props, emits, slots, attrs forwarding, derived state, interaction ownership, DOM access justification, show/hidden ownership, browser/visual verification) in this preflight. If that contract is unclear, implementation is not ready.
+
 ## Wide UI and refactor gate
 
 For non-trivial UI, UX, or cross-layer refactors, do not edit production code until the preflight also records:

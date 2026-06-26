@@ -8,12 +8,16 @@ import {
 } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { useReorderSurface, vReorderItem } from '@shared/lib/sortable';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs, useTemplateRef } from 'vue';
 
 const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
+  // Accessible current-view state owned by the caller's view-selection composition.
+  // Forwarded onto the row as `aria-current` so assistive tech can tell which view is
+  // active without depending on a presentation-only leading control.
+  currentViewId?: DatabaseViewId | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -21,30 +25,34 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<{
-  trailingIcon: (p: { viewId: DatabaseViewId }) => unknown;
-  leadingIcon: (p: { viewId: DatabaseViewId }) => unknown;
+  trailingAction: (p: { viewId: DatabaseViewId }) => unknown;
+  leading: (p: { viewId: DatabaseViewId }) => unknown;
 }>();
 
 const { directoryPath: path, documentId } = toRefs(props);
 
 const { reorder, views: viewList } = useDatabaseViews(path, documentId);
 
-const viewListEl = useTemplateRef('viewListEl');
+const viewListEl = useTemplateRef<InstanceType<typeof MDList>>('viewListEl');
+const viewListContainerEl = computed(() => viewListEl.value?.$el ?? null);
 
 const viewMap = computed(() => new Map(viewList.value ?? []));
 
-const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(viewListEl, {
-  itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
-  onCommit: ({ orderedIds }) => {
-    const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
+const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(
+  viewListContainerEl,
+  {
+    itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
+    onCommit: ({ orderedIds }) => {
+      const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
 
-    if (nextOrderedIds.length !== orderedIds.length) {
-      return;
-    }
+      if (nextOrderedIds.length !== orderedIds.length) {
+        return;
+      }
 
-    return reorder(nextOrderedIds);
+      return reorder(nextOrderedIds);
+    },
   },
-});
+);
 
 const displayViewIdList = computed(() =>
   displayItemIdList.value.filter((id) => zodIs(id, zodDatabaseViewId)),
@@ -74,27 +82,28 @@ const onClickView = (id: DatabaseViewId) => {
 </script>
 
 <template>
-  <MDListContainer ref="viewListEl" transition class="db-view-map-edit">
+  <MDList ref="viewListEl" list-style="segmented" class="db-view-map-edit">
     <MDListItem
-      is="button"
       v-for="[id, view] in orderedViewList"
       :key="id"
       v-reorder-item="id"
-      :headline="view.name"
+      :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
+      :label-text="view.name"
+      :dragged="draggedViewId === id"
+      :aria-current="id === currentViewId ? 'true' : undefined"
       class="db-view-map-edit__view-item"
       :class="{
-        'md-state_drag': draggedViewId === id,
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
-      @click="() => onClickView(id)"
+      @action="onClickView(id)"
     >
-      <template v-if="!!slots.leadingIcon" #leadingIcon>
-        <slot name="leadingIcon" :view-id="id" />
+      <template v-if="!!slots.leading" #leading>
+        <slot name="leading" :view-id="id" />
       </template>
 
-      <template v-if="!!slots.trailingIcon" #trailingIcon>
-        <slot name="trailingIcon" :view-id="id" />
+      <template v-if="!!slots.trailingAction" #trailingAction>
+        <slot name="trailingAction" :view-id="id" />
       </template>
     </MDListItem>
-  </MDListContainer>
+  </MDList>
 </template>

@@ -2,7 +2,7 @@
 import { MDIconButton } from '@shared/ui/Button';
 import type { MaybeElement } from '@vueuse/core';
 import { nextTick, ref, useTemplateRef } from 'vue';
-import type { MenuButtonDescription, MenuButtonList } from './types';
+import type { MenuButtonDescription, NonEmptyMenuButtonList } from './types';
 import MDMenu from './MDMenu.vue';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 
@@ -11,7 +11,7 @@ const {
   loading,
   tooltip = 'options',
 } = defineProps<{
-  btns: MenuButtonList<T>;
+  btns: NonEmptyMenuButtonList<T>;
   tooltip?: string;
   loading?: number | boolean | undefined;
   size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
@@ -66,7 +66,6 @@ const idMenu = sessionUniqueId('menu');
   />
 
   <MDMenu
-    v-if="btns.length"
     v-model:show="showMenu"
     :target="targetBtn"
     :btns="btns"

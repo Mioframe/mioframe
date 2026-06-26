@@ -11,17 +11,15 @@ const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
   supportingText?: string;
-  is?: 'button' | 'div' | 'li';
 }>();
 
 const emit = defineEmits<{
   click: [documentId: AMDocumentId];
 }>();
 
-const slots = defineSlots<{
-  leadingIcon: () => unknown;
-  trailingIcon: (p: { documentName?: string | undefined }) => unknown;
-  leadingAvatarContainer: () => unknown;
+defineSlots<{
+  leading: () => unknown;
+  trailingAction: (p: { documentName?: string | undefined }) => unknown;
 }>();
 
 const { documentId, path } = toRefs(props);
@@ -39,14 +37,14 @@ const onListItemClick = () => {
 
 <template>
   <MDListItem
-    :is="is"
-    :headline="headline"
+    :mode="$slots.trailingAction ? 'multi-action' : 'single-action'"
+    :label-text="headline"
     :supporting-text="supportingText"
     :aria-label="`document ${headline}`"
-    @click="onListItemClick"
+    @action="onListItemClick"
   >
-    <template #leadingIcon>
-      <slot name="leadingIcon">
+    <template #leading>
+      <slot name="leading">
         <template v-if="errorMessage">
           <MDPlainTooltip :text="errorMessage" />
 
@@ -59,12 +57,8 @@ const onListItemClick = () => {
       </slot>
     </template>
 
-    <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" :document-name="documentName" />
-    </template>
-
-    <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
-      <slot name="leadingAvatarContainer" />
+    <template v-if="!!$slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" :document-name="documentName" />
     </template>
   </MDListItem>
 </template>

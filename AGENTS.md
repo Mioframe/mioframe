@@ -77,6 +77,8 @@ reason:
 - When extracting from a large or mixed-responsibility file, extract by FSD ownership first: pure logic to `shared/lib`, infrastructure to `shared/service`, domain reads to `entities`, user actions to `features`, and composition to `widgets` or `pages`.
 - Do not split files by line count alone. Keep one cohesive module intact when splitting would hide invariants, create noisy pass-through modules, or make imports harder to trace.
 - For Vue components, keep templates focused on declarative layout and explicit component contracts. Extract complex browser interaction state, data mapping, derived state, and persistence orchestration into named composables or pure helpers before adding more template and script complexity.
+- Use the `vue-component-implementation` skill before implementing or materially changing `.vue` components or UI composables, to define the component contract and avoid imperative DOM-style coordination, `dispatchEvent`/`querySelector` communication, broad `v-bind` prop bags, and unjustified `:deep()` overrides.
+- `!important` is forbidden everywhere in the repository, including Vue SFC `<style>` blocks, test helpers, and visual harnesses. Use higher-specificity selectors instead. This is currently a documented review rule, not yet enforced by automated CSS linting.
 - Keep composables, helpers, and services focused on one capability. Split lifecycle setup, pure derivation, boundary validation, and storage or network side effects when they start changing for different reasons.
 - Test files may be larger than production files when scenarios are uniform. Split tests by behavior when setup becomes conditional, fixtures become hard to localize, or failures no longer point to one behavior.
 - For large refactors, keep behavior-preserving extraction separate from behavior changes. Verify the extraction first, then make functional changes in a smaller diff.
@@ -129,6 +131,18 @@ reason:
 - Use project Material tokens and component custom properties before hard-coded values. Preserve Material authoring units such as `dp` and `sp` where the project token pipeline expects them; do not rewrite them to `px` only because a generic CSS reviewer suggests it.
 - When a native interactive element is visually reset, restore required interaction affordances in the owning component, including an appropriate cursor for clickable enabled states and visible focus/state-layer behavior. Do not make disabled or non-action states look clickable.
 - Treat shared UI style changes as blast-radius changes: inspect consumers, preserve the public visual contract by default, and update Storybook/visual coverage when appearance, layout, interaction affordance, or Material state rendering changes.
+
+## Shared UI implementation
+
+Use both the `material3-guidelines` skill (Material 3 source-of-truth workflow) and the `shared-ui-implementation` skill (Vue implementation-quality workflow) before implementing shared Material/list-family components.
+
+- Prefer small, named `computed` states (for example `isAction`, `isLinkAction`, `usesPrimaryActionSurface`) over inline boolean algebra for static render conditions. Do not introduce a central topology/state-machine resolver object unless the component has real workflow transitions or impossible intermediate states.
+- Keep component-owned DOM-critical attrs (`href`, `type`, `disabled`, `tabindex`, `role`, `aria-*`) explicit in the template. Object `v-bind` bags are acceptable only for controlled fallthrough-attrs forwarding, never for these attrs.
+- Shared UI runtime code must not use `dispatchEvent()` or other synthetic DOM events to emulate user activation. Rely on native button/link keyboard and pointer semantics.
+- Shared Material component source CSS must use standard CSS properties with a non-prefixed form; handwritten vendor-prefixed runtime CSS (`-webkit-*`, `-moz-*`, etc.) for such properties is forbidden, with no narrow compatibility exception. Browser prefixes and fallback transforms are owned by the build pipeline (PostCSS/browserslist), not component source. If a standard property does not render the required layout in a verification environment, replace it with a standard-CSS fallback that preserves the same layout contract; do not hardcode a prefix and do not drop the layout/clamping behavior. Genuinely non-standardized vendor-only APIs with no standard equivalent (e.g. `-webkit-tap-highlight-color`) are not covered by this rule.
+- A parent shared UI component must not use `:deep()` to style a child component's internal classes. Child components own their own internal anatomy/state styling; pass shape-relevant facts down through props or list/provide context instead.
+- Supported externally controlled component states must be explicit props (for example `dragged`). Internal CSS classes such as `md-state_*` are implementation details, not a public state API.
+- Do not preserve removed shared UI component props as wrapper compatibility aliases (for example `is` / `isButton`). Migrate wrapper consumers to the current API or a domain-intent prop in the same change.
 
 ## Implementation quality gates
 

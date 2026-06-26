@@ -1,85 +1,157 @@
-<script
-  setup
-  lang="ts"
-  generic="T extends { headline: string; key: PropertyKey; supportingText?: string }"
->
-import { computed } from 'vue';
-import MDListContainer from './MDListContainer.vue';
-import MDListItem from './MDListItem.vue';
+<script setup lang="ts">
+// eslint-disable-next-line no-restricted-imports -- used only to read aria-label/aria-labelledby for the listbox accessible-name dev warning, not as a forwarding escape hatch
+import { computed, useAttrs, useTemplateRef } from 'vue';
+import {
+  useWarnSelectionListMissingAccessibleName,
+  useWarnSelectionListTagMismatch,
+} from './listDevWarnings';
+import {
+  provideMDListContext,
+  type MDListModelValue,
+  type MDListSelectionMode,
+  type MDListStyle,
+} from './listContext';
+import { useListActionKeyboard } from './useListActionKeyboard';
+import { useListSelectionKeyboard } from './useListSelectionKeyboard';
 
-const { list, isItemButton } = defineProps<{
-  list: T[];
-  type?: 'list' | 'grid' | undefined;
-  isItemButton?: boolean | undefined;
-}>();
+defineOptions({
+  inheritAttrs: false,
+});
+
+const props = withDefaults(
+  defineProps<{
+    modelValue?: MDListModelValue;
+    listStyle?: MDListStyle | undefined;
+    selectionMode?: MDListSelectionMode | undefined;
+    tag?: 'div' | 'ul' | undefined;
+  }>(),
+  {
+    listStyle: 'standard',
+    selectionMode: 'none',
+    tag: 'div',
+  },
+);
 
 const emit = defineEmits<{
-  clickItem: [payload: { item: T; index: number }];
+  'update:modelValue': [value: MDListModelValue];
 }>();
 
-const slots = defineSlots<{
-  leadingAvatarContainer: (p: { item: T; index: number }) => unknown;
-  leadingIcon: (p: { item: T; index: number }) => unknown;
-  trailingIcon: (p: { item: T; index: number }) => unknown;
+defineSlots<{
+  default: () => unknown;
 }>();
 
-const listProp = computed(() => list);
+const containerEl = useTemplateRef<HTMLElement>('containerEl');
 
-const onClickItem = (item: T, index: number) => {
-  emit('clickItem', { item, index });
-};
+const resolvedListStyle = computed<MDListStyle>(() => props.listStyle);
 
-const itemTag = computed((): 'button' | 'li' | 'a' | 'div' => (isItemButton ? 'button' : 'li'));
+const resolvedTag = computed<'div' | 'ul'>(() =>
+  props.selectionMode === 'none' ? props.tag : 'div',
+);
 
-const containerTag = computed((): 'ul' | 'div' => (itemTag.value === 'li' ? 'ul' : 'div'));
+useWarnSelectionListTagMismatch(
+  computed(() => props.selectionMode),
+  computed(() => props.tag),
+);
+
+const listContext = provideMDListContext(
+  resolvedListStyle,
+  resolvedTag,
+  computed(() => props.selectionMode),
+  computed(() => props.modelValue),
+  (value) => {
+    emit('update:modelValue', value);
+  },
+);
+
+const containerRole = computed(() => {
+  if (props.selectionMode !== 'none') {
+    return 'listbox';
+  }
+
+  return resolvedTag.value === 'ul' ? null : 'list';
+});
+
+const selectionActive = computed(() => props.selectionMode !== 'none');
+
+useListSelectionKeyboard(containerEl, selectionActive, listContext.selectionRegistry);
+
+const attrs = useAttrs();
+const hasAccessibleName = computed(
+  () => typeof attrs['aria-label'] === 'string' || typeof attrs['aria-labelledby'] === 'string',
+);
+
+useWarnSelectionListMissingAccessibleName(
+  computed(() => containerRole.value === 'listbox'),
+  hasAccessibleName,
+);
+
+useListActionKeyboard(
+  containerEl,
+  computed(() => !selectionActive.value),
+  listContext.actionRegistry,
+);
 </script>
 
 <template>
-  <MDListContainer :is="containerTag" :type="type" class="md-list">
-    <TransitionGroup name="md-list">
-      <MDListItem
-        :is="itemTag"
-        v-for="(item, index) in listProp"
-        :key="item.key"
-        :headline="item.headline"
-        :supporting-text="item.supportingText"
-        @click="() => onClickItem(item, index)"
-      >
-        <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
-          <slot name="leadingAvatarContainer" :item="item" :index="index" />
-        </template>
-
-        <template v-if="!!slots.leadingIcon" #leadingIcon>
-          <slot name="leadingIcon" :item="item" :index="index" />
-        </template>
-
-        <template v-if="!!slots.trailingIcon" #trailingIcon>
-          <slot name="trailingIcon" :item="item" :index="index" />
-        </template>
-      </MDListItem>
-    </TransitionGroup>
-  </MDListContainer>
+  <component
+    :is="resolvedTag"
+    ref="containerEl"
+    v-bind="$attrs"
+    class="md-list"
+    :class="[`md-list_style_${resolvedListStyle}`, `md-list_selection-mode_${selectionMode}`]"
+    :role="containerRole"
+    :aria-multiselectable="selectionMode === 'multiple' ? 'true' : undefined"
+  >
+    <slot />
+  </component>
 </template>
 
-<style lang="css" scoped>
+<style scoped>
 .md-list {
-  user-select: none;
+  --md-private-list-item-container-color: transparent;
+  --md-private-list-item-action-shape: 4dp;
+  --md-private-list-item-container-shape: 4dp;
+  --md-private-list-item-leading-size: 20dp;
+  --md-private-list-item-passive-trailing-min-size: 28dp;
+  --md-private-list-item-trailing-action-padding-inline-start: 8dp;
+  --md-private-list-item-trailing-action-min-target-size: 48dp;
+  --md-private-list-item-trailing-action-reserved: calc(
+    var(--md-private-list-item-trailing-action-padding-inline-start) +
+      var(--md-private-list-item-trailing-action-min-target-size)
+  );
 
-  &-move,
-  &-enter-active,
-  &-leave-active {
-    transition: all 0.2s linear;
-    pointer-events: none;
-  }
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  background: transparent;
+  color: var(--md-current-content-color, inherit);
 
-  &-enter-from,
-  &-leave-to {
-    opacity: 0;
-  }
+  &_style_segmented {
+    /* Items own their corner shapes via action-surface border-radius. overflow: clip
+       is used for visual containment only — it does not create a scroll container,
+       so the explicit min-width: 0 is required to suppress the automatic grid/flex-item
+       minimum size that would otherwise allow nowrap text to expand the container. */
+    --md-comp-list-segmented-gap: 2dp;
+    /* M3 Expressive segmented lists use filled items separated by gaps. The list
+       container has no background; visual grouping comes from the item fill and the
+       gaps that reveal the parent surface beneath. Item fill uses the documented
+       segmented container color token. The private token cascades to item children,
+       which derive --md-comp-list-list-item-container-color from it so that item-level
+       overrides (selected, dragged) can still win via the public token. */
+    --md-private-list-item-container-color: var(
+      --md-comp-list-list-item-segmented-container-color,
+      var(--md-sys-color-surface)
+    );
 
-  &-leave-active {
-    position: absolute;
-    pointer-events: none;
+    gap: var(--md-comp-list-segmented-gap);
+    padding: 0;
+    /* min-width: 0 is required when this element is a grid or flex item so that
+       white-space: nowrap content inside cannot expand the containing track. */
+    min-width: 0;
+    overflow: clip;
+    border-radius: 16dp;
   }
 }
 </style>

@@ -61,8 +61,8 @@ vi.mock('@shared/config', () => ({
 }));
 
 vi.mock('@shared/ui/Lists', () => ({
-  MDListContainer: defineComponent({
-    name: 'MDListContainerStub',
+  MDList: defineComponent({
+    name: 'MDListStub',
     setup(_props, { slots }) {
       return () => h('div', { role: 'list' }, slots.default?.());
     },
@@ -70,51 +70,45 @@ vi.mock('@shared/ui/Lists', () => ({
   MDListItem: defineComponent({
     name: 'MDListItemStub',
     props: {
-      headline: {
+      labelText: {
         type: String,
         required: true,
       },
-      is: {
-        type: String,
-        required: true,
-      },
-      type: {
-        type: [String, Boolean],
-        default: undefined,
-      },
-      itemRole: {
+      supportingText: {
         type: String,
         default: undefined,
+      },
+      mode: {
+        type: String,
+        default: 'static',
       },
       disabled: {
         type: Boolean,
         default: false,
       },
     },
-    emits: ['click', 'keydown'],
+    emits: ['action'],
     setup(props, { attrs, emit, slots }) {
       return () =>
         h(
-          props.is,
+          props.mode === 'single-action' ? 'button' : 'div',
           {
             ...attrs,
-            type: typeof props.type === 'string' ? props.type : undefined,
-            role: props.itemRole ?? 'listitem',
-            disabled: props.is === 'button' && props.disabled ? true : undefined,
+            role: attrs.role ?? 'listitem',
+            disabled: props.disabled ? true : undefined,
             onClick:
-              props.is === 'button' && !props.disabled
+              props.mode === 'single-action' && !props.disabled
                 ? () => {
-                    emit('click');
-                  }
-                : undefined,
-            onKeydown:
-              props.is === 'button' && !props.disabled
-                ? (event: KeyboardEvent) => {
-                    emit('keydown', event);
+                    emit('action');
                   }
                 : undefined,
           },
-          [h('span', props.headline), slots.supportingText?.(), slots.trailingIcon?.()],
+          [
+            h('span', props.labelText),
+            props.supportingText ? h('span', props.supportingText) : null,
+            slots.supportingText?.(),
+            slots.trailing?.(),
+          ],
         );
     },
   }),
@@ -232,10 +226,6 @@ const getVisualCheckbox = (root: HTMLElement, label: string) =>
     (element.parentElement?.parentElement?.textContent ?? '').includes(label),
   ) ?? null;
 
-const getStaticRowByText = (root: HTMLElement, text: string) =>
-  Array.from(root.querySelectorAll('div')).find((element) => element.textContent.includes(text)) ??
-  null;
-
 const getLoadingIndicator = (root: HTMLElement, label: string) =>
   Array.from(root.querySelectorAll<HTMLElement>('[data-testid="loading-indicator"]')).find((el) =>
     (el.closest('[role="checkbox"]')?.textContent ?? '').includes(label),
@@ -271,7 +261,7 @@ describe('SettingsSections', () => {
     expect(root.textContent).toContain('Home screen');
     expect(root.textContent).toContain('Help');
     expect(root.textContent).toContain(
-      'Send technical error reports to help developers fix crashes and unexpected failures.',
+      'Send technical error reports. Documents, file names, and folder paths are not sent.',
     );
     expect(root.textContent).toContain('Read how Mioframe handles privacy and diagnostics.');
     expect(root.textContent).toContain(
@@ -311,9 +301,7 @@ describe('SettingsSections', () => {
     expect(settings.value.googleDriveIntegrationEnabled).toBe(true);
     expect(googleDriveRow?.getAttribute('aria-checked')).toBe('true');
 
-    getButtonByText(root, 'Google Drive')?.dispatchEvent(
-      new KeyboardEvent('keydown', { key: ' ', bubbles: true }),
-    );
+    getButtonByText(root, 'Google Drive')?.click();
     await nextTick();
 
     expect(settings.value.googleDriveIntegrationEnabled).toBeUndefined();
@@ -331,17 +319,14 @@ describe('SettingsSections', () => {
     const { root, unmount } = await mountSettingsSections();
     const googleDriveButton = getButtonByText(root, 'Google Drive');
     const googleDriveRow = getCheckboxRow(root, 'Google Drive');
-    const googleDriveStaticRow = getStaticRowByText(root, 'Google Drive');
-
     expect(root.textContent).toContain('Google Drive is not available in this build.');
-    expect(googleDriveButton).toBeNull();
+    expect(googleDriveButton).not.toBeNull();
     expect(googleDriveRow).not.toBeNull();
-    expect(googleDriveRow?.tagName).toBe('DIV');
+    expect(googleDriveRow?.tagName).toBe('BUTTON');
+    expect(googleDriveButton?.getAttribute('disabled')).toBe('');
     expect(googleDriveRow?.getAttribute('aria-disabled')).toBe('true');
     expect(googleDriveRow?.getAttribute('aria-checked')).toBe('false');
-    expect(googleDriveStaticRow?.tagName).toBe('DIV');
-
-    googleDriveStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    googleDriveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await nextTick();
 
     expect(settings.value.googleDriveIntegrationEnabled).toBe(true);
@@ -355,7 +340,7 @@ describe('SettingsSections', () => {
     const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
 
     expect(root.textContent).toContain(
-      'Send technical error reports to help developers fix crashes and unexpected failures.',
+      'Send technical error reports. Documents, file names, and folder paths are not sent.',
     );
     expect(errorDiagnosticsButton).not.toBeNull();
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
@@ -388,17 +373,14 @@ describe('SettingsSections', () => {
     const { root, unmount } = await mountSettingsSections();
     const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
     const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
-    const errorDiagnosticsStaticRow = getStaticRowByText(root, 'Error diagnostics');
-
     expect(root.textContent).toContain('Diagnostics are not available in this build.');
-    expect(errorDiagnosticsButton).toBeNull();
+    expect(errorDiagnosticsButton).not.toBeNull();
     expect(errorDiagnosticsRow).not.toBeNull();
-    expect(errorDiagnosticsRow?.tagName).toBe('DIV');
+    expect(errorDiagnosticsRow?.tagName).toBe('BUTTON');
+    expect(errorDiagnosticsButton?.getAttribute('disabled')).toBe('');
     expect(errorDiagnosticsRow?.getAttribute('aria-disabled')).toBe('true');
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
-    expect(errorDiagnosticsStaticRow?.tagName).toBe('DIV');
-
-    errorDiagnosticsStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    errorDiagnosticsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await nextTick();
 
     expect(setDiagnosticsEnabledByUserMock).not.toHaveBeenCalled();
@@ -420,9 +402,7 @@ describe('SettingsSections', () => {
     expect(settings.value.hideStarterWidget).toBe(true);
     expect(starterExamplesRow?.getAttribute('aria-checked')).toBe('false');
 
-    getButtonByText(root, 'Starter examples')?.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
-    );
+    getButtonByText(root, 'Starter examples')?.click();
     await nextTick();
 
     expect(settings.value.hideStarterWidget).toBeUndefined();
@@ -469,7 +449,8 @@ describe('SettingsSections', () => {
 
     // clicking does not trigger a request
     const storageButton = getButtonByText(root, 'More reliable browser storage');
-    expect(storageButton).toBeNull();
+    expect(storageButton).not.toBeNull();
+    expect(storageButton?.getAttribute('disabled')).toBe('');
     await nextTick();
     expect(enableStorageMock).not.toHaveBeenCalled();
 
@@ -490,7 +471,8 @@ describe('SettingsSections', () => {
     expect(root.textContent).toContain('keep backups');
 
     const storageButton = getButtonByText(root, 'More reliable browser storage');
-    expect(storageButton).toBeNull();
+    expect(storageButton).not.toBeNull();
+    expect(storageButton?.getAttribute('disabled')).toBe('');
     expect(enableStorageMock).not.toHaveBeenCalled();
 
     unmount();

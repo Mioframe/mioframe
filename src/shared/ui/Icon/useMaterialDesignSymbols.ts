@@ -6,6 +6,7 @@ import { array, object, string } from 'zod/v4-mini';
 import qs from 'qs';
 import { loadStylesheet } from './loadStylesheet';
 
+// eslint-disable-next-line no-restricted-syntax -- justified low-level browser integration: locates font stylesheet <link> tags, not Vue component coordination
 const searchStylesheetLinks = (href: string) => document.querySelectorAll(`link[href*="${href}"]`);
 
 const awaitFont = async (fontName: string) => {

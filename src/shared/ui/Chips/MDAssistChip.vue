@@ -11,6 +11,10 @@ const emit = defineEmits<{
 defineSlots<{
   leadingIcon?: () => unknown;
 }>();
+
+const onClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -21,7 +25,7 @@ defineSlots<{
     :draggable="draggable"
     :autofocus="autofocus"
     :disabled="disabled"
-    @click="(event) => emit('click', event)"
+    @click="onClick"
   >
     <template v-if="$slots.leadingIcon" #leadingIcon>
       <slot name="leadingIcon" />

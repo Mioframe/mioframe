@@ -7,6 +7,8 @@ description: 'Use this skill before planning or implementing UI/UX changes to ve
 
 Use this skill before planning or implementing user-visible UI or UX changes that may affect component choice, layout, interaction behavior, accessibility, visual states, tokens, or public UI APIs.
 
+This skill owns Material 3 doc compliance. For `src/shared/ui` Material primitives (e.g. `MDList` / `MDListItem` / `MDListSelectionItem`), pair it with the `shared-ui-implementation` skill, which owns Vue implementation structure, DOM-critical attrs, native activation semantics, parent/child styling boundaries, and browser-specific CSS decisions.
+
 ## Activation check
 
 Use this workflow when a task adds, removes, repositions, restyles, or changes the behavior of:

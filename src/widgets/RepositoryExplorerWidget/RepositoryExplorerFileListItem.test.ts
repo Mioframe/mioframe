@@ -2,9 +2,8 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-import type { NonEmptyMenuButtonList } from '@feature/entryManage';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { defineMenuButtonList } from '@shared/ui/Menu';
+import { defineMenuButtonList, type NonEmptyMenuButtonList } from '@shared/ui/Menu';
 
 const hasActionsRef = ref(false);
 const nonEmptyActionButtonsRef = ref<NonEmptyMenuButtonList | null>(
@@ -42,7 +41,7 @@ vi.mock('@entity/fsEntry', () => ({
     name: 'FSEntryMDListItemStub',
     props: {
       name: { type: String, required: true },
-      isButton: { type: Boolean, default: false },
+      isOpenable: { type: Boolean, default: false },
       type: { type: Number, required: true },
       supportingText: { type: String, default: undefined },
     },
@@ -50,9 +49,9 @@ vi.mock('@entity/fsEntry', () => ({
     setup(props, { emit, slots }) {
       return () =>
         h(
-          props.isButton ? 'button' : 'div',
+          props.isOpenable ? 'button' : 'div',
           {
-            ...(props.isButton
+            ...(props.isOpenable
               ? {
                   type: 'button',
                   onClick: () => {
@@ -61,7 +60,7 @@ vi.mock('@entity/fsEntry', () => ({
                 }
               : {}),
           },
-          [props.name, slots.trailingIcon?.()],
+          [props.name, slots.trailingAction?.()],
         );
     },
   }),
@@ -212,6 +211,26 @@ describe('RepositoryExplorerFileListItem', () => {
     await mountItem({ entryType: FSNodeType.File });
 
     expect(capturedShowDocumentActions.at(-1)).toBe(false);
+  });
+
+  it('does not create a primary click target for non-openable file entries that have manage actions', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({ entryType: FSNodeType.File, name: 'file.txt' });
+
+    expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(true);
+    expect(wrapper.element.tagName.toLowerCase()).not.toBe('button');
+    expect(wrapper.find('button:not([data-testid="manage-button"])').exists()).toBe(false);
+  });
+
+  it('does not emit click when a non-openable file entry with manage actions is activated', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({ entryType: FSNodeType.File, name: 'file.txt' });
+
+    await wrapper.trigger('click');
+
+    expect(wrapper.emitted('click')).toBeUndefined();
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

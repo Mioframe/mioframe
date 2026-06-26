@@ -2,7 +2,7 @@
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
 import { PwaInstallSettingsListItem, usePwaInstallAction } from '@feature/pwaInstall';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDList, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 import StorageSettingsSection from './StorageSettingsSection.vue';
@@ -56,29 +56,30 @@ const onClickAboutMioframe = () => {
     <StorageSettingsSection />
 
     <SettingsSection v-if="isSettingsEntryVisible" title="App">
-      <MDListContainer is="div">
+      <MDList tag="div">
         <PwaInstallSettingsListItem />
-      </MDListContainer>
+      </MDList>
     </SettingsSection>
 
     <SettingsSection title="Privacy & diagnostics">
-      <MDListContainer is="div">
+      <MDList tag="div">
         <SettingsCheckboxListItem
           headline="Error diagnostics"
           :supporting-text="
             SENTRY_DIAGNOSTICS_AVAILABLE
-              ? 'Send technical error reports to help developers fix crashes and unexpected failures.'
+              ? 'Send technical error reports. Documents, file names, and folder paths are not sent.'
               : 'Diagnostics are not available in this build.'
           "
+          :lines="3"
           :checked="SENTRY_DIAGNOSTICS_AVAILABLE ? diagnosticsEnabled : false"
           :disabled="!SENTRY_DIAGNOSTICS_AVAILABLE"
           @change="onToggleDiagnostics"
         />
-      </MDListContainer>
+      </MDList>
     </SettingsSection>
 
     <SettingsSection title="Integrations">
-      <MDListContainer is="div">
+      <MDList tag="div">
         <SettingsCheckboxListItem
           headline="Google Drive"
           :supporting-text="
@@ -94,46 +95,36 @@ const onClickAboutMioframe = () => {
           :disabled="!GOOGLE_DRIVE_INTEGRATION_AVAILABLE"
           @change="onToggleGoogleDrive"
         />
-      </MDListContainer>
+      </MDList>
     </SettingsSection>
 
     <SettingsSection title="Home screen">
-      <MDListContainer is="div">
+      <MDList tag="div">
         <SettingsCheckboxListItem
           headline="Starter examples"
           supporting-text="Show starter examples on the home screen."
           :checked="settings.hideStarterWidget !== true"
           @change="onToggleStarterExamples"
         />
-      </MDListContainer>
+      </MDList>
     </SettingsSection>
 
     <SettingsSection title="Help">
-      <MDListContainer is="div">
-        <MDListItem
-          is="button"
-          type="button"
-          headline="Privacy policy"
-          @click="onClickPrivacyPolicy"
-        >
+      <MDList tag="div">
+        <MDListItem mode="single-action" label-text="Privacy policy" @action="onClickPrivacyPolicy">
           <template #supportingText> Read how Mioframe handles privacy and diagnostics. </template>
         </MDListItem>
 
-        <MDListItem is="button" type="button" headline="Help" @click="onClickHelp">
+        <MDListItem mode="single-action" label-text="Help" @action="onClickHelp">
           <template #supportingText>
             Read data storage, backup, restore, and troubleshooting guides.
           </template>
         </MDListItem>
 
-        <MDListItem
-          is="button"
-          type="button"
-          headline="About Mioframe"
-          @click="onClickAboutMioframe"
-        >
+        <MDListItem mode="single-action" label-text="About Mioframe" @action="onClickAboutMioframe">
           <template #supportingText>Version and build information.</template>
         </MDListItem>
-      </MDListContainer>
+      </MDList>
     </SettingsSection>
   </div>
 </template>

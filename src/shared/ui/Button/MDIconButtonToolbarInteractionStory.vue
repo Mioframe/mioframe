@@ -40,8 +40,8 @@ const onPointerLeave = (buttonId: ToolbarButtonId) => {
         v-for="buttonId in buttonOrder"
         :key="buttonId"
         class="md-icon-button-toolbar-interaction__button"
-        @pointerenter="() => onPointerEnter(buttonId)"
-        @pointerleave="() => onPointerLeave(buttonId)"
+        @pointerenter="onPointerEnter(buttonId)"
+        @pointerleave="onPointerLeave(buttonId)"
       >
         <MDIconButton
           :tooltip="buttonId"
@@ -54,7 +54,7 @@ const onPointerLeave = (buttonId: ToolbarButtonId) => {
                   ? 'sort'
                   : 'search'
           "
-          @click="() => onClick(buttonId)"
+          @click="onClick(buttonId)"
         />
       </span>
     </div>

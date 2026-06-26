@@ -13,7 +13,7 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<{
-  trailingIcon(): unknown;
+  trailingAction(): unknown;
 }>();
 
 const { session } = toRefs(props);
@@ -28,17 +28,18 @@ const onListItemClick = () => {
 
 <template>
   <MDListItem
-    is="button"
-    :headline="headline"
+    :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
+    :label-text="headline"
     :supporting-text="supportingText"
-    @click="onListItemClick"
+    leading-type="avatar"
+    @action="onListItemClick"
   >
-    <template #leadingAvatarContainer>
+    <template #leading>
       <GoogleSessionAvatar :profile-image-url="session.profile.picture" />
     </template>
 
-    <template v-if="slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" />
+    <template v-if="slots.trailingAction" #trailingAction>
+      <slot name="trailingAction" />
     </template>
   </MDListItem>
 </template>
