@@ -402,7 +402,7 @@ export const addDatabaseItemValues = async (
 export const findDatabaseRow = (root: Page | Locator, value: string): Locator =>
   root.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
 
-const findListRow = (root: Page | Locator, value: string | RegExp): Locator =>
+export const findListRow = (root: Page | Locator, value: string | RegExp): Locator =>
   root.getByRole('list').locator(':scope > *').filter({ hasText: value }).first();
 
 export const editDatabaseItem = async (
@@ -486,7 +486,11 @@ export const selectView = async (page: Page, name: string | RegExp) => {
   const sheet = await openViewsSheet(page);
   const row = findListRow(sheet, name);
   await row.click();
-  await expect(row.getByRole('checkbox')).toBeChecked();
+  const nameRegExp = typeof name === 'string' ? new RegExp(name, 'i') : name;
+  await expect(sheet.getByRole('button', { name: nameRegExp })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
   await closeBottomSheet(page, /database views sheet/i);
 };
 

@@ -37,8 +37,8 @@ test('toggles Error diagnostics in Settings with Space and Enter when available'
   const diagnosticsCheckbox = page.getByRole('checkbox', { name: /error diagnostics/i });
   await expect(diagnosticsCheckbox).toBeVisible();
 
-  const disabled = await diagnosticsCheckbox.getAttribute('aria-disabled');
-  if (disabled === 'true') {
+  const disabled = await diagnosticsCheckbox.isDisabled();
+  if (disabled) {
     await expect(diagnosticsCheckbox).toHaveAttribute('aria-checked', 'false');
     return;
   }

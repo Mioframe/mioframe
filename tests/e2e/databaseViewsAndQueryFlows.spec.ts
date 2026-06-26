@@ -17,6 +17,7 @@ import {
   dismissStorageOnboarding,
   expectDatabaseValuesInOrder,
   findDatabaseRow,
+  findListRow,
   launchApp,
   openDirectory,
   openDocumentFromExplorer,
@@ -51,9 +52,10 @@ test('creates, renames, selects, and removes views through the view settings she
   await addDatabaseItem(page, propertyName, betaValue);
 
   const initialViewSheet = await openViewsSheet(page);
-  await expect(
-    initialViewSheet.getByRole('button', { name: /default view/i }).getByRole('checkbox'),
-  ).toBeChecked();
+  await expect(initialViewSheet.getByRole('button', { name: /default view/i })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
   await closeBottomSheet(page, /database views sheet/i);
 
   const secondViewName = await addView(page, createUniqueName('secondary view'));
@@ -62,14 +64,10 @@ test('creates, renames, selects, and removes views through the view settings she
   await selectView(page, renamedViewName);
   const selectedViewSheet = await openViewsSheet(page);
   await expect(
-    selectedViewSheet
-      .getByRole('button', { name: new RegExp(renamedViewName, 'i') })
-      .getByRole('checkbox'),
-  ).toBeChecked();
+    selectedViewSheet.getByRole('button', { name: new RegExp(renamedViewName, 'i') }),
+  ).toHaveAttribute('aria-current', 'true');
 
-  const selectedViewRow = selectedViewSheet
-    .getByRole('button', { name: new RegExp(renamedViewName, 'i') })
-    .first();
+  const selectedViewRow = findListRow(selectedViewSheet, renamedViewName);
   await selectedViewRow.getByRole('button', { name: /settings view/i }).click();
   await page.getByRole('menuitem', { name: /^remove$/i }).click();
 
@@ -78,17 +76,19 @@ test('creates, renames, selects, and removes views through the view settings she
   await removeDialog.getByRole('button', { name: /^remove$/i }).click();
   await expect(removeDialog).toHaveCount(0);
 
-  await expect(
-    selectedViewSheet.getByRole('button', { name: /default view/i }).getByRole('checkbox'),
-  ).toBeChecked();
+  await expect(selectedViewSheet.getByRole('button', { name: /default view/i })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
   await closeBottomSheet(page, /database views sheet/i);
 
   await closeDocumentPane(page);
   await openDocumentFromExplorer(page, documentName);
   const reopenedViewSheet = await openViewsSheet(page);
-  await expect(
-    reopenedViewSheet.getByRole('button', { name: /default view/i }).getByRole('checkbox'),
-  ).toBeChecked();
+  await expect(reopenedViewSheet.getByRole('button', { name: /default view/i })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
   await closeBottomSheet(page, /database views sheet/i);
 });
 
