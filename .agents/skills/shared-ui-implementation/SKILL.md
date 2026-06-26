@@ -1,6 +1,6 @@
 ---
 name: shared-ui-implementation
-description: 'Use this skill when implementing or reviewing shared UI / Material primitives (src/shared/ui) to keep Vue component composition, DOM-critical attrs, browser CSS, and parent/child styling boundaries consistent with the project contract.'
+description: 'Use this skill before implementing or reviewing src/shared/ui primitives, especially any new or materially changed public shared MD* component. Enforces the shared UI/component-family stop condition, Vue component contract, explicit DOM-critical attrs, native activation semantics, anatomy ownership, parent/child styling boundaries, browser CSS rules, and required focused verification.'
 ---
 
 # Shared UI implementation
