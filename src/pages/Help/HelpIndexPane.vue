@@ -19,15 +19,17 @@ const onSelectArticle = async (slug: string) => {
 
 <template>
   <MDPane allow-bottom-navigation>
-    <MDAppBar headline="Help">
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
+    <template #topBar>
+      <MDAppBar headline="Help">
+        <template #leadingButton>
+          <slot name="navigationButton" />
+        </template>
 
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+    </template>
 
     <div class="help-index-pane__content">
       <p class="help-index-pane__summary">

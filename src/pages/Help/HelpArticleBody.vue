@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch } from 'vue';
-import { usePaneContainer } from '@shared/ui/Layout';
+import { usePaneScrollContainer } from '@shared/ui/Layout';
 import { MarkdownContent } from '@shared/ui/MarkdownContent';
 import { stripMarkdownTitle } from './stripMarkdownTitle';
 
@@ -22,7 +22,7 @@ const onContentClick = (event: MouseEvent) => {
 
 const contentEl = useTemplateRef<HTMLElement>('contentEl');
 
-const paneContainer = usePaneContainer();
+const paneContainer = usePaneScrollContainer();
 
 /**
  * Finds the heading element matching `anchor` inside this component's own rendered Markdown

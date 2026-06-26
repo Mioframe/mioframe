@@ -14,7 +14,7 @@ vi.mock('@shared/ui/Layout', () => ({
   MDPane: defineComponent({
     name: 'MDPaneStub',
     setup(_props, { slots }) {
-      return () => h('section', slots.default?.());
+      return () => h('section', [slots.topBar?.(), slots.default?.()]);
     },
   }),
 }));
@@ -37,7 +37,7 @@ vi.mock('@shared/ui/AppBar', () => ({
 vi.mock('@widget/SettingsSections', () => ({
   SettingsSections: defineComponent({
     name: 'SettingsSectionsStub',
-    emits: ['selectPrivacyPolicy', 'selectHelp'],
+    emits: ['selectPrivacyPolicy', 'selectHelp', 'selectAboutMioframe'],
     setup(_props, { emit }) {
       return () =>
         h('div', [
@@ -60,6 +60,16 @@ vi.mock('@widget/SettingsSections', () => ({
               },
             },
             'Select help',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectAboutMioframe');
+              },
+            },
+            'Select about Mioframe',
           ),
         ]);
     },
@@ -109,6 +119,17 @@ describe('SettingsPane', () => {
     await nextTick();
 
     expect(open).toHaveBeenCalledWith('helpIndex', {}, { target: 'helpIndex' });
+
+    unmount();
+  });
+
+  it('opens the about Mioframe pane from Settings', async () => {
+    const { root, unmount } = await mountSettingsPane();
+
+    root.querySelectorAll('button')[2]?.click();
+    await nextTick();
+
+    expect(open).toHaveBeenCalledWith('aboutMioframe', {}, { target: 'aboutMioframe' });
 
     unmount();
   });

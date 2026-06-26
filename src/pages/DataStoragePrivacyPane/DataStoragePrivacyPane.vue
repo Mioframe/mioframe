@@ -15,15 +15,17 @@ const privacyPolicyContent = computed(() => privacyPolicyMarkdown.replace(/^# .*
 
 <template>
   <MDPane class="data-storage-privacy-pane" allow-bottom-navigation>
-    <MDAppBar headline="Privacy policy">
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
+    <template #topBar>
+      <MDAppBar headline="Privacy policy">
+        <template #leadingButton>
+          <slot name="navigationButton" />
+        </template>
 
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+    </template>
 
     <div class="data-storage-privacy-pane__content">
       <MarkdownContent

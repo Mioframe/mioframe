@@ -47,6 +47,16 @@ Components that change behavior across viewport classes must document:
 
 Navigation bar, navigation rail, and navigation drawer choices should follow Material adaptive guidance and product information architecture. Do not choose a navigation surface by visual preference alone.
 
+## Pane scaffold layout
+
+`MDPane` (`src/shared/ui/Layout/MDPane.vue`) is the Material pane primitive. It owns the pane shell, the visual pane surface, and the split between a non-scrolling top bar region and scrollable body content:
+
+- `MDPane #topBar` is the optional pane-local top bar region (`.md-pane__top-bar`), rendered outside the scroll container. Place a pane-scoped `MDAppBar` here, not in the default slot.
+- `MDPane` default slot is the scrollable pane body (`.md-pane__content`).
+- `usePaneScrollContainer` (from `@shared/ui/Layout`) resolves to the `.md-pane__content` element and is the target for pane-local scroll reads/writes (anchor scrolling, FAB/toolbar/bottom-sheet positioning).
+- `MDPane` does not import or know about `MDAppBar`; pages decide whether a pane has a top bar and what goes in it.
+- Global app bars that apply above all panes belong at the scaffold level (`MDSplitLayout` composition), not inside `MDPane`.
+
 ## Verification
 
 Adaptive layout changes need browser verification at the affected sizes. Prefer deterministic Storybook surfaces for shared UI and focused Playwright screenshots when the visual layout is the invariant.

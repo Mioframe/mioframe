@@ -62,11 +62,13 @@ const onCreatedStarterExampleDocument = ({
 
 <template>
   <MDPane class="home" allow-bottom-navigation>
-    <MDAppBar>
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
+    <template #topBar>
+      <MDAppBar>
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+    </template>
 
     <PwaInstallWidget v-if="isHomeWidgetVisible" />
 
