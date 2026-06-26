@@ -113,12 +113,20 @@ export const E2E_SCENARIO_SCOPES = [
       'src/entities/databaseFilter/',
       'src/entities/databaseSorting/',
     ],
-    specs: ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
+    specs: [
+      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+      'tests/e2e/reorderSurfaceDragSmoke.spec.ts',
+    ],
   },
   {
     name: 'repository explorer screen',
     sourcePrefixes: ['src/widgets/RepositoryExplorerWidget/', 'src/pages/RepoExplorer/'],
     specs: ['tests/e2e/repoExplorerScreen.spec.ts', 'tests/e2e/repositoryFlows.spec.ts'],
+  },
+  {
+    name: 'help navigation',
+    sourcePrefixes: ['src/pages/Help/'],
+    specs: ['tests/e2e/helpNavigation.spec.ts'],
   },
   {
     name: 'directory and document flows',
@@ -148,7 +156,13 @@ function isStoriesFile(filePath) {
 }
 
 function isTestOnlyPath(filePath) {
-  return filePath.endsWith('.test.ts') || filePath.endsWith('.testUtils.ts');
+  return (
+    filePath.endsWith('.test.ts') ||
+    filePath.endsWith('.spec.ts') ||
+    filePath.endsWith('.test.mjs') ||
+    filePath.endsWith('.spec.mjs') ||
+    filePath.endsWith('.testUtils.ts')
+  );
 }
 
 /**
@@ -262,7 +276,7 @@ export function validateE2EScenarioRegistry(overrides = {}) {
   const standaloneSpecs = overrides.standaloneSpecs ?? APP_E2E_STANDALONE_SPECS;
   const specDir = overrides.specDir ?? APP_E2E_SPEC_DIR;
   const errors = [];
-  const registrySpecs = getAllRegistrySpecs(scenarios);
+  const registrySpecs = getAllRegistrySpecs(scenarios).map(String);
 
   for (const spec of registrySpecs) {
     if (isVisualE2ESpecPath(spec)) {

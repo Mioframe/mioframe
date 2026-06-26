@@ -56,6 +56,12 @@ describe('isUnmappedSourcePath', () => {
     expect(isUnmappedSourcePath('tests/e2e/helpers.ts')).toBe(false);
     expect(isUnmappedSourcePath('src/entities/googleSession/index.test.ts')).toBe(false);
   });
+
+  it('does not flag unmapped spec/test files under src/** as unmapped product source', () => {
+    expect(isUnmappedSourcePath('src/entities/googleSession/example.spec.ts')).toBe(false);
+    expect(isUnmappedSourcePath('src/entities/googleSession/example.test.mjs')).toBe(false);
+    expect(isUnmappedSourcePath('src/entities/googleSession/example.spec.mjs')).toBe(false);
+  });
 });
 
 describe('validateE2EScenarioRegistry', () => {
@@ -161,6 +167,19 @@ describe('resolveAppE2EPlan', () => {
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('unclassified src path');
+  });
+
+  it('runs full app e2e for shared/low-level changes regardless of test-only changes elsewhere', () => {
+    const plan = resolveAppE2EPlan(['src/shared/service/serviceWorker.ts']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('low-level path src/shared/service/serviceWorker.ts');
+  });
+
+  it('does not run full app e2e for unmapped src spec/test files', () => {
+    expect(resolveAppE2EPlan(['src/entities/googleSession/example.spec.ts']).mode).toBe('skip');
+    expect(resolveAppE2EPlan(['src/entities/googleSession/example.test.mjs']).mode).toBe('skip');
+    expect(resolveAppE2EPlan(['src/entities/googleSession/example.spec.mjs']).mode).toBe('skip');
   });
 
   it('runs full app e2e for non-spec e2e support file changes', () => {
