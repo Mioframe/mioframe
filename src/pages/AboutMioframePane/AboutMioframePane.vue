@@ -14,6 +14,7 @@ import { MDAppBar } from '@shared/ui/AppBar';
 import { MDButton } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
 import { useSnackbar } from '@shared/ui/Snackbar';
+import { getDiagnosticsText, getPlatformFromUserAgentData } from './diagnosticsText';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -24,37 +25,20 @@ const { diagnosticsEnabled } = useDiagnosticsSettings();
 const { addSnackbar } = useSnackbar();
 
 const formattedBuildDate = computed(() => dayjs(APP_BUILD_DATE).format('lll'));
-const getPlatform = () => {
-  const userAgentData = Reflect.get(navigator, 'userAgentData');
-  if (!userAgentData || typeof userAgentData !== 'object') {
-    return undefined;
-  }
 
-  const platform = Reflect.get(userAgentData, 'platform');
-  return typeof platform === 'string' && platform ? platform : undefined;
-};
-
-const diagnosticsText = computed(() => {
-  const diagnosticsEffectivelyEnabled =
-    SENTRY_DIAGNOSTICS_AVAILABLE && diagnosticsEnabled.value === true;
-  const lines = [
-    `App: ${APP_NAME}`,
-    `Version: ${APP_VERSION}`,
-    `Build date: ${APP_BUILD_DATE}`,
-    ...(APP_BUILD_ID ? [`Build id: ${APP_BUILD_ID}`] : []),
-    `Diagnostics available: ${SENTRY_DIAGNOSTICS_AVAILABLE ? 'yes' : 'no'}`,
-    `Diagnostics enabled: ${diagnosticsEffectivelyEnabled ? 'yes' : 'no'}`,
-    `Google Drive available: ${GOOGLE_DRIVE_INTEGRATION_AVAILABLE ? 'yes' : 'no'}`,
-    `Browser: ${navigator.userAgent}`,
-  ];
-  const platform = getPlatform();
-
-  if (platform) {
-    lines.push(`Platform: ${platform}`);
-  }
-
-  return lines.join('\n');
-});
+const diagnosticsText = computed(() =>
+  getDiagnosticsText({
+    appName: APP_NAME,
+    appVersion: APP_VERSION,
+    appBuildDate: APP_BUILD_DATE,
+    appBuildId: APP_BUILD_ID,
+    diagnosticsAvailable: SENTRY_DIAGNOSTICS_AVAILABLE,
+    diagnosticsEnabled: SENTRY_DIAGNOSTICS_AVAILABLE && diagnosticsEnabled.value === true,
+    googleDriveAvailable: GOOGLE_DRIVE_INTEGRATION_AVAILABLE,
+    userAgent: navigator.userAgent,
+    platform: getPlatformFromUserAgentData(Reflect.get(navigator, 'userAgentData')),
+  }),
+);
 
 const onClickCopyDiagnostics = async () => {
   if (!('clipboard' in navigator)) {
@@ -73,15 +57,17 @@ const onClickCopyDiagnostics = async () => {
 
 <template>
   <MDPane class="about-mioframe-pane" allow-bottom-navigation>
-    <MDAppBar headline="About Mioframe">
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
+    <template #topBar>
+      <MDAppBar headline="About Mioframe">
+        <template #leadingButton>
+          <slot name="navigationButton" />
+        </template>
 
-      <template #trailingElements>
-        <slot name="appBarTrailing" />
-      </template>
-    </MDAppBar>
+        <template #trailingElements>
+          <slot name="appBarTrailing" />
+        </template>
+      </MDAppBar>
+    </template>
 
     <div class="about-mioframe-pane__content">
       <section class="about-mioframe-pane__section" aria-label="About Mioframe details">

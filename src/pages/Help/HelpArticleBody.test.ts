@@ -7,8 +7,10 @@ const paneContainerEl = document.createElement('div');
 const scrollTo = vi.fn();
 paneContainerEl.scrollTo = scrollTo;
 
+let currentPaneContainer: HTMLElement | undefined = paneContainerEl;
+
 vi.mock('@shared/ui/Layout', () => ({
-  usePaneContainer: () => computed(() => paneContainerEl),
+  usePaneScrollContainer: () => computed(() => currentPaneContainer),
 }));
 
 const scrollIntoView = vi.fn();
@@ -28,6 +30,7 @@ describe('HelpArticleBody', () => {
   afterEach(() => {
     scrollIntoView.mockClear();
     scrollTo.mockClear();
+    currentPaneContainer = paneContainerEl;
   });
 
   it('renders deterministic heading ids for in-page anchor scrolling', () => {
@@ -50,7 +53,20 @@ describe('HelpArticleBody', () => {
     await nextTick();
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     expect(scrollIntoView.mock.instances[0]).toBe(wrapper.find('#step-one').element);
+  });
+
+  it('emits contentClick when the rendered content is clicked', async () => {
+    const wrapper = mount(HelpArticleBody, {
+      props: {
+        markdown: '# Guide\n\n## Step One\n\nText.',
+      },
+    });
+
+    await wrapper.find('.help-article-body').trigger('click');
+
+    expect(wrapper.emitted('contentClick')).toHaveLength(1);
   });
 
   it('falls back to scrolling the pane container to the top when no anchor is provided', () => {
@@ -90,6 +106,20 @@ describe('HelpArticleBody', () => {
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
     expect(scrollIntoView.mock.instances[0]).toBe(wrapper.find('#step-two').element);
+  });
+
+  it('does not throw when scrolling to top without an ancestor pane scroll container', () => {
+    currentPaneContainer = undefined;
+
+    expect(() => {
+      mount(HelpArticleBody, {
+        props: {
+          markdown: '# Guide\n\n## Step One\n\nText.',
+        },
+      });
+    }).not.toThrow();
+
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
   it('scrolls the pane container to top when navigating to a different article without an anchor', async () => {
