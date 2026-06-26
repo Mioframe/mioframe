@@ -33,11 +33,21 @@ Local folders can become unavailable if:
 
 If that happens, Mioframe may no longer be able to open the affected files until access is granted again or the files are restored outside the app.
 
-## Google Drive
+## How Mioframe stores documents: `.mf` files
 
-Google Drive may be available only when the integration is enabled.
+Inside a local folder or Browser Storage, Mioframe keeps each document's data in Automerge storage chunks with the `.mf` file extension. A single document is typically represented by more than one `.mf` chunk, not one file per document.
 
-When you use Google Drive, the data remains subject to your Google Account and Google Drive settings, permissions, and availability.
+`.mf` files are internal storage for the whole Mioframe space in that folder, not a standalone exported document. Treat them as part of the folder's storage, not as something to move, copy, or share individually:
+
+- Move or back up `.mf` files only as part of moving or backing up the entire Mioframe space folder.
+- Do not pick out a single `.mf` file expecting it to represent one document — open or move the whole folder instead.
+- To get a single, self-contained file for one document, use **Export JSON** instead of copying a `.mf` file.
+
+## Google Drive and other synced or shared folders
+
+Google Drive may be available only when the integration is enabled, and the same applies to any folder that is itself synced or shared by another tool (a synced cloud folder, a shared local folder, and so on).
+
+Access to that data is controlled by the storage provider or folder permissions (your Google Account, Drive sharing settings, or your operating system's folder permissions), not by Mioframe. Mioframe does not provide its own Share, Invite, participant management, or permissions management, and it has no separate collaboration mode. If a folder is shared with someone through the storage provider, that person gets the access the provider grants them — Mioframe is not aware of, and does not manage, who else can reach that folder.
 
 ## Backup expectations
 

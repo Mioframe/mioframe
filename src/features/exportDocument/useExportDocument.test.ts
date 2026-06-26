@@ -66,7 +66,7 @@ describe('useExportDocument', () => {
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
-      message: 'Could not export the document',
+      message: 'Could not export JSON',
       code: 'exportDocument.documentExportFailed',
     });
     if (!(error instanceof DomainError)) throw new Error('expected DomainError');
@@ -143,7 +143,7 @@ describe('useExportDocument', () => {
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
-      message: 'Could not export the document',
+      message: 'Could not export JSON',
       code: 'exportDocument.documentExportFailed',
     });
     if (!(error instanceof DomainError)) throw new Error('expected DomainError');
@@ -152,7 +152,7 @@ describe('useExportDocument', () => {
   });
 
   it('preserves an existing DomainError when saving fails', async () => {
-    const cause = new DomainError('Could not export the document');
+    const cause = new DomainError('Could not export JSON');
     fileSaveMock.mockRejectedValueOnce(cause);
 
     const { saveJsonFile } = useExportDocument();

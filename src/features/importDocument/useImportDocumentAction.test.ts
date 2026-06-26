@@ -186,7 +186,7 @@ describe('useImportDocumentAction', () => {
     await expect(importDocument('/documents')).resolves.toBe('document-id');
     expect(importDocumentFromJsonFileMock).toHaveBeenCalledWith('/documents', file);
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Document imported into this Mioframe folder',
+      text: 'JSON imported as a new Mioframe document.',
     });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
@@ -372,7 +372,7 @@ describe('useImportDocumentAction', () => {
     expect(importDocumentFromJsonFileMock).toHaveBeenNthCalledWith(2, '/documents', file);
     expect(pickJsonFileMock).toHaveBeenCalledTimes(1);
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Document imported into this Mioframe folder',
+      text: 'JSON imported as a new Mioframe document.',
     });
   });
 
@@ -408,7 +408,7 @@ describe('useImportDocumentAction', () => {
       );
       expect(importDocumentFromJsonPathMock).toHaveBeenCalledWith('/documents', '/folder/doc.json');
       expect(addSnackbarMock).toHaveBeenCalledWith({
-        text: 'Document imported into this Mioframe folder',
+        text: 'JSON imported as a new Mioframe document.',
       });
       expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     });
@@ -469,7 +469,7 @@ describe('useImportDocumentAction', () => {
       ).resolves.toBe('dup-id');
       expect(importDocumentFromJsonPathMock).toHaveBeenCalledTimes(1);
       expect(addSnackbarMock).toHaveBeenCalledWith({
-        text: 'Document imported into this Mioframe folder',
+        text: 'JSON imported as a new Mioframe document.',
       });
     });
 
@@ -493,7 +493,7 @@ describe('useImportDocumentAction', () => {
       );
       expect(importDocumentFromJsonPathMock).toHaveBeenCalledTimes(2);
       expect(addSnackbarMock).toHaveBeenCalledWith({
-        text: 'Document imported into this Mioframe folder',
+        text: 'JSON imported as a new Mioframe document.',
       });
       expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     });
