@@ -503,6 +503,11 @@ function getVitestScope(changedFiles) {
   const scope = [];
 
   for (const filePath of changedFiles) {
+    if (filePath.startsWith('tests/e2e/')) {
+      // vitest.config.ts excludes tests/e2e/** entirely; Playwright specs there are not vitest scope.
+      continue;
+    }
+
     if (
       (filePath.endsWith('.test.ts') ||
         filePath.endsWith('.spec.ts') ||
