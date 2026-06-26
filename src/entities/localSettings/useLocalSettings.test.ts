@@ -192,4 +192,29 @@ describe('useLocalSettings', () => {
     const migrated = capturedOptions.serializer.read({});
     expect(migrated.pwaInstallWidgetDismissedUntil).toBeUndefined();
   });
+
+  it('defaults diagnosticsErrorPromptDismissedVersion to undefined', async () => {
+    useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
+      data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
+    }));
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    const { settings } = useLocalSettings();
+
+    expect(settings.value.diagnosticsErrorPromptDismissedVersion).toBeUndefined();
+  });
+
+  it('persists a diagnosticsErrorPromptDismissedVersion string without coercing it', async () => {
+    useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
+      data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
+    }));
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    const { settings } = useLocalSettings();
+
+    settings.value.diagnosticsErrorPromptDismissedVersion = '1.2.3';
+    expect(settings.value.diagnosticsErrorPromptDismissedVersion).toBe('1.2.3');
+  });
 });

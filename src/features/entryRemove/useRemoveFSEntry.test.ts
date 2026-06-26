@@ -3,13 +3,19 @@ import { useRemoveFSEntry } from './useRemoveFSEntry';
 import { DomainError } from '@shared/lib/error';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 
-const { addSnackbarMock, confirmMock, removeEntryMock, captureDiagnosticExceptionMock } =
-  vi.hoisted(() => ({
-    addSnackbarMock: vi.fn(),
-    confirmMock: vi.fn(),
-    removeEntryMock: vi.fn(),
-    captureDiagnosticExceptionMock: vi.fn(),
-  }));
+const {
+  addSnackbarMock,
+  confirmMock,
+  removeEntryMock,
+  captureDiagnosticExceptionMock,
+  requestDiagnosticsErrorPromptMock,
+} = vi.hoisted(() => ({
+  addSnackbarMock: vi.fn(),
+  confirmMock: vi.fn(),
+  removeEntryMock: vi.fn(),
+  captureDiagnosticExceptionMock: vi.fn(),
+  requestDiagnosticsErrorPromptMock: vi.fn(),
+}));
 
 vi.mock('@entity/mountedDirectories', () => ({
   useFileSystem: () => ({
@@ -33,12 +39,19 @@ vi.mock('@shared/lib/diagnostics', () => ({
   captureDiagnosticException: captureDiagnosticExceptionMock,
 }));
 
+vi.mock('@feature/diagnosticsErrorPrompt', () => ({
+  useDiagnosticsErrorPromptTrigger: () => ({
+    requestDiagnosticsErrorPrompt: requestDiagnosticsErrorPromptMock,
+  }),
+}));
+
 describe('useRemoveFSEntry', () => {
   beforeEach(() => {
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
     removeEntryMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
+    requestDiagnosticsErrorPromptMock.mockReset();
   });
 
   it('uses basename-only confirmation copy for removal', async () => {
@@ -79,6 +92,7 @@ describe('useRemoveFSEntry', () => {
     expect(reportedError.cause).toBe(error);
     expect(reportedError.message).not.toContain('/docs');
     expect(reportedError.message).not.toContain('gd-123');
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
   });
 
   it('preserves VfsError as raw cause for non-recursive remove failures', async () => {
@@ -136,6 +150,7 @@ describe('useRemoveFSEntry', () => {
     });
     expect(reportedError.cause).toBe(recursiveError);
     expect(reportedError.message).not.toContain('/docs');
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
   });
 
   it('preserves upstream error as raw cause for recursive removal failures', async () => {
@@ -196,6 +211,7 @@ describe('useRemoveFSEntry', () => {
     expect(removeEntryMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
   });
 
   it('does not report when the directory is not empty and the user declines recursive removal', async () => {
@@ -210,5 +226,6 @@ describe('useRemoveFSEntry', () => {
     expect(removeEntryMock).toHaveBeenCalledWith('/docs/folder');
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
   });
 });

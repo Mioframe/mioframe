@@ -7,6 +7,7 @@ import { RepositoryImportErrorCode } from '@shared/service';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
+import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
 import { useImportDocument } from './useImportDocument';
 
@@ -28,6 +29,7 @@ export const useImportDocumentAction = () => {
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
   const { requestAccess } = useFileSystemAccessPermissionBroker();
+  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
 
   const reportImportError = (error: unknown, diagnosticsAction: string) => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
@@ -52,6 +54,7 @@ export const useImportDocumentAction = () => {
         feature: 'documentImport',
         action: diagnosticsAction,
       });
+      requestDiagnosticsErrorPrompt();
     }
   };
 

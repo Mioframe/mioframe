@@ -4,12 +4,17 @@ import { ref } from 'vue';
 const settings = ref<{
   diagnosticsEnabled?: boolean;
   diagnosticsConsentRequested?: boolean;
+  diagnosticsErrorPromptDismissedVersion?: string;
 }>({});
 
 vi.mock('./useLocalSettings', () => ({
   useLocalSettings: () => ({
     settings,
   }),
+}));
+
+vi.mock('@shared/config', () => ({
+  APP_VERSION: 'test-version',
 }));
 
 describe('useDiagnosticsSettings', () => {
@@ -32,42 +37,66 @@ describe('useDiagnosticsSettings', () => {
     expect(diagnosticsSettings.diagnosticsConsentRequested.value).toBe(true);
   });
 
-  it('acceptDiagnosticsConsent sets both fields to true', async () => {
+  it('isDiagnosticsErrorPromptDismissed is false when dismissed version does not match the current app version', async () => {
     const { useDiagnosticsSettings } = await import('./useDiagnosticsSettings');
 
-    useDiagnosticsSettings().acceptDiagnosticsConsent();
+    settings.value = { diagnosticsErrorPromptDismissedVersion: 'old-version' };
+
+    expect(useDiagnosticsSettings().isDiagnosticsErrorPromptDismissed.value).toBe(false);
+  });
+
+  it('isDiagnosticsErrorPromptDismissed is true when dismissed version matches the current app version', async () => {
+    const { useDiagnosticsSettings } = await import('./useDiagnosticsSettings');
+
+    settings.value = { diagnosticsErrorPromptDismissedVersion: 'test-version' };
+
+    expect(useDiagnosticsSettings().isDiagnosticsErrorPromptDismissed.value).toBe(true);
+  });
+
+  it('setDiagnosticsEnabledByUser(true) enables diagnostics, marks consent requested, and dismisses the prompt', async () => {
+    const { useDiagnosticsSettings } = await import('./useDiagnosticsSettings');
+
+    useDiagnosticsSettings().setDiagnosticsEnabledByUser(true);
 
     expect(settings.value).toEqual({
       diagnosticsEnabled: true,
       diagnosticsConsentRequested: true,
+      diagnosticsErrorPromptDismissedVersion: 'test-version',
     });
   });
 
-  it('rejectDiagnosticsConsent disables diagnostics and marks consent requested', async () => {
+  it('setDiagnosticsEnabledByUser(false) disables diagnostics, marks consent requested, and dismisses the prompt', async () => {
     const { useDiagnosticsSettings } = await import('./useDiagnosticsSettings');
 
-    useDiagnosticsSettings().rejectDiagnosticsConsent();
+    useDiagnosticsSettings().setDiagnosticsEnabledByUser(false);
 
     expect(settings.value).toEqual({
       diagnosticsEnabled: false,
       diagnosticsConsentRequested: true,
+      diagnosticsErrorPromptDismissedVersion: 'test-version',
     });
   });
 
-  it('setDiagnosticsEnabledByUser always marks consent requested', async () => {
+  it('enableDiagnosticsFromErrorPrompt enables diagnostics and dismisses the prompt', async () => {
     const { useDiagnosticsSettings } = await import('./useDiagnosticsSettings');
-    const diagnosticsSettings = useDiagnosticsSettings();
 
-    diagnosticsSettings.setDiagnosticsEnabledByUser(true);
+    useDiagnosticsSettings().enableDiagnosticsFromErrorPrompt();
+
     expect(settings.value).toEqual({
       diagnosticsEnabled: true,
       diagnosticsConsentRequested: true,
+      diagnosticsErrorPromptDismissedVersion: 'test-version',
     });
+  });
 
-    diagnosticsSettings.setDiagnosticsEnabledByUser(false);
+  it('dismissDiagnosticsErrorPrompt marks consent requested and dismisses the prompt without enabling diagnostics', async () => {
+    const { useDiagnosticsSettings } = await import('./useDiagnosticsSettings');
+
+    useDiagnosticsSettings().dismissDiagnosticsErrorPrompt();
+
     expect(settings.value).toEqual({
-      diagnosticsEnabled: false,
       diagnosticsConsentRequested: true,
+      diagnosticsErrorPromptDismissedVersion: 'test-version',
     });
   });
 });
