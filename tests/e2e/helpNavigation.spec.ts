@@ -70,7 +70,8 @@ test('the pane-local app bar stays fixed while the article body scrolls', async 
 
   const topBarBoxAfter = await topBar.boundingBox();
   expect(topBarBoxAfter).not.toBeNull();
-  expect(topBarBoxAfter?.y).toBe(topBarBoxBefore?.y);
+  // Tolerate subpixel/browser rounding rather than asserting exact pixel equality.
+  expect(Math.abs((topBarBoxAfter?.y ?? 0) - (topBarBoxBefore?.y ?? 0))).toBeLessThanOrEqual(1);
 });
 
 test('external links are not hijacked by in-app help navigation', async ({ page }) => {

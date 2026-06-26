@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toRefs, useTemplateRef } from 'vue';
-import { definePaneScrollContainer } from './useMDContainer';
+import { definePaneScrollContainer } from './paneScrollContainer';
 import { defineAllowedBottomNavigation } from './allowedBottomNavigation';
 
 const props = defineProps<{
@@ -39,13 +39,13 @@ defineAllowedBottomNavigation(allowBottomNavigation);
 <style lang="css" scoped>
 .md-pane {
   display: flex;
-  flex-grow: 1;
-  flex-shrink: 1;
+  flex: 1 1 auto;
   --md-container-color: var(--md-sys-color-surface);
   --md-content-color: var(--md-sys-color-on-surface);
   padding: 2step;
   position: relative;
   min-width: 320px;
+  min-height: 0;
   transition-property: none;
 
   &:last-of-type {
@@ -58,13 +58,14 @@ defineAllowedBottomNavigation(allowBottomNavigation);
     flex-direction: column;
     overflow: hidden;
     border-radius: var(--md-pane-container-shape, 16px);
-    flex-grow: 1;
-    flex-shrink: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
   }
 
   .md-pane__top-bar {
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    min-width: 0;
   }
 
   .md-pane__content {
@@ -72,8 +73,8 @@ defineAllowedBottomNavigation(allowBottomNavigation);
     overflow: auto;
     flex-direction: column;
     justify-content: flex-start;
-    flex-grow: 1;
-    flex-shrink: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     padding: var(--md-pane-padding-y, 0) var(--md-pane-padding-x, 0);
     gap: var(--md-pane-content-gap, 0);

@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, h, nextTick } from 'vue';
 import { describe, expect, it } from 'vitest';
 import MDPane from './MDPane.vue';
-import { usePaneScrollContainer } from './useMDContainer';
+import { usePaneScrollContainer } from './paneScrollContainer';
 import { useAllowedBottomNavigation } from './allowedBottomNavigation';
 
 const ScrollContainerProbe = defineComponent({

@@ -4,7 +4,7 @@ import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
 import { useModalAriaHidden } from '../AriaHidden';
-import { usePaneScrollContainer } from '../Layout/useMDContainer';
+import { usePaneScrollContainer } from '../Layout/paneScrollContainer';
 import { tryOnBeforeUnmount, useElementBounding, useElementSize } from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
