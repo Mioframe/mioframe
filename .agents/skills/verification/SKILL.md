@@ -121,6 +121,4 @@ status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
 
-Also include the `BRV RESULT` block required by the root `AGENTS.md`. Use the `byterover` skill to decide whether it is `curated`, `skipped`, `failed`, or `not available`.
-
 Use `not run` only when no repository verification could reasonably be run, such as documentation-only changes made through a remote editor. State the reason plainly.
