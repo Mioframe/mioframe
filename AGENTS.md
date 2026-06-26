@@ -30,8 +30,6 @@ If `pnpm verify` exits because another local verification or a standalone expens
 
 Do not start manual e2e, visual, mutation, full lint, or full type-check commands while the local verify lock is active. `CI=true` in a local shell or container does not bypass local verification safety; only `GITHUB_ACTIONS=true` counts as GitHub Actions.
 
-Before the final response after non-trivial implementation, use the `byterover` skill end-of-task capture gate to decide whether durable project knowledge should be curated. For trivial or documentation-only changes that create no reusable project knowledge, report `BRV RESULT: skipped` without running `brv`.
-
 Final response must include:
 
 ```text
@@ -39,10 +37,6 @@ VERIFY RESULT
 command: pnpm verify
 status: passed | failed | not run | blocked by active local verification
 reason if not run:
-
-BRV RESULT
-status: curated | skipped | failed | not available
-reason:
 ```
 
 ## Contains
@@ -57,7 +51,6 @@ reason:
 ## Patterns
 
 - Prefer plan-first implementation over broad discovery.
-- Before broad repository exploration, use ByteRover local search to recall prior project decisions; use synthesized queries only when search results are insufficient.
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, start from an explicit architecture handoff before implementation and use the `architect-handoff` skill.
 - The architecture handoff must cover goal, non-goals, affected scenarios, ownership matrix, source of truth, state/API shape, rejected approaches, acceptance matrix, risk matrix, required verification, and forbidden paths.
 - Treat the architecture handoff as the contract for agent tasks, implementation preflight, implementation, and PR review. If implementation details contradict the handoff, stop and resolve the mismatch instead of silently choosing a different architecture.
@@ -84,7 +77,6 @@ reason:
 - For large refactors, keep behavior-preserving extraction separate from behavior changes. Verify the extraction first, then make functional changes in a smaller diff.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
 - When existing code already owns a non-trivial matching, parsing, filtering, or storage algorithm, reuse that implementation or extract a shared helper first; do not reimplement the same algorithm in another layer and let it drift.
-- Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
 - Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
 - Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
 - If CI auto-commits fixer output to a same-repository PR branch, pull or rebase before continuing local work so local diffs and final verification match the branch tip.

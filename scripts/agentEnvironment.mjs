@@ -49,7 +49,6 @@ const IGNORED_DIRS = new Set([
   'tmp',
   '.sisyphus',
   '.opencode',
-  '.brv',
   '.claude',
 ]);
 

@@ -17,7 +17,6 @@
     "**/node_modules/**": true,
     "**/temp/**": true,
     "**/tmp/**": true,
-    "**/.brv/*": true,
     "**/storybook-static/**": true,
     "**/test-results/**": true
   },
