@@ -7,6 +7,12 @@ description: 'Use this skill when implementing or reviewing shared UI / Material
 
 Use this skill before and during implementation work on `src/shared/ui` Material-style primitives, especially component-family work such as `MDList` / `MDListItem` / `MDListSelectionItem`. Pair it with the `material3-guidelines` skill, which owns Material 3 doc compliance; this skill owns Vue implementation structure and shared UI integration boundaries.
 
+## Material component-family stop condition
+
+If implementation creates or materially changes a public shared `MD*` component, stop treating the change as ordinary Vue UI work. Pair this skill with the Material component-family gate in `material3-guidelines`, and do not report completion until the public contract, token map, Storybook surface, registry status, and focused browser/visual verification are addressed or explicitly documented as incomplete.
+
+Do not introduce a new public shared `MD*` component as incidental support for another task. Either keep the UI local/non-public, reuse an existing shared primitive, or complete the full shared Material component-family workflow for the new component.
+
 ## Before the first production edit
 
 Define, in a few lines:
