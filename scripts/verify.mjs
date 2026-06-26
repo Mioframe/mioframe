@@ -8,6 +8,7 @@ import { withExpensiveCommandLock, withVerifyCommandLock } from './lib/commandLo
 import { applyProcessResult } from './lib/processResult.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
+import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 
 applyProjectEnv();
 
@@ -1023,6 +1024,22 @@ function createSkippedResult(entry, reason = entry.reason) {
   };
 }
 
+function createFailedResult(entry, reason = entry.reason) {
+  return {
+    label: entry.label,
+    command: entry.command,
+    displayCommand: entry.command,
+    status: 'failed',
+    reason,
+    note: reason,
+    exitCode: null,
+    stdout: '',
+    stderr: '',
+    hasWarnings: false,
+    warningSummary: '',
+  };
+}
+
 function addE2ECommands(commands, e2eCommand) {
   commands.push(createE2EInstallCommand());
   commands.push(e2eCommand);
@@ -1037,13 +1054,14 @@ function createE2EInstallCommand(reason) {
   };
 }
 
-function createE2ECommand(extraArgs = []) {
+function createE2ECommand(extraArgs = [], note = null) {
   return {
     kind: 'run',
     label: 'e2e',
     command: 'pnpm',
     args: ['e2e:container', ...extraArgs],
     weight: classifyCommandWeight({ label: 'e2e' }),
+    note,
   };
 }
 
@@ -1062,13 +1080,7 @@ function buildCommands(changedFiles) {
       filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
   );
   const hasVisualRelevantChanges = changedFiles.some(isVisualRelevantFile);
-  const changedE2ESpecs = changedFiles.filter(
-    (filePath) =>
-      filePath.startsWith('tests/e2e/') &&
-      !filePath.startsWith('tests/e2e/visual/') &&
-      filePath.endsWith('.ts') &&
-      fileExists(filePath),
-  );
+  const appE2EPlan = resolveAppE2EPlan(changedFiles);
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
@@ -1171,10 +1183,18 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (changedFiles.includes('playwright.config.ts')) {
-    addE2ECommands(commands, createE2ECommand());
-  } else if (changedE2ESpecs.length > 0) {
-    addE2ECommands(commands, createE2ECommand(changedE2ESpecs));
+  if (appE2EPlan.mode === 'invalid') {
+    commands.push(createE2EInstallCommand('app e2e scope is invalid; e2e check fails closed'));
+    commands.push({
+      kind: 'failed',
+      label: 'e2e',
+      command: 'pnpm e2e:container',
+      reason: `invalid app e2e scenario registry state: ${appE2EPlan.reasons.join('; ')}`,
+    });
+  } else if (appE2EPlan.mode === 'full') {
+    addE2ECommands(commands, createE2ECommand([], appE2EPlan.reasons.join('; ')));
+  } else if (appE2EPlan.mode === 'focused') {
+    addE2ECommands(commands, createE2ECommand(appE2EPlan.specs, appE2EPlan.reasons.join('; ')));
   } else {
     commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
@@ -1249,6 +1269,10 @@ function getActionRequired(results) {
 
   for (const result of failedResults) {
     actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
+
+    if (result.exitCode === null && result.reason) {
+      actions.push(`Reason: ${result.reason}`);
+    }
   }
 
   if (failedResults.length > 0) {
@@ -1292,6 +1316,10 @@ function printSummary(changedFiles, scope, results) {
 
     const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
     console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.displayCommand})`);
+
+    if (result.label === 'e2e' && result.note) {
+      console.log(`  e2e triggered by: ${result.note}`);
+    }
   }
 
   console.log('action required:');
@@ -1323,6 +1351,12 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
       results.push(createSkippedResult(entry));
+      continue;
+    }
+
+    if (entry.kind === 'failed') {
+      results.push(createFailedResult(entry));
+      hasFailed = true;
       continue;
     }
 
@@ -1374,6 +1408,10 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
         applyProcessResult({ signal: result.terminatedBySignal });
       }
     }
+    if (entry.note) {
+      result.note = entry.note;
+    }
+
     results.push(result);
     completedRunnableChecks += 1;
 
