@@ -1,9 +1,6 @@
 import { type Ref, computed } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { defineMenuButtonList, type BaseMenuButton } from '@shared/ui/Menu';
-
-/** Non-empty menu-button list required by entry-manage action controls. */
-export type NonEmptyMenuButtonList<T extends BaseMenuButton = BaseMenuButton> = [T, ...T[]];
+import type { NonEmptyMenuButtonList } from '@shared/ui/Menu';
 
 /** Reactive capability inputs that determine which FS entry actions are available. */
 type FSEntryManageActionsOptions = {
@@ -62,7 +59,7 @@ export const useFSEntryManageActions = (options: FSEntryManageActionsOptions) =>
       buttons.push({ key: 'remove', label: 'Remove', symbolName: 'delete' });
     }
 
-    return defineMenuButtonList(buttons);
+    return buttons;
   });
 
   const hasActions = computed(() => actionButtons.value.length > 0);

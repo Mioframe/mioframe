@@ -248,10 +248,16 @@ const onInteractionOutside = () => {
   display: grid;
   gap: 8px;
   max-width: 480px;
+  min-width: 0;
+}
+
+.vfs-activity-status-chip__tooltip p {
+  overflow-wrap: anywhere;
 }
 
 .vfs-activity-status-chip__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }

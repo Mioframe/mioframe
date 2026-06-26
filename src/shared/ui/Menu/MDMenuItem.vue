@@ -32,7 +32,7 @@ const onClickSubItem = (subItem: T) => {
     :item-role="itemRole"
     @click="onClickItem"
   >
-    <template v-if="item.submenu?.length" #submenu>
+    <template v-if="item.submenu" #submenu>
       <MDMenuItem
         v-for="v in item.submenu"
         :key="v.label"

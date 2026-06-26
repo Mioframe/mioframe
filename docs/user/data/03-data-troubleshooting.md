@@ -92,3 +92,7 @@ Next action:
 - check whether the document exists in a location you can still open directly.
 
 If there is no remaining copy and the data was lost from Browser Storage or deleted outside Mioframe, Mioframe probably cannot recover it.
+
+## Where to get more help
+
+If these steps do not resolve the problem, ask in [GitHub Discussions](https://github.com/Vyachean/mioframe/discussions) or report it in [GitHub Issues](https://github.com/Vyachean/mioframe/issues).

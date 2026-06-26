@@ -40,18 +40,25 @@ describe('helpCatalog', () => {
 
     expect(
       resolveHelpArticleHref('data/01-data-storage.md', './02-backup-and-restore.md', catalog),
-    ).toBe('data/backup-and-restore');
+    ).toEqual({ slug: 'data/backup-and-restore', anchor: null });
     expect(
       resolveHelpArticleHref('data/03-data-troubleshooting.md', './01-data-storage.md', catalog),
-    ).toBe('data/data-storage');
+    ).toEqual({ slug: 'data/data-storage', anchor: null });
     expect(
       resolveHelpArticleHref(
         'data/01-data-storage.md',
         './02-backup-and-restore.md#export-json',
         catalog,
       ),
-    ).toBe('data/backup-and-restore');
-    expect(resolveHelpArticleHref('data/01-data-storage.md', '#local-anchor', catalog)).toBeNull();
+    ).toEqual({ slug: 'data/backup-and-restore', anchor: 'export-json' });
+    expect(resolveHelpArticleHref('data/01-data-storage.md', '#local-anchor', catalog)).toEqual({
+      slug: 'data/data-storage',
+      anchor: 'local-anchor',
+    });
+    expect(resolveHelpArticleHref('data/01-data-storage.md', '#', catalog)).toEqual({
+      slug: 'data/data-storage',
+      anchor: null,
+    });
     expect(
       resolveHelpArticleHref('data/01-data-storage.md', 'https://example.com/help.md', catalog),
     ).toBeNull();

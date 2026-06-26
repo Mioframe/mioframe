@@ -170,6 +170,40 @@ describe('RepositoryExplorerFilesSection', () => {
     expect(wrapper.emitted('selectJsonFile')).toBeUndefined();
   });
 
+  it('unmounts a removed entry, tearing down any menu/dialog state it owned', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
+          ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+        ],
+      },
+    });
+
+    expect(wrapper.findComponent({ name: 'RepositoryExplorerFileListItemStub' }).exists()).toBe(
+      true,
+    );
+    expect(wrapper.findAllComponents({ name: 'RepositoryExplorerFileListItemStub' })).toHaveLength(
+      2,
+    );
+
+    await wrapper.setProps({
+      regularFileEntries: [
+        ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+      ],
+    });
+
+    const remaining = wrapper.findAllComponents({ name: 'RepositoryExplorerFileListItemStub' });
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.props('name')).toBe('note.txt');
+    expect(wrapper.text()).not.toContain('Nested');
+  });
+
   it('matches the supporting copy to whether Automerge files are hidden', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');

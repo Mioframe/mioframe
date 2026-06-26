@@ -3,12 +3,16 @@ import { ref, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
 import MDMenu from '../MDMenu.vue';
 import { MDButton } from '../../Button';
-import { defineMenuButtonList } from '../defineMenuButtonList';
+import type { BaseMenuButton, NonEmptyMenuButtonList } from '../types';
 
 const targetEl = useTemplateRef<MaybeElement>('targetEl');
 const show = ref(false);
 
-const btns = defineMenuButtonList([
+interface StoryMenuButton extends BaseMenuButton {
+  submenu?: NonEmptyMenuButtonList<StoryMenuButton>;
+}
+
+const btns: NonEmptyMenuButtonList<StoryMenuButton> = [
   { key: 'plain', label: 'Plain item' },
   { key: 'iconed', label: 'Iconed item', symbolName: 'star' },
   {
@@ -19,7 +23,7 @@ const btns = defineMenuButtonList([
       { key: 'sub-two', label: 'Submenu two' },
     ],
   },
-]);
+];
 
 const onToggle = () => {
   show.value = !show.value;
