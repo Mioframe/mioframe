@@ -24,6 +24,28 @@ Do not use this skill for non-UI-only changes, type-only edits, internal storage
 
 For copy-only, wiring-only, test-only, or component-internal cleanup that preserves the existing component, layout, interaction model, tokens, and public UI API, use the fast path: record `Material impact: none; existing Material surface unchanged` and do not perform an MCP/fallback lookup.
 
+## Material component-family gate
+
+Any new shared `MD*` component or material change to an existing shared `MD*` component is Material component-family work, even when it appears as incidental support for another task.
+
+Before production edits, decide one of these outcomes:
+
+1. `No shared MD component work`: keep the UI local/non-public or reuse an existing shared primitive.
+2. `Full component-family work`: complete the source lookup, token map, public API, states/accessibility, Storybook, registry, and verification gates for the component family.
+3. `Blocked`: official Material guidance, token source, ownership, or required verification is unclear.
+
+A new public shared `MD*` component must not be introduced as incidental support without completing the component-family workflow. If the caller did not ask for a new shared component and the workflow cannot be completed in the current change, keep the implementation local/non-public or stop and report the scope risk.
+
+For full component-family work, define the component-family preflight before the first production edit:
+
+- checked Material pages or cache paths;
+- component token map, including official `md.comp.*` paths, public `--md-comp-*` tokens, private fallbacks, and missing-token gaps;
+- public props, emits, slots, native element semantics, and invalid combinations;
+- supported states and accessibility behavior;
+- affected consumers, Storybook surfaces, visual/browser verification, and registry status.
+
+A shared Material component implemented only with `--md-sys-*` tokens is not complete token compliance when official component token paths exist. Define and use the matching `--md-comp-*` component token layer at the component-family boundary, resolving those component tokens to `--md-sys-*` values where appropriate. Direct `--md-sys-*` usage inside component internals is allowed only for values with no published component token path or for true foundation-level roles; document that gap or decision in the registry, Storybook notes, or Material policy docs.
+
 ## Project policies
 
 Before planning or editing shared UI primitives, Material-style wrappers, Material tokens, Storybook documentation, or Material visual verification surfaces, read the relevant policy under `docs/material-3/`.
@@ -97,6 +119,8 @@ For the fast path, include only the `Material impact: none; existing Material su
 ## Anti-patterns
 
 - Do not use Material 3 as a visual-only style guide; interaction, tokens, API names, accessibility, and UX guidance also apply.
+- Do not introduce a new shared `MD*` component as incidental support for another task.
+- Do not treat `--md-sys-*` token usage alone as component-token compliance when official component token paths exist.
 - Do not invent local component behavior when Material 3 defines a suitable component, pattern, token, or interaction rule.
 - Do not copy patterns from Material Web, unrelated libraries, desktop-first products, or older Material versions without an official Material 3 check.
 - Do not defer the Material 3 lookup until final review when it could change component choice, token design, flow, layout, or verification.
