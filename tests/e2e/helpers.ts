@@ -486,11 +486,7 @@ export const selectView = async (page: Page, name: string | RegExp) => {
   const sheet = await openViewsSheet(page);
   const row = findListRow(sheet, name);
   await row.click();
-  const nameRegExp = typeof name === 'string' ? new RegExp(name, 'i') : name;
-  await expect(sheet.getByRole('button', { name: nameRegExp })).toHaveAttribute(
-    'aria-current',
-    'true',
-  );
+  await expect(sheet.getByRole('button', { name })).toHaveAttribute('aria-current', 'true');
   await closeBottomSheet(page, /database views sheet/i);
 };
 

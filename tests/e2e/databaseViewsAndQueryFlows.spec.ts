@@ -63,9 +63,10 @@ test('creates, renames, selects, and removes views through the view settings she
   await renameView(page, secondViewName, renamedViewName);
   await selectView(page, renamedViewName);
   const selectedViewSheet = await openViewsSheet(page);
-  await expect(
-    selectedViewSheet.getByRole('button', { name: new RegExp(renamedViewName, 'i') }),
-  ).toHaveAttribute('aria-current', 'true');
+  await expect(selectedViewSheet.getByRole('button', { name: renamedViewName })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
 
   const selectedViewRow = findListRow(selectedViewSheet, renamedViewName);
   await selectedViewRow.getByRole('button', { name: /settings view/i }).click();
