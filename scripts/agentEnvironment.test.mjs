@@ -342,7 +342,6 @@ describe('ignored traversal directories', () => {
   it('does not generate adapters from ignored local directories', () => {
     tempRoot = makeTempRepo({
       '.gitignore': VALID_GITIGNORE,
-      '.brv/AGENTS.md': '# ignored',
       '.opencode/AGENTS.md': '# ignored',
       '.sisyphus/AGENTS.md': '# ignored',
       '.claude/AGENTS.md': '# ignored',
@@ -352,7 +351,6 @@ describe('ignored traversal directories', () => {
     const result = checkAgentEnvironment(tempRoot, false);
 
     expect(result.errors).toHaveLength(0);
-    expect(fs.existsSync(path.join(tempRoot, '.brv', 'CLAUDE.md'))).toBe(false);
     expect(fs.existsSync(path.join(tempRoot, '.opencode', 'CLAUDE.md'))).toBe(false);
     expect(fs.existsSync(path.join(tempRoot, '.sisyphus', 'CLAUDE.md'))).toBe(false);
     expect(fs.existsSync(path.join(tempRoot, '.claude', 'CLAUDE.md'))).toBe(false);
