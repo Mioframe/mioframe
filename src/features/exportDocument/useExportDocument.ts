@@ -34,7 +34,7 @@ export const useExportDocument = () => {
         throw error;
       }
 
-      throw new DomainError('Could not export the document', {
+      throw new DomainError('Could not export JSON', {
         cause: error,
         code: ExportDocumentErrorCode.documentExportFailed,
       });
@@ -69,7 +69,7 @@ export const useExportDocument = () => {
         throw error;
       }
 
-      throw new DomainError('Could not export the document', {
+      throw new DomainError('Could not export JSON', {
         cause: error,
         code: ExportDocumentErrorCode.documentExportFailed,
       });

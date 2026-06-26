@@ -61,11 +61,11 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
         const exported = await saveJsonFile(directoryPath.value, documentId.value);
 
         if (exported) {
-          addSnackbar({ text: 'Document exported' });
+          addSnackbar({ text: 'JSON exported. It can be imported as a new document.' });
         }
       } catch (error) {
         addSnackbar({
-          text: error instanceof DomainError ? error.message : 'Could not export the document',
+          text: error instanceof DomainError ? error.message : 'Could not export JSON',
         });
         if (!isUserFileSelectionCancel(error)) {
           captureDiagnosticException(error, {

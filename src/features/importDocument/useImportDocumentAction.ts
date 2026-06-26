@@ -140,7 +140,7 @@ export const useImportDocumentAction = () => {
         return undefined;
       }
 
-      addSnackbar({ text: 'Document imported into this Mioframe folder' });
+      addSnackbar({ text: 'JSON imported as a new Mioframe document.' });
 
       return documentId;
     } catch (error) {
@@ -186,7 +186,7 @@ export const useImportDocumentAction = () => {
         return undefined;
       }
 
-      addSnackbar({ text: 'Document imported into this Mioframe folder' });
+      addSnackbar({ text: 'JSON imported as a new Mioframe document.' });
 
       return documentId;
     } catch (error) {
