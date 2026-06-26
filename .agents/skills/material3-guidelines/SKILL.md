@@ -1,6 +1,12 @@
 ---
 name: material3-guidelines
 description: 'Use this skill before planning, implementing, or reviewing Material-related UI/UX work, especially any new or materially changed shared MD* component. Verifies official Material 3 source lookup, component choice, token/component-token mapping, public UI API, interaction states, accessibility, layout, Storybook, deviations, and focused verification.'
+paths:
+  - "src/**/*.vue"
+  - "src/**/*.css"
+  - "src/shared/ui/**"
+  - "docs/material-3/**"
+  - "tests/e2e/visual/**"
 ---
 
 # Material 3 guidelines
