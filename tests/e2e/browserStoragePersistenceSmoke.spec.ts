@@ -143,7 +143,7 @@ test('settings contains a storage section with a checkbox-style item', async ({ 
   await expect(page.getByText(/more reliable browser storage/i).first()).toBeVisible();
 });
 
-test('settings persistent state is not interactive (no button role)', async ({ page }) => {
+test('settings persistent state is not interactive (disabled)', async ({ page }) => {
   await page.addInitScript(() => {
     StorageManager.prototype.persisted = function persisted(
       this: StorageManager,
@@ -157,7 +157,7 @@ test('settings persistent state is not interactive (no button role)', async ({ p
 
   await expect(page.getByText(/more reliable browser storage/i).first()).toBeVisible();
 
-  // The row must not be a button when persistent.
+  // The row must be non-interactive (disabled) once persistence is already granted.
   const storageRow = page.getByRole('checkbox', { name: /more reliable browser storage/i });
-  await expect(storageRow).not.toHaveAttribute('type', 'button');
+  await expect(storageRow).toBeDisabled();
 });
