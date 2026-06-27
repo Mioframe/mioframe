@@ -35,15 +35,54 @@ describe('useDiagnosticsErrorPrompt', () => {
     dismissDiagnosticsErrorPrompt.mockReset();
   });
 
-  it('is hidden until a handled error requests it', async () => {
+  it('is hidden until a handled error requests this placement', async () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    const { isVisible } = useDiagnosticsErrorPrompt();
+    const { isVisible } = useDiagnosticsErrorPrompt('inline');
     expect(isVisible.value).toBe(false);
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
     expect(isVisible.value).toBe(true);
+  });
+
+  it('inline target ignores a pending home-placement request', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceOpen',
+      placement: 'home',
+    });
+
+    expect(useDiagnosticsErrorPrompt('inline').isVisible.value).toBe(false);
+  });
+
+  it('home target ignores a pending inline-placement request', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+
+    expect(useDiagnosticsErrorPrompt('home').isVisible.value).toBe(false);
+  });
+
+  it('home target becomes visible for a pending home-placement request', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'entryRemove',
+      placement: 'home',
+    });
+
+    expect(useDiagnosticsErrorPrompt('home').isVisible.value).toBe(true);
   });
 
   it('stays hidden when diagnostics are unavailable', async () => {
@@ -51,8 +90,11 @@ describe('useDiagnosticsErrorPrompt', () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
-    expect(useDiagnosticsErrorPrompt().isVisible.value).toBe(false);
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+    expect(useDiagnosticsErrorPrompt('inline').isVisible.value).toBe(false);
   });
 
   it('stays hidden when settings are not yet hydrated', async () => {
@@ -60,8 +102,11 @@ describe('useDiagnosticsErrorPrompt', () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
-    expect(useDiagnosticsErrorPrompt().isVisible.value).toBe(false);
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+    expect(useDiagnosticsErrorPrompt('inline').isVisible.value).toBe(false);
   });
 
   it('stays hidden when diagnostics are already enabled', async () => {
@@ -69,8 +114,11 @@ describe('useDiagnosticsErrorPrompt', () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
-    expect(useDiagnosticsErrorPrompt().isVisible.value).toBe(false);
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+    expect(useDiagnosticsErrorPrompt('inline').isVisible.value).toBe(false);
   });
 
   it('stays hidden when already dismissed for the current app version', async () => {
@@ -78,16 +126,22 @@ describe('useDiagnosticsErrorPrompt', () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
-    expect(useDiagnosticsErrorPrompt().isVisible.value).toBe(false);
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+    expect(useDiagnosticsErrorPrompt('inline').isVisible.value).toBe(false);
   });
 
   it('enableDiagnostics enables diagnostics and hides the prompt', async () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
-    const prompt = useDiagnosticsErrorPrompt();
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+    const prompt = useDiagnosticsErrorPrompt('inline');
     expect(prompt.isVisible.value).toBe(true);
 
     prompt.enableDiagnostics();
@@ -100,8 +154,11 @@ describe('useDiagnosticsErrorPrompt', () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
-    const prompt = useDiagnosticsErrorPrompt();
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+    const prompt = useDiagnosticsErrorPrompt('inline');
     expect(prompt.isVisible.value).toBe(true);
 
     prompt.clearDiagnosticsErrorPromptRequest();
@@ -111,15 +168,18 @@ describe('useDiagnosticsErrorPrompt', () => {
     expect(dismissDiagnosticsErrorPrompt).not.toHaveBeenCalled();
 
     // A later, unrelated local owner must not see the earlier request resurface.
-    expect(useDiagnosticsErrorPrompt().isVisible.value).toBe(false);
+    expect(useDiagnosticsErrorPrompt('inline').isVisible.value).toBe(false);
   });
 
   it('dismiss does not enable diagnostics and hides the prompt', async () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
-    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
-    const prompt = useDiagnosticsErrorPrompt();
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
+    const prompt = useDiagnosticsErrorPrompt('inline');
 
     prompt.dismiss();
 

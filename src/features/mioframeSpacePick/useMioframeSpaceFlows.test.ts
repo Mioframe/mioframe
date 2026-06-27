@@ -490,7 +490,10 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.openFailed',
     });
     expect(reportedError.cause).toBe(rawMountError);
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledWith({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
   });
 
   it('rolls back the mounted record when repository initialization fails after mounting', async () => {
@@ -525,7 +528,10 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(reportedError.cause).toBe(rawInitError);
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledWith({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -578,7 +584,10 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(createCall?.[0].cause).toBe(rawInitError);
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledWith({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
   });
 
   it('reports a DomainError preserving raw mount error as cause when create mounting fails', async () => {
@@ -610,7 +619,10 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(reportedError.cause).toBe(rawMountError);
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledWith({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
   });
 
   it('returns false after reporting a DomainError with raw filesystem error as cause when availability inspection fails unexpectedly', async () => {
@@ -633,7 +645,10 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(reportedError.cause).toMatchObject({ message: 'raw filesystem detail' });
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledWith({
+      source: 'spaceCreate',
+      placement: 'inline',
+    });
   });
 });
 
@@ -718,7 +733,10 @@ describe('useOpenMioframeSpace', () => {
       code: 'mioframeSpacePick.openFailed',
     });
     expect(reportedError.cause).toBe(rawPickerError);
-    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
+    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledWith({
+      source: 'spaceOpen',
+      placement: 'home',
+    });
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/require-await -- Re-enable after DOM File System Access API test mocks. */

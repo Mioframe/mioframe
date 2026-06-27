@@ -1,15 +1,22 @@
-import { computed } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
 import { SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
-import { useDiagnosticsErrorPromptState } from './useDiagnosticsErrorPromptState';
+import {
+  useDiagnosticsErrorPromptState,
+  type DiagnosticsPromptPlacement,
+} from './useDiagnosticsErrorPromptState';
 
 /**
- * Computes whether the contextual diagnostics prompt is eligible to show and owns its actions.
- * Used by `DiagnosticsErrorPrompt`.
+ * Computes whether the contextual diagnostics prompt is eligible to show for the given local
+ * placement and owns its actions. Used by `DiagnosticsErrorPrompt`.
+ * @param placementSource - The local render target calling this composable (`'inline'` or
+ * `'home'`). Only a pending request for this exact placement makes the prompt visible.
  * @returns Visibility state, the enable/dismiss actions, and a clear action the local prompt
  * owner can call to drop a pending request when it stops being the active local context.
  */
-export const useDiagnosticsErrorPrompt = () => {
+export const useDiagnosticsErrorPrompt = (
+  placementSource: MaybeRefOrGetter<DiagnosticsPromptPlacement>,
+) => {
   const { isFinished } = useLocalSettings();
   const {
     diagnosticsEnabled,
@@ -17,13 +24,13 @@ export const useDiagnosticsErrorPrompt = () => {
     enableDiagnosticsFromErrorPrompt,
     dismissDiagnosticsErrorPrompt,
   } = useDiagnosticsSettings();
-  const { isRequested, clearDiagnosticsErrorPromptRequest } = useDiagnosticsErrorPromptState();
+  const { pending, clearDiagnosticsErrorPromptRequest } = useDiagnosticsErrorPromptState();
 
   const isVisible = computed(
     () =>
       SENTRY_DIAGNOSTICS_AVAILABLE &&
       isFinished.value &&
-      isRequested.value &&
+      pending.value?.placement === toValue(placementSource) &&
       !diagnosticsEnabled.value &&
       !isDiagnosticsErrorPromptDismissed.value,
   );

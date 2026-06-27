@@ -74,7 +74,7 @@ export const useCreateMioframeSpace = (
       feature: 'mioframeSpaceCreate',
       action: options?.action ?? 'createSpace',
     });
-    requestDiagnosticsErrorPrompt();
+    requestDiagnosticsErrorPrompt({ source: 'spaceCreate', placement: 'inline' });
   };
 
   const reportRollbackError = (rollbackError: unknown) => {

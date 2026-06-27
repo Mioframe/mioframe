@@ -1,18 +1,35 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { MDCard } from '@shared/ui/Card';
 import { MDButton } from '@shared/ui/Button';
 import { useDiagnosticsErrorPrompt } from './useDiagnosticsErrorPrompt';
+import type { DiagnosticsPromptPlacement } from './useDiagnosticsErrorPromptState';
 
-const { enableDiagnostics, dismiss } = useDiagnosticsErrorPrompt();
+const props = defineProps<{
+  /** Local render target this prompt instance belongs to; only drives copy and actions here. */
+  placement: DiagnosticsPromptPlacement;
+}>();
+
+const { enableDiagnostics, dismiss } = useDiagnosticsErrorPrompt(() => props.placement);
+
+const COPY: Record<DiagnosticsPromptPlacement, { headline: string; body: string }> = {
+  inline: {
+    headline: 'Help fix this problem?',
+    body: 'Enable diagnostics to send technical error reports. Your documents and file paths are not sent.',
+  },
+  home: {
+    headline: 'Help fix recent problems?',
+    body: 'Enable diagnostics to send technical error reports when something breaks. Your documents, file names, folder paths and document IDs are not sent.',
+  },
+};
+
+const copy = computed(() => COPY[props.placement]);
 </script>
 
 <template>
   <MDCard variant="outlined" class="diagnostics-error-prompt">
-    <p class="diagnostics-error-prompt__headline">Help fix this problem?</p>
-    <p class="diagnostics-error-prompt__body">
-      Enable diagnostics to send technical error reports. Your documents and file paths are not
-      sent.
-    </p>
+    <p class="diagnostics-error-prompt__headline">{{ copy.headline }}</p>
+    <p class="diagnostics-error-prompt__body">{{ copy.body }}</p>
     <div class="diagnostics-error-prompt__actions">
       <MDButton color="text" label="Not now" @click="dismiss" />
       <MDButton color="filled" label="Enable diagnostics" @click="enableDiagnostics" />

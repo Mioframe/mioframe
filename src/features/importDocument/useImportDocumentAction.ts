@@ -4,6 +4,7 @@ import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
 import { RepositoryImportErrorCode } from '@shared/service';
+import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -28,6 +29,7 @@ export const useImportDocumentAction = () => {
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
   const { requestAccess } = useFileSystemAccessPermissionBroker();
+  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
 
   const reportImportError = (error: unknown, diagnosticsAction: string) => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
@@ -52,6 +54,7 @@ export const useImportDocumentAction = () => {
         feature: 'documentImport',
         action: diagnosticsAction,
       });
+      requestDiagnosticsErrorPrompt({ source: 'documentImport', placement: 'home' });
     }
   };
 

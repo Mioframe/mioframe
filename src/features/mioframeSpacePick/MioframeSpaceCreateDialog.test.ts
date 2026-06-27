@@ -139,12 +139,16 @@ vi.mock('@shared/ui/TextField', () => ({
 }));
 
 vi.mock('@feature/diagnosticsErrorPrompt', () => ({
-  useDiagnosticsErrorPrompt: () => ({
-    isVisible: isDiagnosticsPromptVisible.value,
-    clearDiagnosticsErrorPromptRequest: clearDiagnosticsErrorPromptRequestMock,
-  }),
+  useDiagnosticsErrorPrompt: (placement: 'inline' | 'home') => {
+    expect(placement).toBe('inline');
+    return {
+      isVisible: isDiagnosticsPromptVisible.value,
+      clearDiagnosticsErrorPromptRequest: clearDiagnosticsErrorPromptRequestMock,
+    };
+  },
   DiagnosticsErrorPrompt: defineComponent({
     name: 'DiagnosticsErrorPromptStub',
+    props: { placement: { type: String, required: true } },
     setup() {
       return () => h('div', 'diagnostics-error-prompt-stub');
     },

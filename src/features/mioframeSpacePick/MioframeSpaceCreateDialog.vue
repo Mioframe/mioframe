@@ -19,7 +19,7 @@ const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 const { loading, checkCreateSpaceNameAvailability, createSpace, openExistingSpace } =
   useCreateMioframeSpace(() => props.parentHandle);
 const { isVisible: isDiagnosticsPromptVisible, clearDiagnosticsErrorPromptRequest } =
-  useDiagnosticsErrorPrompt();
+  useDiagnosticsErrorPrompt('inline');
 
 // This dialog is the only local owner of the contextual prompt request; dropping it on unmount
 // (cancel/completed/closed) prevents an earlier create-space error from resurfacing on reopen.
@@ -146,7 +146,7 @@ const onApply = async () => {
       <p class="mioframe-space-create-dialog__detail">Space folder: {{ resultFolder }}</p>
     </div>
 
-    <DiagnosticsErrorPrompt v-if="isDiagnosticsPromptVisible" />
+    <DiagnosticsErrorPrompt v-if="isDiagnosticsPromptVisible" placement="inline" />
   </MDDialog>
 </template>
 
