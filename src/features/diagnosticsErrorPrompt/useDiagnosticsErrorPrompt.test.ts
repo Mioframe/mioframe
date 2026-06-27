@@ -171,6 +171,65 @@ describe('useDiagnosticsErrorPrompt', () => {
     expect(useDiagnosticsErrorPrompt('inline').isVisible.value).toBe(false);
   });
 
+  it('a scoped inline clear does not drop a pending home-placement request', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'documentImport',
+      placement: 'home',
+    });
+
+    const inlinePrompt = useDiagnosticsErrorPrompt('inline');
+    inlinePrompt.clearDiagnosticsErrorPromptRequest();
+
+    expect(useDiagnosticsErrorPrompt('home').isVisible.value).toBe(true);
+  });
+
+  it('a scoped clear with a mismatched source leaves a same-placement pending request', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'documentImport',
+      placement: 'home',
+    });
+
+    const homePrompt = useDiagnosticsErrorPrompt('home');
+    homePrompt.clearDiagnosticsErrorPromptRequest({ source: 'entryRemove' });
+
+    expect(homePrompt.isVisible.value).toBe(true);
+  });
+
+  it('a scoped clear matching placement and source drops the pending request', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'documentImport',
+      placement: 'home',
+    });
+
+    const homePrompt = useDiagnosticsErrorPrompt('home');
+    homePrompt.clearDiagnosticsErrorPromptRequest({ source: 'documentImport' });
+
+    expect(homePrompt.isVisible.value).toBe(false);
+  });
+
+  it('enableDiagnostics clears a pending request regardless of placement', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt({
+      source: 'documentImport',
+      placement: 'home',
+    });
+
+    useDiagnosticsErrorPrompt('inline').enableDiagnostics();
+
+    expect(useDiagnosticsErrorPrompt('home').isVisible.value).toBe(false);
+  });
+
   it('dismiss does not enable diagnostics and hides the prompt', async () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');

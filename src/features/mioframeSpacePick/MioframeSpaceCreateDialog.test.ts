@@ -189,7 +189,7 @@ describe('MioframeSpaceCreateDialog', () => {
     isDiagnosticsPromptVisible.value = false;
   });
 
-  it('clears the pending diagnostics prompt request when the dialog unmounts', () => {
+  it('clears only its own inline create-space prompt request when the dialog unmounts', () => {
     const wrapper = mountDialog();
 
     expect(clearDiagnosticsErrorPromptRequestMock).not.toHaveBeenCalled();
@@ -197,6 +197,7 @@ describe('MioframeSpaceCreateDialog', () => {
     wrapper.unmount();
 
     expect(clearDiagnosticsErrorPromptRequestMock).toHaveBeenCalledTimes(1);
+    expect(clearDiagnosticsErrorPromptRequestMock).toHaveBeenCalledWith({ source: 'spaceCreate' });
   });
 
   it('does not render the diagnostics prompt when it is not eligible', () => {

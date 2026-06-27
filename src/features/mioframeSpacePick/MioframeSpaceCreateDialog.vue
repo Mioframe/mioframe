@@ -21,9 +21,12 @@ const { loading, checkCreateSpaceNameAvailability, createSpace, openExistingSpac
 const { isVisible: isDiagnosticsPromptVisible, clearDiagnosticsErrorPromptRequest } =
   useDiagnosticsErrorPrompt('inline');
 
-// This dialog is the only local owner of the contextual prompt request; dropping it on unmount
-// (cancel/completed/closed) prevents an earlier create-space error from resurfacing on reopen.
-onUnmounted(clearDiagnosticsErrorPromptRequest);
+// This dialog owns only the inline create-space prompt request; dropping it on unmount
+// (cancel/completed/closed) prevents an earlier create-space error from resurfacing on reopen,
+// without touching an unrelated pending Home fallback request.
+onUnmounted(() => {
+  clearDiagnosticsErrorPromptRequest({ source: 'spaceCreate' });
+});
 
 const spaceName = ref<string | undefined>(undefined);
 const fieldIssue = ref<CreateSpaceFieldIssue | undefined>(undefined);

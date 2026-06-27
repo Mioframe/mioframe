@@ -4,6 +4,7 @@ import { SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import {
   useDiagnosticsErrorPromptState,
   type DiagnosticsPromptPlacement,
+  type DiagnosticsPromptSource,
 } from './useDiagnosticsErrorPromptState';
 
 /**
@@ -12,7 +13,9 @@ import {
  * @param placementSource - The local render target calling this composable (`'inline'` or
  * `'home'`). Only a pending request for this exact placement makes the prompt visible.
  * @returns Visibility state, the enable/dismiss actions, and a clear action the local prompt
- * owner can call to drop a pending request when it stops being the active local context.
+ * owner can call to drop a pending request when it stops being the active local context. The
+ * clear action is scoped to this placement and never drops a pending request for the other
+ * placement.
  */
 export const useDiagnosticsErrorPrompt = (
   placementSource: MaybeRefOrGetter<DiagnosticsPromptPlacement>,
@@ -24,7 +27,11 @@ export const useDiagnosticsErrorPrompt = (
     enableDiagnosticsFromErrorPrompt,
     dismissDiagnosticsErrorPrompt,
   } = useDiagnosticsSettings();
-  const { pending, clearDiagnosticsErrorPromptRequest } = useDiagnosticsErrorPromptState();
+  const {
+    pending,
+    clearDiagnosticsErrorPromptRequest: clearScopedDiagnosticsErrorPromptRequest,
+    clearAnyDiagnosticsErrorPromptRequest,
+  } = useDiagnosticsErrorPromptState();
 
   const isVisible = computed(
     () =>
@@ -35,14 +42,25 @@ export const useDiagnosticsErrorPrompt = (
       !isDiagnosticsErrorPromptDismissed.value,
   );
 
+  /**
+   * Clears only a pending request matching this placement (and `source`, if given).
+   * @param scope - Optional additional `source` to require alongside this placement.
+   */
+  const clearDiagnosticsErrorPromptRequest = (scope?: { source?: DiagnosticsPromptSource }) => {
+    clearScopedDiagnosticsErrorPromptRequest({
+      placement: toValue(placementSource),
+      ...(scope?.source !== undefined ? { source: scope.source } : {}),
+    });
+  };
+
   const enableDiagnostics = () => {
     enableDiagnosticsFromErrorPrompt();
-    clearDiagnosticsErrorPromptRequest();
+    clearAnyDiagnosticsErrorPromptRequest();
   };
 
   const dismiss = () => {
     dismissDiagnosticsErrorPrompt();
-    clearDiagnosticsErrorPromptRequest();
+    clearAnyDiagnosticsErrorPromptRequest();
   };
 
   return { isVisible, enableDiagnostics, dismiss, clearDiagnosticsErrorPromptRequest };
