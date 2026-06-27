@@ -38,10 +38,27 @@ describe('MDSwitch', () => {
   it('renders a native switch input in the default interactive mode', () => {
     const wrapper = mountSwitch({ modelValue: true });
 
-    const input = wrapper.get('input[type="checkbox"][role="switch"]');
+    const input = wrapper.get('input[type="checkbox"]');
 
     expect(input.attributes('tabindex')).toBe('-1');
+    expect(input.attributes('aria-hidden')).toBe('true');
     expect(wrapper.get('.md-switch').attributes('tabindex')).toBe('0');
+  });
+
+  it('exposes switch role and state on the focusable host', () => {
+    const wrapper = mountSwitch({ modelValue: true });
+
+    const host = wrapper.get('.md-switch');
+
+    expect(host.attributes('role')).toBe('switch');
+    expect(host.attributes('aria-checked')).toBe('true');
+    expect(host.attributes('aria-disabled')).toBeUndefined();
+  });
+
+  it('marks the focusable host as aria-disabled when disabled', () => {
+    const wrapper = mountSwitch({ modelValue: false, disabled: true });
+
+    expect(wrapper.get('.md-switch').attributes('aria-disabled')).toBe('true');
   });
 
   it('renders a non-interactive aria-hidden switch in presentation mode', () => {

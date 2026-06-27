@@ -62,6 +62,7 @@ Diagnostic reports should not contain:
 - document contents;
 - record values;
 - document names;
+- file names;
 - folder names;
 - local folder paths;
 - document ids;

@@ -2,6 +2,7 @@ import { useFileSystem } from '@entity/mountedDirectories';
 import { useMainServiceClient } from '@shared/service';
 import { DomainError } from '@shared/lib/error';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 import { DEVICE_FILES_ROOT_NAME } from '@shared/service';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
@@ -43,6 +44,7 @@ export const useCreateMioframeSpace = (
   const loading = ref(false);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory, disconnectDeviceFile } = useFileSystem();
+  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
   const {
     repositories: { initializeRepository },
   } = useMainServiceClient();
@@ -72,6 +74,7 @@ export const useCreateMioframeSpace = (
       feature: 'mioframeSpaceCreate',
       action: options?.action ?? 'createSpace',
     });
+    requestDiagnosticsErrorPrompt();
   };
 
   const reportRollbackError = (rollbackError: unknown) => {

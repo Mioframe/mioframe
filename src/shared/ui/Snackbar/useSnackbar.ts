@@ -17,6 +17,11 @@ type SnackbarDescription = {
   timeout?: number;
   actionLabel?: string;
   callback?: () => unknown;
+  /**
+   * Called when the user explicitly closes this snackbar via the close button,
+   * before it is removed from the queue. Not called for programmatic removal.
+   */
+  onClose?: () => unknown;
 };
 
 type Snackbar = SnackbarDescription & { id: string };
@@ -59,6 +64,7 @@ export const useSnackbar = createGlobalState(() => {
   const closeSnackbar = () => {
     const snackbar = currentSnackbar.value;
     if (snackbar) {
+      snackbar.onClose?.();
       removeSnackbar(snackbar);
     }
   };

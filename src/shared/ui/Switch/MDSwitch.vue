@@ -109,8 +109,11 @@ watch(
       'md-state_pressed': showVisualState && durationPressedState,
       'md-state_disabled': disabled,
     }"
+    role="switch"
     :tabindex="interactiveTabIndex"
     :aria-label="ariaLabel"
+    :aria-checked="stateValue"
+    :aria-disabled="disabled ? 'true' : undefined"
     @click="onClickContainer"
     @keydown="onKeydownContainer"
   >
@@ -126,9 +129,8 @@ watch(
       :id="id"
       v-model="stateValue"
       type="checkbox"
-      role="switch"
       :disabled="disabled"
-      :aria-label="ariaLabel"
+      aria-hidden="true"
       class="md-switch__input"
       tabindex="-1"
     />
