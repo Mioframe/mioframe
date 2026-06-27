@@ -1,7 +1,6 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { DomainError } from '@shared/lib/error';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
-import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ref, toRef } from 'vue';
@@ -25,7 +24,6 @@ export const useOpenMioframeSpace = () => {
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
-  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
 
   const isSupported = toRef(isDirectoryPickerSupported);
 
@@ -45,7 +43,6 @@ export const useOpenMioframeSpace = () => {
       feature: 'mioframeSpaceOpen',
       action: 'openSpace',
     });
-    requestDiagnosticsErrorPrompt();
   };
 
   const askToRetryOpenSpace = async () =>

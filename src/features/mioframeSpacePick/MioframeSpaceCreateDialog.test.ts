@@ -10,11 +10,13 @@ const {
   checkCreateSpaceNameAvailabilityMock,
   openExistingSpaceMock,
   isDiagnosticsPromptVisible,
+  clearDiagnosticsErrorPromptRequestMock,
 } = vi.hoisted(() => ({
   createSpaceMock: vi.fn(),
   checkCreateSpaceNameAvailabilityMock: vi.fn(),
   openExistingSpaceMock: vi.fn(),
   isDiagnosticsPromptVisible: { value: false },
+  clearDiagnosticsErrorPromptRequestMock: vi.fn(),
 }));
 
 const createDirectoryHandle = (name: string): FileSystemDirectoryHandle => ({
@@ -137,7 +139,10 @@ vi.mock('@shared/ui/TextField', () => ({
 }));
 
 vi.mock('@feature/diagnosticsErrorPrompt', () => ({
-  useDiagnosticsErrorPrompt: () => ({ isVisible: isDiagnosticsPromptVisible.value }),
+  useDiagnosticsErrorPrompt: () => ({
+    isVisible: isDiagnosticsPromptVisible.value,
+    clearDiagnosticsErrorPromptRequest: clearDiagnosticsErrorPromptRequestMock,
+  }),
   DiagnosticsErrorPrompt: defineComponent({
     name: 'DiagnosticsErrorPromptStub',
     setup() {
@@ -176,7 +181,18 @@ describe('MioframeSpaceCreateDialog', () => {
     createSpaceMock.mockReset();
     checkCreateSpaceNameAvailabilityMock.mockReset();
     openExistingSpaceMock.mockReset();
+    clearDiagnosticsErrorPromptRequestMock.mockReset();
     isDiagnosticsPromptVisible.value = false;
+  });
+
+  it('clears the pending diagnostics prompt request when the dialog unmounts', () => {
+    const wrapper = mountDialog();
+
+    expect(clearDiagnosticsErrorPromptRequestMock).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+
+    expect(clearDiagnosticsErrorPromptRequestMock).toHaveBeenCalledTimes(1);
   });
 
   it('does not render the diagnostics prompt when it is not eligible', () => {

@@ -96,6 +96,24 @@ describe('useDiagnosticsErrorPrompt', () => {
     expect(prompt.isVisible.value).toBe(false);
   });
 
+  it('clearing the request hides the prompt and prevents stale display for a later context', async () => {
+    const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
+    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
+
+    useDiagnosticsErrorPromptTrigger().requestDiagnosticsErrorPrompt();
+    const prompt = useDiagnosticsErrorPrompt();
+    expect(prompt.isVisible.value).toBe(true);
+
+    prompt.clearDiagnosticsErrorPromptRequest();
+
+    expect(prompt.isVisible.value).toBe(false);
+    expect(enableDiagnosticsFromErrorPrompt).not.toHaveBeenCalled();
+    expect(dismissDiagnosticsErrorPrompt).not.toHaveBeenCalled();
+
+    // A later, unrelated local owner must not see the earlier request resurface.
+    expect(useDiagnosticsErrorPrompt().isVisible.value).toBe(false);
+  });
+
   it('dismiss does not enable diagnostics and hides the prompt', async () => {
     const { useDiagnosticsErrorPrompt } = await import('./useDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');

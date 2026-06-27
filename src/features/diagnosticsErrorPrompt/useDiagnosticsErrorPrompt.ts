@@ -6,7 +6,8 @@ import { useDiagnosticsErrorPromptState } from './useDiagnosticsErrorPromptState
 /**
  * Computes whether the contextual diagnostics prompt is eligible to show and owns its actions.
  * Used by `DiagnosticsErrorPrompt`.
- * @returns Visibility state and the enable/dismiss actions for the contextual prompt.
+ * @returns Visibility state, the enable/dismiss actions, and a clear action the local prompt
+ * owner can call to drop a pending request when it stops being the active local context.
  */
 export const useDiagnosticsErrorPrompt = () => {
   const { isFinished } = useLocalSettings();
@@ -37,5 +38,5 @@ export const useDiagnosticsErrorPrompt = () => {
     clearDiagnosticsErrorPromptRequest();
   };
 
-  return { isVisible, enableDiagnostics, dismiss };
+  return { isVisible, enableDiagnostics, dismiss, clearDiagnosticsErrorPromptRequest };
 };

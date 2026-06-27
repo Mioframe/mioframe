@@ -4,7 +4,6 @@ import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 
 enum EntryRemoveErrorCode {
   removeFailed = 'entryRemove.removeFailed',
@@ -21,7 +20,6 @@ enum EntryRemoveErrorCode {
 export const useRemoveFSEntry = () => {
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
-  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
 
   const { remove: removeEntry } = useFileSystem();
 
@@ -72,7 +70,6 @@ export const useRemoveFSEntry = () => {
                 feature: 'entryRemove',
                 action: 'removeEntryRecursive',
               });
-              requestDiagnosticsErrorPrompt();
             }
           }
         } else {
@@ -88,7 +85,6 @@ export const useRemoveFSEntry = () => {
             feature: 'entryRemove',
             action: 'removeEntry',
           });
-          requestDiagnosticsErrorPrompt();
         }
       }
     }

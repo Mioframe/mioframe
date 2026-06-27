@@ -17,6 +17,8 @@ const {
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
+  // Kept mocked (unused by production code) so a regression that reintroduces the
+  // import would be caught by the "not requested" assertions below.
   requestDiagnosticsErrorPromptMock: vi.fn(),
 }));
 
@@ -126,7 +128,7 @@ describe('useImportDocumentAction', () => {
       text: 'Could not open the selected file',
     });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
   });
 
   it('does not read file text in the feature — passes the File to the worker service', async () => {
@@ -223,7 +225,7 @@ describe('useImportDocumentAction', () => {
     expect(reportedError).toBeInstanceOf(DomainError);
     expect(reportedError.cause).toBe(error);
     expect(reportedError.message).not.toContain('unexpected failure');
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
   });
 
   it('passes original DomainError directly to diagnostics without wrapping', async () => {

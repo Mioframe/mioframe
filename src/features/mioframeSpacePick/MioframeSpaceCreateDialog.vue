@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { DiagnosticsErrorPrompt, useDiagnosticsErrorPrompt } from '@feature/diagnosticsErrorPrompt';
@@ -18,7 +18,12 @@ const emit = defineEmits<{
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 const { loading, checkCreateSpaceNameAvailability, createSpace, openExistingSpace } =
   useCreateMioframeSpace(() => props.parentHandle);
-const { isVisible: isDiagnosticsPromptVisible } = useDiagnosticsErrorPrompt();
+const { isVisible: isDiagnosticsPromptVisible, clearDiagnosticsErrorPromptRequest } =
+  useDiagnosticsErrorPrompt();
+
+// This dialog is the only local owner of the contextual prompt request; dropping it on unmount
+// (cancel/completed/closed) prevents an earlier create-space error from resurfacing on reopen.
+onUnmounted(clearDiagnosticsErrorPromptRequest);
 
 const spaceName = ref<string | undefined>(undefined);
 const fieldIssue = ref<CreateSpaceFieldIssue | undefined>(undefined);

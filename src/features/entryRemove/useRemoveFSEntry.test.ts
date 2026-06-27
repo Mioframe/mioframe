@@ -14,6 +14,8 @@ const {
   confirmMock: vi.fn(),
   removeEntryMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
+  // Kept mocked (unused by production code) so a regression that reintroduces the
+  // import would be caught by the "not requested" assertions below.
   requestDiagnosticsErrorPromptMock: vi.fn(),
 }));
 
@@ -92,7 +94,7 @@ describe('useRemoveFSEntry', () => {
     expect(reportedError.cause).toBe(error);
     expect(reportedError.message).not.toContain('/docs');
     expect(reportedError.message).not.toContain('gd-123');
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
   });
 
   it('preserves VfsError as raw cause for non-recursive remove failures', async () => {
@@ -150,7 +152,7 @@ describe('useRemoveFSEntry', () => {
     });
     expect(reportedError.cause).toBe(recursiveError);
     expect(reportedError.message).not.toContain('/docs');
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
   });
 
   it('preserves upstream error as raw cause for recursive removal failures', async () => {

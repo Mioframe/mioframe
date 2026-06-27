@@ -718,7 +718,7 @@ describe('useOpenMioframeSpace', () => {
       code: 'mioframeSpacePick.openFailed',
     });
     expect(reportedError.cause).toBe(rawPickerError);
-    expect(requestDiagnosticsErrorPromptMock).toHaveBeenCalledTimes(1);
+    expect(requestDiagnosticsErrorPromptMock).not.toHaveBeenCalled();
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/require-await -- Re-enable after DOM File System Access API test mocks. */
