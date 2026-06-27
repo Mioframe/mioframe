@@ -1,44 +1,20 @@
 import { computed } from 'vue';
-import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
-import { SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
+import { useDiagnosticsErrorPromptEligibility } from './useDiagnosticsErrorPromptEligibility';
 import { useDiagnosticsErrorPromptState } from './useDiagnosticsErrorPromptState';
 
 /**
- * Computes whether the Home fallback diagnostics prompt is eligible to show, and owns its
- * `Enable diagnostics`/`Not now` actions. Used by `HomePane` for visibility and by
- * `DiagnosticsErrorPrompt` for both the Home and inline variant's actions.
- * @returns Home prompt visibility plus the enable/dismiss actions, which always clear the Home
- * fallback flag alongside the persisted settings change.
+ * Combines the session-only Home fallback flag with shared diagnostics prompt eligibility.
+ * @returns Home prompt visibility plus the action to clear the Home fallback flag once the
+ * prompt has been acted on (enabled or dismissed).
  */
 export const useHomeDiagnosticsErrorPrompt = () => {
-  const { isFinished } = useLocalSettings();
-  const {
-    diagnosticsEnabled,
-    isDiagnosticsErrorPromptDismissed,
-    enableDiagnosticsFromErrorPrompt,
-    dismissDiagnosticsErrorPrompt,
-  } = useDiagnosticsSettings();
+  const { isDiagnosticsErrorPromptEligible } = useDiagnosticsErrorPromptEligibility();
   const { shouldShowHomeDiagnosticsPrompt, clearHomeDiagnosticsPrompt } =
     useDiagnosticsErrorPromptState();
 
   const isHomeDiagnosticsPromptVisible = computed(
-    () =>
-      SENTRY_DIAGNOSTICS_AVAILABLE &&
-      isFinished.value &&
-      shouldShowHomeDiagnosticsPrompt.value &&
-      !diagnosticsEnabled.value &&
-      !isDiagnosticsErrorPromptDismissed.value,
+    () => shouldShowHomeDiagnosticsPrompt.value && isDiagnosticsErrorPromptEligible.value,
   );
 
-  const enableDiagnostics = () => {
-    enableDiagnosticsFromErrorPrompt();
-    clearHomeDiagnosticsPrompt();
-  };
-
-  const dismiss = () => {
-    dismissDiagnosticsErrorPrompt();
-    clearHomeDiagnosticsPrompt();
-  };
-
-  return { isHomeDiagnosticsPromptVisible, enableDiagnostics, dismiss };
+  return { isHomeDiagnosticsPromptVisible, clearHomeDiagnosticsPrompt };
 };

@@ -4,10 +4,9 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, h, ref } from 'vue';
 import HomePane from './HomePane.vue';
 
-const { isDiagnosticsHomePromptVisible, enableDiagnosticsMock, dismissMock } = vi.hoisted(() => ({
+const { isDiagnosticsHomePromptVisible, clearHomeDiagnosticsPromptMock } = vi.hoisted(() => ({
   isDiagnosticsHomePromptVisible: { value: false },
-  enableDiagnosticsMock: vi.fn(),
-  dismissMock: vi.fn(),
+  clearHomeDiagnosticsPromptMock: vi.fn(),
 }));
 
 vi.mock('@shared/ui/Layout', () => ({
@@ -73,14 +72,37 @@ vi.mock('@widget/PwaInstallWidget', () => ({
 vi.mock('@feature/diagnosticsErrorPrompt', () => ({
   useHomeDiagnosticsErrorPrompt: () => ({
     isHomeDiagnosticsPromptVisible: isDiagnosticsHomePromptVisible.value,
-    enableDiagnostics: enableDiagnosticsMock,
-    dismiss: dismissMock,
+    clearHomeDiagnosticsPrompt: clearHomeDiagnosticsPromptMock,
   }),
   DiagnosticsErrorPrompt: defineComponent({
     name: 'DiagnosticsErrorPromptStub',
     props: { variant: { type: String, required: true } },
-    setup(props) {
-      return () => h('div', { 'data-testid': 'diagnostics-home-prompt' }, props.variant);
+    emits: ['enabled', 'dismissed'],
+    setup(props, { emit }) {
+      return () =>
+        h('div', { 'data-testid': 'diagnostics-home-prompt' }, [
+          props.variant,
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('enabled');
+              },
+            },
+            'enable',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('dismissed');
+              },
+            },
+            'dismiss',
+          ),
+        ]);
     },
   }),
 }));
@@ -90,6 +112,7 @@ const mountHomePane = () => mount(HomePane);
 describe('HomePane diagnostics fallback prompt', () => {
   beforeEach(() => {
     isDiagnosticsHomePromptVisible.value = false;
+    clearHomeDiagnosticsPromptMock.mockReset();
   });
 
   it('does not render the diagnostics fallback card before a pending Home-placement request', () => {
@@ -104,7 +127,31 @@ describe('HomePane diagnostics fallback prompt', () => {
 
     const prompt = wrapper.find('[data-testid="diagnostics-home-prompt"]');
     expect(prompt.exists()).toBe(true);
-    expect(prompt.text()).toBe('home');
+    expect(prompt.text()).toContain('home');
+  });
+
+  it('clears the Home fallback flag when the prompt reports it was enabled', async () => {
+    isDiagnosticsHomePromptVisible.value = true;
+    const wrapper = mountHomePane();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'enable')
+      ?.trigger('click');
+
+    expect(clearHomeDiagnosticsPromptMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the Home fallback flag when the prompt reports it was dismissed', async () => {
+    isDiagnosticsHomePromptVisible.value = true;
+    const wrapper = mountHomePane();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'dismiss')
+      ?.trigger('click');
+
+    expect(clearHomeDiagnosticsPromptMock).toHaveBeenCalledTimes(1);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after the inline stubs used in this test file. */

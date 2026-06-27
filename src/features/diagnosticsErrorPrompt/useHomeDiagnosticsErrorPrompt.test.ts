@@ -88,7 +88,7 @@ describe('useHomeDiagnosticsErrorPrompt', () => {
     expect(useHomeDiagnosticsErrorPrompt().isHomeDiagnosticsPromptVisible.value).toBe(false);
   });
 
-  it('enableDiagnostics enables diagnostics and clears the Home prompt', async () => {
+  it('clearHomeDiagnosticsPrompt clears the Home fallback flag', async () => {
     const { useHomeDiagnosticsErrorPrompt } = await import('./useHomeDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 
@@ -96,23 +96,8 @@ describe('useHomeDiagnosticsErrorPrompt', () => {
     const prompt = useHomeDiagnosticsErrorPrompt();
     expect(prompt.isHomeDiagnosticsPromptVisible.value).toBe(true);
 
-    prompt.enableDiagnostics();
+    prompt.clearHomeDiagnosticsPrompt();
 
-    expect(enableDiagnosticsFromErrorPrompt).toHaveBeenCalledTimes(1);
-    expect(prompt.isHomeDiagnosticsPromptVisible.value).toBe(false);
-  });
-
-  it('dismiss dismisses the prompt without enabling diagnostics and clears the Home prompt', async () => {
-    const { useHomeDiagnosticsErrorPrompt } = await import('./useHomeDiagnosticsErrorPrompt');
-    const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
-
-    useDiagnosticsErrorPromptTrigger().requestHomeDiagnosticsPromptAfterHandledError();
-    const prompt = useHomeDiagnosticsErrorPrompt();
-
-    prompt.dismiss();
-
-    expect(dismissDiagnosticsErrorPrompt).toHaveBeenCalledTimes(1);
-    expect(enableDiagnosticsFromErrorPrompt).not.toHaveBeenCalled();
     expect(prompt.isHomeDiagnosticsPromptVisible.value).toBe(false);
   });
 });

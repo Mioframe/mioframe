@@ -1,7 +1,7 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines two small inline stubs. */
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, ref } from 'vue';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
 import type { CreateSpaceFieldIssue } from './useCreateMioframeSpace';
 
@@ -11,12 +11,14 @@ const {
   openExistingSpaceMock,
   isDiagnosticsPromptVisible,
   clearDiagnosticsPromptMock,
+  isDiagnosticsErrorPromptEligible,
 } = vi.hoisted(() => ({
   createSpaceMock: vi.fn(),
   checkCreateSpaceNameAvailabilityMock: vi.fn(),
   openExistingSpaceMock: vi.fn(),
   isDiagnosticsPromptVisible: { value: false },
   clearDiagnosticsPromptMock: vi.fn(),
+  isDiagnosticsErrorPromptEligible: { value: true },
 }));
 
 const createDirectoryHandle = (name: string): FileSystemDirectoryHandle => ({
@@ -139,6 +141,9 @@ vi.mock('@shared/ui/TextField', () => ({
 }));
 
 vi.mock('@feature/diagnosticsErrorPrompt', () => ({
+  useDiagnosticsErrorPromptEligibility: () => ({
+    isDiagnosticsErrorPromptEligible,
+  }),
   DiagnosticsErrorPrompt: defineComponent({
     name: 'DiagnosticsErrorPromptStub',
     props: { variant: { type: String, required: true } },
@@ -157,7 +162,7 @@ vi.mock('./useCreateMioframeSpace', async () => {
     ...actual,
     useCreateMioframeSpace: () => ({
       loading: false,
-      isDiagnosticsPromptVisible: isDiagnosticsPromptVisible.value,
+      isDiagnosticsPromptVisible: ref(isDiagnosticsPromptVisible.value),
       clearDiagnosticsPrompt: clearDiagnosticsPromptMock,
       checkCreateSpaceNameAvailability: checkCreateSpaceNameAvailabilityMock,
       createSpace: createSpaceMock,
@@ -182,6 +187,7 @@ describe('MioframeSpaceCreateDialog', () => {
     openExistingSpaceMock.mockReset();
     clearDiagnosticsPromptMock.mockReset();
     isDiagnosticsPromptVisible.value = false;
+    isDiagnosticsErrorPromptEligible.value = true;
   });
 
   it('clears the local inline create-space prompt when the dialog unmounts', () => {
@@ -205,6 +211,14 @@ describe('MioframeSpaceCreateDialog', () => {
     const wrapper = mountDialog();
 
     expect(wrapper.text()).toContain('diagnostics-error-prompt-stub');
+  });
+
+  it('does not render the diagnostics prompt when the local flag is set but shared eligibility fails', () => {
+    isDiagnosticsPromptVisible.value = true;
+    isDiagnosticsErrorPromptEligible.value = false;
+    const wrapper = mountDialog();
+
+    expect(wrapper.text()).not.toContain('diagnostics-error-prompt-stub');
   });
 
   it('keeps invalid field issues locally and does not call availability or create actions', async () => {

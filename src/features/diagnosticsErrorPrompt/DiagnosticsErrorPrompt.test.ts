@@ -2,20 +2,20 @@ import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import DiagnosticsErrorPrompt from './DiagnosticsErrorPrompt.vue';
 
-const enableDiagnostics = vi.fn();
-const dismiss = vi.fn();
+const enableDiagnosticsFromPrompt = vi.fn();
+const dismissDiagnosticsPrompt = vi.fn();
 
-vi.mock('./useHomeDiagnosticsErrorPrompt', () => ({
-  useHomeDiagnosticsErrorPrompt: () => ({
-    enableDiagnostics,
-    dismiss,
+vi.mock('./useDiagnosticsErrorPromptEligibility', () => ({
+  useDiagnosticsErrorPromptEligibility: () => ({
+    enableDiagnosticsFromPrompt,
+    dismissDiagnosticsPrompt,
   }),
 }));
 
 describe('DiagnosticsErrorPrompt', () => {
   afterEach(() => {
-    enableDiagnostics.mockReset();
-    dismiss.mockReset();
+    enableDiagnosticsFromPrompt.mockReset();
+    dismissDiagnosticsPrompt.mockReset();
   });
 
   it('renders the inline variant copy and actions', () => {
@@ -46,8 +46,8 @@ describe('DiagnosticsErrorPrompt', () => {
       .find((b) => b.text() === 'Enable diagnostics')
       ?.trigger('click');
 
-    expect(enableDiagnostics).toHaveBeenCalledTimes(1);
-    expect(dismiss).not.toHaveBeenCalled();
+    expect(enableDiagnosticsFromPrompt).toHaveBeenCalledTimes(1);
+    expect(dismissDiagnosticsPrompt).not.toHaveBeenCalled();
     expect(wrapper.emitted('enabled')).toHaveLength(1);
     expect(wrapper.emitted('dismissed')).toBeUndefined();
   });
@@ -60,8 +60,8 @@ describe('DiagnosticsErrorPrompt', () => {
       .find((b) => b.text() === 'Not now')
       ?.trigger('click');
 
-    expect(dismiss).toHaveBeenCalledTimes(1);
-    expect(enableDiagnostics).not.toHaveBeenCalled();
+    expect(dismissDiagnosticsPrompt).toHaveBeenCalledTimes(1);
+    expect(enableDiagnosticsFromPrompt).not.toHaveBeenCalled();
     expect(wrapper.emitted('dismissed')).toHaveLength(1);
     expect(wrapper.emitted('enabled')).toBeUndefined();
   });

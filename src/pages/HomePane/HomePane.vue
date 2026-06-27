@@ -25,7 +25,8 @@ defineSlots<{
 const { open } = useStackNavigation();
 const { settings } = useLocalSettings();
 const { isHomeWidgetVisible } = usePwaInstallAction();
-const { isHomeDiagnosticsPromptVisible } = useHomeDiagnosticsErrorPrompt();
+const { isHomeDiagnosticsPromptVisible, clearHomeDiagnosticsPrompt } =
+  useHomeDiagnosticsErrorPrompt();
 
 const onClickGoogleDriveUser = async (email: string) => {
   await open(
@@ -75,7 +76,12 @@ const onCreatedStarterExampleDocument = ({
       </MDAppBar>
     </template>
 
-    <DiagnosticsErrorPrompt v-if="isHomeDiagnosticsPromptVisible" variant="home" />
+    <DiagnosticsErrorPrompt
+      v-if="isHomeDiagnosticsPromptVisible"
+      variant="home"
+      @enabled="clearHomeDiagnosticsPrompt"
+      @dismissed="clearHomeDiagnosticsPrompt"
+    />
 
     <PwaInstallWidget v-if="isHomeWidgetVisible" />
 

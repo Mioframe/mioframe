@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { MDCard } from '@shared/ui/Card';
 import { MDButton } from '@shared/ui/Button';
-import { useHomeDiagnosticsErrorPrompt } from './useHomeDiagnosticsErrorPrompt';
+import { useDiagnosticsErrorPromptEligibility } from './useDiagnosticsErrorPromptEligibility';
 
 /** Copy variant for this prompt instance. Drives only copy here, not visibility routing. */
 export type DiagnosticsErrorPromptVariant = 'inline' | 'home';
@@ -18,7 +18,8 @@ const emit = defineEmits<{
   dismissed: [];
 }>();
 
-const { enableDiagnostics, dismiss } = useHomeDiagnosticsErrorPrompt();
+const { enableDiagnosticsFromPrompt, dismissDiagnosticsPrompt } =
+  useDiagnosticsErrorPromptEligibility();
 
 const COPY: Record<DiagnosticsErrorPromptVariant, { headline: string; body: string }> = {
   inline: {
@@ -34,12 +35,12 @@ const COPY: Record<DiagnosticsErrorPromptVariant, { headline: string; body: stri
 const copy = computed(() => COPY[props.variant]);
 
 const onEnable = () => {
-  enableDiagnostics();
+  enableDiagnosticsFromPrompt();
   emit('enabled');
 };
 
 const onDismiss = () => {
-  dismiss();
+  dismissDiagnosticsPrompt();
   emit('dismissed');
 };
 </script>

@@ -2,7 +2,10 @@
 import { computed, onUnmounted, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { DiagnosticsErrorPrompt } from '@feature/diagnosticsErrorPrompt';
+import {
+  DiagnosticsErrorPrompt,
+  useDiagnosticsErrorPromptEligibility,
+} from '@feature/diagnosticsErrorPrompt';
 import { parseMioframeSpaceName } from './spaceNameValidation';
 import { useCreateMioframeSpace, type CreateSpaceFieldIssue } from './useCreateMioframeSpace';
 
@@ -30,6 +33,11 @@ const {
 onUnmounted(() => {
   clearDiagnosticsPrompt();
 });
+
+const { isDiagnosticsErrorPromptEligible } = useDiagnosticsErrorPromptEligibility();
+const isInlineDiagnosticsPromptVisible = computed(
+  () => isDiagnosticsPromptVisible.value && isDiagnosticsErrorPromptEligible.value,
+);
 
 const spaceName = ref<string | undefined>(undefined);
 const fieldIssue = ref<CreateSpaceFieldIssue | undefined>(undefined);
@@ -153,7 +161,7 @@ const onApply = async () => {
     </div>
 
     <DiagnosticsErrorPrompt
-      v-if="isDiagnosticsPromptVisible"
+      v-if="isInlineDiagnosticsPromptVisible"
       variant="inline"
       @enabled="clearDiagnosticsPrompt"
       @dismissed="clearDiagnosticsPrompt"
