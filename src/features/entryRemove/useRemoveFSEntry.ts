@@ -21,7 +21,7 @@ enum EntryRemoveErrorCode {
 export const useRemoveFSEntry = () => {
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
-  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
+  const { requestHomeDiagnosticsPromptAfterHandledError } = useDiagnosticsErrorPromptTrigger();
 
   const { remove: removeEntry } = useFileSystem();
 
@@ -72,7 +72,7 @@ export const useRemoveFSEntry = () => {
                 feature: 'entryRemove',
                 action: 'removeEntryRecursive',
               });
-              requestDiagnosticsErrorPrompt({ source: 'entryRemove', placement: 'home' });
+              requestHomeDiagnosticsPromptAfterHandledError();
             }
           }
         } else {
@@ -88,7 +88,7 @@ export const useRemoveFSEntry = () => {
             feature: 'entryRemove',
             action: 'removeEntry',
           });
-          requestDiagnosticsErrorPrompt({ source: 'entryRemove', placement: 'home' });
+          requestHomeDiagnosticsPromptAfterHandledError();
         }
       }
     }

@@ -2,17 +2,25 @@
 import { computed } from 'vue';
 import { MDCard } from '@shared/ui/Card';
 import { MDButton } from '@shared/ui/Button';
-import { useDiagnosticsErrorPrompt } from './useDiagnosticsErrorPrompt';
-import type { DiagnosticsPromptPlacement } from './useDiagnosticsErrorPromptState';
+import { useHomeDiagnosticsErrorPrompt } from './useHomeDiagnosticsErrorPrompt';
+
+/** Copy variant for this prompt instance. Drives only copy here, not visibility routing. */
+export type DiagnosticsErrorPromptVariant = 'inline' | 'home';
 
 const props = defineProps<{
-  /** Local render target this prompt instance belongs to; only drives copy and actions here. */
-  placement: DiagnosticsPromptPlacement;
+  variant: DiagnosticsErrorPromptVariant;
 }>();
 
-const { enableDiagnostics, dismiss } = useDiagnosticsErrorPrompt(() => props.placement);
+const emit = defineEmits<{
+  /** The user enabled diagnostics from this prompt instance. */
+  enabled: [];
+  /** The user dismissed this prompt instance. */
+  dismissed: [];
+}>();
 
-const COPY: Record<DiagnosticsPromptPlacement, { headline: string; body: string }> = {
+const { enableDiagnostics, dismiss } = useHomeDiagnosticsErrorPrompt();
+
+const COPY: Record<DiagnosticsErrorPromptVariant, { headline: string; body: string }> = {
   inline: {
     headline: 'Help fix this problem?',
     body: 'Enable diagnostics to send technical error reports. Your documents and file paths are not sent.',
@@ -23,7 +31,17 @@ const COPY: Record<DiagnosticsPromptPlacement, { headline: string; body: string 
   },
 };
 
-const copy = computed(() => COPY[props.placement]);
+const copy = computed(() => COPY[props.variant]);
+
+const onEnable = () => {
+  enableDiagnostics();
+  emit('enabled');
+};
+
+const onDismiss = () => {
+  dismiss();
+  emit('dismissed');
+};
 </script>
 
 <template>
@@ -31,8 +49,8 @@ const copy = computed(() => COPY[props.placement]);
     <p class="diagnostics-error-prompt__headline">{{ copy.headline }}</p>
     <p class="diagnostics-error-prompt__body">{{ copy.body }}</p>
     <div class="diagnostics-error-prompt__actions">
-      <MDButton color="text" label="Not now" @click="dismiss" />
-      <MDButton color="filled" label="Enable diagnostics" @click="enableDiagnostics" />
+      <MDButton color="text" label="Not now" @click="onDismiss" />
+      <MDButton color="filled" label="Enable diagnostics" @click="onEnable" />
     </div>
   </MDCard>
 </template>

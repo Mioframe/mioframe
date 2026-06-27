@@ -29,7 +29,7 @@ export const useImportDocumentAction = () => {
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
   const { requestAccess } = useFileSystemAccessPermissionBroker();
-  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
+  const { requestHomeDiagnosticsPromptAfterHandledError } = useDiagnosticsErrorPromptTrigger();
 
   const reportImportError = (error: unknown, diagnosticsAction: string) => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
@@ -54,7 +54,7 @@ export const useImportDocumentAction = () => {
         feature: 'documentImport',
         action: diagnosticsAction,
       });
-      requestDiagnosticsErrorPrompt({ source: 'documentImport', placement: 'home' });
+      requestHomeDiagnosticsPromptAfterHandledError();
     }
   };
 

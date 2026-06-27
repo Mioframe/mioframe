@@ -1,38 +1,26 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { toValue, type MaybeRefOrGetter } from 'vue';
 import DiagnosticsErrorPrompt from './DiagnosticsErrorPrompt.vue';
 
 const enableDiagnostics = vi.fn();
 const dismiss = vi.fn();
-const useDiagnosticsErrorPromptMock = vi.fn(
-  (_placementSource: MaybeRefOrGetter<'inline' | 'home'>) => ({
+
+vi.mock('./useHomeDiagnosticsErrorPrompt', () => ({
+  useHomeDiagnosticsErrorPrompt: () => ({
     enableDiagnostics,
     dismiss,
   }),
-);
-
-vi.mock('./useDiagnosticsErrorPrompt', () => ({
-  useDiagnosticsErrorPrompt: (placementSource: MaybeRefOrGetter<'inline' | 'home'>) =>
-    useDiagnosticsErrorPromptMock(placementSource),
 }));
-
-const getCalledPlacement = () => {
-  const [placementSource] = useDiagnosticsErrorPromptMock.mock.calls.at(-1) ?? [];
-  return placementSource === undefined ? undefined : toValue(placementSource);
-};
 
 describe('DiagnosticsErrorPrompt', () => {
   afterEach(() => {
     enableDiagnostics.mockReset();
     dismiss.mockReset();
-    useDiagnosticsErrorPromptMock.mockClear();
   });
 
-  it('renders the inline placement copy and actions', () => {
-    const wrapper = mount(DiagnosticsErrorPrompt, { props: { placement: 'inline' } });
+  it('renders the inline variant copy and actions', () => {
+    const wrapper = mount(DiagnosticsErrorPrompt, { props: { variant: 'inline' } });
 
-    expect(getCalledPlacement()).toBe('inline');
     expect(wrapper.text()).toContain('Help fix this problem?');
     expect(wrapper.text()).toContain(
       'Enable diagnostics to send technical error reports. Your documents and file paths are not sent.',
@@ -41,18 +29,17 @@ describe('DiagnosticsErrorPrompt', () => {
     expect(wrapper.text()).toContain('Not now');
   });
 
-  it('renders the home placement copy and actions', () => {
-    const wrapper = mount(DiagnosticsErrorPrompt, { props: { placement: 'home' } });
+  it('renders the home variant copy and actions', () => {
+    const wrapper = mount(DiagnosticsErrorPrompt, { props: { variant: 'home' } });
 
-    expect(getCalledPlacement()).toBe('home');
     expect(wrapper.text()).toContain('Help fix recent problems?');
     expect(wrapper.text()).toContain(
       'Enable diagnostics to send technical error reports when something breaks. Your documents, file names, folder paths and document IDs are not sent.',
     );
   });
 
-  it('calls enableDiagnostics when the primary action is clicked', async () => {
-    const wrapper = mount(DiagnosticsErrorPrompt, { props: { placement: 'inline' } });
+  it('calls enableDiagnostics and emits enabled when the primary action is clicked', async () => {
+    const wrapper = mount(DiagnosticsErrorPrompt, { props: { variant: 'inline' } });
 
     await wrapper
       .findAll('button')
@@ -61,10 +48,12 @@ describe('DiagnosticsErrorPrompt', () => {
 
     expect(enableDiagnostics).toHaveBeenCalledTimes(1);
     expect(dismiss).not.toHaveBeenCalled();
+    expect(wrapper.emitted('enabled')).toHaveLength(1);
+    expect(wrapper.emitted('dismissed')).toBeUndefined();
   });
 
-  it('calls dismiss when the secondary action is clicked', async () => {
-    const wrapper = mount(DiagnosticsErrorPrompt, { props: { placement: 'inline' } });
+  it('calls dismiss and emits dismissed when the secondary action is clicked', async () => {
+    const wrapper = mount(DiagnosticsErrorPrompt, { props: { variant: 'inline' } });
 
     await wrapper
       .findAll('button')
@@ -73,5 +62,7 @@ describe('DiagnosticsErrorPrompt', () => {
 
     expect(dismiss).toHaveBeenCalledTimes(1);
     expect(enableDiagnostics).not.toHaveBeenCalled();
+    expect(wrapper.emitted('dismissed')).toHaveLength(1);
+    expect(wrapper.emitted('enabled')).toBeUndefined();
   });
 });

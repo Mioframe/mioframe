@@ -10,13 +10,13 @@ const {
   checkCreateSpaceNameAvailabilityMock,
   openExistingSpaceMock,
   isDiagnosticsPromptVisible,
-  clearDiagnosticsErrorPromptRequestMock,
+  clearDiagnosticsPromptMock,
 } = vi.hoisted(() => ({
   createSpaceMock: vi.fn(),
   checkCreateSpaceNameAvailabilityMock: vi.fn(),
   openExistingSpaceMock: vi.fn(),
   isDiagnosticsPromptVisible: { value: false },
-  clearDiagnosticsErrorPromptRequestMock: vi.fn(),
+  clearDiagnosticsPromptMock: vi.fn(),
 }));
 
 const createDirectoryHandle = (name: string): FileSystemDirectoryHandle => ({
@@ -139,16 +139,9 @@ vi.mock('@shared/ui/TextField', () => ({
 }));
 
 vi.mock('@feature/diagnosticsErrorPrompt', () => ({
-  useDiagnosticsErrorPrompt: (placement: 'inline' | 'home') => {
-    expect(placement).toBe('inline');
-    return {
-      isVisible: isDiagnosticsPromptVisible.value,
-      clearDiagnosticsErrorPromptRequest: clearDiagnosticsErrorPromptRequestMock,
-    };
-  },
   DiagnosticsErrorPrompt: defineComponent({
     name: 'DiagnosticsErrorPromptStub',
-    props: { placement: { type: String, required: true } },
+    props: { variant: { type: String, required: true } },
     setup() {
       return () => h('div', 'diagnostics-error-prompt-stub');
     },
@@ -164,6 +157,8 @@ vi.mock('./useCreateMioframeSpace', async () => {
     ...actual,
     useCreateMioframeSpace: () => ({
       loading: false,
+      isDiagnosticsPromptVisible: isDiagnosticsPromptVisible.value,
+      clearDiagnosticsPrompt: clearDiagnosticsPromptMock,
       checkCreateSpaceNameAvailability: checkCreateSpaceNameAvailabilityMock,
       createSpace: createSpaceMock,
       openExistingSpace: openExistingSpaceMock,
@@ -185,19 +180,18 @@ describe('MioframeSpaceCreateDialog', () => {
     createSpaceMock.mockReset();
     checkCreateSpaceNameAvailabilityMock.mockReset();
     openExistingSpaceMock.mockReset();
-    clearDiagnosticsErrorPromptRequestMock.mockReset();
+    clearDiagnosticsPromptMock.mockReset();
     isDiagnosticsPromptVisible.value = false;
   });
 
-  it('clears only its own inline create-space prompt request when the dialog unmounts', () => {
+  it('clears the local inline create-space prompt when the dialog unmounts', () => {
     const wrapper = mountDialog();
 
-    expect(clearDiagnosticsErrorPromptRequestMock).not.toHaveBeenCalled();
+    expect(clearDiagnosticsPromptMock).not.toHaveBeenCalled();
 
     wrapper.unmount();
 
-    expect(clearDiagnosticsErrorPromptRequestMock).toHaveBeenCalledTimes(1);
-    expect(clearDiagnosticsErrorPromptRequestMock).toHaveBeenCalledWith({ source: 'spaceCreate' });
+    expect(clearDiagnosticsPromptMock).toHaveBeenCalledTimes(1);
   });
 
   it('does not render the diagnostics prompt when it is not eligible', () => {

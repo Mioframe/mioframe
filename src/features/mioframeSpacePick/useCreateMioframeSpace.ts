@@ -2,7 +2,6 @@ import { useFileSystem } from '@entity/mountedDirectories';
 import { useMainServiceClient } from '@shared/service';
 import { DomainError } from '@shared/lib/error';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
-import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 import { DEVICE_FILES_ROOT_NAME } from '@shared/service';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
@@ -42,12 +41,17 @@ export const useCreateMioframeSpace = (
   parentHandleSource: MaybeRefOrGetter<FileSystemDirectoryHandle | undefined>,
 ) => {
   const loading = ref(false);
+  const isDiagnosticsPromptVisible = ref(false);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory, disconnectDeviceFile } = useFileSystem();
-  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
   const {
     repositories: { initializeRepository },
   } = useMainServiceClient();
+
+  /** Drops the local inline diagnostics prompt. Has no effect on the unrelated Home fallback flag. */
+  const clearDiagnosticsPrompt = () => {
+    isDiagnosticsPromptVisible.value = false;
+  };
 
   const getParentHandle = () => toValue(parentHandleSource);
 
@@ -74,7 +78,7 @@ export const useCreateMioframeSpace = (
       feature: 'mioframeSpaceCreate',
       action: options?.action ?? 'createSpace',
     });
-    requestDiagnosticsErrorPrompt({ source: 'spaceCreate', placement: 'inline' });
+    isDiagnosticsPromptVisible.value = true;
   };
 
   const reportRollbackError = (rollbackError: unknown) => {
@@ -239,6 +243,8 @@ export const useCreateMioframeSpace = (
 
   return {
     loading,
+    isDiagnosticsPromptVisible,
+    clearDiagnosticsPrompt,
     checkCreateSpaceNameAvailability,
     createSpace,
     openExistingSpace,

@@ -25,7 +25,7 @@ export const useOpenMioframeSpace = () => {
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
-  const { requestDiagnosticsErrorPrompt } = useDiagnosticsErrorPromptTrigger();
+  const { requestHomeDiagnosticsPromptAfterHandledError } = useDiagnosticsErrorPromptTrigger();
 
   const isSupported = toRef(isDirectoryPickerSupported);
 
@@ -45,7 +45,7 @@ export const useOpenMioframeSpace = () => {
       feature: 'mioframeSpaceOpen',
       action: 'openSpace',
     });
-    requestDiagnosticsErrorPrompt({ source: 'spaceOpen', placement: 'home' });
+    requestHomeDiagnosticsPromptAfterHandledError();
   };
 
   const askToRetryOpenSpace = async () =>

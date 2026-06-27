@@ -71,19 +71,16 @@ vi.mock('@widget/PwaInstallWidget', () => ({
 }));
 
 vi.mock('@feature/diagnosticsErrorPrompt', () => ({
-  useDiagnosticsErrorPrompt: (placement: 'inline' | 'home') => {
-    expect(placement).toBe('home');
-    return {
-      isVisible: isDiagnosticsHomePromptVisible.value,
-      enableDiagnostics: enableDiagnosticsMock,
-      dismiss: dismissMock,
-    };
-  },
+  useHomeDiagnosticsErrorPrompt: () => ({
+    isHomeDiagnosticsPromptVisible: isDiagnosticsHomePromptVisible.value,
+    enableDiagnostics: enableDiagnosticsMock,
+    dismiss: dismissMock,
+  }),
   DiagnosticsErrorPrompt: defineComponent({
     name: 'DiagnosticsErrorPromptStub',
-    props: { placement: { type: String, required: true } },
+    props: { variant: { type: String, required: true } },
     setup(props) {
-      return () => h('div', { 'data-testid': 'diagnostics-home-prompt' }, props.placement);
+      return () => h('div', { 'data-testid': 'diagnostics-home-prompt' }, props.variant);
     },
   }),
 }));
