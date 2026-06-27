@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
-const isFinished = ref(true);
+const isDiagnosticsSettingsReady = ref(true);
 const diagnosticsEnabled = ref(false);
 const isDiagnosticsErrorPromptDismissed = ref(false);
 const enableDiagnosticsFromErrorPrompt = vi.fn();
@@ -9,8 +9,8 @@ const dismissDiagnosticsErrorPrompt = vi.fn();
 let sentryDiagnosticsAvailable = true;
 
 vi.mock('@entity/localSettings', () => ({
-  useLocalSettings: () => ({ isFinished }),
   useDiagnosticsSettings: () => ({
+    isDiagnosticsSettingsReady,
     diagnosticsEnabled,
     isDiagnosticsErrorPromptDismissed,
     enableDiagnosticsFromErrorPrompt,
@@ -27,7 +27,7 @@ vi.mock('@shared/config', () => ({
 describe('useHomeDiagnosticsErrorPrompt', () => {
   beforeEach(() => {
     vi.resetModules();
-    isFinished.value = true;
+    isDiagnosticsSettingsReady.value = true;
     diagnosticsEnabled.value = false;
     isDiagnosticsErrorPromptDismissed.value = false;
     sentryDiagnosticsAvailable = true;
@@ -62,7 +62,7 @@ describe('useHomeDiagnosticsErrorPrompt', () => {
   });
 
   it('stays hidden when settings are not yet hydrated', async () => {
-    isFinished.value = false;
+    isDiagnosticsSettingsReady.value = false;
     const { useHomeDiagnosticsErrorPrompt } = await import('./useHomeDiagnosticsErrorPrompt');
     const { useDiagnosticsErrorPromptTrigger } = await import('./useDiagnosticsErrorPromptTrigger');
 

@@ -3,11 +3,14 @@ import { APP_VERSION } from '@shared/config';
 import { useLocalSettings } from './useLocalSettings';
 
 /**
- * Returns the local diagnostics settings plus the only supported mutation actions.
- * @returns Diagnostics settings state and user-driven actions.
+ * Returns the local diagnostics settings, their readiness, and the only supported mutation
+ * actions.
+ * @returns Diagnostics settings state, readiness, and user-driven actions.
  */
 export const useDiagnosticsSettings = () => {
-  const { settings } = useLocalSettings();
+  const { settings, isFinished } = useLocalSettings();
+
+  const isDiagnosticsSettingsReady = computed(() => isFinished.value);
 
   const diagnosticsEnabled = computed(() => settings.value.diagnosticsEnabled);
   const diagnosticsConsentRequested = computed(() => settings.value.diagnosticsConsentRequested);
@@ -30,6 +33,7 @@ export const useDiagnosticsSettings = () => {
   };
 
   return {
+    isDiagnosticsSettingsReady,
     diagnosticsEnabled,
     diagnosticsConsentRequested,
     isDiagnosticsErrorPromptDismissed,

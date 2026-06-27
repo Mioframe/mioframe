@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
+import { useDiagnosticsSettings } from '@entity/localSettings';
 import { SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 
 /**
@@ -10,8 +10,8 @@ import { SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
  * @returns Eligibility computed plus the enable/dismiss actions that persist settings state.
  */
 export const useDiagnosticsErrorPromptEligibility = () => {
-  const { isFinished } = useLocalSettings();
   const {
+    isDiagnosticsSettingsReady,
     diagnosticsEnabled,
     isDiagnosticsErrorPromptDismissed,
     enableDiagnosticsFromErrorPrompt,
@@ -21,7 +21,7 @@ export const useDiagnosticsErrorPromptEligibility = () => {
   const isDiagnosticsErrorPromptEligible = computed(
     () =>
       SENTRY_DIAGNOSTICS_AVAILABLE &&
-      isFinished.value &&
+      isDiagnosticsSettingsReady.value &&
       !diagnosticsEnabled.value &&
       !isDiagnosticsErrorPromptDismissed.value,
   );

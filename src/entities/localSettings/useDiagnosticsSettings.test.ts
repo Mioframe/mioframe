@@ -6,10 +6,12 @@ const settings = ref<{
   diagnosticsConsentRequested?: boolean;
   diagnosticsErrorPromptDismissedVersion?: string;
 }>({});
+const isFinished = ref(true);
 
 vi.mock('./useLocalSettings', () => ({
   useLocalSettings: () => ({
     settings,
+    isFinished,
   }),
 }));
 
@@ -21,6 +23,17 @@ describe('useDiagnosticsSettings', () => {
   beforeEach(() => {
     vi.resetModules();
     settings.value = {};
+    isFinished.value = true;
+  });
+
+  it('isDiagnosticsSettingsReady reflects local settings hydration state', async () => {
+    const { useDiagnosticsSettings } = await import('./useDiagnosticsSettings');
+
+    isFinished.value = false;
+    expect(useDiagnosticsSettings().isDiagnosticsSettingsReady.value).toBe(false);
+
+    isFinished.value = true;
+    expect(useDiagnosticsSettings().isDiagnosticsSettingsReady.value).toBe(true);
   });
 
   it('reads diagnostics fields as strict booleans', async () => {
