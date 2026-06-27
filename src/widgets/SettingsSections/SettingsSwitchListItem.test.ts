@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { mount } from '@vue/test-utils';
+import { describe, expect, it, vi } from 'vitest';
+import { h } from 'vue';
 import SettingsSwitchListItem from './SettingsSwitchListItem.vue';
 
 vi.mock('@shared/ui/State/useRipple', () => ({
@@ -50,7 +51,7 @@ vi.mock('@shared/ui/Lists', () => ({
   },
 }));
 
-const mountSettingsSwitchListItem = async ({
+const mountSettingsSwitchListItem = ({
   checked = false,
   disabled = false,
   lines,
@@ -60,88 +61,61 @@ const mountSettingsSwitchListItem = async ({
   disabled?: boolean | undefined;
   lines?: 1 | 2 | 3 | undefined;
   onChange?: (() => void) | undefined;
-} = {}) => {
-  const root = document.createElement('div');
-  document.body.appendChild(root);
-  const app = createApp(SettingsSwitchListItem, {
-    headline: 'Error diagnostics',
-    supportingText: 'Send technical error reports after you enable diagnostics.',
-    checked,
-    disabled,
-    lines,
-    onChange,
-  });
-
-  app.mount(root);
-  await nextTick();
-
-  return {
-    root,
-    unmount: () => {
-      app.unmount();
-      root.remove();
+} = {}) =>
+  mount(SettingsSwitchListItem, {
+    props: {
+      headline: 'Error diagnostics',
+      supportingText: 'Send technical error reports after you enable diagnostics.',
+      checked,
+      disabled,
+      ...(lines === undefined ? {} : { lines }),
+      ...(onChange === undefined ? {} : { onChange }),
     },
-  };
-};
-
-const getSwitchRow = (root: HTMLElement) => root.querySelector<HTMLElement>('[role="switch"]');
+  });
 
 describe('SettingsSwitchListItem', () => {
-  afterEach(() => {
-    document.body.innerHTML = '';
-  });
-
   it('renders an enabled switch row as a single interactive switch control', async () => {
     const onChange = vi.fn();
-    const { root, unmount } = await mountSettingsSwitchListItem({ onChange });
+    const wrapper = mountSettingsSwitchListItem({ onChange });
 
-    const row = getSwitchRow(root);
+    const row = wrapper.get('[role="switch"]');
 
-    expect(row?.tagName).toBe('BUTTON');
-    expect(row?.getAttribute('aria-checked')).toBe('false');
-    expect(row?.querySelector('input')).toBeNull();
-    expect(row?.querySelector('label')).toBeNull();
+    expect(row.element.tagName).toBe('BUTTON');
+    expect(row.attributes('aria-checked')).toBe('false');
+    expect(row.find('input').exists()).toBe(false);
+    expect(row.find('label').exists()).toBe(false);
 
-    const visualSwitch = row?.querySelector<HTMLElement>('.md-switch');
-    expect(visualSwitch).not.toBeNull();
-    expect(visualSwitch?.querySelector('input')).toBeNull();
-    expect(visualSwitch?.hasAttribute('tabindex')).toBe(false);
+    const visualSwitch = row.get('.md-switch');
+    expect(visualSwitch.find('input').exists()).toBe(false);
+    expect(visualSwitch.attributes('tabindex')).toBeUndefined();
 
-    row?.click();
-    await nextTick();
+    await row.trigger('click');
     expect(onChange).toHaveBeenCalledTimes(1);
-
-    unmount();
   });
 
   it('renders a disabled checked row as non-interactive with aria-disabled', async () => {
     const onChange = vi.fn();
-    const { root, unmount } = await mountSettingsSwitchListItem({
+    const wrapper = mountSettingsSwitchListItem({
       checked: true,
       disabled: true,
       onChange,
     });
 
-    const row = getSwitchRow(root);
+    const row = wrapper.get('[role="switch"]');
 
-    expect(row?.tagName).toBe('BUTTON');
-    expect(row?.getAttribute('aria-checked')).toBe('true');
-    expect(row?.getAttribute('aria-disabled')).toBe('true');
+    expect(row.element.tagName).toBe('BUTTON');
+    expect(row.attributes('aria-checked')).toBe('true');
+    expect(row.attributes('aria-disabled')).toBe('true');
 
-    row?.click();
-    await nextTick();
+    await row.trigger('click');
 
     expect(onChange).not.toHaveBeenCalled();
-
-    unmount();
   });
 
-  it('forwards lines prop to MDListItem', async () => {
-    const { root, unmount } = await mountSettingsSwitchListItem({ lines: 2 });
+  it('forwards lines prop to MDListItem', () => {
+    const wrapper = mountSettingsSwitchListItem({ lines: 2 });
 
-    const row = getSwitchRow(root);
-    expect(row?.getAttribute('data-line-count')).toBe('2');
-
-    unmount();
+    const row = wrapper.get('[role="switch"]');
+    expect(row.attributes('data-line-count')).toBe('2');
   });
 });

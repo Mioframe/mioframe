@@ -87,7 +87,7 @@ watch(
 <template>
   <div
     v-if="presentation"
-    class="md-switch"
+    class="md-switch md-switch_presentation"
     :class="{ 'md-switch_selected': stateValue, 'md-switch_disabled': disabled }"
     aria-hidden="true"
   >
@@ -143,19 +143,35 @@ watch(
 
 <style lang="css" scoped>
 .md-switch {
+  /*
+   * Private implementation variables, not a public component-token contract.
+   * No official `md.comp.switch.*` token paths are cached for this project
+   * (see docs/material-3/component-registry.md); track/thumb geometry is
+   * assumed from common Material switch conventions and kept as an
+   * unresolved verification risk until official switch docs are available.
+   */
+  --md-switch-track-width: 52dp;
+  --md-switch-track-height: 32dp;
+  --md-switch-track-shape: 16dp;
+  --md-switch-track-border-width: 2dp;
+  --md-switch-thumb-size-unselected: 16dp;
+  --md-switch-thumb-size-selected: 24dp;
+  --md-switch-thumb-offset-unselected: 6dp;
+  --md-switch-thumb-offset-selected: 22dp;
+
   position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  width: 52px;
-  height: 32px;
+  width: var(--md-switch-track-width);
+  height: var(--md-switch-track-height);
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--md-switch-track-shape);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 
   &__state-layer {
-    border-radius: 16px;
+    border-radius: var(--md-switch-track-shape);
   }
 
   &__track {
@@ -166,8 +182,8 @@ watch(
     align-items: center;
     width: 100%;
     height: 100%;
-    border: 2px solid var(--md-sys-color-outline);
-    border-radius: 16px;
+    border: var(--md-switch-track-border-width) solid var(--md-sys-color-outline);
+    border-radius: var(--md-switch-track-shape);
     background-color: transparent;
     pointer-events: none;
     transition:
@@ -176,9 +192,9 @@ watch(
   }
 
   &__thumb {
-    width: 16px;
-    height: 16px;
-    margin-inline-start: 6px;
+    width: var(--md-switch-thumb-size-unselected);
+    height: var(--md-switch-thumb-size-unselected);
+    margin-inline-start: var(--md-switch-thumb-offset-unselected);
     border-radius: 50%;
     background-color: var(--md-sys-color-outline);
     transition:
@@ -204,9 +220,9 @@ watch(
     }
 
     .md-switch__thumb {
-      width: 24px;
-      height: 24px;
-      margin-inline-start: 22px;
+      width: var(--md-switch-thumb-size-selected);
+      height: var(--md-switch-thumb-size-selected);
+      margin-inline-start: var(--md-switch-thumb-offset-selected);
       background-color: var(--md-sys-color-on-primary);
     }
   }
@@ -232,6 +248,11 @@ watch(
         background-color: var(--md-sys-color-surface);
       }
     }
+  }
+
+  &_presentation {
+    cursor: default;
+    pointer-events: none;
   }
 }
 </style>

@@ -70,6 +70,7 @@ describe('MDSwitch', () => {
     expect(switchEl.element.tagName).toBe('DIV');
     expect(switchEl.attributes('aria-hidden')).toBe('true');
     expect(switchEl.attributes('tabindex')).toBeUndefined();
+    expect(switchEl.classes()).toContain('md-switch_presentation');
     expect(wrapper.find('.md-state-layer').exists()).toBe(false);
   });
 

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDSwitch from './MDSwitch.vue';
+import { MDStateLayerForcedStateProvider } from '../State/testing';
 
 const meta = {
   title: 'shared/ui/MDSwitch',
@@ -46,15 +47,21 @@ const switchStatesTemplate = `
 const switchInteractionStatesTemplate = `
   <div data-testid="visual-md-switch-interaction-states" class="visual-surface">
     <div class="visual-row">
-      <MDSwitch class="md-state_hover" id="storybook-md-switch-hover" aria-label="Hover" :model-value="false" />
+      <MDStateLayerForcedStateProvider hovered>
+        <MDSwitch id="storybook-md-switch-hover" aria-label="Hover" :model-value="false" />
+      </MDStateLayerForcedStateProvider>
       <span>Hover</span>
     </div>
     <div class="visual-row">
-      <MDSwitch class="md-state_focused" id="storybook-md-switch-focus" aria-label="Focus" :model-value="true" />
+      <MDStateLayerForcedStateProvider focused>
+        <MDSwitch id="storybook-md-switch-focus" aria-label="Focus" :model-value="true" />
+      </MDStateLayerForcedStateProvider>
       <span>Focus</span>
     </div>
     <div class="visual-row">
-      <MDSwitch class="md-state_pressed" id="storybook-md-switch-pressed" aria-label="Pressed" :model-value="false" />
+      <MDStateLayerForcedStateProvider pressed>
+        <MDSwitch id="storybook-md-switch-pressed" aria-label="Pressed" :model-value="false" />
+      </MDStateLayerForcedStateProvider>
       <span>Pressed</span>
     </div>
   </div>
@@ -86,7 +93,7 @@ export const VisualStates: Story = {
 export const VisualInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDSwitch },
+    components: { MDSwitch, MDStateLayerForcedStateProvider },
     template: switchInteractionStatesTemplate,
   }),
 };
