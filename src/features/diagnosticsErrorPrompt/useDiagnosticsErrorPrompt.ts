@@ -5,7 +5,7 @@ import { useDiagnosticsErrorPromptState } from './useDiagnosticsErrorPromptState
 
 /**
  * Computes whether the contextual diagnostics prompt is eligible to show and owns its actions.
- * Used by `DiagnosticsErrorPromptContainer`.
+ * Used by `DiagnosticsErrorPrompt`.
  * @returns Visibility state and the enable/dismiss actions for the contextual prompt.
  */
 export const useDiagnosticsErrorPrompt = () => {

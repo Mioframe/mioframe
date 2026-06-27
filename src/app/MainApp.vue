@@ -12,7 +12,6 @@ import { setupMetaThemeColor } from '@shared/lib/metaThemeColor';
 import { usePreventUnloadDuringActiveWrites } from '@feature/preventUnloadDuringActiveWrites';
 import { useOptionalGoogleDriveIntegration } from '@feature/googleDriveIntegration';
 import { useDiagnosticsReporting } from '@feature/diagnosticsReporting';
-import { useDiagnosticsErrorPromptSnackbar } from '@feature/diagnosticsErrorPrompt';
 import { setupPwaInstallRuntime } from '@feature/pwaInstall';
 
 const { addSnackbar } = useSnackbar();
@@ -34,7 +33,6 @@ const mainAriaHidden = useMainContentAriaHidden();
 useFocusIndicator();
 usePreventUnloadDuringActiveWrites();
 useDiagnosticsReporting();
-useDiagnosticsErrorPromptSnackbar();
 useOptionalGoogleDriveIntegration();
 
 setupMetaThemeColor();

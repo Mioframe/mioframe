@@ -1,2 +1,3 @@
 export { useDiagnosticsErrorPromptTrigger } from './useDiagnosticsErrorPromptTrigger';
-export { useDiagnosticsErrorPromptSnackbar } from './useDiagnosticsErrorPromptSnackbar';
+export { useDiagnosticsErrorPrompt } from './useDiagnosticsErrorPrompt';
+export { default as DiagnosticsErrorPrompt } from './DiagnosticsErrorPrompt.vue';

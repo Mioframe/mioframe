@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
+import { DiagnosticsErrorPrompt, useDiagnosticsErrorPrompt } from '@feature/diagnosticsErrorPrompt';
 import { parseMioframeSpaceName } from './spaceNameValidation';
 import { useCreateMioframeSpace, type CreateSpaceFieldIssue } from './useCreateMioframeSpace';
 
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 const { loading, checkCreateSpaceNameAvailability, createSpace, openExistingSpace } =
   useCreateMioframeSpace(() => props.parentHandle);
+const { isVisible: isDiagnosticsPromptVisible } = useDiagnosticsErrorPrompt();
 
 const spaceName = ref<string | undefined>(undefined);
 const fieldIssue = ref<CreateSpaceFieldIssue | undefined>(undefined);
@@ -138,6 +140,8 @@ const onApply = async () => {
 
       <p class="mioframe-space-create-dialog__detail">Space folder: {{ resultFolder }}</p>
     </div>
+
+    <DiagnosticsErrorPrompt v-if="isDiagnosticsPromptVisible" />
   </MDDialog>
 </template>
 

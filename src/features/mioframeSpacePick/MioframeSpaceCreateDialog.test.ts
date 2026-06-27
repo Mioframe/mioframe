@@ -5,13 +5,17 @@ import { defineComponent, h } from 'vue';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
 import type { CreateSpaceFieldIssue } from './useCreateMioframeSpace';
 
-const { createSpaceMock, checkCreateSpaceNameAvailabilityMock, openExistingSpaceMock } = vi.hoisted(
-  () => ({
-    createSpaceMock: vi.fn(),
-    checkCreateSpaceNameAvailabilityMock: vi.fn(),
-    openExistingSpaceMock: vi.fn(),
-  }),
-);
+const {
+  createSpaceMock,
+  checkCreateSpaceNameAvailabilityMock,
+  openExistingSpaceMock,
+  isDiagnosticsPromptVisible,
+} = vi.hoisted(() => ({
+  createSpaceMock: vi.fn(),
+  checkCreateSpaceNameAvailabilityMock: vi.fn(),
+  openExistingSpaceMock: vi.fn(),
+  isDiagnosticsPromptVisible: { value: false },
+}));
 
 const createDirectoryHandle = (name: string): FileSystemDirectoryHandle => ({
   kind: 'directory',
@@ -132,6 +136,16 @@ vi.mock('@shared/ui/TextField', () => ({
   }),
 }));
 
+vi.mock('@feature/diagnosticsErrorPrompt', () => ({
+  useDiagnosticsErrorPrompt: () => ({ isVisible: isDiagnosticsPromptVisible.value }),
+  DiagnosticsErrorPrompt: defineComponent({
+    name: 'DiagnosticsErrorPromptStub',
+    setup() {
+      return () => h('div', 'diagnostics-error-prompt-stub');
+    },
+  }),
+}));
+
 vi.mock('./useCreateMioframeSpace', async () => {
   const actual = await vi.importActual<typeof import('./useCreateMioframeSpace')>(
     './useCreateMioframeSpace',
@@ -162,6 +176,20 @@ describe('MioframeSpaceCreateDialog', () => {
     createSpaceMock.mockReset();
     checkCreateSpaceNameAvailabilityMock.mockReset();
     openExistingSpaceMock.mockReset();
+    isDiagnosticsPromptVisible.value = false;
+  });
+
+  it('does not render the diagnostics prompt when it is not eligible', () => {
+    const wrapper = mountDialog();
+
+    expect(wrapper.text()).not.toContain('diagnostics-error-prompt-stub');
+  });
+
+  it('renders the contextual diagnostics prompt when eligible', () => {
+    isDiagnosticsPromptVisible.value = true;
+    const wrapper = mountDialog();
+
+    expect(wrapper.text()).toContain('diagnostics-error-prompt-stub');
   });
 
   it('keeps invalid field issues locally and does not call availability or create actions', async () => {
