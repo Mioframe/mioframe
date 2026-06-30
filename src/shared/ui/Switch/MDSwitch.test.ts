@@ -306,6 +306,30 @@ describe('MDSwitch', () => {
       expect(wrapper.find('.icon-check').exists()).toBe(true);
     });
 
+    it('applies md-switch_with-current-icon class in presentation mode when current state has an icon', () => {
+      const selectedWrapper = mountSwitch(
+        { modelValue: true, presentation: true },
+        { 'selected-icon': checkIconSlot },
+      );
+      expect(selectedWrapper.get('.md-switch').classes()).toContain('md-switch_with-current-icon');
+
+      const unselectedWrapper = mountSwitch(
+        { modelValue: false, presentation: true },
+        { 'unselected-icon': crossIconSlot },
+      );
+      expect(unselectedWrapper.get('.md-switch').classes()).toContain(
+        'md-switch_with-current-icon',
+      );
+    });
+
+    it('does not apply md-switch_with-current-icon class in presentation mode when current state has no icon', () => {
+      const wrapper = mountSwitch(
+        { modelValue: false, presentation: true },
+        { 'selected-icon': checkIconSlot },
+      );
+      expect(wrapper.get('.md-switch').classes()).not.toContain('md-switch_with-current-icon');
+    });
+
     it('does not render icons when no slots are provided', () => {
       const wrapper = mountSwitch({ modelValue: true });
 

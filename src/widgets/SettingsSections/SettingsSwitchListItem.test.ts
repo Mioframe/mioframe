@@ -55,12 +55,10 @@ const mountSettingsSwitchListItem = ({
   checked = false,
   disabled = false,
   lines,
-  onChange,
 }: {
   checked?: boolean | undefined;
   disabled?: boolean | undefined;
   lines?: 1 | 2 | 3 | undefined;
-  onChange?: (() => void) | undefined;
 } = {}) =>
   mount(SettingsSwitchListItem, {
     props: {
@@ -69,14 +67,12 @@ const mountSettingsSwitchListItem = ({
       checked,
       disabled,
       ...(lines === undefined ? {} : { lines }),
-      ...(onChange === undefined ? {} : { onChange }),
     },
   });
 
 describe('SettingsSwitchListItem', () => {
   it('renders an enabled switch row as a single interactive switch control', async () => {
-    const onChange = vi.fn();
-    const wrapper = mountSettingsSwitchListItem({ onChange });
+    const wrapper = mountSettingsSwitchListItem();
 
     const row = wrapper.get('[role="switch"]');
 
@@ -90,15 +86,13 @@ describe('SettingsSwitchListItem', () => {
     expect(visualSwitch.attributes('tabindex')).toBeUndefined();
 
     await row.trigger('click');
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted('change')).toHaveLength(1);
   });
 
   it('renders a disabled checked row as non-interactive with aria-disabled', async () => {
-    const onChange = vi.fn();
     const wrapper = mountSettingsSwitchListItem({
       checked: true,
       disabled: true,
-      onChange,
     });
 
     const row = wrapper.get('[role="switch"]');
@@ -109,7 +103,7 @@ describe('SettingsSwitchListItem', () => {
 
     await row.trigger('click');
 
-    expect(onChange).not.toHaveBeenCalled();
+    expect(wrapper.emitted('change')).toBeUndefined();
   });
 
   it('forwards lines prop to MDListItem', () => {

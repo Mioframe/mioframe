@@ -76,6 +76,7 @@ const onPointerMove = (e: PointerEvent) => {
 const onPointerUp = (e: PointerEvent) => {
   if (!isDragging.value) return;
   isDragging.value = false;
+  switchEl.value?.releasePointerCapture(e.pointerId);
 
   const dx = e.clientX - dragStartX.value;
   if (Math.abs(dx) > 4) {
@@ -92,8 +93,11 @@ const onPointerUp = (e: PointerEvent) => {
   }
 };
 
-const onPointerCancel = () => {
+const onPointerCancel = (e: PointerEvent) => {
+  if (!isDragging.value) return;
   isDragging.value = false;
+  suppressNextClick.value = false;
+  switchEl.value?.releasePointerCapture(e.pointerId);
 };
 
 const onClickContainer = (e: MouseEvent) => {
@@ -148,7 +152,11 @@ watch(
   <div
     v-if="presentation"
     class="md-switch md-switch_presentation"
-    :class="{ 'md-switch_selected': stateValue, 'md-switch_disabled': disabled }"
+    :class="{
+      'md-switch_selected': stateValue,
+      'md-switch_disabled': disabled,
+      'md-switch_with-current-icon': hasCurrentIcon,
+    }"
     aria-hidden="true"
   >
     <div class="md-switch__track">
@@ -455,9 +463,10 @@ watch(
     width: var(--md-private-switch-icon-size);
     height: var(--md-private-switch-icon-size);
     overflow: hidden;
-    color: rgb(
+    --md-content-color: rgb(
       from var(--md-private-switch-icon-color) r g b / var(--md-private-switch-icon-opacity)
     );
+    color: var(--md-content-color);
     --md-symbol-size: var(--md-private-switch-icon-size);
   }
 
