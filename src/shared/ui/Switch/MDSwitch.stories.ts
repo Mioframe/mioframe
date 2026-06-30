@@ -25,7 +25,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const switchStatesTemplate = `
-  <div data-testid="visual-md-switch-states" class="visual-surface">
+  <div data-testid="visual-md-switch-states" class="visual-switch-surface">
     <div class="visual-row">
       <MDSwitch id="storybook-md-switch-off" aria-label="Off" :model-value="false" />
       <span>Off</span>
@@ -46,7 +46,7 @@ const switchStatesTemplate = `
 `;
 
 const switchInteractionStatesTemplate = `
-  <div data-testid="visual-md-switch-interaction-states" class="visual-surface">
+  <div data-testid="visual-md-switch-interaction-states" class="visual-switch-surface">
     <div class="visual-row">
       <MDStateLayerForcedStateProvider hovered>
         <MDSwitch id="storybook-md-switch-hover-off" aria-label="Hover off" :model-value="false" />
@@ -87,7 +87,7 @@ const switchInteractionStatesTemplate = `
 `;
 
 const targetHitAreaTemplate = `
-  <div id="visual-md-switch-target-hit" class="visual-surface">
+  <div id="visual-md-switch-target-hit" class="visual-switch-surface">
     <MDSwitch
       id="storybook-md-switch-target-hit"
       aria-label="Expanded target"

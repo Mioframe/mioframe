@@ -254,12 +254,12 @@ watch(
   }
 
   &__state-layer.md-state-layer {
+    inset: auto;
     z-index: 1;
     top: 50%;
     left: calc(
       var(--md-private-switch-handle-center-x) - (var(--md-comp-switch-state-layer-size) / 2)
     );
-    inset: auto;
     width: var(--md-comp-switch-state-layer-size);
     height: var(--md-comp-switch-state-layer-size);
     border-radius: var(--md-comp-switch-state-layer-shape);
