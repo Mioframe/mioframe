@@ -39,10 +39,12 @@ describe('MDSwitch', () => {
     const wrapper = mountSwitch({ modelValue: true });
 
     const input = wrapper.get('input[type="checkbox"]');
+    const target = wrapper.get('.md-switch__target');
 
     expect(input.attributes('tabindex')).toBe('-1');
     expect(input.attributes('aria-hidden')).toBe('true');
     expect(wrapper.get('.md-switch').attributes('tabindex')).toBe('0');
+    expect(target.attributes('aria-hidden')).toBe('true');
   });
 
   it('exposes switch role and state on the focusable host', () => {
@@ -71,6 +73,7 @@ describe('MDSwitch', () => {
     expect(switchEl.attributes('aria-hidden')).toBe('true');
     expect(switchEl.attributes('tabindex')).toBeUndefined();
     expect(switchEl.classes()).toContain('md-switch_presentation');
+    expect(wrapper.find('.md-switch__target').exists()).toBe(false);
     expect(wrapper.find('.md-state-layer').exists()).toBe(false);
   });
 

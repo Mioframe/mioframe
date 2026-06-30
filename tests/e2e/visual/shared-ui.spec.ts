@@ -154,6 +154,46 @@ test('MDSwitch interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-switch-interaction-states.png');
 });
 
+test('MDSwitch keeps a 48dp target layer without growing the visual track height', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdswitch--expanded-target-hit-area');
+
+  const surface = page.locator('#visual-md-switch-target-hit');
+  const switchHost = surface.getByRole('switch', { name: 'Expanded target', exact: true });
+  const target = surface.locator('.md-switch__target');
+  const count = page.locator('#visual-md-switch-target-hit-count');
+  const switchBox = await switchHost.boundingBox();
+  const targetBox = await target.boundingBox();
+
+  expect(switchBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+
+  if (switchBox == null || targetBox == null) {
+    throw new Error('Missing MDSwitch bounding boxes for expanded target hit test.');
+  }
+
+  expect(switchBox.width).toBe(52);
+  expect(switchBox.height).toBe(32);
+  expect(targetBox.width).toBeGreaterThanOrEqual(52);
+  expect(targetBox.height).toBeGreaterThanOrEqual(48);
+
+  const clickPoint = {
+    x: switchBox.x + switchBox.width / 2,
+    y: switchBox.y - 2,
+  };
+
+  expect(clickPoint.x).toBeGreaterThan(targetBox.x);
+  expect(clickPoint.x).toBeLessThan(targetBox.x + targetBox.width);
+  expect(clickPoint.y).toBeGreaterThan(targetBox.y);
+  expect(clickPoint.y).toBeLessThan(targetBox.y + targetBox.height);
+  expect(clickPoint.y).toBeLessThan(switchBox.y);
+
+  await page.mouse.click(clickPoint.x, clickPoint.y);
+
+  await expect(count).toHaveText('1');
+});
+
 test('MDFab visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdfab--visual-states');
 
