@@ -21,22 +21,6 @@
 }
 
 /*
- * MDSwitch-only visual surface. Uses hardcoded neutral colors instead of
- * theme tokens so the track and state-layer halo remain readable regardless
- * of the active Material color scheme.
- */
-.visual-switch-surface {
-  box-sizing: border-box;
-  display: grid;
-  gap: 24px;
-  width: fit-content;
-  min-width: 320px;
-  padding: 32px;
-  background: #ffffff;
-  color: #1c1b1f;
-}
-
-/*
  * MDList-only test/story backdrop. Renders a fixed, contrasty checker pattern using
  * neutral colors only (never `--md-sys-color-*` or other app/theme tokens) so any
  * transparent MDList/MDListItem surface placed on top of it is unambiguous in
