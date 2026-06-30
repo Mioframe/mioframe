@@ -277,8 +277,11 @@ watch(
   --md-comp-switch-selected-hover-handle-color: var(--md-sys-color-primary-container);
   --md-comp-switch-selected-focus-handle-color: var(--md-sys-color-primary-container);
   --md-comp-switch-selected-pressed-handle-color: var(--md-sys-color-primary-container);
+  --md-comp-switch-disabled-handle-opacity: 0.38;
   --md-comp-switch-disabled-unselected-handle-color: var(--md-sys-color-on-surface);
-  --md-comp-switch-disabled-unselected-handle-opacity: 0.38;
+  --md-comp-switch-disabled-unselected-handle-opacity: var(
+    --md-comp-switch-disabled-handle-opacity
+  );
   --md-comp-switch-disabled-selected-handle-color: var(--md-sys-color-surface);
   --md-comp-switch-disabled-selected-handle-opacity: 1;
 
@@ -296,6 +299,10 @@ watch(
   --md-comp-switch-focus-indicator-color: var(--md-sys-color-secondary);
   --md-comp-switch-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness, 3px);
   --md-comp-switch-focus-indicator-offset: var(--md-sys-state-focus-indicator-outer-offset, 2px);
+  /* Forward switch focus indicator tokens to the generic vars read by the global focus indicator. */
+  --md-focus-indicator-color: var(--md-comp-switch-focus-indicator-color);
+  --md-focus-indicator-thickness: var(--md-comp-switch-focus-indicator-thickness);
+  --md-focus-indicator-offset: var(--md-comp-switch-focus-indicator-offset);
 
   /* Icon component tokens (md.comp.switch.selected/unselected.icon.*) */
   --md-comp-switch-selected-icon-size: 16dp;

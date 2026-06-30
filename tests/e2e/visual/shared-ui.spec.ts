@@ -267,6 +267,59 @@ test('MDSwitch drag from selected to unselected changes state', async ({ page })
   await expect(currentValue).toHaveText('false');
 });
 
+test('MDSwitch focus indicator follows handle target bounding box, not switch host', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdswitch--focus-indicator-target');
+
+  const switchHost = page.getByRole('switch', { name: 'Focus target', exact: true });
+  const indicator = page.locator('.md-focus-indicator');
+
+  // Tab from a page with no focused element: the browser focuses the first focusable
+  // element (the switch) and the Tab keydown sets isKeyboardNav = true in useFocusIndicator.
+  await page.keyboard.press('Tab');
+  await expect(switchHost).toBeFocused();
+
+  // Wait two frames: one for useElementBounding to read getBoundingClientRect,
+  // one for the Vue watcher to apply moveIndicator inline styles.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            resolve();
+          }),
+        ),
+      ),
+  );
+
+  const indicatorBox = await indicator.boundingBox();
+  const handleBox = await switchHost.locator('.md-switch__handle').boundingBox();
+  const switchBox = await switchHost.boundingBox();
+
+  expect(indicatorBox).not.toBeNull();
+  expect(handleBox).not.toBeNull();
+  expect(switchBox).not.toBeNull();
+
+  if (!indicatorBox || !handleBox || !switchBox) {
+    throw new Error('Missing bounding boxes for MDSwitch focus indicator test.');
+  }
+
+  // The focus indicator must be narrower than the switch host (52dp track).
+  // The unselected handle is 16dp; with a 2dp focus-indicator-offset on each side it is ~20dp.
+  expect(indicatorBox.width).toBeLessThan(switchBox.width);
+
+  // Center of indicator must be close to center of the handle (within offset + rendering tolerance).
+  const TOLERANCE = 8;
+  const indicatorCenterX = indicatorBox.x + indicatorBox.width / 2;
+  const indicatorCenterY = indicatorBox.y + indicatorBox.height / 2;
+  const handleCenterX = handleBox.x + handleBox.width / 2;
+  const handleCenterY = handleBox.y + handleBox.height / 2;
+
+  expect(Math.abs(indicatorCenterX - handleCenterX)).toBeLessThan(TOLERANCE);
+  expect(Math.abs(indicatorCenterY - handleCenterY)).toBeLessThan(TOLERANCE);
+});
+
 test('MDFab visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdfab--visual-states');
 

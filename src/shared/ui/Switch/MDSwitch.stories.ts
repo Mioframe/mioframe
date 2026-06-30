@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import MDSwitch from './MDSwitch.vue';
 import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDStateLayerForcedStateProvider } from '../State/testing';
+import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
   title: 'shared/ui/MDSwitch',
@@ -339,5 +340,23 @@ export const VisualIconInteractionStates: Story = {
   render: () => ({
     components: { MDSwitch, MDSymbol, MDStateLayerForcedStateProvider },
     template: switchIconInteractionStatesTemplate,
+  }),
+};
+
+export const FocusIndicatorTarget: Story = {
+  render: () => ({
+    components: { MDSwitch },
+    setup() {
+      useFocusIndicator();
+    },
+    template: `
+      <div id="visual-md-switch-focus-indicator">
+        <MDSwitch
+          id="storybook-md-switch-focus"
+          aria-label="Focus target"
+          :selected="false"
+        />
+      </div>
+    `,
   }),
 };

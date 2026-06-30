@@ -96,6 +96,12 @@ const setupFocusIndicator = () => {
 
   const borderRadius = shallowRef<string>();
 
+  const focusIndicatorProps = [
+    '--md-focus-indicator-color',
+    '--md-focus-indicator-thickness',
+    '--md-focus-indicator-offset',
+  ] as const;
+
   watch(
     focusedEl,
     (nextFocusedEl) => {
@@ -107,6 +113,17 @@ const setupFocusIndicator = () => {
         boundingSourceEl.value = source;
         const styles = getComputedStyle(source);
         borderRadius.value = styles.borderRadius;
+        // Forward generic focus indicator custom properties from the focused host to the
+        // indicator element so components can override color/thickness/offset via CSS vars.
+        const hostStyles = getComputedStyle(nextFocusedEl);
+        for (const prop of focusIndicatorProps) {
+          const value = hostStyles.getPropertyValue(prop).trim();
+          if (value) {
+            indicatorElement.style.setProperty(prop, value);
+          } else {
+            indicatorElement.style.removeProperty(prop);
+          }
+        }
       } else {
         boundingSourceEl.value = undefined;
         hideIndicator();

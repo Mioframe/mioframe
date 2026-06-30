@@ -4,8 +4,7 @@
   display: block;
   pointer-events: none;
   outline: 5px solid red;
-  outline: var(--md-focus-indicator-thickness) solid
-    var(--md-sys-color-secondary, var(--md-container-color, rgb(88, 174, 255)));
+  outline: var(--md-focus-indicator-thickness) solid var(--md-focus-indicator-color);
   outline-offset: var(--md-focus-indicator-offset);
   z-index: 100;
   top: 50vh;
@@ -15,6 +14,10 @@
   transition-duration: var(--md-sys-motion-duration-short2);
   transition-property: opacity, top, left, width, height, border-radius;
 
+  --md-focus-indicator-color: var(
+    --md-sys-color-secondary,
+    var(--md-container-color, rgb(88, 174, 255))
+  );
   --md-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness, 3px);
   --md-focus-indicator-offset: var(--md-sys-state-focus-indicator-outer-offset, 2px);
 }
