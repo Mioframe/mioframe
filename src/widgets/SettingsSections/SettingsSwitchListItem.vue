@@ -15,10 +15,6 @@ const emit = defineEmits<{
 }>();
 
 const onChange = () => {
-  if (disabled) {
-    return;
-  }
-
   emit('change');
 };
 </script>
