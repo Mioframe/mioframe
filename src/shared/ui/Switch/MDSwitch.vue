@@ -65,7 +65,8 @@ const onPointerDown = (e: PointerEvent) => {
   isDragging.value = true;
   dragStartX.value = e.clientX;
   suppressNextClick.value = false;
-  switchEl.value?.setPointerCapture(e.pointerId);
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- setPointerCapture may be absent in some DOM stubs (e.g. happy-dom)
+  switchEl.value?.setPointerCapture?.(e.pointerId);
 };
 
 const onPointerMove = (e: PointerEvent) => {
@@ -76,7 +77,8 @@ const onPointerMove = (e: PointerEvent) => {
 const onPointerUp = (e: PointerEvent) => {
   if (!isDragging.value) return;
   isDragging.value = false;
-  switchEl.value?.releasePointerCapture(e.pointerId);
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- releasePointerCapture may be absent in some DOM stubs (e.g. happy-dom)
+  switchEl.value?.releasePointerCapture?.(e.pointerId);
 
   const dx = e.clientX - dragStartX.value;
   if (Math.abs(dx) > 4) {
@@ -97,7 +99,8 @@ const onPointerCancel = (e: PointerEvent) => {
   if (!isDragging.value) return;
   isDragging.value = false;
   suppressNextClick.value = false;
-  switchEl.value?.releasePointerCapture(e.pointerId);
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- releasePointerCapture may be absent in some DOM stubs (e.g. happy-dom)
+  switchEl.value?.releasePointerCapture?.(e.pointerId);
 };
 
 const onClickContainer = (e: MouseEvent) => {
