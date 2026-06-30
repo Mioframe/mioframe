@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRefs, useTemplateRef, watch } from 'vue';
+import { computed, shallowRef, toRefs, useTemplateRef, watch } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 
@@ -9,6 +9,7 @@ const props = withDefaults(
     disabled?: boolean | undefined;
     id?: string | undefined;
     ariaLabel?: string | undefined;
+    ariaLabelledby?: string | undefined;
     autofocus?: boolean | undefined;
     tabIndex?: number | undefined;
     presentation?: boolean | undefined;
@@ -25,6 +26,11 @@ const emit = defineEmits<{
   click: [];
 }>();
 
+const slots = defineSlots<{
+  'selected-icon'?: () => unknown;
+  'unselected-icon'?: () => unknown;
+}>();
+
 const { disabled, modelValue, presentation } = toRefs(props);
 
 const stateValue = computed({
@@ -33,6 +39,12 @@ const stateValue = computed({
     emit('update:modelValue', v);
   },
 });
+
+const hasSelectedIcon = computed(() => !!slots['selected-icon']);
+const hasUnselectedIcon = computed(() => !!slots['unselected-icon']);
+const hasCurrentIcon = computed(() =>
+  stateValue.value ? hasSelectedIcon.value : hasUnselectedIcon.value,
+);
 
 const toggle = () => {
   if (presentation.value || disabled.value) {
@@ -43,12 +55,60 @@ const toggle = () => {
   stateValue.value = !stateValue.value;
 };
 
+// Drag: pointer down, move, up resolve the switch position from gesture geometry.
+const isDragging = shallowRef(false);
+const dragStartX = shallowRef(0);
+const suppressNextClick = shallowRef(false);
+
+const onPointerDown = (e: PointerEvent) => {
+  if (presentation.value || disabled.value || e.button !== 0) return;
+  isDragging.value = true;
+  dragStartX.value = e.clientX;
+  suppressNextClick.value = false;
+  switchEl.value?.setPointerCapture(e.pointerId);
+};
+
+const onPointerMove = (e: PointerEvent) => {
+  if (!isDragging.value) return;
+  e.preventDefault();
+};
+
+const onPointerUp = (e: PointerEvent) => {
+  if (!isDragging.value) return;
+  isDragging.value = false;
+
+  const dx = e.clientX - dragStartX.value;
+  if (Math.abs(dx) > 4) {
+    suppressNextClick.value = true;
+    const el = switchEl.value;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const newValue = e.clientX > rect.left + rect.width / 2;
+      if (newValue !== stateValue.value) {
+        emit('click');
+        stateValue.value = newValue;
+      }
+    }
+  }
+};
+
+const onPointerCancel = () => {
+  isDragging.value = false;
+};
+
 const onClickContainer = (e: MouseEvent) => {
   if (presentation.value || disabled.value) {
     return;
   }
 
+  // Always prevent native label-to-input click forwarding.
   e.preventDefault();
+
+  if (suppressNextClick.value) {
+    suppressNextClick.value = false;
+    return;
+  }
+
   toggle();
 };
 
@@ -92,7 +152,14 @@ watch(
     aria-hidden="true"
   >
     <div class="md-switch__track">
-      <div class="md-switch__handle" />
+      <div class="md-switch__handle">
+        <span v-if="stateValue && hasSelectedIcon" class="md-switch__icon" aria-hidden="true">
+          <slot name="selected-icon" />
+        </span>
+        <span v-if="!stateValue && hasUnselectedIcon" class="md-switch__icon" aria-hidden="true">
+          <slot name="unselected-icon" />
+        </span>
+      </div>
     </div>
   </div>
 
@@ -104,6 +171,7 @@ watch(
     :class="{
       'md-switch_selected': stateValue,
       'md-switch_disabled': disabled,
+      'md-switch_with-current-icon': hasCurrentIcon,
       'md-state_hover': showVisualState && hover,
       'md-state_focused': showVisualState && focused,
       'md-state_pressed': showVisualState && durationPressedState,
@@ -111,11 +179,16 @@ watch(
     }"
     role="switch"
     :tabindex="interactiveTabIndex"
-    :aria-label="ariaLabel"
+    :aria-label="ariaLabelledby ? undefined : ariaLabel"
+    :aria-labelledby="ariaLabelledby"
     :aria-checked="stateValue"
     :aria-disabled="disabled ? 'true' : undefined"
     @click="onClickContainer"
     @keydown="onKeydownContainer"
+    @pointerdown="onPointerDown"
+    @pointermove="onPointerMove"
+    @pointerup="onPointerUp"
+    @pointercancel="onPointerCancel"
   >
     <span class="md-switch__target" aria-hidden="true" />
 
@@ -138,13 +211,21 @@ watch(
     />
 
     <div class="md-switch__track">
-      <div class="md-switch__handle" />
+      <div class="md-switch__handle">
+        <span v-if="stateValue && hasSelectedIcon" class="md-switch__icon" aria-hidden="true">
+          <slot name="selected-icon" />
+        </span>
+        <span v-if="!stateValue && hasUnselectedIcon" class="md-switch__icon" aria-hidden="true">
+          <slot name="unselected-icon" />
+        </span>
+      </div>
     </div>
   </label>
 </template>
 
 <style lang="css" scoped>
 .md-switch {
+  /* Track component tokens */
   --md-comp-switch-track-width: 52dp;
   --md-comp-switch-track-height: 32dp;
   --md-comp-switch-track-shape: var(--md-sys-shape-corner-full);
@@ -165,6 +246,8 @@ watch(
   --md-comp-switch-disabled-unselected-track-outline-color: var(--md-sys-color-on-surface);
   --md-comp-switch-disabled-selected-track-color: var(--md-sys-color-on-surface);
   --md-comp-switch-disabled-track-opacity: 0.12;
+
+  /* Handle component tokens */
   --md-comp-switch-handle-shape: var(--md-sys-shape-corner-full);
   --md-comp-switch-handle-width: 20dp;
   --md-comp-switch-handle-height: 20dp;
@@ -174,6 +257,8 @@ watch(
   --md-comp-switch-selected-handle-height: 24dp;
   --md-comp-switch-pressed-handle-width: 28dp;
   --md-comp-switch-pressed-handle-height: 28dp;
+  --md-comp-switch-with-icon-handle-width: 24dp;
+  --md-comp-switch-with-icon-handle-height: 24dp;
   --md-comp-switch-unselected-handle-color: var(--md-sys-color-outline);
   --md-comp-switch-unselected-hover-handle-color: var(--md-sys-color-on-surface-variant);
   --md-comp-switch-unselected-focus-handle-color: var(--md-sys-color-on-surface-variant);
@@ -186,6 +271,32 @@ watch(
   --md-comp-switch-disabled-unselected-handle-opacity: 0.38;
   --md-comp-switch-disabled-selected-handle-color: var(--md-sys-color-surface);
   --md-comp-switch-disabled-selected-handle-opacity: 1;
+
+  /* Handle elevation component tokens (md.comp.switch.handle.elevation → md.sys.elevation.level1) */
+  --md-comp-switch-handle-elevation: var(--md-sys-elevation-level1);
+  --md-comp-switch-disabled-handle-elevation: var(--md-sys-elevation-level0);
+  /* Note: md.comp.switch.handle.shadow-color aliases md.sys.color.shadow but cannot be expressed
+     as a standalone CSS custom property separate from the elevation token — shadow color is baked
+     into the --md-sys-elevation-level* box-shadow values. This limitation is documented in the
+     component registry. */
+
+  /* Icon component tokens (md.comp.switch.selected/unselected.icon.*) */
+  --md-comp-switch-selected-icon-size: 16dp;
+  --md-comp-switch-unselected-icon-size: 16dp;
+  --md-comp-switch-selected-icon-color: var(--md-sys-color-primary);
+  --md-comp-switch-unselected-icon-color: var(--md-sys-color-surface-container-highest);
+  --md-comp-switch-selected-hover-icon-color: var(--md-sys-color-primary);
+  --md-comp-switch-unselected-hover-icon-color: var(--md-sys-color-surface-container-highest);
+  --md-comp-switch-selected-focus-icon-color: var(--md-sys-color-primary);
+  --md-comp-switch-unselected-focus-icon-color: var(--md-sys-color-surface-container-highest);
+  --md-comp-switch-selected-pressed-icon-color: var(--md-sys-color-primary);
+  --md-comp-switch-unselected-pressed-icon-color: var(--md-sys-color-surface-container-highest);
+  --md-comp-switch-disabled-selected-icon-color: var(--md-sys-color-on-surface);
+  --md-comp-switch-disabled-selected-icon-opacity: 0.38;
+  --md-comp-switch-disabled-unselected-icon-color: var(--md-sys-color-surface-container-highest);
+  --md-comp-switch-disabled-unselected-icon-opacity: 0.38;
+
+  /* State-layer component tokens */
   --md-comp-switch-state-layer-size: 40dp;
   --md-comp-switch-state-layer-shape: var(--md-sys-shape-corner-full);
   --md-comp-switch-unselected-hover-state-layer-color: var(--md-sys-color-on-surface);
@@ -213,15 +324,36 @@ watch(
     --md-sys-state-pressed-state-layer-opacity
   );
 
+  /* Private derived vars: track */
   --md-private-switch-track-color: var(--md-comp-switch-unselected-track-color);
   --md-private-switch-track-outline-color: var(--md-comp-switch-unselected-track-outline-color);
   --md-private-switch-track-outline-width: var(--md-comp-switch-track-outline-width);
   --md-private-switch-track-opacity: 1;
-  --md-private-switch-handle-width: var(--md-comp-switch-unselected-handle-width);
-  --md-private-switch-handle-height: var(--md-comp-switch-unselected-handle-height);
+
+  /* Private derived vars: handle size — uses two-level indirection so hover/focus can grow
+     the handle via --md-private-switch-interactive-handle-* without conflicting with the
+     selected or with-icon overrides. Pressed always overrides to 28dp directly. */
+  --md-private-switch-rest-handle-width: var(--md-comp-switch-unselected-handle-width);
+  --md-private-switch-rest-handle-height: var(--md-comp-switch-unselected-handle-height);
+  --md-private-switch-interactive-handle-width: var(--md-comp-switch-handle-width);
+  --md-private-switch-interactive-handle-height: var(--md-comp-switch-handle-height);
+  --md-private-switch-handle-width: var(--md-private-switch-rest-handle-width);
+  --md-private-switch-handle-height: var(--md-private-switch-rest-handle-height);
+
+  /* Private derived vars: handle appearance */
   --md-private-switch-handle-color: var(--md-comp-switch-unselected-handle-color);
   --md-private-switch-handle-opacity: 1;
+  --md-private-switch-handle-shadow: var(--md-comp-switch-handle-elevation);
+
+  /* Private derived vars: handle center X position */
   --md-private-switch-handle-center-x: calc(var(--md-comp-switch-track-height) / 2);
+
+  /* Private derived vars: icon */
+  --md-private-switch-icon-color: var(--md-comp-switch-unselected-icon-color);
+  --md-private-switch-icon-opacity: 1;
+  --md-private-switch-icon-size: var(--md-comp-switch-unselected-icon-size);
+
+  /* Private derived vars: state layer */
   --md-private-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);
   --md-state-hover-layer-opacity: var(--md-comp-switch-unselected-hover-state-layer-opacity);
   --md-state-focus-layer-opacity: var(--md-comp-switch-unselected-focus-state-layer-opacity);
@@ -297,18 +429,36 @@ watch(
     left: calc(
       var(--md-private-switch-handle-center-x) - (var(--md-private-switch-handle-width) / 2)
     );
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: var(--md-private-switch-handle-width);
     height: var(--md-private-switch-handle-height);
     border-radius: var(--md-comp-switch-handle-shape);
     background-color: rgb(
       from var(--md-private-switch-handle-color) r g b / var(--md-private-switch-handle-opacity)
     );
+    box-shadow: var(--md-private-switch-handle-shadow);
     transform: translateY(-50%);
     transition:
       width 0.1s,
       height 0.1s,
       left 0.1s,
       background-color 0.1s;
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--md-private-switch-icon-size);
+    height: var(--md-private-switch-icon-size);
+    overflow: hidden;
+    color: rgb(
+      from var(--md-private-switch-icon-color) r g b / var(--md-private-switch-icon-opacity)
+    );
+    --md-symbol-size: var(--md-private-switch-icon-size);
   }
 
   &__input {
@@ -320,16 +470,28 @@ watch(
     pointer-events: none;
   }
 
+  /* When the current state renders an icon, use the with-icon handle size (24dp). */
+  &_with-current-icon {
+    --md-private-switch-rest-handle-width: var(--md-comp-switch-with-icon-handle-width);
+    --md-private-switch-rest-handle-height: var(--md-comp-switch-with-icon-handle-height);
+    --md-private-switch-interactive-handle-width: var(--md-comp-switch-with-icon-handle-width);
+    --md-private-switch-interactive-handle-height: var(--md-comp-switch-with-icon-handle-height);
+  }
+
   &_selected {
     --md-private-switch-track-color: var(--md-comp-switch-selected-track-color);
     --md-private-switch-track-outline-color: transparent;
     --md-private-switch-track-outline-width: 0dp;
-    --md-private-switch-handle-width: var(--md-comp-switch-selected-handle-width);
-    --md-private-switch-handle-height: var(--md-comp-switch-selected-handle-height);
+    --md-private-switch-rest-handle-width: var(--md-comp-switch-selected-handle-width);
+    --md-private-switch-rest-handle-height: var(--md-comp-switch-selected-handle-height);
+    --md-private-switch-interactive-handle-width: var(--md-comp-switch-selected-handle-width);
+    --md-private-switch-interactive-handle-height: var(--md-comp-switch-selected-handle-height);
     --md-private-switch-handle-color: var(--md-comp-switch-selected-handle-color);
     --md-private-switch-handle-center-x: calc(
       var(--md-comp-switch-track-width) - (var(--md-comp-switch-track-height) / 2)
     );
+    --md-private-switch-icon-color: var(--md-comp-switch-selected-icon-color);
+    --md-private-switch-icon-size: var(--md-comp-switch-selected-icon-size);
     --md-private-state-layer-color: var(--md-comp-switch-selected-hover-state-layer-color);
     --md-state-hover-layer-opacity: var(--md-comp-switch-selected-hover-state-layer-opacity);
     --md-state-focus-layer-opacity: var(--md-comp-switch-selected-focus-state-layer-opacity);
@@ -345,6 +507,9 @@ watch(
     --md-private-switch-track-opacity: var(--md-comp-switch-disabled-track-opacity);
     --md-private-switch-handle-color: var(--md-comp-switch-disabled-unselected-handle-color);
     --md-private-switch-handle-opacity: var(--md-comp-switch-disabled-unselected-handle-opacity);
+    --md-private-switch-handle-shadow: var(--md-comp-switch-disabled-handle-elevation);
+    --md-private-switch-icon-color: var(--md-comp-switch-disabled-unselected-icon-color);
+    --md-private-switch-icon-opacity: var(--md-comp-switch-disabled-unselected-icon-opacity);
 
     &.md-switch_selected {
       --md-private-switch-track-color: var(--md-comp-switch-disabled-selected-track-color);
@@ -352,6 +517,8 @@ watch(
       --md-private-switch-track-outline-width: 0dp;
       --md-private-switch-handle-color: var(--md-comp-switch-disabled-selected-handle-color);
       --md-private-switch-handle-opacity: var(--md-comp-switch-disabled-selected-handle-opacity);
+      --md-private-switch-icon-color: var(--md-comp-switch-disabled-selected-icon-color);
+      --md-private-switch-icon-opacity: var(--md-comp-switch-disabled-selected-icon-opacity);
     }
   }
 
@@ -367,6 +534,10 @@ watch(
     );
     --md-private-switch-handle-color: var(--md-comp-switch-unselected-hover-handle-color);
     --md-private-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);
+    /* Unselected handle grows from 16dp resting to 20dp on hover (with-icon stays at 24dp
+       via the interactive var set in _with-current-icon). */
+    --md-private-switch-handle-width: var(--md-private-switch-interactive-handle-width);
+    --md-private-switch-handle-height: var(--md-private-switch-interactive-handle-height);
 
     &.md-switch_selected {
       --md-private-switch-track-color: var(--md-comp-switch-selected-hover-track-color);
@@ -382,6 +553,9 @@ watch(
     );
     --md-private-switch-handle-color: var(--md-comp-switch-unselected-focus-handle-color);
     --md-private-state-layer-color: var(--md-comp-switch-unselected-focus-state-layer-color);
+    /* Unselected handle grows from 16dp resting to 20dp on focus (matching hover growth). */
+    --md-private-switch-handle-width: var(--md-private-switch-interactive-handle-width);
+    --md-private-switch-handle-height: var(--md-private-switch-interactive-handle-height);
 
     &.md-switch_selected {
       --md-private-switch-track-color: var(--md-comp-switch-selected-focus-track-color);
@@ -395,6 +569,7 @@ watch(
     --md-private-switch-track-outline-color: var(
       --md-comp-switch-unselected-pressed-track-outline-color
     );
+    /* Pressed always expands to 28dp regardless of icon or selected state. */
     --md-private-switch-handle-width: var(--md-comp-switch-pressed-handle-width);
     --md-private-switch-handle-height: var(--md-comp-switch-pressed-handle-height);
     --md-private-switch-handle-color: var(--md-comp-switch-unselected-pressed-handle-color);

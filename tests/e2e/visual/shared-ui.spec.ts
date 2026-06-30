@@ -154,6 +154,22 @@ test('MDSwitch interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-switch-interaction-states.png');
 });
 
+test('MDSwitch icon states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--visual-icon-states');
+
+  const surface = page.getByTestId('visual-md-switch-icon-states');
+
+  await expect(surface).toHaveScreenshot('md-switch-icon-states.png');
+});
+
+test('MDSwitch icon interaction states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--visual-icon-interaction-states');
+
+  const surface = page.getByTestId('visual-md-switch-icon-interaction-states');
+
+  await expect(surface).toHaveScreenshot('md-switch-icon-interaction-states.png');
+});
+
 test('MDSwitch keeps a 48dp target layer without growing the visual track height', async ({
   page,
 }) => {
@@ -192,6 +208,63 @@ test('MDSwitch keeps a 48dp target layer without growing the visual track height
   await page.mouse.click(clickPoint.x, clickPoint.y);
 
   await expect(count).toHaveText('1');
+});
+
+test('MDSwitch drag from unselected to selected changes state without double-toggle', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdswitch--drag-interaction');
+
+  const surface = page.locator('#visual-md-switch-drag');
+  const switchHost = surface.getByRole('switch', { name: 'Drag switch', exact: true });
+  const clickCount = page.locator('#visual-md-switch-drag-count');
+  const currentValue = page.locator('#visual-md-switch-drag-value');
+
+  const box = await switchHost.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) throw new Error('Missing MDSwitch bounding box for drag test.');
+
+  // Start on left side (unselected handle area), drag to right side.
+  const startX = box.x + box.width * 0.2;
+  const endX = box.x + box.width * 0.8;
+  const centerY = box.y + box.height / 2;
+
+  await page.mouse.move(startX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(endX, centerY, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(currentValue).toHaveText('true');
+  // Only one toggle event should have fired (drag resolves once; click is suppressed).
+  await expect(clickCount).toHaveText('1');
+});
+
+test('MDSwitch drag from selected to unselected changes state', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--drag-interaction');
+
+  const surface = page.locator('#visual-md-switch-drag');
+  const switchHost = surface.getByRole('switch', { name: 'Drag switch', exact: true });
+  const currentValue = page.locator('#visual-md-switch-drag-value');
+
+  const box = await switchHost.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) throw new Error('Missing MDSwitch bounding box for drag test.');
+
+  // First click to reach selected state.
+  await switchHost.click();
+  await expect(currentValue).toHaveText('true');
+
+  // Drag left to unselect.
+  const startX = box.x + box.width * 0.8;
+  const endX = box.x + box.width * 0.2;
+  const centerY = box.y + box.height / 2;
+
+  await page.mouse.move(startX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(endX, centerY, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(currentValue).toHaveText('false');
 });
 
 test('MDFab visual states match baseline', async ({ page }) => {
