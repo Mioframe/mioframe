@@ -154,6 +154,172 @@ test('MDSwitch interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-switch-interaction-states.png');
 });
 
+test('MDSwitch icon states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--visual-icon-states');
+
+  const surface = page.getByTestId('visual-md-switch-icon-states');
+
+  await expect(surface).toHaveScreenshot('md-switch-icon-states.png');
+});
+
+test('MDSwitch icon interaction states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--visual-icon-interaction-states');
+
+  const surface = page.getByTestId('visual-md-switch-icon-interaction-states');
+
+  await expect(surface).toHaveScreenshot('md-switch-icon-interaction-states.png');
+});
+
+test('MDSwitch keeps a 48dp target layer without growing the visual track height', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdswitch--expanded-target-hit-area');
+
+  const surface = page.locator('#visual-md-switch-target-hit');
+  const switchHost = surface.getByRole('switch', { name: 'Expanded target', exact: true });
+  const target = surface.locator('.md-switch__target');
+  const count = page.locator('#visual-md-switch-target-hit-count');
+  const switchBox = await switchHost.boundingBox();
+  const targetBox = await target.boundingBox();
+
+  expect(switchBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+
+  if (switchBox == null || targetBox == null) {
+    throw new Error('Missing MDSwitch bounding boxes for expanded target hit test.');
+  }
+
+  expect(switchBox.width).toBe(52);
+  expect(switchBox.height).toBe(32);
+  expect(targetBox.width).toBeGreaterThanOrEqual(52);
+  expect(targetBox.height).toBeGreaterThanOrEqual(48);
+
+  const clickPoint = {
+    x: switchBox.x + switchBox.width / 2,
+    y: switchBox.y - 2,
+  };
+
+  expect(clickPoint.x).toBeGreaterThan(targetBox.x);
+  expect(clickPoint.x).toBeLessThan(targetBox.x + targetBox.width);
+  expect(clickPoint.y).toBeGreaterThan(targetBox.y);
+  expect(clickPoint.y).toBeLessThan(targetBox.y + targetBox.height);
+  expect(clickPoint.y).toBeLessThan(switchBox.y);
+
+  await page.mouse.click(clickPoint.x, clickPoint.y);
+
+  await expect(count).toHaveText('1');
+});
+
+test('MDSwitch drag from unselected to selected changes state without double-toggle', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdswitch--drag-interaction');
+
+  const surface = page.locator('#visual-md-switch-drag');
+  const switchHost = surface.getByRole('switch', { name: 'Drag switch', exact: true });
+  const clickCount = page.locator('#visual-md-switch-drag-count');
+  const currentValue = page.locator('#visual-md-switch-drag-value');
+
+  const box = await switchHost.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) throw new Error('Missing MDSwitch bounding box for drag test.');
+
+  // Start on left side (unselected handle area), drag to right side.
+  const startX = box.x + box.width * 0.2;
+  const endX = box.x + box.width * 0.8;
+  const centerY = box.y + box.height / 2;
+
+  await page.mouse.move(startX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(endX, centerY, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(currentValue).toHaveText('true');
+  // Only one toggle event should have fired (drag resolves once; click is suppressed).
+  await expect(clickCount).toHaveText('1');
+});
+
+test('MDSwitch drag from selected to unselected changes state', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--drag-interaction');
+
+  const surface = page.locator('#visual-md-switch-drag');
+  const switchHost = surface.getByRole('switch', { name: 'Drag switch', exact: true });
+  const currentValue = page.locator('#visual-md-switch-drag-value');
+
+  const box = await switchHost.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) throw new Error('Missing MDSwitch bounding box for drag test.');
+
+  // First click to reach selected state.
+  await switchHost.click();
+  await expect(currentValue).toHaveText('true');
+
+  // Drag left to unselect.
+  const startX = box.x + box.width * 0.8;
+  const endX = box.x + box.width * 0.2;
+  const centerY = box.y + box.height / 2;
+
+  await page.mouse.move(startX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(endX, centerY, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(currentValue).toHaveText('false');
+});
+
+test('MDSwitch focus indicator follows handle target bounding box, not switch host', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdswitch--focus-indicator-target');
+
+  const switchHost = page.getByRole('switch', { name: 'Focus target', exact: true });
+  const indicator = page.locator('.md-focus-indicator');
+
+  // Tab from a page with no focused element: the browser focuses the first focusable
+  // element (the switch) and the Tab keydown sets isKeyboardNav = true in useFocusIndicator.
+  await page.keyboard.press('Tab');
+  await expect(switchHost).toBeFocused();
+
+  // Wait two frames: one for useElementBounding to read getBoundingClientRect,
+  // one for the Vue watcher to apply moveIndicator inline styles.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            resolve();
+          }),
+        ),
+      ),
+  );
+
+  const indicatorBox = await indicator.boundingBox();
+  const handleBox = await switchHost.locator('.md-switch__handle').boundingBox();
+  const switchBox = await switchHost.boundingBox();
+
+  expect(indicatorBox).not.toBeNull();
+  expect(handleBox).not.toBeNull();
+  expect(switchBox).not.toBeNull();
+
+  if (!indicatorBox || !handleBox || !switchBox) {
+    throw new Error('Missing bounding boxes for MDSwitch focus indicator test.');
+  }
+
+  // The focus indicator must be narrower than the switch host (52dp track).
+  // The unselected handle is 16dp; with a 2dp focus-indicator-offset on each side it is ~20dp.
+  expect(indicatorBox.width).toBeLessThan(switchBox.width);
+
+  // Center of indicator must be close to center of the handle (within offset + rendering tolerance).
+  const TOLERANCE = 8;
+  const indicatorCenterX = indicatorBox.x + indicatorBox.width / 2;
+  const indicatorCenterY = indicatorBox.y + indicatorBox.height / 2;
+  const handleCenterX = handleBox.x + handleBox.width / 2;
+  const handleCenterY = handleBox.y + handleBox.height / 2;
+
+  expect(Math.abs(indicatorCenterX - handleCenterX)).toBeLessThan(TOLERANCE);
+  expect(Math.abs(indicatorCenterY - handleCenterY)).toBeLessThan(TOLERANCE);
+});
+
 test('MDFab visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdfab--visual-states');
 
