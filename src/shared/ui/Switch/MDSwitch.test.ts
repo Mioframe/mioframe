@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import MDSwitch from './MDSwitch.vue';
@@ -131,5 +132,29 @@ describe('MDSwitch', () => {
     expect(wrapper.emitted('click')).toBeUndefined();
     expect(wrapper.emitted('update:modelValue')).toBeUndefined();
     expect(wrapper.get('.md-switch').attributes('tabindex')).toBe('-1');
+  });
+
+  it('maps switch state-layer colors into the generic MDStateLayer private variable', () => {
+    const source = readFileSync('src/shared/ui/Switch/MDSwitch.vue', 'utf8');
+
+    expect(source).toContain(
+      '--md-private-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);',
+    );
+    expect(source).toContain(
+      '--md-private-state-layer-color: var(--md-comp-switch-selected-hover-state-layer-color);',
+    );
+    expect(source).toContain(
+      '--md-private-state-layer-color: var(--md-comp-switch-unselected-focus-state-layer-color);',
+    );
+    expect(source).toContain(
+      '--md-private-state-layer-color: var(--md-comp-switch-selected-focus-state-layer-color);',
+    );
+    expect(source).toContain(
+      '--md-private-state-layer-color: var(--md-comp-switch-unselected-pressed-state-layer-color);',
+    );
+    expect(source).toContain(
+      '--md-private-state-layer-color: var(--md-comp-switch-selected-pressed-state-layer-color);',
+    );
+    expect(source).not.toContain('--md-private-switch-state-layer-color');
   });
 });

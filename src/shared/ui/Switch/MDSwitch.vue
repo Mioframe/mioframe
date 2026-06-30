@@ -222,12 +222,13 @@ watch(
   --md-private-switch-handle-color: var(--md-comp-switch-unselected-handle-color);
   --md-private-switch-handle-opacity: 1;
   --md-private-switch-handle-center-x: calc(var(--md-comp-switch-track-height) / 2);
-  --md-private-switch-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);
+  --md-private-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);
   --md-state-hover-layer-opacity: var(--md-comp-switch-unselected-hover-state-layer-opacity);
   --md-state-focus-layer-opacity: var(--md-comp-switch-unselected-focus-state-layer-opacity);
   --md-state-pressed-layer-opacity: var(--md-comp-switch-unselected-pressed-state-layer-opacity);
 
   position: relative;
+  isolation: isolate;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -253,6 +254,7 @@ watch(
   }
 
   &__state-layer {
+    z-index: 1;
     top: 50%;
     left: calc(
       var(--md-private-switch-handle-center-x) - (var(--md-comp-switch-state-layer-size) / 2)
@@ -266,7 +268,6 @@ watch(
 
   &__track {
     position: relative;
-    z-index: 1;
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -290,6 +291,7 @@ watch(
 
   &__handle {
     position: absolute;
+    z-index: 2;
     top: 50%;
     left: calc(
       var(--md-private-switch-handle-center-x) - (var(--md-private-switch-handle-width) / 2)
@@ -327,7 +329,7 @@ watch(
     --md-private-switch-handle-center-x: calc(
       var(--md-comp-switch-track-width) - (var(--md-comp-switch-track-height) / 2)
     );
-    --md-private-switch-state-layer-color: var(--md-comp-switch-selected-hover-state-layer-color);
+    --md-private-state-layer-color: var(--md-comp-switch-selected-hover-state-layer-color);
     --md-state-hover-layer-opacity: var(--md-comp-switch-selected-hover-state-layer-opacity);
     --md-state-focus-layer-opacity: var(--md-comp-switch-selected-focus-state-layer-opacity);
     --md-state-pressed-layer-opacity: var(--md-comp-switch-selected-pressed-state-layer-opacity);
@@ -363,12 +365,12 @@ watch(
       --md-comp-switch-unselected-hover-track-outline-color
     );
     --md-private-switch-handle-color: var(--md-comp-switch-unselected-hover-handle-color);
-    --md-private-switch-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);
+    --md-private-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);
 
     &.md-switch_selected {
       --md-private-switch-track-color: var(--md-comp-switch-selected-hover-track-color);
       --md-private-switch-handle-color: var(--md-comp-switch-selected-hover-handle-color);
-      --md-private-switch-state-layer-color: var(--md-comp-switch-selected-hover-state-layer-color);
+      --md-private-state-layer-color: var(--md-comp-switch-selected-hover-state-layer-color);
     }
   }
 
@@ -378,12 +380,12 @@ watch(
       --md-comp-switch-unselected-focus-track-outline-color
     );
     --md-private-switch-handle-color: var(--md-comp-switch-unselected-focus-handle-color);
-    --md-private-switch-state-layer-color: var(--md-comp-switch-unselected-focus-state-layer-color);
+    --md-private-state-layer-color: var(--md-comp-switch-unselected-focus-state-layer-color);
 
     &.md-switch_selected {
       --md-private-switch-track-color: var(--md-comp-switch-selected-focus-track-color);
       --md-private-switch-handle-color: var(--md-comp-switch-selected-focus-handle-color);
-      --md-private-switch-state-layer-color: var(--md-comp-switch-selected-focus-state-layer-color);
+      --md-private-state-layer-color: var(--md-comp-switch-selected-focus-state-layer-color);
     }
   }
 
@@ -395,16 +397,12 @@ watch(
     --md-private-switch-handle-width: var(--md-comp-switch-pressed-handle-width);
     --md-private-switch-handle-height: var(--md-comp-switch-pressed-handle-height);
     --md-private-switch-handle-color: var(--md-comp-switch-unselected-pressed-handle-color);
-    --md-private-switch-state-layer-color: var(
-      --md-comp-switch-unselected-pressed-state-layer-color
-    );
+    --md-private-state-layer-color: var(--md-comp-switch-unselected-pressed-state-layer-color);
 
     &.md-switch_selected {
       --md-private-switch-track-color: var(--md-comp-switch-selected-pressed-track-color);
       --md-private-switch-handle-color: var(--md-comp-switch-selected-pressed-handle-color);
-      --md-private-switch-state-layer-color: var(
-        --md-comp-switch-selected-pressed-state-layer-color
-      );
+      --md-private-state-layer-color: var(--md-comp-switch-selected-pressed-state-layer-color);
     }
   }
 }
