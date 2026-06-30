@@ -14,6 +14,7 @@ const {
   initializeRepositoryMock,
   captureDiagnosticExceptionMock,
   showDirectoryPickerMock,
+  requestHomeDiagnosticsPromptAfterHandledErrorMock,
 } = vi.hoisted(() => ({
   addDeviceDirectoryMock: vi.fn(),
   addSnackbarMock: vi.fn(),
@@ -22,6 +23,7 @@ const {
   initializeRepositoryMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
   showDirectoryPickerMock: vi.fn(),
+  requestHomeDiagnosticsPromptAfterHandledErrorMock: vi.fn(),
 }));
 
 vi.mock('@entity/mountedDirectories', () => ({
@@ -57,6 +59,13 @@ vi.mock('@shared/ui/Dialog', () => ({
 
 vi.mock('@shared/lib/diagnostics', () => ({
   captureDiagnosticException: captureDiagnosticExceptionMock,
+}));
+
+vi.mock('@feature/diagnosticsErrorPrompt', () => ({
+  useDiagnosticsErrorPromptTrigger: () => ({
+    requestHomeDiagnosticsPromptAfterHandledError:
+      requestHomeDiagnosticsPromptAfterHandledErrorMock,
+  }),
 }));
 
 type MockFileHandle = FileSystemFileHandle & {
@@ -189,6 +198,7 @@ describe('useMioframeSpaceParentPicker', () => {
     disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
+    requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue(undefined);
     disconnectDeviceFileMock.mockResolvedValue(undefined);
@@ -246,6 +256,7 @@ describe('useCreateMioframeSpace', () => {
     disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
+    requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue({
       name: 'Work Notes',
@@ -480,6 +491,7 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.openFailed',
     });
     expect(reportedError.cause).toBe(rawMountError);
+    expect(createFlow.isDiagnosticsPromptVisible.value).toBe(true);
   });
 
   it('rolls back the mounted record when repository initialization fails after mounting', async () => {
@@ -514,6 +526,7 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(reportedError.cause).toBe(rawInitError);
+    expect(createFlow.isDiagnosticsPromptVisible.value).toBe(true);
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -566,6 +579,7 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(createCall?.[0].cause).toBe(rawInitError);
+    expect(createFlow.isDiagnosticsPromptVisible.value).toBe(true);
   });
 
   it('reports a DomainError preserving raw mount error as cause when create mounting fails', async () => {
@@ -597,6 +611,7 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(reportedError.cause).toBe(rawMountError);
+    expect(createFlow.isDiagnosticsPromptVisible.value).toBe(true);
   });
 
   it('returns false after reporting a DomainError with raw filesystem error as cause when availability inspection fails unexpectedly', async () => {
@@ -619,6 +634,7 @@ describe('useCreateMioframeSpace', () => {
       code: 'mioframeSpacePick.createFailed',
     });
     expect(reportedError.cause).toMatchObject({ message: 'raw filesystem detail' });
+    expect(createFlow.isDiagnosticsPromptVisible.value).toBe(true);
   });
 });
 
@@ -630,6 +646,7 @@ describe('useOpenMioframeSpace', () => {
     disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
+    requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue({
       name: 'Work Notes',
@@ -683,6 +700,7 @@ describe('useOpenMioframeSpace', () => {
 
     expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).not.toHaveBeenCalled();
   });
 
   it('reports a DomainError preserving raw picker error as cause when open flow hits an unexpected picker failure', async () => {
@@ -701,6 +719,7 @@ describe('useOpenMioframeSpace', () => {
       code: 'mioframeSpacePick.openFailed',
     });
     expect(reportedError.cause).toBe(rawPickerError);
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).toHaveBeenCalledTimes(1);
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/require-await -- Re-enable after DOM File System Access API test mocks. */

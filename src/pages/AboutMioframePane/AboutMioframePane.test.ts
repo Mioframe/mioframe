@@ -19,8 +19,6 @@ vi.mock('@entity/localSettings', () => ({
   useDiagnosticsSettings: () => ({
     diagnosticsEnabled: computed(() => diagnosticsEnabled.value),
     diagnosticsConsentRequested: computed(() => true),
-    acceptDiagnosticsConsent: vi.fn(),
-    rejectDiagnosticsConsent: vi.fn(),
     setDiagnosticsEnabledByUser: vi.fn(),
   }),
 }));

@@ -30,8 +30,6 @@ vi.mock('@entity/localSettings', () => ({
     diagnosticsConsentRequested: computed(
       () => settings.value.diagnosticsConsentRequested === true,
     ),
-    acceptDiagnosticsConsent: vi.fn(),
-    rejectDiagnosticsConsent: vi.fn(),
     setDiagnosticsEnabledByUser: setDiagnosticsEnabledByUserMock,
   }),
 }));
@@ -182,6 +180,39 @@ vi.mock('@shared/ui/Checkbox', () => ({
   }),
 }));
 
+vi.mock('@shared/ui/Switch', () => ({
+  MDSwitch: defineComponent({
+    name: 'MDSwitchStub',
+    props: {
+      modelValue: {
+        type: Boolean,
+        required: true,
+      },
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
+      presentation: {
+        type: Boolean,
+        default: false,
+      },
+      ariaLabel: {
+        type: String,
+        default: undefined,
+      },
+    },
+    emits: ['update:modelValue'],
+    setup(props) {
+      return () =>
+        h('div', {
+          'aria-hidden': 'true',
+          'data-state': props.modelValue ? 'checked' : 'unchecked',
+          'data-disabled': props.disabled ? 'true' : 'false',
+        });
+    },
+  }),
+}));
+
 const mountSettingsSections = async ({
   onSelectPrivacyPolicy,
   onSelectHelp,
@@ -218,6 +249,11 @@ const getButtonByText = (root: HTMLElement, text: string) =>
 
 const getCheckboxRow = (root: HTMLElement, label: string) =>
   Array.from(root.querySelectorAll<HTMLElement>('[role="checkbox"]')).find((element) =>
+    element.textContent.includes(label),
+  ) ?? null;
+
+const getSwitchRow = (root: HTMLElement, label: string) =>
+  Array.from(root.querySelectorAll<HTMLElement>('[role="switch"]')).find((element) =>
     element.textContent.includes(label),
   ) ?? null;
 
@@ -261,7 +297,7 @@ describe('SettingsSections', () => {
     expect(root.textContent).toContain('Home screen');
     expect(root.textContent).toContain('Help');
     expect(root.textContent).toContain(
-      'Send technical error reports. Documents, file names, and folder paths are not sent.',
+      'Send technical error reports after you enable diagnostics.',
     );
     expect(root.textContent).toContain('Read how Mioframe handles privacy and diagnostics.');
     expect(root.textContent).toContain(
@@ -337,10 +373,10 @@ describe('SettingsSections', () => {
   it('toggles Error diagnostics between true and false with row click', async () => {
     const { root, unmount } = await mountSettingsSections();
     const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
-    const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
+    const errorDiagnosticsRow = getSwitchRow(root, 'Error diagnostics');
 
     expect(root.textContent).toContain(
-      'Send technical error reports. Documents, file names, and folder paths are not sent.',
+      'Send technical error reports after you enable diagnostics.',
     );
     expect(errorDiagnosticsButton).not.toBeNull();
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
@@ -372,7 +408,7 @@ describe('SettingsSections', () => {
 
     const { root, unmount } = await mountSettingsSections();
     const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
-    const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
+    const errorDiagnosticsRow = getSwitchRow(root, 'Error diagnostics');
     expect(root.textContent).toContain('Diagnostics are not available in this build.');
     expect(errorDiagnosticsButton).not.toBeNull();
     expect(errorDiagnosticsRow).not.toBeNull();

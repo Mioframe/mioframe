@@ -8,6 +8,7 @@ const {
   addSnackbarMock,
   confirmMock,
   captureDiagnosticExceptionMock,
+  requestHomeDiagnosticsPromptAfterHandledErrorMock,
 } = vi.hoisted(() => ({
   requestAccessMock: vi.fn(),
   pickJsonFileMock: vi.fn(),
@@ -16,6 +17,7 @@ const {
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
+  requestHomeDiagnosticsPromptAfterHandledErrorMock: vi.fn(),
 }));
 
 const createSerializedRecoveryError = ({
@@ -46,6 +48,13 @@ vi.mock('@shared/ui/Snackbar', () => ({
 
 vi.mock('@shared/lib/diagnostics', () => ({
   captureDiagnosticException: captureDiagnosticExceptionMock,
+}));
+
+vi.mock('@feature/diagnosticsErrorPrompt', () => ({
+  useDiagnosticsErrorPromptTrigger: () => ({
+    requestHomeDiagnosticsPromptAfterHandledError:
+      requestHomeDiagnosticsPromptAfterHandledErrorMock,
+  }),
 }));
 
 vi.mock('@shared/ui/Dialog', () => ({
@@ -85,6 +94,7 @@ describe('useImportDocumentAction', () => {
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
+    requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
   });
 
   it('silently ignores file picker cancellation', async () => {
@@ -96,6 +106,7 @@ describe('useImportDocumentAction', () => {
     await expect(importDocument('/documents')).resolves.toBeUndefined();
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).not.toHaveBeenCalled();
   });
 
   it('shows a file open error and reports it to diagnostics', async () => {
@@ -116,6 +127,7 @@ describe('useImportDocumentAction', () => {
       text: 'Could not open the selected file',
     });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).toHaveBeenCalledTimes(1);
   });
 
   it('does not read file text in the feature — passes the File to the worker service', async () => {
@@ -152,6 +164,7 @@ describe('useImportDocumentAction', () => {
       text: 'The selected file is not valid JSON',
     });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).not.toHaveBeenCalled();
   });
 
   it('shows invalid document format errors from service without reporting them', async () => {
@@ -173,6 +186,7 @@ describe('useImportDocumentAction', () => {
       text: 'The selected JSON file is not a Mioframe document',
     });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).not.toHaveBeenCalled();
   });
 
   it('shows a success snackbar after a document is imported', async () => {
@@ -210,6 +224,7 @@ describe('useImportDocumentAction', () => {
     expect(reportedError).toBeInstanceOf(DomainError);
     expect(reportedError.cause).toBe(error);
     expect(reportedError.message).not.toContain('unexpected failure');
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).toHaveBeenCalledTimes(1);
   });
 
   it('passes original DomainError directly to diagnostics without wrapping', async () => {

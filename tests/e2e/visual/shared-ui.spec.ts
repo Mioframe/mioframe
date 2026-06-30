@@ -140,6 +140,20 @@ test('MDCheckbox interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-checkbox-interaction-states.png');
 });
 
+test('MDSwitch visual states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--visual-states');
+
+  const surface = page.getByTestId('visual-md-switch-states');
+
+  await expect(surface).toHaveScreenshot('md-switch-states.png');
+});
+
+test('MDSwitch interaction states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdswitch--visual-interaction-states');
+  const surface = page.getByTestId('visual-md-switch-interaction-states');
+  await expect(surface).toHaveScreenshot('md-switch-interaction-states.png');
+});
+
 test('MDFab visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdfab--visual-states');
 

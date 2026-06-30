@@ -104,7 +104,7 @@ test('Settings diagnostics row has no horizontal overflow at 360dp', async ({ pa
   // The exact diagnostics supporting-text copy is asserted at the unit level
   // (SettingsSections.test.ts); this build may render the disabled-build fallback copy
   // instead when Sentry is unavailable, so this check only covers layout, not wording.
-  const diagnosticsRow = page.getByRole('checkbox', { name: /error diagnostics/i });
+  const diagnosticsRow = page.getByRole('switch', { name: /error diagnostics/i });
   await expect(diagnosticsRow).toBeVisible();
 
   const rowBox = await diagnosticsRow.boundingBox();

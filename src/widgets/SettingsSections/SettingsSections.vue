@@ -5,6 +5,7 @@ import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from
 import { MDList, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
+import SettingsSwitchListItem from './SettingsSwitchListItem.vue';
 import StorageSettingsSection from './StorageSettingsSection.vue';
 
 const emit = defineEmits<{
@@ -63,14 +64,14 @@ const onClickAboutMioframe = () => {
 
     <SettingsSection title="Privacy & diagnostics">
       <MDList tag="div">
-        <SettingsCheckboxListItem
+        <SettingsSwitchListItem
           headline="Error diagnostics"
           :supporting-text="
             SENTRY_DIAGNOSTICS_AVAILABLE
-              ? 'Send technical error reports. Documents, file names, and folder paths are not sent.'
+              ? 'Send technical error reports after you enable diagnostics.'
               : 'Diagnostics are not available in this build.'
           "
-          :lines="3"
+          :lines="2"
           :checked="SENTRY_DIAGNOSTICS_AVAILABLE ? diagnosticsEnabled : false"
           :disabled="!SENTRY_DIAGNOSTICS_AVAILABLE"
           @change="onToggleDiagnostics"
