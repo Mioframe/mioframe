@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
+import {
+  DiagnosticsErrorPrompt,
+  useDiagnosticsErrorPromptEligibility,
+} from '@feature/diagnosticsErrorPrompt';
 import { parseMioframeSpaceName } from './spaceNameValidation';
 import { useCreateMioframeSpace, type CreateSpaceFieldIssue } from './useCreateMioframeSpace';
 
@@ -15,8 +19,25 @@ const emit = defineEmits<{
 }>();
 
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
-const { loading, checkCreateSpaceNameAvailability, createSpace, openExistingSpace } =
-  useCreateMioframeSpace(() => props.parentHandle);
+const {
+  loading,
+  isDiagnosticsPromptVisible,
+  clearDiagnosticsPrompt,
+  checkCreateSpaceNameAvailability,
+  createSpace,
+  openExistingSpace,
+} = useCreateMioframeSpace(() => props.parentHandle);
+
+// Local inline prompt only; dropping it on unmount (cancel/completed/closed) prevents an
+// earlier create-space error from resurfacing on reopen.
+onUnmounted(() => {
+  clearDiagnosticsPrompt();
+});
+
+const { isDiagnosticsErrorPromptEligible } = useDiagnosticsErrorPromptEligibility();
+const isInlineDiagnosticsPromptVisible = computed(
+  () => isDiagnosticsPromptVisible.value && isDiagnosticsErrorPromptEligible.value,
+);
 
 const spaceName = ref<string | undefined>(undefined);
 const fieldIssue = ref<CreateSpaceFieldIssue | undefined>(undefined);
@@ -138,6 +159,13 @@ const onApply = async () => {
 
       <p class="mioframe-space-create-dialog__detail">Space folder: {{ resultFolder }}</p>
     </div>
+
+    <DiagnosticsErrorPrompt
+      v-if="isInlineDiagnosticsPromptVisible"
+      variant="inline"
+      @enabled="clearDiagnosticsPrompt"
+      @dismissed="clearDiagnosticsPrompt"
+    />
   </MDDialog>
 </template>
 

@@ -6,6 +6,7 @@ const zodSettingsStorage = z._default(
   z.object({
     diagnosticsEnabled: z._default(z.boolean(), false),
     diagnosticsConsentRequested: z._default(z.boolean(), false),
+    diagnosticsErrorPromptDismissedVersion: z.optional(z.string()),
     showPerformance: z.optional(z.boolean()),
     showAutomergeFiles: z.optional(z.boolean()),
     googleDriveIntegrationEnabled: z.optional(z.boolean()),

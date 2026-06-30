@@ -62,6 +62,7 @@ Diagnostic reports should not contain:
 - document contents;
 - record values;
 - document names;
+- file names;
 - folder names;
 - local folder paths;
 - document ids;
@@ -74,9 +75,9 @@ Diagnostic reports may contain technical information needed to debug an error, s
 - error type or error code;
 - a safe application error message.
 
-## Session Replay
+## Session Replay, tracing, and analytics
 
-Mioframe 0.1 does not use Sentry Session Replay. Error diagnostics do not record your screen or app session.
+Mioframe 0.1 does not use Sentry Session Replay or Sentry performance tracing, and does not use product analytics. Error diagnostics do not record your screen or app session, do not track performance, and do not track product usage.
 
 ## Questions
 

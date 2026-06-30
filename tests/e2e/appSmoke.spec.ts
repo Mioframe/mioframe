@@ -34,7 +34,7 @@ test('toggles Error diagnostics in Settings with Space and Enter when available'
 
   await page.getByRole('button', { name: /^settings$/i }).click();
 
-  const diagnosticsCheckbox = page.getByRole('checkbox', { name: /error diagnostics/i });
+  const diagnosticsCheckbox = page.getByRole('switch', { name: /error diagnostics/i });
   await expect(diagnosticsCheckbox).toBeVisible();
 
   const disabled = await diagnosticsCheckbox.isDisabled();

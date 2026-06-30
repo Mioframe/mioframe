@@ -41,11 +41,17 @@ export const useCreateMioframeSpace = (
   parentHandleSource: MaybeRefOrGetter<FileSystemDirectoryHandle | undefined>,
 ) => {
   const loading = ref(false);
+  const isDiagnosticsPromptVisible = ref(false);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory, disconnectDeviceFile } = useFileSystem();
   const {
     repositories: { initializeRepository },
   } = useMainServiceClient();
+
+  /** Drops the local inline diagnostics prompt. Has no effect on the unrelated Home fallback flag. */
+  const clearDiagnosticsPrompt = () => {
+    isDiagnosticsPromptVisible.value = false;
+  };
 
   const getParentHandle = () => toValue(parentHandleSource);
 
@@ -72,6 +78,7 @@ export const useCreateMioframeSpace = (
       feature: 'mioframeSpaceCreate',
       action: options?.action ?? 'createSpace',
     });
+    isDiagnosticsPromptVisible.value = true;
   };
 
   const reportRollbackError = (rollbackError: unknown) => {
@@ -236,6 +243,8 @@ export const useCreateMioframeSpace = (
 
   return {
     loading,
+    isDiagnosticsPromptVisible,
+    clearDiagnosticsPrompt,
     checkCreateSpaceNameAvailability,
     createSpace,
     openExistingSpace,

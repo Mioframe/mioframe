@@ -80,7 +80,9 @@ it('renders the local-first and privacy help content in-app', async () => {
   expect(root.textContent).toContain(
     'You can enable or disable error diagnostics at any time in Settings under Error diagnostics.',
   );
-  expect(root.textContent).toContain('Mioframe 0.1 does not use Sentry Session Replay.');
+  expect(root.textContent).toContain(
+    'Mioframe 0.1 does not use Sentry Session Replay or Sentry performance tracing, and does not use product analytics.',
+  );
   expect(root.textContent).toContain('https://github.com/Vyachean/mioframe/discussions');
   expect(root.textContent).toContain('https://github.com/Vyachean/mioframe/issues');
 
@@ -103,7 +105,9 @@ it('renders privacy markdown structure and safe external links', async () => {
   expect(headings.some((heading) => heading.textContent === 'No Mioframe account')).toBe(true);
   expect(headings.some((heading) => heading.textContent === 'Google Drive')).toBe(true);
   expect(headings.some((heading) => heading.textContent === 'Error diagnostics')).toBe(true);
-  expect(headings.some((heading) => heading.textContent === 'Session Replay')).toBe(true);
+  expect(
+    headings.some((heading) => heading.textContent === 'Session Replay, tracing, and analytics'),
+  ).toBe(true);
   expect(root.querySelectorAll('p').length).toBeGreaterThan(0);
   expect(root.querySelectorAll('li').length).toBeGreaterThan(0);
 

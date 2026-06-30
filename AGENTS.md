@@ -76,6 +76,7 @@ reason if not run:
 - Test files may be larger than production files when scenarios are uniform. Split tests by behavior when setup becomes conditional, fixtures become hard to localize, or failures no longer point to one behavior.
 - For large refactors, keep behavior-preserving extraction separate from behavior changes. Verify the extraction first, then make functional changes in a smaller diff.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
+- Do not hide cross-layer dependencies behind incidental lifecycle, storage, or helper composable imports. When a layer needs another owner’s readiness, availability, permissions, capability, or state, expose that fact through the owning domain API with a named field or action and depend on that API instead.
 - When existing code already owns a non-trivial matching, parsing, filtering, or storage algorithm, reuse that implementation or extract a shared helper first; do not reimplement the same algorithm in another layer and let it drift.
 - Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
 - Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.

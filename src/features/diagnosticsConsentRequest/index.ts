@@ -1,1 +1,0 @@
-export { useDiagnosticsConsentRequest } from './useDiagnosticsConsentRequest';
