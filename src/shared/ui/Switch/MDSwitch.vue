@@ -5,7 +5,7 @@ import { sessionUniqueId } from '@shared/lib/uniqueId';
 
 const props = withDefaults(
   defineProps<{
-    modelValue?: boolean | undefined;
+    selected?: boolean | undefined;
     disabled?: boolean | undefined;
     id?: string | undefined;
     ariaLabel?: string | undefined;
@@ -15,15 +15,15 @@ const props = withDefaults(
     presentation?: boolean | undefined;
   }>(),
   {
-    modelValue: false,
+    selected: false,
     id: () => sessionUniqueId('switch'),
     tabIndex: 0,
   },
 );
 
 const emit = defineEmits<{
-  'update:modelValue': [v: boolean];
-  click: [];
+  'update:selected': [selected: boolean];
+  change: [selected: boolean];
 }>();
 
 const slots = defineSlots<{
@@ -31,12 +31,13 @@ const slots = defineSlots<{
   'unselected-icon'?: () => unknown;
 }>();
 
-const { disabled, modelValue, presentation } = toRefs(props);
+const { disabled, selected, presentation } = toRefs(props);
 
 const stateValue = computed({
-  get: () => !!modelValue.value,
-  set: (v: boolean) => {
-    emit('update:modelValue', v);
+  get: () => !!selected.value,
+  set: (next: boolean) => {
+    emit('update:selected', next);
+    emit('change', next);
   },
 });
 
@@ -51,7 +52,6 @@ const toggle = () => {
     return;
   }
 
-  emit('click');
   stateValue.value = !stateValue.value;
 };
 
@@ -88,7 +88,6 @@ const onPointerUp = (e: PointerEvent) => {
       const rect = el.getBoundingClientRect();
       const newValue = e.clientX > rect.left + rect.width / 2;
       if (newValue !== stateValue.value) {
-        emit('click');
         stateValue.value = newValue;
       }
     }
@@ -222,7 +221,7 @@ watch(
     />
 
     <div class="md-switch__track">
-      <div class="md-switch__handle">
+      <div class="md-switch__handle" data-md-focus-indicator-target>
         <span v-if="stateValue && hasSelectedIcon" class="md-switch__icon" aria-hidden="true">
           <slot name="selected-icon" />
         </span>
@@ -283,13 +282,20 @@ watch(
   --md-comp-switch-disabled-selected-handle-color: var(--md-sys-color-surface);
   --md-comp-switch-disabled-selected-handle-opacity: 1;
 
-  /* Handle elevation component tokens (md.comp.switch.handle.elevation → md.sys.elevation.level1) */
+  /* Handle elevation component tokens */
   --md-comp-switch-handle-elevation: var(--md-sys-elevation-level1);
   --md-comp-switch-disabled-handle-elevation: var(--md-sys-elevation-level0);
-  /* Note: md.comp.switch.handle.shadow-color aliases md.sys.color.shadow but cannot be expressed
-     as a standalone CSS custom property separate from the elevation token — shadow color is baked
-     into the --md-sys-elevation-level* box-shadow values. This limitation is documented in the
-     component registry. */
+  /* md.comp.switch.handle.shadow-color: connected to the elevation foundation via
+     --md-private-elevation-shadow-color so the switch handle shadow color is separately
+     overridable without duplicating the full box-shadow value. */
+  --md-comp-switch-handle-shadow-color: var(--md-sys-color-shadow);
+  /* Forward to the elevation foundation's shadow-color bridge variable. */
+  --md-private-elevation-shadow-color: var(--md-comp-switch-handle-shadow-color);
+
+  /* Focus indicator component tokens (md.comp.switch.focus.indicator.*) */
+  --md-comp-switch-focus-indicator-color: var(--md-sys-color-secondary);
+  --md-comp-switch-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness, 3px);
+  --md-comp-switch-focus-indicator-offset: var(--md-sys-state-focus-indicator-outer-offset, 2px);
 
   /* Icon component tokens (md.comp.switch.selected/unselected.icon.*) */
   --md-comp-switch-selected-icon-size: 16dp;

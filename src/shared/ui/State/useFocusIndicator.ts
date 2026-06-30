@@ -40,6 +40,10 @@ const setupFocusIndicator = () => {
   );
 
   const focusedEl = shallowRef<HTMLElement>();
+  // The element whose bounding box and border-radius drives the indicator position.
+  // When the focused element nominates an internal focus target via
+  // data-md-focus-indicator-target, that descendant is used instead of the host.
+  const boundingSourceEl = shallowRef<HTMLElement>();
 
   useEventListener(
     'focusin',
@@ -80,7 +84,7 @@ const setupFocusIndicator = () => {
     indicatorElement.style.height = `${height}px`;
   };
 
-  const { top, left, width, height } = useElementBounding(focusedEl, {
+  const { top, left, width, height } = useElementBounding(boundingSourceEl, {
     immediate: true,
     updateTiming: 'next-frame',
     reset: false,
@@ -97,9 +101,14 @@ const setupFocusIndicator = () => {
     (nextFocusedEl) => {
       if (nextFocusedEl && !nextFocusedEl.classList.contains('md-focus-indicator_hidden')) {
         showIndicator();
-        const styles = getComputedStyle(nextFocusedEl);
+        // eslint-disable-next-line no-restricted-syntax -- justified: reads a generic focus-target marker from non-Vue DOM, not Vue component coordination
+        const target = nextFocusedEl.querySelector('[data-md-focus-indicator-target]');
+        const source = target instanceof HTMLElement ? target : nextFocusedEl;
+        boundingSourceEl.value = source;
+        const styles = getComputedStyle(source);
         borderRadius.value = styles.borderRadius;
       } else {
+        boundingSourceEl.value = undefined;
         hideIndicator();
       }
     },

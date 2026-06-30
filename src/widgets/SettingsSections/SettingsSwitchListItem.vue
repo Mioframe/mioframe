@@ -32,7 +32,7 @@ const onChange = () => {
     @action="onChange"
   >
     <template #trailing>
-      <MDSwitch presentation :model-value="checked" :disabled="disabled" />
+      <MDSwitch presentation :selected="checked" :disabled="disabled" />
     </template>
   </MDListItem>
 </template>
