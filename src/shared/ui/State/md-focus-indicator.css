@@ -3,7 +3,6 @@
   z-index: 100;
   display: block;
   pointer-events: none;
-  outline: 5px solid red;
   outline: var(--md-focus-indicator-thickness) solid var(--md-focus-indicator-color);
   outline-offset: var(--md-focus-indicator-offset);
   z-index: 100;
