@@ -253,7 +253,7 @@ watch(
     background: transparent;
   }
 
-  &__state-layer {
+  &__state-layer.md-state-layer {
     z-index: 1;
     top: 50%;
     left: calc(
@@ -268,6 +268,7 @@ watch(
 
   &__track {
     position: relative;
+    z-index: 0;
     box-sizing: border-box;
     display: flex;
     align-items: center;
