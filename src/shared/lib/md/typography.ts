@@ -1,30 +1,37 @@
-export const MD_SYS_TYPESCALE = {
+/**
+ * Stable Material 3 type scale utility class names, grouped by scale
+ * (`display`, `label`, `body`, `headline`, `title`) and size (`large`,
+ * `medium`, `small`). Each value is a global `.md-typescale-*` class defined
+ * in `shared/lib/md/typography.css`; apply it via `:class` to typography-only
+ * elements to opt into Material's type ramp without hand-rolled font styles.
+ */
+export const MD_TYPESCALE = {
   display: {
-    large: 'md-sys-typescale-display-large',
-    medium: 'md-sys-typescale-display-medium',
-    small: 'md-sys-typescale-display-small',
+    large: 'md-typescale-display-large',
+    medium: 'md-typescale-display-medium',
+    small: 'md-typescale-display-small',
   },
   label: {
-    large: 'md-sys-typescale-label-large',
-    medium: 'md-sys-typescale-label-medium',
-    small: 'md-sys-typescale-label-small',
+    large: 'md-typescale-label-large',
+    medium: 'md-typescale-label-medium',
+    small: 'md-typescale-label-small',
   },
   body: {
-    large: 'md-sys-typescale-body-large',
-    medium: 'md-sys-typescale-body-medium',
-    small: 'md-sys-typescale-body-small',
+    large: 'md-typescale-body-large',
+    medium: 'md-typescale-body-medium',
+    small: 'md-typescale-body-small',
   },
   headline: {
-    large: 'md-sys-typescale-headline-large',
-    medium: 'md-sys-typescale-headline-medium',
-    small: 'md-sys-typescale-headline-small',
+    large: 'md-typescale-headline-large',
+    medium: 'md-typescale-headline-medium',
+    small: 'md-typescale-headline-small',
   },
   title: {
-    large: 'md-sys-typescale-title-large',
-    medium: 'md-sys-typescale-title-medium',
+    large: 'md-typescale-title-large',
+    medium: 'md-typescale-title-medium',
     /**
-     * Подходит для подзаголовков списков
+     * Suitable for list subheadings
      */
-    small: 'md-sys-typescale-title-small',
+    small: 'md-typescale-title-small',
   },
 } as const;

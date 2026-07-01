@@ -15,7 +15,7 @@ import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DatabaseItemEditDialog } from '@feature/databaseItemEdit';
 import { isUndefined } from 'es-toolkit';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
-import { MD_SYS_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/lib/md';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
 import { useDatabaseViewSelection } from '@entity/databaseView';
@@ -128,9 +128,9 @@ const onUpdatedEditItemDialog = () => {
     </div>
 
     <div v-if="!hasProperties" class="database-view__without-properties">
-      <h2 :class="MD_SYS_TYPESCALE.headline.large">Missing properties.</h2>
+      <h2 :class="MD_TYPESCALE.headline.large">Missing properties.</h2>
 
-      <section :class="MD_SYS_TYPESCALE.body.medium">
+      <section :class="MD_TYPESCALE.body.medium">
         To start working with the database, create at least one property using the toolbar.
       </section>
 
