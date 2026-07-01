@@ -34,7 +34,7 @@ describe('formatVerifyStatusReport', () => {
     expect(report.output).toContain('verification: busy (pnpm verify)');
     expect(report.output).toContain('command: pnpm verify');
     expect(report.output).toContain('logPath: .verify/logs');
-    expect(report.output).toContain('Do not start another heavy verification command');
+    expect(report.output).toContain('Wait for it to finish');
     expect(report.output).not.toContain('kind:');
     expect(report.output).not.toContain('pid:');
     expect(report.output).not.toContain('hostname:');
@@ -62,14 +62,14 @@ describe('formatVerifyStatusReport', () => {
     expect(report.exitCode).toBe(0);
     expect(report.output).toContain('verification: busy (expensive verification command)');
     expect(report.output).toContain('command: pnpm test:visual');
-    expect(report.output).toContain('Do not start another heavy verification command');
+    expect(report.output).toContain('Wait for it to finish');
     expect(report.output).not.toContain('kind:');
     expect(report.output).not.toContain('pid:');
     expect(report.output).not.toContain('heartbeat');
     expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports stale verification state with command-only recovery guidance', () => {
+  it('reports recoverable verification state with command-only guidance', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       metadata: { heartbeatAt: '2026-06-04T12:00:00.000Z' },
@@ -78,15 +78,18 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(1);
-    expect(report.output).toContain('verification: stale run marker detected');
-    expect(report.output).toContain('pnpm verify:unlock-stale');
+    expect(report.output).toContain('verification: recovery available');
+    expect(report.output).toContain('pnpm verify:recover');
+    expect(report.output).not.toContain('unlock');
+    expect(report.output).not.toContain('stale');
+    expect(report.output).not.toContain('marker');
     expect(report.output).not.toContain('rm ');
     expect(report.output).not.toContain('rmdir');
     expect(report.output).not.toContain('heartbeat');
     expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports inconsistent verification status without automatic recovery instructions', () => {
+  it('reports verification state that needs user decision without automatic recovery instructions', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       state: 'corrupt',
@@ -94,9 +97,10 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(1);
-    expect(report.output).toContain('verification: status is inconsistent');
+    expect(report.output).toContain('verification: recovery needs user decision');
     expect(report.output).toContain('statusReason: metadata missing');
     expect(report.output).toContain('ask the user before manual recovery');
+    expect(report.output).not.toContain('unlock');
     expect(report.output).not.toContain('rm ');
     expect(report.output).not.toContain('rmdir');
     expect(report.output).not.toContain('.verify/locks');
