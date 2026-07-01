@@ -88,6 +88,8 @@ If `pnpm verify` fails:
 5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output.
 6. Do not claim the task is complete while final verification is failing.
 7. If `pnpm verify` is blocked because another local verification is active, do not rerun it immediately. Run `pnpm verify:status`, inspect `.verify/logs`, and report the block clearly.
+8. If `pnpm verify:status` reports a stale lock, use `pnpm verify:unlock-stale` only after inspecting `.verify/logs`. Do not manually delete lock files or directories.
+9. If `pnpm verify:status` reports a corrupt lock, do not attempt automatic recovery. Report the corrupt lock and ask the user before any manual cleanup.
 
 ## Warning handling
 
@@ -109,6 +111,8 @@ Do not run `pnpm verify --fix` after a passing `pnpm verify` unless a new edit w
 Do not run full e2e, full lint, or full mutation checks manually when the task only needs the inferred changed-file scope, unless explicitly requested or required by the failure.
 
 Do not start manual e2e, visual, mutation, full lint, or full type-check commands while the local verify lock is active. `CI=true` outside GitHub Actions does not bypass local verification locks.
+
+Never use raw filesystem cleanup commands such as `rm .verify/locks/...`, `rmdir .verify/locks/...`, or `rm -rf .verify/locks/...` to bypass verification locks. Use `pnpm verify:status` and, for confirmed stale locks only, `pnpm verify:unlock-stale`.
 
 ## Final response
 
