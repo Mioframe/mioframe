@@ -3,13 +3,13 @@ import { pathToFileURL } from 'node:url';
 import { getMachineLockStatus } from './lib/commandLock.mjs';
 
 /**
- * Format the machine lock status block for CLI output.
- * @param status Structured machine lock status.
+ * Format the verification status block for CLI output.
+ * @param status Structured verification status.
  * @returns Formatted status lines as a string.
  */
 function formatMachineLockBlock(status) {
   if (status.state === 'missing') {
-    return `machine: no active local verification\n  lockPath: ${status.lockPath}`;
+    return 'verification: idle';
   }
 
   if (status.state === 'active') {
@@ -18,35 +18,29 @@ function formatMachineLockBlock(status) {
       kind === 'verify'
         ? 'pnpm verify'
         : kind === 'expensive'
-          ? 'expensive command'
-          : 'unknown command';
+          ? 'expensive verification command'
+          : 'verification command';
     const lines = [
-      `machine: ACTIVE (${kindLabel})`,
-      `  kind: ${kind}`,
+      `verification: busy (${kindLabel})`,
       `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
-      `  pid: ${status.metadata?.pid ?? 'unknown'}`,
-      `  hostname: ${status.metadata?.hostname ?? 'unknown'}`,
-      `  cwd: ${status.metadata?.cwd ?? 'unknown'}`,
       `  startedAt: ${status.metadata?.startedAt ?? 'unknown'}`,
-      `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-      `  lockPath: ${status.lockPath}`,
       `  logPath: ${status.metadata?.logPath ?? '.verify/logs'}`,
-      '  Do not start another heavy local verification command while this is active.',
+      '  Wait for it to finish. Do not start another heavy verification command.',
     ];
 
     return lines.join('\n');
   }
 
-  const title =
-    status.state === 'stale' ? 'machine: stale lock detected' : 'machine: corrupt lock detected';
+  if (status.state === 'stale') {
+    return [
+      'verification: ready to resume',
+      '  Inspect `.verify/logs`, then run `pnpm verify:resume` and retry.',
+    ].join('\n');
+  }
 
   return [
-    title,
-    `  lockPath: ${status.lockPath}`,
-    `  statusReason: ${status.statusReason ?? 'unknown'}`,
-    `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-    '  Inspect `.verify/logs` before removing the stale lock.',
-    '  If no process is still active, remove the lock directory and retry.',
+    'verification: needs user decision',
+    '  Inspect `.verify/logs` and ask the user before proceeding.',
   ].join('\n');
 }
 
@@ -66,7 +60,7 @@ export function formatVerifyStatusReport(machineStatus) {
 }
 
 /**
- * Print the current machine lock status for local agents.
+ * Print the current verification status for local agents.
  * @returns Exit code for the status command.
  */
 export function printVerifyStatus() {
