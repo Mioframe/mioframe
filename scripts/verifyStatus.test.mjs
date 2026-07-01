@@ -40,6 +40,8 @@ describe('formatVerifyStatusReport', () => {
     expect(report.output).not.toContain('hostname:');
     expect(report.output).not.toContain('cwd:');
     expect(report.output).not.toContain('heartbeat');
+    expect(report.output).not.toContain('metadata');
+    expect(report.output).not.toContain('lockPath');
     expect(report.output).not.toContain('.verify/locks');
   });
 
@@ -66,10 +68,12 @@ describe('formatVerifyStatusReport', () => {
     expect(report.output).not.toContain('kind:');
     expect(report.output).not.toContain('pid:');
     expect(report.output).not.toContain('heartbeat');
+    expect(report.output).not.toContain('metadata');
+    expect(report.output).not.toContain('lockPath');
     expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports recoverable verification state with command-only guidance', () => {
+  it('reports a resumable verification state pointing only to pnpm verify:resume', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       metadata: { heartbeatAt: '2026-06-04T12:00:00.000Z' },
@@ -78,18 +82,22 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(1);
-    expect(report.output).toContain('verification: recovery available');
-    expect(report.output).toContain('pnpm verify:recover');
+    expect(report.output).toContain('verification: ready to resume');
+    expect(report.output).toContain('pnpm verify:resume');
+    expect(report.output).not.toContain('verify:unlock-stale');
+    expect(report.output).not.toContain('verify:recover');
     expect(report.output).not.toContain('unlock');
     expect(report.output).not.toContain('stale');
     expect(report.output).not.toContain('marker');
+    expect(report.output).not.toContain('metadata');
     expect(report.output).not.toContain('rm ');
     expect(report.output).not.toContain('rmdir');
     expect(report.output).not.toContain('heartbeat');
+    expect(report.output).not.toContain('lockPath');
     expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports verification state that needs user decision without automatic recovery instructions', () => {
+  it('reports verification state that needs user decision without automatic bypass instructions', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       state: 'corrupt',
@@ -97,12 +105,13 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(1);
-    expect(report.output).toContain('verification: recovery needs user decision');
-    expect(report.output).toContain('statusReason: metadata missing');
-    expect(report.output).toContain('ask the user before manual recovery');
+    expect(report.output).toContain('verification: needs user decision');
+    expect(report.output).toContain('ask the user before proceeding');
     expect(report.output).not.toContain('unlock');
+    expect(report.output).not.toContain('metadata');
     expect(report.output).not.toContain('rm ');
     expect(report.output).not.toContain('rmdir');
+    expect(report.output).not.toContain('lockPath');
     expect(report.output).not.toContain('.verify/locks');
   });
 });

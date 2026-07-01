@@ -33,17 +33,14 @@ function formatMachineLockBlock(status) {
 
   if (status.state === 'stale') {
     return [
-      'verification: recovery available',
-      `  statusReason: ${status.statusReason ?? 'previous verification did not finish cleanly'}`,
-      '  Inspect `.verify/logs`.',
-      '  If no verification command is still running, run `pnpm verify:resume` and retry.',
+      'verification: ready to resume',
+      '  Inspect `.verify/logs`, then run `pnpm verify:resume` and retry.',
     ].join('\n');
   }
 
   return [
-    'verification: recovery needs user decision',
-    `  statusReason: ${status.statusReason ?? 'unknown'}`,
-    '  Inspect `.verify/logs` and ask the user before manual recovery.',
+    'verification: needs user decision',
+    '  Inspect `.verify/logs` and ask the user before proceeding.',
   ].join('\n');
 }
 

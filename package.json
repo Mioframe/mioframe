@@ -19,7 +19,7 @@
     "setup:git-hooks": "node .husky/install.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:status": "node scripts/verifyStatus.mjs",
-    "verify:resume": "node scripts/verifyRecover.mjs",
+    "verify:resume": "node scripts/verifyResume.mjs",
     "ci:autofix": "node scripts/verify.mjs --fix-only",
     "verify:fix": "node scripts/verify.mjs --fix",
     "type-check": "node scripts/typeCheck.mjs",
