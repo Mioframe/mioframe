@@ -6,7 +6,7 @@ import type {
   DatabaseUnknownProperty,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { MD_SYS_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
 import { DatabaseFilterForm } from '@feature/databaseFilterEdit';
@@ -41,7 +41,7 @@ const onUpdateProperty = async (
 <template>
   <MDBottomSheet class="db-filters-sheet" label="Database Filters Sheet" @closed="onClosed">
     <MDBottomSheetSection class="db-filters-sheet__section">
-      <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>
+      <span :class="MD_TYPESCALE.title.small">Filters</span>
 
       <div class="db-filters-sheet__filters">
         <DatabaseFilterForm :path="directoryPath" :document-id="documentId" :view-id="viewId">

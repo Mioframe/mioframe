@@ -28,11 +28,11 @@ const [randomSymbol] = sampleSize(symbols, 1);
 
 <template>
   <div class="empty-symbol">
-    <span class="empty-symbol__icon md-sys-typescale-display-large">
+    <span class="empty-symbol__icon md-typescale-display-large">
       {{ randomSymbol }}
     </span>
 
-    <span class="empty-symbol__label md-sys-typescale-label-large"> It's empty here yet </span>
+    <span class="empty-symbol__label md-typescale-label-large"> It's empty here yet </span>
   </div>
 </template>
 

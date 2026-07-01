@@ -14,8 +14,12 @@ const onDismiss = () => {
 <template>
   <MDCard class="database-example-document-create-success-card" variant="outlined">
     <div class="database-example-document-create-success-card__content">
-      <h3 class="database-example-document-create-success-card__headline">Example created</h3>
-      <p class="database-example-document-create-success-card__supporting-text">
+      <h3 class="database-example-document-create-success-card__headline md-typescale-title-medium">
+        Example created
+      </h3>
+      <p
+        class="database-example-document-create-success-card__supporting-text md-typescale-body-medium"
+      >
         This is a regular Mioframe document. You can edit rows or add your own records.
       </p>
     </div>
@@ -38,21 +42,11 @@ const onDismiss = () => {
 
   &__headline {
     margin: 0;
-    font-family: var(--md-sys-typescale-title-medium-font);
-    font-size: var(--md-sys-typescale-title-medium-size);
-    line-height: var(--md-sys-typescale-title-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
-    font-weight: var(--md-sys-typescale-title-medium-weight);
   }
 
   &__supporting-text {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-medium-font);
-    font-size: var(--md-sys-typescale-body-medium-size);
-    line-height: var(--md-sys-typescale-body-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
-    font-weight: var(--md-sys-typescale-body-medium-weight);
   }
 
   &__actions {

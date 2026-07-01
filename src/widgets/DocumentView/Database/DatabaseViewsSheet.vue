@@ -5,7 +5,7 @@ import { DatabaseViewListEdit } from '@feature/databaseViewMapEdit';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import { MD_SYS_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import MDButton from '@shared/ui/Button/MDButton.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
@@ -132,7 +132,7 @@ const onRenameViewCompleted = () => {
   <MDBottomSheet label="Database Views Sheet" @closed="onClosed">
     <MDBottomSheetSection class="db-views-sheet__section">
       <div class="db-views-sheet__header">
-        <span :class="MD_SYS_TYPESCALE.title.small">View presets</span>
+        <span :class="MD_TYPESCALE.title.small">View presets</span>
 
         <MDIconButton
           tooltip="Managing content sorting"

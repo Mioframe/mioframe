@@ -4,7 +4,7 @@ import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { MD_SYS_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
@@ -97,7 +97,7 @@ const onCancelCreateProperty = () => {
 <template>
   <MDBottomSheet class="db-properties-sheet" label="Database Properties Sheet" @closed="onClosed">
     <MDBottomSheetSection class="db-properties-sheet__section">
-      <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
+      <span :class="MD_TYPESCALE.title.small">Properties</span>
 
       <DatabasePropertyList
         v-if="propertiesIdList?.length"

@@ -8,6 +8,7 @@
 - Material's accessibility guidance explicitly avoids stacking actionable surfaces: an actionable card (`mode="button"`/`"link"`) must not contain its own nested buttons or links. MDCard does not enforce this with a pre-render scan of the default slot (the slot renders arbitrary consumer content, so a reliable scan is not a narrow, low-risk check) — treat it as an unsupported combination, not a documented pattern. The `mode="button"` phrasing-content warning above will incidentally catch nested buttons/links too, since they are not phrasing content.
 - `disabled` only has meaning for actionable modes. A disabled `button` card uses native `disabled`. A disabled `link` card keeps `href` semantics off via `aria-disabled="true"` + `tabindex="-1"` and blocks the click handler in script, since links ignore the native `disabled` attribute.
 - `dragged` is an externally controlled prop (e.g. driven by a sortable/reorder consumer), not native HTML drag detection.
+- MDCard has no headline/supporting-text slots or `title`/`description` props. Card text anatomy is a consumer concern: consumers keep their own semantic tags (`h1`-`h3` for headings, `p` for supporting text, `span` for inline text) and apply the global Material typography utility classes (`.md-typescale-*` in `shared/lib/md/typography.css`) for type scale. Color, layout, spacing, and copy stay owned by the widget/feature composing the card.
 
 ## Material surface context
 

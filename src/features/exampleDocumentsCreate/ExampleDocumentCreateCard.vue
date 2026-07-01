@@ -23,8 +23,10 @@ const onCreate = () => {
 <template>
   <MDCard class="example-document-create-card" variant="elevated">
     <div class="example-document-create-card__copy">
-      <h3 class="example-document-create-card__title">{{ definition.title }}</h3>
-      <p class="example-document-create-card__text">
+      <h3 class="example-document-create-card__title md-typescale-title-medium">
+        {{ definition.title }}
+      </h3>
+      <p class="example-document-create-card__text md-typescale-body-medium">
         {{ definition.description }}
       </p>
     </div>
@@ -41,7 +43,10 @@ const onCreate = () => {
       </template>
     </MDButton>
 
-    <p v-if="props.errorMessage" class="example-document-create-card__error">
+    <p
+      v-if="props.errorMessage"
+      class="example-document-create-card__error md-typescale-body-small"
+    >
       {{ props.errorMessage }}
     </p>
   </MDCard>
@@ -59,31 +64,16 @@ const onCreate = () => {
 
   &__title {
     margin: 0;
-    font-family: var(--md-sys-typescale-title-medium-font);
-    font-size: var(--md-sys-typescale-title-medium-size);
-    line-height: var(--md-sys-typescale-title-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
-    font-weight: var(--md-sys-typescale-title-medium-weight);
   }
 
   &__text {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-medium-font);
-    font-size: var(--md-sys-typescale-body-medium-size);
-    line-height: var(--md-sys-typescale-body-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
-    font-weight: var(--md-sys-typescale-body-medium-weight);
   }
 
   &__error {
     margin: 0;
     color: var(--md-sys-color-error);
-    font-family: var(--md-sys-typescale-body-small-font);
-    font-size: var(--md-sys-typescale-body-small-size);
-    line-height: var(--md-sys-typescale-body-small-line-height);
-    letter-spacing: var(--md-sys-typescale-body-small-tracking);
-    font-weight: var(--md-sys-typescale-body-small-weight);
   }
 }
 </style>

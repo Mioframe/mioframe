@@ -16,8 +16,8 @@ const onInstall = () => {
 <template>
   <MDCard class="pwa-install-widget" variant="outlined">
     <div class="pwa-install-widget__body">
-      <h2 class="pwa-install-widget__headline">Install Mioframe</h2>
-      <p class="pwa-install-widget__supporting-text">
+      <h2 class="pwa-install-widget__headline md-typescale-headline-small">Install Mioframe</h2>
+      <p class="pwa-install-widget__supporting-text md-typescale-body-medium">
         Add Mioframe to your home screen for quick access and a better experience.
       </p>
     </div>
@@ -38,21 +38,11 @@ const onInstall = () => {
 
   &__headline {
     margin: 0;
-    font-family: var(--md-sys-typescale-headline-small-font);
-    font-size: var(--md-sys-typescale-headline-small-size);
-    line-height: var(--md-sys-typescale-headline-small-line-height);
-    letter-spacing: var(--md-sys-typescale-headline-small-tracking);
-    font-weight: var(--md-sys-typescale-headline-small-weight);
   }
 
   &__supporting-text {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-medium-font);
-    font-size: var(--md-sys-typescale-body-medium-size);
-    line-height: var(--md-sys-typescale-body-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
-    font-weight: var(--md-sys-typescale-body-medium-weight);
   }
 
   &__actions {

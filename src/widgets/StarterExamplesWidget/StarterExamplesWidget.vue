@@ -43,11 +43,13 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
   <MDCard class="starter-examples-widget" variant="outlined">
     <div class="starter-examples-widget__header">
       <div class="starter-examples-widget__copy">
-        <p class="starter-examples-widget__eyebrow">Create a starter example</p>
-        <h2 class="starter-examples-widget__headline">
+        <p class="starter-examples-widget__eyebrow md-typescale-label-medium">
+          Create a starter example
+        </p>
+        <h2 class="starter-examples-widget__headline md-typescale-headline-small">
           Create a ready example before setting up your own system
         </h2>
-        <p class="starter-examples-widget__supporting-text">
+        <p class="starter-examples-widget__supporting-text md-typescale-body-medium">
           Each option creates local documents in your Examples folder, opens them, and leaves them
           ready to keep editing.
         </p>
@@ -93,31 +95,16 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
   &__eyebrow {
     margin: 0;
     color: var(--md-sys-color-primary);
-    font: var(--md-sys-typescale-label-medium-font);
-    font-size: var(--md-sys-typescale-label-medium-size);
-    line-height: var(--md-sys-typescale-label-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-label-medium-tracking);
-    font-weight: var(--md-sys-typescale-label-medium-weight);
     text-transform: uppercase;
   }
 
   &__headline {
     margin: 0;
-    font-family: var(--md-sys-typescale-headline-small-font);
-    font-size: var(--md-sys-typescale-headline-small-size);
-    line-height: var(--md-sys-typescale-headline-small-line-height);
-    letter-spacing: var(--md-sys-typescale-headline-small-tracking);
-    font-weight: var(--md-sys-typescale-headline-small-weight);
   }
 
   &__supporting-text {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-medium-font);
-    font-size: var(--md-sys-typescale-body-medium-size);
-    line-height: var(--md-sys-typescale-body-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
-    font-weight: var(--md-sys-typescale-body-medium-weight);
   }
 
   &__actions {

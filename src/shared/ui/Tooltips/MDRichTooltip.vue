@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MD_SYS_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/lib/md';
 import {
   refDebounced,
   unrefElement,
@@ -141,11 +141,11 @@ useEventListener(window.visualViewport, 'resize', update);
   <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport" :container="tooltipEl">
     <Transition>
       <div v-if="showState" ref="tooltipEl" class="md md-rich-tooltip" :style="richTooltipStyle">
-        <div class="md-rich-tooltip__subhead" :class="MD_SYS_TYPESCALE.title.small">
+        <div class="md-rich-tooltip__subhead" :class="MD_TYPESCALE.title.small">
           {{ subhead }}
         </div>
 
-        <div class="md-rich-tooltip__supporting-text" :class="MD_SYS_TYPESCALE.body.medium">
+        <div class="md-rich-tooltip__supporting-text" :class="MD_TYPESCALE.body.medium">
           <slot name="text" />
         </div>
 

@@ -47,8 +47,8 @@ const onDismiss = () => {
 
 <template>
   <MDCard variant="outlined" class="diagnostics-error-prompt">
-    <p class="diagnostics-error-prompt__headline">{{ copy.headline }}</p>
-    <p class="diagnostics-error-prompt__body">{{ copy.body }}</p>
+    <p class="diagnostics-error-prompt__headline md-typescale-title-medium">{{ copy.headline }}</p>
+    <p class="diagnostics-error-prompt__body md-typescale-body-medium">{{ copy.body }}</p>
     <div class="diagnostics-error-prompt__actions">
       <MDButton color="text" label="Not now" @click="onDismiss" />
       <MDButton color="filled" label="Enable diagnostics" @click="onEnable" />
@@ -60,21 +60,11 @@ const onDismiss = () => {
 .diagnostics-error-prompt {
   &__headline {
     margin: 0;
-    font-family: var(--md-sys-typescale-title-medium-font);
-    font-size: var(--md-sys-typescale-title-medium-size);
-    font-weight: var(--md-sys-typescale-title-medium-weight);
-    line-height: var(--md-sys-typescale-title-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
   }
 
   &__body {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-medium-font);
-    font-size: var(--md-sys-typescale-body-medium-size);
-    font-weight: var(--md-sys-typescale-body-medium-weight);
-    line-height: var(--md-sys-typescale-body-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-body-medium-tracking);
   }
 
   &__actions {
