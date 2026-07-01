@@ -36,7 +36,7 @@ function formatMachineLockBlock(status) {
       'verification: recovery available',
       `  statusReason: ${status.statusReason ?? 'previous verification did not finish cleanly'}`,
       '  Inspect `.verify/logs`.',
-      '  If no verification command is still running, run `pnpm verify:recover` and retry.',
+      '  If no verification command is still running, run `pnpm verify:resume` and retry.',
     ].join('\n');
   }
 
