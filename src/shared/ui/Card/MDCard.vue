@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, warn } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
+import { warnButtonModeRichContent } from './cardDevWarnings';
 
 const props = withDefaults(
   defineProps<{
@@ -86,6 +87,10 @@ if (import.meta.env.DEV) {
     if (isLinkAction.value && !props.href) {
       warn('MDCard: mode="link" requires an href.');
     }
+
+    if (isButtonAction.value && rootEl.value) {
+      warnButtonModeRichContent(rootEl.value);
+    }
   });
 }
 </script>
@@ -123,6 +128,22 @@ if (import.meta.env.DEV) {
   --md-private-card-outline-color: transparent;
   --md-private-card-outline-opacity: 1;
 
+  /*
+   * MDCard is a Material surface owner: it establishes its own resolved
+   * container/content color as the current surface context for nested
+   * Material primitives (`--md-current-container-color`/`--md-current-content-color`),
+   * instead of leaving descendants reading the pane/page surface. Card has no
+   * documented content-color token, so it defaults to on-surface, matching
+   * every variant's hover/focus/pressed/dragged state-layer color — which is
+   * also why the generic ripple/state-layer fallback to `--md-content-color`
+   * already resolves to the correct pressed state-layer color without a
+   * card-specific override.
+   */
+  --md-container-color: var(--md-private-card-container-color);
+  --md-content-color: var(--md-sys-color-on-surface);
+  --md-current-container-color: var(--md-container-color);
+  --md-current-content-color: var(--md-content-color);
+
   position: relative;
   display: flex;
   flex-direction: column;
@@ -139,7 +160,7 @@ if (import.meta.env.DEV) {
     from var(--md-private-card-container-color) r g b / var(--md-private-card-container-opacity)
   );
   box-shadow: var(--md-private-card-container-elevation);
-  color: inherit;
+  color: var(--md-content-color);
   font: inherit;
   text-align: start;
   text-decoration: none;

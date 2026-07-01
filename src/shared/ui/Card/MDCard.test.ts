@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import MDCard from './MDCard.vue';
 
 describe('MDCard', () => {
@@ -82,5 +82,51 @@ describe('MDCard', () => {
     expect(staticCard.findComponent({ name: 'MDStateLayer' }).exists()).toBe(false);
     expect(buttonCard.findComponent({ name: 'MDStateLayer' }).exists()).toBe(true);
     expect(linkCard.findComponent({ name: 'MDStateLayer' }).exists()).toBe(true);
+  });
+
+  it('warns in development when a button-mode card renders block-level content', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mount(MDCard, {
+      props: { mode: 'button' },
+      slots: { default: '<h3>Rich heading</h3>' },
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('mode="button" only supports simple/phrasing slot content'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not warn in development when a button-mode card renders phrasing-only content', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mount(MDCard, {
+      props: { mode: 'button' },
+      slots: { default: 'Tap this whole card' },
+    });
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('mode="button" only supports simple/phrasing slot content'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not warn about rich content for static or link cards', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mount(MDCard, { props: { mode: 'static' }, slots: { default: '<h3>Heading</h3>' } });
+    mount(MDCard, {
+      props: { mode: 'link', href: '/example' },
+      slots: { default: '<h3>Heading</h3>' },
+    });
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('mode="button" only supports simple/phrasing slot content'),
+    );
+
+    warnSpy.mockRestore();
   });
 });

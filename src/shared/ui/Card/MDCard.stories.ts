@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDButton from '../Button/MDButton.vue';
-import { MDStateLayerForcedStateProvider } from '../State/testing';
 import MDCard from './MDCard.vue';
+import MDCardActionVisualStory from './MDCardActionVisualStory.vue';
 
 /**
  * Material 3 card. Checked against `components/cards/overview.md`,
@@ -14,9 +14,15 @@ import MDCard from './MDCard.vue';
  * warns against stacking actionable surfaces, so MDCard does not support nested
  * buttons/links inside an actionable card as a documented pattern — that
  * combination is a deviation from the component contract, not a supported slot
- * shape. There is no dev-time DOM scan for it: MDCard's default slot renders
- * arbitrary content, so a reliable check would require inspecting rendered
- * slot output, which this component intentionally does not do.
+ * shape.
+ *
+ * `mode="button"` renders the whole card as a native `<button>`, whose HTML
+ * content model only accepts phrasing content (text, inline elements, icons).
+ * MDCard does not restrict this at the type level (the default slot is
+ * generic), but it does warn in development when the rendered content
+ * includes a block-level or interactive tag — use `mode="static"` for rich
+ * block content or cards with internal buttons/links instead. `mode="link"`
+ * has no such restriction: `<a>` accepts flow content.
  */
 const meta = {
   title: 'shared/ui/MDCard',
@@ -89,6 +95,14 @@ export const ActionableLinkCard: Story = {
   }),
 };
 
+export const ActionBehavior: Story = {
+  name: 'Actionable card action/keyboard behavior',
+  render: () => ({
+    components: { MDCardActionVisualStory },
+    template: '<MDCardActionVisualStory />',
+  }),
+};
+
 export const DisabledActionableCards: Story = {
   name: 'Disabled actionable cards',
   render: () => ({
@@ -111,25 +125,31 @@ export const Dragged: Story = {
   }),
 };
 
+/**
+ * Forces `md-state_*` directly on the MDCard root via the class-fallthrough
+ * protocol documented in `shared/ui/State/README.md` (the same pattern used
+ * by the Chips family's interaction-state stories). MDCard's own root
+ * already reacts to these classes for container elevation and outlined
+ * outline color, and `MDStateLayer` reacts to them on its parent via
+ * `:global(.md-state_*) > &` — so this exercises the real root-level card
+ * states, not only the nested state layer.
+ * @param variant - Card variant to render the interaction-state row for.
+ * @returns Markup for a row of rest/hover/focused/pressed/dragged cards.
+ */
 const variantInteractionStatesTemplate = (variant: 'elevated' | 'filled' | 'outlined') => `
   <div class="visual-row">
     <MDCard mode="button" variant="${variant}" style="width: 180px;">Rest</MDCard>
-    <MDStateLayerForcedStateProvider hovered>
-      <MDCard mode="button" variant="${variant}" style="width: 180px;">Hover</MDCard>
-    </MDStateLayerForcedStateProvider>
-    <MDStateLayerForcedStateProvider focused>
-      <MDCard mode="button" variant="${variant}" style="width: 180px;">Focused</MDCard>
-    </MDStateLayerForcedStateProvider>
-    <MDStateLayerForcedStateProvider pressed>
-      <MDCard mode="button" variant="${variant}" style="width: 180px;">Pressed</MDCard>
-    </MDStateLayerForcedStateProvider>
+    <MDCard mode="button" variant="${variant}" class="md-state_hover" style="width: 180px;">Hover</MDCard>
+    <MDCard mode="button" variant="${variant}" class="md-state_focused" style="width: 180px;">Focused</MDCard>
+    <MDCard mode="button" variant="${variant}" class="md-state_pressed" style="width: 180px;">Pressed</MDCard>
+    <MDCard mode="button" variant="${variant}" class="md-state_dragged" style="width: 180px;">Dragged</MDCard>
   </div>
 `;
 
 export const VisualInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDCard, MDStateLayerForcedStateProvider },
+    components: { MDCard },
     template: `
       <div data-testid="visual-md-card-interaction-states" class="visual-checker-backdrop">
         ${variantInteractionStatesTemplate('elevated')}

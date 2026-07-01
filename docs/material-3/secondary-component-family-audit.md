@@ -86,13 +86,14 @@ Material cache confirms cards contain related content/actions about a single sub
 Current state (see [Component registry](./component-registry.md) Cards row for the full checklist):
 
 - `MDCard` implements `--md-comp-{elevated,filled,outlined}-card-*` component tokens for container, disabled, focus indicator, and hover/focus/pressed/dragged state-layer (plus outline for outlined), mapped from the Material3 MCP card token graph and resolved through the shared `MDStateLayer`/focus-indicator generic contracts.
-- Public API is `variant`/`mode`/`href`/`disabled`/`dragged`/`nativeType` with an `action` emit and a default-only slot. `mode="static"` (default) is a non-actionable `div`; `mode="button"`/`"link"` render the card itself as the native actionable surface with `MDStateLayer` + ripple.
-- Storybook (`shared/ui/MDCard`) and `tests/e2e/visual/shared-ui.spec.ts` cover variants, static-with-actions, actionable button/link cards, disabled actionable cards, dragged, and a forced interaction-state gallery.
+- Public API is `variant`/`mode`/`href`/`disabled`/`dragged`/`nativeType` with an `action` emit and a default-only slot. `mode="static"` (default) is a non-actionable `div`; `mode="button"`/`"link"` render the card itself as the native actionable surface with `MDStateLayer` + ripple. `mode="button"` restricts rendered content to phrasing content (native `<button>`'s content model), enforced with a development-only warning rather than a type-level restriction.
+- MDCard is a Material surface owner: it maps its resolved container/content color to `--md-container-color`/`--md-content-color` and `--md-current-container-color`/`--md-current-content-color`, so nested Material primitives read the card's surface. The actionable ripple relies on this: `--md-content-color` resolves to on-surface, matching every variant's documented pressed state-layer color, so no card-specific ripple override was needed.
+- Storybook (`shared/ui/MDCard`) and `tests/e2e/visual/shared-ui.spec.ts` cover variants, static-with-actions, actionable button/link cards, an action/keyboard-behavior story with observable counters, disabled actionable cards, dragged, and a root-level forced interaction-state gallery.
 
 Remaining gaps:
 
 - no icon/media anatomy or `container.surface-tint-layer.color` tonal elevation overlay;
-- no support for nested actionable content inside an actionable card — documented in `shared/ui/Card/README.md` rather than enforced with a DOM scan, since the default slot renders arbitrary content;
+- no support for nested actionable content inside an actionable card — documented in `shared/ui/Card/README.md` and partially caught by the `mode="button"` phrasing-content dev warning, since nested buttons/links are not phrasing content;
 - internal 16dp padding / 8dp content gap is a project layout default, not an official Material token.
 
 Verdict: `partial` — variants, tokens, modes, and Storybook/visual coverage are in place; remaining gaps are documented deviations, not unresolved risk.
