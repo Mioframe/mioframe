@@ -46,7 +46,7 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
         <p class="starter-examples-widget__eyebrow md-typescale-label-medium">
           Create a starter example
         </p>
-        <h2 class="starter-examples-widget__headline md-typescale-headline-small">
+        <h2 class="starter-examples-widget__headline md-typescale-title-small">
           Create a ready example before setting up your own system
         </h2>
         <p class="starter-examples-widget__supporting-text md-typescale-body-medium">
@@ -94,12 +94,12 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
 
   &__eyebrow {
     margin: 0;
-    color: var(--md-sys-color-primary);
-    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
   }
 
   &__headline {
     margin: 0;
+    color: var(--md-sys-color-on-surface-variant);
   }
 
   &__supporting-text {

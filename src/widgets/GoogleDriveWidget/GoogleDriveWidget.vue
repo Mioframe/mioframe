@@ -3,6 +3,7 @@ import { GoogleSessionListItem, useGoogleSessions } from '@entity/googleSession'
 import { GoogleSessionAddListItem } from '@feature/googleSessionAdd';
 import { GoogleSessionManageMenuButton } from '@feature/googleSessionManage';
 import { MDList } from '@shared/ui/Lists';
+import { MDCard } from '@shared/ui/Card';
 
 const emit = defineEmits<{
   clickUser: [email: string];
@@ -12,7 +13,9 @@ const { sessionList } = useGoogleSessions();
 </script>
 
 <template>
-  <div class="google-drive-widget">
+  <MDCard class="google-drive-widget" variant="outlined">
+    <h2 class="google-drive-widget__heading md-typescale-title-small">Google Drive</h2>
+
     <MDList>
       <GoogleSessionListItem
         v-for="session in sessionList"
@@ -27,18 +30,14 @@ const { sessionList } = useGoogleSessions();
 
       <GoogleSessionAddListItem />
     </MDList>
-  </div>
+  </MDCard>
 </template>
 
 <style scoped>
 .google-drive-widget {
-  --md-container-color: var(
-    --md-sys-color-surface-container-low,
-    var(--md-sys-color-surface-container)
-  );
-  --md-content-color: var(--md-sys-color-on-surface);
-  background: var(--md-current-container-color, var(--md-container-color));
-  border-radius: 16dp;
-  color: var(--md-current-content-color, var(--md-content-color));
+  &__heading {
+    margin: 0;
+    color: var(--md-sys-color-on-surface-variant);
+  }
 }
 </style>
