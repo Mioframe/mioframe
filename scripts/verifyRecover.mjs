@@ -16,35 +16,45 @@ export function recoverVerificationState(status = getMachineLockStatus()) {
   }
 
   if (status.state === 'active') {
-    console.error([
-      'verification: still running',
-      `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
-      '  Wait for the current verification command to finish, then retry.',
-    ].join('\n'));
+    console.error(
+      [
+        'verification: still running',
+        `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
+        '  Wait for the current verification command to finish, then retry.',
+      ].join('\n'),
+    );
     return 1;
   }
 
   if (status.state === 'corrupt') {
-    console.error([
-      'verification: recovery needs user decision',
-      `  statusReason: ${status.statusReason ?? 'unknown'}`,
-      '  Inspect `.verify/logs` and ask the user before manual recovery.',
-    ].join('\n'));
+    console.error(
+      [
+        'verification: recovery needs user decision',
+        `  statusReason: ${status.statusReason ?? 'unknown'}`,
+        '  Inspect `.verify/logs` and ask the user before manual recovery.',
+      ].join('\n'),
+    );
     return 1;
   }
 
   if (status.metadata !== null && status.metadata !== undefined) {
-    const recovered = releaseOwnedLock(status.lockPath, status.metadataPath, status.metadata.ownerToken);
+    const recovered = releaseOwnedLock(
+      status.lockPath,
+      status.metadataPath,
+      status.metadata.ownerToken,
+    );
 
     if (recovered) {
       console.log('verification: recovery complete');
       return 0;
     }
 
-    console.error([
-      'verification: state changed before recovery',
-      '  Run `pnpm verify:status` again before retrying.',
-    ].join('\n'));
+    console.error(
+      [
+        'verification: state changed before recovery',
+        '  Run `pnpm verify:status` again before retrying.',
+      ].join('\n'),
+    );
     return 1;
   }
 
@@ -58,10 +68,9 @@ export function recoverVerificationState(status = getMachineLockStatus()) {
       return 0;
     }
 
-    console.error([
-      'verification: recovery failed',
-      `  error: ${error?.message ?? error}`,
-    ].join('\n'));
+    console.error(
+      ['verification: recovery failed', `  error: ${error?.message ?? error}`].join('\n'),
+    );
     return 1;
   }
 }

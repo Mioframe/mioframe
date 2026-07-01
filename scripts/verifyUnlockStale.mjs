@@ -16,35 +16,45 @@ export function unlockStaleMachineLock(status = getMachineLockStatus()) {
   }
 
   if (status.state === 'active') {
-    console.error([
-      'verification: active command was not interrupted',
-      `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
-      '  Run `pnpm verify:status` and wait for the active command to finish.',
-    ].join('\n'));
+    console.error(
+      [
+        'verification: active command was not interrupted',
+        `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
+        '  Run `pnpm verify:status` and wait for the active command to finish.',
+      ].join('\n'),
+    );
     return 1;
   }
 
   if (status.state === 'corrupt') {
-    console.error([
-      'verification: status is inconsistent and was not changed automatically',
-      `  statusReason: ${status.statusReason ?? 'unknown'}`,
-      '  Inspect `.verify/logs` and ask the user before manual recovery.',
-    ].join('\n'));
+    console.error(
+      [
+        'verification: status is inconsistent and was not changed automatically',
+        `  statusReason: ${status.statusReason ?? 'unknown'}`,
+        '  Inspect `.verify/logs` and ask the user before manual recovery.',
+      ].join('\n'),
+    );
     return 1;
   }
 
   if (status.metadata !== null && status.metadata !== undefined) {
-    const removed = releaseOwnedLock(status.lockPath, status.metadataPath, status.metadata.ownerToken);
+    const removed = releaseOwnedLock(
+      status.lockPath,
+      status.metadataPath,
+      status.metadata.ownerToken,
+    );
 
     if (removed) {
       console.log('verification: stale run marker removed');
       return 0;
     }
 
-    console.error([
-      'verification: stale run marker changed before recovery',
-      '  Run `pnpm verify:status` again before retrying.',
-    ].join('\n'));
+    console.error(
+      [
+        'verification: stale run marker changed before recovery',
+        '  Run `pnpm verify:status` again before retrying.',
+      ].join('\n'),
+    );
     return 1;
   }
 
@@ -58,10 +68,12 @@ export function unlockStaleMachineLock(status = getMachineLockStatus()) {
       return 0;
     }
 
-    console.error([
-      'verification: stale run marker could not be removed',
-      `  error: ${error?.message ?? error}`,
-    ].join('\n'));
+    console.error(
+      [
+        'verification: stale run marker could not be removed',
+        `  error: ${error?.message ?? error}`,
+      ].join('\n'),
+    );
     return 1;
   }
 }

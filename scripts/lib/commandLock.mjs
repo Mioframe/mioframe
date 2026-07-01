@@ -383,7 +383,6 @@ function readMetadata(metadataPath) {
 
 /**
  * Derive a human-readable busy message from the existing verification command kind.
- *
  * @param existingKind Kind of the currently-held machine lock (`verify` or `expensive`).
  * @param metadata Current machine lock metadata, if available.
  * @param [options] Formatting overrides.
