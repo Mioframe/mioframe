@@ -16,7 +16,7 @@ export type MountedDirectoryDisplayRecord = DeviceFileDisplayRecord & {
 };
 
 const LOCAL_MIOFRAME_SPACE_DESCRIPTION = 'Mioframe space on this device';
-const BROWSER_STORAGE_DESCRIPTION = 'Saved directly in your browser on this device';
+const BROWSER_STORAGE_DESCRIPTION = 'Stored in this browser';
 
 /**
  * Maps a raw mounted directory record to the widget-facing display contract.

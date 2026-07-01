@@ -246,6 +246,18 @@ describe('LocalFSWidget', () => {
     expect(disconnectDeviceDirectoryMock.mock.calls).toEqual([['Browser Storage (2)']]);
   });
 
+  it('emits clickPath with the joined device-file path when a mounted space is clicked', async () => {
+    deviceFiles.value = [
+      { name: 'My Space', description: 'Mioframe space on this device', canDisconnect: true },
+    ];
+
+    const wrapper = mountLocalFSWidget();
+
+    await wrapper.get('[data-label-text="My Space"]').trigger('click');
+
+    expect(wrapper.emitted('clickPath')).toEqual([['/Device files/My Space']]);
+  });
+
   it('does not emit clickPath when the trailing disconnect action is clicked', async () => {
     deviceFiles.value = [
       { name: 'My Space', description: 'Mioframe space on this device', canDisconnect: true },

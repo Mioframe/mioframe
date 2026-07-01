@@ -11,7 +11,7 @@ const { addAccount, isLoading } = useGoogleSessionAdd();
   <MDListItem
     mode="single-action"
     label-text="Add Google Account"
-    supporting-text="Connect a Google Drive account to browse and mount its storage"
+    supporting-text="Connect Google Drive"
     @action="addAccount"
   >
     <template #leading>

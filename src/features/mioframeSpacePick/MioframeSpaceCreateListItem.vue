@@ -12,7 +12,7 @@ const { loading, parentHandle, pickParentDirectory, resetParentDirectory } =
   <MDListItem
     mode="single-action"
     label-text="Create space"
-    supporting-text="Choose where Mioframe should create a new folder for your documents."
+    supporting-text="Choose a device folder"
     :disabled="loading || !!parentHandle"
     @action="pickParentDirectory"
   >

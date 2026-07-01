@@ -10,7 +10,7 @@ const { loading, openSpace } = useOpenMioframeSpace();
   <MDListItem
     mode="single-action"
     label-text="Open space"
-    supporting-text="Choose a folder that already contains a Mioframe space."
+    supporting-text="Open an existing space folder"
     :disabled="loading"
     @action="openSpace"
   >
