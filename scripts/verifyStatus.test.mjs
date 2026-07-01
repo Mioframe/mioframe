@@ -3,18 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { formatVerifyStatusReport } from './verifyStatus.mjs';
 
 describe('formatVerifyStatusReport', () => {
-  it('reports when no active local verification exists', () => {
+  it('reports when no active verification exists without exposing internals', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       state: 'missing',
     });
 
     expect(report.exitCode).toBe(0);
-    expect(report.output).toContain('machine: no active local verification');
-    expect(report.output).toContain('.verify/locks/machine.lock');
+    expect(report.output).toBe('verification: idle');
+    expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports an active verify with kind and metadata', () => {
+  it('reports an active verify through public command status only', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       state: 'active',
@@ -31,14 +31,21 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(0);
-    expect(report.output).toContain('machine: ACTIVE (pnpm verify)');
-    expect(report.output).toContain('kind: verify');
+    expect(report.output).toContain('verification: busy (pnpm verify)');
     expect(report.output).toContain('command: pnpm verify');
     expect(report.output).toContain('logPath: .verify/logs');
-    expect(report.output).toContain('Do not start another heavy local verification command');
+    expect(report.output).toContain('Wait for it to finish');
+    expect(report.output).not.toContain('kind:');
+    expect(report.output).not.toContain('pid:');
+    expect(report.output).not.toContain('hostname:');
+    expect(report.output).not.toContain('cwd:');
+    expect(report.output).not.toContain('heartbeat');
+    expect(report.output).not.toContain('metadata');
+    expect(report.output).not.toContain('lockPath');
+    expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports an active expensive command with kind and metadata', () => {
+  it('reports an active expensive command through public command status only', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       state: 'active',
@@ -55,13 +62,18 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(0);
-    expect(report.output).toContain('machine: ACTIVE (expensive command)');
-    expect(report.output).toContain('kind: expensive');
+    expect(report.output).toContain('verification: busy (expensive verification command)');
     expect(report.output).toContain('command: pnpm test:visual');
-    expect(report.output).toContain('Do not start another heavy local verification command');
+    expect(report.output).toContain('Wait for it to finish');
+    expect(report.output).not.toContain('kind:');
+    expect(report.output).not.toContain('pid:');
+    expect(report.output).not.toContain('heartbeat');
+    expect(report.output).not.toContain('metadata');
+    expect(report.output).not.toContain('lockPath');
+    expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports stale machine lock with recovery guidance and exits with code 1', () => {
+  it('reports a resumable verification state pointing only to pnpm verify:resume', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       metadata: { heartbeatAt: '2026-06-04T12:00:00.000Z' },
@@ -70,11 +82,22 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(1);
-    expect(report.output).toContain('machine: stale lock detected');
-    expect(report.output).toContain('Inspect `.verify/logs` before removing the stale lock.');
+    expect(report.output).toContain('verification: ready to resume');
+    expect(report.output).toContain('pnpm verify:resume');
+    expect(report.output).not.toContain('verify:unlock-stale');
+    expect(report.output).not.toContain('verify:recover');
+    expect(report.output).not.toContain('unlock');
+    expect(report.output).not.toContain('stale');
+    expect(report.output).not.toContain('marker');
+    expect(report.output).not.toContain('metadata');
+    expect(report.output).not.toContain('rm ');
+    expect(report.output).not.toContain('rmdir');
+    expect(report.output).not.toContain('heartbeat');
+    expect(report.output).not.toContain('lockPath');
+    expect(report.output).not.toContain('.verify/locks');
   });
 
-  it('reports corrupt machine lock with statusReason and exits with code 1', () => {
+  it('reports verification state that needs user decision without automatic bypass instructions', () => {
     const report = formatVerifyStatusReport({
       lockPath: '.verify/locks/machine.lock',
       state: 'corrupt',
@@ -82,7 +105,13 @@ describe('formatVerifyStatusReport', () => {
     });
 
     expect(report.exitCode).toBe(1);
-    expect(report.output).toContain('machine: corrupt lock detected');
-    expect(report.output).toContain('statusReason: metadata missing');
+    expect(report.output).toContain('verification: needs user decision');
+    expect(report.output).toContain('ask the user before proceeding');
+    expect(report.output).not.toContain('unlock');
+    expect(report.output).not.toContain('metadata');
+    expect(report.output).not.toContain('rm ');
+    expect(report.output).not.toContain('rmdir');
+    expect(report.output).not.toContain('lockPath');
+    expect(report.output).not.toContain('.verify/locks');
   });
 });

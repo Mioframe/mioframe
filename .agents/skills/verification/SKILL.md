@@ -87,7 +87,10 @@ If `pnpm verify` fails:
 4. Rerun final `pnpm verify` before reporting completion.
 5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output.
 6. Do not claim the task is complete while final verification is failing.
-7. If `pnpm verify` is blocked because another local verification is active, do not rerun it immediately. Run `pnpm verify:status`, inspect `.verify/logs`, and report the block clearly.
+7. If `pnpm verify` cannot start because verification is already running, run `pnpm verify:status`, inspect `.verify/logs`, and report the status clearly.
+8. If `pnpm verify:status` reports that verification is ready to resume, run `pnpm verify:resume` only after inspecting `.verify/logs`.
+9. If `pnpm verify:status` reports that user decision is needed, report it and ask the user before proceeding.
+10. Use only `pnpm verify`, `pnpm verify:status`, and `pnpm verify:resume` for verification state.
 
 ## Warning handling
 
@@ -108,7 +111,9 @@ Do not run `pnpm verify --fix` after a passing `pnpm verify` unless a new edit w
 
 Do not run full e2e, full lint, or full mutation checks manually when the task only needs the inferred changed-file scope, unless explicitly requested or required by the failure.
 
-Do not start manual e2e, visual, mutation, full lint, or full type-check commands while the local verify lock is active. `CI=true` outside GitHub Actions does not bypass local verification locks.
+Do not start manual e2e, visual, mutation, full lint, or full type-check commands while verification is already running. `CI=true` outside GitHub Actions does not bypass local verification safety.
+
+Use only `pnpm verify`, `pnpm verify:status`, and `pnpm verify:resume` for verification state. Do not use unlisted commands for that workflow.
 
 ## Final response
 
