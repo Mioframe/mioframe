@@ -4,24 +4,21 @@ import { pathToFileURL } from 'node:url';
 import { getMachineLockStatus, releaseOwnedLock } from './lib/commandLock.mjs';
 
 /**
- * Remove the local machine verification lock only when it is already stale.
- * Active and merely corrupt locks are never removed by this command.
+ * Remove the local machine verification marker only when it is already stale.
+ * Active and merely inconsistent verification states are never removed by this command.
  * @param status Structured machine lock status.
  * @returns Process exit code for the unlock attempt.
  */
 export function unlockStaleMachineLock(status = getMachineLockStatus()) {
   if (status.state === 'missing') {
-    console.log(`machine: no active local verification\n  lockPath: ${status.lockPath}`);
+    console.log('verification: idle');
     return 0;
   }
 
   if (status.state === 'active') {
     console.error([
-      'machine: active local verification lock was not removed',
+      'verification: active command was not interrupted',
       `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
-      `  pid: ${status.metadata?.pid ?? 'unknown'}`,
-      `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-      `  lockPath: ${status.lockPath}`,
       '  Run `pnpm verify:status` and wait for the active command to finish.',
     ].join('\n'));
     return 1;
@@ -29,8 +26,7 @@ export function unlockStaleMachineLock(status = getMachineLockStatus()) {
 
   if (status.state === 'corrupt') {
     console.error([
-      'machine: corrupt local verification lock was not removed automatically',
-      `  lockPath: ${status.lockPath}`,
+      'verification: status is inconsistent and was not changed automatically',
       `  statusReason: ${status.statusReason ?? 'unknown'}`,
       '  Inspect `.verify/logs` and ask the user before manual recovery.',
     ].join('\n'));
@@ -41,13 +37,12 @@ export function unlockStaleMachineLock(status = getMachineLockStatus()) {
     const removed = releaseOwnedLock(status.lockPath, status.metadataPath, status.metadata.ownerToken);
 
     if (removed) {
-      console.log(`machine: stale local verification lock removed\n  lockPath: ${status.lockPath}`);
+      console.log('verification: stale run marker removed');
       return 0;
     }
 
     console.error([
-      'machine: stale local verification lock changed before removal',
-      `  lockPath: ${status.lockPath}`,
+      'verification: stale run marker changed before recovery',
       '  Run `pnpm verify:status` again before retrying.',
     ].join('\n'));
     return 1;
@@ -55,17 +50,16 @@ export function unlockStaleMachineLock(status = getMachineLockStatus()) {
 
   try {
     fs.rmSync(status.lockPath, { recursive: true, force: false });
-    console.log(`machine: stale local verification lock removed\n  lockPath: ${status.lockPath}`);
+    console.log('verification: stale run marker removed');
     return 0;
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-      console.log(`machine: no active local verification\n  lockPath: ${status.lockPath}`);
+      console.log('verification: idle');
       return 0;
     }
 
     console.error([
-      'machine: stale local verification lock could not be removed',
-      `  lockPath: ${status.lockPath}`,
+      'verification: stale run marker could not be removed',
       `  error: ${error?.message ?? error}`,
     ].join('\n'));
     return 1;
