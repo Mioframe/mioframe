@@ -39,14 +39,18 @@ function formatMachineLockBlock(status) {
 
   const title =
     status.state === 'stale' ? 'machine: stale lock detected' : 'machine: corrupt lock detected';
+  const recoveryHint =
+    status.state === 'stale'
+      ? '  Run `pnpm verify:unlock-stale` only after inspecting `.verify/logs`.'
+      : '  Do not remove this lock automatically. Inspect `.verify/logs` and ask the user before manual recovery.';
 
   return [
     title,
     `  lockPath: ${status.lockPath}`,
     `  statusReason: ${status.statusReason ?? 'unknown'}`,
     `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-    '  Inspect `.verify/logs` before removing the stale lock.',
-    '  If no process is still active, remove the lock directory and retry.',
+    recoveryHint,
+    '  Do not use raw `rm`, `rmdir`, or `rm -rf` against `.verify/locks`.',
   ].join('\n');
 }
 
