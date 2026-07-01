@@ -2,13 +2,14 @@
 import { computed } from 'vue';
 import { starterExampleDefinitions, type StarterExampleId } from '@entity/starterExample';
 import {
-  ExampleDocumentCreateCard,
+  ExampleDocumentCreateListItem,
   markDatabaseExampleDocumentCreateSuccess,
   useExampleDocumentsCreate,
 } from '@feature/exampleDocumentsCreate';
 import { StarterExamplesDismissButton } from '@feature/starterExamplesDismiss';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDCard } from '@shared/ui/Card';
+import { MDList } from '@shared/ui/Lists';
 
 const emit = defineEmits<{
   createdDocument: [payload: { documentDirectory: string; documentId: AMDocumentId }];
@@ -40,29 +41,32 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
 </script>
 
 <template>
-  <MDCard class="starter-examples-widget" variant="outlined">
+  <MDCard
+    class="starter-examples-widget"
+    variant="outlined"
+    role="region"
+    aria-labelledby="starter-examples-widget-heading"
+  >
     <div class="starter-examples-widget__header">
       <div class="starter-examples-widget__copy">
-        <p class="starter-examples-widget__eyebrow md-typescale-label-medium">
-          Create a starter example
-        </p>
-        <h2 class="starter-examples-widget__headline md-typescale-title-small">
-          Create a ready example before setting up your own system
+        <h2
+          id="starter-examples-widget-heading"
+          class="starter-examples-widget__heading md-typescale-title-small"
+        >
+          Starter examples
         </h2>
         <p class="starter-examples-widget__supporting-text md-typescale-body-medium">
-          Each option creates local documents in your Examples folder, opens them, and leaves them
-          ready to keep editing.
+          Create local example documents to start editing.
         </p>
       </div>
 
       <StarterExamplesDismissButton />
     </div>
 
-    <div class="starter-examples-widget__actions">
-      <ExampleDocumentCreateCard
+    <MDList>
+      <ExampleDocumentCreateListItem
         v-for="definition in starterExampleDefinitions"
         :key="definition.id"
-        class="starter-examples-widget__create-card"
         :definition="definition"
         :error-message="
           definition.id === 'weeklyPlan' ? weeklyPlanErrorMessage : shoppingErrorMessage
@@ -73,7 +77,7 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
         "
         @create="onCreateExample(definition.id)"
       />
-    </div>
+    </MDList>
   </MDCard>
 </template>
 
@@ -89,15 +93,10 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
   &__copy {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   }
 
-  &__eyebrow {
-    margin: 0;
-    color: var(--md-sys-color-on-surface-variant);
-  }
-
-  &__headline {
+  &__heading {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
   }
@@ -105,19 +104,6 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
   &__supporting-text {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-  }
-
-  &__actions {
-    display: grid;
-    gap: 12px;
-    grid-template-columns: repeat(auto-fit, minmax(fit-content, 1fr));
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  &__create-card {
-    width: min-content;
-    flex-grow: 1;
   }
 }
 </style>

@@ -26,8 +26,15 @@ const onDisconnectDeviceFile = (name: string) => {
 </script>
 
 <template>
-  <MDCard class="local-fs-widget" variant="outlined">
-    <h2 class="local-fs-widget__heading md-typescale-title-small">Device storage</h2>
+  <MDCard
+    class="local-fs-widget"
+    variant="outlined"
+    role="region"
+    aria-labelledby="local-fs-widget-heading"
+  >
+    <h2 id="local-fs-widget-heading" class="local-fs-widget__heading md-typescale-title-small">
+      Device storage
+    </h2>
 
     <MDList>
       <template v-for="deviceFile in deviceFiles ?? []" :key="deviceFile.name">

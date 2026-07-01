@@ -13,8 +13,18 @@ const { sessionList } = useGoogleSessions();
 </script>
 
 <template>
-  <MDCard class="google-drive-widget" variant="outlined">
-    <h2 class="google-drive-widget__heading md-typescale-title-small">Google Drive</h2>
+  <MDCard
+    class="google-drive-widget"
+    variant="outlined"
+    role="region"
+    aria-labelledby="google-drive-widget-heading"
+  >
+    <h2
+      id="google-drive-widget-heading"
+      class="google-drive-widget__heading md-typescale-title-small"
+    >
+      Google Drive
+    </h2>
 
     <MDList>
       <GoogleSessionListItem
