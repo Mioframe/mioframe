@@ -344,6 +344,56 @@ test('MDExtendedFab visual states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-extended-fab-states.png');
 });
 
+test('MDCard visual states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdcard--visual-states');
+
+  const surface = page.getByTestId('visual-md-card-states');
+
+  await expect(surface).toHaveScreenshot('md-card-states.png');
+});
+
+test('MDCard interaction states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdcard--visual-interaction-states');
+
+  const surface = page.getByTestId('visual-md-card-interaction-states');
+
+  await expect(surface).toHaveScreenshot('md-card-interaction-states.png');
+});
+
+test('MDCard static card has no role, tabindex, or actionable affordance', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdcard--static-with-internal-actions');
+
+  const card = page.locator('.md-card').first();
+
+  await expect(card).not.toHaveAttribute('role');
+  await expect(card).not.toHaveAttribute('tabindex');
+  await expect(page.getByRole('button', { name: 'Install' })).toBeVisible();
+});
+
+test('MDCard actionable button card emits action on click and keyboard activation', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdcard--actionable-button-card');
+
+  const card = page.getByRole('button', { name: 'Tap this whole card' });
+
+  await expect(card).toBeVisible();
+  await card.focus();
+  await page.keyboard.press('Enter');
+  await card.click();
+});
+
+test('MDCard disabled link card blocks navigation and keeps aria-disabled semantics', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdcard--disabled-actionable-cards');
+
+  const linkCard = page.locator('.md-card_mode_link');
+
+  await expect(linkCard).toHaveAttribute('aria-disabled', 'true');
+  await expect(linkCard).toHaveAttribute('tabindex', '-1');
+});
+
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({
   page,
 }) => {

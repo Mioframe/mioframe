@@ -21,7 +21,7 @@ const onCreate = () => {
 </script>
 
 <template>
-  <MDCard class="example-document-create-card">
+  <MDCard class="example-document-create-card" variant="elevated">
     <div class="example-document-create-card__copy">
       <h3 class="example-document-create-card__title">{{ definition.title }}</h3>
       <p class="example-document-create-card__text">
@@ -50,12 +50,6 @@ const onCreate = () => {
 <style lang="css" scoped>
 .example-document-create-card {
   min-width: min-content;
-  padding: 16px;
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--md-sys-color-surface-container-low) 80%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 
   &__copy {
     display: flex;
