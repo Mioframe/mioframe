@@ -3,8 +3,8 @@ import { pathToFileURL } from 'node:url';
 import { getMachineLockStatus } from './lib/commandLock.mjs';
 
 /**
- * Format the machine lock status block for CLI output.
- * @param status Structured machine lock status.
+ * Format the verification status block for CLI output.
+ * @param status Structured verification status.
  * @returns Formatted status lines as a string.
  */
 function formatMachineLockBlock(status) {
@@ -25,7 +25,7 @@ function formatMachineLockBlock(status) {
       `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
       `  startedAt: ${status.metadata?.startedAt ?? 'unknown'}`,
       `  logPath: ${status.metadata?.logPath ?? '.verify/logs'}`,
-      '  Do not start another heavy verification command while this is active.',
+      '  Wait for it to finish. Do not start another heavy verification command.',
     ];
 
     return lines.join('\n');
@@ -33,15 +33,15 @@ function formatMachineLockBlock(status) {
 
   if (status.state === 'stale') {
     return [
-      'verification: stale run marker detected',
-      `  statusReason: ${status.statusReason ?? 'unknown'}`,
+      'verification: recovery available',
+      `  statusReason: ${status.statusReason ?? 'previous verification did not finish cleanly'}`,
       '  Inspect `.verify/logs`.',
-      '  If no verification command is still running, run `pnpm verify:unlock-stale` and retry.',
+      '  If no verification command is still running, run `pnpm verify:recover` and retry.',
     ].join('\n');
   }
 
   return [
-    'verification: status is inconsistent',
+    'verification: recovery needs user decision',
     `  statusReason: ${status.statusReason ?? 'unknown'}`,
     '  Inspect `.verify/logs` and ask the user before manual recovery.',
   ].join('\n');
@@ -63,7 +63,7 @@ export function formatVerifyStatusReport(machineStatus) {
 }
 
 /**
- * Print the current machine lock status for local agents.
+ * Print the current verification status for local agents.
  * @returns Exit code for the status command.
  */
 export function printVerifyStatus() {
