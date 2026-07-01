@@ -111,9 +111,9 @@ Do not run `pnpm verify --fix` after a passing `pnpm verify` unless a new edit w
 
 Do not run full e2e, full lint, or full mutation checks manually when the task only needs the inferred changed-file scope, unless explicitly requested or required by the failure.
 
-Do not start manual e2e, visual, mutation, full lint, or full type-check commands while the local verify lock is active. `CI=true` outside GitHub Actions does not bypass local verification safety.
+Do not start manual e2e, visual, mutation, full lint, or full type-check commands while verification is already running. `CI=true` outside GitHub Actions does not bypass local verification safety.
 
-Never use raw filesystem cleanup commands to bypass verification state. Use only the verification commands documented here: `pnpm verify`, `pnpm verify:status`, and `pnpm verify:resume`.
+Use only `pnpm verify`, `pnpm verify:status`, and `pnpm verify:resume` for verification state. Do not use unlisted commands for that workflow.
 
 ## Final response
 
