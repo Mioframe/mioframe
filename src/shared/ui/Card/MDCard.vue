@@ -184,6 +184,7 @@ if (import.meta.env.DEV) {
     --md-comp-elevated-card-container-shape: var(--md-sys-shape-corner-medium);
     --md-comp-elevated-card-container-elevation: var(--md-sys-elevation-level1);
     --md-comp-elevated-card-container-shadow-color: var(--md-sys-color-shadow);
+    --md-comp-elevated-card-container-surface-tint-layer-color: var(--md-sys-color-surface-tint);
     --md-comp-elevated-card-disabled-container-color: var(--md-sys-color-surface);
     --md-comp-elevated-card-disabled-container-opacity: 0.38;
     --md-comp-elevated-card-disabled-container-elevation: var(--md-sys-elevation-level1);
@@ -264,6 +265,7 @@ if (import.meta.env.DEV) {
     --md-comp-filled-card-container-shape: var(--md-sys-shape-corner-medium);
     --md-comp-filled-card-container-elevation: var(--md-sys-elevation-level0);
     --md-comp-filled-card-container-shadow-color: var(--md-sys-color-shadow);
+    --md-comp-filled-card-container-surface-tint-layer-color: var(--md-sys-color-surface-tint);
     --md-comp-filled-card-disabled-container-color: var(--md-sys-color-surface-variant);
     --md-comp-filled-card-disabled-container-opacity: 0.38;
     --md-comp-filled-card-disabled-container-elevation: var(--md-sys-elevation-level0);
@@ -340,6 +342,7 @@ if (import.meta.env.DEV) {
     --md-comp-outlined-card-container-shape: var(--md-sys-shape-corner-medium);
     --md-comp-outlined-card-container-elevation: var(--md-sys-elevation-level0);
     --md-comp-outlined-card-container-shadow-color: var(--md-sys-color-shadow);
+    --md-comp-outlined-card-container-surface-tint-layer-color: var(--md-sys-color-surface-tint);
     --md-comp-outlined-card-outline-color: var(--md-sys-color-outline-variant);
     --md-comp-outlined-card-outline-width: 1dp;
     --md-comp-outlined-card-disabled-outline-color: var(--md-sys-color-outline);

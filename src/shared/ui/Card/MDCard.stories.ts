@@ -58,8 +58,8 @@ export const StaticWithInternalActions: Story = {
     components: { MDCard, MDButton },
     template: `
       <MDCard variant="outlined" style="width: 280px;">
-        <h3 style="margin: 0;">Install Mioframe</h3>
-        <p style="margin: 0;">Add Mioframe to your home screen for quick access.</p>
+        <h3 class="md-typescale-title-medium" style="margin: 0;">Install Mioframe</h3>
+        <p class="md-typescale-body-medium" style="margin: 0;">Add Mioframe to your home screen for quick access.</p>
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <MDButton label="Later" color="text" />
           <MDButton label="Install" color="filled" />
