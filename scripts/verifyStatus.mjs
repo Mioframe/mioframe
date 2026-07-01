@@ -9,7 +9,7 @@ import { getMachineLockStatus } from './lib/commandLock.mjs';
  */
 function formatMachineLockBlock(status) {
   if (status.state === 'missing') {
-    return `machine: no active local verification\n  lockPath: ${status.lockPath}`;
+    return 'verification: idle';
   }
 
   if (status.state === 'active') {
@@ -18,39 +18,32 @@ function formatMachineLockBlock(status) {
       kind === 'verify'
         ? 'pnpm verify'
         : kind === 'expensive'
-          ? 'expensive command'
-          : 'unknown command';
+          ? 'expensive verification command'
+          : 'verification command';
     const lines = [
-      `machine: ACTIVE (${kindLabel})`,
-      `  kind: ${kind}`,
+      `verification: busy (${kindLabel})`,
       `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
-      `  pid: ${status.metadata?.pid ?? 'unknown'}`,
-      `  hostname: ${status.metadata?.hostname ?? 'unknown'}`,
-      `  cwd: ${status.metadata?.cwd ?? 'unknown'}`,
       `  startedAt: ${status.metadata?.startedAt ?? 'unknown'}`,
-      `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-      `  lockPath: ${status.lockPath}`,
       `  logPath: ${status.metadata?.logPath ?? '.verify/logs'}`,
-      '  Do not start another heavy local verification command while this is active.',
+      '  Do not start another heavy verification command while this is active.',
     ];
 
     return lines.join('\n');
   }
 
-  const title =
-    status.state === 'stale' ? 'machine: stale lock detected' : 'machine: corrupt lock detected';
-  const recoveryHint =
-    status.state === 'stale'
-      ? '  Run `pnpm verify:unlock-stale` only after inspecting `.verify/logs`.'
-      : '  Do not remove this lock automatically. Inspect `.verify/logs` and ask the user before manual recovery.';
+  if (status.state === 'stale') {
+    return [
+      'verification: stale run marker detected',
+      `  statusReason: ${status.statusReason ?? 'unknown'}`,
+      '  Inspect `.verify/logs`.',
+      '  If no verification command is still running, run `pnpm verify:unlock-stale` and retry.',
+    ].join('\n');
+  }
 
   return [
-    title,
-    `  lockPath: ${status.lockPath}`,
+    'verification: status is inconsistent',
     `  statusReason: ${status.statusReason ?? 'unknown'}`,
-    `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-    recoveryHint,
-    '  Do not use raw `rm`, `rmdir`, or `rm -rf` against `.verify/locks`.',
+    '  Inspect `.verify/logs` and ask the user before manual recovery.',
   ].join('\n');
 }
 
