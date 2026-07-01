@@ -408,6 +408,7 @@ test('MDCard actionable link card emits action and navigates on click and Enter'
   const card = page.getByTestId('md-card-link-action');
   const count = page.getByTestId('md-card-link-action-count');
 
+  await expect(card).toHaveAttribute('href', '#md-card-link-action-target');
   await expect(count).toHaveText('0');
 
   await card.click();
@@ -434,6 +435,7 @@ test('MDCard disabled link card blocks navigation, keeps aria-disabled semantics
 
   await expect(linkCard).toHaveAttribute('aria-disabled', 'true');
   await expect(linkCard).toHaveAttribute('tabindex', '-1');
+  await expect(linkCard).not.toHaveAttribute('href');
 
   // `aria-disabled="true"` makes Playwright's actionability check treat the
   // link as not enabled, so a plain click would hang waiting for it to

@@ -101,7 +101,7 @@ if (import.meta.env.DEV) {
     ref="rootEl"
     class="md-card"
     :class="rootClass"
-    :href="isLinkAction ? href : undefined"
+    :href="isLinkAction && !isDisabled ? href : undefined"
     :type="isButtonAction ? buttonType : undefined"
     :disabled="isButtonAction && isDisabled ? true : undefined"
     :aria-disabled="isDisabledLinkAction ? 'true' : undefined"
@@ -125,7 +125,7 @@ if (import.meta.env.DEV) {
 .md-card {
   --md-private-card-container-opacity: 1;
   --md-private-card-outline-width: 0dp;
-  --md-private-card-outline-color: transparent;
+  --md-private-card-outline-color: var(--md-sys-color-outline);
   --md-private-card-outline-opacity: 1;
 
   /*

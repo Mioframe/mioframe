@@ -69,9 +69,21 @@ describe('MDCard', () => {
 
     expect(wrapper.attributes('aria-disabled')).toBe('true');
     expect(wrapper.attributes('tabindex')).toBe('-1');
+    expect(wrapper.attributes('href')).toBeUndefined();
 
     await wrapper.trigger('click');
     expect(wrapper.emitted('action')).toBeUndefined();
+  });
+
+  it('restores href once a disabled link becomes enabled', async () => {
+    const wrapper = mount(MDCard, {
+      props: { mode: 'link', href: '/example', disabled: true },
+    });
+
+    expect(wrapper.attributes('href')).toBeUndefined();
+
+    await wrapper.setProps({ disabled: false });
+    expect(wrapper.attributes('href')).toBe('/example');
   });
 
   it('renders the state layer only for actionable modes', () => {
