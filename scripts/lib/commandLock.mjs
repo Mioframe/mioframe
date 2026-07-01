@@ -242,13 +242,7 @@ function acquireLock({ lockDirectoryPath, metadataPath, metadata, requestKind, s
   }
 
   const existingKind = existingMetadata?.kind ?? requestKind;
-  throw new Error(
-    formatLockBusyMessage(existingKind, existingMetadata, {
-      lockDirectoryPath,
-      staleAfterMs,
-      requestKind,
-    }),
-  );
+  throw new Error(formatLockBusyMessage(existingKind, existingMetadata, { requestKind }));
 }
 
 function isStaleLock(metadata, staleAfterMs) {
@@ -388,32 +382,20 @@ function readMetadata(metadataPath) {
 }
 
 /**
- * Derive a human-readable busy message from the existing lock kind and the
- * command that is being blocked.
+ * Derive a human-readable busy message from the existing verification command kind.
  *
- * `existingKind` is the kind stored in the machine lock that is currently
- * blocking the caller. `requestKind` is what the caller is trying to start;
- * when omitted the message is generic for the existing kind.
  * @param existingKind Kind of the currently-held machine lock (`verify` or `expensive`).
  * @param metadata Current machine lock metadata, if available.
  * @param [options] Formatting overrides.
- * @param [options.lockDirectoryPath] Lock path override used in the diagnostic.
- * @param [options.staleAfterMs] Stale threshold override used in the diagnostic.
  * @param [options.requestKind] Kind of the command that failed to acquire the lock.
  * @returns Human-readable lock-busy message.
  */
-export function formatLockBusyMessage(
-  existingKind,
-  metadata,
-  { lockDirectoryPath, staleAfterMs, requestKind } = {},
-) {
+export function formatLockBusyMessage(existingKind, metadata, { requestKind } = {}) {
   const busyMessage = deriveBusyMessage(existingKind, requestKind);
-  const staleAfterSeconds = Math.floor((staleAfterMs ?? machineLockConfig.staleAfterMs) / 1000);
 
   if (metadata === null || metadata === undefined) {
     return [
       busyMessage,
-      `lockPath: ${lockDirectoryPath ?? machineLockConfig.directory}`,
       'Run `pnpm verify:status` and inspect `.verify/logs`.',
       'Do not start another heavy local verification command while the current run is still active.',
     ].join('\n');
@@ -422,14 +404,9 @@ export function formatLockBusyMessage(
   return [
     busyMessage,
     `active command: ${metadata.activeCommand ?? metadata.command ?? 'unknown'}`,
-    `pid: ${metadata.pid ?? 'unknown'}`,
-    `hostname: ${metadata.hostname ?? 'unknown'}`,
-    `cwd: ${metadata.cwd ?? 'unknown'}`,
     `startedAt: ${metadata.startedAt ?? 'unknown'}`,
-    `heartbeatAt: ${metadata.heartbeatAt ?? 'unknown'}`,
-    `lockPath: ${metadata.lockPath ?? lockDirectoryPath ?? machineLockConfig.directory}`,
     `logPath: ${metadata.logPath ?? '.verify/logs'}`,
-    `If this lock is stale, wait at least ${staleAfterSeconds}s after the last heartbeat before retrying.`,
+    'Run `pnpm verify:status` for the current verification state.',
     'Do not start another heavy local verification command while the current run is still active.',
   ].join('\n');
 }
