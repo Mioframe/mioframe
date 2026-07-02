@@ -127,7 +127,12 @@ A release sync-back PR:
 - must not create a new release or tag;
 - must be merged with a merge commit, not squash or rebase (see
   `Merge strategy for develop <-> main synchronization` above), to preserve
-  shared ancestry with `main`.
+  shared ancestry with `main`;
+- does not get a PR preview deployment — `deploy-preview` in
+  `.github/workflows/verify.yml` is skipped for branches matching
+  `sync/main-*-back-to-develop`, since the PR only synchronizes already-
+  published `main` changes back into `develop` and changes no runtime app
+  behavior. The `verify` job (including version validation) still runs.
 
 ### Choosing PATCH / MINOR / MAJOR
 
