@@ -27,7 +27,13 @@ export function classifyCommandWeight({ label, fileCount = 0, isFullRepo = false
     case 'visual-update':
     case 'mutation':
     case 'playwright-container':
+    case 'artifact':
+    case 'release-smoke':
       return 'expensive';
+    case 'release-version':
+      return 'light';
+    case 'build':
+      return 'medium';
     default:
       return 'medium';
   }

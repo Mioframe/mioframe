@@ -1,10 +1,14 @@
 name: verify
 
+# Development verification for develop-bound work: focused pnpm verify plus a
+# PR-into-develop version-bump check, and PR preview deploys. PRs/pushes to
+# main use the separate `release` workflow (.github/workflows/release.yml)
+# instead — see docs/release.md.
+
 on:
   pull_request:
   push:
     branches:
-      - main
       - develop
 
 concurrency:
@@ -13,7 +17,10 @@ concurrency:
 
 jobs:
   autofix:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.base_ref != 'main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -98,7 +105,10 @@ jobs:
   verify:
     needs:
       - autofix
-    if: ${{ !cancelled() && (needs.autofix.result == 'success' || needs.autofix.result == 'skipped') }}
+    if: >-
+      !cancelled() &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped') &&
+      (github.event_name != 'pull_request' || github.base_ref != 'main')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -125,6 +135,12 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+
+      # Every PR into develop must bump package.json version above develop's
+      # current version (docs/release.md#pr-level-version-bump-policy).
+      - name: Validate version bump
+        if: github.event_name == 'pull_request'
+        run: node scripts/release/validateVersion.mjs
 
       - name: Verify format
         run: pnpm verify --verbose --only format
@@ -242,73 +258,3 @@ jobs:
           node scripts/pages/upsertPreviewComment.mjs
           --pr ${{ github.event.number }}
           --url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}/"
-
-  deploy-stable:
-    needs: [verify]
-    if: >-
-      !cancelled() &&
-      needs.verify.result == 'success' &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    concurrency:
-      group: pages-publish
-      cancel-in-progress: false
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build
-        env:
-          BASE_URL: /${{ github.event.repository.name }}/
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: pnpm run build
-
-      - name: Fix 404 for SPA
-        run: cp ./dist/index.html ./dist/404.html
-
-      - name: Publish stable build to staging
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: >-
-          node scripts/pages/publishStable.mjs
-          --dist dist
-          --output-dir pages-staging
-
-      - name: Write root SPA fallback
-        run: >-
-          node scripts/pages/writeSpaFallback.mjs
-          --base /${{ github.event.repository.name }}/
-          --output-dir pages-staging
-
-      - uses: actions/configure-pages@v4
-        with:
-          enablement: true
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./pages-staging/
-
-      - uses: actions/deploy-pages@v4
-        id: deploy

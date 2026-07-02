@@ -16,6 +16,16 @@ describe('classifyCommandWeight', () => {
     expect(classifyCommandWeight({ label: 'visual' })).toBe('expensive');
     expect(classifyCommandWeight({ label: 'mutation' })).toBe('expensive');
   });
+
+  it('treats release artifact and smoke checks as expensive', () => {
+    expect(classifyCommandWeight({ label: 'artifact' })).toBe('expensive');
+    expect(classifyCommandWeight({ label: 'release-smoke' })).toBe('expensive');
+  });
+
+  it('keeps release-version light and build medium', () => {
+    expect(classifyCommandWeight({ label: 'release-version' })).toBe('light');
+    expect(classifyCommandWeight({ label: 'build' })).toBe('medium');
+  });
 });
 
 describe('resolveEslintConcurrency', () => {

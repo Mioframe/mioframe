@@ -17,6 +17,7 @@ const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
 const isFixMode = process.argv.includes('--fix');
 const isFixOnlyMode = process.argv.includes('--fix-only');
 const isVerboseMode = process.argv.includes('--verbose');
+const isFullMode = process.argv.includes('--full');
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
 const VERIFY_LABELS = [
@@ -30,7 +31,14 @@ const VERIFY_LABELS = [
   'e2e',
   'visual',
   'mutation',
+  'release-version',
+  'build',
+  'artifact',
+  'release-smoke',
 ];
+// Release-only labels only run in full/release mode (pnpm verify --full).
+// Focused `pnpm verify` never builds these into its command list.
+const FULL_ONLY_LABELS = new Set(['release-version', 'build', 'artifact', 'release-smoke']);
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
@@ -43,9 +51,19 @@ const COMMAND_TIMEOUT_MS_BY_LABEL = {
   e2e: 12 * 60 * 1000,
   visual: 15 * 60 * 1000,
   mutation: 20 * 60 * 1000,
+  build: 10 * 60 * 1000,
+  artifact: 8 * 60 * 1000,
+  'release-smoke': 10 * 60 * 1000,
 };
 const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
 const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);
+
+if (cliOnlyLabel !== null && FULL_ONLY_LABELS.has(cliOnlyLabel) && !isFullMode) {
+  throw new Error(
+    `--only ${cliOnlyLabel} requires --full. Run: pnpm verify --full --only ${cliOnlyLabel}`,
+  );
+}
+
 const EXPENSIVE_SKIP_REASON =
   'previous check failed; skipped expensive verification to save CI minutes';
 const FORMATTABLE_EXTENSIONS = new Set([
@@ -761,11 +779,16 @@ function printHelp() {
   console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
   console.log('  --only <label>      Run one focused verification check.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
+  console.log(
+    '  --full              Full-project release mode: ignore changed-file scope, run every',
+  );
+  console.log('                      check unconditionally, plus release-version/build/artifact/');
+  console.log('                      release-smoke. Equivalent to `pnpm verify:release`.');
   console.log('');
   console.log('Labels for --only:');
 
   for (const label of VERIFY_LABELS) {
-    console.log(`  ${label}`);
+    console.log(`  ${label}${FULL_ONLY_LABELS.has(label) ? ' (requires --full)' : ''}`);
   }
 
   console.log('');
@@ -778,6 +801,9 @@ function printHelp() {
   console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
+  console.log('  pnpm verify --full');
+  console.log('  pnpm verify --full --only artifact');
+  console.log('  pnpm verify:release');
   console.log('');
   console.log('Notes:');
   console.log('  - In GitHub Actions, verify scope is based on GITHUB_BASE_REF.');
@@ -1065,7 +1091,58 @@ function createE2ECommand(extraArgs = [], note = null) {
   };
 }
 
-function buildCommands(changedFiles) {
+function addReleaseOnlyCommands(commands) {
+  commands.push({
+    kind: 'run',
+    label: 'release-version',
+    command: 'node',
+    args: ['scripts/release/validateVersion.mjs'],
+    weight: classifyCommandWeight({ label: 'release-version' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'build',
+    command: 'node',
+    args: ['scripts/release/buildArtifact.mjs'],
+    weight: classifyCommandWeight({ label: 'build' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'artifact',
+    command: 'pnpm',
+    args: [
+      'e2e:release',
+      '--label',
+      'artifact',
+      'tests/e2e/release/productionArtifactSmoke.spec.ts',
+    ],
+    weight: classifyCommandWeight({ label: 'artifact' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'release-smoke',
+    command: 'pnpm',
+    args: [
+      'e2e:release',
+      '--label',
+      'release-smoke',
+      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
+    ],
+    weight: classifyCommandWeight({ label: 'release-smoke' }),
+  });
+}
+
+/**
+ * Build the verify command list for a given changed-file set.
+ * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param [options] Build options.
+ * @param [options.fullMode] Full-project release mode; defaults to the `--full` CLI flag.
+ * @returns Command entries in run order.
+ */
+export function buildCommands(changedFiles, { fullMode = isFullMode } = {}) {
   const existingChangedFiles = changedFiles.filter(fileExists);
   const formatLintFiles = existingChangedFiles.filter((filePath) => !isFormatLintIgnored(filePath));
   const formattableFiles = formatLintFiles.filter((filePath) =>
@@ -1092,7 +1169,14 @@ function buildCommands(changedFiles) {
     args: ['scripts/agentEnvironment.mjs', shouldApplyFixers ? '--fix' : '--check'],
   });
 
-  if (formattableFiles.length > 0) {
+  if (fullMode) {
+    commands.push({
+      kind: 'run',
+      label: 'format',
+      command: 'pnpm',
+      args: ['exec', 'oxfmt', ...(shouldApplyFixers ? [] : ['--check']), '.'],
+    });
+  } else if (formattableFiles.length > 0) {
     commands.push({
       kind: 'run',
       label: 'format',
@@ -1108,7 +1192,29 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (lintableFiles.length > 0) {
+  if (fullMode) {
+    commands.push({
+      kind: 'run',
+      label: 'oxlint',
+      command: 'pnpm',
+      args: ['exec', 'oxlint', ...(shouldApplyFixers ? ['--fix'] : []), '.'],
+      weight: classifyCommandWeight({ label: 'oxlint', isFullRepo: true }),
+    });
+    commands.push({
+      kind: 'run',
+      label: 'eslint',
+      command: 'pnpm',
+      args: [
+        'exec',
+        'eslint',
+        '--cache',
+        ...(shouldApplyFixers ? ['--fix'] : []),
+        `--concurrency=${eslintConcurrency}`,
+        '.',
+      ],
+      weight: classifyCommandWeight({ label: 'eslint', isFullRepo: true }),
+    });
+  } else if (lintableFiles.length > 0) {
     commands.push({
       kind: 'run',
       label: 'oxlint',
@@ -1149,7 +1255,7 @@ function buildCommands(changedFiles) {
     return commands;
   }
 
-  if (changedFiles.some(isTypeCheckTarget)) {
+  if (fullMode || changedFiles.some(isTypeCheckTarget)) {
     commands.push({
       kind: 'run',
       label: 'type-check',
@@ -1166,7 +1272,15 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (vitestScope.length > 0) {
+  if (fullMode) {
+    commands.push({
+      kind: 'run',
+      label: 'unit-tests',
+      command: 'pnpm',
+      args: ['exec', 'vitest', 'run'],
+      weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
+    });
+  } else if (vitestScope.length > 0) {
     commands.push({
       kind: 'run',
       label: 'unit-tests',
@@ -1183,7 +1297,9 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (appE2EPlan.mode === 'invalid') {
+  if (fullMode) {
+    addE2ECommands(commands, createE2ECommand([], 'full-project release verification'));
+  } else if (appE2EPlan.mode === 'invalid') {
     commands.push(createE2EInstallCommand('app e2e scope is invalid; e2e check fails closed'));
     commands.push({
       kind: 'failed',
@@ -1205,7 +1321,7 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (hasVisualRelevantChanges || changedVisualSpecs.length > 0) {
+  if (fullMode || hasVisualRelevantChanges || changedVisualSpecs.length > 0) {
     commands.push({
       kind: 'run',
       label: 'visual',
@@ -1222,7 +1338,17 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (mutationScope.length > 0) {
+  if (fullMode) {
+    // No `-m` scope override: runs the release high-risk subset already
+    // curated by stryker.config.mjs's `mutate` list (excludes src/shared/ui).
+    commands.push({
+      kind: 'run',
+      label: 'mutation',
+      command: 'pnpm',
+      args: ['exec', 'stryker', 'run'],
+      weight: classifyCommandWeight({ label: 'mutation' }),
+    });
+  } else if (mutationScope.length > 0) {
     commands.push({
       kind: 'run',
       label: 'mutation',
@@ -1237,6 +1363,10 @@ function buildCommands(changedFiles) {
       command: 'pnpm exec stryker run -m <source file>',
       reason: 'empty mutation scope',
     });
+  }
+
+  if (fullMode) {
+    addReleaseOnlyCommands(commands);
   }
 
   return commands;
@@ -1300,9 +1430,10 @@ function printSummary(changedFiles, scope, results) {
 
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${mode}`);
+  console.log(`release: ${isFullMode ? 'full-project (pnpm verify --full)' : 'off'}`);
   console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
   console.log(`only: ${cliOnlyLabel ?? 'all'}`);
-  console.log(`scope: ${scope}`);
+  console.log(`scope: ${isFullMode ? 'full-project (changed-file scope ignored)' : scope}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${displayStatus}`);
   console.log(`logs: ${VERIFY_LOG_DIR}`);
