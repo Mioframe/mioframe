@@ -6,6 +6,7 @@ import {
   readPackageVersion,
   readVersionAtRef,
   resolveVersionContext,
+  tagExists,
   validateRelease,
 } from './validateVersion.mjs';
 
@@ -73,6 +74,23 @@ describe('readVersionAtRef', () => {
   it('returns null when the output is not valid JSON', () => {
     const spawn = vi.fn().mockReturnValue({ status: 0, stdout: 'not json' });
     expect(readVersionAtRef('origin/develop', 'package.json', spawn)).toBeNull();
+  });
+});
+
+describe('tagExists', () => {
+  it('returns true when git rev-parse resolves the tag', () => {
+    const spawn = vi.fn().mockReturnValue({ status: 0, stdout: 'abc123\n' });
+    expect(tagExists('v0.1.0', spawn)).toBe(true);
+    expect(spawn).toHaveBeenCalledWith(
+      'git',
+      ['rev-parse', '--verify', '--quiet', 'refs/tags/v0.1.0'],
+      expect.any(Object),
+    );
+  });
+
+  it('returns false when git rev-parse cannot resolve the tag', () => {
+    const spawn = vi.fn().mockReturnValue({ status: 1, stdout: '' });
+    expect(tagExists('v0.1.0', spawn)).toBe(false);
   });
 });
 
@@ -188,6 +206,71 @@ describe('validateRelease', () => {
     expect(deps.logError).toHaveBeenCalledWith(
       expect.stringContaining('Version must increase for this PR'),
     );
+  });
+
+  function makeCompareSpawn({ baseVersion, tagFound }) {
+    return vi.fn((_command, args) => {
+      if (args[0] === 'show') {
+        return { status: 0, stdout: JSON.stringify({ version: baseVersion }) };
+      }
+      if (args[0] === 'rev-parse') {
+        return { status: tagFound ? 0 : 1, stdout: tagFound ? 'abc123\n' : '' };
+      }
+      throw new Error(`unexpected git command: ${args.join(' ')}`);
+    });
+  }
+
+  it('passes a same-version PR-to-main context as a pre-tag release repair when the tag does not exist yet', () => {
+    const deps = baseDeps();
+    deps.fileExists = vi.fn(() => true);
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+    const result = validateRelease({
+      argv: ['--base', 'origin/main', '--target', 'main'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(true);
+    expect(deps.logError).not.toHaveBeenCalled();
+  });
+
+  it('fails a same-version PR-to-main context when the matching tag already exists', () => {
+    const deps = baseDeps();
+    deps.fileExists = vi.fn(() => true);
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: true });
+    const result = validateRelease({
+      argv: ['--base', 'origin/main', '--target', 'main'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('tag v0.2.0 already exists'),
+    );
+  });
+
+  it('fails a same-version PR-to-develop context regardless of tag state', () => {
+    const deps = baseDeps();
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+    const result = validateRelease({
+      argv: ['--base', 'origin/develop', '--target', 'develop'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('Version must increase for this PR'),
+    );
+  });
+
+  it('passes a PR-to-main context when the version increased, independent of tag state', () => {
+    const deps = baseDeps();
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.1.0', tagFound: true });
+    const result = validateRelease({
+      argv: ['--base', 'origin/main', '--target', 'main'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(true);
   });
 
   it('fails a PR-to-main context and requires release notes when the version increased', () => {

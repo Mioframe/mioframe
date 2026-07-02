@@ -7,7 +7,11 @@ on:
 jobs:
   cleanup:
     # Skip fork PRs — they have no write access to publish.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Skip PRs targeting main — those are release/promotion PRs; stable Pages
+    # deployment is owned exclusively by the release workflow's deploy-stable job.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref != 'main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -34,6 +38,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Remove PR preview from staging
+        id: cleanup
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -43,17 +48,21 @@ jobs:
           --output-dir pages-staging
 
       - name: Write root SPA fallback
+        if: steps.cleanup.outputs.changed == 'true'
         run: >-
           node scripts/pages/writeSpaFallback.mjs
           --base /${{ github.event.repository.name }}/
           --output-dir pages-staging
 
       - uses: actions/configure-pages@v4
+        if: steps.cleanup.outputs.changed == 'true'
         with:
           enablement: true
 
       - uses: actions/upload-pages-artifact@v3
+        if: steps.cleanup.outputs.changed == 'true'
         with:
           path: ./pages-staging/
 
       - uses: actions/deploy-pages@v4
+        if: steps.cleanup.outputs.changed == 'true'

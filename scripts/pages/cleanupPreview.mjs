@@ -7,6 +7,9 @@
  * When --output-dir is provided, the final staging content is also copied
  * there so the caller can upload it as a GitHub Pages artifact.
  *
+ * When GITHUB_OUTPUT is set, writes a `changed` output (`true`/`false`) so
+ * callers can skip Pages publishing steps when the cleanup was a no-op.
+ *
  * Usage:
  *   node scripts/pages/cleanupPreview.mjs --pr 42 [--output-dir ./pages-staging]
  *
@@ -15,6 +18,7 @@
  *   GITHUB_REPOSITORY - OWNER/REPO
  */
 
+import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
@@ -23,6 +27,7 @@ import { applyPreviewCleanup, validatePrNumber } from './lib/pagesFs.mjs';
 /**
  * @param argv Process arguments (process.argv.slice(2)).
  * @param env Process environment.
+ * @returns `true` if the preview slot existed and was removed; `false` if it was already absent.
  */
 export async function cleanupPreview(argv = process.argv.slice(2), env = process.env) {
   const prIndex = argv.indexOf('--pr');
@@ -35,9 +40,11 @@ export async function cleanupPreview(argv = process.argv.slice(2), env = process
   const outputIndex = argv.indexOf('--output-dir');
   const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;
 
-  const { GITHUB_TOKEN, GITHUB_REPOSITORY } = env;
+  const { GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_OUTPUT } = env;
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required');
   if (!GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY is required');
+
+  let removed = false;
 
   await withGhPagesBranch({
     token: GITHUB_TOKEN,
@@ -45,14 +52,20 @@ export async function cleanupPreview(argv = process.argv.slice(2), env = process
     commitMessage: `chore(pages): remove preview for PR #${prNumber}`,
     outputDir,
     fn(workDir) {
-      const removed = applyPreviewCleanup(workDir, prNumber);
+      removed = applyPreviewCleanup(workDir, prNumber);
       if (!removed) {
         console.log(`Preview slot pr-${prNumber}/ not found, nothing to remove.`);
       }
     },
   });
 
+  if (GITHUB_OUTPUT) {
+    appendFileSync(GITHUB_OUTPUT, `changed=${removed}\n`);
+  }
+
   console.log(`Preview for PR #${prNumber} cleaned up.`);
+
+  return removed;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
