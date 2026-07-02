@@ -29,6 +29,9 @@ this checklist enforces.
         passed.
   - [ ] release/version metadata validation passed (version format, PR
         version greater than `main`'s current version).
+  - [ ] release config validation passed (base path consistency, PWA not
+        disabled, no preview-only settings, env/config presence — see
+        `docs/release.md#release-config-validation`).
 
 ## After merging into `main`
 
@@ -37,8 +40,9 @@ this checklist enforces.
 - [ ] `deploy-stable` succeeded and the stable GitHub Pages deployment shows
       the new version.
 - [ ] Create and push the `vX.Y.Z` tag matching `package.json` version.
-      The tag push re-runs release/version validation to confirm the tag
-      matches `package.json`.
+      The tag push runs the lightweight `release-tag` workflow, which only
+      confirms the tag matches `package.json` — it does not rerun the full
+      release gate.
 - [ ] Merge (or cherry-pick) the same change back into `develop` so the
       branches do not diverge. For a normal promotion (`develop` -> `main`
       with no `main`-only commits), this is a fast-forward or a trivial

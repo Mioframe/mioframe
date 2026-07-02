@@ -67,15 +67,26 @@ This is a manual decision, not automated by CI:
 
 ## What CI verifies automatically
 
-- **PRs into `develop`**: normal focused development verification
-  (`pnpm verify`, changed-file scope) plus a version-bump check — the PR
-  version must be strictly greater than `develop`'s current version.
-- **PRs into `main`** and **pushes to `main`**: the full release gate
+CI is split into three workflows so no PR/push path ever runs both the
+focused and the full gate, and tag pushes never rerun the full gate:
+
+- **`verify` workflow** (`.github/workflows/verify.yml`): PRs into any
+  branch except `main`, and pushes to `develop`. Runs normal focused
+  development verification (`pnpm verify`, changed-file scope) plus, on PRs,
+  a version-bump check — the PR version must be strictly greater than
+  `develop`'s current version. Its `pull_request` trigger uses
+  `branches-ignore: [main]`, so it never fires for a PR into `main`.
+- **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
+  and pushes to `main` only. Runs the full release gate
   (`pnpm verify:release`, full-project scope, see below), which includes
-  version/tag/build metadata validation.
-- **Tag pushes (`vX.Y.Z`)**: the tag must match `package.json` version
-  exactly.
-- Stable deploy runs only after the release gate passes on a push to `main`.
+  version/build metadata and release-config validation. Stable deploy
+  (`deploy-stable`) runs only after this gate passes on a push to `main`.
+- **`release-tag` workflow** (`.github/workflows/release-tag.yml`): `vX.Y.Z`
+  tag pushes only. Runs a single lightweight check
+  (`node scripts/release/validateVersion.mjs`) confirming the tag matches
+  `package.json` version — it does not rerun e2e, visual, mutation, artifact,
+  or deploy steps, since `main` was already validated by the `release`
+  workflow before the tag was created.
 
 ## What remains a manual product/release decision
 
@@ -103,7 +114,9 @@ gate. It ignores changed-file scope and always runs, for the whole project:
   logic covered by `stryker.config.mjs`, excluding `src/shared/ui`);
 - production build and artifact validation (`docs/release.md#production-artifact-validation`);
 - release smoke coverage (`docs/release.md#release-smoke-coverage`);
-- release/version metadata validation (`scripts/release/validateVersion.mjs`).
+- release/version metadata validation (`scripts/release/validateVersion.mjs`);
+- release config validation (`scripts/release/validateReleaseConfig.mjs`, see
+  `docs/release.md#release-config-validation`).
 
 Full mode never reports a check as skipped because there were no changed
 files. Use `pnpm verify --full --only <label>` to focus on a single release
@@ -129,6 +142,45 @@ _published_ artifact, not internal build tooling:
 This does not assert on Workbox route internals — only the user-visible
 artifact behavior.
 
+### Avoiding duplicate artifact builds
+
+The `build` check (`scripts/release/buildArtifact.mjs`) always builds a
+fresh production artifact and fails fast before the more expensive `artifact`
+and `release-smoke` Playwright checks run. Those checks each spin up their
+own Playwright webServer, which normally builds its own artifact too — so
+without deduplication, one `pnpm verify:release` run would build the same
+production artifact three times.
+
+`scripts/verify.mjs` avoids this: once `build` has passed in the same run,
+it sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact` and
+`release-smoke` checks (forwarded through `scripts/e2eReleaseContainer.mjs`
+into the Podman container), and `buildArtifact.mjs` reuses the existing
+`dist/` instead of rebuilding. Standalone invocations
+(`pnpm e2e:release`, `pnpm verify --full --only artifact`) never set this
+flag, so they remain self-sufficient and always build their own artifact.
+
+## Release config validation
+
+Owned by `scripts/release/validateReleaseConfig.mjs`, run as the
+`release-config` check. It validates release-mode config assumptions that
+are not covered by `release-version`:
+
+- `config/tooling.json` `release.basePath` matches `/${package.json name}/`,
+  the same base path the release artifact build and `deploy-stable` use;
+- `VITE_DISABLE_PWA` is not `1` (that is a PR-preview-only setting; see
+  `deploy-preview` in `.github/workflows/verify.yml`);
+- `BASE_URL`, if set, is not a PR-preview path and matches the release base
+  path;
+- `VITE_GOOGLE_CLIENT_ID`, `VITE_SENTRY_DSN`, and `SENTRY_AUTH_TOKEN` are
+  each reported as set/optional-and-unset, and fail clearly if set to an
+  empty string (a silent misconfiguration, distinct from intentionally
+  unset);
+- partial Sentry configuration (DSN without auth token, or vice versa) is
+  reported explicitly so the resulting behavior is not a silent surprise.
+
+It deliberately does not read or assert on secret values themselves — only
+presence/absence and mode consistency.
+
 ## Release smoke coverage
 
 Owned by `tests/e2e/release/*.spec.ts`, using existing Playwright helpers
@@ -151,22 +203,29 @@ apply these manually in the GitHub UI):
 
 - `main`: require the `release` workflow (`release-gate` and its
   sub-jobs) to pass before merge, and require branches to be up to date.
-  Disallow direct pushes; only merges through a reviewed PR.
+  Disallow direct pushes; only merges through a reviewed PR. The `verify`
+  workflow does not run for PRs into `main`, so it is not a required check
+  there.
 - `develop`: require the `verify` workflow (`verify` job and the
   version-bump check) to pass before merge.
+- Tag pushes: the `release-tag` workflow is informational (it validates the
+  tag after the fact); it is not a branch-protection required check since
+  tags are not a protected branch.
 
 ## What blocks a release
 
 - Any failing check inside `pnpm verify:release` (format, lint, type-check,
   unit, e2e, visual, mutation, build, artifact, release smoke, version
-  metadata).
+  metadata, release config).
 - A missing or non-monotonic version bump.
 - A tag that does not match `package.json` version.
 - Missing release notes for the target version
   (`docs/releases/<version>.md`) or a missing `docs/release-checklist.md`.
 
 CI failing any of the above must block the `deploy-stable` job; it never
-runs as a fallback or manual override.
+runs as a fallback or manual override. `deploy-stable` builds with
+`pnpm release:build-artifact` (`scripts/release/buildArtifact.mjs`) — the
+same build script and base-path contract the release gate validates.
 
 ## Where to inspect release verification logs
 

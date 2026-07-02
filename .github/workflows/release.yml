@@ -1,9 +1,10 @@
 name: release
 
 # Release gate for the stable public branch: full-project verification
-# (pnpm verify:release) for every PR into main and every push to main, plus
-# tag-vs-package.json validation on vX.Y.Z tag pushes. Stable deploy only
-# ever runs after a green release gate on a push to main. See docs/release.md.
+# (pnpm verify:release) for every PR into main and every push to main. Stable
+# deploy only ever runs after a green release gate on a push to main.
+# vX.Y.Z tag pushes do not rerun this full gate — see the separate, lightweight
+# `release-tag` workflow (.github/workflows/release-tag.yml). See docs/release.md.
 
 on:
   pull_request:
@@ -12,8 +13,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*.*.*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -97,16 +96,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build release artifact
         env:
           BASE_URL: /${{ github.event.repository.name }}/
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: pnpm run build
-
-      - name: Fix 404 for SPA
-        run: cp ./dist/index.html ./dist/404.html
+        run: pnpm release:build-artifact
 
       - name: Publish stable build to staging
         env:

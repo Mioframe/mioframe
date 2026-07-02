@@ -7,12 +7,20 @@ const extraArgs =
   labelFlagIndex === -1
     ? argv
     : [...argv.slice(0, labelFlagIndex), ...argv.slice(labelFlagIndex + 2)];
+// Forwarded into the container so the release Playwright webServer's
+// buildArtifact call can reuse a `dist/` already built by an earlier
+// `pnpm verify:release` `build` check instead of rebuilding (see
+// scripts/verify.mjs and scripts/release/buildArtifact.mjs). The container
+// only receives env vars explicitly listed here, not the full host env.
+const extraEnv =
+  process.env.RELEASE_ARTIFACT_SKIP_BUILD === '1' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
 
 try {
   await runPlaywrightInContainer({
     label,
     config: 'playwright.release.config.ts',
     extraArgs,
+    extraEnv,
     missingPodmanMessage:
       'Podman is required for release artifact/smoke tests.\nInstall Podman and rerun `pnpm e2e:release`.',
     missingMetadataMessage:

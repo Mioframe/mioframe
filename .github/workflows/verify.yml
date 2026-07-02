@@ -3,10 +3,13 @@ name: verify
 # Development verification for develop-bound work: focused pnpm verify plus a
 # PR-into-develop version-bump check, and PR preview deploys. PRs/pushes to
 # main use the separate `release` workflow (.github/workflows/release.yml)
-# instead — see docs/release.md.
+# instead — see docs/release.md. The trigger below excludes PRs into main so
+# this workflow and the release gate never both run for the same PR path.
 
 on:
   pull_request:
+    branches-ignore:
+      - main
   push:
     branches:
       - develop
@@ -19,8 +22,7 @@ jobs:
   autofix:
     if: >-
       github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.base_ref != 'main'
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -107,8 +109,7 @@ jobs:
       - autofix
     if: >-
       !cancelled() &&
-      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped') &&
-      (github.event_name != 'pull_request' || github.base_ref != 'main')
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

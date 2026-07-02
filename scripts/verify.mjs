@@ -32,13 +32,20 @@ const VERIFY_LABELS = [
   'visual',
   'mutation',
   'release-version',
+  'release-config',
   'build',
   'artifact',
   'release-smoke',
 ];
 // Release-only labels only run in full/release mode (pnpm verify --full).
 // Focused `pnpm verify` never builds these into its command list.
-const FULL_ONLY_LABELS = new Set(['release-version', 'build', 'artifact', 'release-smoke']);
+const FULL_ONLY_LABELS = new Set([
+  'release-version',
+  'release-config',
+  'build',
+  'artifact',
+  'release-smoke',
+]);
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
@@ -782,8 +789,10 @@ function printHelp() {
   console.log(
     '  --full              Full-project release mode: ignore changed-file scope, run every',
   );
-  console.log('                      check unconditionally, plus release-version/build/artifact/');
-  console.log('                      release-smoke. Equivalent to `pnpm verify:release`.');
+  console.log(
+    '                      check unconditionally, plus release-version/release-config/build/',
+  );
+  console.log('                      artifact/release-smoke. Equivalent to `pnpm verify:release`.');
   console.log('');
   console.log('Labels for --only:');
 
@@ -1098,6 +1107,14 @@ function addReleaseOnlyCommands(commands) {
     command: 'node',
     args: ['scripts/release/validateVersion.mjs'],
     weight: classifyCommandWeight({ label: 'release-version' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'release-config',
+    command: 'node',
+    args: ['scripts/release/validateReleaseConfig.mjs'],
+    weight: classifyCommandWeight({ label: 'release-config' }),
   });
 
   commands.push({
@@ -1465,6 +1482,31 @@ function printSummary(changedFiles, scope, results) {
   };
 }
 
+// Release Playwright checks whose webServer builds the production artifact
+// itself (see playwright.release.config.ts). Reused only when the `build`
+// check already produced a fresh artifact earlier in this same run.
+const ARTIFACT_REUSE_LABELS = new Set(['artifact', 'release-smoke']);
+
+/**
+ * Resolve extra env for a command entry, based on prior results in this run.
+ * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact`/`release-smoke`
+ * release-only checks once the `build` check has already produced a fresh
+ * production artifact in this same `pnpm verify` invocation, so a single
+ * release gate does not rebuild the artifact once per check that needs it.
+ * @param entry Command entry about to run.
+ * @param priorResults Results already collected earlier in this run.
+ * @returns Extra env to merge into the command's environment.
+ */
+export function getExtraEnvForEntry(entry, priorResults) {
+  if (!ARTIFACT_REUSE_LABELS.has(entry.label)) {
+    return {};
+  }
+
+  const buildResult = priorResults.find((result) => result.label === 'build');
+
+  return buildResult?.status === 'passed' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
+}
+
 async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata: () => {} }) {
   if (isFixMode && isFixOnlyMode) {
     throw new Error('Use either --fix or --fix-only, not both.');
@@ -1513,6 +1555,7 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
 
     // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
     let result;
+    const extraEnv = getExtraEnvForEntry(entry, results);
 
     if (entry.weight === 'expensive') {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
@@ -1522,7 +1565,11 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
           command: formatCommand(entry.command, entry.args),
         },
         async (lockEnv) =>
-          runCommand(entry.label, entry.command, entry.args, { ...verifyLockEnv, ...lockEnv }),
+          runCommand(entry.label, entry.command, entry.args, {
+            ...verifyLockEnv,
+            ...lockEnv,
+            ...extraEnv,
+          }),
       );
 
       // Signal propagation must happen after withExpensiveCommandLock cleanup,
@@ -1533,7 +1580,10 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
       }
     } else {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
-      result = await runCommand(entry.label, entry.command, entry.args, verifyLockEnv);
+      result = await runCommand(entry.label, entry.command, entry.args, {
+        ...verifyLockEnv,
+        ...extraEnv,
+      });
 
       if (result.terminatedBySignal) {
         applyProcessResult({ signal: result.terminatedBySignal });

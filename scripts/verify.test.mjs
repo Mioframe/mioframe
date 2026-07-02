@@ -4,6 +4,7 @@ import {
   buildCommands,
   getCliFilesOverride,
   getAllSiblingTestFiles,
+  getExtraEnvForEntry,
   getVerifyBaseRef,
   runVerifyCli,
 } from './verify.mjs';
@@ -107,6 +108,7 @@ describe('buildCommands full mode', () => {
     const byLabel = Object.fromEntries(commands.map((entry) => [entry.label, entry]));
 
     expect(byLabel['release-version'].args).toEqual(['scripts/release/validateVersion.mjs']);
+    expect(byLabel['release-config'].args).toEqual(['scripts/release/validateReleaseConfig.mjs']);
     expect(byLabel.build.args).toEqual(['scripts/release/buildArtifact.mjs']);
     expect(byLabel.artifact.args).toEqual([
       'e2e:release',
@@ -127,9 +129,39 @@ describe('buildCommands full mode', () => {
     const labels = commands.map((entry) => entry.label);
 
     expect(labels).not.toContain('release-version');
+    expect(labels).not.toContain('release-config');
     expect(labels).not.toContain('build');
     expect(labels).not.toContain('artifact');
     expect(labels).not.toContain('release-smoke');
+  });
+});
+
+describe('getExtraEnvForEntry', () => {
+  it('does not set the skip flag for unrelated labels', () => {
+    expect(getExtraEnvForEntry({ label: 'build' }, [{ label: 'build', status: 'passed' }])).toEqual(
+      {},
+    );
+  });
+
+  it('does not set the skip flag when build has not run yet', () => {
+    expect(getExtraEnvForEntry({ label: 'artifact' }, [])).toEqual({});
+  });
+
+  it('does not set the skip flag when build failed', () => {
+    expect(
+      getExtraEnvForEntry({ label: 'artifact' }, [{ label: 'build', status: 'failed' }]),
+    ).toEqual({});
+  });
+
+  it('sets RELEASE_ARTIFACT_SKIP_BUILD once build has passed, for artifact and release-smoke', () => {
+    const priorResults = [{ label: 'build', status: 'passed' }];
+
+    expect(getExtraEnvForEntry({ label: 'artifact' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+    expect(getExtraEnvForEntry({ label: 'release-smoke' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
   });
 });
 

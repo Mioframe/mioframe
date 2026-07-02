@@ -31,6 +31,7 @@ export function classifyCommandWeight({ label, fileCount = 0, isFullRepo = false
     case 'release-smoke':
       return 'expensive';
     case 'release-version':
+    case 'release-config':
       return 'light';
     case 'build':
       return 'medium';

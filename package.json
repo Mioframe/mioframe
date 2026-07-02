@@ -42,7 +42,8 @@
     "test:coverage": "node scripts/vitestRun.mjs --coverage",
     "test:mutate": "node scripts/mutate.mjs",
     "release:build-artifact": "node scripts/release/buildArtifact.mjs",
-    "release:validate-version": "node scripts/release/validateVersion.mjs"
+    "release:validate-version": "node scripts/release/validateVersion.mjs",
+    "release:validate-config": "node scripts/release/validateReleaseConfig.mjs"
   },
   "dependencies": {
     "@automerge/automerge": "^3.2.5",

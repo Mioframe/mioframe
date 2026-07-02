@@ -22,8 +22,9 @@ describe('classifyCommandWeight', () => {
     expect(classifyCommandWeight({ label: 'release-smoke' })).toBe('expensive');
   });
 
-  it('keeps release-version light and build medium', () => {
+  it('keeps release-version and release-config light, and build medium', () => {
     expect(classifyCommandWeight({ label: 'release-version' })).toBe('light');
+    expect(classifyCommandWeight({ label: 'release-config' })).toBe('light');
     expect(classifyCommandWeight({ label: 'build' })).toBe('medium');
   });
 });
