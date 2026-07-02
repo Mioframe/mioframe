@@ -1,0 +1,240 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  compareSemver,
+  parseSemver,
+  readPackageVersion,
+  readVersionAtRef,
+  resolveVersionContext,
+  validateRelease,
+} from './validateVersion.mjs';
+
+describe('parseSemver', () => {
+  it('parses a valid X.Y.Z version', () => {
+    expect(parseSemver('0.1.0')).toEqual({ major: 0, minor: 1, patch: 0 });
+    expect(parseSemver('12.34.56')).toEqual({ major: 12, minor: 34, patch: 56 });
+  });
+
+  it('rejects a version with a pre-release or build suffix', () => {
+    expect(parseSemver('0.1.0-beta.1')).toBeNull();
+    expect(parseSemver('0.1.0+build.5')).toBeNull();
+  });
+
+  it('rejects a non-SemVer string', () => {
+    expect(parseSemver('0.1')).toBeNull();
+    expect(parseSemver('v0.1.0')).toBeNull();
+    expect(parseSemver('not-a-version')).toBeNull();
+  });
+});
+
+describe('compareSemver', () => {
+  it('orders by major, then minor, then patch', () => {
+    expect(compareSemver(parseSemver('1.0.0'), parseSemver('0.9.9'))).toBeGreaterThan(0);
+    expect(compareSemver(parseSemver('0.2.0'), parseSemver('0.10.0'))).toBeLessThan(0);
+    expect(compareSemver(parseSemver('0.1.1'), parseSemver('0.1.0'))).toBeGreaterThan(0);
+    expect(compareSemver(parseSemver('0.1.0'), parseSemver('0.1.0'))).toBe(0);
+  });
+});
+
+describe('readPackageVersion', () => {
+  it('reads the version field from package.json content', () => {
+    const readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
+    expect(readPackageVersion('package.json', readFile)).toBe('0.1.0');
+    expect(readFile).toHaveBeenCalledWith('package.json', 'utf8');
+  });
+
+  it('throws when the version field is missing', () => {
+    const readFile = vi.fn().mockReturnValue(JSON.stringify({ name: 'mioframe' }));
+    expect(() => readPackageVersion('package.json', readFile)).toThrow(
+      'missing a string "version" field',
+    );
+  });
+});
+
+describe('readVersionAtRef', () => {
+  it('reads the version from a git show result', () => {
+    const spawn = vi.fn().mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify({ version: '0.0.9' }),
+    });
+    expect(readVersionAtRef('origin/develop', 'package.json', spawn)).toBe('0.0.9');
+    expect(spawn).toHaveBeenCalledWith(
+      'git',
+      ['show', 'origin/develop:package.json'],
+      expect.any(Object),
+    );
+  });
+
+  it('returns null when git show fails', () => {
+    const spawn = vi.fn().mockReturnValue({ status: 1, stdout: '' });
+    expect(readVersionAtRef('origin/develop', 'package.json', spawn)).toBeNull();
+  });
+
+  it('returns null when the output is not valid JSON', () => {
+    const spawn = vi.fn().mockReturnValue({ status: 0, stdout: 'not json' });
+    expect(readVersionAtRef('origin/develop', 'package.json', spawn)).toBeNull();
+  });
+});
+
+describe('resolveVersionContext', () => {
+  it('prefers an explicit --tag flag', () => {
+    expect(resolveVersionContext({}, ['--tag', 'v0.1.0'])).toEqual({
+      kind: 'tag',
+      tag: 'v0.1.0',
+    });
+  });
+
+  it('prefers an explicit --base flag over env', () => {
+    expect(
+      resolveVersionContext({ GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push' }, [
+        '--base',
+        'origin/main',
+        '--target',
+        'main',
+      ]),
+    ).toEqual({ kind: 'compare', baseRef: 'origin/main', targetBranch: 'main' });
+  });
+
+  it('returns local outside CI with no explicit flags', () => {
+    expect(resolveVersionContext({}, [])).toEqual({ kind: 'local' });
+  });
+
+  it('detects a tag push in GitHub Actions', () => {
+    expect(
+      resolveVersionContext({ GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/tags/v0.1.0' }, []),
+    ).toEqual({ kind: 'tag', tag: 'v0.1.0' });
+  });
+
+  it('detects a pull_request context in GitHub Actions', () => {
+    expect(
+      resolveVersionContext(
+        {
+          GITHUB_ACTIONS: 'true',
+          GITHUB_EVENT_NAME: 'pull_request',
+          GITHUB_BASE_REF: 'develop',
+        },
+        [],
+      ),
+    ).toEqual({ kind: 'compare', baseRef: 'origin/develop', targetBranch: 'develop' });
+  });
+
+  it('detects a push to main in GitHub Actions', () => {
+    expect(
+      resolveVersionContext(
+        { GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' },
+        [],
+      ),
+    ).toEqual({ kind: 'push-main' });
+  });
+
+  it('falls back to ci-other for an unrecognized CI event', () => {
+    expect(
+      resolveVersionContext(
+        { GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/develop' },
+        [],
+      ),
+    ).toEqual({ kind: 'ci-other' });
+  });
+});
+
+describe('validateRelease', () => {
+  const baseDeps = () => ({
+    readFile: vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.0' })),
+    fileExists: vi.fn().mockReturnValue(true),
+    log: vi.fn(),
+    logError: vi.fn(),
+  });
+
+  it('passes locally when package.json version is valid and docs exist', () => {
+    const deps = baseDeps();
+    const result = validateRelease({ argv: [], env: {}, deps });
+    expect(result).toBe(true);
+    expect(deps.logError).not.toHaveBeenCalled();
+  });
+
+  it('fails when package.json version is not valid SemVer', () => {
+    const deps = baseDeps();
+    deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2' }));
+    const result = validateRelease({ argv: [], env: {}, deps });
+    expect(result).toBe(false);
+  });
+
+  it('passes a PR-to-develop context when the version increased', () => {
+    const deps = baseDeps();
+    deps.spawn = vi.fn().mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify({ version: '0.1.0' }),
+    });
+    const result = validateRelease({
+      argv: ['--base', 'origin/develop', '--target', 'develop'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(true);
+  });
+
+  it('fails a PR-to-develop context when the version did not increase', () => {
+    const deps = baseDeps();
+    deps.spawn = vi.fn().mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify({ version: '0.2.0' }),
+    });
+    const result = validateRelease({
+      argv: ['--base', 'origin/develop', '--target', 'develop'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('Version must increase for this PR'),
+    );
+  });
+
+  it('fails a PR-to-main context and requires release notes when the version increased', () => {
+    const deps = baseDeps();
+    deps.spawn = vi.fn().mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify({ version: '0.1.0' }),
+    });
+    deps.fileExists = vi.fn((filePath) => filePath !== 'docs/releases/0.2.0.md');
+    const result = validateRelease({
+      argv: ['--base', 'origin/main', '--target', 'main'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(expect.stringContaining('Missing release notes'));
+  });
+
+  it('passes a matching tag context', () => {
+    const deps = baseDeps();
+    const result = validateRelease({ argv: ['--tag', 'v0.2.0'], env: {}, deps });
+    expect(result).toBe(true);
+  });
+
+  it('fails a tag context that does not match package.json version', () => {
+    const deps = baseDeps();
+    const result = validateRelease({ argv: ['--tag', 'v0.9.9'], env: {}, deps });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('does not match package.json version'),
+    );
+  });
+
+  it('fails a tag context with a malformed tag', () => {
+    const deps = baseDeps();
+    const result = validateRelease({ argv: ['--tag', 'release-1'], env: {}, deps });
+    expect(result).toBe(false);
+  });
+
+  it('fails when required docs are missing', () => {
+    const deps = baseDeps();
+    deps.fileExists = vi.fn().mockReturnValue(false);
+    const result = validateRelease({ argv: [], env: {}, deps });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('Missing docs/release-checklist.md'),
+    );
+    expect(deps.logError).toHaveBeenCalledWith(expect.stringContaining('Missing docs/release.md'));
+  });
+});

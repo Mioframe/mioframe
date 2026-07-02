@@ -3,11 +3,34 @@ import { describe, expect, it } from 'vitest';
 import {
   APP_E2E_STANDALONE_SPECS,
   E2E_SCENARIO_SCOPES,
+  isAppE2ESpecPath,
+  isAppE2ESupportPath,
   isLowLevelE2EPath,
+  isReleaseE2ESpecPath,
   isUnmappedSourcePath,
   resolveAppE2EPlan,
   validateE2EScenarioRegistry,
 } from './e2eRisk.mjs';
+
+describe('isReleaseE2ESpecPath', () => {
+  it('flags specs under tests/e2e/release/', () => {
+    expect(isReleaseE2ESpecPath('tests/e2e/release/productionArtifactSmoke.spec.ts')).toBe(true);
+  });
+
+  it('does not flag regular app e2e specs', () => {
+    expect(isReleaseE2ESpecPath('tests/e2e/appSmoke.spec.ts')).toBe(false);
+  });
+});
+
+describe('isAppE2ESpecPath and isAppE2ESupportPath exclude release specs', () => {
+  it('does not classify a release spec as an app e2e spec', () => {
+    expect(isAppE2ESpecPath('tests/e2e/release/productionArtifactSmoke.spec.ts')).toBe(false);
+  });
+
+  it('does not classify a release spec as app e2e support', () => {
+    expect(isAppE2ESupportPath('tests/e2e/release/productionArtifactSmoke.spec.ts')).toBe(false);
+  });
+});
 
 describe('isLowLevelE2EPath', () => {
   it('flags playwright config and verify tooling', () => {
@@ -191,6 +214,12 @@ describe('resolveAppE2EPlan', () => {
 
   it('does not trigger app e2e for visual-only spec changes', () => {
     const plan = resolveAppE2EPlan(['tests/e2e/visual/shared-ui.spec.ts']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('does not trigger focused app e2e for release-only spec changes', () => {
+    const plan = resolveAppE2EPlan(['tests/e2e/release/productionArtifactSmoke.spec.ts']);
 
     expect(plan.mode).toBe('skip');
   });

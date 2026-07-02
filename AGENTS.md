@@ -39,6 +39,16 @@ status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
 
+## Release
+
+`develop` is the active development branch; `main` is the stable public
+branch; stable publish only happens from `main`. Every PR into `develop` or
+`main` must bump `package.json` version. `pnpm verify` stays the focused
+development gate; `pnpm verify:release` (`node scripts/verify.mjs --full`)
+is the full-project release gate required for `main`. See `docs/release.md`
+for the full policy and `docs/release-checklist.md` for the promotion and
+hotfix checklist.
+
 ## Contains
 
 - `src/app`: bootstrap, routing, global shells, and global styles.
