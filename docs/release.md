@@ -48,10 +48,34 @@ fix/*, hotfix/* -> main -> develop
   `scripts/release/validateVersion.mjs`, run as the `release-version` /
   version-bump check).
 - **Every PR into `main`** (promotion or hotfix) must also carry a version
-  strictly above the version currently on `main`.
+  strictly above the version currently on `main`, with one narrow exception:
+  see `Pre-tag release repair` below.
 - CI verifies that a bump exists and is monotonically increasing. CI does
   **not** decide whether the bump should be PATCH, MINOR, or MAJOR — that is
   a product/review decision made by the PR author and reviewer.
+
+### Pre-tag release repair
+
+A version on `main` is not actually "released" until its matching `vX.Y.Z`
+tag is pushed (see `Creating and pushing the vX.Y.Z tag` above) — until then
+it is an unpublished release candidate that may still need fixes.
+
+To allow those fixes without forcing a version bump for every follow-up
+commit, `scripts/release/validateVersion.mjs` allows a PR into `main` to keep
+the **same** version as `main`'s current version only when the matching tag
+does not exist yet:
+
+- PR version `==` `main` version, and tag `vX.Y.Z` (`X.Y.Z` = that version)
+  does **not** exist yet: passes, as a pre-tag release repair.
+- PR version `==` `main` version, and tag `vX.Y.Z` already exists: fails —
+  that version is already published, so a new PR must bump the version.
+- PR version `<` `main` version: always fails.
+- This exception applies only to PRs targeting `main`. A PR into `develop`
+  with the same version as `develop`'s current version always fails,
+  regardless of tag state — `develop` is never tagged.
+
+Once the tag is created, every subsequent change to `main` requires a new
+version bump; the same-version exception no longer applies for that version.
 
 ### Choosing PATCH / MINOR / MAJOR
 

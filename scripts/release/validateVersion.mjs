@@ -82,6 +82,21 @@ export function readVersionAtRef(ref, packageJsonPath = 'package.json', spawn = 
   }
 }
 
+/**
+ * Check whether a Git tag exists locally (e.g. as fetched by a full-history checkout).
+ * @param tag Tag name, e.g. `v0.1.0`.
+ * @param spawn Injectable `spawnSync`, for tests.
+ * @returns `true` when the tag ref resolves.
+ */
+export function tagExists(tag, spawn = spawnSync) {
+  const result = spawn('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  return result.status === 0;
+}
+
 function getFlagValue(argv, flag) {
   const index = argv.indexOf(flag);
   return index !== -1 ? argv[index + 1] : undefined;
@@ -205,12 +220,27 @@ export function validateRelease({
         errors.push(
           `${context.baseRef} package.json version "${baseVersionRaw}" is not valid SemVer.`,
         );
-      } else if (compareSemver(currentVersion, baseVersion) <= 0) {
-        errors.push(
-          `Version must increase for this PR: package.json is ${currentVersionRaw}, ${context.baseRef} is ${baseVersionRaw}. Bump package.json version (docs/release.md#choosing-patch--minor--major).`,
-        );
       } else {
-        notices.push(`version bump confirmed: ${baseVersionRaw} -> ${currentVersionRaw}`);
+        const cmp = compareSemver(currentVersion, baseVersion);
+        const releaseTag = `v${currentVersionRaw}`;
+        const isMainCompare = context.targetBranch === 'main';
+        const isUnreleasedRepair = cmp === 0 && isMainCompare && !tagExists(releaseTag, spawn);
+
+        if (cmp > 0) {
+          notices.push(`version bump confirmed: ${baseVersionRaw} -> ${currentVersionRaw}`);
+        } else if (isUnreleasedRepair) {
+          notices.push(
+            `same version as ${context.baseRef} (${currentVersionRaw}) allowed: tag ${releaseTag} does not exist yet, this is a pre-tag release repair (docs/release.md#pre-tag-release-repair).`,
+          );
+        } else if (cmp === 0 && isMainCompare) {
+          errors.push(
+            `Version must increase for this PR: package.json is ${currentVersionRaw}, matches ${context.baseRef}, and tag ${releaseTag} already exists, so ${currentVersionRaw} is already published. Bump package.json version (docs/release.md#choosing-patch--minor--major).`,
+          );
+        } else {
+          errors.push(
+            `Version must increase for this PR: package.json is ${currentVersionRaw}, ${context.baseRef} is ${baseVersionRaw}. Bump package.json version (docs/release.md#choosing-patch--minor--major).`,
+          );
+        }
       }
     }
   } else if (context.kind === 'tag') {
