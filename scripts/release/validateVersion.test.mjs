@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   compareSemver,
+  isReleaseSyncBackBranch,
   parseSemver,
   readPackageVersion,
   readVersionAtRef,
@@ -94,6 +95,25 @@ describe('tagExists', () => {
   });
 });
 
+describe('isReleaseSyncBackBranch', () => {
+  it('matches a sync-back branch whose embedded version matches', () => {
+    expect(isReleaseSyncBackBranch('sync/main-0.1.0-back-to-develop', '0.1.0')).toBe(true);
+  });
+
+  it('rejects a sync-back branch whose embedded version does not match', () => {
+    expect(isReleaseSyncBackBranch('sync/main-0.1.0-back-to-develop', '0.2.0')).toBe(false);
+  });
+
+  it('rejects an ordinary feature/fix branch name', () => {
+    expect(isReleaseSyncBackBranch('feature/add-widget', '0.1.0')).toBe(false);
+    expect(isReleaseSyncBackBranch('fix/broken-thing', '0.1.0')).toBe(false);
+  });
+
+  it('rejects an undefined branch name', () => {
+    expect(isReleaseSyncBackBranch(undefined, '0.1.0')).toBe(false);
+  });
+});
+
 describe('resolveVersionContext', () => {
   it('prefers an explicit --tag flag', () => {
     expect(resolveVersionContext({}, ['--tag', 'v0.1.0'])).toEqual({
@@ -133,7 +153,49 @@ describe('resolveVersionContext', () => {
         },
         [],
       ),
-    ).toEqual({ kind: 'compare', baseRef: 'origin/develop', targetBranch: 'develop' });
+    ).toEqual({
+      kind: 'compare',
+      baseRef: 'origin/develop',
+      targetBranch: 'develop',
+      headBranch: undefined,
+    });
+  });
+
+  it('carries the PR head branch from GITHUB_HEAD_REF in GitHub Actions', () => {
+    expect(
+      resolveVersionContext(
+        {
+          GITHUB_ACTIONS: 'true',
+          GITHUB_EVENT_NAME: 'pull_request',
+          GITHUB_BASE_REF: 'develop',
+          GITHUB_HEAD_REF: 'sync/main-0.1.0-back-to-develop',
+        },
+        [],
+      ),
+    ).toEqual({
+      kind: 'compare',
+      baseRef: 'origin/develop',
+      targetBranch: 'develop',
+      headBranch: 'sync/main-0.1.0-back-to-develop',
+    });
+  });
+
+  it('carries an explicit --head flag alongside --base', () => {
+    expect(
+      resolveVersionContext({}, [
+        '--base',
+        'origin/develop',
+        '--target',
+        'develop',
+        '--head',
+        'sync/main-0.1.0-back-to-develop',
+      ]),
+    ).toEqual({
+      kind: 'compare',
+      baseRef: 'origin/develop',
+      targetBranch: 'develop',
+      headBranch: 'sync/main-0.1.0-back-to-develop',
+    });
   });
 
   it('detects a push to main in GitHub Actions', () => {
@@ -253,6 +315,78 @@ describe('validateRelease', () => {
     deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
     const result = validateRelease({
       argv: ['--base', 'origin/develop', '--target', 'develop'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('Version must increase for this PR'),
+    );
+  });
+
+  it('passes a same-version release sync-back PR from main into develop', () => {
+    const deps = baseDeps();
+    deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.1.0', tagFound: false });
+    const result = validateRelease({
+      argv: [
+        '--base',
+        'origin/develop',
+        '--target',
+        'develop',
+        '--head',
+        'sync/main-0.1.0-back-to-develop',
+      ],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(true);
+    expect(deps.logError).not.toHaveBeenCalled();
+  });
+
+  it('fails a same-version PR into develop from an ordinary feature branch', () => {
+    const deps = baseDeps();
+    deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.1.0', tagFound: false });
+    const result = validateRelease({
+      argv: ['--base', 'origin/develop', '--target', 'develop', '--head', 'feature/add-widget'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('Version must increase for this PR'),
+    );
+  });
+
+  it('fails a same-version PR into develop from an ordinary fix branch', () => {
+    const deps = baseDeps();
+    deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.1.0', tagFound: false });
+    const result = validateRelease({
+      argv: ['--base', 'origin/develop', '--target', 'develop', '--head', 'fix/broken-thing'],
+      env: {},
+      deps,
+    });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('Version must increase for this PR'),
+    );
+  });
+
+  it('fails a release sync-back branch whose embedded version does not match package.json', () => {
+    const deps = baseDeps();
+    deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.0' }));
+    deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+    const result = validateRelease({
+      argv: [
+        '--base',
+        'origin/develop',
+        '--target',
+        'develop',
+        '--head',
+        'sync/main-0.1.0-back-to-develop',
+      ],
       env: {},
       deps,
     });

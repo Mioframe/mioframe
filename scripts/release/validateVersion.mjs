@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 const SEMVER_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
 const TAG_PATTERN = /^v(\d+\.\d+\.\d+)$/;
+const SYNC_BACK_BRANCH_PATTERN = /^sync\/main-(\d+\.\d+\.\d+)-back-to-develop$/;
 
 /**
  * Parse a strict `X.Y.Z` SemVer version (no pre-release/build metadata).
@@ -103,6 +104,23 @@ function getFlagValue(argv, flag) {
 }
 
 /**
+ * Check whether `branchName` is a release sync-back branch (e.g.
+ * `sync/main-0.1.0-back-to-develop`) whose embedded version matches
+ * `expectedVersion`. See `docs/release.md#release-sync-back`.
+ * @param branchName PR head branch name, or `undefined` outside PR context.
+ * @param expectedVersion The current `package.json` version.
+ * @returns `true` when `branchName` names a sync-back of `expectedVersion`.
+ */
+export function isReleaseSyncBackBranch(branchName, expectedVersion) {
+  if (typeof branchName !== 'string') {
+    return false;
+  }
+
+  const match = SYNC_BACK_BRANCH_PATTERN.exec(branchName);
+  return match !== null && match[1] === expectedVersion;
+}
+
+/**
  * Resolve the release-version-validation context from CLI flags or CI
  * environment variables. CLI flags always win, so the check can be run
  * locally against an explicit ref or tag.
@@ -120,7 +138,12 @@ export function resolveVersionContext(env = process.env, argv = process.argv.sli
   const explicitBase = getFlagValue(argv, '--base');
 
   if (explicitBase) {
-    return { kind: 'compare', baseRef: explicitBase, targetBranch: getFlagValue(argv, '--target') };
+    return {
+      kind: 'compare',
+      baseRef: explicitBase,
+      targetBranch: getFlagValue(argv, '--target'),
+      headBranch: getFlagValue(argv, '--head'),
+    };
   }
 
   if (env.GITHUB_ACTIONS !== 'true') {
@@ -136,6 +159,7 @@ export function resolveVersionContext(env = process.env, argv = process.argv.sli
       kind: 'compare',
       baseRef: `origin/${env.GITHUB_BASE_REF}`,
       targetBranch: env.GITHUB_BASE_REF,
+      headBranch: env.GITHUB_HEAD_REF,
     };
   }
 
@@ -158,7 +182,10 @@ function requiresReleaseNotes(context) {
  * Validate release/version metadata: `package.json` version format, a
  * monotonic bump against the PR base branch, a tag-matches-version check on
  * tag pushes, and release notes/checklist existence ahead of a `main`
- * promotion. See `docs/release.md` for the policy this enforces.
+ * promotion. A narrow same-version exception applies to release sync-back
+ * PRs from `main` into `develop` (see `isReleaseSyncBackBranch` and
+ * `docs/release.md#release-sync-back`). See `docs/release.md` for the full
+ * policy this enforces.
  * @param [options] Validation inputs.
  * @param [options.argv] Raw CLI arguments.
  * @param [options.env] Process environment.
@@ -224,13 +251,22 @@ export function validateRelease({
         const cmp = compareSemver(currentVersion, baseVersion);
         const releaseTag = `v${currentVersionRaw}`;
         const isMainCompare = context.targetBranch === 'main';
+        const isDevelopCompare = context.targetBranch === 'develop';
         const isUnreleasedRepair = cmp === 0 && isMainCompare && !tagExists(releaseTag, spawn);
+        const isSyncBackException =
+          cmp === 0 &&
+          isDevelopCompare &&
+          isReleaseSyncBackBranch(context.headBranch, currentVersionRaw);
 
         if (cmp > 0) {
           notices.push(`version bump confirmed: ${baseVersionRaw} -> ${currentVersionRaw}`);
         } else if (isUnreleasedRepair) {
           notices.push(
             `same version as ${context.baseRef} (${currentVersionRaw}) allowed: tag ${releaseTag} does not exist yet, this is a pre-tag release repair (docs/release.md#pre-tag-release-repair).`,
+          );
+        } else if (isSyncBackException) {
+          notices.push(
+            `same version as ${context.baseRef} (${currentVersionRaw}) allowed: release sync-back PR from main via head branch "${context.headBranch}" (docs/release.md#release-sync-back).`,
           );
         } else if (cmp === 0 && isMainCompare) {
           errors.push(

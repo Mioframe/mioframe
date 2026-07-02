@@ -43,11 +43,15 @@ reason if not run:
 
 `develop` is the active development branch; `main` is the stable public
 branch; stable publish only happens from `main`. Every PR into `develop` or
-`main` must bump `package.json` version. `pnpm verify` stays the focused
-development gate; `pnpm verify:release` (`node scripts/verify.mjs --full`)
-is the full-project release gate required for `main`. See `docs/release.md`
-for the full policy and `docs/release-checklist.md` for the promotion and
-hotfix checklist.
+`main` must bump `package.json` version, with narrow, test-covered
+exceptions for pre-tag release repairs and release sync-back PRs from `main`
+into `develop` (see `docs/release.md#pre-tag-release-repair` and
+`docs/release.md#release-sync-back`). `develop <-> main` synchronization
+PRs must use a merge commit, never squash or rebase. `pnpm verify` stays the
+focused development gate; `pnpm verify:release`
+(`node scripts/verify.mjs --full`) is the full-project release gate required
+for `main`. See `docs/release.md` for the full policy and
+`docs/release-checklist.md` for the promotion and hotfix checklist.
 
 ## Contains
 
