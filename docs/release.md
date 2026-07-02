@@ -172,14 +172,29 @@ are not covered by `release-version`:
 - `BASE_URL`, if set, is not a PR-preview path and matches the release base
   path;
 - `VITE_GOOGLE_CLIENT_ID`, `VITE_SENTRY_DSN`, and `SENTRY_AUTH_TOKEN` are
-  each reported as set/optional-and-unset, and fail clearly if set to an
-  empty string (a silent misconfiguration, distinct from intentionally
-  unset);
+  optional integrations, not required for a valid public release. Each is
+  reported as set/optional-and-unset. Outside GitHub Actions, an explicitly
+  empty value fails clearly (a silent misconfiguration, distinct from
+  intentionally unset). Inside GitHub Actions (`GITHUB_ACTIONS=true`), an
+  empty value is logged as a notice, not an error: GitHub Actions expands
+  `${{ secrets.X }}` to an empty string when a secret is not configured, and
+  there is no way inside the job to distinguish that from an explicit empty
+  value, so treating it as fatal there would make an absent optional secret
+  block the release gate;
 - partial Sentry configuration (DSN without auth token, or vice versa) is
   reported explicitly so the resulting behavior is not a silent surprise.
 
 It deliberately does not read or assert on secret values themselves — only
 presence/absence and mode consistency.
+
+The `Full release verification` step in `.github/workflows/release.yml`
+(`release-gate` job) does not pass `VITE_GOOGLE_CLIENT_ID`, `VITE_SENTRY_DSN`,
+or `SENTRY_AUTH_TOKEN` at all, since `pnpm verify:release` does not require
+them — so in practice these keys are simply absent from that step's
+environment, not empty. The GitHub Actions empty-value notice above exists
+as a safety net for any other invocation (e.g. `deploy-stable`'s build step,
+which does pass these secrets since the build uses them) so an unconfigured
+optional secret never fails release-config validation there either.
 
 ## Release smoke coverage
 

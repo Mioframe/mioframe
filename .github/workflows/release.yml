@@ -47,11 +47,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # VITE_GOOGLE_CLIENT_ID, VITE_SENTRY_DSN, and SENTRY_AUTH_TOKEN are
+      # deliberately not set here: they are optional integrations, not
+      # required by pnpm verify:release, and passing them as secrets would
+      # expand to empty strings when unconfigured (see docs/release.md#release-config-validation).
+      # They are still passed to the deploy-stable build step below, which
+      # does use them when configured.
       - name: Full release verification
-        env:
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm verify:release --verbose
 
       - name: Upload release verification logs

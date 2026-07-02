@@ -83,12 +83,25 @@ describe('validateReleaseConfig', () => {
     expect(result).toBe(true);
   });
 
-  it('fails when an optional env var is set but empty', () => {
+  it('fails when an optional env var is set but empty outside GitHub Actions', () => {
     const deps = baseDeps();
     const result = validateReleaseConfig({ env: { VITE_SENTRY_DSN: '' }, deps });
     expect(result).toBe(false);
     expect(deps.logError).toHaveBeenCalledWith(
       expect.stringContaining('VITE_SENTRY_DSN is set but empty'),
+    );
+  });
+
+  it('does not fail when an optional env var is set but empty inside GitHub Actions', () => {
+    const deps = baseDeps();
+    const result = validateReleaseConfig({
+      env: { GITHUB_ACTIONS: 'true', VITE_SENTRY_DSN: '' },
+      deps,
+    });
+    expect(result).toBe(true);
+    expect(deps.logError).not.toHaveBeenCalled();
+    expect(deps.log).toHaveBeenCalledWith(
+      expect.stringContaining('VITE_SENTRY_DSN: set but empty in GitHub Actions'),
     );
   });
 

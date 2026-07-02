@@ -31,7 +31,11 @@ this checklist enforces.
         version greater than `main`'s current version).
   - [ ] release config validation passed (base path consistency, PWA not
         disabled, no preview-only settings, env/config presence — see
-        `docs/release.md#release-config-validation`).
+        `docs/release.md#release-config-validation`). Absent optional
+        Google/Sentry integrations do not block this — only real
+        release-mode misconfiguration (wrong base path, PWA disabled, a
+        PR-preview base path, or an explicitly empty optional value outside
+        GitHub Actions) does.
 
 ## After merging into `main`
 

@@ -110,6 +110,8 @@ export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
     );
   }
 
+  const isGithubActions = env.GITHUB_ACTIONS === 'true';
+
   for (const key of OPTIONAL_ENV_KEYS) {
     if (!(key in env)) {
       notices.push(
@@ -119,6 +121,19 @@ export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
     }
 
     if (env[key].trim() === '') {
+      if (isGithubActions) {
+        // GitHub Actions expands `${{ secrets.X }}` to an empty string when the
+        // secret is not configured, and there is no way from inside the job to
+        // tell that apart from an explicitly empty value. Treat it the same as
+        // "not set" here instead of failing the release gate for an optional
+        // integration that was never configured.
+        notices.push(
+          `${key}: set but empty in GitHub Actions (treated as not configured, not an error — ` +
+            'GitHub Actions cannot distinguish an absent secret from an explicit empty value)',
+        );
+        continue;
+      }
+
       errors.push(
         `${key} is set but empty. An empty value silently disables the dependent feature without a clear signal — ` +
           'either remove the variable/secret entirely, or provide a real value.',
