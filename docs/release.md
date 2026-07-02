@@ -26,10 +26,27 @@ fix/*, hotfix/* -> main -> develop
   `develop` into `main`.
 - **Hotfix flow**: for a defect that must be fixed directly on the stable
   branch, branch from `main` as `fix/<name>` or `hotfix/<name>`, open a PR
-  into `main`. After the hotfix ships, merge (or cherry-pick) the same change
-  back into `develop` so the two branches do not diverge.
+  into `main`. After the hotfix ships, merge the same change back into
+  `develop` (a release sync-back PR, see below) so the two branches do not
+  diverge.
 - Stable publish only ever happens from `main`. `develop` never deploys the
   stable build; it may still build/deploy PR previews for review.
+
+### Merge strategy for `develop` <-> `main` synchronization
+
+`develop` -> `main` promotion PRs and `main` -> `develop` release sync-back
+PRs **must be merged with a merge commit, not squash or rebase**. Ordinary
+feature/fix PRs into `develop` may keep the repository's normal merge policy
+unless another rule says otherwise.
+
+- **Why**: `develop` and `main` are both long-lived branches. Squashing or
+  rebasing a promotion/sync-back merge rewrites history and breaks shared
+  ancestry between the two branches. The next synchronization in either
+  direction then has no common base for the same content, which Git reports
+  as spurious conflicts even though nothing actually diverged.
+- A `develop -> main` PR that was squash/rebase-merged is the reason a later
+  `main -> develop` sync-back PR conflicts (see `Release sync-back` below) —
+  do not repeat the mistake in the sync-back PR itself.
 
 ## Versioning
 
@@ -48,10 +65,74 @@ fix/*, hotfix/* -> main -> develop
   `scripts/release/validateVersion.mjs`, run as the `release-version` /
   version-bump check).
 - **Every PR into `main`** (promotion or hotfix) must also carry a version
-  strictly above the version currently on `main`.
+  strictly above the version currently on `main`, with one narrow exception:
+  see `Pre-tag release repair` below.
 - CI verifies that a bump exists and is monotonically increasing. CI does
   **not** decide whether the bump should be PATCH, MINOR, or MAJOR — that is
   a product/review decision made by the PR author and reviewer.
+
+### Pre-tag release repair
+
+A version on `main` is not actually "released" until its matching `vX.Y.Z`
+tag is pushed (see `Creating and pushing the vX.Y.Z tag` above) — until then
+it is an unpublished release candidate that may still need fixes.
+
+To allow those fixes without forcing a version bump for every follow-up
+commit, `scripts/release/validateVersion.mjs` allows a PR into `main` to keep
+the **same** version as `main`'s current version only when the matching tag
+does not exist yet:
+
+- PR version `==` `main` version, and tag `vX.Y.Z` (`X.Y.Z` = that version)
+  does **not** exist yet: passes, as a pre-tag release repair.
+- PR version `==` `main` version, and tag `vX.Y.Z` already exists: fails —
+  that version is already published, so a new PR must bump the version.
+- PR version `<` `main` version: always fails.
+- This exception applies only to PRs targeting `main`. A PR into `develop`
+  with the same version as `develop`'s current version always fails,
+  regardless of tag state — `develop` is never tagged — **except** for the
+  narrow release sync-back exception described below.
+
+Once the tag is created, every subsequent change to `main` requires a new
+version bump; the same-version exception no longer applies for that version.
+
+### Release sync-back
+
+A release sync-back PR merges already-released `main` changes (typically a
+hotfix) back into `develop` so the two branches do not diverge. It is a
+maintenance path, not new product work, so it is exempt from the ordinary
+`develop` version-bump requirement — but only when it is unambiguously a
+sync-back, not an ordinary feature/fix PR in disguise.
+
+`scripts/release/validateVersion.mjs` allows a PR into `develop` to keep the
+**same** version as `develop`'s current version only when **all** of the
+following hold:
+
+- the PR targets `develop`;
+- the current `package.json` version equals `develop`'s current version
+  (no bump, and no downgrade);
+- the PR head branch name matches `sync/main-X.Y.Z-back-to-develop`, where
+  `X.Y.Z` is the release being synchronized back (see
+  `isReleaseSyncBackBranch` in `scripts/release/validateVersion.mjs`);
+- `X.Y.Z` in the branch name matches the current `package.json` version
+  exactly.
+
+If the branch name does not match this pattern, or the embedded version
+does not match `package.json`, the PR is treated as an ordinary PR into
+`develop` and must bump the version like any other change. This keeps the
+exception narrow: it is not possible to open an arbitrary same-version PR
+into `develop` by picking any branch name.
+
+A release sync-back PR:
+
+- must not create a new release or tag;
+- must be merged with a merge commit, not squash or rebase (see
+  `Merge strategy for develop <-> main synchronization` above), to preserve
+  shared ancestry with `main`;
+- does not get a PR preview deployment — `deploy-preview` in
+  `.github/workflows/verify.yml` is skipped for branches matching
+  `sync/main-*-back-to-develop`, since the PR only synchronizes already-
+  published `main` changes back into `develop` and changes no runtime app
+  behavior. The `verify` job (including version validation) still runs.
 
 ### Choosing PATCH / MINOR / MAJOR
 
