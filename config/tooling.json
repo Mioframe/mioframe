@@ -5,6 +5,12 @@
   "appPreview": {
     "port": 4173
   },
+  "release": {
+    "basePath": "/mioframe/",
+    "artifactServer": {
+      "port": 4174
+    }
+  },
   "storybook": {
     "devServer": {
       "port": 6006

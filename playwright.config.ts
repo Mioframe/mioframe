@@ -12,7 +12,7 @@ const previewURLPattern = new RegExp(
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testIgnore: ['visual/**'],
+  testIgnore: ['visual/**', 'release/**'],
   // Tests share origin-bound OPFS state, so file-level parallelism is intentionally disabled.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

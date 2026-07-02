@@ -1,0 +1,35 @@
+name: release-tag
+
+# Lightweight validation for vX.Y.Z tag pushes: confirms the tag matches
+# package.json's version. main was already validated by the `release` workflow
+# before the tag was created, so this does not rerun the full release gate
+# (pnpm verify:release) — no e2e, visual, mutation, artifact, or deploy steps.
+# See docs/release.md.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Validate tag matches package.json version
+        run: node scripts/release/validateVersion.mjs

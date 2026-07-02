@@ -29,7 +29,9 @@ coverage/
 storybook-static/
 reports/mutation/
 playwright-report/
+playwright-report-release/
 test-results/
+pages-staging/
 .sisyphus/
 .opencode/
 # Ignore local Claude state but allow project-level compatibility files.
