@@ -22,8 +22,7 @@ this checklist enforces.
       and verification sections.
 - [ ] The `release` workflow run is green:
   - [ ] `pnpm verify:release` full-project gate passed (format, lint,
-        type-check, unit tests, full app e2e, full visual regression,
-        release mutation subset).
+        type-check, unit tests, full app e2e, full visual regression).
   - [ ] production build and artifact validation passed.
   - [ ] release smoke coverage (first-user and returning-user flows)
         passed.
@@ -60,7 +59,7 @@ this checklist enforces.
       infrastructure issue, re-run the workflow) — do not disable checks or
       force-merge around a failing release gate.
 - [ ] If the gate reveals a defect only visible at full-project scope
-      (e.g. a mutation-test regression outside the PR's changed files),
+      (e.g. a lint or type-check failure outside the PR's changed files),
       treat it as a release blocker and fix it before promoting.
 
 ## Hotfix-specific steps

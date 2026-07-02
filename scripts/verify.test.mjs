@@ -88,7 +88,13 @@ describe('buildCommands full mode', () => {
     expect(runByLabel['unit-tests']).toBe('run');
     expect(runByLabel.e2e).toBe('run');
     expect(runByLabel.visual).toBe('run');
-    expect(runByLabel.mutation).toBe('run');
+  });
+
+  it('does not run mutation testing in full/release mode', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('mutation');
   });
 
   it('targets the whole project instead of a changed-file list', () => {
@@ -100,7 +106,6 @@ describe('buildCommands full mode', () => {
     expect(byLabel.oxlint.args).toContain('.');
     expect(byLabel.eslint.args).toContain('.');
     expect(byLabel['unit-tests'].args).toEqual(['exec', 'vitest', 'run']);
-    expect(byLabel.mutation.args).toEqual(['exec', 'stryker', 'run']);
   });
 
   it('adds the release-only checks with their own labels and commands', () => {
@@ -133,6 +138,29 @@ describe('buildCommands full mode', () => {
     expect(labels).not.toContain('build');
     expect(labels).not.toContain('artifact');
     expect(labels).not.toContain('release-smoke');
+  });
+});
+
+describe('buildCommands mutation scope', () => {
+  it('still adds a scoped mutation run outside full mode when mutation scope is non-empty', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+    const mutationEntry = commands.find((entry) => entry.label === 'mutation');
+
+    expect(mutationEntry.kind).toBe('run');
+    expect(mutationEntry.args).toEqual([
+      'exec',
+      'stryker',
+      'run',
+      '-m',
+      'src/shared/lib/cache/index.ts',
+    ]);
+  });
+
+  it('skips mutation outside full mode when mutation scope is empty', () => {
+    const commands = buildCommands([], { fullMode: false });
+    const mutationEntry = commands.find((entry) => entry.label === 'mutation');
+
+    expect(mutationEntry.kind).toBe('skipped');
   });
 });
 

@@ -1355,17 +1355,10 @@ export function buildCommands(changedFiles, { fullMode = isFullMode } = {}) {
     });
   }
 
-  if (fullMode) {
-    // No `-m` scope override: runs the release high-risk subset already
-    // curated by stryker.config.mjs's `mutate` list (excludes src/shared/ui).
-    commands.push({
-      kind: 'run',
-      label: 'mutation',
-      command: 'pnpm',
-      args: ['exec', 'stryker', 'run'],
-      weight: classifyCommandWeight({ label: 'mutation' }),
-    });
-  } else if (mutationScope.length > 0) {
+  // Mutation testing is a test-design/PR-quality tool, not a release-publish
+  // blocker: it is expensive/slow and does not validate the production
+  // artifact, so it never runs in full/release mode (pnpm verify:release).
+  if (!fullMode && mutationScope.length > 0) {
     commands.push({
       kind: 'run',
       label: 'mutation',
@@ -1373,7 +1366,7 @@ export function buildCommands(changedFiles, { fullMode = isFullMode } = {}) {
       args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
       weight: classifyCommandWeight({ label: 'mutation' }),
     });
-  } else {
+  } else if (!fullMode) {
     commands.push({
       kind: 'skipped',
       label: 'mutation',

@@ -84,8 +84,8 @@ focused and the full gate, and tag pushes never rerun the full gate:
 - **`release-tag` workflow** (`.github/workflows/release-tag.yml`): `vX.Y.Z`
   tag pushes only. Runs a single lightweight check
   (`node scripts/release/validateVersion.mjs`) confirming the tag matches
-  `package.json` version — it does not rerun e2e, visual, mutation, artifact,
-  or deploy steps, since `main` was already validated by the `release`
+  `package.json` version — it does not rerun e2e, visual, artifact, or
+  deploy steps, since `main` was already validated by the `release`
   workflow before the tag was created.
 
 ## What remains a manual product/release decision
@@ -110,8 +110,6 @@ gate. It ignores changed-file scope and always runs, for the whole project:
 - the full `vitest run` unit/component suite;
 - full app Playwright E2E smoke coverage;
 - full approved visual regression coverage;
-- mutation testing over the defined release high-risk subset (the pure
-  logic covered by `stryker.config.mjs`, excluding `src/shared/ui`);
 - production build and artifact validation (`docs/release.md#production-artifact-validation`);
 - release smoke coverage (`docs/release.md#release-smoke-coverage`);
 - release/version metadata validation (`scripts/release/validateVersion.mjs`);
@@ -121,6 +119,13 @@ gate. It ignores changed-file scope and always runs, for the whole project:
 Full mode never reports a check as skipped because there were no changed
 files. Use `pnpm verify --full --only <label>` to focus on a single release
 check while keeping the release-scope framing.
+
+Mutation testing (`pnpm test:mutate`, or scoped mutation inside ordinary
+`pnpm verify`) remains available for test design and PR-quality work, but it
+is not part of the release gate: it is slow, and it validates test
+robustness rather than the published artifact. `pnpm verify --full` and
+`pnpm verify:release` do not run it, and `pnpm verify --full --only
+mutation` is not a valid release check.
 
 ## Production artifact validation
 
@@ -230,8 +235,8 @@ apply these manually in the GitHub UI):
 ## What blocks a release
 
 - Any failing check inside `pnpm verify:release` (format, lint, type-check,
-  unit, e2e, visual, mutation, build, artifact, release smoke, version
-  metadata, release config).
+  unit, e2e, visual, build, artifact, release smoke, version metadata,
+  release config).
 - A missing or non-monotonic version bump.
 - A tag that does not match `package.json` version.
 - Missing release notes for the target version
