@@ -1,14 +1,20 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { publishStable } from './publishStable.mjs';
+vi.mock('./lib/ghPagesBranch.mjs', () => ({
+  withGhPagesBranch: vi.fn(async () => {}),
+}));
+
+const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
+const { publishStable } = await import('./publishStable.mjs');
 
 let distDir = '';
 
 beforeEach(() => {
   distDir = mkdtempSync(join(tmpdir(), 'pages-dist-'));
+  vi.mocked(withGhPagesBranch).mockClear();
 });
 
 afterEach(() => {
@@ -20,7 +26,7 @@ describe('publishStable distDir validation', () => {
     await expect(
       publishStable(['--dist', '/nonexistent/dist-12345'], {
         GITHUB_TOKEN: 'token',
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('dist directory does not exist');
   });
@@ -29,7 +35,7 @@ describe('publishStable distDir validation', () => {
     await expect(
       publishStable([], {
         GITHUB_TOKEN: 'token',
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('Usage:');
   });
@@ -37,8 +43,32 @@ describe('publishStable distDir validation', () => {
   it('throws when GITHUB_TOKEN is missing', async () => {
     await expect(
       publishStable(['--dist', distDir], {
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('GITHUB_TOKEN is required');
+  });
+
+  it('throws when PAGES_REPOSITORY is missing', async () => {
+    await expect(
+      publishStable(['--dist', distDir], {
+        GITHUB_TOKEN: 'token',
+      }),
+    ).rejects.toThrow('PAGES_REPOSITORY is required');
+  });
+});
+
+describe('publishStable target repository', () => {
+  it('publishes to PAGES_REPOSITORY and ignores GITHUB_REPOSITORY', async () => {
+    await publishStable(['--dist', distDir], {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'Mioframe/mioframe.github.io',
+      // The reserved Actions default env var; must never be used as the
+      // target Pages repository even when set to the source repository.
+      GITHUB_REPOSITORY: 'Mioframe/mioframe',
+    });
+
+    expect(withGhPagesBranch).toHaveBeenCalledWith(
+      expect.objectContaining({ repository: 'Mioframe/mioframe.github.io' }),
+    );
   });
 });

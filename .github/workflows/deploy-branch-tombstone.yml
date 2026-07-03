@@ -57,10 +57,11 @@ jobs:
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io
+          permission-contents: write
 
       - name: Tombstone removed branch deployment
         if: steps.slug.outputs.slug != ''
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
-          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+          PAGES_REPOSITORY: Mioframe/mioframe.github.io
         run: node scripts/pages/publishBranchTombstone.mjs --slug ${{ steps.slug.outputs.slug }}

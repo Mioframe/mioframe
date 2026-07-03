@@ -18,6 +18,7 @@ let outputFile = '';
 beforeEach(() => {
   workDir = mkdtempSync(join(tmpdir(), 'pages-work-'));
   outputFile = join(mkdtempSync(join(tmpdir(), 'pages-output-')), 'github-output.txt');
+  vi.mocked(withGhPagesBranch).mockClear();
 });
 
 afterEach(() => {
@@ -28,7 +29,7 @@ afterEach(() => {
 describe('publishBranchTombstone argument validation', () => {
   it('throws when --slug argument is missing', async () => {
     await expect(
-      publishBranchTombstone([], { GITHUB_TOKEN: 'token', GITHUB_REPOSITORY: 'owner/repo' }),
+      publishBranchTombstone([], { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' }),
     ).rejects.toThrow('Usage:');
   });
 
@@ -36,15 +37,37 @@ describe('publishBranchTombstone argument validation', () => {
     await expect(
       publishBranchTombstone(['--slug', '../etc'], {
         GITHUB_TOKEN: 'token',
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('Invalid branch slug');
   });
 
   it('throws when GITHUB_TOKEN is missing', async () => {
     await expect(
-      publishBranchTombstone(['--slug', 'develop'], { GITHUB_REPOSITORY: 'owner/repo' }),
+      publishBranchTombstone(['--slug', 'develop'], { PAGES_REPOSITORY: 'owner/pages-repo' }),
     ).rejects.toThrow('GITHUB_TOKEN is required');
+  });
+
+  it('throws when PAGES_REPOSITORY is missing', async () => {
+    await expect(
+      publishBranchTombstone(['--slug', 'develop'], { GITHUB_TOKEN: 'token' }),
+    ).rejects.toThrow('PAGES_REPOSITORY is required');
+  });
+});
+
+describe('publishBranchTombstone target repository', () => {
+  it('tombstones on PAGES_REPOSITORY and ignores GITHUB_REPOSITORY', async () => {
+    await publishBranchTombstone(['--slug', 'develop'], {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'Mioframe/mioframe.github.io',
+      // The reserved Actions default env var; must never be used as the
+      // target Pages repository even when set to the source repository.
+      GITHUB_REPOSITORY: 'Mioframe/mioframe',
+    });
+
+    expect(withGhPagesBranch).toHaveBeenCalledWith(
+      expect.objectContaining({ repository: 'Mioframe/mioframe.github.io' }),
+    );
   });
 });
 
@@ -52,7 +75,7 @@ describe('publishBranchTombstone behavior', () => {
   it('is a no-op when the branch slot does not exist', async () => {
     const tombstoned = await publishBranchTombstone(['--slug', 'develop'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
       GITHUB_OUTPUT: outputFile,
     });
 
@@ -67,7 +90,7 @@ describe('publishBranchTombstone behavior', () => {
 
     const tombstoned = await publishBranchTombstone(['--slug', 'develop'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
       GITHUB_OUTPUT: outputFile,
     });
 
@@ -102,7 +125,7 @@ describe('publishBranchTombstone behavior', () => {
 
     await publishBranchTombstone(['--slug', 'develop'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
     });
 
     expect(readFileSync(join(workDir, 'branch', 'other', 'index.html'), 'utf8')).toBe('<other/>');
@@ -119,7 +142,7 @@ describe('publishBranchTombstone behavior', () => {
 
     await publishBranchTombstone(['--slug', 'develop'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
     });
 
     const tmpEntriesAfter = readdirSync(tmpdir()).filter((name) =>
@@ -147,7 +170,7 @@ describe('publishBranchTombstone behavior', () => {
     await expect(
       publishBranchTombstone(['--slug', 'develop'], {
         GITHUB_TOKEN: 'token',
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('simulated publish failure after temp dir creation');
 
