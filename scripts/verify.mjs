@@ -9,6 +9,7 @@ import { applyProcessResult } from './lib/processResult.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
+import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 
 applyProjectEnv();
 
@@ -348,6 +349,8 @@ function getChangedFiles() {
     return {
       changedFiles: uniqSorted(cliFilesOverride),
       scope: 'explicit-files',
+      // No reliable single base ref for an explicit --files list.
+      packageJsonOldRef: null,
     };
   }
 
@@ -355,6 +358,7 @@ function getChangedFiles() {
   const envBaseRef = getVerifyBaseRef();
   let changedFiles = [];
   let scope = 'local-changes';
+  let packageJsonOldRef = 'HEAD';
 
   if (githubBaseRef) {
     const mergeBase = runGitCommand(['merge-base', 'HEAD', `origin/${githubBaseRef}`], {
@@ -369,6 +373,7 @@ function getChangedFiles() {
       '--',
     ]);
     scope = `github-base origin/${githubBaseRef}`;
+    packageJsonOldRef = mergeBase;
   } else if (cliBaseRef || envBaseRef) {
     const baseRef = cliBaseRef ?? envBaseRef;
     ensureBaseRefExists(baseRef);
@@ -382,6 +387,7 @@ function getChangedFiles() {
       ...runGitCommand(['ls-files', '--others', '--exclude-standard']),
     ];
     scope = `local-base ${baseRef}`;
+    packageJsonOldRef = forkPoint;
   } else {
     changedFiles = [
       ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
@@ -398,6 +404,7 @@ function getChangedFiles() {
         '--',
       ]);
       scope = 'local-last-commit';
+      packageJsonOldRef = 'HEAD~1';
     }
   }
 
@@ -406,6 +413,7 @@ function getChangedFiles() {
       changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
     ),
     scope,
+    packageJsonOldRef,
   };
 }
 
@@ -558,12 +566,14 @@ function isSharedUiFile(filePath) {
   return filePath.startsWith('src/shared/ui/');
 }
 
+// `package.json` is deliberately excluded here: its visual relevance
+// depends on which fields changed, so it is classified separately by
+// isVisualRelevantPackageJsonChange (see buildCommands).
 function isVisualRelevantFile(filePath) {
   return (
     filePath === 'config/tooling.json' ||
     filePath === 'playwright.visual.config.ts' ||
     filePath === 'vite.config.ts' ||
-    filePath === 'package.json' ||
     filePath === 'tsconfig.storybook.json' ||
     filePath === 'scripts/storybook.mjs' ||
     filePath === 'src/app/styles/styles.css' ||
@@ -1157,9 +1167,16 @@ function addReleaseOnlyCommands(commands) {
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Build options.
  * @param [options.fullMode] Full-project release mode; defaults to the `--full` CLI flag.
+ * @param [options.packageJsonOldRef] Git ref to compare the current
+ * `package.json` against, for the version-only visual impact refinement.
+ * Pass `null` when no reliable base ref is known; that fails closed to
+ * visual-relevant.
  * @returns Command entries in run order.
  */
-export function buildCommands(changedFiles, { fullMode = isFullMode } = {}) {
+export function buildCommands(
+  changedFiles,
+  { fullMode = isFullMode, packageJsonOldRef = null } = {},
+) {
   const existingChangedFiles = changedFiles.filter(fileExists);
   const formatLintFiles = existingChangedFiles.filter((filePath) => !isFormatLintIgnored(filePath));
   const formattableFiles = formatLintFiles.filter((filePath) =>
@@ -1173,7 +1190,12 @@ export function buildCommands(changedFiles, { fullMode = isFullMode } = {}) {
     (filePath) =>
       filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
   );
-  const hasVisualRelevantChanges = changedFiles.some(isVisualRelevantFile);
+  const isPackageJsonVisualRelevant =
+    !fullMode &&
+    changedFiles.includes('package.json') &&
+    isVisualRelevantPackageJsonChange({ oldRef: packageJsonOldRef });
+  const hasVisualRelevantChanges =
+    changedFiles.some(isVisualRelevantFile) || isPackageJsonVisualRelevant;
   const appE2EPlan = resolveAppE2EPlan(changedFiles);
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
@@ -1505,8 +1527,8 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
     throw new Error('Use either --fix or --fix-only, not both.');
   }
 
-  const { changedFiles, scope } = getChangedFiles();
-  const commands = selectOnlyCommands(buildCommands(changedFiles));
+  const { changedFiles, scope, packageJsonOldRef } = getChangedFiles();
+  const commands = selectOnlyCommands(buildCommands(changedFiles, { packageJsonOldRef }));
   const results = [];
   let hasFailed = false;
   const runnableCommands = commands.filter((entry) => entry.kind === 'run');
