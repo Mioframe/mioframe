@@ -50,8 +50,8 @@ User documentation is available in [docs/user/README.md](./docs/user/README.md).
 
 Mioframe is still under active development, and your feedback genuinely helps shape where it goes next. If you want to share thoughts, report a problem, or suggest an idea, feel free to reach out on GitHub:
 
-- Found a bug? Please open an [Issue](https://github.com/Vyachean/mioframe/issues).
-- Have an idea or a question? Join the [Discussions](https://github.com/Vyachean/mioframe/discussions).
+- Found a bug? Please open an [Issue](https://github.com/Mioframe/mioframe/issues).
+- Have an idea or a question? Join the [Discussions](https://github.com/Mioframe/mioframe/discussions).
 
 ## Development
 
