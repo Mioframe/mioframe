@@ -51,9 +51,9 @@ jobs:
       - name: Generate Pages deploy token
         if: steps.slug.outputs.slug != ''
         id: pages-app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io

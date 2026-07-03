@@ -250,15 +250,45 @@ date, app version, base URL, and a tombstone flag when applicable.
 ### Cross-repository publishing (GitHub App)
 
 Publishing to `Mioframe/mioframe.github.io` uses a short-lived installation
-token from a GitHub App (`vars.MIOFRAME_PAGES_APP_CLIENT_ID` /
-`secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY`), minted per publish job with
-`actions/create-github-app-token` scoped to `owner: Mioframe`,
-`repositories: mioframe.github.io`. The source repository's own
-`GITHUB_TOKEN` is never used for the cross-repository write — it only needs
-`contents: read` to check out the source and, for PR previews,
-`pull-requests: write` to post the preview comment on this repository. The
-GitHub App is installed only on `Mioframe/mioframe.github.io`, not on this
-repository.
+token from a GitHub App, minted per publish job with
+`actions/create-github-app-token@v3`, passing the app's **client ID** (not
+its numeric app ID) as `client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}`
+— the configured repository variable holds a client ID, and `v3`'s
+`client-id` input is the correct match for it — plus
+`private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}`, scoped to
+`owner: Mioframe`, `repositories: mioframe.github.io`. The source
+repository's own `GITHUB_TOKEN` is never used for the cross-repository
+write — it only needs `contents: read` to check out the source and, for PR
+previews, `pull-requests: write` to post the preview comment on this
+repository. The GitHub App is installed only on
+`Mioframe/mioframe.github.io`, not on this repository.
+
+#### Trusted publishing boundary
+
+A job may build application source from a less-trusted ref — a PR head or a
+manually selected branch — but any step that holds the
+`Mioframe/mioframe.github.io` write token must run only trusted code, never
+scripts checked out from that less-trusted ref. `deploy-preview` (in
+`verify.yml`) and `deploy-branch` (in `deploy-branch.yml`) both check out
+two separate directories to keep this boundary explicit:
+
+- `app-source/` — the PR head or selected branch. Only ever built
+  (`pnpm install` + `pnpm run build`); never executed after the Pages deploy
+  token exists.
+- `tooling/` — this repository's own trusted base (the PR's base ref for
+  `deploy-preview`, `develop` for `deploy-branch`). Every script that
+  computes a slug, writes `deployment.json`, generates the Pages deploy
+  token, or publishes to `Mioframe/mioframe.github.io` runs from this
+  checkout, using `--dist app-source/dist` to point at the untrusted build
+  output.
+
+`deploy-develop` (push to `develop`) and `deploy-stable` (push to `main`)
+do not need this split: by the time either job runs, its source has already
+passed the `verify`/`release-gate` check on a long-lived trusted branch, so
+running publish scripts from that same checkout is acceptable.
+`deploy-branch-tombstone` and `deploy-branch-tombstone-cleanup` also do not
+need it — they check out this repository's default branch only and never
+touch PR/manual-branch source at all.
 
 Every publish script (`scripts/pages/publish*.mjs`,
 `scripts/pages/cleanup*.mjs`) commits to the target repository's `gh-pages`
@@ -288,14 +318,42 @@ with `BASE_URL=/branch/develop/`, `VITE_RELEASE_CHANNEL=branch`,
 ### Manual branch deployment
 
 `.github/workflows/deploy-branch.yml` is `workflow_dispatch`-only and never
-runs automatically — arbitrary branches are not auto-published. Given a
-branch/ref input, it derives a safe branch slug
-(`scripts/pages/lib/slug.mjs` `slugifyBranch`: lower-cased, non-`[a-z0-9]`
-runs collapsed to `-`, truncated to a DNS-label-safe length, and rejecting
-the reserved `branch`/`pr` namespace names), builds with
+runs automatically — arbitrary branches are not auto-published. It takes a
+`branch` input — a branch **name** only, not an arbitrary ref, tag, or SHA —
+and validates it against `origin`'s branch list before building anything
+(`git ls-remote --exit-code --heads origin refs/heads/<branch>`) so tags and
+commit SHAs are rejected outright. This keeps the manual deployment
+lifecycle (slug, metadata, tombstone-on-delete, branch-delete cleanup)
+branch-based end to end.
+
+The slug is derived by `scripts/pages/lib/slug.mjs` `slugifyBranch`:
+
+- the literal `develop` branch name maps to the bare slug `develop`, so a
+  manual dispatch against `develop` resolves to the same `branch/develop/`
+  slot the automatic develop-push deployment uses;
+- every other branch name is lower-cased, has non-`[a-z0-9]` runs (including
+  `/` from `feature/x` names) collapsed to a single `-`, is truncated to
+  leave room for an appended 8-character hex hash, then gets that hash
+  suffix appended — the hash is derived from the raw (pre-normalization)
+  branch name, not the normalized prefix.
+
+This makes the slug collision-safe: branch names that normalize to the same
+prefix (`feature/a`, `feature-a`, `feature_a` all normalize to `feature-a`)
+still produce different slugs, since each has a different raw name and
+therefore a different hash suffix — so one branch's manual deployment can
+never silently overwrite another's, or share its PWA scope/cache/manifest
+identity. The resulting slug still rejects the reserved `branch`/`pr`
+namespace names and stays within a DNS-label-safe length. Deleting a branch
+computes the identical slug from the same branch name (see `Branch deletion
+tombstone` below), so tombstoning always targets the correct slot.
+
+Given the validated branch name, the workflow builds with
 `BASE_URL=/branch/<slug>/`, `VITE_RELEASE_CHANNEL=branch`,
 `VITE_RELEASE_CHANNEL_ID=<slug>`, PWA enabled, and publishes to
-`branch/<slug>/`.
+`branch/<slug>/`. Deployment metadata records the actual checked-out commit
+(`git -C app-source rev-parse HEAD`), not `github.sha` — for a
+`workflow_dispatch` run, `github.sha` is the workflow's own trigger commit,
+not necessarily the selected branch's tip.
 
 ### PR preview deployment
 

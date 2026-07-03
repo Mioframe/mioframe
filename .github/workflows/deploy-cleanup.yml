@@ -21,7 +21,12 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      # Checkout the PR's trusted base branch, not the default merge ref
+      # (which can include untrusted PR head content) — this job holds the
+      # Mioframe/mioframe.github.io write token below.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -35,9 +40,9 @@ jobs:
 
       - name: Generate Pages deploy token
         id: pages-app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io

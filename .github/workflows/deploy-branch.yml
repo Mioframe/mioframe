@@ -8,8 +8,8 @@ name: deploy-branch
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: Branch (or ref) to build and publish
+      branch:
+        description: Branch name to build and publish
         required: true
         type: string
 
@@ -25,9 +25,43 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      # Trusted tooling (tooling/) is checked out from this workflow's own
+      # default branch, never from the selected (possibly untrusted) branch
+      # input. Slug computation, metadata, and publish all run from this
+      # checkout — see the app-source/ checkout below for the untrusted build
+      # input.
+      - name: Checkout trusted tooling
+        uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: develop
+          path: tooling
+
+      - name: Validate branch input
+        env:
+          BRANCH: ${{ inputs.branch }}
+        working-directory: tooling
+        run: |
+          if ! git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" > /dev/null; then
+            echo "::error::'$BRANCH' is not a branch on origin. This workflow only accepts branch names, not tags or SHAs." >&2
+            exit 1
+          fi
+
+      - name: Compute branch slug
+        id: slug
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          slug="$(node tooling/scripts/pages/computeBranchSlug.mjs --branch "$BRANCH")"
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+
+      # app-source/ is untrusted: the selected branch may contain arbitrary
+      # code from any contributor. It is only ever built here, never executed
+      # with the Pages deploy token.
+      - name: Checkout selected branch (app source)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          path: app-source
 
       - uses: pnpm/action-setup@v4
 
@@ -35,19 +69,14 @@ jobs:
         with:
           node-version: lts/*
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: app-source/pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
-
-      - name: Compute branch slug
-        id: slug
-        env:
-          BRANCH_REF: ${{ inputs.ref }}
-        run: |
-          slug="$(node scripts/pages/computeBranchSlug.mjs --branch "$BRANCH_REF")"
-          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+      - name: Install app-source dependencies
+        working-directory: app-source
+        run: pnpm install --frozen-lockfile
 
       - name: Build branch deployment
+        working-directory: app-source
         env:
           BASE_URL: /branch/${{ steps.slug.outputs.slug }}/
           VITE_RELEASE_CHANNEL: branch
@@ -57,26 +86,30 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm run build
 
+      - name: Compute deployed commit SHA
+        id: deployed-sha
+        run: echo "sha=$(git -C app-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Write deployment metadata
         env:
-          BRANCH_REF: ${{ inputs.ref }}
+          BRANCH: ${{ inputs.branch }}
         run: >-
-          node scripts/pages/writeDeploymentMetadata.mjs
-          --dist dist
+          node tooling/scripts/pages/writeDeploymentMetadata.mjs
+          --dist app-source/dist
           --channel branch
           --channel-id ${{ steps.slug.outputs.slug }}
           --base-url /branch/${{ steps.slug.outputs.slug }}/
-          --ref "$BRANCH_REF"
-          --branch "$BRANCH_REF"
+          --ref "$BRANCH"
+          --branch "$BRANCH"
           --slug ${{ steps.slug.outputs.slug }}
-          --sha ${{ github.sha }}
-          --app-version "$(node -p "require('./package.json').version")"
+          --sha ${{ steps.deployed-sha.outputs.sha }}
+          --app-version "$(node -p "require('./app-source/package.json').version")"
 
       - name: Generate Pages deploy token
         id: pages-app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io
@@ -85,4 +118,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
           GITHUB_REPOSITORY: Mioframe/mioframe.github.io
-        run: node scripts/pages/publishBranch.mjs --dist dist --slug ${{ steps.slug.outputs.slug }}
+        run: node tooling/scripts/pages/publishBranch.mjs --dist app-source/dist --slug ${{ steps.slug.outputs.slug }}

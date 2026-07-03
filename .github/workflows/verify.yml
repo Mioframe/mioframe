@@ -196,9 +196,14 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - uses: actions/checkout@v4
+      # PR head (app-source/) is untrusted: it may contain arbitrary code from
+      # the PR author. It is only ever built here, never executed with the
+      # Pages deploy token — see the trusted tooling/ checkout below.
+      - name: Checkout PR head (app source)
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          path: app-source
 
       - uses: pnpm/action-setup@v4
 
@@ -206,11 +211,14 @@ jobs:
         with:
           node-version: lts/*
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: app-source/pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install app-source dependencies
+        working-directory: app-source
+        run: pnpm install --frozen-lockfile
 
       - name: Build PR preview
+        working-directory: app-source
         env:
           BASE_URL: /pr/${{ github.event.number }}/
           VITE_DISABLE_PWA: '1'
@@ -219,25 +227,35 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm run build
 
+      # Trusted tooling (tooling/) is checked out from the PR's base branch,
+      # never from the PR head. Every step below that can write to
+      # Mioframe/mioframe.github.io — metadata, token generation, publish,
+      # the preview comment — runs scripts from this checkout only.
+      - name: Checkout trusted tooling
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          path: tooling
+
       - name: Write deployment metadata
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: >-
-          node scripts/pages/writeDeploymentMetadata.mjs
-          --dist dist
+          node tooling/scripts/pages/writeDeploymentMetadata.mjs
+          --dist app-source/dist
           --channel pr
           --channel-id ${{ github.event.number }}
           --base-url /pr/${{ github.event.number }}/
           --ref "$PR_HEAD_REF"
           --branch "$PR_HEAD_REF"
           --sha ${{ github.event.pull_request.head.sha }}
-          --app-version "$(node -p "require('./package.json').version")"
+          --app-version "$(node -p "require('./app-source/package.json').version")"
 
       - name: Generate Pages deploy token
         id: pages-app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io
@@ -246,14 +264,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
           GITHUB_REPOSITORY: Mioframe/mioframe.github.io
-        run: node scripts/pages/publishPreview.mjs --dist dist --pr ${{ github.event.number }}
+        run: node tooling/scripts/pages/publishPreview.mjs --dist app-source/dist --pr ${{ github.event.number }}
 
       - name: Post or update preview comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: >-
-          node scripts/pages/upsertPreviewComment.mjs
+          node tooling/scripts/pages/upsertPreviewComment.mjs
           --pr ${{ github.event.number }}
           --url "https://mioframe.github.io/pr/${{ github.event.number }}/"
 
@@ -310,9 +328,9 @@ jobs:
 
       - name: Generate Pages deploy token
         id: pages-app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io
