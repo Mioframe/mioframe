@@ -7,10 +7,14 @@ vi.mock('./lib/packageJsonImpact.mjs', () => ({
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import {
   buildCommands,
+  getActionRequired,
+  getBlockingLogIssue,
   getCliFilesOverride,
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
   getVerifyBaseRef,
+  printSummary,
+  resolveCommandStatus,
   runVerifyCli,
 } from './verify.mjs';
 
@@ -110,7 +114,7 @@ describe('buildCommands full mode', () => {
     expect(byLabel.format.args).not.toContain('src/app/main.ts');
     expect(byLabel.oxlint.args).toContain('.');
     expect(byLabel.eslint.args).toContain('.');
-    expect(byLabel['unit-tests'].args).toEqual(['exec', 'vitest', 'run']);
+    expect(byLabel['unit-tests'].args).toEqual(['exec', 'vitest', 'run', '--reporter=verbose']);
   });
 
   it('adds the release-only checks with their own labels and commands', () => {
@@ -242,6 +246,124 @@ describe('getExtraEnvForEntry', () => {
     expect(getExtraEnvForEntry({ label: 'release-smoke' }, priorResults)).toEqual({
       RELEASE_ARTIFACT_SKIP_BUILD: '1',
     });
+  });
+});
+
+// The literal Vue warning marker stays inside fixture strings only. Test
+// names must not contain it: the verbose vitest reporter prints test names
+// into the unit-tests verify log, which would trip the blocking-signal gate.
+describe('getBlockingLogIssue', () => {
+  const vueWarningLine = '[Vue warn]: Invalid watch source:  { value: { scrollTop: 0 } }';
+
+  it('classifies unit-test logs containing Vue runtime warnings as blocking', () => {
+    const issue = getBlockingLogIssue(
+      'unit-tests',
+      `stderr | src/foo.test.ts > renders\n${vueWarningLine}\n  at <SomeComponent>\n`,
+    );
+
+    expect(issue).not.toBeNull();
+    expect(issue.reason).toBe('unit-tests emitted Vue runtime warnings');
+    expect(issue.summary).toContain('Invalid watch source');
+  });
+
+  it('returns null for clean unit-test logs', () => {
+    const issue = getBlockingLogIssue('unit-tests', 'Test Files  3 passed (3)\n');
+
+    expect(issue).toBeNull();
+  });
+
+  it('does not treat Vite/Rollup dependency or build warnings as blocking', () => {
+    const issue = getBlockingLogIssue(
+      'unit-tests',
+      [
+        '(!) Some chunks are larger than 500 kB after minification.',
+        'warning: dynamic import will not move module into another chunk',
+        '[vite] warning: Sourcemap is likely to be incorrect.',
+      ].join('\n'),
+    );
+
+    expect(issue).toBeNull();
+  });
+
+  it('ignores Vue runtime warnings in logs of other labels', () => {
+    expect(getBlockingLogIssue('e2e', `${vueWarningLine}\n`)).toBeNull();
+    expect(getBlockingLogIssue('eslint', `${vueWarningLine}\n`)).toBeNull();
+  });
+});
+
+describe('resolveCommandStatus', () => {
+  const blockingIssue = {
+    reason: 'unit-tests emitted Vue runtime warnings',
+    summary: 'Invalid watch source',
+  };
+
+  it('keeps a clean exit without blocking signals passed', () => {
+    expect(resolveCommandStatus(0, null)).toBe('passed');
+  });
+
+  it('fails a clean exit that produced a blocking log signal', () => {
+    expect(resolveCommandStatus(0, blockingIssue)).toBe('failed');
+  });
+
+  it('fails non-zero exits regardless of log content', () => {
+    expect(resolveCommandStatus(1, null)).toBe('failed');
+  });
+});
+
+describe('getActionRequired', () => {
+  const blockedUnitTestsResult = {
+    label: 'unit-tests',
+    command: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
+    displayCommand: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
+    status: 'failed',
+    exitCode: 0,
+    reason: 'unit-tests emitted Vue runtime warnings',
+    blockingSummary: 'Invalid watch source: { value: { scrollTop: 0 } }',
+    hasWarnings: false,
+    warningSummary: '',
+  };
+
+  it('includes the blocking reason and warning summary for failed results', () => {
+    const actions = getActionRequired([blockedUnitTestsResult]);
+
+    expect(actions).toContainEqual(expect.stringContaining('Fix failed unit-tests errors'));
+    expect(actions).toContain('Reason: unit-tests emitted Vue runtime warnings');
+    expect(actions).toContainEqual(expect.stringContaining('Invalid watch source'));
+    expect(actions).not.toContain('None.');
+  });
+
+  it('still reports None. when nothing failed or warned', () => {
+    const actions = getActionRequired([
+      {
+        label: 'unit-tests',
+        command: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
+        status: 'passed',
+        exitCode: 0,
+        blockingSummary: '',
+        hasWarnings: false,
+        warningSummary: '',
+      },
+    ]);
+
+    expect(actions).toEqual(['None.']);
+  });
+
+  it('reports failed status through the normal summary for blocking-signal results', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      const summary = printSummary([], 'local-changes', [blockedUnitTestsResult]);
+
+      expect(summary).toEqual({ status: 'failed', hasFailed: true });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+
+      expect(output).toContain('VERIFY RESULT');
+      expect(output).toContain('status: failed ❌');
+      expect(output).toContain('Reason: unit-tests emitted Vue runtime warnings');
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 });
 
