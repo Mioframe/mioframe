@@ -4,7 +4,7 @@
 
 [English version](./README.md)
 
-[👉 Запустить Mioframe](https://vyachean.github.io/mioframe/)
+[👉 Запустить Mioframe](https://mioframe.github.io/)
 
 ## Зачем я это сделал?
 

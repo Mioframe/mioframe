@@ -18,6 +18,8 @@ export default defineConfig(({ mode, isPreview }) => {
   const isStorybookBuild = process.env.APP_STORYBOOK === '1';
   const isDisablePwa = env.VITE_DISABLE_PWA === '1' || process.env.VITE_DISABLE_PWA === '1';
   const buildId = env.VITE_BUILD_ID || process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || '';
+  const releaseChannel = env.VITE_RELEASE_CHANNEL === 'branch' ? 'branch' : 'stable';
+  const releaseChannelId = env.VITE_RELEASE_CHANNEL_ID || undefined;
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
   const pwaPlugins = isStorybookBuild
     ? []
@@ -26,6 +28,8 @@ export default defineConfig(({ mode, isPreview }) => {
         mode,
         isPreview: isPreviewBuild,
         disablePwa: isDisablePwa,
+        channel: releaseChannel,
+        channelId: releaseChannelId,
       });
   const sentryPlugins = isStorybookBuild
     ? []

@@ -156,18 +156,35 @@ focused and the full gate, and tag pushes never rerun the full gate:
   development verification (`pnpm verify`, changed-file scope) plus, on PRs,
   a version-bump check — the PR version must be strictly greater than
   `develop`'s current version. Its `pull_request` trigger uses
-  `branches-ignore: [main]`, so it never fires for a PR into `main`.
+  `branches-ignore: [main]`, so it never fires for a PR into `main`. It also
+  owns the two verify-gated Pages deployments: `deploy-preview` (PR previews,
+  `/pr/<number>/`) and `deploy-develop` (the develop branch deployment,
+  `/branch/develop/`) — see
+  `docs/release.md#organization-pages-deployment-model`.
 - **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
   and pushes to `main` only. Runs the full release gate
   (`pnpm verify:release`, full-project scope, see below), which includes
   version/build metadata and release-config validation. Stable deploy
-  (`deploy-stable`) runs only after this gate passes on a push to `main`.
+  (`deploy-stable`, `/`) runs only after this gate passes on a push to
+  `main`.
 - **`release-tag` workflow** (`.github/workflows/release-tag.yml`): `vX.Y.Z`
   tag pushes only. Runs a single lightweight check
   (`node scripts/release/validateVersion.mjs`) confirming the tag matches
   `package.json` version — it does not rerun e2e, visual, artifact, or
   deploy steps, since `main` was already validated by the `release`
   workflow before the tag was created.
+- **`deploy-branch` workflow** (`.github/workflows/deploy-branch.yml`):
+  `workflow_dispatch` only, for a maintainer-selected manual branch
+  deployment (`/branch/<slug>/`). Never runs automatically.
+- **`deploy-branch-tombstone` workflow**
+  (`.github/workflows/deploy-branch-tombstone.yml`): runs on every branch
+  deletion; a no-op unless that branch had an existing `/branch/<slug>/`
+  deployment.
+- **`deploy-branch-tombstone-cleanup` workflow**
+  (`.github/workflows/deploy-branch-tombstone-cleanup.yml`): scheduled,
+  removes tombstones past their retention period.
+- **`deploy-cleanup` workflow** (`.github/workflows/deploy-cleanup.yml`):
+  runs on PR close, removes that PR's `/pr/<number>/` deployment.
 
 ## What remains a manual product/release decision
 
@@ -208,6 +225,147 @@ robustness rather than the published artifact. `pnpm verify --full` and
 `pnpm verify:release` do not run it, and `pnpm verify --full --only
 mutation` is not a valid release check.
 
+## Organization Pages deployment model
+
+Mioframe publishes to the organization Pages repository
+`Mioframe/mioframe.github.io`, not a project-site path inside this
+repository. This source repository (`Mioframe/mioframe`) owns source, CI,
+verification, and build scripts; `Mioframe/mioframe.github.io` owns only
+generated static deployment output, published to its `gh-pages` branch.
+
+Canonical deployment paths:
+
+- stable (`main`): `https://mioframe.github.io/`
+- develop: `https://mioframe.github.io/branch/develop/`
+- manual branch: `https://mioframe.github.io/branch/<branch-slug>/`
+- PR preview: `https://mioframe.github.io/pr/<number>/`
+
+Each deployed channel is isolated by `BASE_URL`, service worker scope,
+manifest identity, and Cache Storage cache-name namespace (see
+`config/plugins/pwa.ts`). Every deployment writes a `deployment.json` at its
+own root, produced by `scripts/pages/writeDeploymentMetadata.mjs`,
+recording channel, channel id, source ref/branch/slug, commit SHA, build
+date, app version, base URL, and a tombstone flag when applicable.
+
+### Cross-repository publishing (GitHub App)
+
+Publishing to `Mioframe/mioframe.github.io` uses a short-lived installation
+token from a GitHub App (`vars.MIOFRAME_PAGES_APP_CLIENT_ID` /
+`secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY`), minted per publish job with
+`actions/create-github-app-token` scoped to `owner: Mioframe`,
+`repositories: mioframe.github.io`. The source repository's own
+`GITHUB_TOKEN` is never used for the cross-repository write — it only needs
+`contents: read` to check out the source and, for PR previews,
+`pull-requests: write` to post the preview comment on this repository. The
+GitHub App is installed only on `Mioframe/mioframe.github.io`, not on this
+repository.
+
+Every publish script (`scripts/pages/publish*.mjs`,
+`scripts/pages/cleanup*.mjs`) commits to the target repository's `gh-pages`
+branch through `scripts/pages/lib/ghPagesBranch.mjs`, retrying on push
+conflicts. Each publish only touches its own slot:
+
+- stable publish (`publishStable.mjs`) replaces everything at the target
+  repository root except `.git/`, `branch/`, and `pr/` — so it never evicts
+  develop, manual branch, or PR preview deployments;
+- branch publish (`publishBranch.mjs`) replaces only `branch/<slug>/`;
+- PR preview publish (`publishPreview.mjs`) replaces only `pr/<number>/`;
+- PR preview cleanup (`cleanupPreview.mjs`, run on PR close) removes only
+  `pr/<number>/`.
+
+The org-root `404.html` SPA fallback (`scripts/pages/writeSpaFallback.mjs`)
+is channel-independent — it dispatches any unmatched deep link to `/`,
+`/branch/<slug>/`, or `/pr/<number>/` based on the URL path alone — so only
+the stable publish job, which owns the repository root, ever writes it.
+
+### Develop branch deployment
+
+On push to `develop`, the `verify` workflow's `deploy-develop` job builds
+with `BASE_URL=/branch/develop/`, `VITE_RELEASE_CHANNEL=branch`,
+`VITE_RELEASE_CHANNEL_ID=develop`, PWA enabled, and publishes to
+`branch/develop/`.
+
+### Manual branch deployment
+
+`.github/workflows/deploy-branch.yml` is `workflow_dispatch`-only and never
+runs automatically — arbitrary branches are not auto-published. Given a
+branch/ref input, it derives a safe branch slug
+(`scripts/pages/lib/slug.mjs` `slugifyBranch`: lower-cased, non-`[a-z0-9]`
+runs collapsed to `-`, truncated to a DNS-label-safe length, and rejecting
+the reserved `branch`/`pr` namespace names), builds with
+`BASE_URL=/branch/<slug>/`, `VITE_RELEASE_CHANNEL=branch`,
+`VITE_RELEASE_CHANNEL_ID=<slug>`, PWA enabled, and publishes to
+`branch/<slug>/`.
+
+### PR preview deployment
+
+PR previews remain owned by the `verify` workflow's `deploy-preview` job:
+`BASE_URL=/pr/<number>/`, `VITE_DISABLE_PWA=1` (PWA stays disabled for PR
+previews in this implementation), publishing to `pr/<number>/`. The sticky
+preview comment links to `https://mioframe.github.io/pr/<number>/`. PR
+previews for release sync-back branches remain skipped, as before (see
+`Release sync-back` above). PR preview cleanup on PR close removes only
+that PR's `pr/<number>/` slot.
+
+### Branch deletion tombstone
+
+When a branch with an existing `branch/<slug>/` deployment is deleted,
+`.github/workflows/deploy-branch-tombstone.yml` (triggered by GitHub's
+`delete` branch event) does not immediately remove that slot. Instead it
+replaces its content with a tombstone
+(`scripts/pages/lib/tombstoneContent.mjs`):
+
+- `index.html` — a static notice that the branch preview was removed, with
+  a link back to the stable app root (`/`);
+- `sw.js` — a service worker that, on activation, deletes only Cache
+  Storage entries whose name is prefixed `branch-<slug>-` (the same
+  namespace that branch's real PWA build used — see
+  `buildChannelCacheNamespace` in `config/plugins/pwa.ts`), then claims
+  existing clients. It registers no `fetch` handler and never messages
+  clients to reload — this is passive cache self-cleanup, not forced-reload
+  coordination;
+- `manifest.webmanifest` — keeps the same `scope`/`start_url`/`id` as the
+  removed deployment so an already-installed PWA icon still resolves;
+- `deployment.json` — the same shape as a normal deployment, with
+  `tombstone: true`.
+
+For branches that were never deployed to `branch/<slug>/` (almost all
+ordinary feature branches), this is a clean no-op — the workflow checks the
+slot exists before doing anything.
+
+Tombstones are retained for `config/tooling.json`
+`pages.tombstoneRetentionDays` (14 days by default). The scheduled
+`.github/workflows/deploy-branch-tombstone-cleanup.yml` workflow removes
+`branch/<slug>/` slots whose `deployment.json` is a tombstone older than the
+retention period (`scripts/pages/lib/tombstoneRetention.mjs`
+`findExpiredTombstoneSlugs`); live deployments and tombstones still within
+retention are left untouched.
+
+### PWA channel isolation
+
+`config/plugins/pwa.ts` makes the Vite PWA plugin channel-aware:
+
+- `manifest.scope`, `start_url`, and `id` are pinned explicitly to the
+  build's `BASE_URL` for every channel, so the manifest never drifts from
+  the deployment it was built for;
+- Cache Storage is per-origin, not per service-worker-scope, so cache names
+  are explicitly namespaced per channel (`stable-*` for the stable build,
+  `branch-<channel-id>-*` for a branch build) — otherwise a stable and a
+  branch build sharing the same origin would silently share (and corrupt)
+  Cache Storage entries;
+- the stable channel's service worker scope is `/`, wide enough to
+  otherwise intercept `/branch/*` and `/pr/*` navigation and asset
+  requests, so it additionally denies those paths from its navigation
+  fallback and runtime caching. A branch channel's scope (e.g.
+  `/branch/develop/`) is narrower than every other channel's path, so the
+  browser never dispatches fetch/navigate events for foreign paths to it in
+  the first place — no equivalent denylist is needed there;
+- manifest `name`/`short_name` make branch identity visible when installed:
+  develop is `Mioframe Develop`; a manual branch uses its slug (or the
+  branch name it was derived from);
+- PR previews build with `VITE_DISABLE_PWA=1` and register no service
+  worker at all.
+
 ## Production artifact validation
 
 Owned by `scripts/release/buildArtifact.mjs`, `scripts/release/artifactServer.mjs`,
@@ -216,7 +374,8 @@ _published_ artifact, not internal build tooling:
 
 - the production build (`vite build`) completes;
 - the built `dist/` opens through a local static server the same way GitHub
-  Pages would serve it, at the configured base path (`/mioframe/`);
+  Pages would serve it, at the configured base path (`/`, the organization
+  root — see `docs/release.md#organization-pages-deployment-model`);
 - an unmatched deep route falls back to the site's `404.html` redirect and
   the app restores the original path after boot (the same mechanism
   `scripts/pages/writeSpaFallback.mjs` writes for the real deployment);
@@ -251,12 +410,15 @@ Owned by `scripts/release/validateReleaseConfig.mjs`, run as the
 `release-config` check. It validates release-mode config assumptions that
 are not covered by `release-version`:
 
-- `config/tooling.json` `release.basePath` matches `/${package.json name}/`,
-  the same base path the release artifact build and `deploy-stable` use;
+- `config/tooling.json` `release.basePath` is `/` — the organization root
+  Pages path, the same base path the release artifact build and
+  `deploy-stable` use (see
+  `docs/release.md#organization-pages-deployment-model`);
 - `VITE_DISABLE_PWA` is not `1` (that is a PR-preview-only setting; see
   `deploy-preview` in `.github/workflows/verify.yml`);
-- `BASE_URL`, if set, is not a PR-preview path and matches the release base
-  path;
+- `BASE_URL`, if set, is exactly `/` — it must not start with `/branch/` or
+  `/pr/` (those are branch and PR preview paths, not the stable release
+  path);
 - `VITE_GOOGLE_CLIENT_ID`, `VITE_SENTRY_DSN`, and `SENTRY_AUTH_TOKEN` are
   optional integrations, not required for a valid public release. Each is
   reported as set/optional-and-unset. Outside GitHub Actions, an explicitly

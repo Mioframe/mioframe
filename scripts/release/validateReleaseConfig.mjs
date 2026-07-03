@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const OPTIONAL_ENV_KEYS = ['VITE_GOOGLE_CLIENT_ID', 'VITE_SENTRY_DSN', 'SENTRY_AUTH_TOKEN'];
-const PR_PREVIEW_PATH_PATTERN = /\/pr-\d+\/?/;
+const STABLE_BASE_PATH = '/';
+const BRANCH_OR_PR_PATH_PATTERN = /^\/(?:branch|pr)\//;
 
 /**
  * Read and parse a JSON file, for release config validation.
@@ -35,21 +36,7 @@ export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
   const errors = [];
   const notices = [];
 
-  let packageJson;
   let toolingConfig;
-
-  try {
-    packageJson = readJson('package.json', readFile);
-  } catch (readError) {
-    return finish({
-      errors: [
-        `Unable to read/parse package.json: ${readError instanceof Error ? readError.message : String(readError)}`,
-      ],
-      notices,
-      log,
-      logError,
-    });
-  }
 
   try {
     toolingConfig = readJson('config/tooling.json', readFile);
@@ -64,22 +51,17 @@ export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
     });
   }
 
-  if (typeof packageJson.name !== 'string' || packageJson.name.trim() === '') {
-    errors.push('package.json is missing a string "name" field.');
-  }
-
-  const expectedBasePath = `/${packageJson.name}/`;
   const actualBasePath = toolingConfig.release?.basePath;
 
   if (typeof actualBasePath !== 'string' || actualBasePath.trim() === '') {
     errors.push('config/tooling.json is missing release.basePath.');
-  } else if (actualBasePath !== expectedBasePath) {
+  } else if (actualBasePath !== STABLE_BASE_PATH) {
     errors.push(
-      `config/tooling.json release.basePath "${actualBasePath}" does not match "${expectedBasePath}" derived from package.json name "${packageJson.name}". ` +
+      `config/tooling.json release.basePath "${actualBasePath}" must be "${STABLE_BASE_PATH}" for the organization root Pages deployment. ` +
         'Release artifact validation, stable deploy, and GitHub Pages hosting must all agree on this base path.',
     );
   } else {
-    notices.push(`release base path: ${expectedBasePath}`);
+    notices.push(`release base path: ${STABLE_BASE_PATH}`);
   }
 
   if (env.VITE_DISABLE_PWA === '1') {
@@ -92,21 +74,21 @@ export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
   }
 
   if (typeof env.BASE_URL === 'string' && env.BASE_URL.length > 0) {
-    if (PR_PREVIEW_PATH_PATTERN.test(env.BASE_URL)) {
+    if (BRANCH_OR_PR_PATH_PATTERN.test(env.BASE_URL)) {
       errors.push(
-        `BASE_URL "${env.BASE_URL}" looks like a PR preview path. Release artifact validation and stable deploy ` +
-          `must use the stable base path (${expectedBasePath}), not a PR preview path.`,
+        `BASE_URL "${env.BASE_URL}" looks like a branch or PR preview path. Release artifact validation and ` +
+          `stable deploy must use the stable base path (${STABLE_BASE_PATH}), not a branch or PR preview path.`,
       );
-    } else if (actualBasePath && env.BASE_URL !== actualBasePath) {
+    } else if (env.BASE_URL !== STABLE_BASE_PATH) {
       errors.push(
-        `BASE_URL "${env.BASE_URL}" does not match config/tooling.json release.basePath "${actualBasePath}".`,
+        `BASE_URL "${env.BASE_URL}" does not match the stable base path "${STABLE_BASE_PATH}".`,
       );
     } else {
       notices.push(`BASE_URL: ${env.BASE_URL}`);
     }
   } else {
     notices.push(
-      `BASE_URL: not set; release tooling falls back to config/tooling.json release.basePath (${expectedBasePath}).`,
+      `BASE_URL: not set; release tooling falls back to config/tooling.json release.basePath (${STABLE_BASE_PATH}).`,
     );
   }
 

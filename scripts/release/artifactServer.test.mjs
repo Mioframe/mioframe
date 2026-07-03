@@ -11,27 +11,25 @@ import { createArtifactServer, resolveArtifactFilePath } from './artifactServer.
 
 describe('resolveArtifactFilePath', () => {
   it('maps the base root to index.html', () => {
-    expect(resolveArtifactFilePath('dist', '/mioframe/', '/mioframe/')).toBe(
-      resolve('dist', 'index.html'),
-    );
+    expect(resolveArtifactFilePath('dist', '/', '/')).toBe(resolve('dist', 'index.html'));
   });
 
   it('maps a nested asset path under the base', () => {
-    expect(resolveArtifactFilePath('dist', '/mioframe/', '/mioframe/assets/app.js')).toBe(
+    expect(resolveArtifactFilePath('dist', '/', '/assets/app.js')).toBe(
       resolve('dist', 'assets', 'app.js'),
     );
   });
 
-  it('returns null for a path outside the base', () => {
-    expect(resolveArtifactFilePath('dist', '/mioframe/', '/other/app.js')).toBeNull();
+  it('returns null for a path outside a non-root base', () => {
+    expect(resolveArtifactFilePath('dist', '/branch/develop/', '/other/app.js')).toBeNull();
   });
 
   it('returns null when a path traversal would escape distDir', () => {
-    expect(resolveArtifactFilePath('dist', '/mioframe/', '/mioframe/../../etc/passwd')).toBeNull();
+    expect(resolveArtifactFilePath('dist', '/', '/../../etc/passwd')).toBeNull();
   });
 
   it('keeps a distDir-relative path that stays within distDir', () => {
-    const filePath = resolveArtifactFilePath('dist', '/mioframe/', '/mioframe/sub/dir/file.txt');
+    const filePath = resolveArtifactFilePath('dist', '/', '/sub/dir/file.txt');
     expect(filePath).toBe(resolve('dist', 'sub', 'dir', 'file.txt'));
     expect(filePath.startsWith(resolve('dist') + sep)).toBe(true);
   });
@@ -53,7 +51,7 @@ describe('createArtifactServer', () => {
   });
 
   it('serves an existing file under the base path with a 200 status', async () => {
-    server = await createArtifactServer({ distDir, basePath: '/mioframe/' });
+    server = await createArtifactServer({ distDir, basePath: '/' });
 
     const response = await fetch(`${server.url}manifest.webmanifest`);
     expect(response.status).toBe(200);
@@ -61,7 +59,7 @@ describe('createArtifactServer', () => {
   });
 
   it('serves index.html at the base root', async () => {
-    server = await createArtifactServer({ distDir, basePath: '/mioframe/' });
+    server = await createArtifactServer({ distDir, basePath: '/' });
 
     const response = await fetch(server.url);
     expect(response.status).toBe(200);
@@ -69,19 +67,18 @@ describe('createArtifactServer', () => {
   });
 
   it('returns the site-wide SPA fallback with a 404 status for an unmatched deep route', async () => {
-    server = await createArtifactServer({ distDir, basePath: '/mioframe/' });
+    server = await createArtifactServer({ distDir, basePath: '/' });
 
     const response = await fetch(`${server.url}some/deep/route`);
     expect(response.status).toBe(404);
     const body = await response.text();
-    expect(body).toContain('"/mioframe/"');
     expect(body).toContain("sessionStorage.setItem('ghPagesSpaFallback'");
   });
 
-  it('returns the same fallback for a path outside the base', async () => {
-    server = await createArtifactServer({ distDir, basePath: '/mioframe/' });
+  it('returns the same fallback for a path outside a non-root base', async () => {
+    server = await createArtifactServer({ distDir, basePath: '/branch/develop/' });
 
-    const response = await fetch(`${server.url.replace(/\/mioframe\/$/, '/')}other-app/`);
+    const response = await fetch(`${server.url.replace(/\/branch\/develop\/$/, '/')}other-app/`);
     expect(response.status).toBe(404);
   });
 });

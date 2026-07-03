@@ -1,8 +1,9 @@
 name: verify
 
 # Development verification for develop-bound work: focused pnpm verify plus a
-# PR-into-develop version-bump check, and PR preview deploys. PRs/pushes to
-# main use the separate `release` workflow (.github/workflows/release.yml)
+# PR-into-develop version-bump check, PR preview deploys (pr/<number>/), and
+# the develop branch deploy (branch/develop/) on push to develop. PRs/pushes
+# to main use the separate `release` workflow (.github/workflows/release.yml)
 # instead — see docs/release.md. The trigger below excludes PRs into main so
 # this workflow and the release gate never both run for the same PR path.
 
@@ -188,13 +189,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
-      contents: write
-      pages: write
-      id-token: write
+      contents: read
       pull-requests: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     concurrency:
       group: pages-publish
       cancel-in-progress: false
@@ -216,42 +212,41 @@ jobs:
 
       - name: Build PR preview
         env:
-          BASE_URL: /${{ github.event.repository.name }}/pr-${{ github.event.number }}/
+          BASE_URL: /pr/${{ github.event.number }}/
           VITE_DISABLE_PWA: '1'
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm run build
 
-      - name: Fix 404 for SPA
-        run: cp ./dist/index.html ./dist/404.html
-
-      - name: Publish PR preview to staging
+      - name: Write deployment metadata
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: >-
-          node scripts/pages/publishPreview.mjs
+          node scripts/pages/writeDeploymentMetadata.mjs
           --dist dist
-          --pr ${{ github.event.number }}
-          --output-dir pages-staging
+          --channel pr
+          --channel-id ${{ github.event.number }}
+          --base-url /pr/${{ github.event.number }}/
+          --ref "$PR_HEAD_REF"
+          --branch "$PR_HEAD_REF"
+          --sha ${{ github.event.pull_request.head.sha }}
+          --app-version "$(node -p "require('./package.json').version")"
 
-      - name: Write root SPA fallback
-        run: >-
-          node scripts/pages/writeSpaFallback.mjs
-          --base /${{ github.event.repository.name }}/
-          --output-dir pages-staging
-
-      - uses: actions/configure-pages@v4
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v2
         with:
-          enablement: true
+          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./pages-staging/
-
-      - uses: actions/deploy-pages@v4
-        id: deploy
+      - name: Publish PR preview to Mioframe/mioframe.github.io
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/publishPreview.mjs --dist dist --pr ${{ github.event.number }}
 
       - name: Post or update preview comment
         env:
@@ -260,4 +255,70 @@ jobs:
         run: >-
           node scripts/pages/upsertPreviewComment.mjs
           --pr ${{ github.event.number }}
-          --url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}/"
+          --url "https://mioframe.github.io/pr/${{ github.event.number }}/"
+
+  deploy-develop:
+    needs: [verify]
+    if: >-
+      !cancelled() &&
+      needs.verify.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    concurrency:
+      group: pages-publish
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build develop branch deployment
+        env:
+          BASE_URL: /branch/develop/
+          VITE_RELEASE_CHANNEL: branch
+          VITE_RELEASE_CHANNEL_ID: develop
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm run build
+
+      - name: Write deployment metadata
+        run: >-
+          node scripts/pages/writeDeploymentMetadata.mjs
+          --dist dist
+          --channel branch
+          --channel-id develop
+          --base-url /branch/develop/
+          --ref ${{ github.ref }}
+          --branch develop
+          --slug develop
+          --sha ${{ github.sha }}
+          --app-version "$(node -p "require('./package.json').version")"
+
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
+
+      - name: Publish develop build to Mioframe/mioframe.github.io
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/publishBranch.mjs --dist dist --slug develop

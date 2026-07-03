@@ -2,7 +2,7 @@
 
 A simple local app for your data. No cloud lock-in, no subscriptions, no extra friction.
 
-[👉 Open Mioframe](https://vyachean.github.io/mioframe/)
+[👉 Open Mioframe](https://mioframe.github.io/)
 
 ## Why I Built It
 

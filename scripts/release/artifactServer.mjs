@@ -33,8 +33,8 @@ function getContentType(filePath) {
  * Resolve a decoded request pathname to a dist file path under a deployment
  * base path, guarding against path traversal outside `distDir`.
  * @param distDir Absolute production build output directory.
- * @param basePath Deployment base path, e.g. `/mioframe/`.
- * @param pathname Decoded request pathname, e.g. `/mioframe/assets/app.js`.
+ * @param basePath Deployment base path, e.g. `/`.
+ * @param pathname Decoded request pathname, e.g. `/assets/app.js`.
  * @returns Absolute candidate file path, or `null` when the pathname is
  * outside `basePath` or would escape `distDir`.
  */
@@ -73,13 +73,13 @@ async function readExistingFile(filePath) {
  * `404.html` across the whole Pages site.
  * @param options Server configuration.
  * @param options.distDir Absolute or relative production build output directory.
- * @param options.basePath Deployment base path, e.g. `/mioframe/`.
+ * @param options.basePath Deployment base path, e.g. `/`.
  * @param [options.host] Host to bind to.
  * @param [options.port] Port to bind to; `0` picks a free port.
  * @returns Running server handle with its base URL and a `close` function.
  */
 export function createArtifactServer({ distDir, basePath, host = '127.0.0.1', port = 0 }) {
-  const fallbackHtml = buildSpaFallbackHtml(basePath);
+  const fallbackHtml = buildSpaFallbackHtml();
 
   const server = createServer((req, res) => {
     void handleRequest(req, res, { distDir, basePath, fallbackHtml });

@@ -5,12 +5,8 @@ import { validateReleaseConfig } from './validateReleaseConfig.mjs';
 describe('validateReleaseConfig', () => {
   const baseDeps = () => ({
     readFile: vi.fn((filePath) => {
-      if (filePath === 'package.json') {
-        return JSON.stringify({ name: 'mioframe' });
-      }
-
       if (filePath === 'config/tooling.json') {
-        return JSON.stringify({ release: { basePath: '/mioframe/' } });
+        return JSON.stringify({ release: { basePath: '/' } });
       }
 
       throw new Error(`unexpected readFile: ${filePath}`);
@@ -19,33 +15,29 @@ describe('validateReleaseConfig', () => {
     logError: vi.fn(),
   });
 
-  it('passes with a matching base path, PWA enabled, and no env set', () => {
+  it('passes with the stable base path, PWA enabled, and no env set', () => {
     const deps = baseDeps();
     const result = validateReleaseConfig({ env: {}, deps });
     expect(result).toBe(true);
     expect(deps.logError).not.toHaveBeenCalled();
   });
 
-  it('fails when release.basePath does not match package.json name', () => {
+  it('fails when release.basePath is not "/"', () => {
     const deps = baseDeps();
     deps.readFile = vi.fn((filePath) => {
-      if (filePath === 'package.json') return JSON.stringify({ name: 'mioframe' });
       if (filePath === 'config/tooling.json') {
-        return JSON.stringify({ release: { basePath: '/wrong/' } });
+        return JSON.stringify({ release: { basePath: '/mioframe/' } });
       }
       throw new Error(`unexpected readFile: ${filePath}`);
     });
     const result = validateReleaseConfig({ env: {}, deps });
     expect(result).toBe(false);
-    expect(deps.logError).toHaveBeenCalledWith(
-      expect.stringContaining('does not match "/mioframe/"'),
-    );
+    expect(deps.logError).toHaveBeenCalledWith(expect.stringContaining('must be "/"'));
   });
 
   it('fails when release.basePath is missing', () => {
     const deps = baseDeps();
     deps.readFile = vi.fn((filePath) => {
-      if (filePath === 'package.json') return JSON.stringify({ name: 'mioframe' });
       if (filePath === 'config/tooling.json') return JSON.stringify({ release: {} });
       throw new Error(`unexpected readFile: ${filePath}`);
     });
@@ -61,25 +53,36 @@ describe('validateReleaseConfig', () => {
     expect(deps.logError).toHaveBeenCalledWith(expect.stringContaining('VITE_DISABLE_PWA=1'));
   });
 
-  it('fails when BASE_URL looks like a PR preview path', () => {
+  it('fails when BASE_URL looks like a branch path', () => {
     const deps = baseDeps();
-    const result = validateReleaseConfig({ env: { BASE_URL: '/mioframe/pr-42/' }, deps });
+    const result = validateReleaseConfig({ env: { BASE_URL: '/branch/develop/' }, deps });
     expect(result).toBe(false);
-    expect(deps.logError).toHaveBeenCalledWith(expect.stringContaining('PR preview path'));
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('branch or PR preview path'),
+    );
   });
 
-  it('fails when BASE_URL does not match the configured release base path', () => {
+  it('fails when BASE_URL looks like a PR preview path', () => {
+    const deps = baseDeps();
+    const result = validateReleaseConfig({ env: { BASE_URL: '/pr/42/' }, deps });
+    expect(result).toBe(false);
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('branch or PR preview path'),
+    );
+  });
+
+  it('fails when BASE_URL does not match the stable base path', () => {
     const deps = baseDeps();
     const result = validateReleaseConfig({ env: { BASE_URL: '/other/' }, deps });
     expect(result).toBe(false);
     expect(deps.logError).toHaveBeenCalledWith(
-      expect.stringContaining('does not match config/tooling.json release.basePath'),
+      expect.stringContaining('does not match the stable base path'),
     );
   });
 
-  it('passes when BASE_URL matches the configured release base path', () => {
+  it('passes when BASE_URL matches the stable base path', () => {
     const deps = baseDeps();
-    const result = validateReleaseConfig({ env: { BASE_URL: '/mioframe/' }, deps });
+    const result = validateReleaseConfig({ env: { BASE_URL: '/' }, deps });
     expect(result).toBe(true);
   });
 

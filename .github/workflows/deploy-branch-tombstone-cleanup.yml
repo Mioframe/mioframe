@@ -1,24 +1,25 @@
-name: Clean up PR preview from GitHub Pages
+name: deploy-branch-tombstone-cleanup
+
+# Scheduled removal of branch/<slug>/ tombstones whose retention period
+# (config/tooling.json pages.tombstoneRetentionDays) has elapsed. Live
+# branch deployments and tombstones still within retention are untouched.
+# See docs/release.md#branch-deletion-tombstone.
 
 on:
-  pull_request:
-    types: [closed]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
 
 jobs:
-  cleanup:
-    # Skip fork PRs — they have no write access to publish.
-    # Skip PRs targeting main — those are release/promotion PRs; stable Pages
-    # deployment is owned exclusively by the release workflow's deploy-stable job.
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.base.ref != 'main'
+  cleanup-expired-tombstones:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
-    concurrency:
-      group: pages-publish
-      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v4
@@ -42,8 +43,8 @@ jobs:
           owner: Mioframe
           repositories: mioframe.github.io
 
-      - name: Remove PR preview from Mioframe/mioframe.github.io
+      - name: Remove expired branch tombstones
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
           GITHUB_REPOSITORY: Mioframe/mioframe.github.io
-        run: node scripts/pages/cleanupPreview.mjs --pr ${{ github.event.number }}
+        run: node scripts/pages/cleanupExpiredTombstones.mjs

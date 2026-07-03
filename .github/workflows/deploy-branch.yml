@@ -1,0 +1,88 @@
+name: deploy-branch
+
+# Manual-only deployment of a selected branch to
+# https://mioframe.github.io/branch/<branch-slug>/, with PWA enabled. Never
+# runs automatically — arbitrary branches are not auto-published. See
+# docs/release.md#manual-branch-deployment.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch (or ref) to build and publish
+        required: true
+        type: string
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  deploy-branch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Compute branch slug
+        id: slug
+        env:
+          BRANCH_REF: ${{ inputs.ref }}
+        run: |
+          slug="$(node scripts/pages/computeBranchSlug.mjs --branch "$BRANCH_REF")"
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+
+      - name: Build branch deployment
+        env:
+          BASE_URL: /branch/${{ steps.slug.outputs.slug }}/
+          VITE_RELEASE_CHANNEL: branch
+          VITE_RELEASE_CHANNEL_ID: ${{ steps.slug.outputs.slug }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm run build
+
+      - name: Write deployment metadata
+        env:
+          BRANCH_REF: ${{ inputs.ref }}
+        run: >-
+          node scripts/pages/writeDeploymentMetadata.mjs
+          --dist dist
+          --channel branch
+          --channel-id ${{ steps.slug.outputs.slug }}
+          --base-url /branch/${{ steps.slug.outputs.slug }}/
+          --ref "$BRANCH_REF"
+          --branch "$BRANCH_REF"
+          --slug ${{ steps.slug.outputs.slug }}
+          --sha ${{ github.sha }}
+          --app-version "$(node -p "require('./package.json').version")"
+
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
+
+      - name: Publish branch build to Mioframe/mioframe.github.io
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/publishBranch.mjs --dist dist --slug ${{ steps.slug.outputs.slug }}

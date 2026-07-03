@@ -1,7 +1,7 @@
 /**
- * Remove the pr-<PR_NUMBER>/ slot from the gh-pages staging branch after a PR is closed.
+ * Remove the pr/<PR_NUMBER>/ slot from the gh-pages staging branch after a PR is closed.
  *
- * Stable files and other pr-* directories are not touched.
+ * Stable files, branch/* deployments, and other pr/* directories are not touched.
  * If the slot does not exist, the script exits cleanly without committing.
  *
  * When --output-dir is provided, the final staging content is also copied
@@ -14,15 +14,16 @@
  *   node scripts/pages/cleanupPreview.mjs --pr 42 [--output-dir ./pages-staging]
  *
  * Required env:
- *   GITHUB_TOKEN      - token with contents:write
- *   GITHUB_REPOSITORY - OWNER/REPO
+ *   GITHUB_TOKEN      - token with contents:write on the target Pages repository
+ *   GITHUB_REPOSITORY - OWNER/REPO of the target Pages repository
  */
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
-import { applyPreviewCleanup, validatePrNumber } from './lib/pagesFs.mjs';
+import { applyPrCleanup } from './lib/pagesFs.mjs';
+import { validatePrNumber } from './lib/slug.mjs';
 
 /**
  * @param argv Process arguments (process.argv.slice(2)).
@@ -52,9 +53,9 @@ export async function cleanupPreview(argv = process.argv.slice(2), env = process
     commitMessage: `chore(pages): remove preview for PR #${prNumber}`,
     outputDir,
     fn(workDir) {
-      removed = applyPreviewCleanup(workDir, prNumber);
+      removed = applyPrCleanup(workDir, prNumber);
       if (!removed) {
-        console.log(`Preview slot pr-${prNumber}/ not found, nothing to remove.`);
+        console.log(`Preview slot pr/${prNumber}/ not found, nothing to remove.`);
       }
     },
   });
