@@ -9,6 +9,7 @@ vi.mock('./lib/ghPagesBranch.mjs', () => ({
   }),
 }));
 
+const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
 const { cleanupPreview } = await import('./cleanupPreview.mjs');
 
 let workDir = '';
@@ -17,6 +18,7 @@ let outputFile = '';
 beforeEach(() => {
   workDir = mkdtempSync(join(tmpdir(), 'pages-work-'));
   outputFile = join(mkdtempSync(join(tmpdir(), 'pages-output-')), 'github-output.txt');
+  vi.mocked(withGhPagesBranch).mockClear();
 });
 
 afterEach(() => {
@@ -29,7 +31,7 @@ describe('cleanupPreview argument validation', () => {
     await expect(
       cleanupPreview([], {
         GITHUB_TOKEN: 'token',
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('Usage:');
   });
@@ -37,17 +39,33 @@ describe('cleanupPreview argument validation', () => {
   it('throws when GITHUB_TOKEN is missing', async () => {
     await expect(
       cleanupPreview(['--pr', '42'], {
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('GITHUB_TOKEN is required');
   });
 
-  it('throws when GITHUB_REPOSITORY is missing', async () => {
+  it('throws when PAGES_REPOSITORY is missing', async () => {
     await expect(
       cleanupPreview(['--pr', '42'], {
         GITHUB_TOKEN: 'token',
       }),
-    ).rejects.toThrow('GITHUB_REPOSITORY is required');
+    ).rejects.toThrow('PAGES_REPOSITORY is required');
+  });
+});
+
+describe('cleanupPreview target repository', () => {
+  it('cleans up on PAGES_REPOSITORY and ignores GITHUB_REPOSITORY', async () => {
+    await cleanupPreview(['--pr', '42'], {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'Mioframe/mioframe.github.io',
+      // The reserved Actions default env var; must never be used as the
+      // target Pages repository even when set to the source repository.
+      GITHUB_REPOSITORY: 'Mioframe/mioframe',
+    });
+
+    expect(withGhPagesBranch).toHaveBeenCalledWith(
+      expect.objectContaining({ repository: 'Mioframe/mioframe.github.io' }),
+    );
   });
 });
 
@@ -58,7 +76,7 @@ describe('cleanupPreview changed output', () => {
 
     const removed = await cleanupPreview(['--pr', '42'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
       GITHUB_OUTPUT: outputFile,
     });
 
@@ -69,7 +87,7 @@ describe('cleanupPreview changed output', () => {
   it('resolves false and writes changed=false when the preview slot did not exist', async () => {
     const removed = await cleanupPreview(['--pr', '99'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
       GITHUB_OUTPUT: outputFile,
     });
 
@@ -81,7 +99,7 @@ describe('cleanupPreview changed output', () => {
     await expect(
       cleanupPreview(['--pr', '99'], {
         GITHUB_TOKEN: 'token',
-        GITHUB_REPOSITORY: 'owner/repo',
+        PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).resolves.toBe(false);
   });

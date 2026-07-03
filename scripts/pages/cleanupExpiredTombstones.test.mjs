@@ -9,6 +9,7 @@ vi.mock('./lib/ghPagesBranch.mjs', () => ({
   }),
 }));
 
+const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
 const { cleanupExpiredTombstones } = await import('./cleanupExpiredTombstones.mjs');
 
 let workDir = '';
@@ -25,6 +26,7 @@ function writeDeploymentJson(slug, metadata) {
 beforeEach(() => {
   workDir = mkdtempSync(join(tmpdir(), 'pages-work-'));
   outputFile = join(mkdtempSync(join(tmpdir(), 'pages-output-')), 'github-output.txt');
+  vi.mocked(withGhPagesBranch).mockClear();
 });
 
 afterEach(() => {
@@ -34,14 +36,14 @@ afterEach(() => {
 
 describe('cleanupExpiredTombstones argument validation', () => {
   it('throws when GITHUB_TOKEN is missing', async () => {
-    await expect(cleanupExpiredTombstones([], { GITHUB_REPOSITORY: 'owner/repo' })).rejects.toThrow(
-      'GITHUB_TOKEN is required',
-    );
+    await expect(
+      cleanupExpiredTombstones([], { PAGES_REPOSITORY: 'owner/pages-repo' }),
+    ).rejects.toThrow('GITHUB_TOKEN is required');
   });
 
-  it('throws when GITHUB_REPOSITORY is missing', async () => {
+  it('throws when PAGES_REPOSITORY is missing', async () => {
     await expect(cleanupExpiredTombstones([], { GITHUB_TOKEN: 'token' })).rejects.toThrow(
-      'GITHUB_REPOSITORY is required',
+      'PAGES_REPOSITORY is required',
     );
   });
 
@@ -51,11 +53,27 @@ describe('cleanupExpiredTombstones argument validation', () => {
       await expect(
         cleanupExpiredTombstones(['--retention-days', value], {
           GITHUB_TOKEN: 'token',
-          GITHUB_REPOSITORY: 'owner/repo',
+          PAGES_REPOSITORY: 'owner/pages-repo',
         }),
       ).rejects.toThrow('Invalid retention days from --retention-days');
     },
   );
+});
+
+describe('cleanupExpiredTombstones target repository', () => {
+  it('cleans up on PAGES_REPOSITORY and ignores GITHUB_REPOSITORY', async () => {
+    await cleanupExpiredTombstones(['--retention-days', '14'], {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'Mioframe/mioframe.github.io',
+      // The reserved Actions default env var; must never be used as the
+      // target Pages repository even when set to the source repository.
+      GITHUB_REPOSITORY: 'Mioframe/mioframe',
+    });
+
+    expect(withGhPagesBranch).toHaveBeenCalledWith(
+      expect.objectContaining({ repository: 'Mioframe/mioframe.github.io' }),
+    );
+  });
 });
 
 describe('cleanupExpiredTombstones behavior', () => {
@@ -76,7 +94,7 @@ describe('cleanupExpiredTombstones behavior', () => {
 
     const removed = await cleanupExpiredTombstones(['--retention-days', '14'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
       GITHUB_OUTPUT: outputFile,
     });
 
@@ -108,7 +126,7 @@ describe('cleanupExpiredTombstones behavior', () => {
 
     const removed = await cleanupExpiredTombstones(['--retention-days', '14'], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
       GITHUB_OUTPUT: outputFile,
     });
 
@@ -124,7 +142,7 @@ describe('cleanupExpiredTombstones behavior', () => {
 
     const removed = await cleanupExpiredTombstones([], {
       GITHUB_TOKEN: 'token',
-      GITHUB_REPOSITORY: 'owner/repo',
+      PAGES_REPOSITORY: 'owner/pages-repo',
     });
 
     expect(removed).toEqual([]);

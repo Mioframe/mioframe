@@ -12,7 +12,8 @@
  *
  * Required env:
  *   GITHUB_TOKEN      - token with contents:write on the target Pages repository
- *   GITHUB_REPOSITORY - OWNER/REPO of the target Pages repository
+ *   PAGES_REPOSITORY  - OWNER/REPO of the target Pages repository (never GITHUB_REPOSITORY,
+ *                        which is the reserved Actions default pointing at the source repository)
  */
 
 import { existsSync } from 'node:fs';
@@ -46,13 +47,13 @@ export async function publishPreview(argv = process.argv.slice(2), env = process
   const outputIndex = argv.indexOf('--output-dir');
   const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;
 
-  const { GITHUB_TOKEN, GITHUB_REPOSITORY } = env;
+  const { GITHUB_TOKEN, PAGES_REPOSITORY } = env;
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required');
-  if (!GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY is required');
+  if (!PAGES_REPOSITORY) throw new Error('PAGES_REPOSITORY is required');
 
   await withGhPagesBranch({
     token: GITHUB_TOKEN,
-    repository: GITHUB_REPOSITORY,
+    repository: PAGES_REPOSITORY,
     commitMessage: `chore(pages): deploy preview for PR #${prNumber}`,
     outputDir,
     fn(workDir) {

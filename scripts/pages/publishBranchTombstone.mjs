@@ -19,7 +19,8 @@
  *
  * Required env:
  *   GITHUB_TOKEN      - token with contents:write on the target Pages repository
- *   GITHUB_REPOSITORY - OWNER/REPO of the target Pages repository
+ *   PAGES_REPOSITORY  - OWNER/REPO of the target Pages repository (never GITHUB_REPOSITORY,
+ *                        which is the reserved Actions default pointing at the source repository)
  */
 
 import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -64,9 +65,9 @@ export async function publishBranchTombstone(argv = process.argv.slice(2), env =
   const outputIndex = argv.indexOf('--output-dir');
   const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;
 
-  const { GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_OUTPUT } = env;
+  const { GITHUB_TOKEN, PAGES_REPOSITORY, GITHUB_OUTPUT } = env;
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required');
-  if (!GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY is required');
+  if (!PAGES_REPOSITORY) throw new Error('PAGES_REPOSITORY is required');
 
   let tombstoned = false;
   let tombstoneDistDir;
@@ -74,7 +75,7 @@ export async function publishBranchTombstone(argv = process.argv.slice(2), env =
   try {
     await withGhPagesBranch({
       token: GITHUB_TOKEN,
-      repository: GITHUB_REPOSITORY,
+      repository: PAGES_REPOSITORY,
       commitMessage: `chore(pages): tombstone removed branch ${slug}`,
       outputDir,
       fn(workDir) {

@@ -188,6 +188,18 @@ jobs:
     # write credential. Remove this line once this branch merges to develop;
     # do not add further branch/PR exclusions here for ordinary PRs. See
     # docs/release.md#pr-preview-deployment.
+    #
+    # The `fix/pages-target-repository-env` exclusion below is a second,
+    # equally scoped one-time bootstrap exception for PR #122. That PR
+    # changes the trusted Pages publish tooling contract from the reserved
+    # GITHUB_REPOSITORY variable to the explicit PAGES_REPOSITORY variable.
+    # `tooling/` is checked out from the PR's base ref (develop), whose
+    # publishPreview.mjs still expects GITHUB_REPOSITORY, so it cannot
+    # publish this PR's preview correctly; running PR-head publish tooling
+    # instead would execute untrusted code with the Pages write token, which
+    # is forbidden. Remove this line once PR #122 merges into develop and
+    # base-ref tooling expects PAGES_REPOSITORY; do not add further
+    # branch/PR exclusions here for ordinary PRs.
     if: >-
       !cancelled() &&
       needs.verify.result == 'success' &&
@@ -195,7 +207,8 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       !(startsWith(github.event.pull_request.head.ref, 'sync/main-') &&
         endsWith(github.event.pull_request.head.ref, '-back-to-develop')) &&
-      github.event.pull_request.head.ref != 'infra/org-pages-release-channels'
+      github.event.pull_request.head.ref != 'infra/org-pages-release-channels' &&
+      github.event.pull_request.head.ref != 'fix/pages-target-repository-env'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -216,6 +229,8 @@ jobs:
           path: app-source
 
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: app-source/package.json
 
       - uses: actions/setup-node@v4
         with:
@@ -269,11 +284,12 @@ jobs:
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io
+          permission-contents: write
 
       - name: Publish PR preview to Mioframe/mioframe.github.io
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
-          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+          PAGES_REPOSITORY: Mioframe/mioframe.github.io
         run: node tooling/scripts/pages/publishPreview.mjs --dist app-source/dist --pr ${{ github.event.number }}
 
       - name: Post or update preview comment
@@ -344,9 +360,10 @@ jobs:
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io
+          permission-contents: write
 
       - name: Publish develop build to Mioframe/mioframe.github.io
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
-          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+          PAGES_REPOSITORY: Mioframe/mioframe.github.io
         run: node scripts/pages/publishBranch.mjs --dist dist --slug develop

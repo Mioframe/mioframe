@@ -129,9 +129,10 @@ jobs:
           private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
           owner: Mioframe
           repositories: mioframe.github.io
+          permission-contents: write
 
       - name: Publish stable build to Mioframe/mioframe.github.io
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
-          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+          PAGES_REPOSITORY: Mioframe/mioframe.github.io
         run: node scripts/pages/publishStable.mjs --dist dist
