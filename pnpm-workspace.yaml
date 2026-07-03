@@ -6,3 +6,5 @@ allowBuilds:
   sharp: true
   vue-demi: true
 sideEffectsCache: false
+overrides:
+  esbuild: 0.27.3

@@ -77,7 +77,7 @@ describe('setupPwaInstallRuntime', () => {
       prompt: vi.fn(),
     } as unknown as BeforeInstallPromptEvent;
 
-    handler?.(fakeEvent as unknown as Event);
+    handler?.(fakeEvent);
 
     expect(mockPreventDefault).toHaveBeenCalledOnce();
     expect(retainedPrompt.value).toBe(fakeEvent);

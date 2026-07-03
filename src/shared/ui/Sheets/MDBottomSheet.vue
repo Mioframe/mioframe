@@ -8,11 +8,11 @@ import { useOverlayContainer } from '../Overlay';
 
 const showModel = defineModel<boolean>('show', { required: true });
 
-const fullscreen = defineModel<boolean>('fullscreen', {
+const fullscreen = defineModel<boolean | undefined>('fullscreen', {
   default: undefined,
 });
 
-const collapsed = defineModel<boolean>('collapsed', {
+const collapsed = defineModel<boolean | undefined>('collapsed', {
   default: undefined,
 });
 
