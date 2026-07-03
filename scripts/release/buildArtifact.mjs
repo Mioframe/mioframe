@@ -17,7 +17,7 @@ const defaultDeps = {
  * Resolve the GitHub Pages base path for a release artifact build.
  * @param [argv] Raw CLI arguments.
  * @param [env] Process environment.
- * @returns Resolved base path, e.g. `/mioframe/`.
+ * @returns Resolved base path, e.g. `/`.
  */
 export function resolveArtifactBasePath(argv = process.argv.slice(2), env = process.env) {
   const baseIndex = argv.indexOf('--base');

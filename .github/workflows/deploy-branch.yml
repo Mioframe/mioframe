@@ -1,0 +1,121 @@
+name: deploy-branch
+
+# Manual-only deployment of a selected branch to
+# https://mioframe.github.io/branch/<branch-slug>/, with PWA enabled. Never
+# runs automatically — arbitrary branches are not auto-published. See
+# docs/release.md#manual-branch-deployment.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch name to build and publish
+        required: true
+        type: string
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  deploy-branch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      # Trusted tooling (tooling/) is checked out from this workflow's own
+      # default branch, never from the selected (possibly untrusted) branch
+      # input. Slug computation, metadata, and publish all run from this
+      # checkout — see the app-source/ checkout below for the untrusted build
+      # input.
+      - name: Checkout trusted tooling
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: tooling
+
+      - name: Validate branch input
+        env:
+          BRANCH: ${{ inputs.branch }}
+        working-directory: tooling
+        run: |
+          if ! git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" > /dev/null; then
+            echo "::error::'$BRANCH' is not a branch on origin. This workflow only accepts branch names, not tags or SHAs." >&2
+            exit 1
+          fi
+
+      - name: Compute branch slug
+        id: slug
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          slug="$(node tooling/scripts/pages/computeBranchSlug.mjs --branch "$BRANCH")"
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+
+      # app-source/ is untrusted: the selected branch may contain arbitrary
+      # code from any contributor. It is only ever built here, never executed
+      # with the Pages deploy token.
+      - name: Checkout selected branch (app source)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          path: app-source
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: app-source/pnpm-lock.yaml
+
+      - name: Install app-source dependencies
+        working-directory: app-source
+        run: pnpm install --frozen-lockfile
+
+      - name: Build branch deployment
+        working-directory: app-source
+        env:
+          BASE_URL: /branch/${{ steps.slug.outputs.slug }}/
+          VITE_RELEASE_CHANNEL: branch
+          VITE_RELEASE_CHANNEL_ID: ${{ steps.slug.outputs.slug }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm run build
+
+      - name: Compute deployed commit SHA
+        id: deployed-sha
+        run: echo "sha=$(git -C app-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Write deployment metadata
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: >-
+          node tooling/scripts/pages/writeDeploymentMetadata.mjs
+          --dist app-source/dist
+          --channel branch
+          --channel-id ${{ steps.slug.outputs.slug }}
+          --base-url /branch/${{ steps.slug.outputs.slug }}/
+          --ref "$BRANCH"
+          --branch "$BRANCH"
+          --slug ${{ steps.slug.outputs.slug }}
+          --sha ${{ steps.deployed-sha.outputs.sha }}
+          --app-version "$(node -p "require('./app-source/package.json').version")"
+
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
+
+      - name: Publish branch build to Mioframe/mioframe.github.io
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node tooling/scripts/pages/publishBranch.mjs --dist app-source/dist --slug ${{ steps.slug.outputs.slug }}

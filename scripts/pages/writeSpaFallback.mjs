@@ -1,14 +1,22 @@
 /**
- * Write the root GitHub Pages 404.html SPA fallback dispatcher.
+ * Write the org-root GitHub Pages 404.html SPA fallback dispatcher.
  *
- * GitHub Pages serves the root 404.html for any URL that maps to no physical
- * file in the deployment.  The inline script detects whether the 404'd path
- * belongs to a PR preview slot or the stable app, redirects to the correct
- * index.html root, and stores the original path in sessionStorage so the app
- * can restore it via History API after loading.
+ * GitHub Pages serves the single site-wide root 404.html for any URL that
+ * maps to no physical file anywhere in the Mioframe/mioframe.github.io
+ * deployment. The inline script classifies the 404'd path into one of the
+ * three channel roots (stable `/`, a branch `/branch/<slug>/`, or a PR
+ * preview `/pr/<number>/`), redirects to that root's index.html, and stores
+ * the original path in sessionStorage so the app can restore it via the
+ * History API after loading (see `src/app/ghPagesSpaFallback.ts`).
+ *
+ * This file is root-owned: only the stable publish job writes it, since
+ * stable publish is the only publisher that touches the repository root.
+ * Branch and PR preview publishers never write it, and its content does not
+ * depend on which channel triggered the write — it is safe to regenerate
+ * from any deployment.
  *
  * Usage:
- *   node scripts/pages/writeSpaFallback.mjs --base /mioframe/ --output-dir ./pages-staging
+ *   node scripts/pages/writeSpaFallback.mjs --output-dir ./pages-staging
  */
 
 import { writeFileSync } from 'node:fs';
@@ -18,29 +26,24 @@ import { pathToFileURL } from 'node:url';
 /**
  * Classify a URL pathname for the SPA fallback redirect.
  * @param pathname - `window.location.pathname` of the 404'd URL.
- * @param base - Repository base path, e.g. `/mioframe/`.
- * @returns The index.html root to redirect to (`base` for stable,
- *   `base + pr-N/` for PR previews), or `null` when the path is outside the
- *   repository base and should remain a genuine 404.
+ * @returns The index.html root to redirect to: `/` for stable, `/branch/<slug>/`
+ *   for a branch deployment, or `/pr/<number>/` for a PR preview.
  */
-export function classifySpaPath(pathname, base) {
-  if (!pathname.startsWith(base)) return null;
-  const rest = pathname.slice(base.length);
-  const prMatch = rest.match(/^(pr-\d+)(?:\/|$)/);
-  return prMatch ? base + prMatch[1] + '/' : base;
+export function classifySpaPath(pathname) {
+  const branchMatch = pathname.match(/^\/branch\/([^/]+)(?:\/|$)/);
+  if (branchMatch) return `/branch/${branchMatch[1]}/`;
+
+  const prMatch = pathname.match(/^\/pr\/(\d+)(?:\/|$)/);
+  if (prMatch) return `/pr/${prMatch[1]}/`;
+
+  return '/';
 }
 
 /**
- * Build the HTML content for the root GitHub Pages SPA fallback.
- *
- * The generated `404.html` is served by GitHub Pages for every missing path
- * under the deployment.  Its inline script classifies the path, stores it in
- * `sessionStorage` for post-load restoration, and redirects to the right
- * index.html root without exposing the app to a 404 error page.
- * @param base - The Vite base path, e.g. `/mioframe/`.
+ * Build the HTML content for the org-root GitHub Pages SPA fallback.
  * @returns HTML string for `404.html`.
  */
-export function buildSpaFallbackHtml(base) {
+export function buildSpaFallbackHtml() {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -48,17 +51,14 @@ export function buildSpaFallbackHtml(base) {
   <title>Redirecting…</title>
   <script>
     (function () {
-      var base = ${JSON.stringify(base)};
       var path = window.location.pathname;
-
-      if (!path.startsWith(base)) {
-        // Path is outside the repository base — genuine 404.
-        return;
-      }
-
-      var rest = path.slice(base.length);
-      var prMatch = rest.match(/^(pr-\\d+)(?:\\/|$)/);
-      var targetRoot = prMatch ? base + prMatch[1] + '/' : base;
+      var branchMatch = path.match(/^\\/branch\\/([^/]+)(?:\\/|$)/);
+      var prMatch = path.match(/^\\/pr\\/(\\d+)(?:\\/|$)/);
+      var targetRoot = branchMatch
+        ? '/branch/' + branchMatch[1] + '/'
+        : prMatch
+          ? '/pr/' + prMatch[1] + '/'
+          : '/';
 
       sessionStorage.setItem('ghPagesSpaFallback', path + window.location.search + window.location.hash);
       window.location.replace(targetRoot);
@@ -74,22 +74,17 @@ export function buildSpaFallbackHtml(base) {
  * @param argv Process arguments (`process.argv.slice(2)`).
  */
 export function writeSpaFallback(argv = process.argv.slice(2)) {
-  const baseIndex = argv.indexOf('--base');
   const outputIndex = argv.indexOf('--output-dir');
 
-  if (baseIndex === -1 || !argv[baseIndex + 1]) {
-    throw new Error('Usage: writeSpaFallback.mjs --base <base-path> --output-dir <dir>');
-  }
   if (outputIndex === -1 || !argv[outputIndex + 1]) {
-    throw new Error('Usage: writeSpaFallback.mjs --base <base-path> --output-dir <dir>');
+    throw new Error('Usage: writeSpaFallback.mjs --output-dir <dir>');
   }
 
-  const base = argv[baseIndex + 1];
   const outputDir = argv[outputIndex + 1];
 
-  const html = buildSpaFallbackHtml(base);
+  const html = buildSpaFallbackHtml();
   writeFileSync(join(outputDir, '404.html'), html, 'utf8');
-  console.log(`Wrote SPA fallback 404.html to ${outputDir}/404.html (base: ${base})`);
+  console.log(`Wrote SPA fallback 404.html to ${outputDir}/404.html`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

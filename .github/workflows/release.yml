@@ -75,12 +75,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
-      contents: write
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      contents: read
     concurrency:
       group: pages-publish
       cancel-in-progress: false
@@ -100,34 +95,43 @@ jobs:
 
       - name: Build release artifact
         env:
-          BASE_URL: /${{ github.event.repository.name }}/
+          BASE_URL: /
+          VITE_RELEASE_CHANNEL: stable
+          VITE_RELEASE_CHANNEL_ID: main
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm release:build-artifact
 
-      - name: Publish stable build to staging
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+      - name: Write deployment metadata
         run: >-
-          node scripts/pages/publishStable.mjs
+          node scripts/pages/writeDeploymentMetadata.mjs
           --dist dist
-          --output-dir pages-staging
+          --channel stable
+          --channel-id main
+          --base-url /
+          --ref ${{ github.ref }}
+          --branch main
+          --sha ${{ github.sha }}
+          --app-version "$(node -p "require('./package.json').version")"
 
-      - name: Write root SPA fallback
-        run: >-
-          node scripts/pages/writeSpaFallback.mjs
-          --base /${{ github.event.repository.name }}/
-          --output-dir pages-staging
+      # Root-owned: only the stable publish job writes the site-wide
+      # 404.html, since stable publish is the only publisher that touches
+      # the repository root (see scripts/pages/writeSpaFallback.mjs).
+      - name: Write org-root SPA fallback
+        run: node scripts/pages/writeSpaFallback.mjs --output-dir dist
 
-      - uses: actions/configure-pages@v4
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v3
         with:
-          enablement: true
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./pages-staging/
-
-      - uses: actions/deploy-pages@v4
-        id: deploy
+      - name: Publish stable build to Mioframe/mioframe.github.io
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/publishStable.mjs --dist dist

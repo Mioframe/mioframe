@@ -1,214 +1,161 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildPrPreviewDenylistPattern,
+  buildChannelCacheNamespace,
+  buildForeignChannelDenylistPattern,
   buildSameOriginMatcher,
+  buildWorkboxOptions,
   getPwaPlugins,
-  isPrPreviewPath,
+  isForeignChannelPath,
 } from './pwa.ts';
 
-describe('isPrPreviewPath', () => {
-  describe('PR preview paths return true', () => {
-    it('matches root PR preview path without trailing slash', () => {
-      expect(isPrPreviewPath('/mioframe/pr-86', '/mioframe/')).toBe(true);
-    });
-
-    it('matches root PR preview path with trailing slash', () => {
-      expect(isPrPreviewPath('/mioframe/pr-86/', '/mioframe/')).toBe(true);
-    });
-
-    it('matches nested assets under a PR preview', () => {
-      expect(isPrPreviewPath('/mioframe/pr-86/assets/app.js', '/mioframe/')).toBe(true);
-    });
-
-    it('matches arbitrary PR numbers', () => {
-      expect(isPrPreviewPath('/mioframe/pr-1/', '/mioframe/')).toBe(true);
-      expect(isPrPreviewPath('/mioframe/pr-999/', '/mioframe/')).toBe(true);
-    });
-
-    it('matches under a different base path', () => {
-      expect(isPrPreviewPath('/other-repo/pr-42/', '/other-repo/')).toBe(true);
-      expect(isPrPreviewPath('/other-repo/pr-42/assets/main.css', '/other-repo/')).toBe(true);
-    });
+describe('buildChannelCacheNamespace', () => {
+  it('returns "stable" for the stable channel', () => {
+    expect(buildChannelCacheNamespace('stable')).toBe('stable');
   });
 
-  describe('stable paths return false', () => {
-    it('does not match the stable root path', () => {
-      expect(isPrPreviewPath('/mioframe/', '/mioframe/')).toBe(false);
-    });
-
-    it('does not match stable asset paths', () => {
-      expect(isPrPreviewPath('/mioframe/assets/app.js', '/mioframe/')).toBe(false);
-    });
-
-    it('does not match a path that starts with pr- but has no digits', () => {
-      expect(isPrPreviewPath('/mioframe/pr-preview/', '/mioframe/')).toBe(false);
-    });
-
-    it('does not match paths outside the configured base', () => {
-      expect(isPrPreviewPath('/other/pr-86/', '/mioframe/')).toBe(false);
-    });
-
-    it('does not match the stable index.html', () => {
-      expect(isPrPreviewPath('/mioframe/index.html', '/mioframe/')).toBe(false);
-    });
+  it('returns a branch-prefixed namespace including the channel id', () => {
+    expect(buildChannelCacheNamespace('branch', 'develop')).toBe('branch-develop');
+    expect(buildChannelCacheNamespace('branch', 'feature-x')).toBe('branch-feature-x');
   });
 
-  describe('full URL scenario via url.pathname', () => {
-    it('correctly excludes PR preview when called with url.pathname from a full URL', () => {
-      const url = new URL('https://vyachean.github.io/mioframe/pr-86/assets/app.js');
-      expect(isPrPreviewPath(url.pathname, '/mioframe/')).toBe(true);
-    });
+  it('produces different namespaces for different branch channel ids', () => {
+    expect(buildChannelCacheNamespace('branch', 'develop')).not.toBe(
+      buildChannelCacheNamespace('branch', 'feature-x'),
+    );
+  });
 
-    it('does not exclude stable paths when called with url.pathname from a full URL', () => {
-      const url = new URL('https://vyachean.github.io/mioframe/assets/app.js');
-      expect(isPrPreviewPath(url.pathname, '/mioframe/')).toBe(false);
-    });
+  it('throws when the branch channel is used without a channelId', () => {
+    expect(() => buildChannelCacheNamespace('branch')).toThrow('channelId is required');
   });
 });
 
-describe('buildPrPreviewDenylistPattern', () => {
-  describe('PR preview paths are matched (should be denied)', () => {
-    it('matches a root PR preview path without trailing slash', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/pr-86')).toBe(true);
+describe('isForeignChannelPath', () => {
+  describe('foreign channel paths return true (stable base)', () => {
+    it('matches a branch path', () => {
+      expect(isForeignChannelPath('/branch/develop/', '/')).toBe(true);
+      expect(isForeignChannelPath('/branch/develop/assets/app.js', '/')).toBe(true);
     });
 
-    it('matches a root PR preview path with trailing slash', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/pr-86/')).toBe(true);
-    });
-
-    it('matches nested assets under a PR preview', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/pr-86/assets/app.js')).toBe(true);
-    });
-
-    it('matches index.html under a PR preview', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/pr-86/index.html')).toBe(true);
-    });
-
-    it('matches arbitrary PR numbers', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/pr-1/')).toBe(true);
-      expect(pattern.test('/mioframe/pr-999/')).toBe(true);
-    });
-
-    it('matches under a different base path', () => {
-      const pattern = buildPrPreviewDenylistPattern('/other-repo/');
-      expect(pattern.test('/other-repo/pr-42/')).toBe(true);
-      expect(pattern.test('/other-repo/pr-42/assets/main.css')).toBe(true);
+    it('matches a PR preview path', () => {
+      expect(isForeignChannelPath('/pr/86/', '/')).toBe(true);
+      expect(isForeignChannelPath('/pr/86/assets/app.js', '/')).toBe(true);
     });
   });
 
-  describe('stable paths are not matched (should not be denied)', () => {
+  describe('own-channel paths return false', () => {
     it('does not match the stable root path', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/')).toBe(false);
-    });
-
-    it('does not match a normal stable page path', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/index.html')).toBe(false);
+      expect(isForeignChannelPath('/', '/')).toBe(false);
     });
 
     it('does not match stable asset paths', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/assets/app.js')).toBe(false);
+      expect(isForeignChannelPath('/assets/app.js', '/')).toBe(false);
     });
 
-    it('does not match a path that starts with pr- but has no digits', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/mioframe/pr-preview/')).toBe(false);
+    it('does not match a path that starts with "branch" but has no separator', () => {
+      expect(isForeignChannelPath('/branchfoo', '/')).toBe(false);
     });
 
-    it('does not match paths outside the base', () => {
-      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
-      expect(pattern.test('/other/pr-86/')).toBe(false);
+    it('does not match paths outside the configured base', () => {
+      expect(isForeignChannelPath('/other/branch/x', '/mioframe/')).toBe(false);
     });
+  });
+
+  it('is scoped relative to a non-root base too', () => {
+    expect(isForeignChannelPath('/branch/develop/branch/nested/', '/branch/develop/')).toBe(true);
+    expect(isForeignChannelPath('/branch/develop/assets/app.js', '/branch/develop/')).toBe(false);
+  });
+});
+
+describe('buildForeignChannelDenylistPattern', () => {
+  it('matches branch and pr paths under the stable root', () => {
+    const pattern = buildForeignChannelDenylistPattern('/');
+    expect(pattern.test('/branch/develop/')).toBe(true);
+    expect(pattern.test('/pr/86/')).toBe(true);
+  });
+
+  it('does not match stable paths', () => {
+    const pattern = buildForeignChannelDenylistPattern('/');
+    expect(pattern.test('/')).toBe(false);
+    expect(pattern.test('/assets/app.js')).toBe(false);
   });
 });
 
 describe('buildSameOriginMatcher', () => {
-  const base = '/mioframe/';
-
-  it('matches a stable path whose extension satisfies the pattern', () => {
-    const matcher = buildSameOriginMatcher(/\.woff2$/i, base);
-    expect(matcher({ url: new URL('https://example.com/mioframe/assets/font.woff2') })).toBe(true);
+  it('excludes foreign-channel paths for the stable channel', () => {
+    const matcher = buildSameOriginMatcher(/\.woff2$/i, '/', 'stable');
+    expect(matcher({ url: new URL('https://example.com/assets/font.woff2') })).toBe(true);
+    expect(matcher({ url: new URL('https://example.com/branch/develop/assets/font.woff2') })).toBe(
+      false,
+    );
+    expect(matcher({ url: new URL('https://example.com/pr/86/assets/font.woff2') })).toBe(false);
   });
 
-  it('excludes a PR preview path even when the extension matches', () => {
-    const matcher = buildSameOriginMatcher(/\.woff2$/i, base);
-    expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/assets/font.woff2') })).toBe(
-      false,
+  it('does not need foreign-channel exclusion for the branch channel (scope already contains it)', () => {
+    const matcher = buildSameOriginMatcher(/\.woff2$/i, '/branch/develop/', 'branch');
+    expect(matcher({ url: new URL('https://example.com/branch/develop/assets/font.woff2') })).toBe(
+      true,
     );
   });
 
   it('excludes a path that does not match the pattern', () => {
-    const matcher = buildSameOriginMatcher(/\.woff2$/i, base);
-    expect(matcher({ url: new URL('https://example.com/mioframe/assets/app.js') })).toBe(false);
+    const matcher = buildSameOriginMatcher(/\.woff2$/i, '/', 'stable');
+    expect(matcher({ url: new URL('https://example.com/assets/app.js') })).toBe(false);
+  });
+});
+
+describe('buildWorkboxOptions', () => {
+  it('sets cacheId to the same per-channel namespace used by runtime cache names', () => {
+    expect(buildWorkboxOptions({ base: '/', channel: 'stable' }).cacheId).toBe(
+      buildChannelCacheNamespace('stable'),
+    );
+    expect(
+      buildWorkboxOptions({ base: '/branch/develop/', channel: 'branch', channelId: 'develop' })
+        .cacheId,
+    ).toBe(buildChannelCacheNamespace('branch', 'develop'));
   });
 
-  describe('font asset rule (eot|otf|ttc|ttf|woff|woff2|font.css)', () => {
-    const matcher = buildSameOriginMatcher(/\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i, base);
+  it('never shares a cacheId between stable and a branch channel, or between two branches', () => {
+    const cacheIds = [
+      buildWorkboxOptions({ base: '/', channel: 'stable' }).cacheId,
+      buildWorkboxOptions({ base: '/branch/develop/', channel: 'branch', channelId: 'develop' })
+        .cacheId,
+      buildWorkboxOptions({ base: '/branch/feature-x/', channel: 'branch', channelId: 'feature-x' })
+        .cacheId,
+    ];
 
-    it('matches stable font assets', () => {
-      expect(matcher({ url: new URL('https://example.com/mioframe/assets/font.woff2') })).toBe(
-        true,
-      );
-    });
-
-    it('excludes PR preview font assets', () => {
-      expect(
-        matcher({ url: new URL('https://example.com/mioframe/pr-86/assets/font.woff2') }),
-      ).toBe(false);
-    });
+    expect(new Set(cacheIds).size).toBe(cacheIds.length);
   });
 
-  describe('image asset rule (jpg|jpeg|gif|png|svg|ico|webp)', () => {
-    const matcher = buildSameOriginMatcher(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i, base);
-
-    it('matches stable image assets', () => {
-      expect(matcher({ url: new URL('https://example.com/mioframe/assets/icon.svg') })).toBe(true);
+  // Workbox prepends `cacheId` to any cache name it derives itself (notably
+  // its own default-named precache cache), so this proves the branch
+  // tombstone cleanup prefix (`branch-<slug>-`, see
+  // scripts/pages/lib/tombstoneContent.mjs) covers Workbox's precache too:
+  // every explicit runtime cache name already lives under that same prefix.
+  it('namespaces every explicit runtime cache name under the cacheId prefix', () => {
+    const { cacheId, runtimeCaching } = buildWorkboxOptions({
+      base: '/branch/develop/',
+      channel: 'branch',
+      channelId: 'develop',
     });
 
-    it('excludes PR preview image assets', () => {
-      expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/assets/icon.svg') })).toBe(
-        false,
-      );
-    });
+    expect(runtimeCaching?.length).toBeGreaterThan(0);
+    for (const entry of runtimeCaching ?? []) {
+      expect(entry.options?.cacheName?.startsWith(`${cacheId}-`)).toBe(true);
+    }
   });
 
-  describe('data asset rule (json|xml|csv)', () => {
-    const matcher = buildSameOriginMatcher(/\.(?:json|xml|csv)$/i, base);
-
-    it('matches stable data assets', () => {
-      expect(matcher({ url: new URL('https://example.com/mioframe/some.json') })).toBe(true);
-    });
-
-    it('excludes PR preview data assets', () => {
-      expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/some.json') })).toBe(false);
-    });
-  });
-
-  describe('API route rule (/api/)', () => {
-    const matcher = buildSameOriginMatcher(/\/api\/.*$/i, base);
-
-    it('matches stable API routes', () => {
-      expect(matcher({ url: new URL('https://example.com/mioframe/api/data') })).toBe(true);
-    });
-
-    it('excludes PR preview API routes', () => {
-      expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/api/data') })).toBe(false);
-    });
+  it('throws when the branch channel is used without a channelId', () => {
+    expect(() => buildWorkboxOptions({ base: '/branch/develop/', channel: 'branch' })).toThrow(
+      'channelId is required',
+    );
   });
 });
 
 describe('getPwaPlugins', () => {
   it('returns empty array when disablePwa is true (PR preview builds)', () => {
     const plugins = getPwaPlugins({
-      base: '/mioframe/',
+      base: '/pr/42/',
       isPreview: false,
       mode: 'production',
       disablePwa: true,
@@ -216,28 +163,40 @@ describe('getPwaPlugins', () => {
     expect(plugins).toHaveLength(0);
   });
 
-  it('returns empty array when disablePwa is true even in production mode', () => {
+  it('returns plugins for the stable channel in production mode without a channelId', () => {
     const plugins = getPwaPlugins({
-      base: '/mioframe/',
-      isPreview: false,
-      mode: 'production',
-      disablePwa: true,
-    });
-    expect(plugins).toHaveLength(0);
-  });
-
-  it('returns plugins in production mode without disablePwa', () => {
-    const plugins = getPwaPlugins({
-      base: '/mioframe/',
+      base: '/',
       isPreview: false,
       mode: 'production',
     });
     expect(plugins.length).toBeGreaterThan(0);
   });
 
+  it('returns plugins for the branch channel when a channelId is provided', () => {
+    const plugins = getPwaPlugins({
+      base: '/branch/develop/',
+      isPreview: false,
+      mode: 'production',
+      channel: 'branch',
+      channelId: 'develop',
+    });
+    expect(plugins.length).toBeGreaterThan(0);
+  });
+
+  it('throws when the branch channel is used without a channelId', () => {
+    expect(() =>
+      getPwaPlugins({
+        base: '/branch/develop/',
+        isPreview: false,
+        mode: 'production',
+        channel: 'branch',
+      }),
+    ).toThrow('channelId is required');
+  });
+
   it('returns empty array in development mode without isPreview', () => {
     const plugins = getPwaPlugins({
-      base: '/mioframe/',
+      base: '/',
       isPreview: false,
       mode: 'development',
     });

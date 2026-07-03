@@ -11,7 +11,7 @@ import {
 
 describe('resolveArtifactBasePath', () => {
   it('uses the tooling.json release base path by default', () => {
-    expect(resolveArtifactBasePath([], {})).toBe('/mioframe/');
+    expect(resolveArtifactBasePath([], {})).toBe('/');
   });
 
   it('prefers an explicit --base flag', () => {

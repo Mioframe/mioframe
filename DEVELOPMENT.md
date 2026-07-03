@@ -64,7 +64,7 @@
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/Vyachean/mioframe.git
+git clone https://github.com/Mioframe/mioframe.git
 cd mioframe
 pnpm install
 ```

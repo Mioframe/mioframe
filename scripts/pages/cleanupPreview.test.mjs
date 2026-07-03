@@ -53,8 +53,8 @@ describe('cleanupPreview argument validation', () => {
 
 describe('cleanupPreview changed output', () => {
   it('resolves true and writes changed=true when the preview slot existed', async () => {
-    mkdirSync(join(workDir, 'pr-42'), { recursive: true });
-    writeFileSync(join(workDir, 'pr-42', 'index.html'), '<preview/>');
+    mkdirSync(join(workDir, 'pr', '42'), { recursive: true });
+    writeFileSync(join(workDir, 'pr', '42', 'index.html'), '<preview/>');
 
     const removed = await cleanupPreview(['--pr', '42'], {
       GITHUB_TOKEN: 'token',

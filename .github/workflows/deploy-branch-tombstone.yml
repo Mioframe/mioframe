@@ -1,0 +1,66 @@
+name: deploy-branch-tombstone
+
+# Publishes a tombstone to https://mioframe.github.io/branch/<slug>/ when a
+# branch with an existing branch/<slug>/ deployment is deleted, instead of
+# immediately removing it. A no-op for branches that were never deployed
+# (including nearly all ordinary feature branches). See
+# docs/release.md#branch-deletion-tombstone.
+
+on:
+  delete:
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  tombstone:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # Deleted branch names that slugify to an invalid or reserved value
+      # (e.g. exactly "branch" or "pr") can never have had a branch/<slug>/
+      # deployment, so this is a clean skip rather than a workflow failure —
+      # important since this trigger fires for every ordinary branch delete.
+      - name: Compute branch slug
+        id: slug
+        env:
+          DELETED_REF: ${{ github.event.ref }}
+        run: |
+          slug="$(node scripts/pages/computeBranchSlug.mjs --branch "$DELETED_REF" 2>/dev/null || true)"
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Pages deploy token
+        if: steps.slug.outputs.slug != ''
+        id: pages-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
+
+      - name: Tombstone removed branch deployment
+        if: steps.slug.outputs.slug != ''
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/publishBranchTombstone.mjs --slug ${{ steps.slug.outputs.slug }}

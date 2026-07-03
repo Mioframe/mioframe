@@ -1,0 +1,50 @@
+name: deploy-branch-tombstone-cleanup
+
+# Scheduled removal of branch/<slug>/ tombstones whose retention period
+# (config/tooling.json pages.tombstoneRetentionDays) has elapsed. Live
+# branch deployments and tombstones still within retention are untouched.
+# See docs/release.md#branch-deletion-tombstone.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  cleanup-expired-tombstones:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
+
+      - name: Remove expired branch tombstones
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/cleanupExpiredTombstones.mjs

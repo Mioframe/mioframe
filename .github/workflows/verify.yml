@@ -1,8 +1,9 @@
 name: verify
 
 # Development verification for develop-bound work: focused pnpm verify plus a
-# PR-into-develop version-bump check, and PR preview deploys. PRs/pushes to
-# main use the separate `release` workflow (.github/workflows/release.yml)
+# PR-into-develop version-bump check, PR preview deploys (pr/<number>/), and
+# the develop branch deploy (branch/develop/) on push to develop. PRs/pushes
+# to main use the separate `release` workflow (.github/workflows/release.yml)
 # instead — see docs/release.md. The trigger below excludes PRs into main so
 # this workflow and the release gate never both run for the same PR path.
 
@@ -178,31 +179,129 @@ jobs:
 
   deploy-preview:
     needs: [verify]
+    # The `infra/org-pages-release-channels` exclusion below is a one-time
+    # bootstrap exception: `tooling/` is checked out from the PR's base ref
+    # (develop), which does not yet have the scripts/pages/* tooling this PR
+    # itself introduces (writeDeploymentMetadata.mjs, the updated
+    # publishPreview.mjs, slug/deployment-metadata helpers). Skipping preview
+    # publish here avoids running untrusted PR-head tooling with the Pages
+    # write credential. Remove this line once this branch merges to develop;
+    # do not add further branch/PR exclusions here for ordinary PRs. See
+    # docs/release.md#pr-preview-deployment.
     if: >-
       !cancelled() &&
       needs.verify.result == 'success' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !(startsWith(github.event.pull_request.head.ref, 'sync/main-') &&
-        endsWith(github.event.pull_request.head.ref, '-back-to-develop'))
+        endsWith(github.event.pull_request.head.ref, '-back-to-develop')) &&
+      github.event.pull_request.head.ref != 'infra/org-pages-release-channels'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
-      contents: write
-      pages: write
-      id-token: write
+      contents: read
       pull-requests: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages-publish
+      cancel-in-progress: false
+
+    steps:
+      # PR head (app-source/) is untrusted: it may contain arbitrary code from
+      # the PR author. It is only ever built here, never executed with the
+      # Pages deploy token — see the trusted tooling/ checkout below.
+      - name: Checkout PR head (app source)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: app-source
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: app-source/pnpm-lock.yaml
+
+      - name: Install app-source dependencies
+        working-directory: app-source
+        run: pnpm install --frozen-lockfile
+
+      - name: Build PR preview
+        working-directory: app-source
+        env:
+          BASE_URL: /pr/${{ github.event.number }}/
+          VITE_DISABLE_PWA: '1'
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm run build
+
+      # Trusted tooling (tooling/) is checked out from the PR's base branch,
+      # never from the PR head. Every step below that can write to
+      # Mioframe/mioframe.github.io — metadata, token generation, publish,
+      # the preview comment — runs scripts from this checkout only.
+      - name: Checkout trusted tooling
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          path: tooling
+
+      - name: Write deployment metadata
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: >-
+          node tooling/scripts/pages/writeDeploymentMetadata.mjs
+          --dist app-source/dist
+          --channel pr
+          --channel-id ${{ github.event.number }}
+          --base-url /pr/${{ github.event.number }}/
+          --ref "$PR_HEAD_REF"
+          --branch "$PR_HEAD_REF"
+          --sha ${{ github.event.pull_request.head.sha }}
+          --app-version "$(node -p "require('./app-source/package.json').version")"
+
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
+
+      - name: Publish PR preview to Mioframe/mioframe.github.io
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node tooling/scripts/pages/publishPreview.mjs --dist app-source/dist --pr ${{ github.event.number }}
+
+      - name: Post or update preview comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: >-
+          node tooling/scripts/pages/upsertPreviewComment.mjs
+          --pr ${{ github.event.number }}
+          --url "https://mioframe.github.io/pr/${{ github.event.number }}/"
+
+  deploy-develop:
+    needs: [verify]
+    if: >-
+      !cancelled() &&
+      needs.verify.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
     concurrency:
       group: pages-publish
       cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: pnpm/action-setup@v4
 
@@ -214,50 +313,40 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build PR preview
+      - name: Build develop branch deployment
         env:
-          BASE_URL: /${{ github.event.repository.name }}/pr-${{ github.event.number }}/
-          VITE_DISABLE_PWA: '1'
+          BASE_URL: /branch/develop/
+          VITE_RELEASE_CHANNEL: branch
+          VITE_RELEASE_CHANNEL_ID: develop
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm run build
 
-      - name: Fix 404 for SPA
-        run: cp ./dist/index.html ./dist/404.html
-
-      - name: Publish PR preview to staging
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+      - name: Write deployment metadata
         run: >-
-          node scripts/pages/publishPreview.mjs
+          node scripts/pages/writeDeploymentMetadata.mjs
           --dist dist
-          --pr ${{ github.event.number }}
-          --output-dir pages-staging
+          --channel branch
+          --channel-id develop
+          --base-url /branch/develop/
+          --ref ${{ github.ref }}
+          --branch develop
+          --slug develop
+          --sha ${{ github.sha }}
+          --app-version "$(node -p "require('./package.json').version")"
 
-      - name: Write root SPA fallback
-        run: >-
-          node scripts/pages/writeSpaFallback.mjs
-          --base /${{ github.event.repository.name }}/
-          --output-dir pages-staging
-
-      - uses: actions/configure-pages@v4
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v3
         with:
-          enablement: true
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./pages-staging/
-
-      - uses: actions/deploy-pages@v4
-        id: deploy
-
-      - name: Post or update preview comment
+      - name: Publish develop build to Mioframe/mioframe.github.io
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: >-
-          node scripts/pages/upsertPreviewComment.mjs
-          --pr ${{ github.event.number }}
-          --url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}/"
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/publishBranch.mjs --dist dist --slug develop

@@ -15,17 +15,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
-      contents: write
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
+      contents: read
     concurrency:
       group: pages-publish
       cancel-in-progress: false
 
     steps:
+      # Checkout the PR's trusted base branch, not the default merge ref
+      # (which can include untrusted PR head content) — this job holds the
+      # Mioframe/mioframe.github.io write token below.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -37,32 +38,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Remove PR preview from staging
-        id: cleanup
+      - name: Generate Pages deploy token
+        id: pages-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.MIOFRAME_PAGES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MIOFRAME_PAGES_APP_PRIVATE_KEY }}
+          owner: Mioframe
+          repositories: mioframe.github.io
+
+      - name: Remove PR preview from Mioframe/mioframe.github.io
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: >-
-          node scripts/pages/cleanupPreview.mjs
-          --pr ${{ github.event.number }}
-          --output-dir pages-staging
-
-      - name: Write root SPA fallback
-        if: steps.cleanup.outputs.changed == 'true'
-        run: >-
-          node scripts/pages/writeSpaFallback.mjs
-          --base /${{ github.event.repository.name }}/
-          --output-dir pages-staging
-
-      - uses: actions/configure-pages@v4
-        if: steps.cleanup.outputs.changed == 'true'
-        with:
-          enablement: true
-
-      - uses: actions/upload-pages-artifact@v3
-        if: steps.cleanup.outputs.changed == 'true'
-        with:
-          path: ./pages-staging/
-
-      - uses: actions/deploy-pages@v4
-        if: steps.cleanup.outputs.changed == 'true'
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          GITHUB_REPOSITORY: Mioframe/mioframe.github.io
+        run: node scripts/pages/cleanupPreview.mjs --pr ${{ github.event.number }}

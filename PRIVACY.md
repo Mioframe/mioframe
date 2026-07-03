@@ -83,8 +83,8 @@ Mioframe 0.1 does not use Sentry Session Replay or Sentry performance tracing, a
 
 For questions about privacy, open a GitHub Discussion:
 
-[https://github.com/Vyachean/mioframe/discussions](https://github.com/Vyachean/mioframe/discussions)
+[https://github.com/Mioframe/mioframe/discussions](https://github.com/Mioframe/mioframe/discussions)
 
 To report a privacy-related bug or data handling issue, open a GitHub Issue:
 
-[https://github.com/Vyachean/mioframe/issues](https://github.com/Vyachean/mioframe/issues)
+[https://github.com/Mioframe/mioframe/issues](https://github.com/Mioframe/mioframe/issues)

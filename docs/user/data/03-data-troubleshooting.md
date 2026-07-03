@@ -95,4 +95,4 @@ If there is no remaining copy and the data was lost from Browser Storage or dele
 
 ## Where to get more help
 
-If these steps do not resolve the problem, ask in [GitHub Discussions](https://github.com/Vyachean/mioframe/discussions) or report it in [GitHub Issues](https://github.com/Vyachean/mioframe/issues).
+If these steps do not resolve the problem, ask in [GitHub Discussions](https://github.com/Mioframe/mioframe/discussions) or report it in [GitHub Issues](https://github.com/Mioframe/mioframe/issues).
