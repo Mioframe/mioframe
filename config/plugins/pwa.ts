@@ -1,7 +1,10 @@
 import type { PluginOption } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import type { VitePWAOptions } from 'vite-plugin-pwa';
 
 type ReleaseChannel = 'stable' | 'branch';
+
+type WorkboxOptions = VitePWAOptions['workbox'];
 
 type GetPwaPluginsParams = {
   base: string;
@@ -21,7 +24,9 @@ const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
  * isolation across `/`, `/branch/<slug>/`, and `/pr/<number>/` depends on
  * this prefix, not on scope alone. Must match the prefix
  * `scripts/pages/lib/tombstoneContent.mjs` uses when clearing a removed
- * branch's caches.
+ * branch's caches. Also passed as Workbox's `cacheId` (see
+ * {@link buildWorkboxOptions}) so Workbox's own default-named precache cache
+ * carries the same prefix as the explicit runtime caches below.
  * @param channel - Release channel.
  * @param channelId - Channel identifier; required for the `branch` channel.
  * @returns Cache name prefix, e.g. `stable` or `branch-develop`.
@@ -104,6 +109,124 @@ function buildManifestIdentity(channel: ReleaseChannel, channelId?: string) {
 }
 
 /**
+ * Build the `workbox` (`generateSW`) options for a release channel's
+ * {@link VitePWA} plugin.
+ *
+ * Sets Workbox's `cacheId` to the same per-channel prefix as the explicit
+ * `runtimeCaching` cache names ({@link buildChannelCacheNamespace}). Workbox
+ * prepends `cacheId` to any cache name it derives itself — notably its
+ * default-named precache cache (normally `workbox-precache-v2-<scope>`,
+ * becoming `<cacheId>-precache-v2-<scope>`) — by calling
+ * `workbox-core`'s `setCacheNameDetails({ prefix: cacheId })` in the
+ * generated service worker. Cache names passed explicitly via `cacheName`
+ * above are used as-is and are unaffected by `cacheId`. Without this, a
+ * branch's precache cache would keep the shared `workbox-` prefix and a
+ * branch tombstone's cache cleanup (`branch-<slug>-*`, see
+ * `scripts/pages/lib/tombstoneContent.mjs`) would never remove it.
+ * @param params - The Vite `base` URL, release channel, and (for the
+ * `branch` channel) channel identifier this service worker is built for.
+ * @returns The `workbox` field for {@link VitePWA}'s options.
+ */
+export function buildWorkboxOptions({
+  base,
+  channel,
+  channelId,
+}: {
+  base: string;
+  channel: ReleaseChannel;
+  channelId?: string | undefined;
+}): WorkboxOptions {
+  const cacheNamespace = buildChannelCacheNamespace(channel, channelId);
+  const cacheName = (name: string) => `${cacheNamespace}-${name}`;
+  const matcher = (pattern: RegExp) => buildSameOriginMatcher(pattern, base, channel);
+
+  return {
+    cacheId: cacheNamespace,
+    ...(channel === 'stable'
+      ? { navigateFallbackDenylist: [buildForeignChannelDenylistPattern(base)] }
+      : {}),
+    runtimeCaching: [
+      {
+        urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: cacheName('google-fonts'),
+          expiration: {
+            maxEntries: 20,
+            maxAgeSeconds: daysToSeconds(365),
+          },
+          cacheableResponse: {
+            statuses: [0, 200],
+          },
+        },
+      },
+      {
+        urlPattern: matcher(/\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i),
+        handler: 'StaleWhileRevalidate',
+        options: {
+          cacheName: cacheName('static-font-assets'),
+          expiration: {
+            maxEntries: 10,
+            maxAgeSeconds: daysToSeconds(30),
+          },
+        },
+      },
+      {
+        urlPattern: matcher(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i),
+        handler: 'StaleWhileRevalidate',
+        options: {
+          cacheName: cacheName('static-image-assets'),
+          expiration: {
+            maxEntries: 64,
+            maxAgeSeconds: daysToSeconds(14),
+          },
+        },
+      },
+      {
+        urlPattern: matcher(/\.(?:json|xml|csv)$/i),
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: cacheName('static-data-assets'),
+          expiration: {
+            maxEntries: 32,
+            maxAgeSeconds: daysToSeconds(7),
+          },
+        },
+      },
+      {
+        urlPattern: matcher(/\/api\/.*$/i),
+        handler: 'NetworkFirst',
+        method: 'GET',
+        options: {
+          cacheName: cacheName('apis'),
+          expiration: {
+            maxEntries: 16,
+            maxAgeSeconds: daysToSeconds(1),
+          },
+          networkTimeoutSeconds: 10,
+        },
+      },
+      {
+        urlPattern:
+          channel === 'stable'
+            ? ({ url }: { url: URL }) => !isForeignChannelPath(url.pathname, base)
+            : () => true,
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: cacheName('others'),
+          expiration: {
+            maxEntries: 32,
+            maxAgeSeconds: daysToSeconds(1),
+          },
+          networkTimeoutSeconds: 10,
+        },
+      },
+    ],
+    maximumFileSizeToCacheInBytes: 10e6,
+  };
+}
+
+/**
  * Returns the Vite PWA plugin array for the given build parameters.
  *
  * Returns an empty array when PWA is disabled or the mode is not production
@@ -112,8 +235,9 @@ function buildManifestIdentity(channel: ReleaseChannel, channelId?: string) {
  * and namespaced to the given release channel:
  * - `scope`/`start_url`/`id` are pinned to `base`, so the manifest never
  *   drifts from the deployment it was built for;
- * - cache names are namespaced per channel ({@link buildChannelCacheNamespace})
- *   so stable, develop, and other branches never share Cache Storage entries;
+ * - cache names, including Workbox's own precache, are namespaced per
+ *   channel ({@link buildWorkboxOptions}) so stable, develop, and other
+ *   branches never share Cache Storage entries;
  * - the stable channel additionally denies `/branch/*` and `/pr/*` from its
  *   navigation fallback and runtime caching, since its scope (`/`) is the
  *   only one wide enough to otherwise intercept them.
@@ -132,10 +256,6 @@ export const getPwaPlugins = ({
     return [];
   }
 
-  const cacheNamespace = buildChannelCacheNamespace(channel, channelId);
-  const cacheName = (name: string) => `${cacheNamespace}-${name}`;
-  const matcher = (pattern: RegExp) => buildSameOriginMatcher(pattern, base, channel);
-
   return [
     VitePWA({
       manifest: {
@@ -146,89 +266,7 @@ export const getPwaPlugins = ({
         theme_color: 'rgb(33, 31, 38)',
         background_color: 'rgb(33, 31, 38)',
       },
-      workbox: {
-        ...(channel === 'stable'
-          ? { navigateFallbackDenylist: [buildForeignChannelDenylistPattern(base)] }
-          : {}),
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: cacheName('google-fonts'),
-              expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: daysToSeconds(365),
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: matcher(/\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i),
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: cacheName('static-font-assets'),
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: daysToSeconds(30),
-              },
-            },
-          },
-          {
-            urlPattern: matcher(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i),
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: cacheName('static-image-assets'),
-              expiration: {
-                maxEntries: 64,
-                maxAgeSeconds: daysToSeconds(14),
-              },
-            },
-          },
-          {
-            urlPattern: matcher(/\.(?:json|xml|csv)$/i),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: cacheName('static-data-assets'),
-              expiration: {
-                maxEntries: 32,
-                maxAgeSeconds: daysToSeconds(7),
-              },
-            },
-          },
-          {
-            urlPattern: matcher(/\/api\/.*$/i),
-            handler: 'NetworkFirst',
-            method: 'GET',
-            options: {
-              cacheName: cacheName('apis'),
-              expiration: {
-                maxEntries: 16,
-                maxAgeSeconds: daysToSeconds(1),
-              },
-              networkTimeoutSeconds: 10,
-            },
-          },
-          {
-            urlPattern:
-              channel === 'stable'
-                ? ({ url }: { url: URL }) => !isForeignChannelPath(url.pathname, base)
-                : () => true,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: cacheName('others'),
-              expiration: {
-                maxEntries: 32,
-                maxAgeSeconds: daysToSeconds(1),
-              },
-              networkTimeoutSeconds: 10,
-            },
-          },
-        ],
-        maximumFileSizeToCacheInBytes: 10e6,
-      },
+      workbox: buildWorkboxOptions({ base, channel, channelId }),
       pwaAssets: {
         config: true,
         overrideManifestIcons: true,

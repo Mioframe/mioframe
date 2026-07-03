@@ -44,6 +44,18 @@ describe('cleanupExpiredTombstones argument validation', () => {
       'GITHUB_REPOSITORY is required',
     );
   });
+
+  it.each([['abc'], ['0'], ['-3'], ['1.5']])(
+    'rejects an invalid --retention-days value %s before touching Pages',
+    async (value) => {
+      await expect(
+        cleanupExpiredTombstones(['--retention-days', value], {
+          GITHUB_TOKEN: 'token',
+          GITHUB_REPOSITORY: 'owner/repo',
+        }),
+      ).rejects.toThrow('Invalid retention days from --retention-days');
+    },
+  );
 });
 
 describe('cleanupExpiredTombstones behavior', () => {

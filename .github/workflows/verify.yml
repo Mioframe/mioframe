@@ -179,13 +179,23 @@ jobs:
 
   deploy-preview:
     needs: [verify]
+    # The `infra/org-pages-release-channels` exclusion below is a one-time
+    # bootstrap exception: `tooling/` is checked out from the PR's base ref
+    # (develop), which does not yet have the scripts/pages/* tooling this PR
+    # itself introduces (writeDeploymentMetadata.mjs, the updated
+    # publishPreview.mjs, slug/deployment-metadata helpers). Skipping preview
+    # publish here avoids running untrusted PR-head tooling with the Pages
+    # write credential. Remove this line once this branch merges to develop;
+    # do not add further branch/PR exclusions here for ordinary PRs. See
+    # docs/release.md#pr-preview-deployment.
     if: >-
       !cancelled() &&
       needs.verify.result == 'success' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !(startsWith(github.event.pull_request.head.ref, 'sync/main-') &&
-        endsWith(github.event.pull_request.head.ref, '-back-to-develop'))
+        endsWith(github.event.pull_request.head.ref, '-back-to-develop')) &&
+      github.event.pull_request.head.ref != 'infra/org-pages-release-channels'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

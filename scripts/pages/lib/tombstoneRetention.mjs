@@ -4,6 +4,30 @@ import { join } from 'node:path';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Validate a tombstone retention period in days.
+ *
+ * Used for both the `--retention-days` CLI argument and the
+ * `config/tooling.json` `pages.tombstoneRetentionDays` fallback, so
+ * `cleanupExpiredTombstones.mjs` fails fast on a malformed value instead of
+ * silently treating `NaN`/`0`/a negative number as "never expire" or
+ * "always expire".
+ * @param value Raw value to validate: a CLI string argument, or the parsed config number.
+ * @param source Human-readable source of the value, used in the thrown error message.
+ * @returns The validated retention days as a finite positive integer.
+ */
+export function validateRetentionDays(value, source) {
+  const retentionDays = typeof value === 'string' ? Number(value) : value;
+
+  if (!Number.isInteger(retentionDays) || retentionDays <= 0) {
+    throw new Error(
+      `Invalid retention days from ${source}: ${JSON.stringify(value)}. Must be a finite positive integer.`,
+    );
+  }
+
+  return retentionDays;
+}
+
+/**
  * Decide whether a branch's `deployment.json` record is an expired
  * tombstone that the scheduled cleanup should remove.
  *

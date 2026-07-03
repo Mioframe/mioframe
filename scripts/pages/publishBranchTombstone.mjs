@@ -71,24 +71,26 @@ export async function publishBranchTombstone(argv = process.argv.slice(2), env =
   let tombstoned = false;
   let tombstoneDistDir;
 
-  await withGhPagesBranch({
-    token: GITHUB_TOKEN,
-    repository: GITHUB_REPOSITORY,
-    commitMessage: `chore(pages): tombstone removed branch ${slug}`,
-    outputDir,
-    fn(workDir) {
-      if (!existsSync(join(workDir, 'branch', slug))) {
-        console.log(`Branch slot branch/${slug}/ not found, nothing to tombstone.`);
-        return;
-      }
-      tombstoneDistDir = buildTombstoneDistDir(slug, baseUrl);
-      applyBranchPublish(workDir, tombstoneDistDir, slug);
-      tombstoned = true;
-    },
-  });
-
-  if (tombstoneDistDir) {
-    rmSync(tombstoneDistDir, { recursive: true, force: true });
+  try {
+    await withGhPagesBranch({
+      token: GITHUB_TOKEN,
+      repository: GITHUB_REPOSITORY,
+      commitMessage: `chore(pages): tombstone removed branch ${slug}`,
+      outputDir,
+      fn(workDir) {
+        if (!existsSync(join(workDir, 'branch', slug))) {
+          console.log(`Branch slot branch/${slug}/ not found, nothing to tombstone.`);
+          return;
+        }
+        tombstoneDistDir = buildTombstoneDistDir(slug, baseUrl);
+        applyBranchPublish(workDir, tombstoneDistDir, slug);
+        tombstoned = true;
+      },
+    });
+  } finally {
+    if (tombstoneDistDir) {
+      rmSync(tombstoneDistDir, { recursive: true, force: true });
+    }
   }
 
   if (GITHUB_OUTPUT) {

@@ -9,6 +9,7 @@ vi.mock('./lib/ghPagesBranch.mjs', () => ({
   }),
 }));
 
+const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
 const { publishBranchTombstone } = await import('./publishBranchTombstone.mjs');
 
 let workDir = '';
@@ -120,6 +121,35 @@ describe('publishBranchTombstone behavior', () => {
       GITHUB_TOKEN: 'token',
       GITHUB_REPOSITORY: 'owner/repo',
     });
+
+    const tmpEntriesAfter = readdirSync(tmpdir()).filter((name) =>
+      name.startsWith('branch-tombstone-'),
+    );
+
+    expect(tmpEntriesAfter.filter((name) => !tmpEntriesBefore.has(name))).toEqual([]);
+  });
+
+  it('removes the temporary tombstone dist directory even when publish fails after it is created', async () => {
+    mkdirSync(join(workDir, 'branch', 'develop'), { recursive: true });
+    writeFileSync(join(workDir, 'branch', 'develop', 'index.html'), '<app/>');
+
+    const tmpEntriesBefore = new Set(
+      readdirSync(tmpdir()).filter((name) => name.startsWith('branch-tombstone-')),
+    );
+
+    vi.mocked(withGhPagesBranch).mockImplementationOnce(async ({ fn }) => {
+      // Simulate applyBranchPublish having already created the temp dist dir
+      // (via fn) before a later publish step (e.g. git push) fails.
+      await fn(workDir);
+      throw new Error('simulated publish failure after temp dir creation');
+    });
+
+    await expect(
+      publishBranchTombstone(['--slug', 'develop'], {
+        GITHUB_TOKEN: 'token',
+        GITHUB_REPOSITORY: 'owner/repo',
+      }),
+    ).rejects.toThrow('simulated publish failure after temp dir creation');
 
     const tmpEntriesAfter = readdirSync(tmpdir()).filter((name) =>
       name.startsWith('branch-tombstone-'),

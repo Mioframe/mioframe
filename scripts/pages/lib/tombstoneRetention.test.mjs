@@ -1,9 +1,58 @@
 import { describe, expect, it } from 'vitest';
 
-import { findExpiredTombstoneSlugs, isTombstoneExpired } from './tombstoneRetention.mjs';
+import {
+  findExpiredTombstoneSlugs,
+  isTombstoneExpired,
+  validateRetentionDays,
+} from './tombstoneRetention.mjs';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.parse('2026-07-03T00:00:00.000Z');
+
+describe('validateRetentionDays', () => {
+  it('returns the value unchanged for a valid positive integer', () => {
+    expect(validateRetentionDays(14, 'config/tooling.json')).toBe(14);
+    expect(validateRetentionDays('14', '--retention-days')).toBe(14);
+  });
+
+  it('throws for a non-numeric CLI string', () => {
+    expect(() => validateRetentionDays('abc', '--retention-days')).toThrow(
+      'Invalid retention days from --retention-days',
+    );
+  });
+
+  it('throws for zero', () => {
+    expect(() => validateRetentionDays(0, 'config/tooling.json')).toThrow(
+      'Invalid retention days from config/tooling.json',
+    );
+    expect(() => validateRetentionDays('0', '--retention-days')).toThrow('Invalid retention days');
+  });
+
+  it('throws for a negative number', () => {
+    expect(() => validateRetentionDays(-3, 'config/tooling.json')).toThrow(
+      'Invalid retention days',
+    );
+    expect(() => validateRetentionDays('-3', '--retention-days')).toThrow('Invalid retention days');
+  });
+
+  it('throws for a decimal number', () => {
+    expect(() => validateRetentionDays(1.5, 'config/tooling.json')).toThrow(
+      'Invalid retention days',
+    );
+    expect(() => validateRetentionDays('1.5', '--retention-days')).toThrow(
+      'Invalid retention days',
+    );
+  });
+
+  it('throws for NaN and Infinity', () => {
+    expect(() => validateRetentionDays(NaN, 'config/tooling.json')).toThrow(
+      'Invalid retention days',
+    );
+    expect(() => validateRetentionDays(Infinity, 'config/tooling.json')).toThrow(
+      'Invalid retention days',
+    );
+  });
+});
 
 describe('isTombstoneExpired', () => {
   it('returns false for a non-tombstone (live) record', () => {

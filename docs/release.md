@@ -365,6 +365,30 @@ previews for release sync-back branches remain skipped, as before (see
 `Release sync-back` above). PR preview cleanup on PR close removes only
 that PR's `pr/<number>/` slot.
 
+#### One-time bootstrap exception (`infra/org-pages-release-channels`)
+
+`deploy-preview` checks out trusted tooling from the PR's **base** ref (see
+`Trusted publishing boundary` above), never from the PR head, so that
+publish scripts never run untrusted PR-head code with the Pages write
+credential. This is the correct model for every ordinary PR, but it cannot
+bootstrap the PR that first introduces this org-Pages deployment tooling
+(release-channels PR, branch `infra/org-pages-release-channels`): that PR's
+base (`develop`) does not yet contain
+`scripts/pages/writeDeploymentMetadata.mjs`, the updated
+`scripts/pages/publishPreview.mjs`, or the slug/deployment-metadata helpers
+the trusted-tooling checkout expects.
+
+`deploy-preview`'s `if:` condition therefore excludes
+`github.event.pull_request.head.ref == 'infra/org-pages-release-channels'`
+in addition to the existing sync-back exclusion, so this one PR's preview
+publish step does not run. `verify` (format/lint/type-check/tests/e2e) still
+runs and gates the PR as normal — only preview publishing is skipped. This
+is a one-time exception for this specific branch, not a general fallback:
+once `infra/org-pages-release-channels` merges to `develop`, the tooling
+exists on `develop` for every subsequent PR, the exclusion is dead code, and
+it should be deleted rather than left in place or copied for future
+bootstrap-shaped problems.
+
 ### Branch deletion tombstone
 
 When a branch with an existing `branch/<slug>/` deployment is deleted,

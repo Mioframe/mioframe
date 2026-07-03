@@ -20,7 +20,7 @@ import { pathToFileURL } from 'node:url';
 import toolingConfig from '../../config/tooling.json' with { type: 'json' };
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
 import { applyBranchRemoval } from './lib/pagesFs.mjs';
-import { findExpiredTombstoneSlugs } from './lib/tombstoneRetention.mjs';
+import { findExpiredTombstoneSlugs, validateRetentionDays } from './lib/tombstoneRetention.mjs';
 
 /**
  * @param argv Process arguments (process.argv.slice(2)).
@@ -31,8 +31,11 @@ export async function cleanupExpiredTombstones(argv = process.argv.slice(2), env
   const retentionIndex = argv.indexOf('--retention-days');
   const retentionDays =
     retentionIndex !== -1 && argv[retentionIndex + 1]
-      ? Number(argv[retentionIndex + 1])
-      : toolingConfig.pages.tombstoneRetentionDays;
+      ? validateRetentionDays(argv[retentionIndex + 1], '--retention-days')
+      : validateRetentionDays(
+          toolingConfig.pages.tombstoneRetentionDays,
+          'config/tooling.json pages.tombstoneRetentionDays',
+        );
 
   const outputIndex = argv.indexOf('--output-dir');
   const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;

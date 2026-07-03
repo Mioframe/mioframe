@@ -4,6 +4,7 @@ import {
   buildChannelCacheNamespace,
   buildForeignChannelDenylistPattern,
   buildSameOriginMatcher,
+  buildWorkboxOptions,
   getPwaPlugins,
   isForeignChannelPath,
 } from './pwa.ts';
@@ -100,6 +101,54 @@ describe('buildSameOriginMatcher', () => {
   it('excludes a path that does not match the pattern', () => {
     const matcher = buildSameOriginMatcher(/\.woff2$/i, '/', 'stable');
     expect(matcher({ url: new URL('https://example.com/assets/app.js') })).toBe(false);
+  });
+});
+
+describe('buildWorkboxOptions', () => {
+  it('sets cacheId to the same per-channel namespace used by runtime cache names', () => {
+    expect(buildWorkboxOptions({ base: '/', channel: 'stable' }).cacheId).toBe(
+      buildChannelCacheNamespace('stable'),
+    );
+    expect(
+      buildWorkboxOptions({ base: '/branch/develop/', channel: 'branch', channelId: 'develop' })
+        .cacheId,
+    ).toBe(buildChannelCacheNamespace('branch', 'develop'));
+  });
+
+  it('never shares a cacheId between stable and a branch channel, or between two branches', () => {
+    const cacheIds = [
+      buildWorkboxOptions({ base: '/', channel: 'stable' }).cacheId,
+      buildWorkboxOptions({ base: '/branch/develop/', channel: 'branch', channelId: 'develop' })
+        .cacheId,
+      buildWorkboxOptions({ base: '/branch/feature-x/', channel: 'branch', channelId: 'feature-x' })
+        .cacheId,
+    ];
+
+    expect(new Set(cacheIds).size).toBe(cacheIds.length);
+  });
+
+  // Workbox prepends `cacheId` to any cache name it derives itself (notably
+  // its own default-named precache cache), so this proves the branch
+  // tombstone cleanup prefix (`branch-<slug>-`, see
+  // scripts/pages/lib/tombstoneContent.mjs) covers Workbox's precache too:
+  // every explicit runtime cache name already lives under that same prefix.
+  it('namespaces every explicit runtime cache name under the cacheId prefix', () => {
+    const { cacheId, runtimeCaching } = buildWorkboxOptions({
+      base: '/branch/develop/',
+      channel: 'branch',
+      channelId: 'develop',
+    });
+
+    expect(runtimeCaching?.length).toBeGreaterThan(0);
+    for (const entry of runtimeCaching ?? []) {
+      expect(entry.options?.cacheName?.startsWith(`${cacheId}-`)).toBe(true);
+    }
+  });
+
+  it('throws when the branch channel is used without a channelId', () => {
+    expect(() => buildWorkboxOptions({ base: '/branch/develop/', channel: 'branch' })).toThrow(
+      'channelId is required',
+    );
   });
 });
 
