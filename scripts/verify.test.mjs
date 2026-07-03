@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('./lib/packageJsonImpact.mjs', () => ({
+  isVisualRelevantPackageJsonChange: vi.fn(),
+}));
+
+import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import {
   buildCommands,
   getCliFilesOverride,
@@ -161,6 +166,53 @@ describe('buildCommands mutation scope', () => {
     const mutationEntry = commands.find((entry) => entry.label === 'mutation');
 
     expect(mutationEntry.kind).toBe('skipped');
+  });
+});
+
+describe('buildCommands package.json visual relevance', () => {
+  beforeEach(() => {
+    isVisualRelevantPackageJsonChange.mockReset();
+  });
+
+  it('skips visual when the package.json impact check confirms a version-only change', () => {
+    isVisualRelevantPackageJsonChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const visualEntry = commands.find((entry) => entry.label === 'visual');
+
+    expect(visualEntry.kind).toBe('skipped');
+    expect(isVisualRelevantPackageJsonChange).toHaveBeenCalledWith({ oldRef: 'HEAD~1' });
+  });
+
+  it('runs visual when the package.json impact check is not version-only', () => {
+    isVisualRelevantPackageJsonChange.mockReturnValue(true);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const visualEntry = commands.find((entry) => entry.label === 'visual');
+
+    expect(visualEntry.kind).toBe('run');
+  });
+
+  it('does not consult the package.json impact check in full mode', () => {
+    isVisualRelevantPackageJsonChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json'], { fullMode: true });
+    const visualEntry = commands.find((entry) => entry.label === 'visual');
+
+    expect(visualEntry.kind).toBe('run');
+    expect(isVisualRelevantPackageJsonChange).not.toHaveBeenCalled();
+  });
+
+  it('does not consult the package.json impact check when package.json did not change', () => {
+    buildCommands(['src/app/main.ts'], { fullMode: false });
+
+    expect(isVisualRelevantPackageJsonChange).not.toHaveBeenCalled();
   });
 });
 
