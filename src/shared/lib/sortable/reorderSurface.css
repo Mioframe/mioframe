@@ -1,9 +1,12 @@
-/* No !important: relies on no descendant content setting its own user-select to
-   something other than none while a reorder session is active. */
 .reorder-surface_dragging,
-.reorder-surface_dragging * {
+.reorder-surface_dragging *,
+[data-sortable-id],
+[data-sortable-id] * {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* No !important: relies on no descendant content setting its own user-select to
+   something other than none while a reorder session is active. */
