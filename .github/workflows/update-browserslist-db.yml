@@ -1,0 +1,73 @@
+name: update-browserslist-db
+
+# Refresh the Browserslist DB snapshot used by the lockfile without changing
+# normal build/verify behavior. The workflow only opens a PR when the refresh
+# changes pnpm-lock.yaml, and never pushes directly to develop.
+
+on:
+  schedule:
+    - cron: '17 4 1 * *'
+  workflow_dispatch:
+
+jobs:
+  update-browserslist-db:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: develop
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Update Browserslist DB snapshot
+        run: pnpm deps:update-browsers
+
+      - name: Detect lockfile changes
+        id: lockfile_changes
+        run: |
+          if git diff --quiet --exit-code -- pnpm-lock.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Bump patch version for develop PR policy
+        if: steps.lockfile_changes.outputs.changed == 'true'
+        run: npm version patch --no-git-tag-version
+
+      - name: Create pull request
+        if: steps.lockfile_changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/update-browserslist-db
+          delete-branch: true
+          base: develop
+          add-paths: |
+            package.json
+            pnpm-lock.yaml
+          commit-message: 'chore(deps): update browserslist database'
+          title: 'chore(deps): update browserslist database'
+          body: |
+            This automated PR refreshes the Browserslist DB snapshot used by the lockfile.
+
+            - `.browserslistrc` is unchanged.
+            - Browser support policy is unchanged.
+            - The lockfile/browser DB snapshot was refreshed.
+            - `package.json` was patch-bumped to satisfy the existing PR-into-`develop` version policy.
+            - Normal CI verification is required before merge.
