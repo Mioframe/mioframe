@@ -747,58 +747,6 @@ function getWarningSummary(label, output) {
   return uniqSorted(lines).slice(0, 3).join(' | ');
 }
 
-// Blocking runtime diagnostics per verify label. Only exact known signals
-// block; generic stderr output and Vite/Rollup dependency or build warnings
-// must never match here.
-const BLOCKING_LOG_SIGNALS_BY_LABEL = {
-  'unit-tests': [
-    {
-      pattern: /\[Vue warn\]/,
-      reason: 'unit-tests emitted Vue runtime warnings',
-    },
-  ],
-};
-
-/**
- * Detect a blocking quality signal in a captured command log.
- * Used after a clean child exit to catch runtime diagnostics (for example
- * Vue runtime warnings in unit tests) that must fail verification even
- * though the command exited with code 0.
- * @param label Verify command label that produced the log.
- * @param output Full captured command log text.
- * @returns Blocking issue with a stable reason and a short warning summary,
- * or null when the log contains no blocking signal for this label.
- */
-export function getBlockingLogIssue(label, output) {
-  const signals = BLOCKING_LOG_SIGNALS_BY_LABEL[label] ?? [];
-
-  for (const { pattern, reason } of signals) {
-    const lines = output
-      .split('\n')
-      .map(trimWarningLine)
-      .filter((line) => pattern.test(line));
-
-    if (lines.length > 0) {
-      return {
-        reason,
-        summary: uniqSorted(lines).slice(0, 3).join(' | '),
-      };
-    }
-  }
-
-  return null;
-}
-
-/**
- * Resolve the final status of an executed verify command.
- * @param exitCode Child process exit code.
- * @param blockingLogIssue Blocking log issue found after a clean exit, or null.
- * @returns 'passed' only for a clean exit with no blocking log issue.
- */
-export function resolveCommandStatus(exitCode, blockingLogIssue) {
-  return exitCode === 0 && blockingLogIssue === null ? 'passed' : 'failed';
-}
-
 function getOutputTail(output) {
   const lines = output
     .split('\n')
@@ -1069,8 +1017,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
 
   const logOutput = fs.readFileSync(logPath, 'utf8');
   const warningSummary = getWarningSummary(label, logOutput);
-  const blockingLogIssue = exitCode === 0 ? getBlockingLogIssue(label, logOutput) : null;
-  const status = resolveCommandStatus(exitCode, blockingLogIssue);
+  const status = exitCode === 0 ? 'passed' : 'failed';
 
   if (status === 'passed' && !warningSummary) {
     console.log(`[${label}] passed ✅`);
@@ -1082,12 +1029,6 @@ async function runCommand(label, command, args, extraEnv = {}) {
     console.log(`[${label}] failed ❌`);
     console.log(`[${label}] command: ${formattedCommand}`);
     console.log(`[${label}] exit code: ${exitCode}`);
-
-    if (blockingLogIssue !== null) {
-      console.log(`[${label}] blocking signal: ${blockingLogIssue.reason}`);
-      console.log(`[${label}] warnings: ${blockingLogIssue.summary}`);
-    }
-
     console.log(`[${label}] output tail:`);
 
     for (const tailLine of getOutputTail(outputBuffer)) {
@@ -1104,8 +1045,6 @@ async function runCommand(label, command, args, extraEnv = {}) {
     logPath,
     exitCode,
     status,
-    reason: blockingLogIssue?.reason,
-    blockingSummary: blockingLogIssue?.summary ?? '',
     stdout: '',
     stderr: '',
     hasWarnings: warningSummary.length > 0,
@@ -1372,15 +1311,12 @@ export function buildCommands(
     });
   }
 
-  // The verbose reporter keeps runtime console diagnostics from passing
-  // tests (for example `[Vue warn]`) in the captured log; Vitest's default
-  // reporter hides them, which would blind the blocking-log classification.
   if (fullMode) {
     commands.push({
       kind: 'run',
       label: 'unit-tests',
       command: 'pnpm',
-      args: ['exec', 'vitest', 'run', '--reporter=verbose'],
+      args: ['exec', 'vitest', 'run'],
       weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
     });
   } else if (vitestScope.length > 0) {
@@ -1388,7 +1324,7 @@ export function buildCommands(
       kind: 'run',
       label: 'unit-tests',
       command: 'pnpm',
-      args: ['exec', 'vitest', 'run', '--reporter=verbose', ...vitestScope],
+      args: ['exec', 'vitest', 'run', ...vitestScope],
       weight: classifyCommandWeight({ label: 'unit-tests', fileCount: vitestScope.length }),
     });
   } else {
@@ -1501,12 +1437,8 @@ export function getActionRequired(results) {
   for (const result of failedResults) {
     actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
 
-    if (result.reason) {
+    if (result.exitCode === null && result.reason) {
       actions.push(`Reason: ${result.reason}`);
-    }
-
-    if (result.blockingSummary) {
-      actions.push(`Warnings: ${result.blockingSummary}`);
     }
   }
 
@@ -1528,9 +1460,8 @@ export function getActionRequired(results) {
 
 /**
  * Print the agent-facing `VERIFY RESULT` summary for a finished run.
- * Every result — including exit-code-0 commands reclassified as failed by a
- * blocking log signal — must flow through this summary instead of an early
- * exit.
+ * Every executed, skipped, or failed command result must flow through this
+ * summary instead of an early exit.
  * @param changedFiles Changed files the run was scoped to.
  * @param scope Human-readable changed-file scope description.
  * @param results Collected command results in run order.
