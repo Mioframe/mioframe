@@ -5,7 +5,7 @@ import { toNumber } from 'es-toolkit/compat';
 import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
-const modelFullscreen = defineModel<boolean>('fullscreen', {
+const modelFullscreen = defineModel<boolean | undefined>('fullscreen', {
   default: undefined,
 });
 
