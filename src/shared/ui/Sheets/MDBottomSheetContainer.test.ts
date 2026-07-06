@@ -3,12 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import MDBottomSheetContainer from './MDBottomSheetContainer.vue';
 import MDBottomSheetContainer2 from './MDBottomSheetContainer2.vue';
 
-vi.mock('@shared/lib/scrollTo', () => ({
-  useScroll: () => ({
-    position: { value: { scrollTop: 0 } },
-    scrollTo: vi.fn(() => Promise.resolve(undefined)),
-  }),
-}));
+vi.mock('@shared/lib/scrollTo', async () => {
+  const { reactive, readonly } = await import('vue');
+
+  return {
+    // Mirrors the real contract: `position` is a readonly reactive object,
+    // so it stays a valid `watch` source inside the component.
+    useScroll: () => ({
+      position: readonly(reactive({ scrollLeft: 0, scrollTop: 0 })),
+      scrollTo: vi.fn(() => Promise.resolve(undefined)),
+    }),
+  };
+});
 
 vi.mock('../AriaHidden', () => ({
   useModalAriaHidden: () => 'false',
