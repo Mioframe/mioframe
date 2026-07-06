@@ -39,23 +39,27 @@ test('reordering database views by drag does not leak text selection', async ({ 
 
   const firstBox = await firstRow.boundingBox();
   const secondBox = await secondRow.boundingBox();
-  if (!firstBox || !secondBox) throw new Error('missing bounding box for view row');
+  if (!firstBox || !secondBox) {
+    throw new Error('missing bounding box for view row');
+  }
 
-  const rowCenterX = firstBox.x + firstBox.width / 2;
+  const dragSurfaceX = firstBox.x + firstBox.width / 2;
+  const firstRowCenterY = firstBox.y + firstBox.height / 2;
+  const secondRowCenterY = secondBox.y + secondBox.height / 2;
 
-  await page.mouse.move(rowCenterX, firstBox.y + firstBox.height / 2);
+  await page.mouse.move(dragSurfaceX, firstRowCenterY);
   await page.mouse.down();
-  await page.mouse.move(rowCenterX, firstBox.y + firstBox.height / 2 + 5, { steps: 3 });
-  await page.mouse.move(rowCenterX, secondBox.y + secondBox.height / 2, { steps: 10 });
+  await page.mouse.move(dragSurfaceX, firstRowCenterY + 8, { steps: 4 });
+  await page.mouse.move(dragSurfaceX, secondRowCenterY, { steps: 12 });
 
   const selectionDuringDrag = await page.evaluate(() => window.getSelection()?.toString() ?? '');
   expect(selectionDuringDrag).toBe('');
 
   await page.mouse.up();
-  await page.waitForTimeout(300);
 
-  const selectionAfterDrag = await page.evaluate(() => window.getSelection()?.toString() ?? '');
-  expect(selectionAfterDrag).toBe('');
+  await expect
+    .poll(async () => page.evaluate(() => window.getSelection()?.toString() ?? ''))
+    .toBe('');
 
   await closeBottomSheet(page, /database views sheet/i);
 });

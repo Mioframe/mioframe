@@ -1814,15 +1814,23 @@ test.describe('MDList / StateLayer integration', () => {
 
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
-    const pressedColor = await primaryStateLayer.evaluate(
-      (node) => getComputedStyle(node).backgroundColor,
-    );
+    // MDStateLayer's background-color transitions over
+    // --md-sys-motion-duration-short4 (~0.2s); poll while the pointer stays pressed instead of
+    // a single immediate read so this assertion isn't racing the in-flight transition under
+    // CPU-constrained CI containers.
+    await expect
+      .poll(
+        async () =>
+          hasZeroAlpha(
+            await primaryStateLayer.evaluate((node) => getComputedStyle(node).backgroundColor),
+          ),
+        {
+          message:
+            'real mouse-down press must activate the shared MDStateLayer pressed background, not a forced fixture class',
+        },
+      )
+      .toBe(false);
     await page.mouse.up();
-
-    expect(
-      hasZeroAlpha(pressedColor),
-      'real mouse-down press must activate the shared MDStateLayer pressed background, not a forced fixture class',
-    ).toBe(false);
   });
 
   test('MDListItem real pointer hover on the trailing action does not activate the row primary state layer', async ({
@@ -2325,6 +2333,20 @@ test.describe('MDList / keyboard focus indicator integration', () => {
     await page.keyboard.press('Tab');
     await expect(target).toBeFocused();
     await expect(indicator).toHaveCSS('opacity', '1');
+
+    // The global indicator transitions top/left/width/height over
+    // --md-sys-motion-duration-short2 independently of opacity; wait until its bounding box
+    // stops changing between polls so the tracking assertions below aren't racing the
+    // in-flight move under CPU-constrained CI containers.
+    let previousIndicatorBox = '';
+    await expect
+      .poll(async () => {
+        const box = JSON.stringify(await indicator.boundingBox());
+        const isSettled = box === previousIndicatorBox && box !== 'null';
+        previousIndicatorBox = box;
+        return isSettled;
+      })
+      .toBe(true);
 
     const [targetBox, indicatorBox, indicatorRadius, targetRadius] = await Promise.all([
       getBoundingBoxOrThrow(target, 'standalone focused row must have a bounding box'),

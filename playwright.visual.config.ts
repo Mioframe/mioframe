@@ -12,6 +12,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // Retries stay enabled as diagnostics, but a flaky pass must still fail the run.
+  failOnFlakyTests: !!process.env.CI,
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   workers: 1,
   expect: {
