@@ -8,11 +8,13 @@ import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import {
   buildCommands,
   getActionRequired,
+  getBlockingLogIssue,
   getCliFilesOverride,
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
   getVerifyBaseRef,
   printSummary,
+  resolveCommandStatus,
   runVerifyCli,
 } from './verify.mjs';
 
@@ -112,7 +114,7 @@ describe('buildCommands full mode', () => {
     expect(byLabel.format.args).not.toContain('src/app/main.ts');
     expect(byLabel.oxlint.args).toContain('.');
     expect(byLabel.eslint.args).toContain('.');
-    expect(byLabel['unit-tests'].args).toEqual(['exec', 'vitest', 'run']);
+    expect(byLabel['unit-tests'].args).toEqual(['exec', 'vitest', 'run', '--reporter=verbose']);
   });
 
   it('adds the release-only checks with their own labels and commands', () => {
@@ -247,48 +249,138 @@ describe('getExtraEnvForEntry', () => {
   });
 });
 
-// Vue runtime warnings fail the unit-tests command at the Vitest layer
-// (src/setupVitest.ts guard makes vitest exit non-zero); verify only
-// aggregates exit codes. These tests pin the summary contract for a failed
-// unit-tests command.
+// Blocking log signals are classified inside verify itself: a unit-tests run
+// that exits with code 0 but emitted Vue runtime warnings must fail through
+// the normal VERIFY RESULT flow. Generic Vite/Rollup/dependency warnings and
+// other labels stay non-fatal.
+describe('getBlockingLogIssue', () => {
+  const vueWarnLog = [
+    'stderr | src/shared/ui/Sheets/MDBottomSheetContainer.test.ts > renders',
+    '[Vue warn]: Invalid watch source: 0',
+    'Tests  12 passed (12)',
+  ].join('\n');
+
+  it('flags unit-tests logs with a line-start Vue runtime warning', () => {
+    const issue = getBlockingLogIssue('unit-tests', vueWarnLog);
+
+    expect(issue).toEqual({
+      reason: 'Vue runtime warnings were emitted during unit tests',
+      warningSummary: '[Vue warn]: Invalid watch source: 0',
+    });
+  });
+
+  it('flags ANSI-colored Vue runtime warning lines', () => {
+    const esc = String.fromCharCode(27);
+    const coloredLog = `${esc}[33m[Vue warn]: Invalid watch source: 0${esc}[39m`;
+
+    expect(getBlockingLogIssue('unit-tests', coloredLog)).not.toBeNull();
+  });
+
+  it('ignores the marker mid-line, e.g. in a verbose-reporter test name with [Vue warn]', () => {
+    const log = [
+      '  ✓ getBlockingLogIssue > ignores the marker mid-line with [Vue warn] in the name',
+      'fixture text mentioning [Vue warn] mid-string',
+    ].join('\n');
+
+    expect(getBlockingLogIssue('unit-tests', log)).toBeNull();
+  });
+
+  it('ignores generic Vite/Rollup/dependency warnings', () => {
+    const log = [
+      "warning: 'foo' is deprecated",
+      '(!) Some chunks are larger than 500 kB after minification.',
+      "[vite] warning: Duplicate key 'a' in object literal",
+      'npm WARN deprecated package@1.0.0',
+    ].join('\n');
+
+    expect(getBlockingLogIssue('unit-tests', log)).toBeNull();
+  });
+
+  it('only applies to the unit-tests label', () => {
+    expect(getBlockingLogIssue('e2e', vueWarnLog)).toBeNull();
+    expect(getBlockingLogIssue('type-check', vueWarnLog)).toBeNull();
+  });
+});
+
+describe('resolveCommandStatus', () => {
+  it('fails a zero-exit unit-tests command whose log has Vue runtime warnings', () => {
+    const { status, blockingLogIssue } = resolveCommandStatus(
+      'unit-tests',
+      0,
+      '[Vue warn]: Invalid watch source: 0',
+    );
+
+    expect(status).toBe('failed');
+    expect(blockingLogIssue?.reason).toBe('Vue runtime warnings were emitted during unit tests');
+  });
+
+  it('passes a zero-exit unit-tests command with a clean log', () => {
+    expect(resolveCommandStatus('unit-tests', 0, 'Tests  12 passed (12)')).toEqual({
+      status: 'passed',
+      blockingLogIssue: null,
+    });
+  });
+
+  it('keeps non-zero exit codes failed', () => {
+    expect(resolveCommandStatus('unit-tests', 1, 'Tests  1 failed (12)').status).toBe('failed');
+  });
+});
+
 describe('getActionRequired', () => {
-  const failedUnitTestsResult = {
+  const blockedUnitTestsResult = {
     label: 'unit-tests',
-    command: 'pnpm exec vitest run src/foo.test.ts',
-    displayCommand: 'pnpm exec vitest run src/foo.test.ts',
+    command: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
+    displayCommand: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
     status: 'failed',
-    exitCode: 1,
+    exitCode: 0,
     hasWarnings: false,
     warningSummary: '',
+    blockingLogIssue: {
+      reason: 'Vue runtime warnings were emitted during unit tests',
+      warningSummary: '[Vue warn]: Invalid watch source: 0',
+    },
   };
 
   it('asks to fix failed unit-tests results', () => {
-    const actions = getActionRequired([failedUnitTestsResult]);
+    const actions = getActionRequired([
+      { ...blockedUnitTestsResult, exitCode: 1, blockingLogIssue: null },
+    ]);
 
     expect(actions).toContainEqual(expect.stringContaining('Fix failed unit-tests errors'));
     expect(actions).not.toContain('None.');
+  });
+
+  it('includes the blocking-signal reason and warning summary', () => {
+    const actions = getActionRequired([blockedUnitTestsResult]);
+
+    expect(actions).toContainEqual(expect.stringContaining('Fix failed unit-tests errors'));
+    expect(actions).toContainEqual(
+      expect.stringContaining('Vue runtime warnings were emitted during unit tests'),
+    );
+    expect(actions).toContainEqual(expect.stringContaining('[Vue warn]: Invalid watch source: 0'));
   });
 
   it('still reports None. when nothing failed or warned', () => {
     const actions = getActionRequired([
       {
         label: 'unit-tests',
-        command: 'pnpm exec vitest run src/foo.test.ts',
+        command: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
         status: 'passed',
         exitCode: 0,
         hasWarnings: false,
         warningSummary: '',
+        blockingLogIssue: null,
       },
     ]);
 
     expect(actions).toEqual(['None.']);
   });
 
-  it('reports failed unit-tests through the normal VERIFY RESULT summary', () => {
+  it('reports a zero-exit blocked unit-tests result through the normal VERIFY RESULT summary', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
-      const summary = printSummary([], 'local-changes', [failedUnitTestsResult]);
+      const summary = printSummary([], 'local-changes', [blockedUnitTestsResult]);
 
       expect(summary).toEqual({ status: 'failed', hasFailed: true });
 
@@ -297,6 +389,8 @@ describe('getActionRequired', () => {
       expect(output).toContain('VERIFY RESULT');
       expect(output).toContain('status: failed ❌');
       expect(output).toContain('Fix failed unit-tests errors');
+      expect(output).toContain('Vue runtime warnings were emitted during unit tests');
+      expect(output).toContain('[Vue warn]: Invalid watch source: 0');
     } finally {
       logSpy.mockRestore();
     }

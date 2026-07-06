@@ -747,6 +747,70 @@ function getWarningSummary(label, output) {
   return uniqSorted(lines).slice(0, 3).join(' | ');
 }
 
+// Blocking log signals: known runtime quality problems that must fail a
+// check even when its process exits with code 0. Keep this list narrow and
+// label-scoped; generic Vite/Rollup/dependency warnings and ordinary stderr
+// output must never become fatal here.
+const BLOCKING_LOG_SIGNALS = [
+  {
+    label: 'unit-tests',
+    marker: '[Vue warn]',
+    reason: 'Vue runtime warnings were emitted during unit tests',
+  },
+];
+
+// oxlint-disable-next-line no-control-regex -- ANSI color escapes start with the ESC control character by definition.
+const ANSI_ESCAPE_PATTERN = /\u001B\[[0-9;]*m/g;
+
+/**
+ * Find a blocking log signal in a completed command's captured log.
+ * Matching is anchored to the start of a log line, so test names, fixture
+ * strings, or summaries that merely mention a marker mid-line never match.
+ * @param label Verify command label the log belongs to.
+ * @param logOutput Full captured log output of the command.
+ * @returns Blocking issue with `reason` and `warningSummary`, or `null`.
+ */
+export function getBlockingLogIssue(label, logOutput) {
+  const signal = BLOCKING_LOG_SIGNALS.find((entry) => entry.label === label);
+
+  if (!signal) {
+    return null;
+  }
+
+  const matchedLines = logOutput
+    .split('\n')
+    .map((line) => line.replace(ANSI_ESCAPE_PATTERN, ''))
+    .filter((line) => line.startsWith(signal.marker))
+    .map(trimWarningLine);
+
+  if (matchedLines.length === 0) {
+    return null;
+  }
+
+  return {
+    reason: signal.reason,
+    warningSummary: uniqSorted(matchedLines).slice(0, 3).join(' | '),
+  };
+}
+
+/**
+ * Classify a finished command from its exit code and captured log.
+ * A zero exit code still fails when the log carries a blocking signal for
+ * this label, so runtime quality problems cannot pass on exit code alone.
+ * @param label Verify command label.
+ * @param exitCode Process exit code of the command.
+ * @param logOutput Full captured log output of the command.
+ * @returns `status` plus the `blockingLogIssue` that caused a log-based failure.
+ */
+export function resolveCommandStatus(label, exitCode, logOutput) {
+  const blockingLogIssue = getBlockingLogIssue(label, logOutput);
+
+  return {
+    status: exitCode === 0 && blockingLogIssue === null ? 'passed' : 'failed',
+    blockingLogIssue,
+  };
+}
+
 function getOutputTail(output) {
   const lines = output
     .split('\n')
@@ -1017,7 +1081,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
 
   const logOutput = fs.readFileSync(logPath, 'utf8');
   const warningSummary = getWarningSummary(label, logOutput);
-  const status = exitCode === 0 ? 'passed' : 'failed';
+  const { status, blockingLogIssue } = resolveCommandStatus(label, exitCode, logOutput);
 
   if (status === 'passed' && !warningSummary) {
     console.log(`[${label}] passed ✅`);
@@ -1029,6 +1093,12 @@ async function runCommand(label, command, args, extraEnv = {}) {
     console.log(`[${label}] failed ❌`);
     console.log(`[${label}] command: ${formattedCommand}`);
     console.log(`[${label}] exit code: ${exitCode}`);
+
+    if (blockingLogIssue) {
+      console.log(`[${label}] blocking log signal: ${blockingLogIssue.reason}`);
+      console.log(`[${label}] warnings: ${blockingLogIssue.warningSummary}`);
+    }
+
     console.log(`[${label}] output tail:`);
 
     for (const tailLine of getOutputTail(outputBuffer)) {
@@ -1049,6 +1119,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
     stderr: '',
     hasWarnings: warningSummary.length > 0,
     warningSummary,
+    blockingLogIssue,
     terminatedBySignal: forwarder.terminatedBySignal,
     // Populated for expensive commands to support applyProcessResult.
     signal: forwarder.terminatedBySignal,
@@ -1066,6 +1137,7 @@ function createSkippedResult(entry, reason = entry.reason) {
     stderr: '',
     hasWarnings: false,
     warningSummary: '',
+    blockingLogIssue: null,
   };
 }
 
@@ -1082,6 +1154,7 @@ function createFailedResult(entry, reason = entry.reason) {
     stderr: '',
     hasWarnings: false,
     warningSummary: '',
+    blockingLogIssue: null,
   };
 }
 
@@ -1316,7 +1389,7 @@ export function buildCommands(
       kind: 'run',
       label: 'unit-tests',
       command: 'pnpm',
-      args: ['exec', 'vitest', 'run'],
+      args: ['exec', 'vitest', 'run', '--reporter=verbose'],
       weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
     });
   } else if (vitestScope.length > 0) {
@@ -1324,7 +1397,7 @@ export function buildCommands(
       kind: 'run',
       label: 'unit-tests',
       command: 'pnpm',
-      args: ['exec', 'vitest', 'run', ...vitestScope],
+      args: ['exec', 'vitest', 'run', '--reporter=verbose', ...vitestScope],
       weight: classifyCommandWeight({ label: 'unit-tests', fileCount: vitestScope.length }),
     });
   } else {
@@ -1437,7 +1510,12 @@ export function getActionRequired(results) {
   for (const result of failedResults) {
     actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
 
-    if (result.exitCode === null && result.reason) {
+    if (result.blockingLogIssue) {
+      actions.push(
+        `Reason: ${result.blockingLogIssue.reason} (command exit code: ${result.exitCode}).`,
+      );
+      actions.push(`Warnings: ${result.blockingLogIssue.warningSummary}`);
+    } else if (result.exitCode === null && result.reason) {
       actions.push(`Reason: ${result.reason}`);
     }
   }

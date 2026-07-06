@@ -545,16 +545,56 @@ export const openFilterSheet = async (page: Page) => {
   return sheet;
 };
 
+/**
+ * Wait until a locator's bounding box stops changing between polls, so the
+ * following pointer interaction cannot race an ongoing scroll or transition.
+ * @param target Locator that must settle before the next pointer interaction.
+ */
+const expectStablePosition = async (target: Locator) => {
+  let previousBox = '';
+
+  await expect
+    .poll(async () => {
+      const box = JSON.stringify(await target.boundingBox());
+      const isStable = box === previousBox && box !== 'null';
+      previousBox = box;
+      return isStable;
+    })
+    .toBe(true);
+};
+
 export const openEqualFilterDialog = async (page: Page, propertyName: string) => {
   const sheet = await openFilterSheet(page);
-  await sheet.getByRole('button', { name: /^and$/i }).click();
-  const propertyMenu = page.getByRole('menu').last();
-  await propertyMenu
-    .getByRole('menuitem', { name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i') })
-    .click();
+  const addFilterButton = sheet.getByRole('button', { name: /^and$/i });
+  const addFilterMenu = page.getByRole('menu');
+  const propertyItem = addFilterMenu.getByRole('menuitem', {
+    name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i'),
+  });
 
-  const operatorMenu = page.getByRole('menu').last();
-  await operatorMenu.getByRole('menuitem', { name: /^(=|equal)$/i }).click();
+  // The bottom sheet positions its content with smooth scrolling and scroll
+  // snapping, so on small mobile viewports the add-filter button can still be
+  // moving right after the sheet reports visible. A click dispatched during
+  // that movement can land beside the button and no menu opens.
+  await expect(addFilterButton).toBeVisible();
+  await expectStablePosition(addFilterButton);
+
+  // Only re-click when the menu really failed to open, then require the
+  // target property item inside the open menu instead of a positional guess.
+  await expect(async () => {
+    if (!(await addFilterMenu.isVisible())) {
+      await addFilterButton.click();
+    }
+    await expect(propertyItem).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+
+  await propertyItem.click();
+
+  // Selecting a property opens its operator submenu nested inside the same
+  // teleported menu surface. The `=` item exists only in that submenu, so the
+  // role/name locator is unambiguous without `.last()`.
+  const equalOperatorItem = page.getByRole('menuitem', { name: /^(=|equal)$/i });
+  await expect(equalOperatorItem).toBeVisible();
+  await equalOperatorItem.click();
 
   const dialog = page.getByRole('dialog', { name: /filter settings/i });
   await expect(dialog).toBeVisible();
