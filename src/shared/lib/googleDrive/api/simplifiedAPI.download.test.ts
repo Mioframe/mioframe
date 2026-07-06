@@ -116,14 +116,15 @@ describe('simplifiedAPI download', () => {
   });
 
   it('still fails the download when the real metadata request fails', async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ error: { code: HttpStatusCode.NOT_FOUND, message: 'File not found' } }),
-          { status: HttpStatusCode.NOT_FOUND },
-        ),
-      );
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ error: { code: HttpStatusCode.NOT_FOUND, message: 'File not found' } }),
+        {
+          status: HttpStatusCode.NOT_FOUND,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const { download } = await import('./simplifiedAPI');
@@ -150,7 +151,10 @@ describe('simplifiedAPI download', () => {
           JSON.stringify({
             error: { code: HttpStatusCode.FORBIDDEN, message: 'Permission denied' },
           }),
-          { status: HttpStatusCode.FORBIDDEN },
+          {
+            status: HttpStatusCode.FORBIDDEN,
+            headers: { 'Content-Type': 'application/json' },
+          },
         ),
       );
     vi.stubGlobal('fetch', fetchMock);

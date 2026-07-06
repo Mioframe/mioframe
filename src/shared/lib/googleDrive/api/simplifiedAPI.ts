@@ -59,6 +59,15 @@ const parseGoogleErrorCode = (errorBody: unknown): HttpStatusCode => {
   }
 };
 
+const createGoogleDriveRequestError = (code: HttpStatusCode, causeMessage: string) =>
+  new GoogleDriveError(
+    {
+      code,
+      message: 'Google Drive request failed',
+    },
+    { cause: createSafeErrorCause(causeMessage) },
+  );
+
 const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response> => {
   try {
     const response = options?.dedupe
@@ -71,29 +80,18 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
         .json()
         .catch(() => ({}));
 
-      throw new GoogleDriveError(
-        {
-          code: parseGoogleErrorCode(errorBody),
-          message: 'Google Drive request failed',
-        },
-        { cause: createSafeErrorCause('Google Drive API request failed') },
+      throw createGoogleDriveRequestError(
+        parseGoogleErrorCode(errorBody),
+        'Google Drive API request failed',
       );
     }
 
     return response;
   } catch (e) {
     if (e instanceof HTTPError) {
-      const errorBody = await e.response
-        .clone()
-        .json()
-        .catch(() => ({}));
-
-      throw new GoogleDriveError(
-        {
-          code: parseGoogleErrorCode(errorBody),
-          message: 'Google Drive request failed',
-        },
-        { cause: createSafeErrorCause('Google Drive API request failed') },
+      throw createGoogleDriveRequestError(
+        parseGoogleErrorCode(e.data),
+        'Google Drive API request failed',
       );
     }
 
@@ -101,12 +99,9 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
       throw e;
     }
 
-    throw new GoogleDriveError(
-      {
-        code: HttpStatusCode.SERVICE_UNAVAILABLE,
-        message: 'Google Drive request failed',
-      },
-      { cause: createSafeErrorCause('Google Drive network request failed') },
+    throw createGoogleDriveRequestError(
+      HttpStatusCode.SERVICE_UNAVAILABLE,
+      'Google Drive network request failed',
     );
   }
 };
