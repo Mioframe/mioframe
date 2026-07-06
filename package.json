@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -43,7 +43,8 @@
     "test:mutate": "node scripts/mutate.mjs",
     "release:build-artifact": "node scripts/release/buildArtifact.mjs",
     "release:validate-version": "node scripts/release/validateVersion.mjs",
-    "release:validate-config": "node scripts/release/validateReleaseConfig.mjs"
+    "release:validate-config": "node scripts/release/validateReleaseConfig.mjs",
+    "deps:update-browsers": "pnpm dlx update-browserslist-db@latest"
   },
   "dependencies": {
     "@automerge/automerge": "^3.2.6",
