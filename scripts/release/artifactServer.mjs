@@ -4,7 +4,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import toolingConfig from '../../config/tooling.json' with { type: 'json' };
-import { buildSpaFallbackHtml } from '../pages/writeSpaFallback.mjs';
+import { buildSpaFallbackHtml } from '../pages/lib/spaFallback.mjs';
 
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { buildSpaFallbackHtml } from './spaFallback.mjs';
 import {
   applyBranchPublish,
   applyBranchRemoval,
@@ -101,6 +102,18 @@ describe('applyStablePublish', () => {
 
     expect(readFileSync(join(workDir, 'index.html'), 'utf8')).toBe('<new/>');
   });
+
+  it('writes the site-level root 404.html while preserving branch and pr deployments', () => {
+    write(workDir, 'branch/develop/index.html', '<develop/>');
+    write(workDir, 'pr/42/index.html', '<preview/>');
+    write(distDir, 'index.html', '<stable/>');
+
+    applyStablePublish(workDir, distDir);
+
+    expect(readFileSync(join(workDir, '404.html'), 'utf8')).toBe(buildSpaFallbackHtml());
+    expect(fileExists(workDir, 'branch/develop/index.html')).toBe(true);
+    expect(fileExists(workDir, 'pr/42/index.html')).toBe(true);
+  });
 });
 
 describe('applyBranchPublish', () => {
@@ -124,11 +137,13 @@ describe('applyBranchPublish', () => {
 
   it('does not modify stable root files', () => {
     write(workDir, 'index.html', '<stable/>');
+    write(workDir, 'assets/main.js', '// stable');
     write(distDir, 'index.html', '<branch/>');
 
     applyBranchPublish(workDir, distDir, 'develop');
 
     expect(readFileSync(join(workDir, 'index.html'), 'utf8')).toBe('<stable/>');
+    expect(readFileSync(join(workDir, 'assets/main.js'), 'utf8')).toBe('// stable');
   });
 
   it('does not modify other branch slots', () => {
@@ -148,6 +163,20 @@ describe('applyBranchPublish', () => {
     applyBranchPublish(workDir, distDir, 'develop');
 
     expect(fileExists(workDir, 'pr/5/index.html')).toBe(true);
+  });
+
+  it('writes the site-level root 404.html without overwriting stable root files', () => {
+    write(workDir, '404.html', '<old-fallback/>');
+    write(workDir, 'index.html', '<stable/>');
+    write(workDir, 'assets/main.js', '// stable');
+    write(distDir, 'index.html', '<branch/>');
+
+    applyBranchPublish(workDir, distDir, 'develop');
+
+    expect(readFileSync(join(workDir, '404.html'), 'utf8')).toBe(buildSpaFallbackHtml());
+    expect(readFileSync(join(workDir, 'index.html'), 'utf8')).toBe('<stable/>');
+    expect(readFileSync(join(workDir, 'assets/main.js'), 'utf8')).toBe('// stable');
+    expect(readFileSync(join(workDir, 'branch/develop/index.html'), 'utf8')).toBe('<branch/>');
   });
 
   it('rejects an invalid branch slug', () => {
@@ -203,11 +232,13 @@ describe('applyPrPublish', () => {
 
   it('does not modify stable root files', () => {
     write(workDir, 'index.html', '<stable/>');
+    write(workDir, 'assets/main.js', '// stable');
     write(distDir, 'index.html', '<preview/>');
 
     applyPrPublish(workDir, distDir, '42');
 
     expect(readFileSync(join(workDir, 'index.html'), 'utf8')).toBe('<stable/>');
+    expect(readFileSync(join(workDir, 'assets/main.js'), 'utf8')).toBe('// stable');
   });
 
   it('does not modify other pr preview slots', () => {
@@ -227,6 +258,22 @@ describe('applyPrPublish', () => {
     applyPrPublish(workDir, distDir, '42');
 
     expect(fileExists(workDir, 'branch/develop/index.html')).toBe(true);
+  });
+
+  it('writes the site-level root 404.html without overwriting stable or branch content', () => {
+    write(workDir, '404.html', '<old-fallback/>');
+    write(workDir, 'index.html', '<stable/>');
+    write(workDir, 'assets/main.js', '// stable');
+    write(workDir, 'branch/develop/index.html', '<develop/>');
+    write(distDir, 'index.html', '<preview/>');
+
+    applyPrPublish(workDir, distDir, '42');
+
+    expect(readFileSync(join(workDir, '404.html'), 'utf8')).toBe(buildSpaFallbackHtml());
+    expect(readFileSync(join(workDir, 'index.html'), 'utf8')).toBe('<stable/>');
+    expect(readFileSync(join(workDir, 'assets/main.js'), 'utf8')).toBe('// stable');
+    expect(readFileSync(join(workDir, 'branch/develop/index.html'), 'utf8')).toBe('<develop/>');
+    expect(readFileSync(join(workDir, 'pr/42/index.html'), 'utf8')).toBe('<preview/>');
   });
 
   it('rejects an invalid PR number', () => {

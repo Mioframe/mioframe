@@ -2,7 +2,8 @@
  * Publish a PR preview build to pr/<PR_NUMBER>/ on the gh-pages staging branch.
  *
  * Only the target PR slot is touched; stable files, branch/* deployments,
- * and other pr/* directories are not modified.
+ * and other pr/* directories are not modified, aside from refreshing the
+ * shared root `404.html` SPA fallback invariant.
  *
  * When --output-dir is provided, the final staging content is also copied
  * there so the caller can upload it as a GitHub Pages artifact.
