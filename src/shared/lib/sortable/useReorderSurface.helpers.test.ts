@@ -460,6 +460,27 @@ describe('useReorderSurface helpers', () => {
     ).toBe(false);
   });
 
+  it('prevents document selectstart while suppression is active', () => {
+    const release = acquireReorderDocumentSelectionSuppression();
+    const activeEvent = new Event('selectstart', {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    document.dispatchEvent(activeEvent);
+    expect(activeEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedEvent = new Event('selectstart', {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    document.dispatchEvent(releasedEvent);
+    expect(releasedEvent.defaultPrevented).toBe(false);
+  });
+
   it('makes repeated token release harmless', () => {
     const release = acquireReorderDocumentSelectionSuppression();
 

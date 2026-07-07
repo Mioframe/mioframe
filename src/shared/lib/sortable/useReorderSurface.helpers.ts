@@ -351,6 +351,12 @@ export const shouldUseBestEffortReorderHaptics = (input: ReorderInput): boolean 
 
 let reorderSelectionSuppressionDepth = 0;
 
+const preventReorderSelectionStart = (event: Event) => {
+  if (reorderSelectionSuppressionDepth > 0) {
+    event.preventDefault();
+  }
+};
+
 /**
  * Checks whether the event target belongs to a draggable reorder item.
  * @param target - Event target to inspect.
@@ -375,7 +381,10 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
   }
 
   reorderSelectionSuppressionDepth += 1;
-  rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
+  if (reorderSelectionSuppressionDepth === 1) {
+    rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
+    document.addEventListener('selectstart', preventReorderSelectionStart, true);
+  }
 
   let released = false;
 
@@ -389,6 +398,7 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
 
     if (reorderSelectionSuppressionDepth === 0) {
       rootEl.classList.remove(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
+      document.removeEventListener('selectstart', preventReorderSelectionStart, true);
     }
   };
 };

@@ -3,9 +3,9 @@ import { DomainError } from '@shared/lib/error';
 import { zodDocumentId } from '@shared/lib/automerge';
 import { useExportDocument } from './useExportDocument';
 
-const { fetchMock, fileSaveMock } = vi.hoisted(() => ({
+const { fetchMock, saveFileWithPickerMock } = vi.hoisted(() => ({
   fetchMock: vi.fn(),
-  fileSaveMock: vi.fn(),
+  saveFileWithPickerMock: vi.fn(),
 }));
 
 const documentId = zodDocumentId.parse('4Z1fFANPScpDsLXmC1KsBCn4mWYu');
@@ -20,21 +20,59 @@ vi.mock('@shared/service', () => ({
   }),
 }));
 
-vi.mock('browser-fs-access', () => ({
-  fileSave: fileSaveMock,
-}));
+vi.mock('@shared/lib/fileSystem', async () => {
+  const actual =
+    await vi.importActual<typeof import('@shared/lib/fileSystem')>('@shared/lib/fileSystem');
+
+  return {
+    ...actual,
+    saveFileWithPicker: saveFileWithPickerMock,
+  };
+});
 
 describe('useExportDocument', () => {
   beforeEach(() => {
     fetchMock.mockReset();
-    fileSaveMock.mockReset();
+    saveFileWithPickerMock.mockReset();
     fetchMock.mockResolvedValue({
       body: {},
       name: 'Doc',
       type: 'note',
       version: 1,
     });
-    fileSaveMock.mockResolvedValue(undefined);
+    saveFileWithPickerMock.mockImplementation(async (createBlob) => {
+      await createBlob();
+      return true;
+    });
+  });
+
+  it('starts save target acquisition before fetching document state', async () => {
+    const callOrder: string[] = [];
+    fetchMock.mockImplementation(() => {
+      callOrder.push('fetch');
+      return Promise.resolve({
+        body: {},
+        name: 'Doc',
+        type: 'note',
+        version: 1,
+      });
+    });
+    saveFileWithPickerMock.mockImplementation(async (createBlob) => {
+      callOrder.push('save-target');
+      const blob = await createBlob();
+      callOrder.push(`blob:${await blob.text()}`);
+      return true;
+    });
+
+    const { saveJsonFile } = useExportDocument();
+
+    await expect(saveJsonFile('/documents', documentId)).resolves.toBe(true);
+
+    expect(callOrder).toEqual([
+      'save-target',
+      'fetch',
+      'blob:{"body":{},"name":"Doc","type":"note","version":1}',
+    ]);
   });
 
   it('throws a user-facing DomainError when the document state is missing', async () => {
@@ -44,12 +82,12 @@ describe('useExportDocument', () => {
 
     await expect(saveJsonFile('/documents', documentId)).rejects.toMatchObject({
       message: 'The document is not available for export',
+      code: 'exportDocument.documentExportUnavailable',
     });
     expect(fetchMock).toHaveBeenCalledWith({
       path: '/documents',
       documentId,
     });
-    expect(fileSaveMock).not.toHaveBeenCalled();
   });
 
   it('preserves raw document load failure as cause when fetch fails', async () => {
@@ -73,7 +111,6 @@ describe('useExportDocument', () => {
     expect(error.cause).toBe(rawCause);
     expect(error.message).not.toContain('/Device files');
     expect(error.message).not.toContain('gd-');
-    expect(fileSaveMock).not.toHaveBeenCalled();
   });
 
   it('preserves an existing DomainError when fetching the document state fails', async () => {
@@ -83,24 +120,30 @@ describe('useExportDocument', () => {
     const { saveJsonFile } = useExportDocument();
 
     await expect(saveJsonFile('/documents', documentId)).rejects.toBe(cause);
-    expect(fileSaveMock).not.toHaveBeenCalled();
   });
 
   it('returns false when the user cancels the save dialog', async () => {
-    fileSaveMock.mockRejectedValueOnce(new DOMException('User cancelled', 'AbortError'));
+    saveFileWithPickerMock.mockResolvedValueOnce(false);
 
     const { saveJsonFile } = useExportDocument();
 
     await expect(saveJsonFile('/documents', documentId)).resolves.toBe(false);
-    expect(fileSaveMock).toHaveBeenCalledOnce();
-    expect(fileSaveMock.mock.calls[0]?.[1]).toEqual({
-      fileName: `${documentId}.json`,
-      extensions: ['.json'],
-      mimeTypes: ['application/json'],
-    });
+    expect(saveFileWithPickerMock).toHaveBeenCalledOnce();
   });
 
   it('returns true and saves the document JSON on success', async () => {
+    let savedBlobText = '';
+    saveFileWithPickerMock.mockImplementationOnce(async (createBlob, options) => {
+      const blob = await createBlob();
+      savedBlobText = await blob.text();
+      expect(options).toEqual({
+        fileName: `${documentId}.json`,
+        extensions: ['.json'],
+        mimeTypes: ['application/json'],
+      });
+      return true;
+    });
+
     const { saveJsonFile } = useExportDocument();
 
     await expect(saveJsonFile('/documents', documentId)).resolves.toBe(true);
@@ -109,16 +152,7 @@ describe('useExportDocument', () => {
       path: '/documents',
       documentId,
     });
-    expect(fileSaveMock).toHaveBeenCalledOnce();
-
-    const [blob, options] = fileSaveMock.mock.calls[0] ?? [];
-
-    expect(options).toEqual({
-      fileName: `${documentId}.json`,
-      extensions: ['.json'],
-      mimeTypes: ['application/json'],
-    });
-    await expect(blob.text()).resolves.toBe(
+    expect(savedBlobText).toBe(
       JSON.stringify({
         body: {},
         name: 'Doc',
@@ -128,12 +162,12 @@ describe('useExportDocument', () => {
     );
   });
 
-  it('preserves raw save failure as cause when file save fails with a non-cancel error', async () => {
+  it('preserves raw save failure as cause when save target writing fails', async () => {
     const rawCause = new DOMException(
       'Could not save /Device files/Private/Tax 2025/4Z1fFANPScpDsLXmC1KsBCn4mWYu.json',
       'NotAllowedError',
     );
-    fileSaveMock.mockRejectedValueOnce(rawCause);
+    saveFileWithPickerMock.mockRejectedValueOnce(rawCause);
 
     const { saveJsonFile } = useExportDocument();
 
@@ -153,7 +187,7 @@ describe('useExportDocument', () => {
 
   it('preserves an existing DomainError when saving fails', async () => {
     const cause = new DomainError('Could not export JSON');
-    fileSaveMock.mockRejectedValueOnce(cause);
+    saveFileWithPickerMock.mockRejectedValueOnce(cause);
 
     const { saveJsonFile } = useExportDocument();
 
