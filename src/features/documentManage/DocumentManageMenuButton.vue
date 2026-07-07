@@ -52,7 +52,8 @@ const { saveJsonFile } = useExportDocument();
 const {
   exportDocumentZip,
   progress: exportZipProgress,
-  isRunning: isExportZipRunning,
+  isProgressVisible: isExportZipProgressVisible,
+  dismissProgress: dismissExportZipProgress,
 } = useExportDocumentZip();
 const { addSnackbar } = useSnackbar();
 
@@ -116,7 +117,7 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
 };
 
 const onCloseExportZipProgressSheet = () => {
-  isExportZipRunning.value = false;
+  dismissExportZipProgress();
 };
 
 const { state } = useDocument(directoryPath, documentId);
@@ -166,7 +167,7 @@ const onCancelRenameDialog = () => {
   />
 
   <ExportZipProgressSheet
-    v-if="isExportZipRunning"
+    v-if="isExportZipProgressVisible"
     :progress="exportZipProgress"
     @close="onCloseExportZipProgressSheet"
   />

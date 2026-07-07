@@ -12,6 +12,7 @@ export type { RepositoryDirectoryEntry } from './repositoryContracts';
 export type { RepositoryFacts } from './repositoryStorageFiles';
 export { RepositoryZipErrorCode } from './repositoryZipContracts';
 export type {
+  OnZipExportChunk,
   OnZipExportProgress,
   OnZipImportProgress,
   ZipExportPhase,

@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '@shared/lib/error';
 import { useExportDirectoryZip } from './useExportDirectoryZip';
 
-const { exportDirectoryZipMock, saveFileWithPickerMock } = vi.hoisted(() => ({
+const { exportDirectoryZipMock, saveStreamWithPickerMock } = vi.hoisted(() => ({
   exportDirectoryZipMock: vi.fn(),
-  saveFileWithPickerMock: vi.fn(),
+  saveStreamWithPickerMock: vi.fn(),
 }));
 
 vi.mock('@shared/service', () => ({
@@ -21,17 +21,19 @@ vi.mock('@shared/lib/fileSystem', async () => {
 
   return {
     ...actual,
-    saveFileWithPicker: saveFileWithPickerMock,
+    saveStreamWithPicker: saveStreamWithPickerMock,
   };
 });
+
+type Producer = (write: (chunk: Uint8Array) => Promise<void>) => Promise<void>;
 
 describe('useExportDirectoryZip', () => {
   beforeEach(() => {
     exportDirectoryZipMock.mockReset();
-    saveFileWithPickerMock.mockReset();
-    exportDirectoryZipMock.mockResolvedValue(new Uint8Array([1, 2, 3]));
-    saveFileWithPickerMock.mockImplementation(async (createBlob: () => Promise<Blob>) => {
-      await createBlob();
+    saveStreamWithPickerMock.mockReset();
+    exportDirectoryZipMock.mockResolvedValue(undefined);
+    saveStreamWithPickerMock.mockImplementation(async (produce: Producer) => {
+      await produce(() => Promise.resolve());
       return true;
     });
   });
@@ -41,40 +43,112 @@ describe('useExportDirectoryZip', () => {
 
     await exportDirectoryZip('/My Repo:1');
 
-    expect(saveFileWithPickerMock).toHaveBeenCalledWith(expect.any(Function), {
-      fileName: 'My Repo_1.zip',
-      extensions: ['.zip'],
-      mimeTypes: ['application/zip'],
-    });
+    expect(saveStreamWithPickerMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        fileName: 'My Repo_1.zip',
+        extensions: ['.zip'],
+        mimeTypes: ['application/zip'],
+      }),
+    );
   });
 
-  it('reports service progress and a final saving phase, and tracks isRunning', async () => {
-    const progressUpdates: unknown[] = [];
-    exportDirectoryZipMock.mockImplementation((_path: string, onProgress: (p: unknown) => void) => {
-      onProgress({ phase: 'preparing' });
-      onProgress({ phase: 'reading', current: 1 });
-      return Promise.resolve(new Uint8Array([1, 2, 3]));
+  it('streams service-produced chunks straight to the picker write function', async () => {
+    const written: Uint8Array[] = [];
+    exportDirectoryZipMock.mockImplementation(
+      async (
+        _path: string,
+        onChunk: (chunk: Uint8Array) => Promise<void>,
+        onProgress: (p: unknown) => void,
+      ) => {
+        onProgress({ phase: 'preparing' });
+        await onChunk(new Uint8Array([1, 2, 3]));
+        onProgress({ phase: 'reading', current: 1 });
+        await onChunk(new Uint8Array([4, 5, 6]));
+      },
+    );
+    saveStreamWithPickerMock.mockImplementation(async (produce: Producer) => {
+      await produce((chunk) => {
+        written.push(chunk);
+        return Promise.resolve();
+      });
+      return true;
     });
 
-    const { exportDirectoryZip, progress, isRunning } = useExportDirectoryZip();
+    const { exportDirectoryZip, progress } = useExportDirectoryZip();
+    await exportDirectoryZip('/repo');
+
+    expect(written).toEqual([new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6])]);
+    expect(progress.value).toEqual({ phase: 'saving' });
+  });
+
+  it('tracks isRunning for the duration of the export and separates progress-sheet visibility', async () => {
+    const { exportDirectoryZip, isRunning, isProgressVisible } = useExportDirectoryZip();
 
     expect(isRunning.value).toBe(false);
+    expect(isProgressVisible.value).toBe(false);
 
-    saveFileWithPickerMock.mockImplementationOnce(async (createBlob: () => Promise<Blob>) => {
+    saveStreamWithPickerMock.mockImplementationOnce(async (produce: Producer) => {
       expect(isRunning.value).toBe(true);
-      await createBlob();
-      progressUpdates.push(progress.value);
+      expect(isProgressVisible.value).toBe(true);
+      await produce(() => Promise.resolve());
       return true;
     });
 
     await exportDirectoryZip('/repo');
 
-    expect(progressUpdates).toEqual([{ phase: 'saving' }]);
     expect(isRunning.value).toBe(false);
+    expect(isProgressVisible.value).toBe(false);
+  });
+
+  it('ignores a duplicate call while an export is already running', async () => {
+    let resolveFirst!: () => void;
+    saveStreamWithPickerMock.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveFirst = () => {
+            resolve(true);
+          };
+        }),
+    );
+
+    const { exportDirectoryZip, isRunning } = useExportDirectoryZip();
+    const firstCall = exportDirectoryZip('/repo');
+    expect(isRunning.value).toBe(true);
+
+    await expect(exportDirectoryZip('/repo')).resolves.toBe(false);
+    expect(saveStreamWithPickerMock).toHaveBeenCalledOnce();
+
+    resolveFirst();
+    await expect(firstCall).resolves.toBe(true);
+  });
+
+  it('dismissProgress hides the sheet without affecting isRunning', async () => {
+    let resolveRun!: () => void;
+    saveStreamWithPickerMock.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveRun = () => {
+            resolve(true);
+          };
+        }),
+    );
+
+    const { exportDirectoryZip, isRunning, isProgressVisible, dismissProgress } =
+      useExportDirectoryZip();
+    const runPromise = exportDirectoryZip('/repo');
+
+    expect(isProgressVisible.value).toBe(true);
+    dismissProgress();
+    expect(isProgressVisible.value).toBe(false);
+    expect(isRunning.value).toBe(true);
+
+    resolveRun();
+    await runPromise;
   });
 
   it('returns false when the user cancels the save dialog', async () => {
-    saveFileWithPickerMock.mockResolvedValueOnce(false);
+    saveStreamWithPickerMock.mockResolvedValueOnce(false);
 
     const { exportDirectoryZip } = useExportDirectoryZip();
 

@@ -5,3 +5,13 @@ export {
   type SafeZipEntryPath,
 } from './zipArchivePathSafety';
 export { packZipArchive, unpackZipArchive, type ZipArchiveEntries } from './zipArchiveCodec';
+export {
+  createZipArchiveWriter,
+  createZipArchiveReader,
+  streamBlobChunks,
+  type OnZipArchiveChunk,
+  type ZipArchiveWriter,
+  type ZipArchiveEntryHandle,
+  type OnZipArchiveEntry,
+  type ZipArchiveReader,
+} from './zipArchiveCodec';

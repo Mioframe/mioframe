@@ -19,11 +19,15 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     exportDirectoryZip,
     progress: exportZipProgress,
     isRunning: isExportZipRunning,
+    isProgressVisible: isExportZipProgressVisible,
+    dismissProgress: dismissExportZipProgress,
   } = useExportDirectoryZip();
   const {
     importDirectoryZip,
     progress: importZipProgress,
     isRunning: isImportZipRunning,
+    isProgressVisible: isImportZipProgressVisible,
+    dismissProgress: dismissImportZipProgress,
   } = useImportZipAction();
 
   const showCreateDirectoryDialog = ref(false);
@@ -58,10 +62,10 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     await importDirectoryZip(path.value);
   };
   const onCloseExportZipProgressSheet = () => {
-    isExportZipRunning.value = false;
+    dismissExportZipProgress();
   };
   const onCloseImportZipProgressSheet = () => {
-    isImportZipRunning.value = false;
+    dismissImportZipProgress();
   };
 
   const onCloseCreateDirectoryDialog = () => {
@@ -80,8 +84,10 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     showRenameDialog,
     exportZipProgress,
     isExportZipRunning,
+    isExportZipProgressVisible,
     importZipProgress,
     isImportZipRunning,
+    isImportZipProgressVisible,
     onSelectCreateDirectory,
     onSelectCreateDocument,
     onSelectRename,

@@ -22,8 +22,10 @@ const shouldSkipImportErrorReport = (error: unknown) =>
 
 /**
  * Runs the directory ZIP import flow with shared snackbar, write-access recovery, and diagnostics
- * behavior. Stops before any write when the archive has conflicts with existing files.
- * @returns The import action plus reactive progress and running state for a progress sheet.
+ * behavior. Stops before any write when the archive has conflicts with existing files. Surfaces a
+ * distinct message when a write fails after an earlier write in the same import already
+ * succeeded, since the target folder may then hold a partial import.
+ * @returns The import action plus reactive progress, running, and progress-sheet visibility state.
  */
 export const useImportZipAction = () => {
   const { pickZipFile } = useImportZip();
@@ -37,10 +39,14 @@ export const useImportZipAction = () => {
 
   const progress = ref<ZipImportProgress | undefined>(undefined);
   const isRunning = ref(false);
+  const isProgressVisible = ref(false);
 
   const reportImportError = (error: unknown, diagnosticsAction: string) => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
 
+    // A partial-write DomainError's message already says the target folder may hold a partial
+    // import (see RepositoryZipErrorCode.importWritePartiallyFailed), so no special-casing is
+    // needed here beyond the existing DomainError message passthrough.
     addSnackbar({
       text: recovery
         ? 'Grant write access to import a ZIP archive into this remembered space.'
@@ -119,11 +125,17 @@ export const useImportZipAction = () => {
   };
 
   /**
-   * Picks a ZIP archive and imports it into the target directory.
+   * Picks a ZIP archive and imports it into the target directory. Ignores repeated calls while
+   * an import is already running for this action instance.
    * @param path - Absolute path to the directory to import into.
-   * @returns `true` when the import succeeds, `false` when cancelled or on a handled error.
+   * @returns `true` when the import succeeds, `false` when cancelled, ignored as a duplicate
+   * call, or on a handled error.
    */
   const importDirectoryZipArchive = async (path: string): Promise<boolean> => {
+    if (isRunning.value) {
+      return false;
+    }
+
     let file: File | undefined;
 
     try {
@@ -138,11 +150,10 @@ export const useImportZipAction = () => {
     }
 
     progress.value = undefined;
+    isRunning.value = true;
+    isProgressVisible.value = true;
 
     try {
-      isRunning.value = true;
-
-      const archiveBytes = new Uint8Array(await file.arrayBuffer());
       const onProgress = (nextProgress: ZipImportProgress) => {
         progress.value = nextProgress;
       };
@@ -150,11 +161,11 @@ export const useImportZipAction = () => {
       let succeeded = false;
 
       try {
-        await importDirectoryZip(path, archiveBytes, onProgress);
+        await importDirectoryZip(path, file, onProgress);
         succeeded = true;
       } catch (error) {
         succeeded = await withWriteAccessRecovery(error, () =>
-          importDirectoryZip(path, archiveBytes, onProgress),
+          importDirectoryZip(path, file, onProgress),
         );
       }
 
@@ -169,8 +180,20 @@ export const useImportZipAction = () => {
       return false;
     } finally {
       isRunning.value = false;
+      isProgressVisible.value = false;
     }
   };
 
-  return { importDirectoryZip: importDirectoryZipArchive, progress, isRunning };
+  /** Hides the progress sheet without affecting the import itself, which keeps running. */
+  const dismissProgress = () => {
+    isProgressVisible.value = false;
+  };
+
+  return {
+    importDirectoryZip: importDirectoryZipArchive,
+    progress,
+    isRunning,
+    isProgressVisible,
+    dismissProgress,
+  };
 };

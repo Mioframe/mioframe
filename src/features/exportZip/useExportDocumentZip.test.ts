@@ -3,9 +3,9 @@ import { DomainError } from '@shared/lib/error';
 import { zodDocumentId } from '@shared/lib/automerge';
 import { useExportDocumentZip } from './useExportDocumentZip';
 
-const { exportDocumentZipMock, saveFileWithPickerMock } = vi.hoisted(() => ({
+const { exportDocumentZipMock, saveStreamWithPickerMock } = vi.hoisted(() => ({
   exportDocumentZipMock: vi.fn(),
-  saveFileWithPickerMock: vi.fn(),
+  saveStreamWithPickerMock: vi.fn(),
 }));
 
 const documentId = zodDocumentId.parse('4Z1fFANPScpDsLXmC1KsBCn4mWYu');
@@ -24,17 +24,19 @@ vi.mock('@shared/lib/fileSystem', async () => {
 
   return {
     ...actual,
-    saveFileWithPicker: saveFileWithPickerMock,
+    saveStreamWithPicker: saveStreamWithPickerMock,
   };
 });
+
+type Producer = (write: (chunk: Uint8Array) => Promise<void>) => Promise<void>;
 
 describe('useExportDocumentZip', () => {
   beforeEach(() => {
     exportDocumentZipMock.mockReset();
-    saveFileWithPickerMock.mockReset();
-    exportDocumentZipMock.mockResolvedValue(new Uint8Array([1, 2, 3]));
-    saveFileWithPickerMock.mockImplementation(async (createBlob: () => Promise<Blob>) => {
-      await createBlob();
+    saveStreamWithPickerMock.mockReset();
+    exportDocumentZipMock.mockResolvedValue(undefined);
+    saveStreamWithPickerMock.mockImplementation(async (produce: Producer) => {
+      await produce(() => Promise.resolve());
       return true;
     });
   });
@@ -44,20 +46,55 @@ describe('useExportDocumentZip', () => {
 
     await exportDocumentZip('/documents', documentId);
 
-    expect(saveFileWithPickerMock).toHaveBeenCalledWith(expect.any(Function), {
-      fileName: `${documentId}.zip`,
-      extensions: ['.zip'],
-      mimeTypes: ['application/zip'],
-    });
+    expect(saveStreamWithPickerMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        fileName: `${documentId}.zip`,
+        extensions: ['.zip'],
+        mimeTypes: ['application/zip'],
+      }),
+    );
     expect(exportDocumentZipMock).toHaveBeenCalledWith(
       '/documents',
       documentId,
       expect.any(Function),
+      expect.any(Function),
     );
   });
 
+  it('tracks isRunning and progress-sheet visibility separately, ignoring duplicate starts', async () => {
+    let resolveFirst!: () => void;
+    saveStreamWithPickerMock.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveFirst = () => {
+            resolve(true);
+          };
+        }),
+    );
+
+    const { exportDocumentZip, isRunning, isProgressVisible, dismissProgress } =
+      useExportDocumentZip();
+    const firstCall = exportDocumentZip('/documents', documentId);
+
+    expect(isRunning.value).toBe(true);
+    expect(isProgressVisible.value).toBe(true);
+
+    await expect(exportDocumentZip('/documents', documentId)).resolves.toBe(false);
+    expect(saveStreamWithPickerMock).toHaveBeenCalledOnce();
+
+    dismissProgress();
+    expect(isProgressVisible.value).toBe(false);
+    expect(isRunning.value).toBe(true);
+
+    resolveFirst();
+    await firstCall;
+
+    expect(isRunning.value).toBe(false);
+  });
+
   it('returns false when the user cancels the save dialog', async () => {
-    saveFileWithPickerMock.mockResolvedValueOnce(false);
+    saveStreamWithPickerMock.mockResolvedValueOnce(false);
 
     const { exportDocumentZip } = useExportDocumentZip();
 

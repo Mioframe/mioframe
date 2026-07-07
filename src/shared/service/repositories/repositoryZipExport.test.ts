@@ -24,6 +24,28 @@ const createVfs = () => {
   return vfs;
 };
 
+/**
+ * Collects every chunk delivered to an `onChunk` callback into one archive byte array.
+ * @returns An `onChunk` callback plus a `merge` function that concatenates the collected chunks.
+ */
+const collectChunks = () => {
+  const chunks: Uint8Array[] = [];
+  const onChunk = (chunk: Uint8Array) => {
+    chunks.push(chunk);
+  };
+  const merge = () => {
+    const total = chunks.reduce((sum, part) => sum + part.length, 0);
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const part of chunks) {
+      merged.set(part, offset);
+      offset += part.length;
+    }
+    return merged;
+  };
+  return { onChunk, merge };
+};
+
 describe('exportDirectoryZip', () => {
   it('packs raw directory contents, including internal-looking files, under a sanitized root', async () => {
     const vfs = createVfs();
@@ -34,9 +56,10 @@ describe('exportDirectoryZip', () => {
 
     const flushRepositoryPath = vi.fn().mockResolvedValue(undefined);
     const onProgress = vi.fn();
+    const { onChunk, merge } = collectChunks();
 
-    const archiveBytes = await exportDirectoryZip(vfs, flushRepositoryPath, '/repo', onProgress);
-    const unpacked = unpackZipArchive(archiveBytes);
+    await exportDirectoryZip(vfs, flushRepositoryPath, '/repo', onChunk, onProgress);
+    const unpacked = unpackZipArchive(merge());
 
     expect(new TextDecoder().decode(unpacked['repo/file.txt'])).toBe('hello');
     expect(new TextDecoder().decode(unpacked['repo/.mioframe-marker'])).toBe('marker');
@@ -53,9 +76,10 @@ describe('exportDirectoryZip', () => {
     await vfs.writeFile('/repo/nested/deep.txt', 'deep content');
 
     const flushRepositoryPath = vi.fn().mockResolvedValue(undefined);
+    const { onChunk, merge } = collectChunks();
 
-    const archiveBytes = await exportDirectoryZip(vfs, flushRepositoryPath, '/repo');
-    const unpacked = unpackZipArchive(archiveBytes);
+    await exportDirectoryZip(vfs, flushRepositoryPath, '/repo', onChunk);
+    const unpacked = unpackZipArchive(merge());
 
     expect(new TextDecoder().decode(unpacked['repo/nested/deep.txt'])).toBe('deep content');
     expect(flushRepositoryPath).toHaveBeenCalledWith('/repo');
@@ -65,11 +89,31 @@ describe('exportDirectoryZip', () => {
   it('falls back to a stable root name when the directory has no usable basename', async () => {
     const vfs = createVfs();
     await vfs.writeFile('/file.txt', 'root file');
+    const { onChunk, merge } = collectChunks();
 
-    const archiveBytes = await exportDirectoryZip(vfs, vi.fn().mockResolvedValue(undefined), '/');
-    const unpacked = unpackZipArchive(archiveBytes);
+    await exportDirectoryZip(vfs, vi.fn().mockResolvedValue(undefined), '/', onChunk);
+    const unpacked = unpackZipArchive(merge());
 
     expect(new TextDecoder().decode(unpacked['root/file.txt'])).toBe('root file');
+  });
+
+  it('never holds more than one produced chunk before delivery resolves', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/repo');
+    await vfs.writeFile('/repo/large.txt', 'x'.repeat(200_000));
+
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const onChunk = async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+    };
+
+    await exportDirectoryZip(vfs, vi.fn().mockResolvedValue(undefined), '/repo', onChunk);
+
+    expect(maxInFlight).toBe(1);
   });
 });
 
@@ -88,15 +132,10 @@ describe('exportDocumentZip', () => {
 
     const flushRepositoryPath = vi.fn().mockResolvedValue(undefined);
     const onProgress = vi.fn();
+    const { onChunk, merge } = collectChunks();
 
-    const archiveBytes = await exportDocumentZip(
-      vfs,
-      flushRepositoryPath,
-      '/repo',
-      documentId,
-      onProgress,
-    );
-    const unpacked = unpackZipArchive(archiveBytes);
+    await exportDocumentZip(vfs, flushRepositoryPath, '/repo', documentId, onChunk, onProgress);
+    const unpacked = unpackZipArchive(merge());
 
     expect(new TextDecoder().decode(unpacked[`${documentId}/storage-file-1`])).toBe('chunk one');
     expect(new TextDecoder().decode(unpacked[`${documentId}/storage-file-2`])).toBe('chunk two');
@@ -111,7 +150,13 @@ describe('exportDocumentZip', () => {
 
     let caught: unknown;
     try {
-      await exportDocumentZip(vfs, vi.fn().mockResolvedValue(undefined), '/repo', documentId);
+      await exportDocumentZip(
+        vfs,
+        vi.fn().mockResolvedValue(undefined),
+        '/repo',
+        documentId,
+        vi.fn(),
+      );
     } catch (error) {
       caught = error;
     }

@@ -16,8 +16,8 @@ const openMock = vi.fn();
 const importDocumentMock = vi.fn();
 const onSelectExportZipMock = vi.fn();
 const onSelectImportZipMock = vi.fn();
-const isExportZipRunningRef = ref(false);
-const isImportZipRunningRef = ref(false);
+const isExportZipProgressVisibleRef = ref(false);
+const isImportZipProgressVisibleRef = ref(false);
 
 const directoryStatRef = ref<
   | {
@@ -53,9 +53,9 @@ vi.mock('@feature/entryManage', () => ({
   useEntryManageDialogState: () => ({
     showRenameDialog: ref(false),
     exportZipProgress: ref(undefined),
-    isExportZipRunning: isExportZipRunningRef,
+    isExportZipProgressVisible: isExportZipProgressVisibleRef,
     importZipProgress: ref(undefined),
-    isImportZipRunning: isImportZipRunningRef,
+    isImportZipProgressVisible: isImportZipProgressVisibleRef,
     onSelectRename: vi.fn(),
     onSelectRemove: vi.fn(),
     onSelectExportZip: onSelectExportZipMock,
@@ -372,8 +372,8 @@ describe('RepoExplorerPane', () => {
     importDocumentMock.mockReset();
     onSelectExportZipMock.mockReset();
     onSelectImportZipMock.mockReset();
-    isExportZipRunningRef.value = false;
-    isImportZipRunningRef.value = false;
+    isExportZipProgressVisibleRef.value = false;
+    isImportZipProgressVisibleRef.value = false;
     directoryStatRef.value = undefined;
     useFSEntryManageActionsMock.mockClear();
     document.body.innerHTML = '';
@@ -645,8 +645,8 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
   });
 
-  it('renders the export ZIP progress sheet only while the export is running', async () => {
-    isExportZipRunningRef.value = true;
+  it('renders the export ZIP progress sheet only while it is visible', async () => {
+    isExportZipProgressVisibleRef.value = true;
 
     const wrapper = await mountPane();
 
@@ -654,8 +654,8 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
   });
 
-  it('renders the import ZIP progress sheet only while the import is running', async () => {
-    isImportZipRunningRef.value = true;
+  it('renders the import ZIP progress sheet only while it is visible', async () => {
+    isImportZipProgressVisibleRef.value = true;
 
     const wrapper = await mountPane();
 

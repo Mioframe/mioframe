@@ -43,7 +43,11 @@ import {
 } from './repositoryStorageFiles';
 import { exportDirectoryZip, exportDocumentZip } from './repositoryZipExport';
 import { importDirectoryZip } from './repositoryZipImport';
-import type { OnZipExportProgress, OnZipImportProgress } from './repositoryZipContracts';
+import type {
+  OnZipExportChunk,
+  OnZipExportProgress,
+  OnZipImportProgress,
+} from './repositoryZipContracts';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
 
@@ -431,42 +435,54 @@ const setupRepositoriesService = () => {
   };
 
   /**
-   * Exports a directory's raw storage contents, including internal Mioframe storage files, as a
-   * ZIP archive. This is a storage-level export, not a document JSON snapshot.
+   * Streams a directory's raw storage contents, including internal Mioframe storage files, as a
+   * ZIP archive. This is a storage-level export, not a document JSON snapshot. Delivers packed
+   * bytes through `onChunk` instead of returning the full archive, so it never holds the whole
+   * archive in memory.
    * @param path - Absolute path to the directory to export.
+   * @param onChunk - Invoked with each packed archive chunk as it becomes available.
    * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
-   * @returns The packed ZIP archive bytes.
+   * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
    */
-  const exportDirectoryZipArchive = async (path: string, onProgress?: OnZipExportProgress) =>
-    exportDirectoryZip(vfs, flushRepositoryPathForExport, path, onProgress);
+  const exportDirectoryZipArchive = async (
+    path: string,
+    onChunk: OnZipExportChunk,
+    onProgress?: OnZipExportProgress,
+  ) => exportDirectoryZip(vfs, flushRepositoryPathForExport, path, onChunk, onProgress);
 
   /**
-   * Exports one document's storage files, in a folder-like archive layout, as a ZIP archive.
+   * Streams one document's storage files, in a folder-like archive layout, as a ZIP archive.
    * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
+   * Delivers packed bytes through `onChunk` instead of returning the full archive, so it never
+   * holds the whole archive in memory.
    * @param path - Absolute path to the directory containing the document.
    * @param id - Target document id.
+   * @param onChunk - Invoked with each packed archive chunk as it becomes available.
    * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
-   * @returns The packed ZIP archive bytes.
+   * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
    */
   const exportDocumentZipArchive = async (
     path: string,
     id: AMDocumentId,
+    onChunk: OnZipExportChunk,
     onProgress?: OnZipExportProgress,
-  ) => exportDocumentZip(vfs, flushRepositoryPathForExport, path, id, onProgress);
+  ) => exportDocumentZip(vfs, flushRepositoryPathForExport, path, id, onChunk, onProgress);
 
   /**
-   * Validates and imports a ZIP archive into a directory. Stops before any write if a target
-   * file already exists; never overwrites, merges, or renames existing files.
+   * Validates and imports a ZIP archive into a directory using a bounded-memory, two-pass
+   * strategy. Stops before any write if a target file or directory conflicts with the archive;
+   * never overwrites, merges, or renames existing files.
    * @param targetDirectoryPath - Absolute path to the directory to import into.
-   * @param archiveBytes - Raw ZIP archive bytes selected by the user.
+   * @param archiveFile - The user-selected ZIP archive file. Read twice: once to plan and
+   * preflight conflicts, once to write, so the archive is never held in memory as a whole.
    * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
    * @returns Promise that resolves once every entry has been written.
    */
   const importDirectoryZipArchive = async (
     targetDirectoryPath: string,
-    archiveBytes: Uint8Array,
+    archiveFile: File,
     onProgress?: OnZipImportProgress,
-  ) => importDirectoryZip(vfs, targetDirectoryPath, archiveBytes, onProgress);
+  ) => importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress);
 
   const documentIdList = defineObservableQuery(getDocumentIdList$);
   const repositoryFacts = defineObservableQuery(getRepositoryFacts$);
@@ -521,27 +537,32 @@ const setupRepositoriesService = () => {
      */
     importDocumentFromJsonFile,
     /**
-     * Exports a directory's raw storage contents, including internal Mioframe storage files, as
-     * a ZIP archive. This is a storage-level export, not a document JSON snapshot.
+     * Streams a directory's raw storage contents, including internal Mioframe storage files, as
+     * a ZIP archive. This is a storage-level export, not a document JSON snapshot. Delivers
+     * packed bytes through `onChunk` instead of returning the full archive.
      * @param path - Absolute path to the directory to export.
+     * @param onChunk - Invoked with each packed archive chunk as it becomes available.
      * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
-     * @returns The packed ZIP archive bytes.
+     * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
      */
     exportDirectoryZip: exportDirectoryZipArchive,
     /**
-     * Exports one document's storage files, in a folder-like archive layout, as a ZIP archive.
+     * Streams one document's storage files, in a folder-like archive layout, as a ZIP archive.
      * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
+     * Delivers packed bytes through `onChunk` instead of returning the full archive.
      * @param path - Absolute path to the directory containing the document.
      * @param id - Target document id.
+     * @param onChunk - Invoked with each packed archive chunk as it becomes available.
      * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
-     * @returns The packed ZIP archive bytes.
+     * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
      */
     exportDocumentZip: exportDocumentZipArchive,
     /**
-     * Validates and imports a ZIP archive into a directory. Stops before any write if a target
-     * file already exists; never overwrites, merges, or renames existing files.
+     * Validates and imports a ZIP archive into a directory using a bounded-memory, two-pass
+     * strategy. Stops before any write if a target file or directory conflicts with the archive;
+     * never overwrites, merges, or renames existing files.
      * @param targetDirectoryPath - Absolute path to the directory to import into.
-     * @param archiveBytes - Raw ZIP archive bytes selected by the user.
+     * @param archiveFile - The user-selected ZIP archive file.
      * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
      * @returns Promise that resolves once every entry has been written.
      */

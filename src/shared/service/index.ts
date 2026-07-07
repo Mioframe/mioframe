@@ -3,6 +3,7 @@ export { RepositoryImportErrorCode } from './repositories/repositoryContracts';
 export type { RepositoryDirectoryEntry } from './repositories/repositoryContracts';
 export { RepositoryZipErrorCode } from './repositories/repositoryZipContracts';
 export type {
+  OnZipExportChunk,
   OnZipExportProgress,
   OnZipImportProgress,
   ZipExportPhase,

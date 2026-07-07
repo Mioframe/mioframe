@@ -54,7 +54,7 @@ Next action:
 
 ## ZIP import stopped because of a conflict with existing files
 
-Import ZIP stops before writing anything if any file the archive would create already exists in the target folder. This is expected — Mioframe never overwrites, merges, or renames existing files during ZIP import.
+Import ZIP stops before writing anything if any file or folder the archive would create already exists in the target folder with a different type (for example, the archive expects a folder where a file already exists), or if the archive itself uses the same path inconsistently. This is expected — Mioframe never overwrites, merges, or renames existing files during ZIP import.
 
 Next action:
 
@@ -64,13 +64,22 @@ Next action:
 
 ## A ZIP import stopped partway through with some files written
 
-If the browser loses folder access, or another write failure happens after the conflict check passed, Import ZIP may leave the folder with only some of the archive's files written. Mioframe does not roll back files that were already written.
+If the browser loses folder access, or another write failure happens after the conflict check passed and at least one file was already written, Import ZIP may leave the folder with only some of the archive's files written. Mioframe tells you when this happens, since it can no longer promise that nothing changed. Mioframe does not roll back files that were already written.
 
 Next action:
 
 - check the folder contents to see which files were written;
 - grant folder access again if the browser is asking for it, then re-import the same archive — Import ZIP will now report a conflict for the files already written, so remove those from the archive or the folder before retrying with the rest;
 - if you are unsure what was written, export a fresh ZIP of the folder and compare it with the original archive.
+
+## ZIP export failed because the archive was too large for this browser
+
+On browsers without file-system access support, Export ZIP builds the archive in memory before saving it, up to a bounded size. If the folder or document you are exporting would produce a larger archive than that on this browser, the export stops with an error instead of running out of memory.
+
+Next action:
+
+- try the export again in a browser with file-system access support (for example, a recent Chromium-based browser), where exports stream directly to disk without this limit;
+- export a smaller subset of the folder if you cannot switch browsers.
 
 ## The document cannot be imported into the selected directory
 

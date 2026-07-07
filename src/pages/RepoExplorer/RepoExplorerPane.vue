@@ -61,9 +61,9 @@ const { hasActions: hasDirectoryManageActions, nonEmptyActionButtons: directoryM
 const {
   showRenameDialog: showDirectoryRenameDialog,
   exportZipProgress,
-  isExportZipRunning,
+  isExportZipProgressVisible,
   importZipProgress,
-  isImportZipRunning,
+  isImportZipProgressVisible,
   onSelectRename: onManageSelectRename,
   onSelectRemove: onManageSelectRemove,
   onSelectExportZip,
@@ -178,13 +178,13 @@ const onClickReturnHome = async () => {
     />
 
     <ExportZipProgressSheet
-      v-if="isExportZipRunning"
+      v-if="isExportZipProgressVisible"
       :progress="exportZipProgress"
       @close="onCloseExportZipProgressSheet"
     />
 
     <ImportZipProgressSheet
-      v-if="isImportZipRunning"
+      v-if="isImportZipProgressVisible"
       :progress="importZipProgress"
       @close="onCloseImportZipProgressSheet"
     />

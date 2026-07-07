@@ -270,4 +270,82 @@ describe('useImportZipAction', () => {
     });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
+
+  it('shows and reports a partial-import message when a write fails after an earlier write succeeded', async () => {
+    const { DomainError } = await import('@shared/lib/error');
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockRejectedValue(
+      new DomainError(
+        'The import stopped partway through. Some files may already have been written — check the target folder before retrying.',
+        { code: 'repositories.zipImportWritePartiallyFailed', cause: new Error('storage failure') },
+      ),
+    );
+
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip } = useImportZipAction();
+
+    await expect(importDirectoryZip('/repo')).resolves.toBe(false);
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'The import stopped partway through. Some files may already have been written — check the target folder before retrying.',
+    });
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a duplicate call while an import is already running', async () => {
+    let resolveImport!: () => void;
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveImport = resolve;
+        }),
+    );
+
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip, isRunning } = useImportZipAction();
+
+    const firstCall = importDirectoryZip('/repo');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(isRunning.value).toBe(true);
+
+    await expect(importDirectoryZip('/repo')).resolves.toBe(false);
+    expect(pickZipFileMock).toHaveBeenCalledTimes(1);
+    expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
+
+    resolveImport();
+    await firstCall;
+  });
+
+  it('separates progress-sheet visibility from isRunning via dismissProgress', async () => {
+    let resolveImport!: () => void;
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveImport = resolve;
+        }),
+    );
+
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip, isRunning, isProgressVisible, dismissProgress } =
+      useImportZipAction();
+
+    const runPromise = importDirectoryZip('/repo');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(isRunning.value).toBe(true);
+    expect(isProgressVisible.value).toBe(true);
+
+    dismissProgress();
+    expect(isProgressVisible.value).toBe(false);
+    expect(isRunning.value).toBe(true);
+
+    resolveImport();
+    await runPromise;
+
+    expect(isRunning.value).toBe(false);
+    expect(isProgressVisible.value).toBe(false);
+  });
 });

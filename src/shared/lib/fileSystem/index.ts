@@ -7,7 +7,12 @@ export { isFileFSEntry } from './FileFSEntry';
 export type { FileFSEntry } from './FileFSEntry';
 export { FileSystemDomainErrorCode } from './fileSystemErrorCode';
 export { isEntryPath, isGeneralFSEntry } from './GeneralFSEntry';
-export { saveFileWithPicker, type SaveFileWithPickerOptions } from './saveFileWithPicker';
+export {
+  saveFileWithPicker,
+  saveStreamWithPicker,
+  type SaveFileWithPickerOptions,
+  type SaveStreamWithPickerOptions,
+} from './saveFileWithPicker';
 export { isUserFileSelectionCancel } from './isUserFileSelectionCancel';
 export type {
   EntryPath,

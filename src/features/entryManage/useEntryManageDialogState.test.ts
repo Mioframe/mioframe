@@ -15,11 +15,16 @@ vi.mock('@feature/importDocument', () => ({
   useImportDocumentAction: () => ({ importDocument: vi.fn() }),
 }));
 
+const exportDismissProgressMock = vi.fn();
+const importDismissProgressMock = vi.fn();
+
 vi.mock('@feature/exportZip', () => ({
   useExportDirectoryZip: () => ({
     exportDirectoryZip: exportDirectoryZipMock,
     progress: ref(undefined),
     isRunning: ref(false),
+    isProgressVisible: ref(false),
+    dismissProgress: exportDismissProgressMock,
   }),
 }));
 
@@ -28,6 +33,8 @@ vi.mock('@feature/importZip', () => ({
     importDirectoryZip: importDirectoryZipMock,
     progress: ref(undefined),
     isRunning: ref(false),
+    isProgressVisible: ref(false),
+    dismissProgress: importDismissProgressMock,
   }),
 }));
 
@@ -73,5 +80,17 @@ describe('useEntryManageDialogState', () => {
 
     await onSelectImportZip();
     expect(importDirectoryZipMock).toHaveBeenCalledWith('/repo/a');
+  });
+
+  it('closing a progress sheet dismisses progress visibility, not the running action state', () => {
+    const path = ref('/repo/a');
+    const { onCloseExportZipProgressSheet, onCloseImportZipProgressSheet } =
+      useEntryManageDialogState(path);
+
+    onCloseExportZipProgressSheet();
+    expect(exportDismissProgressMock).toHaveBeenCalledOnce();
+
+    onCloseImportZipProgressSheet();
+    expect(importDismissProgressMock).toHaveBeenCalledOnce();
   });
 });

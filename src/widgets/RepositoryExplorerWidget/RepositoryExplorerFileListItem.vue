@@ -41,9 +41,9 @@ const {
   showCreateDocumentDialog,
   showRenameDialog,
   exportZipProgress,
-  isExportZipRunning,
+  isExportZipProgressVisible,
   importZipProgress,
-  isImportZipRunning,
+  isImportZipProgressVisible,
   onSelectCreateDirectory,
   onSelectCreateDocument,
   onSelectRename,
@@ -112,13 +112,13 @@ const onClickEntry = (name: string) => {
       />
 
       <ExportZipProgressSheet
-        v-if="isExportZipRunning"
+        v-if="isExportZipProgressVisible"
         :progress="exportZipProgress"
         @close="onCloseExportZipProgressSheet"
       />
 
       <ImportZipProgressSheet
-        v-if="isImportZipRunning"
+        v-if="isImportZipProgressVisible"
         :progress="importZipProgress"
         @close="onCloseImportZipProgressSheet"
       />
