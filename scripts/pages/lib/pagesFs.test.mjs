@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { buildSpaFallbackHtml } from '../writeSpaFallback.mjs';
+import { buildSpaFallbackHtml } from './spaFallback.mjs';
 import {
   applyBranchPublish,
   applyBranchRemoval,

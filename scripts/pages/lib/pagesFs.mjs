@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } fro
 import { join } from 'node:path';
 
 import { validateBranchSlug, validatePrNumber } from './slug.mjs';
-import { buildSpaFallbackHtml } from '../writeSpaFallback.mjs';
+import { buildSpaFallbackHtml } from './spaFallback.mjs';
 
 const PRESERVED_STABLE_ROOT_DIRS = new Set(['branch', 'pr']);
 
