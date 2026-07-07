@@ -35,7 +35,11 @@ export function buildSpaFallbackHtml() {
           ? '/pr/' + prMatch[1] + '/'
           : '/';
 
-      sessionStorage.setItem('ghPagesSpaFallback', path + window.location.search + window.location.hash);
+      try {
+        sessionStorage.setItem('ghPagesSpaFallback', path + window.location.search + window.location.hash);
+      } catch {
+        // Best-effort path restoration only.
+      }
       window.location.replace(targetRoot);
     })();
   </script>

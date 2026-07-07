@@ -60,6 +60,21 @@ describe('buildSpaFallbackHtml', () => {
     expect(html).toContain("sessionStorage.setItem('ghPagesSpaFallback'");
   });
 
+  it('wraps path restoration storage in try/catch as a best-effort step', () => {
+    const html = buildSpaFallbackHtml();
+    expect(html).toContain('try {');
+    expect(html).toContain("sessionStorage.setItem('ghPagesSpaFallback'");
+    expect(html).toContain('} catch {');
+    expect(html).toContain('// Best-effort path restoration only.');
+  });
+
+  it('still redirects after the storage attempt', () => {
+    const html = buildSpaFallbackHtml();
+    expect(html).toMatch(
+      /sessionStorage\.setItem\('ghPagesSpaFallback'[\s\S]*window\.location\.replace\(targetRoot\);/,
+    );
+  });
+
   it('stores the hash with the original path when one is present', () => {
     const html = buildSpaFallbackHtml();
     expect(html).toContain('window.location.hash');
