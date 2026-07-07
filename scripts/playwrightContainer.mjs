@@ -64,6 +64,11 @@ const defaultDeps = {
   spawnSync,
 };
 
+const PLAYWRIGHT_CONTAINER_PROFILE_KEYS = PLAYWRIGHT_CONTAINER_LIMITS.map(({ key, label }) => ({
+  key,
+  label: label ?? key,
+}));
+
 /**
  * Run Playwright tests inside the repo's Podman wrapper with local safety limits.
  * @param options Container runner options.
@@ -333,6 +338,32 @@ export function resolvePlaywrightContainerProfile(processEnv = process.env) {
       getFirstDefinedEnvValue([envName], processEnv) ?? String(profileDefaults[key]),
     ]),
   ]);
+}
+
+/**
+ * Compare two resolved Playwright container profiles using the canonical
+ * comparable fields owned by this module.
+ * @param left Active Playwright container profile.
+ * @param right Target Playwright container profile.
+ * @returns Structured profile differences with printable labels.
+ */
+export function comparePlaywrightContainerProfiles(left, right) {
+  const differences = [];
+
+  for (const { key, label } of PLAYWRIGHT_CONTAINER_PROFILE_KEYS) {
+    if (left[key] === right[key]) {
+      continue;
+    }
+
+    differences.push({
+      key,
+      label,
+      left: left[key],
+      right: right[key],
+    });
+  }
+
+  return differences;
 }
 
 function printPlaywrightContainerFailureDiagnostic({

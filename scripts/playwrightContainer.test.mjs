@@ -2,6 +2,7 @@ import process from 'node:process';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  comparePlaywrightContainerProfiles,
   resolvePlaywrightContainerProfile,
   runPlaywrightInContainer,
   VERIFY_PROFILE_ENV,
@@ -72,6 +73,22 @@ describe('applyProcessResult', () => {
 });
 
 describe('runPlaywrightInContainer', () => {
+  it('formats profile differences from the owned comparable field list', () => {
+    const localProfile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'false',
+    });
+    const githubActionsProfile = resolvePlaywrightContainerProfile({
+      [VERIFY_PROFILE_ENV]: 'github-actions',
+    });
+
+    expect(comparePlaywrightContainerProfiles(localProfile, githubActionsProfile)).toEqual([
+      { key: 'memory', label: 'memory', left: '4g', right: '6g' },
+      { key: 'memorySwap', label: 'memory-swap', left: '4g', right: '8g' },
+      { key: 'pidsLimit', label: 'pids-limit', left: '384', right: '512' },
+      { key: 'workers', label: 'workers', left: '1', right: '2' },
+    ]);
+  });
+
   it('resolves conservative local resource limits outside GitHub Actions', () => {
     const profile = resolvePlaywrightContainerProfile({
       GITHUB_ACTIONS: 'false',

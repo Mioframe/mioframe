@@ -10,7 +10,11 @@ import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWe
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
-import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
+import {
+  comparePlaywrightContainerProfiles,
+  resolvePlaywrightContainerProfile,
+  VERIFY_PROFILE_ENV,
+} from './playwrightContainer.mjs';
 
 applyProjectEnv();
 
@@ -967,14 +971,20 @@ function printHelp() {
   }
 }
 
-function getVerifyProcessEnv(baseEnv = process.env) {
-  if (cliProfile === null) {
+/**
+ * Merge verify-level environment overrides into a child-process environment.
+ * @param [baseEnv] Base environment passed to verify child commands.
+ * @param [profileOverride] Explicit verify profile override, usually from `--profile`.
+ * @returns Environment with verify-owned overrides applied.
+ */
+export function getVerifyProcessEnv(baseEnv = process.env, profileOverride = cliProfile) {
+  if (profileOverride === null) {
     return baseEnv;
   }
 
   return {
     ...baseEnv,
-    [VERIFY_PROFILE_ENV]: cliProfile,
+    [VERIFY_PROFILE_ENV]: profileOverride,
   };
 }
 
@@ -992,15 +1002,6 @@ function getHeavyCheckTriggerLines(results) {
     .filter((result) => result.status !== 'skipped' && result.triggerReason)
     .map((result) => `${result.label}: ${result.triggerReason}`);
 }
-
-const PLAYWRIGHT_RISK_KEYS = [
-  'cpus',
-  'memory',
-  'memorySwap',
-  'pidsLimit',
-  'workers',
-  'timeoutSeconds',
-];
 
 /**
  * Detect unresolved GitHub Actions Playwright profile risk after a local pass.
@@ -1029,23 +1030,9 @@ export function getCiProfileRisk(results, processEnv = process.env) {
     GITHUB_ACTIONS: 'true',
     [VERIFY_PROFILE_ENV]: 'github-actions',
   });
-  const differences = [];
-
-  for (const key of PLAYWRIGHT_RISK_KEYS) {
-    if (activeProfile[key] === githubActionsProfile[key]) {
-      continue;
-    }
-
-    const label =
-      key === 'memorySwap'
-        ? 'memory-swap'
-        : key === 'pidsLimit'
-          ? 'pids-limit'
-          : key === 'timeoutSeconds'
-            ? 'timeout'
-            : key;
-    differences.push(`${label}: ${activeProfile[key]} -> ${githubActionsProfile[key]}`);
-  }
+  const differences = comparePlaywrightContainerProfiles(activeProfile, githubActionsProfile).map(
+    ({ label, left, right }) => `${label}: ${left} -> ${right}`,
+  );
 
   if (differences.length === 0) {
     return null;
@@ -1836,6 +1823,34 @@ export function getExtraEnvForEntry(entry, priorResults) {
   return buildResult?.status === 'passed' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
 }
 
+/**
+ * Build the child command environment for a verify entry.
+ * @param entry Command entry about to run.
+ * @param priorResults Results already collected earlier in this run.
+ * @param [options] Environment inputs for the child command.
+ * @param [options.verifyLockEnv] Env inherited from the verify lock.
+ * @param [options.verifyProcessEnv] Env carrying verify-level overrides such as profile selection.
+ * @param [options.expensiveLockEnv] Env added only for expensive-command lock ownership.
+ * @returns Environment passed to the child process.
+ */
+export function buildCommandEnv(entry, priorResults, options = {}) {
+  const { verifyLockEnv = {}, verifyProcessEnv = process.env, expensiveLockEnv = {} } = options;
+  const extraEnv = getExtraEnvForEntry(entry, priorResults);
+
+  return entry.weight === 'expensive'
+    ? {
+        ...verifyLockEnv,
+        ...verifyProcessEnv,
+        ...expensiveLockEnv,
+        ...extraEnv,
+      }
+    : {
+        ...verifyLockEnv,
+        ...verifyProcessEnv,
+        ...extraEnv,
+      };
+}
+
 async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata: () => {} }) {
   if (isFixMode && isFixOnlyMode) {
     throw new Error('Use either --fix or --fix-only, not both.');
@@ -1885,7 +1900,6 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
 
     // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
     let result;
-    const extraEnv = getExtraEnvForEntry(entry, results);
 
     if (entry.weight === 'expensive') {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
@@ -1895,12 +1909,16 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
           command: formatCommand(entry.command, entry.args),
         },
         async (lockEnv) =>
-          runCommand(entry.label, entry.command, entry.args, {
-            ...verifyLockEnv,
-            ...verifyProcessEnv,
-            ...lockEnv,
-            ...extraEnv,
-          }),
+          runCommand(
+            entry.label,
+            entry.command,
+            entry.args,
+            buildCommandEnv(entry, results, {
+              expensiveLockEnv: lockEnv,
+              verifyLockEnv,
+              verifyProcessEnv,
+            }),
+          ),
       );
 
       // Signal propagation must happen after withExpensiveCommandLock cleanup,
@@ -1911,11 +1929,15 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
       }
     } else {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
-      result = await runCommand(entry.label, entry.command, entry.args, {
-        ...verifyLockEnv,
-        ...verifyProcessEnv,
-        ...extraEnv,
-      });
+      result = await runCommand(
+        entry.label,
+        entry.command,
+        entry.args,
+        buildCommandEnv(entry, results, {
+          verifyLockEnv,
+          verifyProcessEnv,
+        }),
+      );
 
       if (result.terminatedBySignal) {
         applyProcessResult({ signal: result.terminatedBySignal });

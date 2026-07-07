@@ -6,11 +6,13 @@ vi.mock('./lib/packageJsonImpact.mjs', () => ({
 
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import {
+  buildCommandEnv,
   buildCommands,
   getCiProfileRisk,
   getActionRequired,
   getBlockingLogIssue,
   getCliFilesOverride,
+  getVerifyProcessEnv,
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
   getVerifyBaseRef,
@@ -18,6 +20,7 @@ import {
   resolveCommandStatus,
   runVerifyCli,
 } from './verify.mjs';
+import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
 
 describe('getAllSiblingTestFiles', () => {
   it('maps scripts production .mjs files to sibling .test.mjs', () => {
@@ -83,6 +86,15 @@ describe('getCliFilesOverride', () => {
 describe('getVerifyBaseRef', () => {
   it('reads VERIFY_BASE from process env', () => {
     expect(getVerifyBaseRef({ VERIFY_BASE: 'origin/develop' })).toBe('origin/develop');
+  });
+});
+
+describe('getVerifyProcessEnv', () => {
+  it('applies an explicit verify profile override to the process env', () => {
+    expect(getVerifyProcessEnv({ GITHUB_ACTIONS: 'false' }, 'github-actions')).toMatchObject({
+      GITHUB_ACTIONS: 'false',
+      [VERIFY_PROFILE_ENV]: 'github-actions',
+    });
   });
 });
 
@@ -247,6 +259,27 @@ describe('getExtraEnvForEntry', () => {
     expect(getExtraEnvForEntry({ label: 'release-smoke' }, priorResults)).toEqual({
       RELEASE_ARTIFACT_SKIP_BUILD: '1',
     });
+  });
+});
+
+describe('buildCommandEnv', () => {
+  it('propagates a github-actions profile override into expensive child command env', () => {
+    const childEnv = buildCommandEnv(
+      {
+        label: 'e2e',
+        weight: 'expensive',
+      },
+      [],
+      {
+        expensiveLockEnv: { MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' },
+        verifyLockEnv: { MIOFRAME_VERIFY_LOCK_HELD: '1' },
+        verifyProcessEnv: getVerifyProcessEnv({ GITHUB_ACTIONS: 'false' }, 'github-actions'),
+      },
+    );
+
+    expect(childEnv[VERIFY_PROFILE_ENV]).toBe('github-actions');
+    expect(childEnv.MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD).toBe('1');
+    expect(resolvePlaywrightContainerProfile(childEnv).name).toBe('github-actions');
   });
 });
 
