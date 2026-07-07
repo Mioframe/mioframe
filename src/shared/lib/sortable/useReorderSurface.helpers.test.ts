@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { REORDER_IGNORE_ATTRIBUTE, REORDER_ITEM_ATTRIBUTE } from './constants';
 import {
+  REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS,
+  REORDER_IGNORE_ATTRIBUTE,
+  REORDER_ITEM_ATTRIBUTE,
+} from './constants';
+import {
+  acquireReorderDocumentSelectionSuppression,
   cleanupPostDragInteraction,
   clearOptimisticState,
   cloneReorderItemIdList,
@@ -432,6 +437,42 @@ describe('useReorderSurface helpers', () => {
       cleanupPostDragInteraction(null);
     }).not.toThrow();
     expect(outsideBlur).not.toHaveBeenCalled();
+  });
+
+  it('keeps document selection suppression active until the last token releases', () => {
+    const firstRelease = acquireReorderDocumentSelectionSuppression();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    const secondRelease = acquireReorderDocumentSelectionSuppression();
+    firstRelease();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    secondRelease();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+  });
+
+  it('makes repeated token release harmless', () => {
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    release();
+    release();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
   });
 
   it('ignores only interactive descendants and ignored subtrees inside reorder items', () => {

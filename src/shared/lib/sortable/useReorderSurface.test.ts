@@ -7,7 +7,11 @@ import type {
   ReorderDensity,
   ReorderLayout,
 } from './reorderTypes';
-import { REORDER_SURFACE_DRAGGING_CLASS } from './constants';
+import {
+  REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS,
+  REORDER_SURFACE_ACTIVATING_CLASS,
+  REORDER_SURFACE_DRAGGING_CLASS,
+} from './constants';
 
 interface MockSortableAdapterState {
   callbacks: ReorderEngineCallbacks | undefined;
@@ -735,6 +739,203 @@ describe('useReorderSurface', () => {
     await nextTick();
 
     expect(api.activeProfile.value.input).toBe('pointer');
+  });
+
+  it('suppresses document selection during the drag activation window and active drag', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await nextTick();
+    sortableAdapterState.callbacks?.onStart?.({
+      itemId: 'a',
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
+      toIndex: 0,
+    });
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
+    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    await sortableAdapterState.callbacks?.onEnd?.({
+      itemId: 'a',
+      orderedIds: ['b', 'a', 'c'],
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+  });
+
+  it('applies activation suppression synchronously on valid reorder-item input', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    await nextTick();
+  });
+
+  it('does not start activation suppression for interactive descendants', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('div');
+    row.setAttribute('data-sortable-id', 'a');
+    const button = document.createElement('button');
+    row.appendChild(button);
+    containerEl.appendChild(row);
+
+    button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+
+    await nextTick();
+  });
+
+  it('releases document suppression on cancel and dispose', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    sortableAdapterState.callbacks?.onStart?.({
+      itemId: 'a',
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
+      toIndex: 0,
+    });
+    await nextTick();
+
+    sortableAdapterState.callbacks?.onCancel?.();
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await nextTick();
+
+    cleanupList.splice(0).forEach((scope) => {
+      scope.stop();
+    });
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
+    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+  });
+
+  it('keeps document suppression active while overlapping reorder surfaces are still active', async () => {
+    const firstItemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const secondItemIdList = ref<string[] | undefined>(['x', 'y', 'z']);
+    const firstMount = mountUseReorderSurface({
+      itemIdList: firstItemIdList,
+    });
+    const secondMount = mountUseReorderSurface({
+      itemIdList: secondItemIdList,
+    });
+    const firstRow = document.createElement('button');
+    const secondRow = document.createElement('button');
+    firstRow.setAttribute('data-sortable-id', 'a');
+    secondRow.setAttribute('data-sortable-id', 'x');
+    firstMount.containerEl.appendChild(firstRow);
+    secondMount.containerEl.appendChild(secondRow);
+
+    firstRow.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    secondRow.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await nextTick();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+
+    firstRow.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    secondRow.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    cleanupList.splice(0, 1).forEach((scope) => {
+      scope.stop();
+    });
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    cleanupList.splice(0).forEach((scope) => {
+      scope.stop();
+    });
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
   });
 
   it('toggles the dragging class and runs touch cleanup through cancel()', async () => {

@@ -1,4 +1,8 @@
-import { REORDER_IGNORE_ATTRIBUTE, REORDER_ITEM_ATTRIBUTE } from './constants';
+import {
+  REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS,
+  REORDER_IGNORE_ATTRIBUTE,
+  REORDER_ITEM_ATTRIBUTE,
+} from './constants';
 import type { ReorderCommitPayload, ReorderInput, ReorderInputProfile } from './reorderTypes';
 
 /** Full local session state used to reconcile drag preview with external updates. */
@@ -68,23 +72,26 @@ export type CompleteReorderSurfaceDragResult =
 
 /**
  * Clones the external item list into mutable local state.
- * @param itemIdList
+ * @param itemIdList - Authoritative ordered item ids from the caller.
+ * @returns A mutable copy that can be used for local drag state.
  */
 export const cloneReorderItemIdList = (itemIdList: readonly string[] | undefined): string[] =>
   itemIdList ? [...itemIdList] : [];
 
 /**
  * Compares two ordered id lists without allocating intermediate structures.
- * @param left
- * @param right
+ * @param left - First ordered id list to compare.
+ * @param right - Second ordered id list to compare.
+ * @returns True when both lists have the same length and item order.
  */
 export const isSameOrderedIds = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((id, index) => id === right[index]);
 
 /**
  * Checks whether two lists contain the same ids even if their order differs.
- * @param left
- * @param right
+ * @param left - First ordered id list to compare.
+ * @param right - Second ordered id list to compare.
+ * @returns True when both lists contain the same set of ids.
  */
 export const hasSameItemSet = (left: readonly string[], right: readonly string[]): boolean => {
   if (left.length !== right.length) {
@@ -98,7 +105,7 @@ export const hasSameItemSet = (left: readonly string[], right: readonly string[]
 
 /**
  * Clears optimistic commit bookkeeping after confirmation, rollback, or cancel.
- * @param state
+ * @param state - Shared reorder-session state to reset.
  */
 export const clearOptimisticState = (state: ReorderSurfaceState) => {
   state.optimisticOrderedIds = undefined;
@@ -108,7 +115,7 @@ export const clearOptimisticState = (state: ReorderSurfaceState) => {
 
 /**
  * Resets the transient drag session fields once a session ends.
- * @param state
+ * @param state - Shared reorder-session state to reset.
  */
 export const resetDragState = (state: ReorderSurfaceState) => {
   state.isDragging = false;
@@ -120,7 +127,8 @@ export const resetDragState = (state: ReorderSurfaceState) => {
 
 /**
  * Creates the initial local reorder state from the authoritative external order.
- * @param itemIdList
+ * @param itemIdList - Authoritative ordered item ids from the caller.
+ * @returns Initialized local reorder state derived from the external order.
  */
 export const createReorderSurfaceState = (
   itemIdList: readonly string[] | undefined,
@@ -144,8 +152,8 @@ export const createReorderSurfaceState = (
 
 /**
  * Reconciles a fresh external order with the current drag or optimistic session.
- * @param state
- * @param rawItemIdList
+ * @param state - Shared reorder-session state to update.
+ * @param rawItemIdList - Latest authoritative ordered ids received from the caller.
  */
 export const syncReorderSurfaceExternalItemIdList = (
   state: ReorderSurfaceState,
@@ -185,7 +193,7 @@ export const syncReorderSurfaceExternalItemIdList = (
 
 /**
  * Marks the active drag session for rollback and click suppression.
- * @param state
+ * @param state - Shared reorder-session state to update.
  */
 export const requestReorderSurfaceCancel = (state: ReorderSurfaceState) => {
   if (!state.isDragging) {
@@ -198,8 +206,8 @@ export const requestReorderSurfaceCancel = (state: ReorderSurfaceState) => {
 
 /**
  * Captures drag-start state before the DOM begins to preview a new order.
- * @param state
- * @param root0
+ * @param state - Shared reorder-session state to update.
+ * @param root0 - Drag-start payload emitted by the reorder adapter.
  */
 export const startReorderSurfaceDrag = (
   state: ReorderSurfaceState,
@@ -216,8 +224,8 @@ export const startReorderSurfaceDrag = (
 
 /**
  * Updates local display order while SortableJS is previewing a drag move.
- * @param state
- * @param orderedIds
+ * @param state - Shared reorder-session state to update.
+ * @param orderedIds - Intermediate ordered ids reported during drag preview.
  */
 export const previewReorderSurfaceDrag = (
   state: ReorderSurfaceState,
@@ -228,8 +236,9 @@ export const previewReorderSurfaceDrag = (
 
 /**
  * Resolves whether drag end is a no-op, rollback, or a new commit request.
- * @param state
- * @param root0
+ * @param state - Shared reorder-session state to finalize.
+ * @param root0 - Drag-end payload emitted by the reorder adapter.
+ * @returns The drag outcome that the caller should apply or ignore.
  */
 export const completeReorderSurfaceDrag = (
   state: ReorderSurfaceState,
@@ -297,8 +306,8 @@ export const completeReorderSurfaceDrag = (
 
 /**
  * Restores the latest external order when an optimistic commit is rejected.
- * @param state
- * @param commitId
+ * @param state - Shared reorder-session state to roll back.
+ * @param commitId - Commit token associated with the rejected optimistic reorder.
  */
 export const rollbackReorderSurfaceCommit = (state: ReorderSurfaceState, commitId: symbol) => {
   if (state.optimisticCommitMarker !== commitId) {
@@ -311,34 +320,82 @@ export const rollbackReorderSurfaceCommit = (state: ReorderSurfaceState, commitI
 
 /**
  * Narrows an event to a pointer event carrying `pointerType`.
- * @param event
+ * @param event - Event to narrow.
+ * @returns True when the event exposes a string `pointerType`.
  */
 export const isPointerEvent = (event: Event): event is PointerEvent & { pointerType: string } =>
   'pointerType' in event && typeof event.pointerType === 'string';
 
 /**
  * Detects touchstart-like events used to switch the active input mode.
- * @param event
+ * @param event - Event to inspect.
+ * @returns True when the event should be treated as touch input.
  */
 export const isTouchLikeEvent = (event: Event): event is TouchEvent =>
   event.type === 'touchstart' || ('touches' in event && typeof event.touches === 'object');
 
 /**
  * Detects mouse-down events used to restore pointer mode on desktop.
- * @param event
+ * @param event - Event to inspect.
+ * @returns True when the event should be treated as a mouse press.
  */
 export const isMouseLikeEvent = (event: Event): event is MouseEvent => event.type === 'mousedown';
 
 /**
  * Enables haptic feedback by default for touch-like drag starts when supported.
- * @param input
+ * @param input - Normalized reorder input mode for the current interaction.
+ * @returns True when touch-like input should request best-effort haptics.
  */
 export const shouldUseBestEffortReorderHaptics = (input: ReorderInput): boolean =>
   input === 'touch';
 
+let reorderSelectionSuppressionDepth = 0;
+
+/**
+ * Checks whether the event target belongs to a draggable reorder item.
+ * @param target - Event target to inspect.
+ * @returns True when the target is inside a draggable reorder item.
+ */
+export const isReorderItemTarget = (target: EventTarget | null): boolean =>
+  target instanceof Element && target.closest(`[${REORDER_ITEM_ATTRIBUTE}]`) !== null;
+
+/**
+ * Acquires document-level text-selection suppression for an active reorder interaction.
+ * @returns Idempotent release function for the acquired suppression token.
+ */
+export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
+  if (typeof document === 'undefined') {
+    return () => {};
+  }
+
+  const rootEl = document.documentElement;
+
+  if (!(rootEl instanceof HTMLElement)) {
+    return () => {};
+  }
+
+  reorderSelectionSuppressionDepth += 1;
+  rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
+
+  let released = false;
+
+  return () => {
+    if (released) {
+      return;
+    }
+
+    released = true;
+    reorderSelectionSuppressionDepth = Math.max(0, reorderSelectionSuppressionDepth - 1);
+
+    if (reorderSelectionSuppressionDepth === 0) {
+      rootEl.classList.remove(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
+    }
+  };
+};
+
 /**
  * Clears selection and focus artifacts left behind by touch-like drag sessions.
- * @param containerEl
+ * @param containerEl - Active reorder-surface container, used to limit focus cleanup.
  */
 export const cleanupPostDragInteraction = (
   containerEl: HTMLElement | SVGElement | null | undefined,
@@ -366,8 +423,9 @@ export const cleanupPostDragInteraction = (
 
 /**
  * Skips drag activation on interactive descendants inside a reorder item.
- * @param target
- * @param interactiveSelector
+ * @param target - Event target to inspect.
+ * @param interactiveSelector - Selector list describing descendants that must stay interactive.
+ * @returns True when drag activation should be skipped for this target.
  */
 export const shouldIgnoreTarget = (
   target: EventTarget | null,

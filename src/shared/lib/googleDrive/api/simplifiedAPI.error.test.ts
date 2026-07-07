@@ -65,7 +65,10 @@ describe('simplifiedAPI error handling', () => {
             message: 'File not found',
           },
         }),
-        { status: HttpStatusCode.NOT_FOUND },
+        {
+          status: HttpStatusCode.NOT_FOUND,
+          headers: { 'Content-Type': 'application/json' },
+        },
       ),
     );
 
@@ -96,7 +99,10 @@ describe('simplifiedAPI error handling', () => {
             message: 'Permission denied',
           },
         }),
-        { status: HttpStatusCode.FORBIDDEN },
+        {
+          status: HttpStatusCode.FORBIDDEN,
+          headers: { 'Content-Type': 'application/json' },
+        },
       ),
     );
 
@@ -125,7 +131,10 @@ describe('simplifiedAPI error handling', () => {
             message: 'Authentication required',
           },
         }),
-        { status: HttpStatusCode.UNAUTHORIZED },
+        {
+          status: HttpStatusCode.UNAUTHORIZED,
+          headers: { 'Content-Type': 'application/json' },
+        },
       ),
     );
 
@@ -156,7 +165,10 @@ describe('simplifiedAPI error handling', () => {
             message: 'File too large',
           },
         }),
-        { status: HttpStatusCode.PAYLOAD_TOO_LARGE },
+        {
+          status: HttpStatusCode.PAYLOAD_TOO_LARGE,
+          headers: { 'Content-Type': 'application/json' },
+        },
       ),
     );
 

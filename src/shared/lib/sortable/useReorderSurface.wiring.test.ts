@@ -176,6 +176,31 @@ describe('useReorderSurface wiring', () => {
           options: { capture: true, passive: true },
         },
         {
+          event: 'pointerup',
+          handler: expect.any(Function),
+          options: { capture: true },
+        },
+        {
+          event: 'pointercancel',
+          handler: expect.any(Function),
+          options: { capture: true },
+        },
+        {
+          event: 'mouseup',
+          handler: expect.any(Function),
+          options: { capture: true },
+        },
+        {
+          event: 'touchend',
+          handler: expect.any(Function),
+          options: { capture: true },
+        },
+        {
+          event: 'touchcancel',
+          handler: expect.any(Function),
+          options: { capture: true },
+        },
+        {
           event: 'click',
           handler: expect.any(Function),
           options: { capture: true },

@@ -22,7 +22,6 @@ const useDocumentEventListeners = createGlobalState(() => {
     [K in keyof DocumentEventMap]?: ((ev: DocumentEventMap[K]) => unknown)[];
   } = {};
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- for window.addEventListener
   const documentAddEventListener = <K extends keyof DocumentEventMap>(type: K) => {
     document.addEventListener(
       type,
