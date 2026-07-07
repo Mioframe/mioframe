@@ -17,6 +17,7 @@ import {
 } from './reorderPostDragClick';
 import { createSortableAdapter } from './sortableAdapter';
 import {
+  acquireReorderDocumentSelectionSuppression,
   cleanupPostDragInteraction,
   completeReorderSurfaceDrag,
   createReorderSurfaceState,
@@ -27,7 +28,6 @@ import {
   previewReorderSurfaceDrag,
   requestReorderSurfaceCancel,
   rollbackReorderSurfaceCommit,
-  setReorderDocumentSelectionSuppressed,
   shouldIgnoreTarget,
   shouldUseBestEffortReorderHaptics,
   startReorderSurfaceDrag,
@@ -65,7 +65,55 @@ export const useReorderSurface = (
   const state = reactive(createReorderSurfaceState(toValue(options.itemIdList)));
   const isActivatingDrag = ref(false);
   const isReorderSession = computed(() => state.isDragging);
-  const isSelectionSuppressed = computed(() => state.isDragging || isActivatingDrag.value);
+  let activationSelectionRelease: (() => void) | undefined;
+  let dragSelectionRelease: (() => void) | undefined;
+
+  const getContainerElement = (): HTMLElement | undefined =>
+    containerEl.value instanceof HTMLElement ? containerEl.value : undefined;
+
+  const setContainerClass = (
+    className: string,
+    enabled: boolean,
+    element = getContainerElement(),
+  ) => {
+    element?.classList.toggle(className, enabled);
+  };
+
+  const startActivationWindow = () => {
+    if (isActivatingDrag.value) {
+      return;
+    }
+
+    isActivatingDrag.value = true;
+    setContainerClass(REORDER_SURFACE_ACTIVATING_CLASS, true);
+    activationSelectionRelease = acquireReorderDocumentSelectionSuppression();
+  };
+
+  const endActivationWindow = () => {
+    if (!isActivatingDrag.value) {
+      return;
+    }
+
+    isActivatingDrag.value = false;
+    setContainerClass(REORDER_SURFACE_ACTIVATING_CLASS, false);
+    activationSelectionRelease?.();
+    activationSelectionRelease = undefined;
+  };
+
+  const startDragSelectionSuppression = () => {
+    if (dragSelectionRelease) {
+      return;
+    }
+
+    setContainerClass(REORDER_SURFACE_DRAGGING_CLASS, true);
+    dragSelectionRelease = acquireReorderDocumentSelectionSuppression();
+  };
+
+  const endDragSelectionSuppression = () => {
+    setContainerClass(REORDER_SURFACE_DRAGGING_CLASS, false);
+    dragSelectionRelease?.();
+    dragSelectionRelease = undefined;
+  };
 
   /**
    * Applies touch-specific cleanup after a drag session completes or is cancelled.
@@ -121,46 +169,30 @@ export const useReorderSurface = (
   );
 
   watch(
-    [containerEl, () => state.isDragging, isActivatingDrag],
-    ([nextContainerEl, nextIsDragging, nextIsActivating], [prevContainerEl]) => {
+    containerEl,
+    (nextContainerEl, prevContainerEl) => {
       if (prevContainerEl instanceof HTMLElement) {
         prevContainerEl.classList.remove(REORDER_SURFACE_ACTIVATING_CLASS);
         prevContainerEl.classList.remove(REORDER_SURFACE_DRAGGING_CLASS);
       }
 
       if (nextContainerEl instanceof HTMLElement) {
-        nextContainerEl.classList.toggle(REORDER_SURFACE_ACTIVATING_CLASS, nextIsActivating);
-        nextContainerEl.classList.toggle(REORDER_SURFACE_DRAGGING_CLASS, nextIsDragging);
+        nextContainerEl.classList.toggle(REORDER_SURFACE_ACTIVATING_CLASS, isActivatingDrag.value);
+        nextContainerEl.classList.toggle(
+          REORDER_SURFACE_DRAGGING_CLASS,
+          Boolean(dragSelectionRelease),
+        );
       }
     },
     {
       immediate: true,
-    },
-  );
-
-  watch(
-    isSelectionSuppressed,
-    (nextIsSelectionSuppressed, prevIsSelectionSuppressed) => {
-      if (nextIsSelectionSuppressed === prevIsSelectionSuppressed) {
-        return;
-      }
-
-      setReorderDocumentSelectionSuppressed(nextIsSelectionSuppressed);
-    },
-    {
-      immediate: true,
+      flush: 'sync',
     },
   );
 
   onScopeDispose(() => {
-    if (containerEl.value instanceof HTMLElement) {
-      containerEl.value.classList.remove(REORDER_SURFACE_ACTIVATING_CLASS);
-      containerEl.value.classList.remove(REORDER_SURFACE_DRAGGING_CLASS);
-    }
-
-    if (isSelectionSuppressed.value) {
-      setReorderDocumentSelectionSuppressed(false);
-    }
+    endActivationWindow();
+    endDragSelectionSuppression();
   });
 
   const engine = createSortableAdapter(container, {
@@ -171,10 +203,11 @@ export const useReorderSurface = (
     scrollContainer: options.scrollContainer,
     callbacks: {
       onStart: ({ itemId, orderedIds, fromIndex }) => {
-        isActivatingDrag.value = false;
+        endActivationWindow();
 
         if (!itemId) {
           requestReorderSurfaceCancel(state);
+          endDragSelectionSuppression();
           return;
         }
 
@@ -192,16 +225,19 @@ export const useReorderSurface = (
           fromIndex,
           profile: profile.value,
         });
+        startDragSelectionSuppression();
       },
       onChange: ({ orderedIds }) => {
         previewReorderSurfaceDrag(state, orderedIds);
       },
       onCancel: () => {
-        isActivatingDrag.value = false;
+        endActivationWindow();
+        endDragSelectionSuppression();
         requestReorderSurfaceCancel(state);
       },
       onEnd: async ({ orderedIds, fromIndex, toIndex }) => {
-        isActivatingDrag.value = false;
+        endActivationWindow();
+        endDragSelectionSuppression();
         const endProfile = state.activeProfile ?? profile.value;
         const dragResult = completeReorderSurfaceDrag(state, {
           orderedIds,
@@ -236,7 +272,7 @@ export const useReorderSurface = (
       }
 
       if (isReorderItemTarget(event.target)) {
-        isActivatingDrag.value = true;
+        startActivationWindow();
       }
 
       syncPointerInput(event);
@@ -257,7 +293,7 @@ export const useReorderSurface = (
       }
 
       if (isReorderItemTarget(event.target)) {
-        isActivatingDrag.value = true;
+        startActivationWindow();
       }
 
       syncPointerInput(event);
@@ -278,7 +314,7 @@ export const useReorderSurface = (
       }
 
       if (isReorderItemTarget(event.target)) {
-        isActivatingDrag.value = true;
+        startActivationWindow();
       }
 
       syncPointerInput(event);
@@ -288,7 +324,7 @@ export const useReorderSurface = (
 
   const clearActivationWindow = () => {
     if (!state.isDragging) {
-      isActivatingDrag.value = false;
+      endActivationWindow();
     }
   };
 

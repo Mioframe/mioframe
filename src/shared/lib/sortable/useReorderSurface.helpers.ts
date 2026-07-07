@@ -360,31 +360,37 @@ export const isReorderItemTarget = (target: EventTarget | null): boolean =>
   target instanceof Element && target.closest(`[${REORDER_ITEM_ATTRIBUTE}]`) !== null;
 
 /**
- * Applies or removes the global text-selection suppression class used during activation windows.
- * @param enabled - Whether the document-level suppression class should be active.
+ * Acquires document-level text-selection suppression for an active reorder interaction.
+ * @returns Idempotent release function for the acquired suppression token.
  */
-export const setReorderDocumentSelectionSuppressed = (enabled: boolean) => {
+export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
   if (typeof document === 'undefined') {
-    return;
+    return () => {};
   }
 
   const rootEl = document.documentElement;
 
   if (!(rootEl instanceof HTMLElement)) {
-    return;
+    return () => {};
   }
 
-  if (enabled) {
-    reorderSelectionSuppressionDepth += 1;
-    rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
-    return;
-  }
+  reorderSelectionSuppressionDepth += 1;
+  rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
 
-  reorderSelectionSuppressionDepth = Math.max(0, reorderSelectionSuppressionDepth - 1);
+  let released = false;
 
-  if (reorderSelectionSuppressionDepth === 0) {
-    rootEl.classList.remove(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
-  }
+  return () => {
+    if (released) {
+      return;
+    }
+
+    released = true;
+    reorderSelectionSuppressionDepth = Math.max(0, reorderSelectionSuppressionDepth - 1);
+
+    if (reorderSelectionSuppressionDepth === 0) {
+      rootEl.classList.remove(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
+    }
+  };
 };
 
 /**
