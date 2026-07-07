@@ -6,10 +6,13 @@ vi.mock('./lib/packageJsonImpact.mjs', () => ({
 
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import {
+  buildCommandEnv,
   buildCommands,
+  getCiProfileRisk,
   getActionRequired,
   getBlockingLogIssue,
   getCliFilesOverride,
+  getVerifyProcessEnv,
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
   getVerifyBaseRef,
@@ -17,6 +20,7 @@ import {
   resolveCommandStatus,
   runVerifyCli,
 } from './verify.mjs';
+import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
 
 describe('getAllSiblingTestFiles', () => {
   it('maps scripts production .mjs files to sibling .test.mjs', () => {
@@ -82,6 +86,15 @@ describe('getCliFilesOverride', () => {
 describe('getVerifyBaseRef', () => {
   it('reads VERIFY_BASE from process env', () => {
     expect(getVerifyBaseRef({ VERIFY_BASE: 'origin/develop' })).toBe('origin/develop');
+  });
+});
+
+describe('getVerifyProcessEnv', () => {
+  it('applies an explicit verify profile override to the process env', () => {
+    expect(getVerifyProcessEnv({ GITHUB_ACTIONS: 'false' }, 'github-actions')).toMatchObject({
+      GITHUB_ACTIONS: 'false',
+      [VERIFY_PROFILE_ENV]: 'github-actions',
+    });
   });
 });
 
@@ -249,6 +262,27 @@ describe('getExtraEnvForEntry', () => {
   });
 });
 
+describe('buildCommandEnv', () => {
+  it('propagates a github-actions profile override into expensive child command env', () => {
+    const childEnv = buildCommandEnv(
+      {
+        label: 'e2e',
+        weight: 'expensive',
+      },
+      [],
+      {
+        expensiveLockEnv: { MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' },
+        verifyLockEnv: { MIOFRAME_VERIFY_LOCK_HELD: '1' },
+        verifyProcessEnv: getVerifyProcessEnv({ GITHUB_ACTIONS: 'false' }, 'github-actions'),
+      },
+    );
+
+    expect(childEnv[VERIFY_PROFILE_ENV]).toBe('github-actions');
+    expect(childEnv.MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD).toBe('1');
+    expect(resolvePlaywrightContainerProfile(childEnv).name).toBe('github-actions');
+  });
+});
+
 // Blocking log signals are classified inside verify itself: a unit-tests run
 // that exits with code 0 but emitted Vue runtime warnings must fail through
 // the normal VERIFY RESULT flow. Generic Vite/Rollup/dependency warnings and
@@ -376,13 +410,44 @@ describe('getActionRequired', () => {
     expect(actions).toEqual(['None.']);
   });
 
+  it('adds a CI-profile rerun action when local Playwright risk remains', () => {
+    const actions = getActionRequired(
+      [
+        {
+          label: 'e2e',
+          command: 'pnpm e2e:container',
+          status: 'passed',
+          exitCode: 0,
+          hasWarnings: false,
+          warningSummary: '',
+          blockingLogIssue: null,
+        },
+      ],
+      {
+        ciProfileRisk: {
+          affectedChecks: ['e2e'],
+          activeProfile: { name: 'local' },
+        },
+      },
+    );
+
+    expect(actions).toContainEqual(
+      expect.stringContaining(
+        'CI-profile risk remains for e2e because local Playwright used profile local.',
+      ),
+    );
+    expect(actions).toContainEqual(
+      expect.stringContaining('pnpm verify --profile github-actions --only e2e'),
+    );
+  });
+
   it('reports a zero-exit blocked unit-tests result through the normal VERIFY RESULT summary', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
       const summary = printSummary([], 'local-changes', [blockedUnitTestsResult]);
 
-      expect(summary).toEqual({ status: 'failed', hasFailed: true });
+      expect(summary).toEqual({ status: 'failed', hasFailed: true, hasCiProfileRisk: false });
 
       const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
 
@@ -394,6 +459,83 @@ describe('getActionRequired', () => {
     } finally {
       logSpy.mockRestore();
     }
+  });
+
+  it('reports CI-profile risk in the summary when local e2e passed under the local profile', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      const summary = printSummary(
+        ['scripts/verify.mjs'],
+        'local-base origin/develop',
+        [
+          {
+            label: 'e2e',
+            command: 'pnpm e2e:container',
+            displayCommand: 'pnpm e2e:container',
+            status: 'passed',
+            exitCode: 0,
+            hasWarnings: false,
+            warningSummary: '',
+            triggerReason: 'low-level path scripts/verify.mjs -> full app e2e',
+          },
+          {
+            label: 'e2e-install',
+            status: 'skipped',
+            reason: 'browser install is not required; Playwright container provides browsers',
+          },
+        ],
+        {
+          baseRef: 'origin/develop',
+          processEnv: {
+            GITHUB_ACTIONS: 'false',
+          },
+        },
+      );
+
+      expect(summary).toEqual({ status: 'passed', hasFailed: false, hasCiProfileRisk: true });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(output).toContain('profile: local (source: default-local)');
+      expect(output).toContain('base ref: origin/develop');
+      expect(output).toContain('status: passed with CI-profile risk');
+      expect(output).toContain('heavy-check triggers:');
+      expect(output).toContain('e2e: low-level path scripts/verify.mjs -> full app e2e');
+      expect(output).toContain('ci profile risk:');
+      expect(output).toContain('Affected checks: e2e');
+      expect(output).toContain('workers: 1 -> 2');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+});
+
+describe('getCiProfileRisk', () => {
+  it('omits CI-profile risk when Playwright checks did not run', () => {
+    expect(
+      getCiProfileRisk([
+        {
+          label: 'type-check',
+          status: 'passed',
+        },
+      ]),
+    ).toBeNull();
+  });
+
+  it('omits CI-profile risk when the GitHub Actions profile is already active', () => {
+    expect(
+      getCiProfileRisk(
+        [
+          {
+            label: 'visual',
+            status: 'passed',
+          },
+        ],
+        {
+          GITHUB_ACTIONS: 'true',
+        },
+      ),
+    ).toBeNull();
   });
 });
 
