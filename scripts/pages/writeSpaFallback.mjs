@@ -9,11 +9,10 @@
  * the original path in sessionStorage so the app can restore it via the
  * History API after loading (see `src/app/ghPagesSpaFallback.ts`).
  *
- * This file is root-owned: only the stable publish job writes it, since
- * stable publish is the only publisher that touches the repository root.
- * Branch and PR preview publishers never write it, and its content does not
- * depend on which channel triggered the write — it is safe to regenerate
- * from any deployment.
+ * This file is channel-independent: trusted Pages publish tooling enforces it
+ * at the repository root for stable, branch, and PR preview publishes. Its
+ * content does not depend on which channel triggered the write, so it is safe
+ * to regenerate from any deployment.
  *
  * Usage:
  *   node scripts/pages/writeSpaFallback.mjs --output-dir ./pages-staging

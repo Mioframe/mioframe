@@ -1,9 +1,18 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { validateBranchSlug, validatePrNumber } from './slug.mjs';
+import { buildSpaFallbackHtml } from '../writeSpaFallback.mjs';
 
 const PRESERVED_STABLE_ROOT_DIRS = new Set(['branch', 'pr']);
+
+/**
+ * Ensure the site-level GitHub Pages SPA fallback exists at the repository root.
+ * @param workDir Path to the Pages staging working directory.
+ */
+function ensureRootSpaFallback(workDir) {
+  writeFileSync(join(workDir, '404.html'), buildSpaFallbackHtml(), 'utf8');
+}
 
 /**
  * Apply a stable build to the root of a Pages work directory.
@@ -11,7 +20,7 @@ const PRESERVED_STABLE_ROOT_DIRS = new Set(['branch', 'pr']);
  * Removes all root entries except `.git`, `branch/`, and `pr/`, then copies
  * dist into the root. The `branch/` and `pr/` namespaces are preserved so a
  * stable publish never evicts develop, manual branch, or PR preview
- * deployments.
+ * deployments. Also rewrites the site-level root `404.html` SPA fallback.
  * @param workDir Path to the Pages staging working directory.
  * @param distDir Path to the built dist directory to publish.
  */
@@ -22,12 +31,14 @@ export function applyStablePublish(workDir, distDir) {
     rmSync(join(workDir, entry.name), { recursive: true, force: true });
   }
   cpSync(distDir, workDir, { recursive: true });
+  ensureRootSpaFallback(workDir);
 }
 
 /**
  * Apply a branch build to its `branch/<slug>/` slot in a Pages work
  * directory. Only that slot is replaced; stable files, other branch slots,
- * and PR preview slots are not touched.
+ * and PR preview slots are not touched, aside from rewriting the shared
+ * root `404.html` SPA fallback invariant.
  * @param workDir Path to the Pages staging working directory.
  * @param distDir Path to the built dist directory to publish.
  * @param slug Branch slug (see `slugifyBranch`/`validateBranchSlug`).
@@ -38,6 +49,7 @@ export function applyBranchPublish(workDir, distDir, slug) {
   rmSync(slotDir, { recursive: true, force: true });
   mkdirSync(slotDir, { recursive: true });
   cpSync(distDir, slotDir, { recursive: true });
+  ensureRootSpaFallback(workDir);
 }
 
 /**
@@ -62,7 +74,8 @@ export function applyBranchRemoval(workDir, slug) {
 /**
  * Apply a PR preview build to its `pr/<number>/` slot in a Pages work
  * directory. Only that slot is replaced; stable files, branch slots, and
- * other PR preview slots are not touched.
+ * other PR preview slots are not touched, aside from rewriting the shared
+ * root `404.html` SPA fallback invariant.
  * @param workDir Path to the Pages staging working directory.
  * @param distDir Path to the built dist directory to publish.
  * @param prNumber PR number string.
@@ -73,6 +86,7 @@ export function applyPrPublish(workDir, distDir, prNumber) {
   rmSync(slotDir, { recursive: true, force: true });
   mkdirSync(slotDir, { recursive: true });
   cpSync(distDir, slotDir, { recursive: true });
+  ensureRootSpaFallback(workDir);
 }
 
 /**

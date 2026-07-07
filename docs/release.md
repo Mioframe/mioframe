@@ -305,8 +305,10 @@ conflicts. Each publish only touches its own slot:
 
 The org-root `404.html` SPA fallback (`scripts/pages/writeSpaFallback.mjs`)
 is channel-independent — it dispatches any unmatched deep link to `/`,
-`/branch/<slug>/`, or `/pr/<number>/` based on the URL path alone — so only
-the stable publish job, which owns the repository root, ever writes it.
+`/branch/<slug>/`, or `/pr/<number>/` based on the URL path alone. Trusted
+Pages publish tooling enforces that root `404.html` invariant for stable,
+branch, and PR preview publishes, while branch/PR publish paths still own
+only their deployment slot plus that shared root fallback file.
 
 ### Develop branch deployment
 

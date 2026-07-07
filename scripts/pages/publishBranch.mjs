@@ -2,7 +2,8 @@
  * Publish a branch build to branch/<slug>/ on the gh-pages staging branch.
  *
  * Only the target branch slot is touched; stable files, other branch
- * slots, and pr/* directories are not modified. Used both by the develop
+ * slots, and pr/* directories are not modified, aside from refreshing the
+ * shared root `404.html` SPA fallback invariant. Used both by the develop
  * push deployment and the manual branch-dispatch deployment.
  *
  * When --output-dir is provided, the final staging content is also copied

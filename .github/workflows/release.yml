@@ -115,12 +115,6 @@ jobs:
           --sha ${{ github.sha }}
           --app-version "$(node -p "require('./package.json').version")"
 
-      # Root-owned: only the stable publish job writes the site-wide
-      # 404.html, since stable publish is the only publisher that touches
-      # the repository root (see scripts/pages/writeSpaFallback.mjs).
-      - name: Write org-root SPA fallback
-        run: node scripts/pages/writeSpaFallback.mjs --output-dir dist
-
       - name: Generate Pages deploy token
         id: pages-app-token
         uses: actions/create-github-app-token@v3
