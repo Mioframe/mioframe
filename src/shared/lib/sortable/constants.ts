@@ -2,8 +2,12 @@
 export const REORDER_ITEM_ATTRIBUTE = 'data-sortable-id';
 /** Attribute used to mark controls and subtrees that must not start drag. */
 export const REORDER_IGNORE_ATTRIBUTE = 'data-sortable-ignore';
+/** Class applied to the surface while drag activation is in progress. */
+export const REORDER_SURFACE_ACTIVATING_CLASS = 'reorder-surface_activating';
 /** Class applied to the surface while a reorder session is active. */
 export const REORDER_SURFACE_DRAGGING_CLASS = 'reorder-surface_dragging';
+/** Class applied to the root document while reorder activation or drag suppresses text selection. */
+export const REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS = 'reorder-selection-suppressed';
 
 /** Default selector for descendants that should stay interactive instead of draggable. */
 export const defaultReorderInteractiveSelector = [
@@ -20,7 +24,8 @@ export const defaultReorderInteractiveSelector = [
 
 /**
  * Scopes an interactive selector to reorder items and their descendants.
- * @param interactiveSelector
+ * @param interactiveSelector - Selector list describing descendants that should remain interactive.
+ * @returns The selector list scoped to draggable reorder items and their descendants.
  */
 export const getReorderDescendantInteractiveSelector = (interactiveSelector: string): string =>
   interactiveSelector

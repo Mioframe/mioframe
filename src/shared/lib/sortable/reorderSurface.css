@@ -1,7 +1,11 @@
+.reorder-surface_activating,
+.reorder-surface_activating *,
 .reorder-surface_dragging,
 .reorder-surface_dragging *,
 [data-sortable-id],
-[data-sortable-id] * {
+[data-sortable-id] *,
+.reorder-selection-suppressed,
+.reorder-selection-suppressed * {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;

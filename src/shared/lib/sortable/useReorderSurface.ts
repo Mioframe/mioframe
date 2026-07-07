@@ -1,7 +1,11 @@
 import { unrefElement, useEventListener, type MaybeElementRef } from '@vueuse/core';
-import { computed, reactive, ref, toValue, watch } from 'vue';
+import { computed, onScopeDispose, reactive, ref, toValue, watch } from 'vue';
 import './reorderSurface.css';
-import { defaultReorderInteractiveSelector, REORDER_SURFACE_DRAGGING_CLASS } from './constants';
+import {
+  defaultReorderInteractiveSelector,
+  REORDER_SURFACE_ACTIVATING_CLASS,
+  REORDER_SURFACE_DRAGGING_CLASS,
+} from './constants';
 import {
   getDefaultReorderInput,
   getReorderInputFromPointerType,
@@ -16,12 +20,14 @@ import {
   cleanupPostDragInteraction,
   completeReorderSurfaceDrag,
   createReorderSurfaceState,
+  isReorderItemTarget,
   isMouseLikeEvent,
   isPointerEvent,
   isTouchLikeEvent,
   previewReorderSurfaceDrag,
   requestReorderSurfaceCancel,
   rollbackReorderSurfaceCommit,
+  setReorderDocumentSelectionSuppressed,
   shouldIgnoreTarget,
   shouldUseBestEffortReorderHaptics,
   startReorderSurfaceDrag,
@@ -31,8 +37,9 @@ import type { ReorderInput, UseReorderSurfaceOptions } from './reorderTypes';
 
 /**
  * Public composable that wires DOM input, SortableJS, and optimistic reorder state.
- * @param container
- * @param options
+ * @param container - Reorder-surface root element or component reference.
+ * @param options - Reactive reorder configuration and commit handler.
+ * @returns Reorder session state and control methods for the owning surface.
  */
 export const useReorderSurface = (
   container: MaybeElementRef,
@@ -56,11 +63,13 @@ export const useReorderSurface = (
   );
 
   const state = reactive(createReorderSurfaceState(toValue(options.itemIdList)));
+  const isActivatingDrag = ref(false);
   const isReorderSession = computed(() => state.isDragging);
+  const isSelectionSuppressed = computed(() => state.isDragging || isActivatingDrag.value);
 
   /**
    * Applies touch-specific cleanup after a drag session completes or is cancelled.
-   * @param input
+   * @param input - Input profile used by the session that just ended.
    */
   const cleanupAfterDrag = (input: ReorderInput) => {
     if (['touch', 'pen'].includes(input)) {
@@ -72,7 +81,7 @@ export const useReorderSurface = (
 
   /**
    * Tracks the last meaningful input mode used on the reorder surface.
-   * @param event
+   * @param event - Pointer, touch, or mouse event observed on the reorder surface.
    */
   const syncPointerInput = (event: Event) => {
     if (
@@ -112,13 +121,15 @@ export const useReorderSurface = (
   );
 
   watch(
-    [containerEl, () => state.isDragging],
-    ([nextContainerEl, nextIsDragging], [prevContainerEl]) => {
+    [containerEl, () => state.isDragging, isActivatingDrag],
+    ([nextContainerEl, nextIsDragging, nextIsActivating], [prevContainerEl]) => {
       if (prevContainerEl instanceof HTMLElement) {
+        prevContainerEl.classList.remove(REORDER_SURFACE_ACTIVATING_CLASS);
         prevContainerEl.classList.remove(REORDER_SURFACE_DRAGGING_CLASS);
       }
 
       if (nextContainerEl instanceof HTMLElement) {
+        nextContainerEl.classList.toggle(REORDER_SURFACE_ACTIVATING_CLASS, nextIsActivating);
         nextContainerEl.classList.toggle(REORDER_SURFACE_DRAGGING_CLASS, nextIsDragging);
       }
     },
@@ -126,6 +137,31 @@ export const useReorderSurface = (
       immediate: true,
     },
   );
+
+  watch(
+    isSelectionSuppressed,
+    (nextIsSelectionSuppressed, prevIsSelectionSuppressed) => {
+      if (nextIsSelectionSuppressed === prevIsSelectionSuppressed) {
+        return;
+      }
+
+      setReorderDocumentSelectionSuppressed(nextIsSelectionSuppressed);
+    },
+    {
+      immediate: true,
+    },
+  );
+
+  onScopeDispose(() => {
+    if (containerEl.value instanceof HTMLElement) {
+      containerEl.value.classList.remove(REORDER_SURFACE_ACTIVATING_CLASS);
+      containerEl.value.classList.remove(REORDER_SURFACE_DRAGGING_CLASS);
+    }
+
+    if (isSelectionSuppressed.value) {
+      setReorderDocumentSelectionSuppressed(false);
+    }
+  });
 
   const engine = createSortableAdapter(container, {
     layout,
@@ -135,6 +171,8 @@ export const useReorderSurface = (
     scrollContainer: options.scrollContainer,
     callbacks: {
       onStart: ({ itemId, orderedIds, fromIndex }) => {
+        isActivatingDrag.value = false;
+
         if (!itemId) {
           requestReorderSurfaceCancel(state);
           return;
@@ -159,9 +197,11 @@ export const useReorderSurface = (
         previewReorderSurfaceDrag(state, orderedIds);
       },
       onCancel: () => {
+        isActivatingDrag.value = false;
         requestReorderSurfaceCancel(state);
       },
       onEnd: async ({ orderedIds, fromIndex, toIndex }) => {
+        isActivatingDrag.value = false;
         const endProfile = state.activeProfile ?? profile.value;
         const dragResult = completeReorderSurfaceDrag(state, {
           orderedIds,
@@ -191,6 +231,14 @@ export const useReorderSurface = (
         return;
       }
 
+      if (shouldIgnoreTarget(event.target, interactiveSelector.value)) {
+        return;
+      }
+
+      if (isReorderItemTarget(event.target)) {
+        isActivatingDrag.value = true;
+      }
+
       syncPointerInput(event);
     },
     { capture: true, passive: true },
@@ -202,6 +250,14 @@ export const useReorderSurface = (
     (event) => {
       if (!isTouchLikeEvent(event)) {
         return;
+      }
+
+      if (shouldIgnoreTarget(event.target, interactiveSelector.value)) {
+        return;
+      }
+
+      if (isReorderItemTarget(event.target)) {
+        isActivatingDrag.value = true;
       }
 
       syncPointerInput(event);
@@ -217,10 +273,30 @@ export const useReorderSurface = (
         return;
       }
 
+      if (shouldIgnoreTarget(event.target, interactiveSelector.value)) {
+        return;
+      }
+
+      if (isReorderItemTarget(event.target)) {
+        isActivatingDrag.value = true;
+      }
+
       syncPointerInput(event);
     },
     { capture: true, passive: true },
   );
+
+  const clearActivationWindow = () => {
+    if (!state.isDragging) {
+      isActivatingDrag.value = false;
+    }
+  };
+
+  useEventListener(document, 'pointerup', clearActivationWindow, { capture: true });
+  useEventListener(document, 'pointercancel', clearActivationWindow, { capture: true });
+  useEventListener(document, 'mouseup', clearActivationWindow, { capture: true });
+  useEventListener(document, 'touchend', clearActivationWindow, { capture: true });
+  useEventListener(document, 'touchcancel', clearActivationWindow, { capture: true });
 
   useEventListener(
     document,
