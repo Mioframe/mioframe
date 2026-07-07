@@ -146,6 +146,11 @@ export const E2E_SCENARIO_SCOPES = [
     ],
     specs: ['tests/e2e/repositoryFlows.spec.ts'],
   },
+  {
+    name: 'document export',
+    sourcePrefixes: ['src/features/exportDocument/'],
+    specs: ['tests/e2e/exportDocumentBrowserStorage.spec.ts'],
+  },
 ];
 
 function uniqSorted(values) {
