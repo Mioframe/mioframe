@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   resolvePlaywrightContainerProfile,
   runPlaywrightInContainer,
+  VERIFY_PROFILE_ENV,
 } from './playwrightContainer.mjs';
 import { runGuardedExpensiveLocalCommand } from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
@@ -94,6 +95,27 @@ describe('runPlaywrightInContainer', () => {
     expect(profile.memorySwap).toBe('8g');
     expect(profile.pidsLimit).toBe('512');
     expect(profile.workers).toBe('2');
+  });
+
+  it('prefers the explicit verify profile override over the host environment', () => {
+    const profile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'false',
+      [VERIFY_PROFILE_ENV]: 'github-actions',
+    });
+
+    expect(profile.name).toBe('github-actions');
+    expect(profile.source).toBe(VERIFY_PROFILE_ENV);
+    expect(profile.workers).toBe('2');
+  });
+
+  it('rejects unsupported explicit verify profile overrides', () => {
+    expect(() =>
+      resolvePlaywrightContainerProfile({
+        [VERIFY_PROFILE_ENV]: 'ci-like',
+      }),
+    ).toThrow(
+      `Unsupported ${VERIFY_PROFILE_ENV} value: ci-like. Expected one of: local, github-actions.`,
+    );
   });
 
   it('applies the final process result only after the lock callback returns', async () => {

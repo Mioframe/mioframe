@@ -17,6 +17,7 @@ const GENERIC_MEMORY_SWAP_ENV = 'PLAYWRIGHT_CONTAINER_MEMORY_SWAP';
 const GENERIC_PIDS_LIMIT_ENV = 'PLAYWRIGHT_CONTAINER_PIDS_LIMIT';
 const GENERIC_TIMEOUT_ENV = 'PLAYWRIGHT_CONTAINER_TIMEOUT';
 const GENERIC_WORKERS_ENV = 'PLAYWRIGHT_CONTAINER_WORKERS';
+export const VERIFY_PROFILE_ENV = 'MIOFRAME_VERIFY_PROFILE';
 const containerProfiles = toolingConfig.verification.playwrightContainer;
 const PLAYWRIGHT_CONTAINER_LIMITS = [
   {
@@ -300,12 +301,33 @@ function getInstalledPlaywrightVersion(repositoryRoot, missingMetadataMessage) {
  * @returns Effective profile name and resource limits.
  */
 export function resolvePlaywrightContainerProfile(processEnv = process.env) {
-  const profileName = processEnv.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local';
+  const requestedProfile = processEnv[VERIFY_PROFILE_ENV]?.trim();
+  let profileName;
+
+  if (requestedProfile) {
+    if (requestedProfile !== 'local' && requestedProfile !== 'github-actions') {
+      throw new Error(
+        `Unsupported ${VERIFY_PROFILE_ENV} value: ${requestedProfile}. Expected one of: local, github-actions.`,
+      );
+    }
+
+    profileName = requestedProfile;
+  } else {
+    profileName = processEnv.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local';
+  }
+
   const profileDefaults =
     profileName === 'github-actions' ? containerProfiles.githubActions : containerProfiles.local;
+  const source =
+    requestedProfile !== undefined && requestedProfile !== ''
+      ? VERIFY_PROFILE_ENV
+      : processEnv.GITHUB_ACTIONS === 'true'
+        ? 'GITHUB_ACTIONS'
+        : 'default-local';
 
   return Object.fromEntries([
     ['name', profileName],
+    ['source', source],
     ...PLAYWRIGHT_CONTAINER_LIMITS.map(({ envName, key }) => [
       key,
       getFirstDefinedEnvValue([envName], processEnv) ?? String(profileDefaults[key]),
