@@ -12,6 +12,7 @@ const LOW_LEVEL_E2E_EXACT_FILES = new Set([
   'scripts/e2eContainer.mjs',
   'scripts/e2eHost.mjs',
   'scripts/lib/e2eRisk.mjs',
+  'scripts/playwrightContainer.mjs',
   'scripts/verify.mjs',
   'vite.config.ts',
   'package.json',
