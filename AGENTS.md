@@ -138,6 +138,7 @@ for `main`. See `docs/release.md` for the full policy and
 - Use project Material tokens and component custom properties before hard-coded values. Preserve Material authoring units such as `dp` and `sp` where the project token pipeline expects them; do not rewrite them to `px` only because a generic CSS reviewer suggests it.
 - When a native interactive element is visually reset, restore required interaction affordances in the owning component, including an appropriate cursor for clickable enabled states and visible focus/state-layer behavior. Do not make disabled or non-action states look clickable.
 - Treat shared UI style changes as blast-radius changes: inspect consumers, preserve the public visual contract by default, and update Storybook/visual coverage when appearance, layout, interaction affordance, or Material state rendering changes.
+- Use the `MD_TYPESCALE` constants / `.md-typescale-*` classes from `shared/lib/md` for typography-only Material text. Do not hand-write `font-family`, `font-size`, `font-weight`, `line-height`, or `letter-spacing` type-scale token declarations in component CSS unless the change is to the type-scale utility contract itself.
 
 ## Shared UI implementation
 

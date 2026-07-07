@@ -29,13 +29,12 @@ export const EXPORT_ZIP_FALLBACK_MAX_BYTES = 200 * 1024 * 1024;
 /**
  * Creates the directory ZIP export action. Exports raw directory storage contents, including
  * internal Mioframe storage files, as a ZIP archive saved through the browser's save picker.
- * @returns The export action plus reactive progress, running, and progress-sheet visibility state.
+ * @returns The export action plus reactive progress and running state.
  */
 export const useExportDirectoryZip = () => {
   const { repositories } = useMainServiceClient();
   const progress = ref<ExportZipDialogProgress | undefined>(undefined);
   const isRunning = ref(false);
-  const isProgressVisible = ref(false);
 
   /**
    * Exports a directory as a ZIP archive chosen by the user. Ignores repeated calls while an
@@ -51,7 +50,6 @@ export const useExportDirectoryZip = () => {
 
     progress.value = undefined;
     isRunning.value = true;
-    isProgressVisible.value = true;
 
     try {
       return await saveStreamWithPicker(
@@ -86,14 +84,8 @@ export const useExportDirectoryZip = () => {
       });
     } finally {
       isRunning.value = false;
-      isProgressVisible.value = false;
     }
   };
 
-  /** Hides the progress sheet without affecting the export itself, which keeps running. */
-  const dismissProgress = () => {
-    isProgressVisible.value = false;
-  };
-
-  return { exportDirectoryZip, progress, isRunning, isProgressVisible, dismissProgress };
+  return { exportDirectoryZip, progress, isRunning };
 };

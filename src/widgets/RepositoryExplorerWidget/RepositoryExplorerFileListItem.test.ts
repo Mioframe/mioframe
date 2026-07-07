@@ -11,8 +11,8 @@ const nonEmptyActionButtonsRef = ref<NonEmptyMenuButtonList | null>(
 );
 const capturedShowDocumentActions: Array<boolean | undefined> = [];
 const capturedManageButtonProps: Array<{ path: string; actionsLength: number }> = [];
-const isExportZipProgressVisibleRef = ref(false);
-const isImportZipProgressVisibleRef = ref(false);
+const isExportZipRunningRef = ref(false);
+const isImportZipRunningRef = ref(false);
 
 vi.mock('@feature/entryManage', () => ({
   useFSEntryManageActions: (options: { showDocumentActions?: { value?: boolean | undefined } }) => {
@@ -28,9 +28,9 @@ vi.mock('@feature/entryManage', () => ({
     showCreateDocumentDialog: ref(false),
     showRenameDialog: ref(false),
     exportZipProgress: ref(undefined),
-    isExportZipProgressVisible: isExportZipProgressVisibleRef,
+    isExportZipRunning: isExportZipRunningRef,
     importZipProgress: ref(undefined),
-    isImportZipProgressVisible: isImportZipProgressVisibleRef,
+    isImportZipRunning: isImportZipRunningRef,
     onSelectCreateDirectory: vi.fn(),
     onSelectCreateDocument: vi.fn(),
     onSelectRename: vi.fn(),
@@ -38,8 +38,6 @@ vi.mock('@feature/entryManage', () => ({
     onSelectImportJson: vi.fn(),
     onSelectExportZip: vi.fn(),
     onSelectImportZip: vi.fn(),
-    onCloseExportZipProgressSheet: vi.fn(),
-    onCloseImportZipProgressSheet: vi.fn(),
     onCloseCreateDirectoryDialog: vi.fn(),
     onCloseCreateDocumentDialog: vi.fn(),
     onCloseRenameDialog: vi.fn(),
@@ -146,8 +144,8 @@ describe('RepositoryExplorerFileListItem', () => {
     ] as const);
     capturedShowDocumentActions.length = 0;
     capturedManageButtonProps.length = 0;
-    isExportZipProgressVisibleRef.value = false;
-    isImportZipProgressVisibleRef.value = false;
+    isExportZipRunningRef.value = false;
+    isImportZipRunningRef.value = false;
     document.body.innerHTML = '';
   });
 
@@ -254,9 +252,9 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
   });
 
-  it('renders the export ZIP progress sheet only while it is visible', async () => {
+  it('renders the export ZIP progress sheet only while the export is running', async () => {
     hasActionsRef.value = true;
-    isExportZipProgressVisibleRef.value = true;
+    isExportZipRunningRef.value = true;
 
     const wrapper = await mountItem({ entryType: FSNodeType.Directory });
 
@@ -264,9 +262,9 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
   });
 
-  it('renders the import ZIP progress sheet only while it is visible', async () => {
+  it('renders the import ZIP progress sheet only while the import is running', async () => {
     hasActionsRef.value = true;
-    isImportZipProgressVisibleRef.value = true;
+    isImportZipRunningRef.value = true;
 
     const wrapper = await mountItem({ entryType: FSNodeType.Directory });
 

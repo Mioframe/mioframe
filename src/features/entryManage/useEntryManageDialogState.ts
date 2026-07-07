@@ -10,7 +10,8 @@ import { useImportZipAction } from '@feature/importZip';
  * and handles direct actions (remove, import, ZIP export/import). Resets all dialogs when the
  * path changes.
  * @param path - Reactive entry path used by the owned actions and dialog-reset watcher.
- * @returns Dialog visibility refs plus action and close handlers for the entry-manage flow.
+ * @returns Dialog visibility refs, ZIP progress/running state, and action/close handlers for the
+ * entry-manage flow.
  */
 export const useEntryManageDialogState = (path: Ref<string>) => {
   const { remove } = useRemoveFSEntry();
@@ -19,15 +20,11 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     exportDirectoryZip,
     progress: exportZipProgress,
     isRunning: isExportZipRunning,
-    isProgressVisible: isExportZipProgressVisible,
-    dismissProgress: dismissExportZipProgress,
   } = useExportDirectoryZip();
   const {
     importDirectoryZip,
     progress: importZipProgress,
     isRunning: isImportZipRunning,
-    isProgressVisible: isImportZipProgressVisible,
-    dismissProgress: dismissImportZipProgress,
   } = useImportZipAction();
 
   const showCreateDirectoryDialog = ref(false);
@@ -61,12 +58,6 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
   const onSelectImportZip = async () => {
     await importDirectoryZip(path.value);
   };
-  const onCloseExportZipProgressSheet = () => {
-    dismissExportZipProgress();
-  };
-  const onCloseImportZipProgressSheet = () => {
-    dismissImportZipProgress();
-  };
 
   const onCloseCreateDirectoryDialog = () => {
     showCreateDirectoryDialog.value = false;
@@ -84,10 +75,8 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     showRenameDialog,
     exportZipProgress,
     isExportZipRunning,
-    isExportZipProgressVisible,
     importZipProgress,
     isImportZipRunning,
-    isImportZipProgressVisible,
     onSelectCreateDirectory,
     onSelectCreateDocument,
     onSelectRename,
@@ -95,8 +84,6 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     onSelectImportJson,
     onSelectExportZip,
     onSelectImportZip,
-    onCloseExportZipProgressSheet,
-    onCloseImportZipProgressSheet,
     onCloseCreateDirectoryDialog,
     onCloseCreateDocumentDialog,
     onCloseRenameDialog,

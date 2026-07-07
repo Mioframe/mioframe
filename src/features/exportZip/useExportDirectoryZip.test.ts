@@ -82,15 +82,13 @@ describe('useExportDirectoryZip', () => {
     expect(progress.value).toEqual({ phase: 'saving' });
   });
 
-  it('tracks isRunning for the duration of the export and separates progress-sheet visibility', async () => {
-    const { exportDirectoryZip, isRunning, isProgressVisible } = useExportDirectoryZip();
+  it('tracks isRunning for the duration of the export', async () => {
+    const { exportDirectoryZip, isRunning } = useExportDirectoryZip();
 
     expect(isRunning.value).toBe(false);
-    expect(isProgressVisible.value).toBe(false);
 
     saveStreamWithPickerMock.mockImplementationOnce(async (produce: Producer) => {
       expect(isRunning.value).toBe(true);
-      expect(isProgressVisible.value).toBe(true);
       await produce(() => Promise.resolve());
       return true;
     });
@@ -98,7 +96,6 @@ describe('useExportDirectoryZip', () => {
     await exportDirectoryZip('/repo');
 
     expect(isRunning.value).toBe(false);
-    expect(isProgressVisible.value).toBe(false);
   });
 
   it('ignores a duplicate call while an export is already running', async () => {
@@ -121,30 +118,6 @@ describe('useExportDirectoryZip', () => {
 
     resolveFirst();
     await expect(firstCall).resolves.toBe(true);
-  });
-
-  it('dismissProgress hides the sheet without affecting isRunning', async () => {
-    let resolveRun!: () => void;
-    saveStreamWithPickerMock.mockImplementationOnce(
-      () =>
-        new Promise<boolean>((resolve) => {
-          resolveRun = () => {
-            resolve(true);
-          };
-        }),
-    );
-
-    const { exportDirectoryZip, isRunning, isProgressVisible, dismissProgress } =
-      useExportDirectoryZip();
-    const runPromise = exportDirectoryZip('/repo');
-
-    expect(isProgressVisible.value).toBe(true);
-    dismissProgress();
-    expect(isProgressVisible.value).toBe(false);
-    expect(isRunning.value).toBe(true);
-
-    resolveRun();
-    await runPromise;
   });
 
   it('returns false when the user cancels the save dialog', async () => {

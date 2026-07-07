@@ -1,23 +1,24 @@
 /* eslint-disable vue/one-component-per-file -- Focused component contract test with inline stubs. */
 import { mount } from '@vue/test-utils';
-import { defineComponent, h } from 'vue';
+import { computed, defineComponent, h } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import ExportZipProgressSheet from './ExportZipProgressSheet.vue';
 
-vi.mock('@shared/ui/Sheets', () => ({
-  MDBottomSheet: defineComponent({
-    name: 'MDBottomSheetStub',
-    props: { label: { type: String, required: true } },
+vi.mock('@shared/lib/teleportContainer', () => ({
+  TeleportContainer: defineComponent({
+    name: 'TeleportContainerStub',
     setup(_props, { slots }) {
       return () => h('div', slots.default?.());
     },
   }),
-  MDBottomSheetSection: defineComponent({
-    name: 'MDBottomSheetSectionStub',
-    setup(_props, { slots }) {
-      return () => h('section', slots.default?.());
-    },
-  }),
+}));
+
+vi.mock('@shared/ui/Overlay', () => ({
+  useOverlayContainer: () => computed(() => undefined),
+}));
+
+vi.mock('@shared/ui/AriaHidden', () => ({
+  useModalAriaHidden: () => computed(() => false),
 }));
 
 vi.mock('@shared/ui/ProgressIndicators', () => ({
@@ -55,12 +56,25 @@ describe('ExportZipProgressSheet', () => {
     expect(wrapper.text()).toContain('Saving archive…');
   });
 
-  it('emits close when the sheet is dismissed', async () => {
+  it('renders as a non-dismissible modal status surface with no close affordance', () => {
     const wrapper = mount(ExportZipProgressSheet);
 
-    await wrapper.findComponent({ name: 'MDBottomSheetStub' }).vm.$emit('closed');
+    expect(wrapper.find('[role="alertdialog"]').attributes('aria-modal')).toBe('true');
+    expect(wrapper.find('button').exists()).toBe(false);
+    expect(wrapper.emitted()).toEqual({});
+  });
 
-    expect(wrapper.emitted('close')).toHaveLength(1);
+  it('uses the shared Material type-scale classes for phase and count text', () => {
+    const wrapper = mount(ExportZipProgressSheet, {
+      props: { progress: { phase: 'reading', current: 1, total: 2 } },
+    });
+
+    expect(wrapper.find('.export-zip-progress-sheet__phase').classes()).toContain(
+      'md-typescale-body-large',
+    );
+    expect(wrapper.find('.export-zip-progress-sheet__count').classes()).toContain(
+      'md-typescale-body-medium',
+    );
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

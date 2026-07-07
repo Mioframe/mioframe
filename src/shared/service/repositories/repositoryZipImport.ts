@@ -1,6 +1,5 @@
 import pLimit from 'p-limit';
 import { DomainError } from '@shared/lib/error';
-import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   FileSystemError,
   FSNodeType,
@@ -10,8 +9,8 @@ import {
 } from '@shared/lib/virtualFileSystem';
 import {
   createZipArchiveReader,
+  resolveSafeArchiveEntryTarget,
   streamBlobChunks,
-  validateArchiveEntryPath,
 } from '@shared/lib/zipArchive';
 import { RepositoryZipErrorCode, type OnZipImportProgress } from './repositoryZipContracts';
 
@@ -112,8 +111,10 @@ const planZipImport = async (
     }
 
     try {
-      const { relativePath, isDirectory } = validateArchiveEntryPath(entry.rawPath);
-      const targetPath = PathUtils.join(targetDirectoryPath, relativePath);
+      const { targetPath, isDirectory } = resolveSafeArchiveEntryTarget(
+        targetDirectoryPath,
+        entry.rawPath,
+      );
 
       collectAncestorDirectories(targetDirectoryPath, targetPath).forEach((dir) =>
         plannedDirectories.add(dir),
@@ -224,14 +225,16 @@ const writeZipImportPlan = async (
       await write();
       anyWriteSucceeded = true;
     } catch (error) {
-      if (getFileSystemAccessRecovery(error, { operation: 'write' })) {
-        throw error;
-      }
-
       if (!anyWriteSucceeded) {
+        // Nothing has been written yet, so a write-access failure here is still safe to recover
+        // from and retry: granting access and retrying the whole import cannot conflict with
+        // anything this import has already written.
         throw error;
       }
 
+      // At least one write already succeeded. Even a write-access-recovery error must not be
+      // rethrown raw here, since the caller's recovery flow retries the whole import, which
+      // would then hit conflicts caused by the files this attempt already wrote.
       throw new DomainError(
         'The import stopped partway through. Some files may already have been written — check the target folder before retrying.',
         { cause: error, code: RepositoryZipErrorCode.importWritePartiallyFailed },

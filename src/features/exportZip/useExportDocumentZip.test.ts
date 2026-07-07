@@ -62,7 +62,7 @@ describe('useExportDocumentZip', () => {
     );
   });
 
-  it('tracks isRunning and progress-sheet visibility separately, ignoring duplicate starts', async () => {
+  it('tracks isRunning for the duration of the export, ignoring duplicate starts', async () => {
     let resolveFirst!: () => void;
     saveStreamWithPickerMock.mockImplementationOnce(
       () =>
@@ -73,19 +73,13 @@ describe('useExportDocumentZip', () => {
         }),
     );
 
-    const { exportDocumentZip, isRunning, isProgressVisible, dismissProgress } =
-      useExportDocumentZip();
+    const { exportDocumentZip, isRunning } = useExportDocumentZip();
     const firstCall = exportDocumentZip('/documents', documentId);
 
     expect(isRunning.value).toBe(true);
-    expect(isProgressVisible.value).toBe(true);
 
     await expect(exportDocumentZip('/documents', documentId)).resolves.toBe(false);
     expect(saveStreamWithPickerMock).toHaveBeenCalledOnce();
-
-    dismissProgress();
-    expect(isProgressVisible.value).toBe(false);
-    expect(isRunning.value).toBe(true);
 
     resolveFirst();
     await firstCall;

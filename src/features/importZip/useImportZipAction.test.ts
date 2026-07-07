@@ -316,36 +316,4 @@ describe('useImportZipAction', () => {
     resolveImport();
     await firstCall;
   });
-
-  it('separates progress-sheet visibility from isRunning via dismissProgress', async () => {
-    let resolveImport!: () => void;
-    pickZipFileMock.mockResolvedValue(makeFile());
-    importDirectoryZipMock.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveImport = resolve;
-        }),
-    );
-
-    const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip, isRunning, isProgressVisible, dismissProgress } =
-      useImportZipAction();
-
-    const runPromise = importDirectoryZip('/repo');
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(isRunning.value).toBe(true);
-    expect(isProgressVisible.value).toBe(true);
-
-    dismissProgress();
-    expect(isProgressVisible.value).toBe(false);
-    expect(isRunning.value).toBe(true);
-
-    resolveImport();
-    await runPromise;
-
-    expect(isRunning.value).toBe(false);
-    expect(isProgressVisible.value).toBe(false);
-  });
 });

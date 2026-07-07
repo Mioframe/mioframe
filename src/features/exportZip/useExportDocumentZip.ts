@@ -11,13 +11,12 @@ import type { ExportZipDialogProgress } from './useExportDirectoryZip';
  * Creates the document ZIP export action. Exports a document's storage files, in a folder-like
  * archive layout, as a ZIP archive saved through the browser's save picker. This reads raw
  * storage files, not the decoded document state — it is not a JSON snapshot.
- * @returns The export action plus reactive progress, running, and progress-sheet visibility state.
+ * @returns The export action plus reactive progress and running state.
  */
 export const useExportDocumentZip = () => {
   const { repositories } = useMainServiceClient();
   const progress = ref<ExportZipDialogProgress | undefined>(undefined);
   const isRunning = ref(false);
-  const isProgressVisible = ref(false);
 
   /**
    * Exports a document's storage files as a ZIP archive chosen by the user. Ignores repeated
@@ -34,7 +33,6 @@ export const useExportDocumentZip = () => {
 
     progress.value = undefined;
     isRunning.value = true;
-    isProgressVisible.value = true;
 
     try {
       return await saveStreamWithPicker(
@@ -70,14 +68,8 @@ export const useExportDocumentZip = () => {
       });
     } finally {
       isRunning.value = false;
-      isProgressVisible.value = false;
     }
   };
 
-  /** Hides the progress sheet without affecting the export itself, which keeps running. */
-  const dismissProgress = () => {
-    isProgressVisible.value = false;
-  };
-
-  return { exportDocumentZip, progress, isRunning, isProgressVisible, dismissProgress };
+  return { exportDocumentZip, progress, isRunning };
 };

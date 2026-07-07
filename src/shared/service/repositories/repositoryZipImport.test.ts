@@ -222,7 +222,7 @@ describe('importDirectoryZip', () => {
     expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
   });
 
-  it('does not reclassify a write-access-recovery error, even after an earlier write succeeded', async () => {
+  it('reclassifies a write-access-recovery error as a partial import once an earlier write succeeded', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
 
@@ -253,7 +253,88 @@ describe('importDirectoryZip', () => {
       caught = error;
     }
 
+    // The first write already succeeded, so this must not surface as a plain recoverable
+    // write-access error: retrying the whole import would then hit a conflict on the file that
+    // already exists from this attempt, instead of telling the user the import may be partial.
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    if (!(caught instanceof DomainError)) throw new Error('expected DomainError');
+    expect(caught.cause).toBe(accessError);
+    await expect(vfs.readText('/target/root/a.txt')).resolves.toBe('a content');
+  });
+
+  it('still surfaces a raw write-access-recovery error when it happens before any write succeeded', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    // A top-level entry needs no ancestor directory creation, so the file write is the very
+    // first VFS mutation attempted — nothing has been written yet when it fails.
+    const archiveFile = toArchiveFile({
+      'a.txt': new TextEncoder().encode('a content'),
+    });
+
+    const accessError = new WebFileSystemAccessRequiredError({
+      mode: 'readwrite',
+      spaceName: 'Test space',
+    });
+
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(accessError);
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    // Nothing was written yet, so the caller's write-access recovery flow can safely retry the
+    // whole import after granting access.
     expect(caught).toBe(accessError);
+  });
+
+  it('surfaces a pre-write conflict, not a partial-import error, when retried after a partial write', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+      'root/b.txt': new TextEncoder().encode('b content'),
+    });
+
+    const originalCreateFile = vfs.createFile.bind(vfs);
+    let callCount = 0;
+    vi.spyOn(vfs, 'createFile').mockImplementation(async (path, content) => {
+      callCount += 1;
+      if (callCount === 2) {
+        throw new Error('simulated storage failure');
+      }
+      return originalCreateFile(path, content);
+    });
+
+    let firstAttemptError: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      firstAttemptError = error;
+    }
+
+    expect(firstAttemptError).toMatchObject({
+      code: RepositoryZipErrorCode.importWritePartiallyFailed,
+    });
+
+    // Simulates a caller retrying the same import without knowing about the partial write above
+    // (e.g. after mistaking `importWritePartiallyFailed` for a recoverable access error). The
+    // retry must stop at preflight with a conflict, not silently overwrite or continue the
+    // partial write.
+    let retryError: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      retryError = error;
+    }
+
+    expect(retryError).toBeInstanceOf(DomainError);
+    expect(retryError).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
   });
 
   it('does not report a partial failure when the very first write fails', async () => {

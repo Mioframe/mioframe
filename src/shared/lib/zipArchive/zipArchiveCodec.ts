@@ -2,6 +2,18 @@ import { Unzip, UnzipInflate, Zip, ZipDeflate, ZipPassThrough, unzipSync, zipSyn
 import { DomainError } from '@shared/lib/error';
 import { ZipArchiveErrorCode } from './zipArchiveErrorCode';
 
+/**
+ * fflate DEFLATE level (0-9, default 6) used for every ZIP entry written by this module.
+ *
+ * Mioframe is mobile-first and targets low-end devices, so this favors CPU/battery cost over
+ * maximum compression ratio. fflate's own docs (`DeflateOptions.level`) give a representative
+ * 1 MB text file benchmark: level 1 reaches ~400 kB in ~10ms, while level 9 only reaches ~320 kB
+ * but takes ~100ms — roughly 10x the CPU time for ~20% extra reduction. Level 1 captures most of
+ * the achievable size reduction at the lowest CPU cost, which matters more than the last bit of
+ * ratio for an on-device export/import flow.
+ */
+const ZIP_COMPRESSION_LEVEL = 1;
+
 /** Flat map of archive entry paths to their raw bytes. Keys ending in `/` are directory markers. */
 export type ZipArchiveEntries = Record<string, Uint8Array<ArrayBuffer>>;
 
@@ -15,7 +27,7 @@ export type ZipArchiveEntries = Record<string, Uint8Array<ArrayBuffer>>;
  * @returns The packed ZIP archive bytes.
  */
 export const packZipArchive = (entries: ZipArchiveEntries): Uint8Array<ArrayBuffer> =>
-  zipSync(entries, { level: 6 });
+  zipSync(entries, { level: ZIP_COMPRESSION_LEVEL });
 
 /**
  * Unpacks a ZIP archive into a flat map of entry paths and bytes.
@@ -106,7 +118,7 @@ export const createZipArchiveWriter = (onChunk: OnZipArchiveChunk): ZipArchiveWr
   });
 
   const writeFileEntry = async (path: string, source: AsyncIterable<Uint8Array>): Promise<void> => {
-    const entry = new ZipDeflate(path, { level: 6 });
+    const entry = new ZipDeflate(path, { level: ZIP_COMPRESSION_LEVEL });
     zip.add(entry);
 
     let buffered: Uint8Array | undefined;

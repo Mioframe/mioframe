@@ -61,15 +61,13 @@ const { hasActions: hasDirectoryManageActions, nonEmptyActionButtons: directoryM
 const {
   showRenameDialog: showDirectoryRenameDialog,
   exportZipProgress,
-  isExportZipProgressVisible,
+  isExportZipRunning,
   importZipProgress,
-  isImportZipProgressVisible,
+  isImportZipRunning,
   onSelectRename: onManageSelectRename,
   onSelectRemove: onManageSelectRemove,
   onSelectExportZip,
   onSelectImportZip,
-  onCloseExportZipProgressSheet,
-  onCloseImportZipProgressSheet,
   onCloseRenameDialog: onCloseDirectoryRenameDialog,
 } = useEntryManageDialogState(directoryPath);
 
@@ -177,17 +175,9 @@ const onClickReturnHome = async () => {
       @select-import-zip="onSelectImportZip"
     />
 
-    <ExportZipProgressSheet
-      v-if="isExportZipProgressVisible"
-      :progress="exportZipProgress"
-      @close="onCloseExportZipProgressSheet"
-    />
+    <ExportZipProgressSheet v-if="isExportZipRunning" :progress="exportZipProgress" />
 
-    <ImportZipProgressSheet
-      v-if="isImportZipProgressVisible"
-      :progress="importZipProgress"
-      @close="onCloseImportZipProgressSheet"
-    />
+    <ImportZipProgressSheet v-if="isImportZipRunning" :progress="importZipProgress" />
 
     <DirectoryCreateDialog
       v-if="showCreateDirectoryDialog"

@@ -25,7 +25,7 @@ const shouldSkipImportErrorReport = (error: unknown) =>
  * behavior. Stops before any write when the archive has conflicts with existing files. Surfaces a
  * distinct message when a write fails after an earlier write in the same import already
  * succeeded, since the target folder may then hold a partial import.
- * @returns The import action plus reactive progress, running, and progress-sheet visibility state.
+ * @returns The import action plus reactive progress and running state.
  */
 export const useImportZipAction = () => {
   const { pickZipFile } = useImportZip();
@@ -39,7 +39,6 @@ export const useImportZipAction = () => {
 
   const progress = ref<ZipImportProgress | undefined>(undefined);
   const isRunning = ref(false);
-  const isProgressVisible = ref(false);
 
   const reportImportError = (error: unknown, diagnosticsAction: string) => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
@@ -151,7 +150,6 @@ export const useImportZipAction = () => {
 
     progress.value = undefined;
     isRunning.value = true;
-    isProgressVisible.value = true;
 
     try {
       const onProgress = (nextProgress: ZipImportProgress) => {
@@ -180,20 +178,12 @@ export const useImportZipAction = () => {
       return false;
     } finally {
       isRunning.value = false;
-      isProgressVisible.value = false;
     }
-  };
-
-  /** Hides the progress sheet without affecting the import itself, which keeps running. */
-  const dismissProgress = () => {
-    isProgressVisible.value = false;
   };
 
   return {
     importDirectoryZip: importDirectoryZipArchive,
     progress,
     isRunning,
-    isProgressVisible,
-    dismissProgress,
   };
 };
