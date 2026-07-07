@@ -59,7 +59,10 @@ pnpm verify --only e2e --files tests/e2e/relevant-flow.spec.ts
 - passed checks print concise status lines;
 - failed checks print the check label, exact command, exit code, relevant output tail, and log path;
 - warning-only checks print a warning summary and log path;
+- the final summary reports active profile/environment and whether unresolved CI-profile risk remains after a local pass;
 - full command logs are written per check under `.verify/logs/`.
+
+Report that summary directly. Do not collapse `passed with CI-profile risk` to a plain `passed`.
 
 Use `pnpm verify --verbose` when you need full streamed command output in the terminal. It is a diagnostic mode, not a separate quality gate.
 
