@@ -5,6 +5,8 @@ import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
 import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
 import { FSEntryRenameDialog } from '@feature/entryRename';
+import { ExportZipProgressSheet } from '@feature/exportZip';
+import { ImportZipProgressSheet } from '@feature/importZip';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
@@ -58,8 +60,16 @@ const { hasActions: hasDirectoryManageActions, nonEmptyActionButtons: directoryM
 
 const {
   showRenameDialog: showDirectoryRenameDialog,
+  exportZipProgress,
+  isExportZipRunning,
+  importZipProgress,
+  isImportZipRunning,
   onSelectRename: onManageSelectRename,
   onSelectRemove: onManageSelectRemove,
+  onSelectExportZip,
+  onSelectImportZip,
+  onCloseExportZipProgressSheet,
+  onCloseImportZipProgressSheet,
   onCloseRenameDialog: onCloseDirectoryRenameDialog,
 } = useEntryManageDialogState(directoryPath);
 
@@ -139,6 +149,7 @@ const onClickReturnHome = async () => {
             @select-create-directory="onSelectCreateDirectory"
             @select-rename="onManageSelectRename"
             @select-remove="onManageSelectRemove"
+            @select-export-zip="onSelectExportZip"
           />
         </template>
       </MDAppBar>
@@ -163,6 +174,19 @@ const onClickReturnHome = async () => {
       @select-create-directory="onSelectCreateDirectory"
       @select-create-document="onSelectCreateDocument"
       @select-import-document="onSelectImportDocument"
+      @select-import-zip="onSelectImportZip"
+    />
+
+    <ExportZipProgressSheet
+      v-if="isExportZipRunning"
+      :progress="exportZipProgress"
+      @close="onCloseExportZipProgressSheet"
+    />
+
+    <ImportZipProgressSheet
+      v-if="isImportZipRunning"
+      :progress="importZipProgress"
+      @close="onCloseImportZipProgressSheet"
     />
 
     <DirectoryCreateDialog

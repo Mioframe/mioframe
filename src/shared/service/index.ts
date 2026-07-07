@@ -1,6 +1,15 @@
 export { useMainServiceClient } from './useService';
 export { RepositoryImportErrorCode } from './repositories/repositoryContracts';
 export type { RepositoryDirectoryEntry } from './repositories/repositoryContracts';
+export { RepositoryZipErrorCode } from './repositories/repositoryZipContracts';
+export type {
+  OnZipExportProgress,
+  OnZipImportProgress,
+  ZipExportPhase,
+  ZipExportProgress,
+  ZipImportPhase,
+  ZipImportProgress,
+} from './repositories/repositoryZipContracts';
 export {
   DEVICE_FILES_ROOT_NAME,
   type DeviceFileDisplayRecord,

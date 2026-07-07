@@ -8,14 +8,15 @@ import EntryAddSheet from './EntryAddSheet.vue';
 vi.mock('@shared/ui/Sheets', () => ({
   MDBottomSheet: defineComponent({
     name: 'MDBottomSheetStub',
+    props: { label: { type: String, required: true } },
     setup(_props, { slots }) {
-      return () => slots.default?.();
+      return () => h('div', slots.default?.());
     },
   }),
   MDBottomSheetSection: defineComponent({
     name: 'MDBottomSheetSectionStub',
     setup(_props, { slots }) {
-      return () => slots.default?.();
+      return () => h('section', slots.default?.());
     },
   }),
 }));
@@ -77,16 +78,19 @@ describe('EntryAddSheet', () => {
 
     expect(wrapper.text()).toContain('Create document');
     expect(wrapper.text()).toContain('Import document');
+    expect(wrapper.text()).toContain('Import ZIP');
     expect(wrapper.text()).toContain('Create directory');
 
     const buttons = wrapper.findAll('button');
     await buttons[0]?.trigger('click');
     await buttons[1]?.trigger('click');
     await buttons[2]?.trigger('click');
+    await buttons[3]?.trigger('click');
 
-    expect(wrapper.emitted('close')).toHaveLength(3);
+    expect(wrapper.emitted('close')).toHaveLength(4);
     expect(wrapper.emitted('selectCreateDocument')).toHaveLength(1);
     expect(wrapper.emitted('selectImportDocument')).toHaveLength(1);
+    expect(wrapper.emitted('selectImportZip')).toHaveLength(1);
     expect(wrapper.emitted('selectCreateDirectory')).toHaveLength(1);
   });
 });

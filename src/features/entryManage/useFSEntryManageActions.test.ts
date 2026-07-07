@@ -43,18 +43,26 @@ describe('useFSEntryManageActions', () => {
       expect(getKeys(actionButtons.value)).not.toContain('createDirectory');
     });
 
-    it('does not include createDocument or importJson without showDocumentActions', () => {
+    it('does not include createDocument, importJson, or importZip without showDocumentActions', () => {
       const { actionButtons } = useFSEntryManageActions(
         makeOptions({ entryType: FSNodeType.Directory }),
       );
       const keys = getKeys(actionButtons.value);
       expect(keys).not.toContain('createDocument');
       expect(keys).not.toContain('importJson');
+      expect(keys).not.toContain('importZip');
+    });
+
+    it('still includes exportZip without showDocumentActions', () => {
+      const { actionButtons } = useFSEntryManageActions(
+        makeOptions({ entryType: FSNodeType.Directory }),
+      );
+      expect(getKeys(actionButtons.value)).toContain('exportZip');
     });
   });
 
   describe('directory with document actions', () => {
-    it('includes createDirectory, createDocument, and importJson', () => {
+    it('includes createDirectory, createDocument, importJson, and importZip', () => {
       const { actionButtons } = useFSEntryManageActions(
         makeOptions({ entryType: FSNodeType.Directory, showDocumentActions: true }),
       );
@@ -62,9 +70,10 @@ describe('useFSEntryManageActions', () => {
       expect(keys).toContain('createDirectory');
       expect(keys).toContain('createDocument');
       expect(keys).toContain('importJson');
+      expect(keys).toContain('importZip');
     });
 
-    it('does not include createDocument or importJson when canEditChildren is false', () => {
+    it('does not include createDocument, importJson, or importZip when canEditChildren is false', () => {
       const { actionButtons } = useFSEntryManageActions(
         makeOptions({
           entryType: FSNodeType.Directory,
@@ -75,6 +84,18 @@ describe('useFSEntryManageActions', () => {
       const keys = getKeys(actionButtons.value);
       expect(keys).not.toContain('createDocument');
       expect(keys).not.toContain('importJson');
+      expect(keys).not.toContain('importZip');
+    });
+
+    it('still includes exportZip when canEditChildren is false', () => {
+      const { actionButtons } = useFSEntryManageActions(
+        makeOptions({
+          entryType: FSNodeType.Directory,
+          canEditChildren: false,
+          showDocumentActions: true,
+        }),
+      );
+      expect(getKeys(actionButtons.value)).toContain('exportZip');
     });
   });
 
@@ -87,6 +108,8 @@ describe('useFSEntryManageActions', () => {
       expect(keys).not.toContain('createDirectory');
       expect(keys).not.toContain('createDocument');
       expect(keys).not.toContain('importJson');
+      expect(keys).not.toContain('exportZip');
+      expect(keys).not.toContain('importZip');
     });
   });
 
@@ -153,7 +176,7 @@ describe('useFSEntryManageActions', () => {
       expect(keys.indexOf('rename')).toBeLessThan(keys.indexOf('remove'));
     });
 
-    it('produces createDirectory, createDocument, importJson, rename, remove in order', () => {
+    it('produces createDirectory, createDocument, rename, exportZip, importJson, importZip, remove in order', () => {
       const { actionButtons } = useFSEntryManageActions(
         makeOptions({
           entryType: FSNodeType.Directory,
@@ -167,7 +190,9 @@ describe('useFSEntryManageActions', () => {
         'createDirectory',
         'createDocument',
         'rename',
+        'exportZip',
         'importJson',
+        'importZip',
         'remove',
       ]);
     });

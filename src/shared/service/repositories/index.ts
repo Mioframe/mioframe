@@ -10,3 +10,12 @@ export {
 } from './repositoryStorageFiles';
 export type { RepositoryDirectoryEntry } from './repositoryContracts';
 export type { RepositoryFacts } from './repositoryStorageFiles';
+export { RepositoryZipErrorCode } from './repositoryZipContracts';
+export type {
+  OnZipExportProgress,
+  OnZipImportProgress,
+  ZipExportPhase,
+  ZipExportProgress,
+  ZipImportPhase,
+  ZipImportProgress,
+} from './repositoryZipContracts';

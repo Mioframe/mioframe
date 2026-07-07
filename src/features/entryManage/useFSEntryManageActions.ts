@@ -51,8 +51,13 @@ export const useFSEntryManageActions = (options: FSEntryManageActionsOptions) =>
       buttons.push({ key: 'rename', label: 'Rename', symbolName: 'edit' });
     }
 
+    if (isDirectory) {
+      buttons.push({ key: 'exportZip', label: 'Export ZIP', symbolName: 'folder_zip' });
+    }
+
     if (isDirectory && canEditChildren.value !== false && showDocumentActions.value === true) {
       buttons.push({ key: 'importJson', label: 'Import JSON', symbolName: 'file_copy' });
+      buttons.push({ key: 'importZip', label: 'Import ZIP', symbolName: 'unarchive' });
     }
 
     if (canDelete.value !== false) {

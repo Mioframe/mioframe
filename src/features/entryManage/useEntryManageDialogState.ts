@@ -2,16 +2,29 @@ import type { Ref } from 'vue';
 import { ref, watch } from 'vue';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { useImportDocumentAction } from '@feature/importDocument';
+import { useExportDirectoryZip } from '@feature/exportZip';
+import { useImportZipAction } from '@feature/importZip';
 
 /**
  * Owns open/close state for entry-manage dialogs (create directory, create document, rename)
- * and handles direct actions (remove, import). Resets all dialogs when the path changes.
+ * and handles direct actions (remove, import, ZIP export/import). Resets all dialogs when the
+ * path changes.
  * @param path - Reactive entry path used by the owned actions and dialog-reset watcher.
  * @returns Dialog visibility refs plus action and close handlers for the entry-manage flow.
  */
 export const useEntryManageDialogState = (path: Ref<string>) => {
   const { remove } = useRemoveFSEntry();
   const { importDocument } = useImportDocumentAction();
+  const {
+    exportDirectoryZip,
+    progress: exportZipProgress,
+    isRunning: isExportZipRunning,
+  } = useExportDirectoryZip();
+  const {
+    importDirectoryZip,
+    progress: importZipProgress,
+    isRunning: isImportZipRunning,
+  } = useImportZipAction();
 
   const showCreateDirectoryDialog = ref(false);
   const showCreateDocumentDialog = ref(false);
@@ -38,6 +51,18 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
   const onSelectImportJson = async () => {
     await importDocument(path.value);
   };
+  const onSelectExportZip = async () => {
+    await exportDirectoryZip(path.value);
+  };
+  const onSelectImportZip = async () => {
+    await importDirectoryZip(path.value);
+  };
+  const onCloseExportZipProgressSheet = () => {
+    isExportZipRunning.value = false;
+  };
+  const onCloseImportZipProgressSheet = () => {
+    isImportZipRunning.value = false;
+  };
 
   const onCloseCreateDirectoryDialog = () => {
     showCreateDirectoryDialog.value = false;
@@ -53,11 +78,19 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     showCreateDirectoryDialog,
     showCreateDocumentDialog,
     showRenameDialog,
+    exportZipProgress,
+    isExportZipRunning,
+    importZipProgress,
+    isImportZipRunning,
     onSelectCreateDirectory,
     onSelectCreateDocument,
     onSelectRename,
     onSelectRemove,
     onSelectImportJson,
+    onSelectExportZip,
+    onSelectImportZip,
+    onCloseExportZipProgressSheet,
+    onCloseImportZipProgressSheet,
     onCloseCreateDirectoryDialog,
     onCloseCreateDocumentDialog,
     onCloseRenameDialog,

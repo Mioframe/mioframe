@@ -14,6 +14,8 @@ const emit = defineEmits<{
   selectRename: [];
   selectRemove: [];
   selectImportJson: [];
+  selectExportZip: [];
+  selectImportZip: [];
 }>();
 
 const onSelectCreateDirectory = () => {
@@ -35,6 +37,14 @@ const onSelectRemove = () => {
 const onSelectImportJson = () => {
   emit('selectImportJson');
 };
+
+const onSelectExportZip = () => {
+  emit('selectExportZip');
+};
+
+const onSelectImportZip = () => {
+  emit('selectImportZip');
+};
 </script>
 
 <template>
@@ -47,5 +57,7 @@ const onSelectImportJson = () => {
     @select-rename="onSelectRename"
     @select-remove="onSelectRemove"
     @select-import-json="onSelectImportJson"
+    @select-export-zip="onSelectExportZip"
+    @select-import-zip="onSelectImportZip"
   />
 </template>

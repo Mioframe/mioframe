@@ -41,6 +41,9 @@ import {
   getRegularDirectoryEntries,
   getDocumentStorageFiles,
 } from './repositoryStorageFiles';
+import { exportDirectoryZip, exportDocumentZip } from './repositoryZipExport';
+import { importDirectoryZip } from './repositoryZipImport';
+import type { OnZipExportProgress, OnZipImportProgress } from './repositoryZipContracts';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
 
@@ -415,6 +418,56 @@ const setupRepositoriesService = () => {
     await getRepo(path, true);
   };
 
+  /**
+   * Flushes pending Automerge saves for the repository at `path`, if one is currently cached.
+   * A repository with no cached instance has nothing pending in memory beyond what is already
+   * on storage, so a missing cache entry is a safe no-op rather than an error.
+   * @param path - Absolute path to the repository root.
+   * @param documentIds - Document ids to flush; when omitted, every cached document is flushed.
+   */
+  const flushRepositoryPathForExport = async (path: string, documentIds?: AMDocumentId[]) => {
+    const repo = await getRepo(path);
+    await repo?.flush(documentIds);
+  };
+
+  /**
+   * Exports a directory's raw storage contents, including internal Mioframe storage files, as a
+   * ZIP archive. This is a storage-level export, not a document JSON snapshot.
+   * @param path - Absolute path to the directory to export.
+   * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+   * @returns The packed ZIP archive bytes.
+   */
+  const exportDirectoryZipArchive = async (path: string, onProgress?: OnZipExportProgress) =>
+    exportDirectoryZip(vfs, flushRepositoryPathForExport, path, onProgress);
+
+  /**
+   * Exports one document's storage files, in a folder-like archive layout, as a ZIP archive.
+   * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
+   * @param path - Absolute path to the directory containing the document.
+   * @param id - Target document id.
+   * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+   * @returns The packed ZIP archive bytes.
+   */
+  const exportDocumentZipArchive = async (
+    path: string,
+    id: AMDocumentId,
+    onProgress?: OnZipExportProgress,
+  ) => exportDocumentZip(vfs, flushRepositoryPathForExport, path, id, onProgress);
+
+  /**
+   * Validates and imports a ZIP archive into a directory. Stops before any write if a target
+   * file already exists; never overwrites, merges, or renames existing files.
+   * @param targetDirectoryPath - Absolute path to the directory to import into.
+   * @param archiveBytes - Raw ZIP archive bytes selected by the user.
+   * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
+   * @returns Promise that resolves once every entry has been written.
+   */
+  const importDirectoryZipArchive = async (
+    targetDirectoryPath: string,
+    archiveBytes: Uint8Array,
+    onProgress?: OnZipImportProgress,
+  ) => importDirectoryZip(vfs, targetDirectoryPath, archiveBytes, onProgress);
+
   const documentIdList = defineObservableQuery(getDocumentIdList$);
   const repositoryFacts = defineObservableQuery(getRepositoryFacts$);
   const repositoryVisibleEntries = defineObservableQuery(getRepositoryVisibleEntries$);
@@ -467,6 +520,32 @@ const setupRepositoriesService = () => {
      * @returns The created document identifier.
      */
     importDocumentFromJsonFile,
+    /**
+     * Exports a directory's raw storage contents, including internal Mioframe storage files, as
+     * a ZIP archive. This is a storage-level export, not a document JSON snapshot.
+     * @param path - Absolute path to the directory to export.
+     * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+     * @returns The packed ZIP archive bytes.
+     */
+    exportDirectoryZip: exportDirectoryZipArchive,
+    /**
+     * Exports one document's storage files, in a folder-like archive layout, as a ZIP archive.
+     * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
+     * @param path - Absolute path to the directory containing the document.
+     * @param id - Target document id.
+     * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+     * @returns The packed ZIP archive bytes.
+     */
+    exportDocumentZip: exportDocumentZipArchive,
+    /**
+     * Validates and imports a ZIP archive into a directory. Stops before any write if a target
+     * file already exists; never overwrites, merges, or renames existing files.
+     * @param targetDirectoryPath - Absolute path to the directory to import into.
+     * @param archiveBytes - Raw ZIP archive bytes selected by the user.
+     * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
+     * @returns Promise that resolves once every entry has been written.
+     */
+    importDirectoryZip: importDirectoryZipArchive,
   };
 };
 

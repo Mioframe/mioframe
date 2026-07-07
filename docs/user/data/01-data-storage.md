@@ -39,9 +39,10 @@ Inside a local folder or Browser Storage, Mioframe keeps each document's data in
 
 `.mf` files are internal storage for the whole Mioframe space in that folder, not a standalone exported document. Treat them as part of the folder's storage, not as something to move, copy, or share individually:
 
-- Move or back up `.mf` files only as part of moving or backing up the entire Mioframe space folder.
-- Do not pick out a single `.mf` file expecting it to represent one document — open or move the whole folder instead.
-- To get a single, self-contained file for one document, use **Export JSON** instead of copying a `.mf` file.
+- Move or back up `.mf` files only as part of moving or backing up the entire Mioframe space folder, or by using **Export ZIP** on that folder.
+- Do not pick out a single `.mf` file expecting it to represent one document — use **Export ZIP** on the folder or the document instead, or open or move the whole folder.
+- To get a single, portable, human-readable file for one document, use **Export JSON** instead of copying a `.mf` file.
+- To get a faithful copy of a folder's or a document's actual storage files, use **Export ZIP** instead of copying individual `.mf` files by hand.
 
 ## Google Drive and other synced or shared folders
 
@@ -53,6 +54,6 @@ Access to that data is controlled by the storage provider or folder permissions 
 
 Browser Storage should not be your only backup for important documents.
 
-If you want a separate backup copy of a document, use Mioframe's document-level **Export JSON** action and keep the exported file somewhere you control.
+If you want a separate backup copy of a document's content, use Mioframe's document-level **Export JSON** action and keep the exported file somewhere you control. If you want a backup of a whole folder's storage, or of one document's raw storage files, use **Export ZIP** instead.
 
 For practical backup and restore steps, see [Backup and restore](./02-backup-and-restore.md). For common failure scenarios, see [Troubleshooting data problems](./03-data-troubleshooting.md).

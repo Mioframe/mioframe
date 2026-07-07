@@ -3,6 +3,7 @@ import { useDocument } from '@entity/cfrDocument';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useExportDocument } from '@feature/exportDocument';
+import { ExportZipProgressSheet, useExportDocumentZip } from '@feature/exportZip';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
@@ -22,6 +23,7 @@ enum DocumentContextEvent {
   remove,
   rename,
   exportJson,
+  exportZip,
 }
 
 const documentActionButtons = defineMenuButtonList([
@@ -34,6 +36,12 @@ const documentActionButtons = defineMenuButtonList([
   },
 
   {
+    label: 'Export ZIP',
+    symbolName: 'folder_zip',
+    key: DocumentContextEvent.exportZip,
+  },
+
+  {
     label: 'Remove',
     symbolName: 'delete_forever',
     key: DocumentContextEvent.remove,
@@ -41,6 +49,11 @@ const documentActionButtons = defineMenuButtonList([
 ]);
 
 const { saveJsonFile } = useExportDocument();
+const {
+  exportDocumentZip,
+  progress: exportZipProgress,
+  isRunning: isExportZipRunning,
+} = useExportDocumentZip();
 const { addSnackbar } = useSnackbar();
 
 const showRenameDialog = shallowRef(false);
@@ -76,10 +89,34 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
       }
       break;
     }
+    case DocumentContextEvent.exportZip: {
+      try {
+        const exported = await exportDocumentZip(directoryPath.value, documentId.value);
+
+        if (exported) {
+          addSnackbar({ text: 'ZIP exported with this document’s source storage files.' });
+        }
+      } catch (error) {
+        addSnackbar({
+          text: error instanceof DomainError ? error.message : 'Could not export the ZIP archive',
+        });
+        if (!isUserFileSelectionCancel(error)) {
+          captureDiagnosticException(error, {
+            feature: 'documentExport',
+            action: 'exportDocumentZip',
+          });
+        }
+      }
+      break;
+    }
 
     default:
       throw new Error('action key is unknown');
   }
+};
+
+const onCloseExportZipProgressSheet = () => {
+  isExportZipRunning.value = false;
 };
 
 const { state } = useDocument(directoryPath, documentId);
@@ -126,5 +163,11 @@ const onCancelRenameDialog = () => {
     :document-id="documentId"
     @renamed="onRenamedDocument"
     @cancel="onCancelRenameDialog"
+  />
+
+  <ExportZipProgressSheet
+    v-if="isExportZipRunning"
+    :progress="exportZipProgress"
+    @close="onCloseExportZipProgressSheet"
   />
 </template>

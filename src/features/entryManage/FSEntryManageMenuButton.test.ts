@@ -171,4 +171,30 @@ describe('FSEntryManageMenuButton', () => {
 
     expect(wrapper.emitted('selectRemove')).toHaveLength(1);
   });
+
+  it('emits export zip when the action is selected', async () => {
+    selectedLabel.value = 'Export ZIP';
+
+    const wrapper = await mountButton([
+      { key: 'exportZip', label: 'Export ZIP', symbolName: 'folder_zip' },
+    ] as const);
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('selectExportZip')).toHaveLength(1);
+  });
+
+  it('emits import zip when the action is selected', async () => {
+    selectedLabel.value = 'Import ZIP';
+
+    const wrapper = await mountButton([
+      { key: 'importZip', label: 'Import ZIP', symbolName: 'unarchive' },
+    ] as const);
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('selectImportZip')).toHaveLength(1);
+  });
 });

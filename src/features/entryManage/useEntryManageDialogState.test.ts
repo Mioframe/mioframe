@@ -2,12 +2,33 @@ import { ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import { useEntryManageDialogState } from './useEntryManageDialogState';
 
+const { exportDirectoryZipMock, importDirectoryZipMock } = vi.hoisted(() => ({
+  exportDirectoryZipMock: vi.fn(),
+  importDirectoryZipMock: vi.fn(),
+}));
+
 vi.mock('@feature/entryRemove', () => ({
   useRemoveFSEntry: () => ({ remove: vi.fn() }),
 }));
 
 vi.mock('@feature/importDocument', () => ({
   useImportDocumentAction: () => ({ importDocument: vi.fn() }),
+}));
+
+vi.mock('@feature/exportZip', () => ({
+  useExportDirectoryZip: () => ({
+    exportDirectoryZip: exportDirectoryZipMock,
+    progress: ref(undefined),
+    isRunning: ref(false),
+  }),
+}));
+
+vi.mock('@feature/importZip', () => ({
+  useImportZipAction: () => ({
+    importDirectoryZip: importDirectoryZipMock,
+    progress: ref(undefined),
+    isRunning: ref(false),
+  }),
 }));
 
 describe('useEntryManageDialogState', () => {
@@ -41,5 +62,16 @@ describe('useEntryManageDialogState', () => {
 
     onSelectRename();
     expect(showRenameDialog.value).toBe(true);
+  });
+
+  it('delegates ZIP export/import selections to their respective actions', async () => {
+    const path = ref('/repo/a');
+    const { onSelectExportZip, onSelectImportZip } = useEntryManageDialogState(path);
+
+    await onSelectExportZip();
+    expect(exportDirectoryZipMock).toHaveBeenCalledWith('/repo/a');
+
+    await onSelectImportZip();
+    expect(importDirectoryZipMock).toHaveBeenCalledWith('/repo/a');
   });
 });

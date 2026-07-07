@@ -316,6 +316,34 @@ export class VirtualFileSystem {
   }
 
   /**
+   * Creates a new file without overwriting an existing one at the same path.
+   * Emits {@link VfsEventType.CREATE} after a successful write.
+   * @param path - Absolute path to the file.
+   * @param content - Content (string, Blob, BufferSource).
+   * @returns Promise that resolves when the write and event emission are complete.
+   * @throws VfsError with code `FileSystemError.FileExists` if a file already exists at `path`.
+   */
+  public async createFile(path: string, content: FileContent): Promise<void> {
+    return this.activityTracker.track({ type: 'writeFile', path }, () =>
+      this.locks.request(path, async () => {
+        const { provider, relativePath } = this.resolve(path);
+
+        const { stat } = await provider.writeFile(relativePath, content, {
+          create: true,
+          overwrite: false,
+        });
+
+        this.emitVfsEvent({
+          type: VfsEventType.CREATE,
+          path,
+          nodeType: FSNodeType.File,
+          size: stat.size,
+        });
+      }),
+    );
+  }
+
+  /**
    * Reads the contents of a directory.
    * @param path - Absolute path to the directory.
    * @returns Promise that resolves to an array of `[name, stat]` tuples.

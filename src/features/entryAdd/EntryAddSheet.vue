@@ -10,6 +10,8 @@ const emit = defineEmits<{
   selectCreateDocument: [];
   /** Emitted after the user selects importing a document into the current directory. */
   selectImportDocument: [];
+  /** Emitted after the user selects importing a ZIP archive into the current directory. */
+  selectImportZip: [];
   /** Emitted after the user selects creating a directory in the current directory. */
   selectCreateDirectory: [];
 }>();
@@ -22,6 +24,11 @@ const onClickCreateDocument = () => {
 const onClickImportDocument = () => {
   emit('close');
   emit('selectImportDocument');
+};
+
+const onClickImportZip = () => {
+  emit('close');
+  emit('selectImportZip');
 };
 
 const onClickCreateDirectory = () => {
@@ -62,6 +69,17 @@ const onClosed = () => {
         >
           <template #leading>
             <MDSymbol name="upload_file" />
+          </template>
+        </MDListItem>
+
+        <MDListItem
+          mode="single-action"
+          label-text="Import ZIP"
+          supporting-text="Import a ZIP archive into this folder."
+          @action="onClickImportZip"
+        >
+          <template #leading>
+            <MDSymbol name="unarchive" />
           </template>
         </MDListItem>
 

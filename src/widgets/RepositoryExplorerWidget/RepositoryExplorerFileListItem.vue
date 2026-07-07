@@ -4,6 +4,8 @@ import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/ent
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { DocumentCreationDialog } from '@feature/documentCreate';
+import { ExportZipProgressSheet } from '@feature/exportZip';
+import { ImportZipProgressSheet } from '@feature/importZip';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { computed, toRef } from 'vue';
 import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
@@ -38,11 +40,19 @@ const {
   showCreateDirectoryDialog,
   showCreateDocumentDialog,
   showRenameDialog,
+  exportZipProgress,
+  isExportZipRunning,
+  importZipProgress,
+  isImportZipRunning,
   onSelectCreateDirectory,
   onSelectCreateDocument,
   onSelectRename,
   onSelectRemove,
   onSelectImportJson,
+  onSelectExportZip,
+  onSelectImportZip,
+  onCloseExportZipProgressSheet,
+  onCloseImportZipProgressSheet,
   onCloseCreateDirectoryDialog,
   onCloseCreateDocumentDialog,
   onCloseRenameDialog,
@@ -75,6 +85,8 @@ const onClickEntry = (name: string) => {
         @select-rename="onSelectRename"
         @select-remove="onSelectRemove"
         @select-import-json="onSelectImportJson"
+        @select-export-zip="onSelectExportZip"
+        @select-import-zip="onSelectImportZip"
       />
 
       <!-- Dialogs use TeleportContainer internally; DOM output goes to the dialog container, not into the list item. -->
@@ -97,6 +109,18 @@ const onClickEntry = (name: string) => {
         :path="entryPath"
         @cancel="onCloseRenameDialog"
         @renamed="onCloseRenameDialog"
+      />
+
+      <ExportZipProgressSheet
+        v-if="isExportZipRunning"
+        :progress="exportZipProgress"
+        @close="onCloseExportZipProgressSheet"
+      />
+
+      <ImportZipProgressSheet
+        v-if="isImportZipRunning"
+        :progress="importZipProgress"
+        @close="onCloseImportZipProgressSheet"
       />
     </template>
   </FSEntryMDListItem>

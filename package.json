@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.1.11",
+  "version": "0.2.0",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -60,6 +60,7 @@
     "browser-fs-access": "^0.38.0",
     "dayjs": "^1.11.21",
     "es-toolkit": "^1.49.0",
+    "fflate": "^0.8.3",
     "file-type": "^22.0.1",
     "focus-trap": "^8.2.2",
     "idb-keyval": "^6.2.6",

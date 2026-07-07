@@ -33,6 +33,45 @@ Next action:
 - copy the file to a normal local folder and try the import again;
 - if the file itself is unavailable or damaged and you do not have another copy, Mioframe probably cannot recover it.
 
+## ZIP import failed because the archive is damaged or not a ZIP file
+
+The selected file may not be a ZIP archive, or it may be damaged or incomplete.
+
+Next action:
+
+- choose a different file if you selected the wrong one;
+- if this file came from a backup, try another exported copy;
+- if the file content is damaged and you do not have another backup, Mioframe probably cannot recover the archive.
+
+## ZIP import failed because the archive contains an unsafe file path
+
+Mioframe rejects ZIP archives with entries that would write outside the target folder (for example, paths starting with `/` or containing `..`). Nothing is written when this happens.
+
+Next action:
+
+- confirm that the archive came from Mioframe **Export ZIP**;
+- if the archive was created or edited by another tool, it may not be a Mioframe-compatible archive — Mioframe cannot import arbitrary third-party ZIP files that use unsafe paths.
+
+## ZIP import stopped because of a conflict with existing files
+
+Import ZIP stops before writing anything if any file the archive would create already exists in the target folder. This is expected — Mioframe never overwrites, merges, or renames existing files during ZIP import.
+
+Next action:
+
+- import into an empty folder, or a folder that does not yet contain those files;
+- if you meant to restore over existing files, remove or move them outside Mioframe first, then re-import;
+- if you are unsure which files conflict, export a new ZIP of the current folder first so you can compare before removing anything.
+
+## A ZIP import stopped partway through with some files written
+
+If the browser loses folder access, or another write failure happens after the conflict check passed, Import ZIP may leave the folder with only some of the archive's files written. Mioframe does not roll back files that were already written.
+
+Next action:
+
+- check the folder contents to see which files were written;
+- grant folder access again if the browser is asking for it, then re-import the same archive — Import ZIP will now report a conflict for the files already written, so remove those from the archive or the folder before retrying with the rest;
+- if you are unsure what was written, export a fresh ZIP of the folder and compare it with the original archive.
+
 ## The document cannot be imported into the selected directory
 
 The target directory may no longer be available, may require permission again, or may not accept the write operation.
@@ -76,15 +115,17 @@ Next action:
 
 If the document existed only in Browser Storage and that storage was cleared or removed, Mioframe probably cannot recover it.
 
-## You have an exported JSON backup
+## You have an exported JSON or ZIP backup
 
 If you have an exported JSON backup, use Mioframe's **Import JSON** action to restore that one document into an available location.
 
+If you have an exported ZIP backup of a folder, use **Import ZIP** on an empty target folder to restore its raw storage files.
+
 See [Backup and restore](./02-backup-and-restore.md) for the import steps.
 
-## You do not have an exported JSON backup
+## You do not have an exported JSON or ZIP backup
 
-If you do not have an exported JSON backup, recovery depends on whether another accessible copy still exists outside Browser Storage.
+If you do not have an exported backup, recovery depends on whether another accessible copy still exists outside Browser Storage.
 
 Next action:
 
