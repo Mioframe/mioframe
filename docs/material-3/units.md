@@ -21,7 +21,7 @@ Project helper units:
 
 Legacy units:
 
-- `pt` exists in the current codebase, but it is not the target Material typography authoring unit. Do not add new Material typography tokens in `pt`. Migrate existing Material typography `pt` usage to `sp` during the foundation token audit.
+- `pt` may remain supported in PostCSS as a temporary compatibility path, but it is not the Material typography authoring unit. Do not add new Material typography tokens in `pt`.
 
 Changes to unit conversion must be treated as foundation changes because they can affect all shared UI components and visual baselines.
 
@@ -40,7 +40,7 @@ Use `sp` for Material typography authoring values.
 
 Typography values must be exposed through `md.sys.typescale.*` tokens. Components should consume those tokens and should not convert typography values locally.
 
-The foundation audit must migrate current Material typography tokens from `pt` to `sp` and add the required PostCSS `sp` conversion before component-family migration relies on the new typography tokens.
+The foundation audit has migrated current Material typography tokens from `pt` to `sp` and added shared PostCSS `sp` conversion. The current `--one-sp` mapping intentionally preserves rendered typography until a separate scaling decision is made.
 
 ## Verification
 

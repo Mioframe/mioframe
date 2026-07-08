@@ -41,6 +41,10 @@ const postcssPlugins = [
     customUnit: 'pt',
   }),
   customCssUnits({
+    baseUnit: '--one-sp',
+    customUnit: 'sp',
+  }),
+  customCssUnits({
     baseUnit: '--one-dp',
     customUnit: 'dp',
   }),

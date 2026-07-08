@@ -64,7 +64,7 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
     will-change: background-color;
     background-color: rgb(
       from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
-        var(--md-state-hover-layer-opacity, 0.08)
+        var(--md-sys-state-hover-state-layer-opacity, 0.08)
     );
   }
 
@@ -72,7 +72,7 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
   :global(.md-state_focused) > & {
     background-color: rgb(
       from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
-        var(--md-state-focus-layer-opacity, 0.1)
+        var(--md-sys-state-focus-state-layer-opacity, 0.1)
     );
   }
 
@@ -80,7 +80,7 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
   :global(.md-state_pressed) > & {
     background-color: rgb(
       from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
-        var(--md-state-pressed-layer-opacity, 0.1)
+        var(--md-sys-state-pressed-state-layer-opacity, 0.1)
     );
   }
 
@@ -88,7 +88,7 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
   :global(.md-state_dragged) > & {
     background-color: rgb(
       from var(--md-private-state-layer-color, var(--md-content-color)) r g b /
-        var(--md-state-dragged-layer-opacity, 0.16)
+        var(--md-private-state-dragged-state-layer-opacity, 0.16)
     );
   }
 
