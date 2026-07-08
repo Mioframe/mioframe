@@ -392,20 +392,52 @@ const clearSelectionWhileSuppressed = () => {
 };
 
 /**
- * Blocks the browser's default selection-extension action on mouse/pointer movement for the
- * whole suppression lifetime. Reactively clearing the selection after the fact is not
- * reliable: the browser can (re)create or extend a selection as its own default action, run
- * after a capturing listener already ran for that same move event, leaving a visible
- * selection in the gap. Mouse and pointer move events never drive page scrolling, so
- * cancelling their default action is safe for both activation and active-drag suppression.
- * @param event - Mouse or pointer move event dispatched while suppression may be active.
+ * Blocks the browser's default selection-extension action on mouse movement for the whole
+ * suppression lifetime. Reactively clearing the selection after the fact is not reliable: the
+ * browser can (re)create or extend a selection as its own default action, run after a
+ * capturing listener already ran for that same move event, leaving a visible selection in the
+ * gap. Mouse movement never drives page scrolling, so cancelling its default action is safe
+ * for both activation and active-drag suppression.
+ * @param event - Mouse move event dispatched while suppression may be active.
+ */
+const preventReorderMouseMove = (event: Event) => {
+  if (reorderSelectionSuppressionDepth === 0) {
+    return;
+  }
+
+  event.preventDefault();
+  clearActiveDocumentSelection();
+};
+
+/**
+ * Blocks the browser's default selection-extension action on pointermove, scoped by the
+ * originating pointer type. Mouse pointer input never drives page scrolling, so its default
+ * action can be cancelled for the whole suppression lifetime like {@link preventReorderMouseMove}.
+ * Touch and pen pointer input can drive page scrolling, so their default action must stay
+ * intact during activation-only suppression (a press that never becomes a drag must not block
+ * normal scrolling) and may only be cancelled once active-drag suppression is acquired. An
+ * event with an unrecognized `pointerType` is treated the same as touch/pen, since blocking
+ * scrolling by default is the unsafe direction. Selection is cleared regardless of whether
+ * the default action was prevented, since selection can still be created by other paths.
+ * @param event - Pointer move event dispatched while suppression may be active.
  */
 const preventReorderPointerLikeMove = (event: Event) => {
   if (reorderSelectionSuppressionDepth === 0) {
     return;
   }
 
-  event.preventDefault();
+  const pointerType = isPointerEvent(event) ? event.pointerType : undefined;
+
+  if (pointerType === 'mouse') {
+    event.preventDefault();
+    clearActiveDocumentSelection();
+    return;
+  }
+
+  if (reorderActiveDragMoveSuppressionDepth > 0) {
+    event.preventDefault();
+  }
+
   clearActiveDocumentSelection();
 };
 
@@ -480,11 +512,7 @@ export const acquireReorderDocumentSelectionSuppression = ({
       suppressionListenerOptions,
     );
     document.addEventListener('selectionchange', clearSelectionWhileSuppressed);
-    document.addEventListener(
-      'mousemove',
-      preventReorderPointerLikeMove,
-      suppressionListenerOptions,
-    );
+    document.addEventListener('mousemove', preventReorderMouseMove, suppressionListenerOptions);
     document.addEventListener(
       'pointermove',
       preventReorderPointerLikeMove,
@@ -526,7 +554,7 @@ export const acquireReorderDocumentSelectionSuppression = ({
       document.removeEventListener('selectionchange', clearSelectionWhileSuppressed);
       document.removeEventListener(
         'mousemove',
-        preventReorderPointerLikeMove,
+        preventReorderMouseMove,
         suppressionListenerOptions,
       );
       document.removeEventListener(

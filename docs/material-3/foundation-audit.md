@@ -226,7 +226,7 @@ The smallest safe next implementation PR is foundation token wiring, followed by
 Foundation token wiring should:
 
 - preserve the current `sp`/state-layer/debug-token foundation;
-- keep dragged documented as a private extension until a shared official token name is verified in the Material source;
+- keep dragged documented as the verified official system token `--md-sys-state-dragged-state-layer-opacity`;
 - avoid reintroducing public debug Material tokens;
 - run focused visual checks for state-layer consumers when the foundation changes again.
 

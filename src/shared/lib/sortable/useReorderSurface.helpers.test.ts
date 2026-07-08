@@ -52,6 +52,17 @@ const createState = (
   itemIdList: readonly string[] | undefined = ['a', 'b', 'c'],
 ): ReorderSurfaceState => createReorderSurfaceState(itemIdList);
 
+const createPointerMoveEvent = (pointerType: string): Event => {
+  const event = new Event('pointermove', { bubbles: true, cancelable: true });
+
+  Object.defineProperty(event, 'pointerType', {
+    value: pointerType,
+    configurable: true,
+  });
+
+  return event;
+};
+
 describe('useReorderSurface helpers', () => {
   it('clones item lists and preserves undefined as an empty list', () => {
     const source = ['a', 'b'];
@@ -581,22 +592,103 @@ describe('useReorderSurface helpers', () => {
     release();
   });
 
-  it('cancels the default action of mouse/pointer move while suppression is active, so the browser never re-creates a selection after this listener runs', () => {
+  it('cancels the default action of mousemove while suppression is active and clears selection, so the browser never re-creates a selection after this listener runs', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
     const release = acquireReorderDocumentSelectionSuppression();
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
 
     const mouseMoveEvent = new MouseEvent('mousemove', { bubbles: true, cancelable: true });
     document.dispatchEvent(mouseMoveEvent);
     expect(mouseMoveEvent.defaultPrevented).toBe(true);
-
-    const pointerMoveEvent = new Event('pointermove', { bubbles: true, cancelable: true });
-    document.dispatchEvent(pointerMoveEvent);
-    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+    expect(selection.rangeCount).toBe(0);
 
     release();
 
     const releasedMoveEvent = new MouseEvent('mousemove', { bubbles: true, cancelable: true });
     document.dispatchEvent(releasedMoveEvent);
     expect(releasedMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it('cancels the default action of pointermove with pointerType "mouse" while suppression is active', () => {
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const pointerMoveEvent = createPointerMoveEvent('mouse');
+    document.dispatchEvent(pointerMoveEvent);
+    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedPointerMoveEvent = createPointerMoveEvent('mouse');
+    document.dispatchEvent(releasedPointerMoveEvent);
+    expect(releasedPointerMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it.each(['touch', 'pen'] as const)(
+    'leaves pointermove with pointerType "%s" default-permitted during activation-only suppression, but still clears existing selection',
+    (pointerType) => {
+      const selection = document.getSelection();
+
+      if (!selection) {
+        throw new Error('Selection API is unavailable in the test environment');
+      }
+
+      const release = acquireReorderDocumentSelectionSuppression();
+
+      const range = document.createRange();
+      range.selectNode(document.body);
+      selection.addRange(range);
+
+      const pointerMoveEvent = createPointerMoveEvent(pointerType);
+      document.dispatchEvent(pointerMoveEvent);
+      expect(pointerMoveEvent.defaultPrevented).toBe(false);
+      expect(selection.rangeCount).toBe(0);
+
+      release();
+    },
+  );
+
+  it('cancels the default action of pointermove with pointerType "touch" once an active reorder drag is confirmed', () => {
+    const release = acquireReorderDocumentSelectionSuppression({ suppressTouchMoveDefault: true });
+
+    const pointerMoveEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(pointerMoveEvent);
+    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedPointerMoveEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(releasedPointerMoveEvent);
+    expect(releasedPointerMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it('keeps active-drag pointermove prevention scoped to the token that requested it under nested activation + active-drag acquisition', () => {
+    const activationRelease = acquireReorderDocumentSelectionSuppression();
+    const dragRelease = acquireReorderDocumentSelectionSuppression({
+      suppressTouchMoveDefault: true,
+    });
+
+    const pointerMoveEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(pointerMoveEvent);
+    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+
+    dragRelease();
+
+    const afterDragReleaseEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(afterDragReleaseEvent);
+    expect(afterDragReleaseEvent.defaultPrevented).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    activationRelease();
   });
 
   it('leaves touchmove default-permitted during mere activation, so normal scrolling still works for presses that never become a drag', () => {
