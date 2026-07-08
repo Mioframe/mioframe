@@ -58,7 +58,10 @@ const { hasActions: hasDirectoryManageActions, nonEmptyActionButtons: directoryM
     canEditChildren: directoryCanEditChildren,
     canChangePath: directoryCanChangePath,
     canDelete: directoryCanDelete,
-    showDocumentActions: computed(() => false),
+    // Document creation stays in the Add sheet/FAB; import actions belong to this directory's
+    // own context menu, not to document-creation gating.
+    showCreateDocumentAction: computed(() => false),
+    showImportActions: computed(() => true),
   });
 
 const {
@@ -86,6 +89,9 @@ const onSelectExportZip = async () => {
 };
 const onSelectImportZip = async () => {
   await importDirectoryZip(directoryPath.value);
+};
+const onManageSelectImportJson = async () => {
+  await importDocument(directoryPath.value);
 };
 
 watch(directoryPath, () => {
@@ -165,6 +171,8 @@ const onClickReturnHome = async () => {
             @select-rename="onManageSelectRename"
             @select-remove="onManageSelectRemove"
             @select-export-zip="onSelectExportZip"
+            @select-import-json="onManageSelectImportJson"
+            @select-import-zip="onSelectImportZip"
           />
         </template>
       </MDAppBar>
@@ -189,7 +197,6 @@ const onClickReturnHome = async () => {
       @select-create-directory="onSelectCreateDirectory"
       @select-create-document="onSelectCreateDocument"
       @select-import-document="onSelectImportDocument"
-      @select-import-zip="onSelectImportZip"
     />
 
     <ExportZipDialog

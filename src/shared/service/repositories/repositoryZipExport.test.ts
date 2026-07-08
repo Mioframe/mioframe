@@ -47,7 +47,7 @@ const collectChunks = () => {
 };
 
 describe('exportDirectoryZip', () => {
-  it('packs raw directory contents, including internal-looking files, under a sanitized root', async () => {
+  it('packs raw directory contents, including internal-looking files, directly at archive root', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/repo');
     await vfs.writeFile('/repo/file.txt', 'hello');
@@ -61,15 +61,16 @@ describe('exportDirectoryZip', () => {
     await exportDirectoryZip(vfs, flushRepositoryPath, '/repo', onChunk, onProgress);
     const unpacked = unpackZipArchive(merge());
 
-    expect(new TextDecoder().decode(unpacked['repo/file.txt'])).toBe('hello');
-    expect(new TextDecoder().decode(unpacked['repo/.mioframe-marker'])).toBe('marker');
-    expect(Object.keys(unpacked)).toContain('repo/empty/');
+    expect(new TextDecoder().decode(unpacked['file.txt'])).toBe('hello');
+    expect(new TextDecoder().decode(unpacked['.mioframe-marker'])).toBe('marker');
+    expect(Object.keys(unpacked)).toContain('empty/');
+    expect(Object.keys(unpacked).some((entryPath) => entryPath.startsWith('repo/'))).toBe(false);
     expect(flushRepositoryPath).toHaveBeenCalledWith('/repo');
     expect(onProgress).toHaveBeenCalledWith({ phase: 'preparing' });
     expect(onProgress).toHaveBeenCalledWith({ phase: 'packing' });
   });
 
-  it('recurses into nested directories and flushes each one before reading it', async () => {
+  it('recurses into nested directories, preserving relative paths, and flushes each one before reading it', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/repo');
     await vfs.createDirectory('/repo/nested');
@@ -81,20 +82,20 @@ describe('exportDirectoryZip', () => {
     await exportDirectoryZip(vfs, flushRepositoryPath, '/repo', onChunk);
     const unpacked = unpackZipArchive(merge());
 
-    expect(new TextDecoder().decode(unpacked['repo/nested/deep.txt'])).toBe('deep content');
+    expect(new TextDecoder().decode(unpacked['nested/deep.txt'])).toBe('deep content');
     expect(flushRepositoryPath).toHaveBeenCalledWith('/repo');
     expect(flushRepositoryPath).toHaveBeenCalledWith('/repo/nested');
   });
 
-  it('falls back to a stable root name when the directory has no usable basename', async () => {
+  it('produces a valid, empty ZIP archive when the selected directory is empty', async () => {
     const vfs = createVfs();
-    await vfs.writeFile('/file.txt', 'root file');
+    await vfs.createDirectory('/repo');
     const { onChunk, merge } = collectChunks();
 
-    await exportDirectoryZip(vfs, vi.fn().mockResolvedValue(undefined), '/', onChunk);
+    await exportDirectoryZip(vfs, vi.fn().mockResolvedValue(undefined), '/repo', onChunk);
     const unpacked = unpackZipArchive(merge());
 
-    expect(new TextDecoder().decode(unpacked['root/file.txt'])).toBe('root file');
+    expect(Object.keys(unpacked)).toEqual([]);
   });
 
   it('never holds more than one produced chunk before delivery resolves', async () => {
@@ -120,7 +121,7 @@ describe('exportDirectoryZip', () => {
 describe('exportDocumentZip', () => {
   const documentId = new Repo().create({}).documentId;
 
-  it('packs the document storage files under a document-id folder and flushes just that document', async () => {
+  it('packs the document storage files directly at archive root, without a documentId wrapper, and flushes just that document', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/repo');
     await vfs.writeFile('/repo/storage-file-1', 'chunk one');
@@ -137,8 +138,11 @@ describe('exportDocumentZip', () => {
     await exportDocumentZip(vfs, flushRepositoryPath, '/repo', documentId, onChunk, onProgress);
     const unpacked = unpackZipArchive(merge());
 
-    expect(new TextDecoder().decode(unpacked[`${documentId}/storage-file-1`])).toBe('chunk one');
-    expect(new TextDecoder().decode(unpacked[`${documentId}/storage-file-2`])).toBe('chunk two');
+    expect(new TextDecoder().decode(unpacked['storage-file-1'])).toBe('chunk one');
+    expect(new TextDecoder().decode(unpacked['storage-file-2'])).toBe('chunk two');
+    expect(Object.keys(unpacked).some((entryPath) => entryPath.startsWith(`${documentId}/`))).toBe(
+      false,
+    );
     expect(flushRepositoryPath).toHaveBeenCalledWith('/repo', [documentId]);
     expect(onProgress).toHaveBeenCalledWith({ phase: 'reading', current: 1, total: 2 });
     expect(onProgress).toHaveBeenCalledWith({ phase: 'reading', current: 2, total: 2 });

@@ -67,6 +67,29 @@ describe('importDirectoryZip', () => {
     await expect(vfs.exists('/target/root/other.txt')).resolves.toBe(false);
   });
 
+  it('stops before writing anything when a root-level target file already exists (contents-only archive layout)', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.writeFile('/target/file.txt', 'already here');
+
+    const archiveFile = toArchiveFile({
+      'file.txt': new TextEncoder().encode('new content'),
+      'other.txt': new TextEncoder().encode('other content'),
+    });
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
+    await expect(vfs.readText('/target/file.txt')).resolves.toBe('already here');
+    await expect(vfs.exists('/target/other.txt')).resolves.toBe(false);
+  });
+
   it('stops before writing anything when a target file exists where the archive expects a directory', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');

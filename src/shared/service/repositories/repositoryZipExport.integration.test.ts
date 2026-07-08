@@ -89,17 +89,17 @@ describe('exportDocumentZip integration: storage freshness', () => {
     await repo.shutdown();
 
     const unpacked = unpackZipArchive(merge());
-    const exportedEntries = Object.entries(unpacked).filter(([entryPath]) =>
-      entryPath.startsWith(`${documentId}/`),
-    );
+    const exportedEntries = Object.entries(unpacked);
     expect(exportedEntries.length).toBeGreaterThan(0);
+    expect(exportedEntries.every(([entryPath]) => !entryPath.startsWith(`${documentId}/`))).toBe(
+      true,
+    );
 
     const reimportVfs = new VirtualFileSystem();
     reimportVfs.mount('/', new MemoryFileSystem());
     await reimportVfs.createDirectory(path);
 
-    for (const [entryPath, content] of exportedEntries) {
-      const fileName = entryPath.slice(`${documentId}/`.length);
+    for (const [fileName, content] of exportedEntries) {
       // eslint-disable-next-line no-await-in-loop -- small, sequential fixture rehydration
       await reimportVfs.writeFile(`${path}/${fileName}`, content);
     }

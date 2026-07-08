@@ -9,12 +9,17 @@ const hasActionsRef = ref(false);
 const nonEmptyActionButtonsRef = ref<NonEmptyMenuButtonList | null>(
   defineMenuButtonList([{ key: 'rename', label: 'Rename', symbolName: 'edit' }] as const),
 );
-const capturedShowDocumentActions: Array<boolean | undefined> = [];
+const capturedShowCreateDocumentAction: Array<boolean | undefined> = [];
+const capturedShowImportActions: Array<boolean | undefined> = [];
 const capturedManageButtonProps: Array<{ path: string; actionsLength: number }> = [];
 
 vi.mock('@feature/entryManage', () => ({
-  useFSEntryManageActions: (options: { showDocumentActions?: { value?: boolean | undefined } }) => {
-    capturedShowDocumentActions.push(options.showDocumentActions?.value);
+  useFSEntryManageActions: (options: {
+    showCreateDocumentAction?: { value?: boolean | undefined };
+    showImportActions?: { value?: boolean | undefined };
+  }) => {
+    capturedShowCreateDocumentAction.push(options.showCreateDocumentAction?.value);
+    capturedShowImportActions.push(options.showImportActions?.value);
     return {
       hasActions: hasActionsRef,
       actionButtons: ref([]),
@@ -120,7 +125,8 @@ describe('RepositoryExplorerFileListItem', () => {
     nonEmptyActionButtonsRef.value = defineMenuButtonList([
       { key: 'rename', label: 'Rename', symbolName: 'edit' },
     ] as const);
-    capturedShowDocumentActions.length = 0;
+    capturedShowCreateDocumentAction.length = 0;
+    capturedShowImportActions.length = 0;
     capturedManageButtonProps.length = 0;
     document.body.innerHTML = '';
   });
@@ -207,16 +213,18 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(false);
   });
 
-  it('passes showDocumentActions=true for directory entries', async () => {
+  it('passes showCreateDocumentAction=true and showImportActions=true for directory entries', async () => {
     await mountItem({ entryType: FSNodeType.Directory });
 
-    expect(capturedShowDocumentActions.at(-1)).toBe(true);
+    expect(capturedShowCreateDocumentAction.at(-1)).toBe(true);
+    expect(capturedShowImportActions.at(-1)).toBe(true);
   });
 
-  it('passes showDocumentActions=false for file entries', async () => {
+  it('passes showCreateDocumentAction=false and showImportActions=false for file entries', async () => {
     await mountItem({ entryType: FSNodeType.File });
 
-    expect(capturedShowDocumentActions.at(-1)).toBe(false);
+    expect(capturedShowCreateDocumentAction.at(-1)).toBe(false);
+    expect(capturedShowImportActions.at(-1)).toBe(false);
   });
 
   it('does not mount ZIP dialogs', async () => {

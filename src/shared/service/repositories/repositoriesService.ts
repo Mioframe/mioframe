@@ -452,7 +452,7 @@ const setupRepositoriesService = () => {
   ) => exportDirectoryZip(vfs, flushRepositoryPathForExport, path, onChunk, onProgress);
 
   /**
-   * Streams one document's storage files, in a folder-like archive layout, as a ZIP archive.
+   * Streams one document's storage files, written directly at archive root, as a ZIP archive.
    * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
    * Delivers packed bytes through `onChunk` instead of returning the full archive, so it never
    * holds the whole archive in memory.
@@ -548,7 +548,7 @@ const setupRepositoriesService = () => {
      */
     exportDirectoryZip: exportDirectoryZipArchive,
     /**
-     * Streams one document's storage files, in a folder-like archive layout, as a ZIP archive.
+     * Streams one document's storage files, written directly at archive root, as a ZIP archive.
      * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
      * Delivers packed bytes through `onChunk` instead of returning the full archive.
      * @param path - Absolute path to the directory containing the document.

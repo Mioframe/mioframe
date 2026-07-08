@@ -36,7 +36,8 @@ type FSEntryManageActionsArgs = {
   canEditChildren: ComputedRef<boolean | undefined>;
   canChangePath: ComputedRef<boolean | undefined>;
   canDelete: ComputedRef<boolean | undefined>;
-  showDocumentActions: ComputedRef<boolean>;
+  showCreateDocumentAction: ComputedRef<boolean>;
+  showImportActions: ComputedRef<boolean>;
 };
 const useFSEntryManageActionsMock = vi.fn<(args: FSEntryManageActionsArgs) => unknown>();
 
@@ -133,13 +134,7 @@ vi.mock('@feature/directoryCreate', () => ({
 vi.mock('@feature/entryAdd', () => ({
   EntryAddSheet: defineComponent({
     name: 'EntryAddSheetStub',
-    emits: [
-      'close',
-      'selectCreateDirectory',
-      'selectCreateDocument',
-      'selectImportDocument',
-      'selectImportZip',
-    ],
+    emits: ['close', 'selectCreateDirectory', 'selectCreateDocument', 'selectImportDocument'],
     setup(_props, { emit }) {
       return () =>
         h('div', { 'data-testid': 'entry-add-sheet' }, [
@@ -169,15 +164,6 @@ vi.mock('@feature/entryAdd', () => ({
               },
             },
             'Import from sheet',
-          ),
-          h(
-            'button',
-            {
-              onClick: () => {
-                emit('selectImportZip');
-              },
-            },
-            'Import ZIP from sheet',
           ),
           h(
             'button',
@@ -299,19 +285,41 @@ vi.mock('@shared/ui/Button', () => ({
 vi.mock('@widget/RepositoryExplorerWidget', () => ({
   RepositoryExplorerEntryManageButton: defineComponent({
     name: 'RepositoryExplorerEntryManageButtonStub',
-    emits: ['selectExportZip'],
+    emits: ['selectExportZip', 'selectImportZip', 'selectImportJson'],
     setup(_props, { emit }) {
       return () =>
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => {
-              emit('selectExportZip');
+        h('span', [
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectExportZip');
+              },
             },
-          },
-          'Current directory actions: Create directory',
-        );
+            'Current directory actions: Create directory',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectImportZip');
+              },
+            },
+            'Current directory actions: Import ZIP',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectImportJson');
+              },
+            },
+            'Current directory actions: Import JSON',
+          ),
+        ]);
     },
   }),
   RepositoryExplorerWidget: defineComponent({
@@ -570,12 +578,13 @@ describe('RepoExplorerPane', () => {
     expect(args?.canDelete.value).toBeUndefined();
   });
 
-  it('requests directory-scoped manage actions without document actions', async () => {
+  it('requests directory-scoped manage actions with import actions but without document creation', async () => {
     await mountPane();
 
     const args = useFSEntryManageActionsMock.mock.calls.at(-1)?.[0];
     expect(args?.entryType.value).toBe(FSNodeType.Directory);
-    expect(args?.showDocumentActions.value).toBe(false);
+    expect(args?.showCreateDocumentAction.value).toBe(false);
+    expect(args?.showImportActions.value).toBe(true);
   });
 
   it('closes the add sheet when it emits close', async () => {
@@ -640,13 +649,42 @@ describe('RepoExplorerPane', () => {
     expect(exportDirectoryZipMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
   });
 
-  it('delegates import ZIP from the add sheet to the shared import action', async () => {
+  it('does not expose Import ZIP as an add-sheet action', async () => {
     const wrapper = await mountPane();
 
     await wrapper.get('button[aria-label="Add"]').trigger('click');
-    await wrapper.findAll('[data-testid="entry-add-sheet"] button')[3]?.trigger('click');
+
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').text()).not.toContain('Import ZIP');
+  });
+
+  it('delegates import ZIP from the current-directory manage menu to the shared import action', async () => {
+    const wrapper = await mountPane();
+    const importZipButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Current directory actions: Import ZIP');
+
+    if (!importZipButton) {
+      throw new Error('Expected the current-directory Import ZIP action');
+    }
+
+    await importZipButton.trigger('click');
 
     expect(importDirectoryZipMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
+  });
+
+  it('delegates import JSON from the current-directory manage menu to the shared import action', async () => {
+    const wrapper = await mountPane();
+    const importJsonButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Current directory actions: Import JSON');
+
+    if (!importJsonButton) {
+      throw new Error('Expected the current-directory Import JSON action');
+    }
+
+    await importJsonButton.trigger('click');
+
+    expect(importDocumentMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
   });
 
   it('does not render ZIP dialogs by default', async () => {

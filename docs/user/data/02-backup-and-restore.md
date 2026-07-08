@@ -11,9 +11,9 @@ These actions are document-level only, and JSON is a content snapshot — it doe
 
 ## What Export ZIP and Import ZIP do
 
-- **Export ZIP** on a folder saves that folder's raw storage contents as a ZIP archive, including internal Mioframe storage files (`.mf` chunks and the folder's marker file). This is a storage-level export, not a document snapshot.
-- **Export ZIP** on a document saves that document's own storage files (its `.mf` chunks) as a ZIP archive, in a folder-like layout. This is not the same as Export JSON — it does not produce a JSON snapshot, and it is not meant to be opened outside Mioframe.
-- **Import ZIP** unpacks a previously exported ZIP archive into a folder you choose. Mioframe checks the archive first — files, folders, and any path the archive uses inconsistently as both a file and a folder — and only starts writing if none of those conflict with what is already in that folder.
+- **Export ZIP** on a folder archives the contents of that folder — the files and sub-folders inside it, including internal Mioframe storage files (`.mf` chunks and marker files) — directly at the top of the ZIP archive. This is a storage-level export, not a document snapshot. It does not create an extra folder inside the archive named after the exported folder.
+- **Export ZIP** on a document archives that document's own storage files (its `.mf` chunks) directly at the top of the ZIP archive, using their storage file names. It does not wrap them in a folder named after the document's internal id. This is not the same as Export JSON — it does not produce a JSON snapshot, and it is not meant to be opened outside Mioframe.
+- **Import ZIP** unpacks the archive's contents directly into the folder you choose. It does not create an extra folder automatically — if you want the imported contents inside a new nested folder, create (or open) that folder first and import into it. Mioframe checks the archive first — files, folders, and any path the archive uses inconsistently as both a file and a folder — and only starts writing if none of those conflict with what is already in that folder.
 
 Use ZIP when you want a faithful copy of Mioframe's own storage (for example, to restore a whole folder later). Use JSON when you want a single, portable, human-readable snapshot of one document's content.
 
@@ -80,7 +80,9 @@ If your browser does not support saving files directly to disk during export, Mi
 
 ## How to import a ZIP archive into a folder
 
-- To import into the folder you currently have open, use **Add** → **Import ZIP**.
+Import ZIP is a folder options-menu action, not an **Add** sheet action.
+
+- To import into the folder you currently have open, use that folder's own options menu (in the app bar) → **Import ZIP**.
 - To import into a sub-folder without opening it first, use that sub-folder's own options menu (next to its name in the folder listing) → **Import ZIP**.
 
 Then choose the ZIP file.

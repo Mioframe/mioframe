@@ -9,9 +9,9 @@ import { ExportZipErrorCode } from './exportZipErrorCode';
 import type { ExportZipDialogState } from './useExportDirectoryZip';
 
 /**
- * Creates the document ZIP export action. Exports a document's storage files, in a folder-like
- * archive layout, as a ZIP archive saved through the browser's save picker. This reads raw
- * storage files, not the decoded document state — it is not a JSON snapshot.
+ * Creates the document ZIP export action. Exports a document's storage files directly at archive
+ * root, as a ZIP archive saved through the browser's save picker. This reads raw storage files,
+ * not the decoded document state — it is not a JSON snapshot.
  * @returns The export action plus reactive progress and running state.
  */
 export const useExportDocumentZip = () => {

@@ -37,14 +37,15 @@ const emit = defineEmits<{
   selectImportZip: [entryPath: string];
 }>();
 
-const showDocumentActions = computed(() => props.entryType === FSNodeType.Directory);
+const isDirectoryEntry = computed(() => props.entryType === FSNodeType.Directory);
 
 const { hasActions, nonEmptyActionButtons } = useFSEntryManageActions({
   entryType: toRef(props, 'entryType'),
   canEditChildren: toRef(props, 'canEditChildren'),
   canChangePath: toRef(props, 'canChangePath'),
   canDelete: toRef(props, 'canDelete'),
-  showDocumentActions,
+  showCreateDocumentAction: isDirectoryEntry,
+  showImportActions: isDirectoryEntry,
 });
 
 const entryPath = computed(() => PathUtils.join(props.directoryPath, props.name));

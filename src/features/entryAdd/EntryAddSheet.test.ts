@@ -78,20 +78,23 @@ describe('EntryAddSheet', () => {
 
     expect(wrapper.text()).toContain('Create document');
     expect(wrapper.text()).toContain('Import document');
-    expect(wrapper.text()).toContain('Import ZIP');
     expect(wrapper.text()).toContain('Create directory');
 
     const buttons = wrapper.findAll('button');
     await buttons[0]?.trigger('click');
     await buttons[1]?.trigger('click');
     await buttons[2]?.trigger('click');
-    await buttons[3]?.trigger('click');
 
-    expect(wrapper.emitted('close')).toHaveLength(4);
+    expect(wrapper.emitted('close')).toHaveLength(3);
     expect(wrapper.emitted('selectCreateDocument')).toHaveLength(1);
     expect(wrapper.emitted('selectImportDocument')).toHaveLength(1);
-    expect(wrapper.emitted('selectImportZip')).toHaveLength(1);
     expect(wrapper.emitted('selectCreateDirectory')).toHaveLength(1);
+  });
+
+  it('does not expose Import ZIP as an Add sheet action', () => {
+    const wrapper = mount(EntryAddSheet);
+
+    expect(wrapper.text()).not.toContain('Import ZIP');
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

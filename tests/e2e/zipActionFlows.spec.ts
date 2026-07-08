@@ -1,11 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
 import { zipSync } from 'fflate';
 import {
+  closeBottomSheet,
   closeDocumentPane,
   createDatabaseDocument,
   createDirectory,
   createUniqueName,
   launchApp,
+  openDirectory,
   openDocumentFromExplorer,
   openEntryAddSheet,
   openOpfs,
@@ -43,12 +45,22 @@ const openEntryOptionsMenu = async (page: Page, entryName: string) => {
     .click();
 };
 
-test('current folder Add action exposes Import ZIP', async ({ page }) => {
+test('current/open folder context menu exposes Import ZIP and Import JSON, not the Add sheet', async ({
+  page,
+}) => {
   await launchApp(page);
   await openOpfs(page);
 
+  const directoryName = await createDirectory(page, createUniqueName('zip-import-current-dir'));
+  await openDirectory(page, directoryName);
+
   const addSheet = await openEntryAddSheet(page);
-  await expect(addSheet.getByText(/^import zip$/i)).toBeVisible();
+  await expect(addSheet.getByText(/^import zip$/i)).toHaveCount(0);
+  await closeBottomSheet(page, /^add$/i);
+
+  await openEntryOptionsMenu(page, directoryName);
+  await expect(page.getByRole('menuitem', { name: /^import zip$/i })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^import json$/i })).toBeVisible();
 });
 
 test('directory options menu exposes Export ZIP, and exporting shows the ZIP dialog until closed', async ({

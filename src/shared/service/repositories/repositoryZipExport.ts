@@ -3,7 +3,6 @@ import { DomainError } from '@shared/lib/error';
 import { FSNodeType, PathUtils, type VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import {
   createZipArchiveWriter,
-  sanitizeArchiveRootName,
   streamBlobChunks,
   type ZipArchiveWriter,
 } from '@shared/lib/zipArchive';
@@ -34,13 +33,17 @@ const writeDirectoryEntriesRecursively = async (
   const directoryEntries = await vfs.readDirectory(directoryPath);
 
   if (directoryEntries.length === 0) {
-    await writer.writeDirectoryEntry(archivePath);
+    // The archive root itself (`archivePath === ''`) has no directory entry of its own — an empty
+    // selected directory then produces a valid, empty ZIP archive with no entries at all.
+    if (archivePath) {
+      await writer.writeDirectoryEntry(archivePath);
+    }
     return;
   }
 
   for (const [name, stat] of directoryEntries) {
     const childPath = PathUtils.join(directoryPath, name);
-    const childArchivePath = `${archivePath}/${name}`;
+    const childArchivePath = archivePath ? `${archivePath}/${name}` : name;
 
     if (stat.type === FSNodeType.Directory) {
       // eslint-disable-next-line no-await-in-loop -- recursive tree walk stays ordered per directory
@@ -66,7 +69,9 @@ const writeDirectoryEntriesRecursively = async (
 
 /**
  * Streams a ZIP archive of a directory's raw storage contents, including internal Mioframe
- * storage files such as `.mf` chunks and repository marker files. Flushes each nested
+ * storage files such as `.mf` chunks and repository marker files. Archive entry paths are
+ * relative to the selected directory itself — the archive has no wrapper folder named after the
+ * exported directory, so its contents land directly at archive root. Flushes each nested
  * repository's pending Automerge saves before reading its storage files so the export reflects
  * the latest document state.
  *
@@ -88,7 +93,6 @@ export const exportDirectoryZip = async (
 ): Promise<void> => {
   onProgress?.({ phase: 'preparing' });
 
-  const archiveRoot = sanitizeArchiveRootName(PathUtils.basename(path), 'root');
   const writer = createZipArchiveWriter(onChunk);
 
   await writeDirectoryEntriesRecursively(
@@ -96,7 +100,7 @@ export const exportDirectoryZip = async (
     flushRepositoryPath,
     writer,
     path,
-    archiveRoot,
+    '',
     { current: 0 },
     onProgress,
   );
@@ -107,10 +111,11 @@ export const exportDirectoryZip = async (
 };
 
 /**
- * Streams a ZIP archive of one document's storage files, in a folder-like archive layout rooted
- * at the document id. Flushes the document's pending Automerge saves before reading storage
- * files so the export reflects the latest document state. This reads raw storage files, not the
- * decoded document state — it is not a JSON snapshot.
+ * Streams a ZIP archive of one document's storage files, written directly at archive root using
+ * their storage file names — the archive is not wrapped in a folder named after the document's
+ * technical id. Flushes the document's pending Automerge saves before reading storage files so
+ * the export reflects the latest document state. This reads raw storage files, not the decoded
+ * document state — it is not a JSON snapshot.
  *
  * Reads and packs one file at a time and delivers packed bytes through `onChunk` as they become
  * available, so the archive is never held in memory as one contiguous buffer.
@@ -151,7 +156,7 @@ export const exportDocumentZip = async (
     // eslint-disable-next-line no-await-in-loop -- sequential reads keep progress reporting simple
     const file = await vfs.readFile(PathUtils.join(path, name));
     // eslint-disable-next-line no-await-in-loop -- sequential writes keep archive entry order stable
-    await writer.writeFileEntry(`${documentId}/${name}`, streamBlobChunks(file));
+    await writer.writeFileEntry(name, streamBlobChunks(file));
     current += 1;
     onProgress?.({ phase: 'reading', current, total: documentStorageFiles.length });
   }
