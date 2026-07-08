@@ -16,6 +16,8 @@ If implementation creates or materially changes a public shared `MD*` component,
 
 Do not introduce a new public shared `MD*` component as incidental support for another task. Either keep the UI local/non-public, reuse an existing shared primitive, or complete the full shared Material component-family workflow for the new component.
 
+This applies just as strongly to consumers: `features`, `widgets`, and `pages` must compose existing shared `MD*` primitives (e.g. `MDDialog`, `MDCircularProgressIndicator`) rather than reimplementing Material-like dialog/sheet/overlay/scrim/progress anatomy locally. See `material3-guidelines`'s "Documented composition only" section.
+
 ## Before the first production edit
 
 Define, in a few lines:

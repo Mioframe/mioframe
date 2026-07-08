@@ -121,6 +121,14 @@ For PR summaries or task handoff, name the checked Material 3 pages, components,
 
 For the fast path, include only the `Material impact: none; existing Material surface unchanged` note.
 
+## Documented composition only
+
+Mioframe follows documented Material 3 / Material 3 Expressive components and documented component compositions. Do not invent `MD*` components or Material-like surfaces that are not backed by Material documentation.
+
+- `features`, `widgets`, and `pages` must not implement their own Material-like dialogs, sheets, overlays, scrims, progress surfaces, elevation surfaces, or component anatomy; compose the existing shared `MD*` primitive instead (e.g. a status/progress flow uses `MDDialog` + `MDCircularProgressIndicator`, not a feature-owned modal).
+- If a needed pattern is not directly covered by Material docs, stop and resolve architecture before coding — do not improvise a surface to unblock the task.
+- Project-specific surfaces must not use `MD*` naming and must not claim Material alignment unless there is a source-backed mapping to an official Material 3 page.
+
 ## Anti-patterns
 
 - Do not use Material 3 as a visual-only style guide; interaction, tokens, API names, accessibility, and UX guidance also apply.
