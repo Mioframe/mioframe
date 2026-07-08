@@ -71,8 +71,15 @@ const emptyText = computed(() =>
 <template>
   <section class="repository-explorer-files-section" aria-labelledby="mioframe-files-title">
     <div class="repository-explorer-files-section__copy">
-      <h2 id="mioframe-files-title" class="repository-explorer-files-section__title">Files</h2>
-      <p class="repository-explorer-files-section__supporting-text">{{ supportingText }}</p>
+      <h2
+        id="mioframe-files-title"
+        class="repository-explorer-files-section__title md-typescale-title-medium"
+      >
+        Files
+      </h2>
+      <p class="repository-explorer-files-section__supporting-text md-typescale-body-small">
+        {{ supportingText }}
+      </p>
     </div>
 
     <MDList v-if="hasRegularFiles" class="repository-explorer-files-section__list">
@@ -93,7 +100,9 @@ const emptyText = computed(() =>
       />
     </MDList>
 
-    <p v-else class="repository-explorer-files-section__empty-text">{{ emptyText }}</p>
+    <p v-else class="repository-explorer-files-section__empty-text md-typescale-body-small">
+      {{ emptyText }}
+    </p>
 
     <ExportZipDialog
       v-if="exportZipVisibleState"
@@ -122,31 +131,16 @@ const emptyText = computed(() =>
 
   &__title {
     margin: 0;
-    font-family: var(--md-sys-typescale-title-medium-font);
-    font-size: var(--md-sys-typescale-title-medium-size);
-    font-weight: var(--md-sys-typescale-title-medium-weight);
-    line-height: var(--md-sys-typescale-title-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
   }
 
   &__supporting-text {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-small-font);
-    font-size: var(--md-sys-typescale-body-small-size);
-    font-weight: var(--md-sys-typescale-body-small-weight);
-    line-height: var(--md-sys-typescale-body-small-line-height);
-    letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
   &__empty-text {
     margin: 0;
     padding: 0 16px;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-small-font);
-    font-size: var(--md-sys-typescale-body-small-size);
-    font-weight: var(--md-sys-typescale-body-small-weight);
-    line-height: var(--md-sys-typescale-body-small-line-height);
-    letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
 }
 </style>
