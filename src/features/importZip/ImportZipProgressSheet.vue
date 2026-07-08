@@ -4,10 +4,15 @@ import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import type { ZipImportProgress } from '@shared/service';
+import type { ImportZipDialogState } from './useImportZipAction';
 
 const props = defineProps<{
-  /** Current import progress, or `undefined` before the first phase is reported. */
-  progress?: ZipImportProgress | undefined;
+  /** Current import dialog lifecycle state: running, success, or error. */
+  state: ImportZipDialogState;
+}>();
+
+const emit = defineEmits<{
+  close: [];
 }>();
 
 const PHASE_LABELS: Record<ZipImportProgress['phase'], string> = {
@@ -16,28 +21,66 @@ const PHASE_LABELS: Record<ZipImportProgress['phase'], string> = {
   unpacking: 'Writing files…',
 };
 
-const phaseLabel = computed(() => PHASE_LABELS[props.progress?.phase ?? 'validatingArchive']);
+const headline = computed(() => {
+  switch (props.state.status) {
+    case 'success':
+      return 'ZIP archive imported';
+    case 'error':
+      return 'Could not import ZIP archive';
+    default:
+      return 'Importing ZIP archive';
+  }
+});
+
+const supportingText = computed(() => {
+  switch (props.state.status) {
+    case 'running':
+      return PHASE_LABELS[props.state.progress?.phase ?? 'validatingArchive'];
+    case 'success':
+    case 'error':
+      return props.state.message;
+    default:
+      return '';
+  }
+});
+
+const applyLabel = computed(() => (props.state.status === 'error' ? 'Close' : 'Done'));
+
+const isLoading = computed(() => props.state.status === 'running');
 
 const progressCountLabel = computed(() => {
-  const { current, total } = props.progress ?? {};
+  if (props.state.status !== 'running') {
+    return undefined;
+  }
+
+  const { current, total } = props.state.progress ?? {};
   return current !== undefined && total !== undefined ? `${current} / ${total}` : undefined;
 });
 
 const progressFraction = computed(() => {
-  const { current, total } = props.progress ?? {};
+  if (props.state.status !== 'running') {
+    return 0;
+  }
+
+  const { current, total } = props.state.progress ?? {};
   return current !== undefined && total !== undefined && total > 0 ? current / total : 0;
 });
+
+const onApply = () => {
+  emit('close');
+};
 </script>
 
 <template>
   <MDDialog
-    headline="Importing ZIP archive"
-    :supporting-text="phaseLabel"
-    apply-label="Done"
+    :headline="headline"
+    :supporting-text="supportingText"
+    :apply-label="applyLabel"
     :has-cancel-action="false"
-    :loading="true"
+    :loading="isLoading"
+    @apply="onApply"
   >
-    <div class="import-zip-progress-sheet__body">
+    <div v-if="state.status === 'running'" class="import-zip-progress-sheet__body">
       <MDCircularProgressIndicator :progress="progressFraction" :size="48" />
       <p
         v-if="progressCountLabel"

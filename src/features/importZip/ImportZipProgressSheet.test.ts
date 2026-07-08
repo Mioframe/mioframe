@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import ImportZipProgressSheet from './ImportZipProgressSheet.vue';
+import type { ImportZipDialogState } from './useImportZipAction';
 
 vi.mock('@shared/ui/Dialog', () => ({
   MDDialog: defineComponent({
@@ -14,7 +15,8 @@ vi.mock('@shared/ui/Dialog', () => ({
       hasCancelAction: { type: Boolean, default: false },
       loading: { type: [Boolean, Number], default: false },
     },
-    setup(props, { slots }) {
+    emits: ['apply'],
+    setup(props, { slots, emit }) {
       return () =>
         h(
           'div',
@@ -24,6 +26,9 @@ vi.mock('@shared/ui/Dialog', () => ({
             'data-apply-label': props.applyLabel,
             'data-has-cancel-action': props.hasCancelAction,
             'data-loading': props.loading,
+            onClick: () => {
+              emit('apply');
+            },
           },
           slots.default?.(),
         );
@@ -41,20 +46,25 @@ vi.mock('@shared/ui/ProgressIndicators', () => ({
   }),
 }));
 
+const mountSheet = (state: ImportZipDialogState) =>
+  mount(ImportZipProgressSheet, { props: { state } });
+
 describe('ImportZipProgressSheet', () => {
-  it('renders through MDDialog as a non-cancellable loading dialog', () => {
-    const wrapper = mount(ImportZipProgressSheet);
+  it('renders the running state through MDDialog as a non-cancellable loading dialog', () => {
+    const wrapper = mountSheet({ status: 'running' });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Importing ZIP archive');
     expect(dialog.attributes('data-supporting-text')).toBe('Validating archive…');
     expect(dialog.attributes('data-has-cancel-action')).toBe('false');
     expect(dialog.attributes('data-loading')).toBe('true');
+    expect(dialog.attributes('data-apply-label')).toBe('Done');
   });
 
   it('passes the current phase as supporting text and count in the body slot', () => {
-    const wrapper = mount(ImportZipProgressSheet, {
-      props: { progress: { phase: 'unpacking', current: 3, total: 4 } },
+    const wrapper = mountSheet({
+      status: 'running',
+      progress: { phase: 'unpacking', current: 3, total: 4 },
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
@@ -65,24 +75,71 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('shows the checking-conflicts phase label', () => {
-    const wrapper = mount(ImportZipProgressSheet, {
-      props: { progress: { phase: 'checkingConflicts' } },
-    });
+    const wrapper = mountSheet({ status: 'running', progress: { phase: 'checkingConflicts' } });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
       'Checking for conflicts…',
     );
   });
 
-  it('does not emit apply or cancel on its own', () => {
-    const wrapper = mount(ImportZipProgressSheet);
+  it('renders the success state as a non-loading dialog with a Done action and no progress body', () => {
+    const wrapper = mountSheet({
+      status: 'success',
+      message: 'ZIP archive imported into this folder.',
+    });
+
+    const dialog = wrapper.find('[data-headline]');
+    expect(dialog.attributes('data-headline')).toBe('ZIP archive imported');
+    expect(dialog.attributes('data-supporting-text')).toBe(
+      'ZIP archive imported into this folder.',
+    );
+    expect(dialog.attributes('data-loading')).toBe('false');
+    expect(dialog.attributes('data-apply-label')).toBe('Done');
+    expect(wrapper.find('[data-progress]').exists()).toBe(false);
+  });
+
+  it('renders the error state with the explicit partial-import message and a Close action', () => {
+    const partialMessage =
+      'The import stopped partway through. Some files may already have been written — check the target folder before retrying.';
+    const wrapper = mountSheet({ status: 'error', message: partialMessage });
+
+    const dialog = wrapper.find('[data-headline]');
+    expect(dialog.attributes('data-headline')).toBe('Could not import ZIP archive');
+    expect(dialog.attributes('data-supporting-text')).toBe(partialMessage);
+    expect(dialog.attributes('data-loading')).toBe('false');
+    expect(dialog.attributes('data-apply-label')).toBe('Close');
+    expect(wrapper.find('[data-progress]').exists()).toBe(false);
+  });
+
+  it('emits close when the dialog applies in a success state', async () => {
+    const wrapper = mountSheet({
+      status: 'success',
+      message: 'ZIP archive imported into this folder.',
+    });
+
+    await wrapper.find('[data-headline]').trigger('click');
+
+    expect(wrapper.emitted('close')).toHaveLength(1);
+  });
+
+  it('emits close when the dialog applies in an error state', async () => {
+    const wrapper = mountSheet({ status: 'error', message: 'Could not import the ZIP archive' });
+
+    await wrapper.find('[data-headline]').trigger('click');
+
+    expect(wrapper.emitted('close')).toHaveLength(1);
+  });
+
+  it('does not emit close on its own while running', () => {
+    const wrapper = mountSheet({ status: 'running' });
 
     expect(wrapper.emitted()).toEqual({});
   });
 
   it('uses the shared Material type-scale class for the count text', () => {
-    const wrapper = mount(ImportZipProgressSheet, {
-      props: { progress: { phase: 'unpacking', current: 1, total: 2 } },
+    const wrapper = mountSheet({
+      status: 'running',
+      progress: { phase: 'unpacking', current: 1, total: 2 },
     });
 
     expect(wrapper.find('.import-zip-progress-sheet__count').classes()).toContain(

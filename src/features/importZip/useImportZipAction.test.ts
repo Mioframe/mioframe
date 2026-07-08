@@ -92,18 +92,19 @@ describe('useImportZipAction', () => {
     requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
   });
 
-  it('silently ignores file picker cancellation', async () => {
+  it('silently ignores file picker cancellation and leaves the dialog idle', async () => {
     pickZipFileMock.mockResolvedValue(undefined);
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(state.value).toEqual({ status: 'idle' });
   });
 
-  it('shows a file open error and reports it to diagnostics', async () => {
+  it('shows a file open error through the snackbar since no dialog is open yet', async () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportZipErrorCode } = await import('./importZipErrorCode');
     pickZipFileMock.mockRejectedValue(
@@ -114,14 +115,15 @@ describe('useImportZipAction', () => {
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
     expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Could not open the selected file' });
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    expect(state.value).toEqual({ status: 'idle' });
   });
 
-  it('shows a conflict error from the service without reporting it to diagnostics', async () => {
+  it('shows a conflict error from the service in the dialog without reporting it to diagnostics', async () => {
     const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValue(
@@ -132,16 +134,19 @@ describe('useImportZipAction', () => {
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'The selected directory already has files with the same names as the archive. Import was stopped before any changes were made.',
+    expect(state.value).toEqual({
+      status: 'error',
+      message:
+        'The selected directory already has files with the same names as the archive. Import was stopped before any changes were made.',
     });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('shows a damaged archive error without reporting it to diagnostics', async () => {
+  it('shows a damaged archive error in the dialog without reporting it to diagnostics', async () => {
     const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValue(
@@ -151,9 +156,13 @@ describe('useImportZipAction', () => {
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toEqual({
+      status: 'error',
+      message: 'The archive is damaged or not a supported ZIP file.',
+    });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
@@ -162,45 +171,59 @@ describe('useImportZipAction', () => {
     importDirectoryZipMock.mockImplementation(
       (_path: string, _bytes: Uint8Array, onProgress: (p: unknown) => void) => {
         onProgress({ phase: 'validatingArchive' });
+        expect(state.value).toEqual({
+          status: 'running',
+          progress: { phase: 'validatingArchive' },
+        });
         onProgress({ phase: 'unpacking', current: 1, total: 2 });
+        expect(state.value).toEqual({
+          status: 'running',
+          progress: { phase: 'unpacking', current: 1, total: 2 },
+        });
         return Promise.resolve(undefined);
       },
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip, progress, isRunning } = useImportZipAction();
+    const { importDirectoryZip, state, isRunning } = useImportZipAction();
 
     expect(isRunning.value).toBe(false);
     await importDirectoryZip('/repo');
 
-    expect(progress.value).toEqual({ phase: 'unpacking', current: 1, total: 2 });
+    expect(state.value).toEqual({
+      status: 'success',
+      message: 'ZIP archive imported into this folder.',
+    });
     expect(isRunning.value).toBe(false);
   });
 
-  it('shows a success snackbar after import completes', async () => {
+  it('leaves the dialog state in success after import completes, without a duplicate snackbar', async () => {
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockResolvedValue(undefined);
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(true);
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'ZIP archive imported into this folder.',
+    expect(state.value).toEqual({
+      status: 'success',
+      message: 'ZIP archive imported into this folder.',
     });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('reports unexpected import failures and preserves raw error as cause', async () => {
+  it('reports unexpected import failures in the dialog and preserves raw error as cause', async () => {
     const error = new Error('unexpected failure');
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValue(error);
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Could not import the ZIP archive' });
+    expect(state.value).toEqual({ status: 'error', message: 'Could not import the ZIP archive' });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
     const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     const { DomainError } = await import('@shared/lib/error');
@@ -208,7 +231,7 @@ describe('useImportZipAction', () => {
     expect(reportedError.cause).toBe(error);
   });
 
-  it('does not request permission and shows a safe message when user cancels the grant dialog', async () => {
+  it('shows a safe error state and does not request permission when user cancels the grant dialog', async () => {
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValueOnce(
       createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
@@ -216,17 +239,20 @@ describe('useImportZipAction', () => {
     confirmMock.mockResolvedValue(false);
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
     expect(requestAccessMock).not.toHaveBeenCalled();
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Grant write access to import a ZIP archive into this remembered space.',
+    expect(state.value).toEqual({
+      status: 'error',
+      message: 'Grant write access to import a ZIP archive into this remembered space.',
     });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
   });
 
-  it('requests write access after a write-required failure and retries with the same bytes', async () => {
+  it('requests write access after a write-required failure and retries with the same file', async () => {
     const file = makeFile();
     pickZipFileMock.mockResolvedValue(file);
     importDirectoryZipMock
@@ -238,7 +264,7 @@ describe('useImportZipAction', () => {
     requestAccessMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(true);
     expect(requestAccessMock).toHaveBeenCalledWith({
@@ -248,12 +274,14 @@ describe('useImportZipAction', () => {
     });
     expect(importDirectoryZipMock).toHaveBeenCalledTimes(2);
     expect(pickZipFileMock).toHaveBeenCalledTimes(1);
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'ZIP archive imported into this folder.',
+    expect(state.value).toEqual({
+      status: 'success',
+      message: 'ZIP archive imported into this folder.',
     });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
   });
 
-  it('shows denied write-access message when broker returns denied', async () => {
+  it('shows a denied write-access error state when broker returns denied', async () => {
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValueOnce(
       createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
@@ -262,32 +290,36 @@ describe('useImportZipAction', () => {
     requestAccessMock.mockResolvedValue({ status: 'denied' });
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Importing a ZIP archive is not allowed in this remembered space because your browser denied write access.',
+    expect(state.value).toEqual({
+      status: 'error',
+      message:
+        'Importing a ZIP archive is not allowed in this remembered space because your browser denied write access.',
     });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('shows and reports a partial-import message when a write fails after an earlier write succeeded', async () => {
+  it('shows and reports the explicit partial-import message when a write fails after an earlier write succeeded', async () => {
     const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
+    const partialMessage =
+      'The import stopped partway through. Some files may already have been written — check the target folder before retrying.';
     importDirectoryZipMock.mockRejectedValue(
-      new DomainError(
-        'The import stopped partway through. Some files may already have been written — check the target folder before retrying.',
-        { code: 'repositories.zipImportWritePartiallyFailed', cause: new Error('storage failure') },
-      ),
+      new DomainError(partialMessage, {
+        code: 'repositories.zipImportWritePartiallyFailed',
+        cause: new Error('storage failure'),
+      }),
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip } = useImportZipAction();
+    const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'The import stopped partway through. Some files may already have been written — check the target folder before retrying.',
-    });
+    expect(state.value).toEqual({ status: 'error', message: partialMessage });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
 
@@ -315,5 +347,32 @@ describe('useImportZipAction', () => {
 
     resolveImport();
     await firstCall;
+  });
+
+  it('does not close the dialog while running, but closes it after success or error', async () => {
+    let resolveImport!: () => void;
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveImport = resolve;
+        }),
+    );
+
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip, state, closeImportZipDialog } = useImportZipAction();
+
+    const running = importDirectoryZip('/repo');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    closeImportZipDialog();
+    expect(state.value).toEqual({ status: 'running' });
+
+    resolveImport();
+    await running;
+
+    closeImportZipDialog();
+    expect(state.value).toEqual({ status: 'idle' });
   });
 });

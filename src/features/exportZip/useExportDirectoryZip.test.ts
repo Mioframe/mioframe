@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '@shared/lib/error';
 import { useExportDirectoryZip } from './useExportDirectoryZip';
 
-const { exportDirectoryZipMock, saveStreamWithPickerMock } = vi.hoisted(() => ({
-  exportDirectoryZipMock: vi.fn(),
-  saveStreamWithPickerMock: vi.fn(),
-}));
+const { exportDirectoryZipMock, saveStreamWithPickerMock, captureDiagnosticExceptionMock } =
+  vi.hoisted(() => ({
+    exportDirectoryZipMock: vi.fn(),
+    saveStreamWithPickerMock: vi.fn(),
+    captureDiagnosticExceptionMock: vi.fn(),
+  }));
 
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
@@ -25,12 +27,17 @@ vi.mock('@shared/lib/fileSystem', async () => {
   };
 });
 
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: captureDiagnosticExceptionMock,
+}));
+
 type Producer = (write: (chunk: Uint8Array) => Promise<void>) => Promise<void>;
 
 describe('useExportDirectoryZip', () => {
   beforeEach(() => {
     exportDirectoryZipMock.mockReset();
     saveStreamWithPickerMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
     exportDirectoryZipMock.mockResolvedValue(undefined);
     saveStreamWithPickerMock.mockImplementation(async (produce: Producer) => {
       await produce(() => Promise.resolve());
@@ -75,11 +82,35 @@ describe('useExportDirectoryZip', () => {
       return true;
     });
 
-    const { exportDirectoryZip, progress } = useExportDirectoryZip();
+    const { exportDirectoryZip, state } = useExportDirectoryZip();
     await exportDirectoryZip('/repo');
 
     expect(written).toEqual([new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6])]);
-    expect(progress.value).toEqual({ phase: 'saving' });
+    expect(state.value).toEqual({ status: 'success', message: 'ZIP archive exported.' });
+  });
+
+  it('reports running progress including the client-owned saving phase', async () => {
+    exportDirectoryZipMock.mockImplementation(
+      (
+        _path: string,
+        _onChunk: (chunk: Uint8Array) => Promise<void>,
+        onProgress: (p: unknown) => void,
+      ) => {
+        onProgress({ phase: 'reading', current: 1, total: 2 });
+        return Promise.resolve();
+      },
+    );
+    saveStreamWithPickerMock.mockImplementationOnce(async (produce: Producer) => {
+      await produce(() => Promise.resolve());
+      expect(state.value).toEqual({
+        status: 'running',
+        progress: { phase: 'saving' },
+      });
+      return true;
+    });
+
+    const { exportDirectoryZip, state } = useExportDirectoryZip();
+    await exportDirectoryZip('/repo');
   });
 
   it('tracks isRunning for the duration of the export', async () => {
@@ -120,37 +151,67 @@ describe('useExportDirectoryZip', () => {
     await expect(firstCall).resolves.toBe(true);
   });
 
-  it('returns false when the user cancels the save dialog', async () => {
+  it('returns to idle when the user cancels the save dialog', async () => {
     saveStreamWithPickerMock.mockResolvedValueOnce(false);
 
-    const { exportDirectoryZip } = useExportDirectoryZip();
+    const { exportDirectoryZip, state } = useExportDirectoryZip();
 
     await expect(exportDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toEqual({ status: 'idle' });
   });
 
-  it('wraps an unexpected export failure as a DomainError', async () => {
+  it('sets an error state and reports diagnostics for an unexpected export failure', async () => {
     const rawCause = new Error('boom');
     exportDirectoryZipMock.mockRejectedValueOnce(rawCause);
 
-    const { exportDirectoryZip } = useExportDirectoryZip();
+    const { exportDirectoryZip, state } = useExportDirectoryZip();
 
-    const error = await exportDirectoryZip('/repo').catch((caughtError: unknown) => caughtError);
+    await expect(exportDirectoryZip('/repo')).resolves.toBe(false);
 
-    expect(error).toBeInstanceOf(DomainError);
-    expect(error).toMatchObject({
+    expect(state.value).toEqual({
+      status: 'error',
       message: 'Could not export the directory as a ZIP archive',
-      code: 'exportZip.directoryExportFailed',
     });
-    if (!(error instanceof DomainError)) throw new Error('expected DomainError');
-    expect(error.cause).toBe(rawCause);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError.cause).toBe(rawCause);
   });
 
-  it('preserves an existing DomainError from the service', async () => {
+  it('sets an error state using a DomainError message from the service', async () => {
     const cause = new DomainError('The document has no storage files to export.');
     exportDirectoryZipMock.mockRejectedValueOnce(cause);
 
-    const { exportDirectoryZip } = useExportDirectoryZip();
+    const { exportDirectoryZip, state } = useExportDirectoryZip();
 
-    await expect(exportDirectoryZip('/repo')).rejects.toBe(cause);
+    await expect(exportDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toEqual({
+      status: 'error',
+      message: 'The document has no storage files to export.',
+    });
+  });
+
+  it('does not close the dialog while running, but closes it after success or error', async () => {
+    let resolveFirst!: () => void;
+    saveStreamWithPickerMock.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveFirst = () => {
+            resolve(true);
+          };
+        }),
+    );
+
+    const { exportDirectoryZip, state, closeExportZipDialog } = useExportDirectoryZip();
+    const running = exportDirectoryZip('/repo');
+
+    closeExportZipDialog();
+    expect(state.value).toEqual({ status: 'running' });
+
+    resolveFirst();
+    await running;
+
+    closeExportZipDialog();
+    expect(state.value).toEqual({ status: 'idle' });
   });
 });

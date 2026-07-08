@@ -18,14 +18,10 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
   const { importDocument } = useImportDocumentAction();
   const {
     exportDirectoryZip,
-    progress: exportZipProgress,
-    isRunning: isExportZipRunning,
+    state: exportZipState,
+    closeExportZipDialog,
   } = useExportDirectoryZip();
-  const {
-    importDirectoryZip,
-    progress: importZipProgress,
-    isRunning: isImportZipRunning,
-  } = useImportZipAction();
+  const { importDirectoryZip, state: importZipState, closeImportZipDialog } = useImportZipAction();
 
   const showCreateDirectoryDialog = ref(false);
   const showCreateDocumentDialog = ref(false);
@@ -73,10 +69,10 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     showCreateDirectoryDialog,
     showCreateDocumentDialog,
     showRenameDialog,
-    exportZipProgress,
-    isExportZipRunning,
-    importZipProgress,
-    isImportZipRunning,
+    exportZipState,
+    closeExportZipDialog,
+    importZipState,
+    closeImportZipDialog,
     onSelectCreateDirectory,
     onSelectCreateDocument,
     onSelectRename,

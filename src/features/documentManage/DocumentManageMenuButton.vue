@@ -49,11 +49,7 @@ const documentActionButtons = defineMenuButtonList([
 ]);
 
 const { saveJsonFile } = useExportDocument();
-const {
-  exportDocumentZip,
-  progress: exportZipProgress,
-  isRunning: isExportZipRunning,
-} = useExportDocumentZip();
+const { exportDocumentZip, state: exportZipState, closeExportZipDialog } = useExportDocumentZip();
 const { addSnackbar } = useSnackbar();
 
 const showRenameDialog = shallowRef(false);
@@ -90,23 +86,7 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
       break;
     }
     case DocumentContextEvent.exportZip: {
-      try {
-        const exported = await exportDocumentZip(directoryPath.value, documentId.value);
-
-        if (exported) {
-          addSnackbar({ text: 'ZIP exported with this document’s source storage files.' });
-        }
-      } catch (error) {
-        addSnackbar({
-          text: error instanceof DomainError ? error.message : 'Could not export the ZIP archive',
-        });
-        if (!isUserFileSelectionCancel(error)) {
-          captureDiagnosticException(error, {
-            feature: 'documentExport',
-            action: 'exportDocumentZip',
-          });
-        }
-      }
+      await exportDocumentZip(directoryPath.value, documentId.value);
       break;
     }
 
@@ -161,5 +141,9 @@ const onCancelRenameDialog = () => {
     @cancel="onCancelRenameDialog"
   />
 
-  <ExportZipProgressSheet v-if="isExportZipRunning" :progress="exportZipProgress" />
+  <ExportZipProgressSheet
+    v-if="exportZipState.status !== 'idle'"
+    :state="exportZipState"
+    @close="closeExportZipDialog"
+  />
 </template>

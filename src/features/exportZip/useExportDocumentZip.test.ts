@@ -3,10 +3,12 @@ import { DomainError } from '@shared/lib/error';
 import { zodDocumentId } from '@shared/lib/automerge';
 import { useExportDocumentZip } from './useExportDocumentZip';
 
-const { exportDocumentZipMock, saveStreamWithPickerMock } = vi.hoisted(() => ({
-  exportDocumentZipMock: vi.fn(),
-  saveStreamWithPickerMock: vi.fn(),
-}));
+const { exportDocumentZipMock, saveStreamWithPickerMock, captureDiagnosticExceptionMock } =
+  vi.hoisted(() => ({
+    exportDocumentZipMock: vi.fn(),
+    saveStreamWithPickerMock: vi.fn(),
+    captureDiagnosticExceptionMock: vi.fn(),
+  }));
 
 const documentId = zodDocumentId.parse('4Z1fFANPScpDsLXmC1KsBCn4mWYu');
 
@@ -28,12 +30,17 @@ vi.mock('@shared/lib/fileSystem', async () => {
   };
 });
 
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: captureDiagnosticExceptionMock,
+}));
+
 type Producer = (write: (chunk: Uint8Array) => Promise<void>) => Promise<void>;
 
 describe('useExportDocumentZip', () => {
   beforeEach(() => {
     exportDocumentZipMock.mockReset();
     saveStreamWithPickerMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
     exportDocumentZipMock.mockResolvedValue(undefined);
     saveStreamWithPickerMock.mockImplementation(async (produce: Producer) => {
       await produce(() => Promise.resolve());
@@ -62,6 +69,16 @@ describe('useExportDocumentZip', () => {
     );
   });
 
+  it('leaves the dialog state in success with the document export message', async () => {
+    const { exportDocumentZip, state } = useExportDocumentZip();
+
+    await expect(exportDocumentZip('/documents', documentId)).resolves.toBe(true);
+    expect(state.value).toEqual({
+      status: 'success',
+      message: 'ZIP exported with this document’s source storage files.',
+    });
+  });
+
   it('tracks isRunning for the duration of the export, ignoring duplicate starts', async () => {
     let resolveFirst!: () => void;
     saveStreamWithPickerMock.mockImplementationOnce(
@@ -87,39 +104,67 @@ describe('useExportDocumentZip', () => {
     expect(isRunning.value).toBe(false);
   });
 
-  it('returns false when the user cancels the save dialog', async () => {
+  it('returns to idle when the user cancels the save dialog', async () => {
     saveStreamWithPickerMock.mockResolvedValueOnce(false);
 
-    const { exportDocumentZip } = useExportDocumentZip();
+    const { exportDocumentZip, state } = useExportDocumentZip();
 
     await expect(exportDocumentZip('/documents', documentId)).resolves.toBe(false);
+    expect(state.value).toEqual({ status: 'idle' });
   });
 
-  it('preserves an existing DomainError from the service, e.g. no storage files', async () => {
+  it('sets an error state using a DomainError message from the service, e.g. no storage files', async () => {
     const cause = new DomainError('The document has no storage files to export.');
     exportDocumentZipMock.mockRejectedValueOnce(cause);
 
-    const { exportDocumentZip } = useExportDocumentZip();
+    const { exportDocumentZip, state } = useExportDocumentZip();
 
-    await expect(exportDocumentZip('/documents', documentId)).rejects.toBe(cause);
+    await expect(exportDocumentZip('/documents', documentId)).resolves.toBe(false);
+    expect(state.value).toEqual({
+      status: 'error',
+      message: 'The document has no storage files to export.',
+    });
   });
 
-  it('wraps an unexpected export failure as a DomainError', async () => {
+  it('sets an error state and reports diagnostics for an unexpected export failure', async () => {
     const rawCause = new Error('boom');
     exportDocumentZipMock.mockRejectedValueOnce(rawCause);
 
-    const { exportDocumentZip } = useExportDocumentZip();
+    const { exportDocumentZip, state } = useExportDocumentZip();
 
-    const error = await exportDocumentZip('/documents', documentId).catch(
-      (caughtError: unknown) => caughtError,
+    await expect(exportDocumentZip('/documents', documentId)).resolves.toBe(false);
+
+    expect(state.value).toEqual({
+      status: 'error',
+      message: 'Could not export the document as a ZIP archive',
+    });
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError.cause).toBe(rawCause);
+  });
+
+  it('does not close the dialog while running, but closes it after success', async () => {
+    let resolveFirst!: () => void;
+    saveStreamWithPickerMock.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveFirst = () => {
+            resolve(true);
+          };
+        }),
     );
 
-    expect(error).toBeInstanceOf(DomainError);
-    expect(error).toMatchObject({
-      message: 'Could not export the document as a ZIP archive',
-      code: 'exportZip.documentExportFailed',
-    });
-    if (!(error instanceof DomainError)) throw new Error('expected DomainError');
-    expect(error.cause).toBe(rawCause);
+    const { exportDocumentZip, state, closeExportZipDialog } = useExportDocumentZip();
+    const running = exportDocumentZip('/documents', documentId);
+
+    closeExportZipDialog();
+    expect(state.value).toEqual({ status: 'running' });
+
+    resolveFirst();
+    await running;
+
+    closeExportZipDialog();
+    expect(state.value).toEqual({ status: 'idle' });
   });
 });

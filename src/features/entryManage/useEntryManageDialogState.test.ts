@@ -18,16 +18,16 @@ vi.mock('@feature/importDocument', () => ({
 vi.mock('@feature/exportZip', () => ({
   useExportDirectoryZip: () => ({
     exportDirectoryZip: exportDirectoryZipMock,
-    progress: ref(undefined),
-    isRunning: ref(false),
+    state: ref({ status: 'idle' }),
+    closeExportZipDialog: vi.fn(),
   }),
 }));
 
 vi.mock('@feature/importZip', () => ({
   useImportZipAction: () => ({
     importDirectoryZip: importDirectoryZipMock,
-    progress: ref(undefined),
-    isRunning: ref(false),
+    state: ref({ status: 'idle' }),
+    closeImportZipDialog: vi.fn(),
   }),
 }));
 
@@ -75,11 +75,11 @@ describe('useEntryManageDialogState', () => {
     expect(importDirectoryZipMock).toHaveBeenCalledWith('/repo/a');
   });
 
-  it('exposes ZIP export/import running state for the progress surfaces', () => {
+  it('exposes ZIP export/import dialog state for the progress surfaces', () => {
     const path = ref('/repo/a');
-    const { isExportZipRunning, isImportZipRunning } = useEntryManageDialogState(path);
+    const { exportZipState, importZipState } = useEntryManageDialogState(path);
 
-    expect(isExportZipRunning.value).toBe(false);
-    expect(isImportZipRunning.value).toBe(false);
+    expect(exportZipState.value).toEqual({ status: 'idle' });
+    expect(importZipState.value).toEqual({ status: 'idle' });
   });
 });

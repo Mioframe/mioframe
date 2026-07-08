@@ -40,10 +40,10 @@ const {
   showCreateDirectoryDialog,
   showCreateDocumentDialog,
   showRenameDialog,
-  exportZipProgress,
-  isExportZipRunning,
-  importZipProgress,
-  isImportZipRunning,
+  exportZipState,
+  closeExportZipDialog,
+  importZipState,
+  closeImportZipDialog,
   onSelectCreateDirectory,
   onSelectCreateDocument,
   onSelectRename,
@@ -109,9 +109,17 @@ const onClickEntry = (name: string) => {
         @renamed="onCloseRenameDialog"
       />
 
-      <ExportZipProgressSheet v-if="isExportZipRunning" :progress="exportZipProgress" />
+      <ExportZipProgressSheet
+        v-if="exportZipState.status !== 'idle'"
+        :state="exportZipState"
+        @close="closeExportZipDialog"
+      />
 
-      <ImportZipProgressSheet v-if="isImportZipRunning" :progress="importZipProgress" />
+      <ImportZipProgressSheet
+        v-if="importZipState.status !== 'idle'"
+        :state="importZipState"
+        @close="closeImportZipDialog"
+      />
     </template>
   </FSEntryMDListItem>
 </template>

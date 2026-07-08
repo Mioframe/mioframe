@@ -16,8 +16,10 @@ const openMock = vi.fn();
 const importDocumentMock = vi.fn();
 const onSelectExportZipMock = vi.fn();
 const onSelectImportZipMock = vi.fn();
-const isExportZipRunningRef = ref(false);
-const isImportZipRunningRef = ref(false);
+const closeExportZipDialogMock = vi.fn();
+const closeImportZipDialogMock = vi.fn();
+const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
+const importZipStateRef = ref<{ status: string }>({ status: 'idle' });
 
 const directoryStatRef = ref<
   | {
@@ -52,10 +54,10 @@ vi.mock('@feature/entryManage', () => ({
   },
   useEntryManageDialogState: () => ({
     showRenameDialog: ref(false),
-    exportZipProgress: ref(undefined),
-    isExportZipRunning: isExportZipRunningRef,
-    importZipProgress: ref(undefined),
-    isImportZipRunning: isImportZipRunningRef,
+    exportZipState: exportZipStateRef,
+    closeExportZipDialog: closeExportZipDialogMock,
+    importZipState: importZipStateRef,
+    closeImportZipDialog: closeImportZipDialogMock,
     onSelectRename: vi.fn(),
     onSelectRemove: vi.fn(),
     onSelectExportZip: onSelectExportZipMock,
@@ -67,7 +69,7 @@ vi.mock('@feature/entryManage', () => ({
 vi.mock('@feature/exportZip', () => ({
   ExportZipProgressSheet: defineComponent({
     name: 'ExportZipProgressSheetStub',
-    props: { progress: { type: Object, default: undefined } },
+    props: { state: { type: Object, required: true } },
     setup() {
       return () => h('div', { 'data-testid': 'export-zip-progress-sheet' });
     },
@@ -77,7 +79,7 @@ vi.mock('@feature/exportZip', () => ({
 vi.mock('@feature/importZip', () => ({
   ImportZipProgressSheet: defineComponent({
     name: 'ImportZipProgressSheetStub',
-    props: { progress: { type: Object, default: undefined } },
+    props: { state: { type: Object, required: true } },
     setup() {
       return () => h('div', { 'data-testid': 'import-zip-progress-sheet' });
     },
@@ -370,8 +372,10 @@ describe('RepoExplorerPane', () => {
     importDocumentMock.mockReset();
     onSelectExportZipMock.mockReset();
     onSelectImportZipMock.mockReset();
-    isExportZipRunningRef.value = false;
-    isImportZipRunningRef.value = false;
+    closeExportZipDialogMock.mockReset();
+    closeImportZipDialogMock.mockReset();
+    exportZipStateRef.value = { status: 'idle' };
+    importZipStateRef.value = { status: 'idle' };
     directoryStatRef.value = undefined;
     useFSEntryManageActionsMock.mockClear();
     document.body.innerHTML = '';
@@ -643,8 +647,8 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
   });
 
-  it('renders the export ZIP progress sheet only while the export is running', async () => {
-    isExportZipRunningRef.value = true;
+  it('renders the export ZIP progress sheet while the export is running', async () => {
+    exportZipStateRef.value = { status: 'running' };
 
     const wrapper = await mountPane();
 
@@ -652,13 +656,26 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
   });
 
-  it('renders the import ZIP progress sheet only while the import is running', async () => {
-    isImportZipRunningRef.value = true;
+  it('renders the import ZIP progress sheet while the import is running', async () => {
+    importZipStateRef.value = { status: 'running' };
 
     const wrapper = await mountPane();
 
     expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(false);
+  });
+
+  it('keeps the export ZIP result dialog mounted after the export completes, until closed', async () => {
+    exportZipStateRef.value = { status: 'success' };
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(true);
+
+    exportZipStateRef.value = { status: 'error' };
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(true);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */
