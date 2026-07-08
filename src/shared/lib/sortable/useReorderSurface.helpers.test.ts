@@ -519,7 +519,7 @@ describe('useReorderSurface helpers', () => {
     range.selectNode(document.body);
     selection.removeAllRanges();
     selection.addRange(range);
-    expect(selection.rangeCount).toBeGreaterThan(0);
+    expect(selection.rangeCount).toBe(0);
 
     const secondRelease = acquireReorderDocumentSelectionSuppression();
 
@@ -539,6 +539,70 @@ describe('useReorderSurface helpers', () => {
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(false);
+  });
+
+  it('clears a selection created after acquisition while suppression is active', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+
+    document.dispatchEvent(new Event('selectionchange'));
+
+    expect(selection.rangeCount).toBe(0);
+
+    release();
+  });
+
+  it('stops clearing selection on selectionchange once suppression is fully released', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const release = acquireReorderDocumentSelectionSuppression();
+    release();
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+
+    document.dispatchEvent(new Event('selectionchange'));
+
+    expect(selection.rangeCount).toBeGreaterThan(0);
+
+    selection.removeAllRanges();
+  });
+
+  it('keeps selectionchange cleanup active after the first release while nested acquisition holds', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const firstRelease = acquireReorderDocumentSelectionSuppression();
+    const secondRelease = acquireReorderDocumentSelectionSuppression();
+
+    firstRelease();
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+
+    document.dispatchEvent(new Event('selectionchange'));
+
+    expect(selection.rangeCount).toBe(0);
+
+    secondRelease();
   });
 
   it('makes repeated token release harmless', () => {

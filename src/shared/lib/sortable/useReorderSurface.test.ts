@@ -825,7 +825,7 @@ describe('useReorderSurface', () => {
     range.selectNode(row);
     selection.removeAllRanges();
     selection.addRange(range);
-    expect(selection.rangeCount).toBeGreaterThan(0);
+    expect(selection.rangeCount).toBe(0);
 
     sortableAdapterState.callbacks?.onStart?.({
       itemId: 'a',
