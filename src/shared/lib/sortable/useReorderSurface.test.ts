@@ -452,7 +452,6 @@ describe('useReorderSurface', () => {
     range.selectNode(document.body);
     selection.removeAllRanges();
     selection.addRange(range);
-    vi.spyOn(selection, 'rangeCount', 'get').mockReturnValue(1);
     const removeAllRangesSpy = vi.spyOn(selection, 'removeAllRanges');
     const blurSpy = vi.spyOn(child, 'blur');
     child.focus();
@@ -495,7 +494,8 @@ describe('useReorderSurface', () => {
     expect(preventDefault).toHaveBeenCalled();
     expect(stopPropagation).toHaveBeenCalled();
     expect(stopImmediatePropagation).toHaveBeenCalled();
-    expect(removeAllRangesSpy).toHaveBeenCalledTimes(3);
+    expect(removeAllRangesSpy).toHaveBeenCalled();
+    expect(selection.rangeCount).toBe(0);
     expect(rafMock).toHaveBeenCalledTimes(1);
     expect(blurSpy).toHaveBeenCalled();
     expect(api.suppressNextClick.value).toBe(false);
