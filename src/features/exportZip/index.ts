@@ -4,6 +4,7 @@ export type {
   ExportZipDialogPhase,
   ExportZipDialogProgress,
   ExportZipDialogState,
+  ExportZipVisibleDialogState,
 } from './useExportDirectoryZip';
 export { useExportDocumentZip } from './useExportDocumentZip';
-export { default as ExportZipProgressSheet } from './ExportZipProgressSheet.vue';
+export { default as ExportZipDialog } from './ExportZipDialog.vue';

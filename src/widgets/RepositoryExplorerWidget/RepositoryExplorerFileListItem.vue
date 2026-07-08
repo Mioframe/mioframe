@@ -2,10 +2,14 @@
 import { FSEntryMDListItem } from '@entity/fsEntry';
 import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
+import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { DocumentCreationDialog } from '@feature/documentCreate';
-import { ExportZipProgressSheet } from '@feature/exportZip';
-import { ImportZipProgressSheet } from '@feature/importZip';
+import { ExportZipDialog, useExportDirectoryZip } from '@feature/exportZip';
+import type { ExportZipVisibleDialogState } from '@feature/exportZip';
+import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
+import type { ImportZipVisibleDialogState } from '@feature/importZip';
+import { useImportDocumentAction } from '@feature/importDocument';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { computed, toRef } from 'vue';
 import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
@@ -40,21 +44,38 @@ const {
   showCreateDirectoryDialog,
   showCreateDocumentDialog,
   showRenameDialog,
-  exportZipState,
-  closeExportZipDialog,
-  importZipState,
-  closeImportZipDialog,
   onSelectCreateDirectory,
   onSelectCreateDocument,
   onSelectRename,
-  onSelectRemove,
-  onSelectImportJson,
-  onSelectExportZip,
-  onSelectImportZip,
   onCloseCreateDirectoryDialog,
   onCloseCreateDocumentDialog,
   onCloseRenameDialog,
 } = useEntryManageDialogState(entryPath);
+
+const { remove } = useRemoveFSEntry();
+const { importDocument } = useImportDocumentAction();
+const { exportDirectoryZip, state: exportZipState, closeExportZipDialog } = useExportDirectoryZip();
+const { importDirectoryZip, state: importZipState, closeImportZipDialog } = useImportZipAction();
+
+const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
+  exportZipState.value.status === 'idle' ? null : exportZipState.value,
+);
+const importZipVisibleState = computed<ImportZipVisibleDialogState | null>(() =>
+  importZipState.value.status === 'idle' ? null : importZipState.value,
+);
+
+const onSelectRemove = async () => {
+  await remove(entryPath.value);
+};
+const onSelectImportJson = async () => {
+  await importDocument(entryPath.value);
+};
+const onSelectExportZip = async () => {
+  await exportDirectoryZip(entryPath.value);
+};
+const onSelectImportZip = async () => {
+  await importDirectoryZip(entryPath.value);
+};
 
 const onClickEntry = (name: string) => {
   emit('click', name);
@@ -109,15 +130,15 @@ const onClickEntry = (name: string) => {
         @renamed="onCloseRenameDialog"
       />
 
-      <ExportZipProgressSheet
-        v-if="exportZipState.status !== 'idle'"
-        :state="exportZipState"
+      <ExportZipDialog
+        v-if="exportZipVisibleState"
+        :state="exportZipVisibleState"
         @close="closeExportZipDialog"
       />
 
-      <ImportZipProgressSheet
-        v-if="importZipState.status !== 'idle'"
-        :state="importZipState"
+      <ImportZipDialog
+        v-if="importZipVisibleState"
+        :state="importZipVisibleState"
         @close="closeImportZipDialog"
       />
     </template>

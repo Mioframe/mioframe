@@ -2,8 +2,8 @@
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import ImportZipProgressSheet from './ImportZipProgressSheet.vue';
-import type { ImportZipDialogState } from './useImportZipAction';
+import ImportZipDialog from './ImportZipDialog.vue';
+import type { ImportZipVisibleDialogState } from './useImportZipAction';
 
 vi.mock('@shared/ui/Dialog', () => ({
   MDDialog: defineComponent({
@@ -46,12 +46,12 @@ vi.mock('@shared/ui/ProgressIndicators', () => ({
   }),
 }));
 
-const mountSheet = (state: ImportZipDialogState) =>
-  mount(ImportZipProgressSheet, { props: { state } });
+const mountDialog = (state: ImportZipVisibleDialogState) =>
+  mount(ImportZipDialog, { props: { state } });
 
-describe('ImportZipProgressSheet', () => {
+describe('ImportZipDialog', () => {
   it('renders the running state through MDDialog as a non-cancellable loading dialog', () => {
-    const wrapper = mountSheet({ status: 'running' });
+    const wrapper = mountDialog({ status: 'running' });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Importing ZIP archive');
@@ -62,7 +62,7 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('passes the current phase as supporting text and count in the body slot', () => {
-    const wrapper = mountSheet({
+    const wrapper = mountDialog({
       status: 'running',
       progress: { phase: 'unpacking', current: 3, total: 4 },
     });
@@ -75,7 +75,7 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('shows the checking-conflicts phase label', () => {
-    const wrapper = mountSheet({ status: 'running', progress: { phase: 'checkingConflicts' } });
+    const wrapper = mountDialog({ status: 'running', progress: { phase: 'checkingConflicts' } });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
       'Checking for conflicts…',
@@ -83,7 +83,7 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('renders the success state as a non-loading dialog with a Done action and no progress body', () => {
-    const wrapper = mountSheet({
+    const wrapper = mountDialog({
       status: 'success',
       message: 'ZIP archive imported into this folder.',
     });
@@ -101,7 +101,7 @@ describe('ImportZipProgressSheet', () => {
   it('renders the error state with the explicit partial-import message and a Close action', () => {
     const partialMessage =
       'The import stopped partway through. Some files may already have been written — check the target folder before retrying.';
-    const wrapper = mountSheet({ status: 'error', message: partialMessage });
+    const wrapper = mountDialog({ status: 'error', message: partialMessage });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Could not import ZIP archive');
@@ -112,7 +112,7 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('emits close when the dialog applies in a success state', async () => {
-    const wrapper = mountSheet({
+    const wrapper = mountDialog({
       status: 'success',
       message: 'ZIP archive imported into this folder.',
     });
@@ -123,7 +123,7 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('emits close when the dialog applies in an error state', async () => {
-    const wrapper = mountSheet({ status: 'error', message: 'Could not import the ZIP archive' });
+    const wrapper = mountDialog({ status: 'error', message: 'Could not import the ZIP archive' });
 
     await wrapper.find('[data-headline]').trigger('click');
 
@@ -131,13 +131,13 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('does not emit close on its own while running', () => {
-    const wrapper = mountSheet({ status: 'running' });
+    const wrapper = mountDialog({ status: 'running' });
 
     expect(wrapper.emitted()).toEqual({});
   });
 
   it('does not emit close when the dialog applies while running', async () => {
-    const wrapper = mountSheet({ status: 'running' });
+    const wrapper = mountDialog({ status: 'running' });
 
     await wrapper.find('[data-headline]').trigger('click');
 
@@ -145,12 +145,12 @@ describe('ImportZipProgressSheet', () => {
   });
 
   it('uses the shared Material type-scale class for the count text', () => {
-    const wrapper = mountSheet({
+    const wrapper = mountDialog({
       status: 'running',
       progress: { phase: 'unpacking', current: 1, total: 2 },
     });
 
-    expect(wrapper.find('.import-zip-progress-sheet__count').classes()).toContain(
+    expect(wrapper.find('.import-zip-dialog__count').classes()).toContain(
       'md-typescale-body-medium',
     );
   });

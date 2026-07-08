@@ -2,8 +2,8 @@
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import ExportZipProgressSheet from './ExportZipProgressSheet.vue';
-import type { ExportZipDialogState } from './useExportDirectoryZip';
+import ExportZipDialog from './ExportZipDialog.vue';
+import type { ExportZipVisibleDialogState } from './useExportDirectoryZip';
 
 vi.mock('@shared/ui/Dialog', () => ({
   MDDialog: defineComponent({
@@ -46,12 +46,12 @@ vi.mock('@shared/ui/ProgressIndicators', () => ({
   }),
 }));
 
-const mountSheet = (state: ExportZipDialogState) =>
-  mount(ExportZipProgressSheet, { props: { state } });
+const mountDialog = (state: ExportZipVisibleDialogState) =>
+  mount(ExportZipDialog, { props: { state } });
 
-describe('ExportZipProgressSheet', () => {
+describe('ExportZipDialog', () => {
   it('renders the running state through MDDialog as a non-cancellable loading dialog', () => {
-    const wrapper = mountSheet({ status: 'running' });
+    const wrapper = mountDialog({ status: 'running' });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Exporting ZIP archive');
@@ -62,7 +62,7 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('passes the current phase as supporting text and count in the body slot', () => {
-    const wrapper = mountSheet({
+    const wrapper = mountDialog({
       status: 'running',
       progress: { phase: 'reading', current: 2, total: 5 },
     });
@@ -75,7 +75,7 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('shows the saving phase label', () => {
-    const wrapper = mountSheet({ status: 'running', progress: { phase: 'saving' } });
+    const wrapper = mountDialog({ status: 'running', progress: { phase: 'saving' } });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
       'Saving archive…',
@@ -83,7 +83,7 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('renders the success state as a non-loading dialog with a Done action and no progress body', () => {
-    const wrapper = mountSheet({ status: 'success', message: 'ZIP archive exported.' });
+    const wrapper = mountDialog({ status: 'success', message: 'ZIP archive exported.' });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('ZIP archive exported');
@@ -94,7 +94,7 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('renders the error state as a non-loading dialog with a Close action', () => {
-    const wrapper = mountSheet({ status: 'error', message: 'Could not export the ZIP archive' });
+    const wrapper = mountDialog({ status: 'error', message: 'Could not export the ZIP archive' });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Could not export ZIP archive');
@@ -105,7 +105,7 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('emits close when the dialog applies in a success state', async () => {
-    const wrapper = mountSheet({ status: 'success', message: 'ZIP archive exported.' });
+    const wrapper = mountDialog({ status: 'success', message: 'ZIP archive exported.' });
 
     await wrapper.find('[data-headline]').trigger('click');
 
@@ -113,7 +113,7 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('emits close when the dialog applies in an error state', async () => {
-    const wrapper = mountSheet({ status: 'error', message: 'Could not export the ZIP archive' });
+    const wrapper = mountDialog({ status: 'error', message: 'Could not export the ZIP archive' });
 
     await wrapper.find('[data-headline]').trigger('click');
 
@@ -121,13 +121,13 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('does not emit close on its own while running', () => {
-    const wrapper = mountSheet({ status: 'running' });
+    const wrapper = mountDialog({ status: 'running' });
 
     expect(wrapper.emitted()).toEqual({});
   });
 
   it('does not emit close when the dialog applies while running', async () => {
-    const wrapper = mountSheet({ status: 'running' });
+    const wrapper = mountDialog({ status: 'running' });
 
     await wrapper.find('[data-headline]').trigger('click');
 
@@ -135,12 +135,12 @@ describe('ExportZipProgressSheet', () => {
   });
 
   it('uses the shared Material type-scale class for the count text', () => {
-    const wrapper = mountSheet({
+    const wrapper = mountDialog({
       status: 'running',
       progress: { phase: 'reading', current: 1, total: 2 },
     });
 
-    expect(wrapper.find('.export-zip-progress-sheet__count').classes()).toContain(
+    expect(wrapper.find('.export-zip-dialog__count').classes()).toContain(
       'md-typescale-body-medium',
     );
   });

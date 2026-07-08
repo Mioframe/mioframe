@@ -3,44 +3,54 @@ import { computed } from 'vue';
 import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
-import type { ExportZipDialogPhase, ExportZipDialogState } from './useExportDirectoryZip';
+import type { ZipImportProgress } from '@shared/service';
+import type { ImportZipVisibleDialogState } from './useImportZipAction';
 
 const props = defineProps<{
-  /** Current export dialog lifecycle state: running, success, or error. */
-  state: ExportZipDialogState;
+  /** Current import dialog lifecycle state: running, success, or error. Never `idle`. */
+  state: ImportZipVisibleDialogState;
 }>();
 
 const emit = defineEmits<{
   close: [];
 }>();
 
-const PHASE_LABELS: Record<ExportZipDialogPhase, string> = {
-  preparing: 'Preparing export…',
-  reading: 'Reading files…',
-  packing: 'Packing archive…',
-  saving: 'Saving archive…',
+const PHASE_LABELS: Record<ZipImportProgress['phase'], string> = {
+  validatingArchive: 'Validating archive…',
+  checkingConflicts: 'Checking for conflicts…',
+  unpacking: 'Writing files…',
+};
+
+/**
+ * Exhaustiveness guard so a future visible state can't silently fall through to an empty render.
+ * @param state - The unreachable state value, used only to prove exhaustiveness.
+ */
+const assertExhaustiveState = (state: never): never => {
+  throw new Error(`Unhandled import ZIP dialog state: ${String(state)}`);
 };
 
 const headline = computed(() => {
   switch (props.state.status) {
+    case 'running':
+      return 'Importing ZIP archive';
     case 'success':
-      return 'ZIP archive exported';
+      return 'ZIP archive imported';
     case 'error':
-      return 'Could not export ZIP archive';
+      return 'Could not import ZIP archive';
     default:
-      return 'Exporting ZIP archive';
+      return assertExhaustiveState(props.state);
   }
 });
 
 const supportingText = computed(() => {
   switch (props.state.status) {
     case 'running':
-      return PHASE_LABELS[props.state.progress?.phase ?? 'preparing'];
+      return PHASE_LABELS[props.state.progress?.phase ?? 'validatingArchive'];
     case 'success':
     case 'error':
       return props.state.message;
     default:
-      return '';
+      return assertExhaustiveState(props.state);
   }
 });
 
@@ -84,11 +94,11 @@ const onApply = () => {
     :loading="isLoading"
     @apply="onApply"
   >
-    <div v-if="state.status === 'running'" class="export-zip-progress-sheet__body">
+    <div v-if="state.status === 'running'" class="import-zip-dialog__body">
       <MDCircularProgressIndicator :progress="progressFraction" :size="48" />
       <p
         v-if="progressCountLabel"
-        class="export-zip-progress-sheet__count"
+        class="import-zip-dialog__count"
         :class="MD_TYPESCALE.body.medium"
       >
         {{ progressCountLabel }}
@@ -98,7 +108,7 @@ const onApply = () => {
 </template>
 
 <style scoped>
-.export-zip-progress-sheet__body {
+.import-zip-dialog__body {
   display: flex;
   flex-direction: column;
   align-items: center;

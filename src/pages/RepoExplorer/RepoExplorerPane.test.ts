@@ -14,8 +14,9 @@ const directoryManageActionsRef = ref<NonEmptyMenuButtonList | null>(
 );
 const openMock = vi.fn();
 const importDocumentMock = vi.fn();
-const onSelectExportZipMock = vi.fn();
-const onSelectImportZipMock = vi.fn();
+const removeMock = vi.fn();
+const exportDirectoryZipMock = vi.fn();
+const importDirectoryZipMock = vi.fn();
 const closeExportZipDialogMock = vi.fn();
 const closeImportZipDialogMock = vi.fn();
 const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
@@ -54,34 +55,41 @@ vi.mock('@feature/entryManage', () => ({
   },
   useEntryManageDialogState: () => ({
     showRenameDialog: ref(false),
-    exportZipState: exportZipStateRef,
-    closeExportZipDialog: closeExportZipDialogMock,
-    importZipState: importZipStateRef,
-    closeImportZipDialog: closeImportZipDialogMock,
     onSelectRename: vi.fn(),
-    onSelectRemove: vi.fn(),
-    onSelectExportZip: onSelectExportZipMock,
-    onSelectImportZip: onSelectImportZipMock,
     onCloseRenameDialog: vi.fn(),
   }),
 }));
 
+vi.mock('@feature/entryRemove', () => ({
+  useRemoveFSEntry: () => ({ remove: removeMock }),
+}));
+
 vi.mock('@feature/exportZip', () => ({
-  ExportZipProgressSheet: defineComponent({
-    name: 'ExportZipProgressSheetStub',
+  useExportDirectoryZip: () => ({
+    exportDirectoryZip: exportDirectoryZipMock,
+    state: exportZipStateRef,
+    closeExportZipDialog: closeExportZipDialogMock,
+  }),
+  ExportZipDialog: defineComponent({
+    name: 'ExportZipDialogStub',
     props: { state: { type: Object, required: true } },
     setup() {
-      return () => h('div', { 'data-testid': 'export-zip-progress-sheet' });
+      return () => h('div', { 'data-testid': 'export-zip-dialog' });
     },
   }),
 }));
 
 vi.mock('@feature/importZip', () => ({
-  ImportZipProgressSheet: defineComponent({
-    name: 'ImportZipProgressSheetStub',
+  useImportZipAction: () => ({
+    importDirectoryZip: importDirectoryZipMock,
+    state: importZipStateRef,
+    closeImportZipDialog: closeImportZipDialogMock,
+  }),
+  ImportZipDialog: defineComponent({
+    name: 'ImportZipDialogStub',
     props: { state: { type: Object, required: true } },
     setup() {
-      return () => h('div', { 'data-testid': 'import-zip-progress-sheet' });
+      return () => h('div', { 'data-testid': 'import-zip-dialog' });
     },
   }),
 }));
@@ -370,8 +378,9 @@ describe('RepoExplorerPane', () => {
     ] as const);
     openMock.mockReset();
     importDocumentMock.mockReset();
-    onSelectExportZipMock.mockReset();
-    onSelectImportZipMock.mockReset();
+    removeMock.mockReset();
+    exportDirectoryZipMock.mockReset();
+    importDirectoryZipMock.mockReset();
     closeExportZipDialogMock.mockReset();
     closeImportZipDialogMock.mockReset();
     exportZipStateRef.value = { status: 'idle' };
@@ -628,7 +637,7 @@ describe('RepoExplorerPane', () => {
 
     await manageButton.trigger('click');
 
-    expect(onSelectExportZipMock).toHaveBeenCalledTimes(1);
+    expect(exportDirectoryZipMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
   });
 
   it('delegates import ZIP from the add sheet to the shared import action', async () => {
@@ -637,32 +646,32 @@ describe('RepoExplorerPane', () => {
     await wrapper.get('button[aria-label="Add"]').trigger('click');
     await wrapper.findAll('[data-testid="entry-add-sheet"] button')[3]?.trigger('click');
 
-    expect(onSelectImportZipMock).toHaveBeenCalledTimes(1);
+    expect(importDirectoryZipMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
   });
 
-  it('does not render ZIP progress sheets by default', async () => {
+  it('does not render ZIP dialogs by default', async () => {
     const wrapper = await mountPane();
 
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
   });
 
-  it('renders the export ZIP progress sheet while the export is running', async () => {
+  it('renders the export ZIP dialog while the export is running', async () => {
     exportZipStateRef.value = { status: 'running' };
 
     const wrapper = await mountPane();
 
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
   });
 
-  it('renders the import ZIP progress sheet while the import is running', async () => {
+  it('renders the import ZIP dialog while the import is running', async () => {
     importZipStateRef.value = { status: 'running' };
 
     const wrapper = await mountPane();
 
-    expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
   });
 
   it('keeps the export ZIP result dialog mounted after the export completes, until closed', async () => {
@@ -670,12 +679,12 @@ describe('RepoExplorerPane', () => {
 
     const wrapper = await mountPane();
 
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
 
     exportZipStateRef.value = { status: 'error' };
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

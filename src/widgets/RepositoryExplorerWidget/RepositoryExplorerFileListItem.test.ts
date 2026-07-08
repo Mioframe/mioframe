@@ -27,21 +27,21 @@ vi.mock('@feature/entryManage', () => ({
     showCreateDirectoryDialog: ref(false),
     showCreateDocumentDialog: ref(false),
     showRenameDialog: ref(false),
-    exportZipState: exportZipStateRef,
-    closeExportZipDialog: vi.fn(),
-    importZipState: importZipStateRef,
-    closeImportZipDialog: vi.fn(),
     onSelectCreateDirectory: vi.fn(),
     onSelectCreateDocument: vi.fn(),
     onSelectRename: vi.fn(),
-    onSelectRemove: vi.fn(),
-    onSelectImportJson: vi.fn(),
-    onSelectExportZip: vi.fn(),
-    onSelectImportZip: vi.fn(),
     onCloseCreateDirectoryDialog: vi.fn(),
     onCloseCreateDocumentDialog: vi.fn(),
     onCloseRenameDialog: vi.fn(),
   }),
+}));
+
+vi.mock('@feature/entryRemove', () => ({
+  useRemoveFSEntry: () => ({ remove: vi.fn() }),
+}));
+
+vi.mock('@feature/importDocument', () => ({
+  useImportDocumentAction: () => ({ importDocument: vi.fn() }),
 }));
 
 vi.mock('@entity/fsEntry', () => ({
@@ -75,21 +75,31 @@ vi.mock('@entity/fsEntry', () => ({
 }));
 
 vi.mock('@feature/exportZip', () => ({
-  ExportZipProgressSheet: defineComponent({
-    name: 'ExportZipProgressSheetStub',
+  useExportDirectoryZip: () => ({
+    exportDirectoryZip: vi.fn(),
+    state: exportZipStateRef,
+    closeExportZipDialog: vi.fn(),
+  }),
+  ExportZipDialog: defineComponent({
+    name: 'ExportZipDialogStub',
     props: { state: { type: Object, required: true } },
     setup() {
-      return () => h('div', { 'data-testid': 'export-zip-progress-sheet' });
+      return () => h('div', { 'data-testid': 'export-zip-dialog' });
     },
   }),
 }));
 
 vi.mock('@feature/importZip', () => ({
-  ImportZipProgressSheet: defineComponent({
-    name: 'ImportZipProgressSheetStub',
+  useImportZipAction: () => ({
+    importDirectoryZip: vi.fn(),
+    state: importZipStateRef,
+    closeImportZipDialog: vi.fn(),
+  }),
+  ImportZipDialog: defineComponent({
+    name: 'ImportZipDialogStub',
     props: { state: { type: Object, required: true } },
     setup() {
-      return () => h('div', { 'data-testid': 'import-zip-progress-sheet' });
+      return () => h('div', { 'data-testid': 'import-zip-dialog' });
     },
   }),
 }));
@@ -243,33 +253,33 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(capturedShowDocumentActions.at(-1)).toBe(false);
   });
 
-  it('does not render ZIP progress sheets by default', async () => {
+  it('does not render ZIP dialogs by default', async () => {
     hasActionsRef.value = true;
 
     const wrapper = await mountItem({ entryType: FSNodeType.Directory });
 
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
   });
 
-  it('renders the export ZIP progress sheet while the export is running', async () => {
+  it('renders the export ZIP dialog while the export is running', async () => {
     hasActionsRef.value = true;
     exportZipStateRef.value = { status: 'running' };
 
     const wrapper = await mountItem({ entryType: FSNodeType.Directory });
 
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
   });
 
-  it('renders the import ZIP progress sheet while the import is running', async () => {
+  it('renders the import ZIP dialog while the import is running', async () => {
     hasActionsRef.value = true;
     importZipStateRef.value = { status: 'running' };
 
     const wrapper = await mountItem({ entryType: FSNodeType.Directory });
 
-    expect(wrapper.find('[data-testid="import-zip-progress-sheet"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
   });
 
   it('keeps the export ZIP result dialog mounted after the export completes, until closed', async () => {
@@ -278,7 +288,7 @@ describe('RepositoryExplorerFileListItem', () => {
 
     const wrapper = await mountItem({ entryType: FSNodeType.Directory });
 
-    expect(wrapper.find('[data-testid="export-zip-progress-sheet"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
   });
 
   it('does not create a primary click target for non-openable file entries that have manage actions', async () => {

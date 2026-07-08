@@ -1,35 +1,6 @@
 import { ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { useEntryManageDialogState } from './useEntryManageDialogState';
-
-const { exportDirectoryZipMock, importDirectoryZipMock } = vi.hoisted(() => ({
-  exportDirectoryZipMock: vi.fn(),
-  importDirectoryZipMock: vi.fn(),
-}));
-
-vi.mock('@feature/entryRemove', () => ({
-  useRemoveFSEntry: () => ({ remove: vi.fn() }),
-}));
-
-vi.mock('@feature/importDocument', () => ({
-  useImportDocumentAction: () => ({ importDocument: vi.fn() }),
-}));
-
-vi.mock('@feature/exportZip', () => ({
-  useExportDirectoryZip: () => ({
-    exportDirectoryZip: exportDirectoryZipMock,
-    state: ref({ status: 'idle' }),
-    closeExportZipDialog: vi.fn(),
-  }),
-}));
-
-vi.mock('@feature/importZip', () => ({
-  useImportZipAction: () => ({
-    importDirectoryZip: importDirectoryZipMock,
-    state: ref({ status: 'idle' }),
-    closeImportZipDialog: vi.fn(),
-  }),
-}));
 
 describe('useEntryManageDialogState', () => {
   it('closes the create directory, create document, and rename dialogs when the path changes', async () => {
@@ -51,35 +22,54 @@ describe('useEntryManageDialogState', () => {
 
   it('keeps dialogs closed by default and opens them only through their select handlers', () => {
     const path = ref('/repo/a');
-    const { showCreateDirectoryDialog, showRenameDialog, onSelectCreateDirectory, onSelectRename } =
-      useEntryManageDialogState(path);
+    const {
+      showCreateDirectoryDialog,
+      showCreateDocumentDialog,
+      showRenameDialog,
+      onSelectCreateDirectory,
+      onSelectCreateDocument,
+      onSelectRename,
+    } = useEntryManageDialogState(path);
 
     expect(showCreateDirectoryDialog.value).toBe(false);
+    expect(showCreateDocumentDialog.value).toBe(false);
     expect(showRenameDialog.value).toBe(false);
 
     onSelectCreateDirectory();
     expect(showCreateDirectoryDialog.value).toBe(true);
 
+    onSelectCreateDocument();
+    expect(showCreateDocumentDialog.value).toBe(true);
+
     onSelectRename();
     expect(showRenameDialog.value).toBe(true);
   });
 
-  it('delegates ZIP export/import selections to their respective actions', async () => {
+  it('closes each dialog only through its own close handler', () => {
     const path = ref('/repo/a');
-    const { onSelectExportZip, onSelectImportZip } = useEntryManageDialogState(path);
+    const {
+      showCreateDirectoryDialog,
+      showCreateDocumentDialog,
+      showRenameDialog,
+      onSelectCreateDirectory,
+      onSelectCreateDocument,
+      onSelectRename,
+      onCloseCreateDirectoryDialog,
+      onCloseCreateDocumentDialog,
+      onCloseRenameDialog,
+    } = useEntryManageDialogState(path);
 
-    await onSelectExportZip();
-    expect(exportDirectoryZipMock).toHaveBeenCalledWith('/repo/a');
+    onSelectCreateDirectory();
+    onSelectCreateDocument();
+    onSelectRename();
 
-    await onSelectImportZip();
-    expect(importDirectoryZipMock).toHaveBeenCalledWith('/repo/a');
-  });
+    onCloseCreateDirectoryDialog();
+    expect(showCreateDirectoryDialog.value).toBe(false);
 
-  it('exposes ZIP export/import dialog state for the progress surfaces', () => {
-    const path = ref('/repo/a');
-    const { exportZipState, importZipState } = useEntryManageDialogState(path);
+    onCloseCreateDocumentDialog();
+    expect(showCreateDocumentDialog.value).toBe(false);
 
-    expect(exportZipState.value).toEqual({ status: 'idle' });
-    expect(importZipState.value).toEqual({ status: 'idle' });
+    onCloseRenameDialog();
+    expect(showRenameDialog.value).toBe(false);
   });
 });

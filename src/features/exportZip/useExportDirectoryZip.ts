@@ -31,6 +31,15 @@ export type ExportZipDialogState =
   | { status: 'success'; message: string }
   | { status: 'error'; message: string };
 
+/** Visible-only export ZIP dialog states. The dialog component must never render `idle`. */
+export type ExportZipVisibleDialogState = Exclude<
+  ExportZipDialogState,
+  {
+    /** Discriminant excluded from the visible dialog state. */
+    status: 'idle';
+  }
+>;
+
 /**
  * Bounded buffer size for the browser-fs-access fallback save path, used only when the browser
  * has no File System Access API and archive bytes can't be streamed straight to disk.

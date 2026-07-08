@@ -4,9 +4,12 @@ import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
 import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
+import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
-import { ExportZipProgressSheet } from '@feature/exportZip';
-import { ImportZipProgressSheet } from '@feature/importZip';
+import { ExportZipDialog, useExportDirectoryZip } from '@feature/exportZip';
+import type { ExportZipVisibleDialogState } from '@feature/exportZip';
+import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
+import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
@@ -60,16 +63,30 @@ const { hasActions: hasDirectoryManageActions, nonEmptyActionButtons: directoryM
 
 const {
   showRenameDialog: showDirectoryRenameDialog,
-  exportZipState,
-  closeExportZipDialog,
-  importZipState,
-  closeImportZipDialog,
   onSelectRename: onManageSelectRename,
-  onSelectRemove: onManageSelectRemove,
-  onSelectExportZip,
-  onSelectImportZip,
   onCloseRenameDialog: onCloseDirectoryRenameDialog,
 } = useEntryManageDialogState(directoryPath);
+
+const { remove } = useRemoveFSEntry();
+const { exportDirectoryZip, state: exportZipState, closeExportZipDialog } = useExportDirectoryZip();
+const { importDirectoryZip, state: importZipState, closeImportZipDialog } = useImportZipAction();
+
+const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
+  exportZipState.value.status === 'idle' ? null : exportZipState.value,
+);
+const importZipVisibleState = computed<ImportZipVisibleDialogState | null>(() =>
+  importZipState.value.status === 'idle' ? null : importZipState.value,
+);
+
+const onManageSelectRemove = async () => {
+  await remove(directoryPath.value);
+};
+const onSelectExportZip = async () => {
+  await exportDirectoryZip(directoryPath.value);
+};
+const onSelectImportZip = async () => {
+  await importDirectoryZip(directoryPath.value);
+};
 
 watch(directoryPath, () => {
   showEntryAddSheet.value = false;
@@ -175,15 +192,15 @@ const onClickReturnHome = async () => {
       @select-import-zip="onSelectImportZip"
     />
 
-    <ExportZipProgressSheet
-      v-if="exportZipState.status !== 'idle'"
-      :state="exportZipState"
+    <ExportZipDialog
+      v-if="exportZipVisibleState"
+      :state="exportZipVisibleState"
       @close="closeExportZipDialog"
     />
 
-    <ImportZipProgressSheet
-      v-if="importZipState.status !== 'idle'"
-      :state="importZipState"
+    <ImportZipDialog
+      v-if="importZipVisibleState"
+      :state="importZipVisibleState"
       @close="closeImportZipDialog"
     />
 

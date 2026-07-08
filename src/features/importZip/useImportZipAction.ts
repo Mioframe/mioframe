@@ -24,6 +24,15 @@ export type ImportZipDialogState =
   | { status: 'success'; message: string }
   | { status: 'error'; message: string };
 
+/** Visible-only import ZIP dialog states. The dialog component must never render `idle`. */
+export type ImportZipVisibleDialogState = Exclude<
+  ImportZipDialogState,
+  {
+    /** Discriminant excluded from the visible dialog state. */
+    status: 'idle';
+  }
+>;
+
 const shouldSkipImportErrorReport = (error: unknown) =>
   isUserFileSelectionCancel(error) ||
   (error instanceof DomainError &&

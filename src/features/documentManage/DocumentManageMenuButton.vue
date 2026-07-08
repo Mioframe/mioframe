@@ -3,7 +3,8 @@ import { useDocument } from '@entity/cfrDocument';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useExportDocument } from '@feature/exportDocument';
-import { ExportZipProgressSheet, useExportDocumentZip } from '@feature/exportZip';
+import { ExportZipDialog, useExportDocumentZip } from '@feature/exportZip';
+import type { ExportZipVisibleDialogState } from '@feature/exportZip';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
@@ -51,6 +52,10 @@ const documentActionButtons = defineMenuButtonList([
 const { saveJsonFile } = useExportDocument();
 const { exportDocumentZip, state: exportZipState, closeExportZipDialog } = useExportDocumentZip();
 const { addSnackbar } = useSnackbar();
+
+const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
+  exportZipState.value.status === 'idle' ? null : exportZipState.value,
+);
 
 const showRenameDialog = shallowRef(false);
 const showRemoveDialog = shallowRef(false);
@@ -141,9 +146,9 @@ const onCancelRenameDialog = () => {
     @cancel="onCancelRenameDialog"
   />
 
-  <ExportZipProgressSheet
-    v-if="exportZipState.status !== 'idle'"
-    :state="exportZipState"
+  <ExportZipDialog
+    v-if="exportZipVisibleState"
+    :state="exportZipVisibleState"
     @close="closeExportZipDialog"
   />
 </template>
