@@ -25,11 +25,12 @@ export function isPackageJsonVersionOnlyChange(oldContent, newContent) {
 }
 
 /**
- * Determine whether a `package.json` change is visual-relevant. The change
- * is treated as visual-relevant unless it can be positively confirmed as a
+ * Determine whether a `package.json` change is runtime-relevant, i.e. it
+ * changes anything other than the top-level `version` field. The change is
+ * treated as runtime-relevant unless it can be positively confirmed as a
  * version-only change; any failure to resolve a comparison fails closed
- * (visual-relevant), so unknown `package.json` impact never skips visual
- * checks.
+ * (runtime-relevant), so unknown `package.json` impact never skips
+ * downstream checks.
  * @param [options] Comparison inputs.
  * @param [options.oldRef] Git ref to read the prior `package.json` content
  * from, or `null` when no reliable base ref is known for the current verify
@@ -38,9 +39,10 @@ export function isPackageJsonVersionOnlyChange(oldContent, newContent) {
  * repository root.
  * @param [options.spawn] Injectable `spawnSync`, for tests.
  * @param [options.readFile] Injectable file reader, for tests.
- * @returns `true` when visual checks should still run for this change.
+ * @returns `true` when downstream checks should still treat this change as
+ * relevant.
  */
-export function isVisualRelevantPackageJsonChange({
+export function isPackageJsonRuntimeRelevantChange({
   oldRef = null,
   packageJsonPath = 'package.json',
   spawn = spawnSync,
@@ -65,6 +67,18 @@ export function isVisualRelevantPackageJsonChange({
   }
 
   return !isPackageJsonVersionOnlyChange(oldContent, newContent);
+}
+
+/**
+ * Determine whether a `package.json` change is visual-relevant. Wraps
+ * {@link isPackageJsonRuntimeRelevantChange}: the same version-only
+ * confirmation logic determines whether visual checks can be skipped.
+ * @param [options] Comparison inputs; see
+ * {@link isPackageJsonRuntimeRelevantChange} for details.
+ * @returns `true` when visual checks should still run for this change.
+ */
+export function isVisualRelevantPackageJsonChange(options = {}) {
+  return isPackageJsonRuntimeRelevantChange(options);
 }
 
 function readGitFileAtRef(ref, filePath, spawn) {
