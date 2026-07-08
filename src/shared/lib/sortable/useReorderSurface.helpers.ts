@@ -358,6 +358,33 @@ const preventReorderSelectionStart = (event: Event) => {
 };
 
 /**
+ * Removes any active document selection ranges, if the Selection API is available.
+ */
+const clearActiveDocumentSelection = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const selection = document.getSelection();
+
+  if (selection && selection.rangeCount > 0) {
+    selection.removeAllRanges();
+  }
+};
+
+/**
+ * Clears any document selection created while reorder suppression is still acquired.
+ * Native `selectionchange` can fire even when `selectstart` was prevented (e.g. selection
+ * extension via keyboard, find-in-page, or platform-specific touch handling), so suppression
+ * must keep clearing selection for its whole acquired lifetime, not only at acquire time.
+ */
+const clearSelectionWhileSuppressed = () => {
+  if (reorderSelectionSuppressionDepth > 0) {
+    clearActiveDocumentSelection();
+  }
+};
+
+/**
  * Checks whether the event target belongs to a draggable reorder item.
  * @param target - Event target to inspect.
  * @returns True when the target is inside a draggable reorder item.
@@ -367,6 +394,10 @@ export const isReorderItemTarget = (target: EventTarget | null): boolean =>
 
 /**
  * Acquires document-level text-selection suppression for an active reorder interaction.
+ *
+ * Clears any selection already present in the document immediately, since native
+ * selection can be created or extended in the window before this suppression takes
+ * effect (e.g. between pointerdown activation and SortableJS reporting drag start).
  * @returns Idempotent release function for the acquired suppression token.
  */
 export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
@@ -380,10 +411,13 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
     return () => {};
   }
 
+  clearActiveDocumentSelection();
+
   reorderSelectionSuppressionDepth += 1;
   if (reorderSelectionSuppressionDepth === 1) {
     rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
     document.addEventListener('selectstart', preventReorderSelectionStart, true);
+    document.addEventListener('selectionchange', clearSelectionWhileSuppressed);
   }
 
   let released = false;
@@ -399,6 +433,7 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
     if (reorderSelectionSuppressionDepth === 0) {
       rootEl.classList.remove(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
       document.removeEventListener('selectstart', preventReorderSelectionStart, true);
+      document.removeEventListener('selectionchange', clearSelectionWhileSuppressed);
     }
   };
 };
@@ -414,11 +449,7 @@ export const cleanupPostDragInteraction = (
     return;
   }
 
-  const selection = document.getSelection();
-
-  if (selection && selection.rangeCount > 0) {
-    selection.removeAllRanges();
-  }
+  clearActiveDocumentSelection();
 
   const activeElement = document.activeElement;
 

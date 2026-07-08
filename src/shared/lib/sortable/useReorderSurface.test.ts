@@ -452,10 +452,6 @@ describe('useReorderSurface', () => {
     range.selectNode(document.body);
     selection.removeAllRanges();
     selection.addRange(range);
-    Object.defineProperty(selection, 'rangeCount', {
-      configurable: true,
-      get: () => 1,
-    });
     const removeAllRangesSpy = vi.spyOn(selection, 'removeAllRanges');
     const blurSpy = vi.spyOn(child, 'blur');
     child.focus();
@@ -498,7 +494,8 @@ describe('useReorderSurface', () => {
     expect(preventDefault).toHaveBeenCalled();
     expect(stopPropagation).toHaveBeenCalled();
     expect(stopImmediatePropagation).toHaveBeenCalled();
-    expect(removeAllRangesSpy).toHaveBeenCalledTimes(2);
+    expect(removeAllRangesSpy).toHaveBeenCalled();
+    expect(selection.rangeCount).toBe(0);
     expect(rafMock).toHaveBeenCalledTimes(1);
     expect(blurSpy).toHaveBeenCalled();
     expect(api.suppressNextClick.value).toBe(false);
@@ -802,6 +799,44 @@ describe('useReorderSurface', () => {
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(false);
+  });
+
+  it('clears selection created between activation and drag start without relying on post-drag cleanup', async () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+
+    const range = document.createRange();
+    range.selectNode(row);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    expect(selection.rangeCount).toBe(0);
+
+    sortableAdapterState.callbacks?.onStart?.({
+      itemId: 'a',
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
+      toIndex: 0,
+    });
+
+    expect(selection.rangeCount).toBe(0);
+
+    await nextTick();
   });
 
   it('applies activation suppression synchronously on valid reorder-item input', async () => {
