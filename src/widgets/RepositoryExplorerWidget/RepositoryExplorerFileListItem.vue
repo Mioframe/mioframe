@@ -1,3 +1,14 @@
+<script lang="ts">
+// inheritAttrs is declared in a plain <script> block instead of defineOptions() in <script
+// setup> because defineOptions() options must stay statically hoistable; a plain module-scope
+// export does not have that restriction. Attrs (e.g. the list-item class) forward explicitly
+// onto the primary interactive element instead of Vue's default single-root behavior, since
+// this component's root is a fragment (list item plus its sibling entry-manage dialogs).
+export default {
+  inheritAttrs: false,
+};
+</script>
+
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
 import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
@@ -5,10 +16,6 @@ import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { DocumentCreationDialog } from '@feature/documentCreate';
-import { ExportZipDialog, useExportDirectoryZip } from '@feature/exportZip';
-import type { ExportZipVisibleDialogState } from '@feature/exportZip';
-import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
-import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { useImportDocumentAction } from '@feature/importDocument';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { computed, toRef } from 'vue';
@@ -26,6 +33,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   click: [name: string];
+  selectExportZip: [entryPath: string];
+  selectImportZip: [entryPath: string];
 }>();
 
 const showDocumentActions = computed(() => props.entryType === FSNodeType.Directory);
@@ -54,15 +63,6 @@ const {
 
 const { remove } = useRemoveFSEntry();
 const { importDocument } = useImportDocumentAction();
-const { exportDirectoryZip, state: exportZipState, closeExportZipDialog } = useExportDirectoryZip();
-const { importDirectoryZip, state: importZipState, closeImportZipDialog } = useImportZipAction();
-
-const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
-  exportZipState.value.status === 'idle' ? null : exportZipState.value,
-);
-const importZipVisibleState = computed<ImportZipVisibleDialogState | null>(() =>
-  importZipState.value.status === 'idle' ? null : importZipState.value,
-);
 
 const onSelectRemove = async () => {
   await remove(entryPath.value);
@@ -70,11 +70,11 @@ const onSelectRemove = async () => {
 const onSelectImportJson = async () => {
   await importDocument(entryPath.value);
 };
-const onSelectExportZip = async () => {
-  await exportDirectoryZip(entryPath.value);
+const onSelectExportZip = () => {
+  emit('selectExportZip', entryPath.value);
 };
-const onSelectImportZip = async () => {
-  await importDirectoryZip(entryPath.value);
+const onSelectImportZip = () => {
+  emit('selectImportZip', entryPath.value);
 };
 
 const onClickEntry = (name: string) => {
@@ -83,7 +83,9 @@ const onClickEntry = (name: string) => {
 </script>
 
 <template>
+  <!-- eslint-disable vue/no-restricted-v-bind -- transparent $attrs forwarding onto the primary root element, required because this component's root is a fragment (list item plus sibling entry-manage dialogs) -->
   <FSEntryMDListItem
+    v-bind="$attrs"
     :is-openable="
       entryType === FSNodeType.Directory ||
       (entryType === FSNodeType.File && name.toLowerCase().endsWith('.json'))
@@ -107,40 +109,28 @@ const onClickEntry = (name: string) => {
         @select-export-zip="onSelectExportZip"
         @select-import-zip="onSelectImportZip"
       />
-
-      <!-- Dialogs use TeleportContainer internally; DOM output goes to the dialog container, not into the list item. -->
-      <DirectoryCreateDialog
-        v-if="showCreateDirectoryDialog"
-        :path="entryPath"
-        @cancel="onCloseCreateDirectoryDialog"
-        @created="onCloseCreateDirectoryDialog"
-      />
-
-      <DocumentCreationDialog
-        v-if="showCreateDocumentDialog"
-        :path="entryPath"
-        @cancel="onCloseCreateDocumentDialog"
-        @created="onCloseCreateDocumentDialog"
-      />
-
-      <FSEntryRenameDialog
-        v-if="showRenameDialog"
-        :path="entryPath"
-        @cancel="onCloseRenameDialog"
-        @renamed="onCloseRenameDialog"
-      />
-
-      <ExportZipDialog
-        v-if="exportZipVisibleState"
-        :state="exportZipVisibleState"
-        @close="closeExportZipDialog"
-      />
-
-      <ImportZipDialog
-        v-if="importZipVisibleState"
-        :state="importZipVisibleState"
-        @close="closeImportZipDialog"
-      />
     </template>
   </FSEntryMDListItem>
+  <!-- eslint-enable vue/no-restricted-v-bind -->
+
+  <DirectoryCreateDialog
+    v-if="showCreateDirectoryDialog"
+    :path="entryPath"
+    @cancel="onCloseCreateDirectoryDialog"
+    @created="onCloseCreateDirectoryDialog"
+  />
+
+  <DocumentCreationDialog
+    v-if="showCreateDocumentDialog"
+    :path="entryPath"
+    @cancel="onCloseCreateDocumentDialog"
+    @created="onCloseCreateDocumentDialog"
+  />
+
+  <FSEntryRenameDialog
+    v-if="showRenameDialog"
+    :path="entryPath"
+    @cancel="onCloseRenameDialog"
+    @renamed="onCloseRenameDialog"
+  />
 </template>

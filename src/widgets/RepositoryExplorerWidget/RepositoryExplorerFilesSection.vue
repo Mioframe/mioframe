@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { ExportZipDialog, useExportDirectoryZip } from '@feature/exportZip';
+import type { ExportZipVisibleDialogState } from '@feature/exportZip';
+import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
+import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { MDList } from '@shared/ui/Lists';
 import { computed } from 'vue';
@@ -16,6 +20,24 @@ const emit = defineEmits<{
   selectPath: [path: string];
   selectJsonFile: [path: string];
 }>();
+
+const { exportDirectoryZip, state: exportZipState, closeExportZipDialog } = useExportDirectoryZip();
+const { importDirectoryZip, state: importZipState, closeImportZipDialog } = useImportZipAction();
+
+const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
+  exportZipState.value.status === 'idle' ? null : exportZipState.value,
+);
+const importZipVisibleState = computed<ImportZipVisibleDialogState | null>(() =>
+  importZipState.value.status === 'idle' ? null : importZipState.value,
+);
+
+const onSelectExportZip = async (entryPath: string) => {
+  await exportDirectoryZip(entryPath);
+};
+
+const onSelectImportZip = async (entryPath: string) => {
+  await importDirectoryZip(entryPath);
+};
 
 const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
 
@@ -66,10 +88,24 @@ const emptyText = computed(() =>
         :can-delete="capabilities?.canDelete"
         class="repository-explorer-files-section__list-item"
         @click="onClickEntry($event, nodeType)"
+        @select-export-zip="onSelectExportZip"
+        @select-import-zip="onSelectImportZip"
       />
     </MDList>
 
     <p v-else class="repository-explorer-files-section__empty-text">{{ emptyText }}</p>
+
+    <ExportZipDialog
+      v-if="exportZipVisibleState"
+      :state="exportZipVisibleState"
+      @close="closeExportZipDialog"
+    />
+
+    <ImportZipDialog
+      v-if="importZipVisibleState"
+      :state="importZipVisibleState"
+      @close="closeImportZipDialog"
+    />
   </section>
 </template>
 

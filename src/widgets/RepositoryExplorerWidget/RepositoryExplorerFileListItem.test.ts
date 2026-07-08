@@ -11,8 +11,6 @@ const nonEmptyActionButtonsRef = ref<NonEmptyMenuButtonList | null>(
 );
 const capturedShowDocumentActions: Array<boolean | undefined> = [];
 const capturedManageButtonProps: Array<{ path: string; actionsLength: number }> = [];
-const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
-const importZipStateRef = ref<{ status: string }>({ status: 'idle' });
 
 vi.mock('@feature/entryManage', () => ({
   useFSEntryManageActions: (options: { showDocumentActions?: { value?: boolean | undefined } }) => {
@@ -74,36 +72,6 @@ vi.mock('@entity/fsEntry', () => ({
   }),
 }));
 
-vi.mock('@feature/exportZip', () => ({
-  useExportDirectoryZip: () => ({
-    exportDirectoryZip: vi.fn(),
-    state: exportZipStateRef,
-    closeExportZipDialog: vi.fn(),
-  }),
-  ExportZipDialog: defineComponent({
-    name: 'ExportZipDialogStub',
-    props: { state: { type: Object, required: true } },
-    setup() {
-      return () => h('div', { 'data-testid': 'export-zip-dialog' });
-    },
-  }),
-}));
-
-vi.mock('@feature/importZip', () => ({
-  useImportZipAction: () => ({
-    importDirectoryZip: vi.fn(),
-    state: importZipStateRef,
-    closeImportZipDialog: vi.fn(),
-  }),
-  ImportZipDialog: defineComponent({
-    name: 'ImportZipDialogStub',
-    props: { state: { type: Object, required: true } },
-    setup() {
-      return () => h('div', { 'data-testid': 'import-zip-dialog' });
-    },
-  }),
-}));
-
 vi.mock('./RepositoryExplorerEntryManageButton.vue', () => ({
   default: defineComponent({
     name: 'RepositoryExplorerEntryManageButtonStub',
@@ -154,8 +122,6 @@ describe('RepositoryExplorerFileListItem', () => {
     ] as const);
     capturedShowDocumentActions.length = 0;
     capturedManageButtonProps.length = 0;
-    exportZipStateRef.value = { status: 'idle' };
-    importZipStateRef.value = { status: 'idle' };
     document.body.innerHTML = '';
   });
 
@@ -253,7 +219,7 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(capturedShowDocumentActions.at(-1)).toBe(false);
   });
 
-  it('does not render ZIP dialogs by default', async () => {
+  it('does not mount ZIP dialogs', async () => {
     hasActionsRef.value = true;
 
     const wrapper = await mountItem({ entryType: FSNodeType.Directory });
@@ -262,33 +228,36 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
   });
 
-  it('renders the export ZIP dialog while the export is running', async () => {
+  it('emits selectExportZip with the entry path when the manage button selects export ZIP', async () => {
     hasActionsRef.value = true;
-    exportZipStateRef.value = { status: 'running' };
 
-    const wrapper = await mountItem({ entryType: FSNodeType.Directory });
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
 
-    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectExportZip');
+
+    expect(wrapper.emitted('selectExportZip')).toEqual([['/repo/Nested']]);
   });
 
-  it('renders the import ZIP dialog while the import is running', async () => {
+  it('emits selectImportZip with the entry path when the manage button selects import ZIP', async () => {
     hasActionsRef.value = true;
-    importZipStateRef.value = { status: 'running' };
 
-    const wrapper = await mountItem({ entryType: FSNodeType.Directory });
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
 
-    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
-  });
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectImportZip');
 
-  it('keeps the export ZIP result dialog mounted after the export completes, until closed', async () => {
-    hasActionsRef.value = true;
-    exportZipStateRef.value = { status: 'success' };
-
-    const wrapper = await mountItem({ entryType: FSNodeType.Directory });
-
-    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
+    expect(wrapper.emitted('selectImportZip')).toEqual([['/repo/Nested']]);
   });
 
   it('does not create a primary click target for non-openable file entries that have manage actions', async () => {

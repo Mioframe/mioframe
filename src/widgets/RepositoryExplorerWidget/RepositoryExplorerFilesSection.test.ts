@@ -1,8 +1,15 @@
 /* eslint-disable vue/one-component-per-file -- Focused widget contract test with inline stubs. */
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
+
+const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
+const importZipStateRef = ref<{ status: string }>({ status: 'idle' });
+const exportDirectoryZip = vi.fn();
+const importDirectoryZip = vi.fn();
+const closeExportZipDialog = vi.fn();
+const closeImportZipDialog = vi.fn();
 
 vi.mock('@shared/ui/Lists', () => ({
   MDList: defineComponent({
@@ -13,9 +20,56 @@ vi.mock('@shared/ui/Lists', () => ({
   }),
 }));
 
+vi.mock('@feature/exportZip', () => ({
+  useExportDirectoryZip: () => ({
+    exportDirectoryZip,
+    state: exportZipStateRef,
+    closeExportZipDialog,
+  }),
+  ExportZipDialog: defineComponent({
+    name: 'ExportZipDialogStub',
+    props: { state: { type: Object, required: true } },
+    emits: ['close'],
+    setup(_props, { emit }) {
+      return () =>
+        h('button', {
+          type: 'button',
+          'data-testid': 'export-zip-dialog',
+          onClick: () => {
+            emit('close');
+          },
+        });
+    },
+  }),
+}));
+
+vi.mock('@feature/importZip', () => ({
+  useImportZipAction: () => ({
+    importDirectoryZip,
+    state: importZipStateRef,
+    closeImportZipDialog,
+  }),
+  ImportZipDialog: defineComponent({
+    name: 'ImportZipDialogStub',
+    props: { state: { type: Object, required: true } },
+    emits: ['close'],
+    setup(_props, { emit }) {
+      return () =>
+        h('button', {
+          type: 'button',
+          'data-testid': 'import-zip-dialog',
+          onClick: () => {
+            emit('close');
+          },
+        });
+    },
+  }),
+}));
+
 vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
   default: defineComponent({
     name: 'RepositoryExplorerFileListItemStub',
+    inheritAttrs: false,
     props: {
       directoryPath: { type: String, required: true },
       name: { type: String, required: true },
@@ -26,32 +80,56 @@ vi.mock('./RepositoryExplorerFileListItem.vue', () => ({
       canChangePath: { type: Boolean, default: undefined },
       canDelete: { type: Boolean, default: undefined },
     },
-    emits: ['click'],
+    emits: ['click', 'selectExportZip', 'selectImportZip'],
     setup(props, { emit }) {
       return () => {
         const isInteractive =
           props.entryType === FSNodeType.Directory ||
           (props.entryType === FSNodeType.File && props.name.toLowerCase().endsWith('.json'));
-        return h(
-          isInteractive ? 'button' : 'div',
-          {
-            ...(isInteractive
-              ? {
-                  type: 'button',
-                  onClick: () => {
-                    emit('click', props.name);
-                  },
-                }
-              : {}),
-          },
-          props.name,
-        );
+        const entryPath = `${props.directoryPath}/${props.name}`;
+        return [
+          h(
+            isInteractive ? 'button' : 'div',
+            {
+              ...(isInteractive
+                ? {
+                    type: 'button',
+                    onClick: () => {
+                      emit('click', props.name);
+                    },
+                  }
+                : {}),
+            },
+            props.name,
+          ),
+          h('span', {
+            'data-testid': `select-export-zip-${props.name}`,
+            onClick: () => {
+              emit('selectExportZip', entryPath);
+            },
+          }),
+          h('span', {
+            'data-testid': `select-import-zip-${props.name}`,
+            onClick: () => {
+              emit('selectImportZip', entryPath);
+            },
+          }),
+        ];
       };
     },
   }),
 }));
 
 describe('RepositoryExplorerFilesSection', () => {
+  afterEach(() => {
+    exportZipStateRef.value = { status: 'idle' };
+    importZipStateRef.value = { status: 'idle' };
+    exportDirectoryZip.mockClear();
+    importDirectoryZip.mockClear();
+    closeExportZipDialog.mockClear();
+    closeImportZipDialog.mockClear();
+  });
+
   it('renders directories as interactive and emits selectPath for them', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');
@@ -235,6 +313,110 @@ describe('RepositoryExplorerFilesSection', () => {
     );
     expect(hiddenWrapper.findAll('button')).toHaveLength(0);
     expect(visibleWrapper.findAll('button')).toHaveLength(0);
+  });
+
+  it('does not render ZIP dialogs by default', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
+        ],
+      },
+    });
+
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
+  });
+
+  it('exports the selected nested directory as a ZIP archive using the emitted entry path', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
+        ],
+      },
+    });
+
+    await wrapper.find('[data-testid="select-export-zip-Nested"]').trigger('click');
+
+    expect(exportDirectoryZip).toHaveBeenCalledTimes(1);
+    expect(exportDirectoryZip).toHaveBeenCalledWith('/repo/Nested');
+  });
+
+  it('imports a ZIP archive into the selected nested directory using the emitted entry path', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
+        ],
+      },
+    });
+
+    await wrapper.find('[data-testid="select-import-zip-Nested"]').trigger('click');
+
+    expect(importDirectoryZip).toHaveBeenCalledTimes(1);
+    expect(importDirectoryZip).toHaveBeenCalledWith('/repo/Nested');
+  });
+
+  it('renders the export ZIP dialog while the export is running and closes it through the dialog action', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+    exportZipStateRef.value = { status: 'running' };
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
+        ],
+      },
+    });
+
+    const dialog = wrapper.find('[data-testid="export-zip-dialog"]');
+    expect(dialog.exists()).toBe(true);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
+
+    await dialog.trigger('click');
+    expect(closeExportZipDialog).toHaveBeenCalledOnce();
+  });
+
+  it('renders the import ZIP dialog while the import is running and closes it through the dialog action', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+    importZipStateRef.value = { status: 'running' };
+
+    const wrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        regularFileEntries: [
+          ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
+        ],
+      },
+    });
+
+    const dialog = wrapper.find('[data-testid="import-zip-dialog"]');
+    expect(dialog.exists()).toBe(true);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+
+    await dialog.trigger('click');
+    expect(closeImportZipDialog).toHaveBeenCalledOnce();
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after focused inline stubs. */

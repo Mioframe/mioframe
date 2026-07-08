@@ -256,7 +256,23 @@ describe('resolveAppE2EPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/repoExplorerScreen.spec.ts',
       'tests/e2e/repositoryFlows.spec.ts',
+      'tests/e2e/zipActionFlows.spec.ts',
     ]);
+  });
+
+  it('includes the ZIP scenario spec for RepositoryExplorerWidget and RepoExplorer page changes', () => {
+    expect(resolveAppE2EPlan(['src/widgets/RepositoryExplorerWidget/index.ts']).specs).toContain(
+      'tests/e2e/zipActionFlows.spec.ts',
+    );
+    expect(resolveAppE2EPlan(['src/pages/RepoExplorer/index.ts']).specs).toContain(
+      'tests/e2e/zipActionFlows.spec.ts',
+    );
+    expect(resolveAppE2EPlan(['src/features/entryManage/index.ts']).specs).toContain(
+      'tests/e2e/zipActionFlows.spec.ts',
+    );
+    expect(resolveAppE2EPlan(['src/features/entryAdd/index.ts']).specs).toContain(
+      'tests/e2e/zipActionFlows.spec.ts',
+    );
   });
 
   it('skips app e2e when there are no relevant changes', () => {
