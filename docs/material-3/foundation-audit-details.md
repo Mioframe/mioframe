@@ -42,7 +42,7 @@ The main problem is not missing components. The main problem is that the foundat
 
 - system tokens exist, but public component tokens are mostly missing;
 - Material typography now uses `sp`, but broader component-token migration is still pending;
-- state-layer system tokens are now consumed by `MDStateLayer` for hover, focus, and pressed, while dragged remains a documented private extension;
+- state-layer system tokens are now consumed by `MDStateLayer` for hover, focus, pressed, and dragged through a generic private bridge contract;
 - Storybook and visual tests exist for the strongest pilot families, but the hierarchy still uses legacy `shared/ui/...` names;
 - overlay ownership is inconsistent: menus use the shared overlay/teleport model, while dialogs currently use a separate fixed native-dialog path.
 
@@ -74,9 +74,9 @@ Decision: keep `--one-sp: 1px` for now so the unit migration does not intentiona
 
 `MDStateLayer` supports hover, focused, pressed, dragged, and disabled. `useStateLayer` centralizes hover, focus-visible, pressed, and dragged state, and is already used by the important interactive primitives.
 
-Current state: `MDStateLayer` consumes `--md-sys-state-hover-state-layer-opacity`, `--md-sys-state-focus-state-layer-opacity`, and `--md-sys-state-pressed-state-layer-opacity` directly.
+Current state: `MDStateLayer` consumes generic private bridge vars for hover, focus, pressed, and dragged, each with a fallback to the matching `--md-sys-state-*-state-layer-opacity` token.
 
-Decision: keep dragged at `--md-private-state-dragged-state-layer-opacity`. The checked Material state-layer docs provide the `16%` dragged value, but the current cache does not expose a reusable shared `md.sys` dragged-opacity token name. Do not revive the old public `--md-state-*-layer-opacity` aliases.
+Decision: use the official `--md-sys-state-dragged-state-layer-opacity` token (`0.16`) and keep component families mapped into the generic `--md-private-state-*-state-layer-opacity` bridge vars. Do not revive the old `--md-state-*-layer-opacity` aliases.
 
 ### Storybook and visual coverage
 
@@ -111,7 +111,7 @@ Small focused implementation before the Buttons pilot:
 
 - keep the shipped `sp` unit support and `--one-sp` mapping stable until typography scaling is intentionally revisited;
 - preserve `MDStateLayer` wiring to system state opacity tokens;
-- keep dragged documented as a private project extension unless a shared official token name is verified in Material source;
+- keep dragged documented as the official `--md-sys-state-dragged-state-layer-opacity` token now that Material source verification exists;
 - keep the debug fallback outside the public Material token namespace;
 - rerun focused visual checks for state-layer consumers whenever foundation state tokens change again.
 

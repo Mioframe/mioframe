@@ -78,7 +78,7 @@ The shared state primitives exist as `MDStateLayer`, `useStateLayer`, and `useRi
 Current gaps:
 
 - `MDStateLayer` now consumes the declared `--md-sys-state-*-state-layer-opacity` tokens for hover, focus, and pressed.
-- Dragged uses a documented private extension token, `--md-private-state-dragged-state-layer-opacity`, because the checked Material state-layer docs provide the `16%` value but not a shared `md.sys` dragged-opacity token name in the current cache.
+- Dragged now uses the official system token `--md-sys-state-dragged-state-layer-opacity` (`0.16`), and `MDStateLayer` resolves every state opacity through generic private bridge vars before falling back to the system tokens.
 - Selected states still need per-component review rather than a global assumption.
 - State-layer behavior should be documented as the canonical primitive for every interactive `MD*` component family.
 

@@ -33,4 +33,11 @@ describe('postcss custom Material units', () => {
     expect(materialTokens).not.toContain('--unknownColor');
     expect(materialTokens).not.toMatch(/\b\d*\.?\d+pt\b/);
   });
+
+  it('defines the Material system dragged state opacity token', () => {
+    const materialTokens = readFileSync('./src/shared/lib/md/tokens.css', 'utf8');
+
+    expect(materialTokens).toContain('--md-sys-state-dragged-state-layer-opacity: 0.16;');
+    expect(materialTokens).not.toContain('--md-private-state-dragged-state-layer-opacity');
+  });
 });

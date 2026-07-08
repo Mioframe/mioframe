@@ -42,7 +42,7 @@ Default state-layer opacities should come from the shared foundation:
 - hover: `--md-sys-state-hover-state-layer-opacity`
 - focused: `--md-sys-state-focus-state-layer-opacity`
 - pressed: `--md-sys-state-pressed-state-layer-opacity`
-- dragged: `--md-private-state-dragged-state-layer-opacity` as a documented private project extension while the checked Material cache exposes the dragged value (`16%`) but not a reusable shared `md.sys` dragged-opacity token name
+- dragged: `--md-sys-state-dragged-state-layer-opacity`
 
 ## Verification
 

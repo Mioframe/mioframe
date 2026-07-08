@@ -379,9 +379,15 @@ watch(
 
   /* Private derived vars: state layer */
   --md-private-state-layer-color: var(--md-comp-switch-unselected-hover-state-layer-color);
-  --md-state-hover-layer-opacity: var(--md-comp-switch-unselected-hover-state-layer-opacity);
-  --md-state-focus-layer-opacity: var(--md-comp-switch-unselected-focus-state-layer-opacity);
-  --md-state-pressed-layer-opacity: var(--md-comp-switch-unselected-pressed-state-layer-opacity);
+  --md-private-state-hover-state-layer-opacity: var(
+    --md-comp-switch-unselected-hover-state-layer-opacity
+  );
+  --md-private-state-focus-state-layer-opacity: var(
+    --md-comp-switch-unselected-focus-state-layer-opacity
+  );
+  --md-private-state-pressed-state-layer-opacity: var(
+    --md-comp-switch-unselected-pressed-state-layer-opacity
+  );
 
   position: relative;
   isolation: isolate;
@@ -518,9 +524,15 @@ watch(
     --md-private-switch-icon-color: var(--md-comp-switch-selected-icon-color);
     --md-private-switch-icon-size: var(--md-comp-switch-selected-icon-size);
     --md-private-state-layer-color: var(--md-comp-switch-selected-hover-state-layer-color);
-    --md-state-hover-layer-opacity: var(--md-comp-switch-selected-hover-state-layer-opacity);
-    --md-state-focus-layer-opacity: var(--md-comp-switch-selected-focus-state-layer-opacity);
-    --md-state-pressed-layer-opacity: var(--md-comp-switch-selected-pressed-state-layer-opacity);
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-switch-selected-hover-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-switch-selected-focus-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-switch-selected-pressed-state-layer-opacity
+    );
   }
 
   &_disabled {

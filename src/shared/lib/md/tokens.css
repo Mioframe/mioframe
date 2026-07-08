@@ -351,9 +351,8 @@
   /* md.sys.state.pressed */
   --md-sys-state-pressed-state-layer-opacity: 0.1;
 
-  /* Private project extension: Material state-layer docs provide the dragged value,
-     but the current cache does not expose a shared md.sys dragged opacity token name. */
-  --md-private-state-dragged-state-layer-opacity: 0.16;
+  /* md.sys.state.dragged */
+  --md-sys-state-dragged-state-layer-opacity: 0.16;
 
   /* md.sys.motion */
   /* md.sys.motion.easing */
