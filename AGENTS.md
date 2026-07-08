@@ -22,11 +22,12 @@ pnpm verify
 
 Do not replace the final read-only check with manually selected checks. The final verification must not use `--fix`.
 
-If `pnpm verify` fails, fix failures caused by the change. Otherwise report the exact failing command and output, and do not claim the task is complete.
+If `pnpm verify` fails, fix failures caused by the change. Otherwise report the exact failing command and output, and do not claim the task is complete. After `pnpm verify`, report the verify summary itself, including active profile/environment and whether unresolved CI-profile risk remains. Do not collapse a pass-with-risk result to just "verify passed".
 
 For local verification safety, agents may run focused checks for limited files, but must not start multiple expensive checks in parallel. Use `pnpm verify --only <label> --files ...` for focused local feedback, keep full `pnpm verify` as the completion gate, and if an expensive command is already running, inspect its logs or wait instead of starting another heavy command.
 
 If `pnpm verify` exits because another local verification or a standalone expensive command is already active, do not rerun `pnpm verify` immediately. Run `pnpm verify:status`, inspect `.verify/logs`, and report `VERIFY RESULT: blocked by active local verification` when the final read-only gate could not start. `pnpm verify:status` reports both the verify lock and the expensive-command lock so agents can distinguish which lock is blocking.
+If local Playwright-backed checks need CI-equivalent confidence, rerun the relevant verify step with `--profile github-actions` or `MIOFRAME_VERIFY_PROFILE=github-actions`; plain `pnpm verify` remains the default local workflow.
 
 Do not start manual e2e, visual, mutation, full lint, or full type-check commands while the local verify lock is active. `CI=true` in a local shell or container does not bypass local verification safety; only `GITHUB_ACTIONS=true` counts as GitHub Actions.
 

@@ -10,6 +10,11 @@ import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWe
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
+import {
+  comparePlaywrightContainerProfiles,
+  resolvePlaywrightContainerProfile,
+  VERIFY_PROFILE_ENV,
+} from './playwrightContainer.mjs';
 
 applyProjectEnv();
 
@@ -65,6 +70,7 @@ const COMMAND_TIMEOUT_MS_BY_LABEL = {
 };
 const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
 const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);
+const cliProfile = isHelpMode ? null : getCliProfile(cliArgs);
 
 if (cliOnlyLabel !== null && FULL_ONLY_LABELS.has(cliOnlyLabel) && !isFullMode) {
   throw new Error(
@@ -220,6 +226,48 @@ function getCliOnlyLabel(argv) {
   return null;
 }
 
+function getCliProfile(argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--profile') {
+      const value = argv[index + 1];
+
+      if (!value || value.startsWith('--')) {
+        throw new Error('Missing value for --profile. Accepted profiles: local, github-actions');
+      }
+
+      validateProfile(value);
+      return value;
+    }
+
+    if (argument.startsWith('--profile=')) {
+      const value = argument.slice('--profile='.length);
+
+      if (value.length === 0) {
+        throw new Error('Missing value for --profile. Accepted profiles: local, github-actions');
+      }
+
+      validateProfile(value);
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function validateProfile(profile) {
+  if (profile === 'local' || profile === 'github-actions') {
+    return;
+  }
+
+  throw new Error(
+    [`Invalid value for --profile: ${profile}`, 'Accepted profiles: local, github-actions'].join(
+      '\n',
+    ),
+  );
+}
+
 /**
  * Parse explicit file overrides from the verify CLI.
  * @param argv Raw CLI arguments after the script name.
@@ -349,6 +397,7 @@ function getChangedFiles() {
     return {
       changedFiles: uniqSorted(cliFilesOverride),
       scope: 'explicit-files',
+      baseRef: null,
       // No reliable single base ref for an explicit --files list.
       packageJsonOldRef: null,
     };
@@ -372,8 +421,14 @@ function getChangedFiles() {
       `${mergeBase}...HEAD`,
       '--',
     ]);
-    scope = `github-base origin/${githubBaseRef}`;
-    packageJsonOldRef = mergeBase;
+    return {
+      changedFiles: uniqSorted(
+        changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
+      ),
+      scope: `github-base origin/${githubBaseRef}`,
+      baseRef: `origin/${githubBaseRef}`,
+      packageJsonOldRef: mergeBase,
+    };
   } else if (cliBaseRef || envBaseRef) {
     const baseRef = cliBaseRef ?? envBaseRef;
     ensureBaseRefExists(baseRef);
@@ -386,8 +441,14 @@ function getChangedFiles() {
       ...runGitCommand(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '--']),
       ...runGitCommand(['ls-files', '--others', '--exclude-standard']),
     ];
-    scope = `local-base ${baseRef}`;
-    packageJsonOldRef = forkPoint;
+    return {
+      changedFiles: uniqSorted(
+        changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
+      ),
+      scope: `local-base ${baseRef}`,
+      baseRef,
+      packageJsonOldRef: forkPoint,
+    };
   } else {
     changedFiles = [
       ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
@@ -413,6 +474,7 @@ function getChangedFiles() {
       changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
     ),
     scope,
+    baseRef: null,
     packageJsonOldRef,
   };
 }
@@ -858,6 +920,8 @@ function printHelp() {
   console.log('  --fix-only          Apply supported format/lint fixes only.');
   console.log('  --base <ref>        Verify changes against a local base ref.');
   console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
+  console.log('  --profile <name>    Override the verify runtime profile.');
+  console.log(`                      Env alternative: ${VERIFY_PROFILE_ENV}=local|github-actions.`);
   console.log('  --only <label>      Run one focused verification check.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log(
@@ -879,7 +943,9 @@ function printHelp() {
   console.log('  pnpm verify');
   console.log('  pnpm verify --verbose');
   console.log('  pnpm verify --base origin/develop');
+  console.log('  pnpm verify --profile github-actions --only e2e');
   console.log('  .env.local: VERIFY_BASE=origin/develop');
+  console.log(`  ${VERIFY_PROFILE_ENV}=github-actions pnpm verify --only visual`);
   console.log('  pnpm verify --verbose --only type-check');
   console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
   console.log('  pnpm verify --fix');
@@ -903,6 +969,81 @@ function printHelp() {
 
     console.log(`    - ${label}: ${formatHelpTimeout(timeoutMs)}`);
   }
+}
+
+/**
+ * Merge verify-level environment overrides into a child-process environment.
+ * @param [baseEnv] Base environment passed to verify child commands.
+ * @param [profileOverride] Explicit verify profile override, usually from `--profile`.
+ * @returns Environment with verify-owned overrides applied.
+ */
+export function getVerifyProcessEnv(baseEnv = process.env, profileOverride = cliProfile) {
+  if (profileOverride === null) {
+    return baseEnv;
+  }
+
+  return {
+    ...baseEnv,
+    [VERIFY_PROFILE_ENV]: profileOverride,
+  };
+}
+
+function getProfileSummary(processEnv) {
+  const profile = resolvePlaywrightContainerProfile(processEnv);
+
+  return {
+    environment: processEnv.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local',
+    profile,
+  };
+}
+
+function getHeavyCheckTriggerLines(results) {
+  return results
+    .filter((result) => result.status !== 'skipped' && result.triggerReason)
+    .map((result) => `${result.label}: ${result.triggerReason}`);
+}
+
+/**
+ * Detect unresolved GitHub Actions Playwright profile risk after a local pass.
+ * @param results Collected command results in run order.
+ * @param [processEnv] Environment object used for profile resolution.
+ * @returns Risk details when local Playwright settings differ from GitHub Actions.
+ */
+export function getCiProfileRisk(results, processEnv = process.env) {
+  const relevantLabels = new Set(['e2e', 'visual']);
+  const affectedChecks = results
+    .filter((result) => result.status === 'passed' && relevantLabels.has(result.label))
+    .map((result) => result.label);
+
+  if (affectedChecks.length === 0) {
+    return null;
+  }
+
+  const activeProfile = resolvePlaywrightContainerProfile(processEnv);
+
+  if (activeProfile.name === 'github-actions') {
+    return null;
+  }
+
+  const githubActionsProfile = resolvePlaywrightContainerProfile({
+    ...processEnv,
+    GITHUB_ACTIONS: 'true',
+    [VERIFY_PROFILE_ENV]: 'github-actions',
+  });
+  const differences = comparePlaywrightContainerProfiles(activeProfile, githubActionsProfile).map(
+    ({ label, left, right }) => `${label}: ${left} -> ${right}`,
+  );
+
+  if (differences.length === 0) {
+    return null;
+  }
+
+  return {
+    affectedChecks,
+    activeProfile,
+    githubActionsProfile,
+    differences,
+  };
 }
 
 async function runCommand(label, command, args, extraEnv = {}) {
@@ -1120,6 +1261,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
     hasWarnings: warningSummary.length > 0,
     warningSummary,
     blockingLogIssue,
+    triggerReason: null,
     terminatedBySignal: forwarder.terminatedBySignal,
     // Populated for expensive commands to support applyProcessResult.
     signal: forwarder.terminatedBySignal,
@@ -1138,6 +1280,7 @@ function createSkippedResult(entry, reason = entry.reason) {
     hasWarnings: false,
     warningSummary: '',
     blockingLogIssue: null,
+    triggerReason: entry.triggerReason ?? null,
   };
 }
 
@@ -1155,6 +1298,7 @@ function createFailedResult(entry, reason = entry.reason) {
     hasWarnings: false,
     warningSummary: '',
     blockingLogIssue: null,
+    triggerReason: entry.triggerReason ?? null,
   };
 }
 
@@ -1180,6 +1324,7 @@ function createE2ECommand(extraArgs = [], note = null) {
     args: ['e2e:container', ...extraArgs],
     weight: classifyCommandWeight({ label: 'e2e' }),
     note,
+    triggerReason: note,
   };
 }
 
@@ -1434,12 +1579,18 @@ export function buildCommands(
   }
 
   if (fullMode || hasVisualRelevantChanges || changedVisualSpecs.length > 0) {
+    const triggerReason = fullMode
+      ? 'full-project release verification'
+      : changedVisualSpecs.length > 0
+        ? `changed visual specs: ${changedVisualSpecs.join(', ')}`
+        : 'visual-relevant files changed';
     commands.push({
       kind: 'run',
       label: 'visual',
       command: 'pnpm',
       args: ['test:visual'],
       weight: classifyCommandWeight({ label: 'visual' }),
+      triggerReason,
     });
   } else {
     commands.push({
@@ -1460,6 +1611,7 @@ export function buildCommands(
       command: 'pnpm',
       args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
       weight: classifyCommandWeight({ label: 'mutation' }),
+      triggerReason: `mutation scope: ${mutationScope.join(', ')}`,
     });
   } else if (!fullMode) {
     commands.push({
@@ -1498,9 +1650,12 @@ function selectOnlyCommands(commands) {
 /**
  * Build the `action required` lines for the verify summary.
  * @param results Collected command results in run order.
+ * @param [options] Summary options.
+ * @param [options.ciProfileRisk] Pending GitHub Actions profile risk details.
  * @returns Action lines; `['None.']` when nothing failed or warned.
  */
-export function getActionRequired(results) {
+export function getActionRequired(results, options = {}) {
+  const { ciProfileRisk = null } = options;
   const actions = [];
   const failedResults = results.filter((result) => result.status === 'failed');
   const warningResults = results.filter(
@@ -1529,6 +1684,16 @@ export function getActionRequired(results) {
     actions.push(`Reason: ${result.warningSummary}`);
   }
 
+  if (ciProfileRisk !== null) {
+    const rerunChecks = ciProfileRisk.affectedChecks
+      .map((label) => `pnpm verify --profile github-actions --only ${label}`)
+      .join(' ; ');
+    actions.push(
+      `CI-profile risk remains for ${ciProfileRisk.affectedChecks.join(', ')} because local Playwright used profile ${ciProfileRisk.activeProfile.name}.`,
+    );
+    actions.push(`For CI-equivalent Playwright confidence locally, rerun: ${rerunChecks}`);
+  }
+
   if (actions.length === 0) {
     actions.push('None.');
   }
@@ -1543,38 +1708,81 @@ export function getActionRequired(results) {
  * @param changedFiles Changed files the run was scoped to.
  * @param scope Human-readable changed-file scope description.
  * @param results Collected command results in run order.
+ * @param [options] Summary overrides for tests and caller-provided context.
+ * @param [options.baseRef] Changed-file base ref used by this run, when known.
+ * @param [options.processEnv] Environment object used for profile resolution.
+ * @param [options.ciProfileRisk] Precomputed GitHub Actions profile risk details.
+ * @param [options.profileSummary] Precomputed verify profile summary details.
+ * @param [options.heavyCheckTriggers] Precomputed heavy-check trigger lines.
  * @returns Overall run status derived from the results.
  */
-export function printSummary(changedFiles, scope, results) {
+export function printSummary(changedFiles, scope, results, options = {}) {
   const hasFailed = results.some((result) => result.status === 'failed');
+  const processEnv = options.processEnv ?? getVerifyProcessEnv(process.env);
+  const ciProfileRisk = options.ciProfileRisk ?? getCiProfileRisk(results, processEnv);
+  const { environment, profile } = options.profileSummary ?? getProfileSummary(processEnv);
   const status = hasFailed ? 'failed' : 'passed';
-  const displayStatus = hasFailed ? 'failed ❌' : 'passed ✅';
-  const actionRequired = getActionRequired(results);
+  const displayStatus = hasFailed
+    ? 'failed ❌'
+    : ciProfileRisk === null
+      ? 'passed ✅'
+      : 'passed with CI-profile risk ⚠️';
+  const actionRequired = getActionRequired(results, { ciProfileRisk });
   const mode = isFixOnlyMode ? 'fix-only' : isFixMode ? 'fix' : 'check';
+  const heavyCheckTriggers = options.heavyCheckTriggers ?? getHeavyCheckTriggerLines(results);
+  const baseRef = options.baseRef ?? null;
+  const runnableResults = results.filter((result) => result.status !== 'skipped');
+  const skippedResults = results.filter((result) => result.status === 'skipped');
 
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${mode}`);
+  console.log(`environment: ${environment}`);
+  console.log(`profile: ${profile.name} (source: ${profile.source})`);
   console.log(`release: ${isFullMode ? 'full-project (pnpm verify --full)' : 'off'}`);
   console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
   console.log(`only: ${cliOnlyLabel ?? 'all'}`);
   console.log(`scope: ${isFullMode ? 'full-project (changed-file scope ignored)' : scope}`);
+  console.log(`base ref: ${baseRef ?? 'n/a'}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${displayStatus}`);
   console.log(`logs: ${VERIFY_LOG_DIR}`);
-  console.log('commands:');
+  console.log(`checks run: ${runnableResults.length}`);
 
-  for (const result of results) {
-    if (result.status === 'skipped') {
-      console.log(`- ${result.label}: skipped (${result.reason})`);
-      continue;
-    }
-
+  for (const result of runnableResults) {
     const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
     console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.displayCommand})`);
 
-    if (result.label === 'e2e' && result.note) {
-      console.log(`  e2e triggered by: ${result.note}`);
+    if (result.triggerReason) {
+      console.log(`  trigger: ${result.triggerReason}`);
     }
+  }
+
+  console.log(`checks skipped: ${skippedResults.length}`);
+
+  for (const result of skippedResults) {
+    console.log(`- ${result.label}: skipped (${result.reason})`);
+  }
+
+  console.log('heavy-check triggers:');
+
+  if (heavyCheckTriggers.length === 0) {
+    console.log('- none');
+  } else {
+    for (const triggerLine of heavyCheckTriggers) {
+      console.log(`- ${triggerLine}`);
+    }
+  }
+
+  console.log('ci profile risk:');
+
+  if (ciProfileRisk === null) {
+    console.log('- none');
+  } else {
+    console.log(
+      `- Local Playwright checks ran under ${ciProfileRisk.activeProfile.name}; GitHub Actions uses ${ciProfileRisk.githubActionsProfile.name}.`,
+    );
+    console.log(`- Affected checks: ${ciProfileRisk.affectedChecks.join(', ')}`);
+    console.log(`- Differences: ${ciProfileRisk.differences.join('; ')}`);
   }
 
   console.log('action required:');
@@ -1586,6 +1794,7 @@ export function printSummary(changedFiles, scope, results) {
   return {
     status,
     hasFailed,
+    hasCiProfileRisk: ciProfileRisk !== null,
   };
 }
 
@@ -1614,12 +1823,41 @@ export function getExtraEnvForEntry(entry, priorResults) {
   return buildResult?.status === 'passed' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
 }
 
+/**
+ * Build the child command environment for a verify entry.
+ * @param entry Command entry about to run.
+ * @param priorResults Results already collected earlier in this run.
+ * @param [options] Environment inputs for the child command.
+ * @param [options.verifyLockEnv] Env inherited from the verify lock.
+ * @param [options.verifyProcessEnv] Env carrying verify-level overrides such as profile selection.
+ * @param [options.expensiveLockEnv] Env added only for expensive-command lock ownership.
+ * @returns Environment passed to the child process.
+ */
+export function buildCommandEnv(entry, priorResults, options = {}) {
+  const { verifyLockEnv = {}, verifyProcessEnv = process.env, expensiveLockEnv = {} } = options;
+  const extraEnv = getExtraEnvForEntry(entry, priorResults);
+
+  return entry.weight === 'expensive'
+    ? {
+        ...verifyLockEnv,
+        ...verifyProcessEnv,
+        ...expensiveLockEnv,
+        ...extraEnv,
+      }
+    : {
+        ...verifyLockEnv,
+        ...verifyProcessEnv,
+        ...extraEnv,
+      };
+}
+
 async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata: () => {} }) {
   if (isFixMode && isFixOnlyMode) {
     throw new Error('Use either --fix or --fix-only, not both.');
   }
 
-  const { changedFiles, scope, packageJsonOldRef } = getChangedFiles();
+  const verifyProcessEnv = getVerifyProcessEnv(process.env);
+  const { changedFiles, scope, baseRef, packageJsonOldRef } = getChangedFiles();
   const commands = selectOnlyCommands(buildCommands(changedFiles, { packageJsonOldRef }));
   const results = [];
   let hasFailed = false;
@@ -1662,7 +1900,6 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
 
     // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
     let result;
-    const extraEnv = getExtraEnvForEntry(entry, results);
 
     if (entry.weight === 'expensive') {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
@@ -1672,11 +1909,16 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
           command: formatCommand(entry.command, entry.args),
         },
         async (lockEnv) =>
-          runCommand(entry.label, entry.command, entry.args, {
-            ...verifyLockEnv,
-            ...lockEnv,
-            ...extraEnv,
-          }),
+          runCommand(
+            entry.label,
+            entry.command,
+            entry.args,
+            buildCommandEnv(entry, results, {
+              expensiveLockEnv: lockEnv,
+              verifyLockEnv,
+              verifyProcessEnv,
+            }),
+          ),
       );
 
       // Signal propagation must happen after withExpensiveCommandLock cleanup,
@@ -1687,10 +1929,15 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
       }
     } else {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
-      result = await runCommand(entry.label, entry.command, entry.args, {
-        ...verifyLockEnv,
-        ...extraEnv,
-      });
+      result = await runCommand(
+        entry.label,
+        entry.command,
+        entry.args,
+        buildCommandEnv(entry, results, {
+          verifyLockEnv,
+          verifyProcessEnv,
+        }),
+      );
 
       if (result.terminatedBySignal) {
         applyProcessResult({ signal: result.terminatedBySignal });
@@ -1699,6 +1946,7 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
     if (entry.note) {
       result.note = entry.note;
     }
+    result.triggerReason = entry.triggerReason ?? null;
 
     results.push(result);
     completedRunnableChecks += 1;
@@ -1708,7 +1956,10 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
     }
   }
 
-  const summary = printSummary(changedFiles, scope, results);
+  const summary = printSummary(changedFiles, scope, results, {
+    baseRef,
+    processEnv: verifyProcessEnv,
+  });
   process.exitCode = summary.hasFailed ? 1 : 0;
 }
 

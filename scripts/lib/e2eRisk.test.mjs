@@ -35,6 +35,7 @@ describe('isAppE2ESpecPath and isAppE2ESupportPath exclude release specs', () =>
 describe('isLowLevelE2EPath', () => {
   it('flags playwright config and verify tooling', () => {
     expect(isLowLevelE2EPath('playwright.config.ts')).toBe(true);
+    expect(isLowLevelE2EPath('scripts/playwrightContainer.mjs')).toBe(true);
     expect(isLowLevelE2EPath('scripts/verify.mjs')).toBe(true);
     expect(isLowLevelE2EPath('scripts/lib/e2eRisk.mjs')).toBe(true);
     expect(isLowLevelE2EPath('package.json')).toBe(true);
@@ -177,6 +178,13 @@ describe('resolveAppE2EPlan', () => {
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('low-level path scripts/lib/e2eRisk.mjs');
+  });
+
+  it('runs full app e2e when playwrightContainer.mjs changes', () => {
+    const plan = resolveAppE2EPlan(['scripts/playwrightContainer.mjs']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('low-level path scripts/playwrightContainer.mjs');
   });
 
   it('runs full app e2e for shared service changes', () => {
