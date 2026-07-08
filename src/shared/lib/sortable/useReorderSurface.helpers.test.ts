@@ -481,6 +481,66 @@ describe('useReorderSurface helpers', () => {
     expect(releasedEvent.defaultPrevented).toBe(false);
   });
 
+  it('clears an existing document selection immediately when suppression is acquired', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    expect(selection.rangeCount).toBeGreaterThan(0);
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    expect(selection.rangeCount).toBe(0);
+
+    release();
+  });
+
+  it('clears newly created selection on repeated/nested acquisition without losing reference counting', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const firstRelease = acquireReorderDocumentSelectionSuppression();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    expect(selection.rangeCount).toBeGreaterThan(0);
+
+    const secondRelease = acquireReorderDocumentSelectionSuppression();
+
+    expect(selection.rangeCount).toBe(0);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    firstRelease();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    secondRelease();
+
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+  });
+
   it('makes repeated token release harmless', () => {
     const release = acquireReorderDocumentSelectionSuppression();
 
