@@ -561,6 +561,26 @@ describe('useReorderSurface helpers', () => {
     release();
   });
 
+  it('clears a selection created during active drag movement without relying on selectionchange', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+
+    expect(selection.rangeCount).toBe(0);
+
+    release();
+  });
+
   it('stops clearing selection on selectionchange once suppression is fully released', () => {
     const selection = document.getSelection();
 

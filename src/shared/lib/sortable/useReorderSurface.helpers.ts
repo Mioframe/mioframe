@@ -385,6 +385,16 @@ const clearSelectionWhileSuppressed = () => {
 };
 
 /**
+ * Clears selection during active pointer or touch movement when the browser leaves a
+ * visible selection without dispatching a reliable `selectionchange` first.
+ */
+const clearSelectionOnReorderMove = () => {
+  if (reorderSelectionSuppressionDepth > 0) {
+    clearActiveDocumentSelection();
+  }
+};
+
+/**
  * Checks whether the event target belongs to a draggable reorder item.
  * @param target - Event target to inspect.
  * @returns True when the target is inside a draggable reorder item.
@@ -418,6 +428,9 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
     rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
     document.addEventListener('selectstart', preventReorderSelectionStart, true);
     document.addEventListener('selectionchange', clearSelectionWhileSuppressed);
+    document.addEventListener('mousemove', clearSelectionOnReorderMove, true);
+    document.addEventListener('pointermove', clearSelectionOnReorderMove, true);
+    document.addEventListener('touchmove', clearSelectionOnReorderMove, true);
   }
 
   let released = false;
@@ -434,6 +447,9 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
       rootEl.classList.remove(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
       document.removeEventListener('selectstart', preventReorderSelectionStart, true);
       document.removeEventListener('selectionchange', clearSelectionWhileSuppressed);
+      document.removeEventListener('mousemove', clearSelectionOnReorderMove, true);
+      document.removeEventListener('pointermove', clearSelectionOnReorderMove, true);
+      document.removeEventListener('touchmove', clearSelectionOnReorderMove, true);
     }
   };
 };
