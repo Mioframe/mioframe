@@ -423,9 +423,10 @@ const setupRepositoriesService = () => {
   };
 
   /**
-   * Flushes pending Automerge saves for the repository at `path`, if one is currently cached.
-   * A repository with no cached instance has nothing pending in memory beyond what is already
-   * on storage, so a missing cache entry is a safe no-op rather than an error.
+   * Flushes pending Automerge saves for the repository at `path`. Resolves (and lazily caches)
+   * the repo via `getRepo` if it has documents but is not yet cached. A path with no documents
+   * has nothing pending in memory beyond what is already on storage, so `getRepo` returns
+   * `undefined` and this is a safe no-op rather than an error.
    * @param path - Absolute path to the repository root.
    * @param documentIds - Document ids to flush; when omitted, every cached document is flushed.
    */

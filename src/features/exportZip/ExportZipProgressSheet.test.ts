@@ -126,6 +126,14 @@ describe('ExportZipProgressSheet', () => {
     expect(wrapper.emitted()).toEqual({});
   });
 
+  it('does not emit close when the dialog applies while running', async () => {
+    const wrapper = mountSheet({ status: 'running' });
+
+    await wrapper.find('[data-headline]').trigger('click');
+
+    expect(wrapper.emitted('close')).toBeUndefined();
+  });
+
   it('uses the shared Material type-scale class for the count text', () => {
     const wrapper = mountSheet({
       status: 'running',

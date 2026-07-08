@@ -67,6 +67,10 @@ const progressFraction = computed(() => {
 });
 
 const onApply = () => {
+  if (props.state.status === 'running') {
+    return;
+  }
+
   emit('close');
 };
 </script>
