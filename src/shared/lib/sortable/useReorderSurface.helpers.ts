@@ -379,6 +379,58 @@ const clearActiveDocumentSelection = () => {
   }
 };
 
+let pendingReorderSelectionCleanupHandle: number | undefined;
+
+/**
+ * Schedules a single bounded fallback pass that re-clears selection one frame after a
+ * suppressed move event. Some browsers (observed on Mobile Chrome) can still commit a
+ * native selection anchor as part of a later default-action step even after a capturing
+ * move listener already called `preventDefault()` and cleared the selection synchronously.
+ * This is a safety net for that gap, not a substitute for the synchronous clear: it only
+ * re-checks and clears if suppression is still active by the time the frame runs, and it
+ * never re-schedules itself, so it cannot become a polling loop.
+ */
+const scheduleReorderSelectionCleanupFallback = () => {
+  if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+    return;
+  }
+
+  if (pendingReorderSelectionCleanupHandle !== undefined) {
+    return;
+  }
+
+  pendingReorderSelectionCleanupHandle = window.requestAnimationFrame(() => {
+    pendingReorderSelectionCleanupHandle = undefined;
+
+    if (reorderSelectionSuppressionDepth > 0) {
+      clearActiveDocumentSelection();
+    }
+  });
+};
+
+/**
+ * Cancels a pending selection cleanup fallback frame, if one was scheduled.
+ */
+const cancelReorderSelectionCleanupFallback = () => {
+  if (pendingReorderSelectionCleanupHandle === undefined) {
+    return;
+  }
+
+  if (typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+    window.cancelAnimationFrame(pendingReorderSelectionCleanupHandle);
+  }
+
+  pendingReorderSelectionCleanupHandle = undefined;
+};
+
+/**
+ * Clears selection synchronously and schedules the bounded fallback pass for the same event.
+ */
+const clearActiveDocumentSelectionWithFallback = () => {
+  clearActiveDocumentSelection();
+  scheduleReorderSelectionCleanupFallback();
+};
+
 /**
  * Clears any document selection created while reorder suppression is still acquired.
  * Native `selectionchange` can fire even when `selectstart` was prevented (e.g. selection
@@ -406,7 +458,7 @@ const preventReorderMouseMove = (event: Event) => {
   }
 
   event.preventDefault();
-  clearActiveDocumentSelection();
+  clearActiveDocumentSelectionWithFallback();
 };
 
 /**
@@ -430,7 +482,7 @@ const preventReorderPointerLikeMove = (event: Event) => {
 
   if (pointerType === 'mouse') {
     event.preventDefault();
-    clearActiveDocumentSelection();
+    clearActiveDocumentSelectionWithFallback();
     return;
   }
 
@@ -438,7 +490,7 @@ const preventReorderPointerLikeMove = (event: Event) => {
     event.preventDefault();
   }
 
-  clearActiveDocumentSelection();
+  clearActiveDocumentSelectionWithFallback();
 };
 
 /**
@@ -451,12 +503,12 @@ const preventReorderPointerLikeMove = (event: Event) => {
 const preventReorderTouchMove = (event: Event) => {
   if (reorderActiveDragMoveSuppressionDepth > 0) {
     event.preventDefault();
-    clearActiveDocumentSelection();
+    clearActiveDocumentSelectionWithFallback();
     return;
   }
 
   if (reorderSelectionSuppressionDepth > 0) {
-    clearActiveDocumentSelection();
+    clearActiveDocumentSelectionWithFallback();
   }
 };
 
@@ -567,6 +619,7 @@ export const acquireReorderDocumentSelectionSuppression = ({
         preventReorderTouchMove,
         suppressionListenerOptions,
       );
+      cancelReorderSelectionCleanupFallback();
     }
   };
 };

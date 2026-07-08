@@ -274,12 +274,16 @@ export const useReorderSurface = (
       }
 
       if (isReorderItemTarget(event.target)) {
+        if (event.pointerType === 'mouse') {
+          event.preventDefault();
+        }
+
         startActivationWindow();
       }
 
       syncPointerInput(event);
     },
-    { capture: true, passive: true },
+    { capture: true, passive: false },
   );
 
   useEventListener(
@@ -316,12 +320,13 @@ export const useReorderSurface = (
       }
 
       if (isReorderItemTarget(event.target)) {
+        event.preventDefault();
         startActivationWindow();
       }
 
       syncPointerInput(event);
     },
-    { capture: true, passive: true },
+    { capture: true, passive: false },
   );
 
   const clearActivationWindow = () => {

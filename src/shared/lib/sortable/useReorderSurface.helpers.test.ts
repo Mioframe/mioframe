@@ -808,6 +808,96 @@ describe('useReorderSurface helpers', () => {
     ).toBe(false);
   });
 
+  it('schedules a single bounded rAF fallback pass that re-clears selection created after a suppressed move event', () => {
+    const rafCallbacks: FrameRequestCallback[] = [];
+    const rafMock = vi.fn((callback: FrameRequestCallback) => {
+      rafCallbacks.push(callback);
+      return rafCallbacks.length;
+    });
+    vi.stubGlobal('requestAnimationFrame', rafMock);
+
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    // jsdom's real Selection.addRange() dispatches selectstart, which our own suppression
+    // would block while acquired. Overriding rangeCount directly simulates a selection anchor
+    // created through a native path that bypasses selectstart, which is the exact gap this
+    // fallback exists for.
+    let rangeCount = 0;
+    Object.defineProperty(selection, 'rangeCount', {
+      configurable: true,
+      get: () => rangeCount,
+    });
+    const removeAllRangesSpy = vi.spyOn(selection, 'removeAllRanges').mockImplementation(() => {
+      rangeCount = 0;
+    });
+    removeAllRangesSpy.mockClear();
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
+
+    expect(rafMock).toHaveBeenCalledTimes(1);
+
+    rangeCount = 1;
+    removeAllRangesSpy.mockClear();
+
+    rafCallbacks[0]?.(0);
+
+    expect(removeAllRangesSpy).toHaveBeenCalled();
+    expect(rangeCount).toBe(0);
+
+    release();
+    Reflect.deleteProperty(selection, 'rangeCount');
+    vi.unstubAllGlobals();
+  });
+
+  it('does not re-clear selection through a stale rAF fallback once suppression has fully released', () => {
+    const rafCallbacks: FrameRequestCallback[] = [];
+    const rafMock = vi.fn((callback: FrameRequestCallback) => {
+      rafCallbacks.push(callback);
+      return rafCallbacks.length;
+    });
+    vi.stubGlobal('requestAnimationFrame', rafMock);
+
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    let rangeCount = 0;
+    Object.defineProperty(selection, 'rangeCount', {
+      configurable: true,
+      get: () => rangeCount,
+    });
+    const removeAllRangesSpy = vi.spyOn(selection, 'removeAllRanges').mockImplementation(() => {
+      rangeCount = 0;
+    });
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
+    expect(rafMock).toHaveBeenCalledTimes(1);
+
+    release();
+
+    rangeCount = 1;
+    removeAllRangesSpy.mockClear();
+
+    rafCallbacks[0]?.(0);
+
+    expect(removeAllRangesSpy).not.toHaveBeenCalled();
+    expect(rangeCount).toBe(1);
+
+    Reflect.deleteProperty(selection, 'rangeCount');
+    vi.unstubAllGlobals();
+  });
+
   it('ignores only interactive descendants and ignored subtrees inside reorder items', () => {
     const reorderItem = document.createElement('div');
     reorderItem.setAttribute(REORDER_ITEM_ATTRIBUTE, 'a');
