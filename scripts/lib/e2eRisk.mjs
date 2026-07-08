@@ -152,6 +152,15 @@ export const E2E_SCENARIO_SCOPES = [
     sourcePrefixes: ['src/features/exportDocument/'],
     specs: ['tests/e2e/exportDocumentBrowserStorage.spec.ts'],
   },
+  {
+    name: 'ZIP export and import flows',
+    sourcePrefixes: [
+      'src/features/exportZip/',
+      'src/features/importZip/',
+      'src/features/documentManage/',
+    ],
+    specs: ['tests/e2e/zipActionFlows.spec.ts'],
+  },
 ];
 
 function uniqSorted(values) {

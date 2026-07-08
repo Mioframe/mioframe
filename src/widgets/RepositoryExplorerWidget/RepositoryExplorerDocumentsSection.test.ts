@@ -1,16 +1,61 @@
 /* eslint-disable vue/one-component-per-file -- Focused widget contract test with inline stubs. */
 import { mount } from '@vue/test-utils';
 import { Repo } from '@automerge/automerge-repo';
-import { describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
 
 const createDocumentId = () => new Repo().create({}).documentId;
+
+const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
+const exportDocumentZip = vi.fn();
+const closeExportZipDialog = vi.fn();
+const capturedManageButtonProps: Array<{ directoryPath: string; documentId: string }> = [];
 
 vi.mock('@feature/documentManage', () => ({
   DocumentManageMenuButton: defineComponent({
     name: 'DocumentManageMenuButtonStub',
-    setup() {
-      return () => h('span', 'document-manage');
+    props: {
+      directoryPath: { type: String, required: true },
+      documentId: { type: String, required: true },
+    },
+    emits: ['selectExportZip'],
+    setup(props, { emit }) {
+      return () => {
+        capturedManageButtonProps.push({
+          directoryPath: props.directoryPath,
+          documentId: props.documentId,
+        });
+        return h('button', {
+          type: 'button',
+          'data-testid': 'document-manage',
+          onClick: () => {
+            emit('selectExportZip');
+          },
+        });
+      };
+    },
+  }),
+}));
+
+vi.mock('@feature/exportZip', () => ({
+  useExportDocumentZip: () => ({
+    exportDocumentZip,
+    state: exportZipStateRef,
+    closeExportZipDialog,
+  }),
+  ExportZipDialog: defineComponent({
+    name: 'ExportZipDialogStub',
+    props: { state: { type: Object, required: true } },
+    emits: ['close'],
+    setup(_props, { emit }) {
+      return () =>
+        h('button', {
+          type: 'button',
+          'data-testid': 'export-zip-dialog',
+          onClick: () => {
+            emit('close');
+          },
+        });
     },
   }),
 }));
@@ -95,6 +140,13 @@ vi.mock('@entity/cfrDocument', () => ({
 }));
 
 describe('RepositoryExplorerDocumentsSection', () => {
+  afterEach(() => {
+    exportZipStateRef.value = { status: 'idle' };
+    exportDocumentZip.mockClear();
+    closeExportZipDialog.mockClear();
+    capturedManageButtonProps.length = 0;
+  });
+
   it('shows the singular document count, emits selection, and opens storage info', async () => {
     const { default: RepositoryExplorerDocumentsSection } =
       await import('./RepositoryExplorerDocumentsSection.vue');
@@ -171,6 +223,68 @@ describe('RepositoryExplorerDocumentsSection', () => {
     expect(wrapper.text()).toContain(firstDocumentId);
     expect(wrapper.text()).toContain(secondDocumentId);
     expect(wrapper.text()).not.toContain('This folder is not a Mioframe space yet.');
+  });
+
+  it('does not render the export ZIP dialog by default', async () => {
+    const { default: RepositoryExplorerDocumentsSection } =
+      await import('./RepositoryExplorerDocumentsSection.vue');
+    const documentId = createDocumentId();
+
+    const wrapper = mount(RepositoryExplorerDocumentsSection, {
+      props: {
+        directoryPath: '/repo',
+        documentIds: [documentId],
+        isRepositoryInitialized: true,
+      },
+    });
+
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+  });
+
+  it('exports the selected document as a ZIP archive using the directory path and document id in scope', async () => {
+    const { default: RepositoryExplorerDocumentsSection } =
+      await import('./RepositoryExplorerDocumentsSection.vue');
+    const firstDocumentId = createDocumentId();
+    const secondDocumentId = createDocumentId();
+
+    const wrapper = mount(RepositoryExplorerDocumentsSection, {
+      props: {
+        directoryPath: '/repo',
+        documentIds: [firstDocumentId, secondDocumentId],
+        isRepositoryInitialized: true,
+      },
+    });
+
+    expect(capturedManageButtonProps).toEqual([
+      { directoryPath: '/repo', documentId: firstDocumentId },
+      { directoryPath: '/repo', documentId: secondDocumentId },
+    ]);
+
+    await wrapper.findAll('[data-testid="document-manage"]')[1]?.trigger('click');
+
+    expect(exportDocumentZip).toHaveBeenCalledTimes(1);
+    expect(exportDocumentZip).toHaveBeenCalledWith('/repo', secondDocumentId);
+  });
+
+  it('renders the export ZIP dialog while the export is running and closes it through the dialog action', async () => {
+    const { default: RepositoryExplorerDocumentsSection } =
+      await import('./RepositoryExplorerDocumentsSection.vue');
+    const documentId = createDocumentId();
+    exportZipStateRef.value = { status: 'running' };
+
+    const wrapper = mount(RepositoryExplorerDocumentsSection, {
+      props: {
+        directoryPath: '/repo',
+        documentIds: [documentId],
+        isRepositoryInitialized: true,
+      },
+    });
+
+    const dialog = wrapper.find('[data-testid="export-zip-dialog"]');
+    expect(dialog.exists()).toBe(true);
+
+    await dialog.trigger('click');
+    expect(closeExportZipDialog).toHaveBeenCalledOnce();
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after focused inline stubs. */

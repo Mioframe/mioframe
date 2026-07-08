@@ -80,10 +80,10 @@ If your browser does not support saving files directly to disk during export, Mi
 
 ## How to import a ZIP archive into a folder
 
-1. Open the target folder in the app.
-2. Open the folder options menu, or use the **Add** action.
-3. Choose **Import ZIP**.
-4. Choose the ZIP file.
+- To import into the folder you currently have open, use **Add** → **Import ZIP**.
+- To import into a sub-folder without opening it first, use that sub-folder's own options menu (next to its name in the folder listing) → **Import ZIP**.
+
+Then choose the ZIP file.
 
 Mioframe validates the archive and checks the target folder for conflicts before writing anything — including files that already exist, folders that already exist as files (or vice versa), and paths the archive itself uses inconsistently. If any conflict is found, the import stops and nothing is written — Import ZIP never overwrites, merges, or renames existing files. To retry, import into an empty folder or a folder that does not yet contain those files.
 

@@ -3,8 +3,6 @@ import { useDocument } from '@entity/cfrDocument';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useExportDocument } from '@feature/exportDocument';
-import { ExportZipDialog, useExportDocumentZip } from '@feature/exportZip';
-import type { ExportZipVisibleDialogState } from '@feature/exportZip';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
@@ -16,6 +14,11 @@ import { computed, shallowRef, toRefs } from 'vue';
 const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
+}>();
+
+const emit = defineEmits<{
+  /** Emitted after the user selects exporting this document as a ZIP archive. */
+  selectExportZip: [];
 }>();
 
 const { documentId, directoryPath } = toRefs(props);
@@ -50,12 +53,7 @@ const documentActionButtons = defineMenuButtonList([
 ]);
 
 const { saveJsonFile } = useExportDocument();
-const { exportDocumentZip, state: exportZipState, closeExportZipDialog } = useExportDocumentZip();
 const { addSnackbar } = useSnackbar();
-
-const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
-  exportZipState.value.status === 'idle' ? null : exportZipState.value,
-);
 
 const showRenameDialog = shallowRef(false);
 const showRemoveDialog = shallowRef(false);
@@ -91,7 +89,7 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
       break;
     }
     case DocumentContextEvent.exportZip: {
-      await exportDocumentZip(directoryPath.value, documentId.value);
+      emit('selectExportZip');
       break;
     }
 
@@ -144,11 +142,5 @@ const onCancelRenameDialog = () => {
     :document-id="documentId"
     @renamed="onRenamedDocument"
     @cancel="onCancelRenameDialog"
-  />
-
-  <ExportZipDialog
-    v-if="exportZipVisibleState"
-    :state="exportZipVisibleState"
-    @close="closeExportZipDialog"
   />
 </template>

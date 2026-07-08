@@ -8,10 +8,10 @@ import { useMainServiceClient } from '@shared/service';
 import type { ZipExportProgress } from '@shared/service';
 import { ExportZipErrorCode } from './exportZipErrorCode';
 
-/** Progress phase shown by the export ZIP progress sheet, including the client-owned save step. */
+/** Progress phase shown by the export ZIP dialog, including the client-owned save step. */
 export type ExportZipDialogPhase = ZipExportProgress['phase'] | 'saving';
 
-/** Progress reported to the export ZIP progress sheet. */
+/** Progress reported to the export ZIP dialog. */
 export type ExportZipDialogProgress = {
   /** Current export phase. */
   phase: ExportZipDialogPhase;

@@ -2,6 +2,7 @@
 import { MDList, MDListItem } from '@shared/ui/Lists';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { MDSymbol } from '@shared/ui/Icon';
+import { MD_TYPESCALE } from '@shared/lib/md';
 
 const emit = defineEmits<{
   /** Emitted when the sheet requests closing without choosing an add action. */
@@ -45,8 +46,10 @@ const onClosed = () => {
   <MDBottomSheet label="Add" @closed="onClosed">
     <MDBottomSheetSection class="entry-add-sheet">
       <div class="entry-add-sheet__header">
-        <h2 class="entry-add-sheet__title">Add</h2>
-        <p class="entry-add-sheet__supporting-text">Choose what to add to this folder.</p>
+        <h2 class="entry-add-sheet__title" :class="MD_TYPESCALE.headline.small">Add</h2>
+        <p class="entry-add-sheet__supporting-text" :class="MD_TYPESCALE.body.medium">
+          Choose what to add to this folder.
+        </p>
       </div>
 
       <MDList>
@@ -109,20 +112,10 @@ const onClosed = () => {
 
 .entry-add-sheet__title {
   margin: 0;
-  font-family: var(--md-sys-typescale-headline-small-font);
-  font-size: var(--md-sys-typescale-headline-small-size);
-  font-weight: var(--md-sys-typescale-headline-small-weight);
-  line-height: var(--md-sys-typescale-headline-small-line-height);
-  letter-spacing: var(--md-sys-typescale-headline-small-tracking);
 }
 
 .entry-add-sheet__supporting-text {
   margin: 8px 0 0;
   color: var(--md-sys-color-on-surface-variant);
-  font-family: var(--md-sys-typescale-body-medium-font);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  font-weight: var(--md-sys-typescale-body-medium-weight);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
-  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
 }
 </style>

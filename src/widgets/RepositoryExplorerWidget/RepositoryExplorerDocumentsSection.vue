@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { DocumentManageMenuButton } from '@feature/documentManage';
 import { MioframeStorageInfoSheet } from '@feature/mioframeStorageInfo';
+import { ExportZipDialog, useExportDocumentZip } from '@feature/exportZip';
+import type { ExportZipVisibleDialogState } from '@feature/exportZip';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDEmptyState } from '@shared/ui/EmptyState';
@@ -32,6 +34,16 @@ const closeStorageInfoSheet = () => {
 
 const onSelectDocument = (documentId: AMDocumentId) => {
   emit('selectDocument', documentId);
+};
+
+const { exportDocumentZip, state: exportZipState, closeExportZipDialog } = useExportDocumentZip();
+
+const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
+  exportZipState.value.status === 'idle' ? null : exportZipState.value,
+);
+
+const onSelectExportZip = async (documentId: AMDocumentId) => {
+  await exportDocumentZip(directoryPath.value, documentId);
 };
 
 const documentCountLabel = computed(() => {
@@ -92,7 +104,11 @@ const emptySupportingText = computed(() => {
         @click="onSelectDocument"
       >
         <template #trailingAction>
-          <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />
+          <DocumentManageMenuButton
+            :directory-path="directoryPath"
+            :document-id="documentId"
+            @select-export-zip="onSelectExportZip(documentId)"
+          />
         </template>
       </CFRDocumentMDListItem>
     </MDList>
@@ -109,6 +125,12 @@ const emptySupportingText = computed(() => {
     </MDEmptyState>
 
     <MioframeStorageInfoSheet v-if="showStorageInfoSheet" @close="closeStorageInfoSheet" />
+
+    <ExportZipDialog
+      v-if="exportZipVisibleState"
+      :state="exportZipVisibleState"
+      @close="closeExportZipDialog"
+    />
   </section>
 </template>
 
