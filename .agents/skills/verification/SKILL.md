@@ -33,26 +33,37 @@ Do not run fix mode just because a task is complete. Do not run fix mode and the
 
 ## During implementation
 
-Use the narrowest useful check for the current change:
+Use the narrowest useful verify-managed check for the current change. Focused feedback must go through the project verify entrypoint whenever a matching verify label exists.
 
-- run focused unit tests for touched logic with sibling tests;
-- run focused Playwright specs for changed e2e files or UI flows;
-- run `pnpm type-check` for TypeScript, Vue, config, package, or test changes;
-- run targeted lint/format commands only when editing code style or fixing lint output.
+Use focused verify commands such as:
+
+```bash
+pnpm verify --only format --files <paths...>
+pnpm verify --only oxlint --files <paths...>
+pnpm verify --only eslint --files <paths...>
+pnpm verify --only type-check
+pnpm verify --only unit-tests --files <paths...>
+pnpm verify --only e2e --files <spec-paths...>
+pnpm verify --only visual
+```
+
+Do not run raw `vitest`, `playwright`, `eslint`, `oxlint`, `oxfmt`, `pnpm type-check`, visual, mutation, or e2e commands as a substitute for verify-managed checks.
+
+Raw underlying commands are allowed only for narrow diagnostics after a verify-managed check fails, or when the verify script cannot express the required mode. Report them as diagnostic commands, not verification gates, and still return to verify-managed checks before completion.
+
+`pnpm verify --only e2e` alone is not a forced e2e run when the inferred e2e scope is empty.
 
 Prefer the project `pnpm verify` script when it can infer the changed-file scope. It already runs changed-file formatting, lint, type-check, focused Vitest, changed Playwright specs, and narrow Stryker scope when applicable.
 
 Do not treat skipped e2e from `pnpm verify` as sufficient when the change can affect user-visible behavior. Changed component or application code can break browser behavior even when no e2e spec file changed, and `pnpm verify` may not infer that scope automatically.
 
-Run the relevant focused Playwright spec when changing behavior that affects navigation, focus or keyboard interaction, clickable targets, disabled or readonly states, ripples, permissions, persistence, provider integration, import/export, authentication, or any complete user scenario. If no focused spec exists, say so and run the nearest available coverage instead of treating the skipped e2e check as proof that e2e is unnecessary.
+Run the relevant focused Playwright spec through `pnpm verify --only e2e --files <spec-paths...>` when changing behavior that affects navigation, focus or keyboard interaction, clickable targets, disabled or readonly states, ripples, permissions, persistence, provider integration, import/export, authentication, or any complete user scenario. If no focused spec exists, say so and run the nearest available verify-managed coverage instead of treating the skipped e2e check as proof that e2e is unnecessary.
 
 When a user-flow change needs e2e coverage but `pnpm verify` cannot infer it, pass the spec explicitly:
 
 ```bash
 pnpm verify --only e2e --files tests/e2e/relevant-flow.spec.ts
 ```
-
-`pnpm verify --only e2e` alone is not a forced e2e run when the inferred e2e scope is empty.
 
 `pnpm verify` uses summary-first terminal output by default:
 
@@ -86,7 +97,7 @@ If `pnpm verify` fails:
 
 1. Identify the exact failed command from the VERIFY RESULT summary.
 2. Fix the failure if it is caused by the current change.
-3. Rerun the narrow failed command when possible.
+3. Rerun the narrow failed check through `pnpm verify --only <label>` when possible.
 4. Rerun final `pnpm verify` before reporting completion.
 5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output.
 6. Do not claim the task is complete while final verification is failing.
