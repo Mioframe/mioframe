@@ -350,6 +350,13 @@ export const shouldUseBestEffortReorderHaptics = (input: ReorderInput): boolean 
   input === 'touch';
 
 let reorderSelectionSuppressionDepth = 0;
+let reorderActiveDragMoveSuppressionDepth = 0;
+
+/** Listener options shared by suppression listeners that must call `preventDefault`. */
+const suppressionListenerOptions: AddEventListenerOptions = {
+  capture: true,
+  passive: false,
+};
 
 const preventReorderSelectionStart = (event: Event) => {
   if (reorderSelectionSuppressionDepth > 0) {
@@ -385,10 +392,37 @@ const clearSelectionWhileSuppressed = () => {
 };
 
 /**
- * Clears selection during active pointer or touch movement when the browser leaves a
- * visible selection without dispatching a reliable `selectionchange` first.
+ * Blocks the browser's default selection-extension action on mouse/pointer movement for the
+ * whole suppression lifetime. Reactively clearing the selection after the fact is not
+ * reliable: the browser can (re)create or extend a selection as its own default action, run
+ * after a capturing listener already ran for that same move event, leaving a visible
+ * selection in the gap. Mouse and pointer move events never drive page scrolling, so
+ * cancelling their default action is safe for both activation and active-drag suppression.
+ * @param event - Mouse or pointer move event dispatched while suppression may be active.
  */
-const clearSelectionOnReorderMove = () => {
+const preventReorderPointerLikeMove = (event: Event) => {
+  if (reorderSelectionSuppressionDepth === 0) {
+    return;
+  }
+
+  event.preventDefault();
+  clearActiveDocumentSelection();
+};
+
+/**
+ * Blocks the browser's default selection-extension action on touchmove, but only once an
+ * actual reorder drag is confirmed. Activation-only suppression (before a drag is confirmed)
+ * must leave touchmove's default action alone so a press that never turns into a drag keeps
+ * normal page scrolling.
+ * @param event - Touch move event dispatched while suppression may be active.
+ */
+const preventReorderTouchMove = (event: Event) => {
+  if (reorderActiveDragMoveSuppressionDepth > 0) {
+    event.preventDefault();
+    clearActiveDocumentSelection();
+    return;
+  }
+
   if (reorderSelectionSuppressionDepth > 0) {
     clearActiveDocumentSelection();
   }
@@ -402,15 +436,29 @@ const clearSelectionOnReorderMove = () => {
 export const isReorderItemTarget = (target: EventTarget | null): boolean =>
   target instanceof Element && target.closest(`[${REORDER_ITEM_ATTRIBUTE}]`) !== null;
 
+/** Options accepted by {@link acquireReorderDocumentSelectionSuppression}. */
+export interface ReorderDocumentSelectionSuppressionOptions {
+  /**
+   * Also blocks touchmove's default action for the lifetime of this token. Only safe once an
+   * actual reorder drag is confirmed (SortableJS itself starts preventing default on move at
+   * that point too); activation-only callers must omit this so page scrolling still works for
+   * presses that never turn into a drag.
+   */
+  suppressTouchMoveDefault?: boolean;
+}
+
 /**
  * Acquires document-level text-selection suppression for an active reorder interaction.
  *
  * Clears any selection already present in the document immediately, since native
  * selection can be created or extended in the window before this suppression takes
  * effect (e.g. between pointerdown activation and SortableJS reporting drag start).
+ * @param options - Suppression tuning for this acquisition.
  * @returns Idempotent release function for the acquired suppression token.
  */
-export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
+export const acquireReorderDocumentSelectionSuppression = ({
+  suppressTouchMoveDefault = false,
+}: ReorderDocumentSelectionSuppressionOptions = {}): (() => void) => {
   if (typeof document === 'undefined') {
     return () => {};
   }
@@ -426,11 +474,29 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
   reorderSelectionSuppressionDepth += 1;
   if (reorderSelectionSuppressionDepth === 1) {
     rootEl.classList.add(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
-    document.addEventListener('selectstart', preventReorderSelectionStart, true);
+    document.addEventListener(
+      'selectstart',
+      preventReorderSelectionStart,
+      suppressionListenerOptions,
+    );
     document.addEventListener('selectionchange', clearSelectionWhileSuppressed);
-    document.addEventListener('mousemove', clearSelectionOnReorderMove, true);
-    document.addEventListener('pointermove', clearSelectionOnReorderMove, true);
-    document.addEventListener('touchmove', clearSelectionOnReorderMove, true);
+    document.addEventListener(
+      'mousemove',
+      preventReorderPointerLikeMove,
+      suppressionListenerOptions,
+    );
+    document.addEventListener(
+      'pointermove',
+      preventReorderPointerLikeMove,
+      suppressionListenerOptions,
+    );
+    document.addEventListener('touchmove', preventReorderTouchMove, suppressionListenerOptions);
+  }
+
+  const acquiredActiveDragMoveSuppression = suppressTouchMoveDefault;
+
+  if (acquiredActiveDragMoveSuppression) {
+    reorderActiveDragMoveSuppressionDepth += 1;
   }
 
   let released = false;
@@ -443,13 +509,36 @@ export const acquireReorderDocumentSelectionSuppression = (): (() => void) => {
     released = true;
     reorderSelectionSuppressionDepth = Math.max(0, reorderSelectionSuppressionDepth - 1);
 
+    if (acquiredActiveDragMoveSuppression) {
+      reorderActiveDragMoveSuppressionDepth = Math.max(
+        0,
+        reorderActiveDragMoveSuppressionDepth - 1,
+      );
+    }
+
     if (reorderSelectionSuppressionDepth === 0) {
       rootEl.classList.remove(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS);
-      document.removeEventListener('selectstart', preventReorderSelectionStart, true);
+      document.removeEventListener(
+        'selectstart',
+        preventReorderSelectionStart,
+        suppressionListenerOptions,
+      );
       document.removeEventListener('selectionchange', clearSelectionWhileSuppressed);
-      document.removeEventListener('mousemove', clearSelectionOnReorderMove, true);
-      document.removeEventListener('pointermove', clearSelectionOnReorderMove, true);
-      document.removeEventListener('touchmove', clearSelectionOnReorderMove, true);
+      document.removeEventListener(
+        'mousemove',
+        preventReorderPointerLikeMove,
+        suppressionListenerOptions,
+      );
+      document.removeEventListener(
+        'pointermove',
+        preventReorderPointerLikeMove,
+        suppressionListenerOptions,
+      );
+      document.removeEventListener(
+        'touchmove',
+        preventReorderTouchMove,
+        suppressionListenerOptions,
+      );
     }
   };
 };

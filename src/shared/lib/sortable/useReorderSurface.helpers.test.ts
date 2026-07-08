@@ -581,6 +581,82 @@ describe('useReorderSurface helpers', () => {
     release();
   });
 
+  it('cancels the default action of mouse/pointer move while suppression is active, so the browser never re-creates a selection after this listener runs', () => {
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const mouseMoveEvent = new MouseEvent('mousemove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(mouseMoveEvent);
+    expect(mouseMoveEvent.defaultPrevented).toBe(true);
+
+    const pointerMoveEvent = new Event('pointermove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(pointerMoveEvent);
+    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedMoveEvent = new MouseEvent('mousemove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(releasedMoveEvent);
+    expect(releasedMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it('leaves touchmove default-permitted during mere activation, so normal scrolling still works for presses that never become a drag', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const touchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(touchMoveEvent);
+    expect(touchMoveEvent.defaultPrevented).toBe(false);
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+    document.dispatchEvent(new Event('touchmove', { bubbles: true, cancelable: true }));
+    expect(selection.rangeCount).toBe(0);
+
+    release();
+  });
+
+  it('cancels the default action of touchmove once an active reorder drag is confirmed', () => {
+    const release = acquireReorderDocumentSelectionSuppression({ suppressTouchMoveDefault: true });
+
+    const touchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(touchMoveEvent);
+    expect(touchMoveEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedTouchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(releasedTouchMoveEvent);
+    expect(releasedTouchMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it('keeps active-drag touchmove prevention scoped to the token that requested it under nested acquisition', () => {
+    const activationRelease = acquireReorderDocumentSelectionSuppression();
+    const dragRelease = acquireReorderDocumentSelectionSuppression({
+      suppressTouchMoveDefault: true,
+    });
+
+    const touchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(touchMoveEvent);
+    expect(touchMoveEvent.defaultPrevented).toBe(true);
+
+    dragRelease();
+
+    const afterDragReleaseEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(afterDragReleaseEvent);
+    expect(afterDragReleaseEvent.defaultPrevented).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    activationRelease();
+  });
+
   it('stops clearing selection on selectionchange once suppression is fully released', () => {
     const selection = document.getSelection();
 

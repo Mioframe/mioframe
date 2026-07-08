@@ -106,7 +106,9 @@ export const useReorderSurface = (
     }
 
     setContainerClass(REORDER_SURFACE_DRAGGING_CLASS, true);
-    dragSelectionRelease = acquireReorderDocumentSelectionSuppression();
+    dragSelectionRelease = acquireReorderDocumentSelectionSuppression({
+      suppressTouchMoveDefault: true,
+    });
   };
 
   const endDragSelectionSuppression = () => {
