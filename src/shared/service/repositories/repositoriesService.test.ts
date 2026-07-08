@@ -1281,4 +1281,86 @@ describe('useRepositoriesService', () => {
       expect(service).not.toHaveProperty('importDocumentFromJsonText');
     });
   });
+
+  describe('importDirectoryZip', () => {
+    afterEach(() => {
+      vi.doUnmock('./repositoryZipImport');
+    });
+
+    it('settles pending repository saves before delegating to the low-level import', async () => {
+      const targetPath = '/zip-import-target';
+      const callOrder: string[] = [];
+      const flushPendingSaves = vi.fn().mockImplementation(() => {
+        callOrder.push('flushPendingSaves');
+        return Promise.resolve({ flushedCount: 1, pendingCount: 0, status: 'flushed' as const });
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelImport = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelImport');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipImport', () => ({ importDirectoryZip: lowLevelImport }));
+
+      createDirectoryContentSubject(targetPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      // Caches a repo for the target path so its `hasPendingSaves`/`flushPendingSaves` are
+      // actually consulted by the freshness step, not skipped as "nothing cached yet".
+      await service.initializeRepository(targetPath);
+
+      const archiveFile = new File([new Uint8Array()], 'archive.zip');
+      await service.importDirectoryZip(targetPath, archiveFile);
+
+      expect(callOrder).toEqual(['flushPendingSaves', 'lowLevelImport']);
+      expect(lowLevelImport).toHaveBeenCalledWith(
+        expect.anything(),
+        targetPath,
+        archiveFile,
+        undefined,
+      );
+    });
+
+    it('stops before any write when repository saves cannot be settled', async () => {
+      const targetPath = '/zip-import-blocked';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'stillBlocked' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelImport = vi.fn();
+      vi.doMock('./repositoryZipImport', () => ({ importDirectoryZip: lowLevelImport }));
+
+      createDirectoryContentSubject(targetPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(targetPath);
+
+      const archiveFile = new File([new Uint8Array()], 'archive.zip');
+      const error = await service
+        .importDirectoryZip(targetPath, archiveFile)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.importStorageNotReady });
+      expect(flushPendingSaves).toHaveBeenCalled();
+      expect(lowLevelImport).not.toHaveBeenCalled();
+    });
+  });
 });

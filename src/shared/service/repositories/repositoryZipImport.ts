@@ -43,12 +43,19 @@ const collectAncestorDirectories = (rootPath: string, path: string): string[] =>
   return ancestors;
 };
 
-const createDirectoryIfMissing = async (vfs: VirtualFileSystem, path: string): Promise<void> => {
+/**
+ * Creates a directory if it does not already exist.
+ * @param vfs - Mounted virtual file system.
+ * @param path - Absolute directory path to create.
+ * @returns `true` when a new directory was created, `false` when it already existed.
+ */
+const createDirectoryIfMissing = async (vfs: VirtualFileSystem, path: string): Promise<boolean> => {
   try {
     await vfs.createDirectory(path);
+    return true;
   } catch (error) {
     if (error instanceof VfsError && error.code === FileSystemError.FileExists) {
-      return;
+      return false;
     }
 
     throw error;
@@ -204,13 +211,16 @@ const preflightZipImportConflicts = async (
 /**
  * Pass 2: streams the archive a second time, writing only the entries planned by
  * {@link planZipImport}, using no-overwrite semantics. Tracks whether any write actually
- * succeeded so callers can classify a mid-write failure as a possible partial import.
+ * mutated storage so callers can classify a mid-write failure as a possible partial import.
+ * An already-existing ancestor directory is not a mutation, so leaving one in place before a
+ * later failure does not count as partial progress.
  * @param vfs - Mounted virtual file system.
  * @param archiveFile - The user-selected ZIP archive file.
  * @param plan - The plan produced by {@link planZipImport}.
  * @param onProgress - Optional progress callback.
  * @throws DomainError with code `RepositoryZipErrorCode.importWritePartiallyFailed` when a write
- * fails after at least one earlier write already succeeded; otherwise rethrows the original error.
+ * fails after at least one earlier write already mutated storage; otherwise rethrows the original
+ * error.
  */
 const writeZipImportPlan = async (
   vfs: VirtualFileSystem,
@@ -218,22 +228,22 @@ const writeZipImportPlan = async (
   plan: ZipImportPlan,
   onProgress?: OnZipImportProgress,
 ): Promise<void> => {
-  let anyWriteSucceeded = false;
+  let anyMutationSucceeded = false;
 
-  const runWrite = async (write: () => Promise<void>): Promise<void> => {
+  const runWrite = async (write: () => Promise<boolean>): Promise<void> => {
     try {
-      await write();
-      anyWriteSucceeded = true;
+      const mutated = await write();
+      anyMutationSucceeded ||= mutated;
     } catch (error) {
-      if (!anyWriteSucceeded) {
-        // Nothing has been written yet, so a write-access failure here is still safe to recover
-        // from and retry: granting access and retrying the whole import cannot conflict with
-        // anything this import has already written.
+      if (!anyMutationSucceeded) {
+        // Nothing has actually mutated storage yet, so a write-access failure here is still safe
+        // to recover from and retry: granting access and retrying the whole import cannot
+        // conflict with anything this import has already written.
         throw error;
       }
 
-      // At least one write already succeeded. Even a write-access-recovery error must not be
-      // rethrown raw here, since the caller's recovery flow retries the whole import, which
+      // At least one write already mutated storage. Even a write-access-recovery error must not
+      // be rethrown raw here, since the caller's recovery flow retries the whole import, which
       // would then hit conflicts caused by the files this attempt already wrote.
       throw new DomainError(
         'The import stopped partway through. Some files may already have been written — check the target folder before retrying.',
@@ -278,7 +288,10 @@ const writeZipImportPlan = async (
         offset += part.length;
       }
 
-      await runWrite(() => vfs.createFile(planned.targetPath, merged));
+      await runWrite(async () => {
+        await vfs.createFile(planned.targetPath, merged);
+        return true;
+      });
       current += 1;
       onProgress?.({ phase: 'unpacking', current, total: plan.plannedFiles.length });
     });

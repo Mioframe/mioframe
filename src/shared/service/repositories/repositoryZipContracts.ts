@@ -50,4 +50,9 @@ export enum RepositoryZipErrorCode {
    * succeeded. Unlike `importConflict`, the target directory may now hold a partial import.
    */
   importWritePartiallyFailed = 'repositories.zipImportWritePartiallyFailed',
+  /**
+   * Repository storage for the import target could not be brought to a settled state (unflushed
+   * document changes or previously queued/failed saves) before preflight. No write was attempted.
+   */
+  importStorageNotReady = 'repositories.zipImportStorageNotReady',
 }

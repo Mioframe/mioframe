@@ -75,7 +75,7 @@ describe('exportDocumentZip integration: storage freshness', () => {
     const { onChunk, merge } = collectChunks();
 
     // Uses the real `repo.flush` as the service wiring does (see
-    // repositoriesService.ts's flushRepositoryPathForExport), not a mocked callback.
+    // repositoriesService.ts's flushRepositoryPath), not a mocked callback.
     await exportDocumentZip(
       vfs,
       async (_flushPath, documentIds) => {

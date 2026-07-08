@@ -43,10 +43,11 @@ import {
 } from './repositoryStorageFiles';
 import { exportDirectoryZip, exportDocumentZip } from './repositoryZipExport';
 import { importDirectoryZip } from './repositoryZipImport';
-import type {
-  OnZipExportChunk,
-  OnZipExportProgress,
-  OnZipImportProgress,
+import {
+  RepositoryZipErrorCode,
+  type OnZipExportChunk,
+  type OnZipExportProgress,
+  type OnZipImportProgress,
 } from './repositoryZipContracts';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
@@ -427,12 +428,39 @@ const setupRepositoriesService = () => {
    * the repo via `getRepo` if it has documents but is not yet cached. A path with no documents
    * has nothing pending in memory beyond what is already on storage, so `getRepo` returns
    * `undefined` and this is a safe no-op rather than an error.
+   *
+   * Shared by ZIP export (freshness before reading) and ZIP import (freshness before preflight).
    * @param path - Absolute path to the repository root.
    * @param documentIds - Document ids to flush; when omitted, every cached document is flushed.
    */
-  const flushRepositoryPathForExport = async (path: string, documentIds?: AMDocumentId[]) => {
+  const flushRepositoryPath = async (path: string, documentIds?: AMDocumentId[]) => {
     const repo = await getRepo(path);
     await repo?.flush(documentIds);
+  };
+
+  /**
+   * Brings repository storage under `targetDirectoryPath` to a settled state before a ZIP import
+   * runs preflight or writes anything: first drains any previously queued/failed Automerge saves
+   * so they cannot land after the import (which would violate the import's no-overwrite
+   * contract), then flushes current in-memory document state so preflight reads the latest facts.
+   * @param targetDirectoryPath - Absolute path to the ZIP import target directory.
+   * @throws DomainError with code `RepositoryZipErrorCode.importStorageNotReady` when queued or
+   * failed saves cannot be settled. Rethrows the original error, unwrapped, when the current-state
+   * flush itself fails.
+   */
+  const ensureRepositoryStorageFreshBeforeImport = async (
+    targetDirectoryPath: string,
+  ): Promise<void> => {
+    const recovery = await flushPendingRepositoryStorageSaves(targetDirectoryPath);
+
+    if (recovery.status !== 'flushed') {
+      throw new DomainError(
+        'Some earlier changes to this folder have not finished saving yet, so the import was stopped before making any changes.',
+        { code: RepositoryZipErrorCode.importStorageNotReady, cause: recovery },
+      );
+    }
+
+    await flushRepositoryPath(targetDirectoryPath);
   };
 
   /**
@@ -449,7 +477,7 @@ const setupRepositoriesService = () => {
     path: string,
     onChunk: OnZipExportChunk,
     onProgress?: OnZipExportProgress,
-  ) => exportDirectoryZip(vfs, flushRepositoryPathForExport, path, onChunk, onProgress);
+  ) => exportDirectoryZip(vfs, flushRepositoryPath, path, onChunk, onProgress);
 
   /**
    * Streams one document's storage files, written directly at archive root, as a ZIP archive.
@@ -467,12 +495,14 @@ const setupRepositoriesService = () => {
     id: AMDocumentId,
     onChunk: OnZipExportChunk,
     onProgress?: OnZipExportProgress,
-  ) => exportDocumentZip(vfs, flushRepositoryPathForExport, path, id, onChunk, onProgress);
+  ) => exportDocumentZip(vfs, flushRepositoryPath, path, id, onChunk, onProgress);
 
   /**
    * Validates and imports a ZIP archive into a directory using a bounded-memory, two-pass
    * strategy. Stops before any write if a target file or directory conflicts with the archive;
-   * never overwrites, merges, or renames existing files.
+   * never overwrites, merges, or renames existing files. Before preflight, settles repository
+   * storage for the target directory so conflict checks see the latest state and no previously
+   * queued/failed save can land after this import writes.
    * @param targetDirectoryPath - Absolute path to the directory to import into.
    * @param archiveFile - The user-selected ZIP archive file. Read twice: once to plan and
    * preflight conflicts, once to write, so the archive is never held in memory as a whole.
@@ -483,7 +513,10 @@ const setupRepositoriesService = () => {
     targetDirectoryPath: string,
     archiveFile: File,
     onProgress?: OnZipImportProgress,
-  ) => importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress);
+  ) => {
+    await ensureRepositoryStorageFreshBeforeImport(targetDirectoryPath);
+    return importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress);
+  };
 
   const documentIdList = defineObservableQuery(getDocumentIdList$);
   const repositoryFacts = defineObservableQuery(getRepositoryFacts$);

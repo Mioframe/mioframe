@@ -382,4 +382,82 @@ describe('importDirectoryZip', () => {
     expect(caught).toBeInstanceOf(Error);
     expect(caught).not.toBeInstanceOf(DomainError);
   });
+
+  it('preserves the original write-access-recovery error when only an already-existing ancestor directory preceded it', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    // The archive's only ancestor directory already exists, so `createDirectoryIfMissing` is a
+    // no-op and must not count as a mutation before the first (and only) file write.
+    await vfs.createDirectory('/target/root');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+    });
+
+    const accessError = new WebFileSystemAccessRequiredError({
+      mode: 'readwrite',
+      spaceName: 'Test space',
+    });
+
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(accessError);
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    // No real mutation happened (the ancestor directory already existed), so this must surface as
+    // the raw recoverable error, not a partial-import error, so the caller's write-access recovery
+    // flow can safely retry the whole import after granting access.
+    expect(caught).toBe(accessError);
+  });
+
+  it('preserves the original storage/VFS error when only an already-existing ancestor directory preceded it', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.createDirectory('/target/root');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+    });
+
+    const storageError = new Error('simulated storage failure');
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(storageError);
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBe(storageError);
+    expect(caught).not.toBeInstanceOf(DomainError);
+  });
+
+  it('classifies a write failure as partial when only a real new-directory mutation preceded it', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    // `/target/root` does not exist yet, so creating it is a real mutation, unlike the two tests
+    // above where the ancestor directory already existed.
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+    });
+
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(new Error('simulated storage failure'));
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    await expect(vfs.exists('/target/root')).resolves.toBe(true);
+  });
 });
