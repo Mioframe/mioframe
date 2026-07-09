@@ -29,7 +29,6 @@ interface MockedReorderSurfaceOptions {
 
 const { useReorderSurfaceMock } = vi.hoisted(() => ({
   useReorderSurfaceMock: vi.fn((_container: unknown, _options: unknown) => ({
-    activeProfile: ref({ input: 'mouse' }),
     displayItemIdList: ref<string[]>([FAKE_VIEW_ID]),
     draggedId: ref<string | undefined>(undefined),
     isDragging: ref(false),
@@ -69,16 +68,16 @@ describe('DatabaseViewListEdit', () => {
     viewsState = [[FAKE_VIEW_ID, { name: 'My View' }]];
   });
 
-  it('configures full-row native activation with explicit-ignore-only interactive strategy', () => {
+  it('uses the simple reorder surface contract without engine tuning options', () => {
     mountEdit();
 
-    expect(useReorderSurfaceMock).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        activation: 'fullRowNative',
-        interactiveStrategy: 'explicitIgnoreOnly',
-      }),
-    );
+    const options = getMockedOptions();
+
+    expect(options.itemIdList).toBeDefined();
+    expect(options.onCommit).toBeTypeOf('function');
+    expect(options).not.toHaveProperty('activation');
+    expect(options).not.toHaveProperty('interactiveStrategy');
+    expect(options).not.toHaveProperty('layout');
   });
 
   it('passes the MDList root element as the reorder surface container', () => {
@@ -134,7 +133,6 @@ describe('DatabaseViewListEdit', () => {
       [OTHER_VIEW_ID, { name: 'Other View' }],
     ];
     useReorderSurfaceMock.mockReturnValueOnce({
-      activeProfile: ref({ input: 'mouse' }),
       displayItemIdList: ref<string[]>([FAKE_VIEW_ID, INVALID_ID, OTHER_VIEW_ID]),
       draggedId: ref<string | undefined>(undefined),
       isDragging: ref(false),
@@ -148,7 +146,6 @@ describe('DatabaseViewListEdit', () => {
   it('skips display ids that no longer exist in the current view map', () => {
     viewsState = [[FAKE_VIEW_ID, { name: 'My View' }]];
     useReorderSurfaceMock.mockReturnValueOnce({
-      activeProfile: ref({ input: 'mouse' }),
       displayItemIdList: ref<string[]>([FAKE_VIEW_ID, OTHER_VIEW_ID]),
       draggedId: ref<string | undefined>(undefined),
       isDragging: ref(false),
@@ -161,7 +158,6 @@ describe('DatabaseViewListEdit', () => {
 
   it('marks the row matching the dragged id as dragged', () => {
     useReorderSurfaceMock.mockReturnValueOnce({
-      activeProfile: ref({ input: 'mouse' }),
       displayItemIdList: ref<string[]>([FAKE_VIEW_ID]),
       draggedId: ref<string | undefined>(FAKE_VIEW_ID),
       isDragging: ref(true),
@@ -174,7 +170,6 @@ describe('DatabaseViewListEdit', () => {
 
   it('does not mark a row as dragged when the dragged id fails database view id validation', () => {
     useReorderSurfaceMock.mockReturnValueOnce({
-      activeProfile: ref({ input: 'mouse' }),
       displayItemIdList: ref<string[]>([FAKE_VIEW_ID]),
       draggedId: ref<string | undefined>(INVALID_ID),
       isDragging: ref(true),

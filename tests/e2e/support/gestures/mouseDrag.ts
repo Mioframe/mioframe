@@ -2,13 +2,11 @@ import type { Page } from '@playwright/test';
 import type { Point } from './coordinates';
 
 /**
- * SortableJS's fallback drag mode observes the pointer position on a fixed-interval
- * poll (`setInterval(..., 50)`) rather than reacting synchronously to each move event.
- * Under the CPU contention of a full multi-spec e2e suite run, a single poll interval
- * can be delayed enough that the pointer resting briefly at the drop point isn't
- * observed before release. This margin gives the poll loop several extra ticks of
- * headroom; it is a harness settle margin for CI/full-suite load, not a fix for
- * production drag behavior.
+ * The reorder engine reacts synchronously to each pointermove, but sibling rows travel
+ * through a short transform transition and the app applies the committed order through
+ * a Vue re-render. This margin lets those settle at the drop point before release under
+ * CI/full-suite CPU load; it is a harness settle margin, not a fix for production
+ * reorder behavior.
  */
 const MOUSE_DRAG_DROP_SETTLE_MS = 300;
 

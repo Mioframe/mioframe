@@ -14,10 +14,8 @@ export interface CdpTouchLongPressDragOptions {
   /** Wall-clock pause between successive touchmove samples. */
   stepDelayMs?: number;
   /**
-   * Wall-clock pause at the drop point before touch-end. The drag engine's fallback
-   * hit-testing polls the pointer position on a fixed interval rather than reacting
-   * synchronously to each move event, so the pointer must rest at the target for at
-   * least one poll tick before release for the engine to observe and commit the move.
+   * Wall-clock pause at the drop point before touch-end, letting the reorder engine's
+   * sibling shift transition settle so the release happens on a stable target slot.
    */
   settleMs?: number;
 }

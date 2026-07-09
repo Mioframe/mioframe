@@ -4,18 +4,21 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/s
 
 ## Contains
 
-- Generic reorder surfaces, SortableJS integration, gesture profiling, and playground or test support.
+- The geometry-based reorder engine: pointer/touch session handling, rect geometry, the lifted overlay, reorder directives, and playground or test support.
 
 ## Patterns
 
 - Keep the reorder contract independent from business persistence and item shape.
 - Treat active input mode as runtime data rather than a hardcoded platform assumption.
+- Keep geometry logic pure and rect-driven so future non-vertical collections do not require public API changes.
 - Preserve predictable behavior under external list updates, cancel flows, and post-drag click suppression.
 
 ## Anti-patterns
 
 - Do not couple reorder internals to one surface type such as lists or tables.
 - Do not mix feature-specific persistence logic into the generic reorder implementation.
+- Do not reintroduce browser drag-and-drop semantics: no native drag image, no visible ghost/placeholder, no cursor-following clone.
+- Do not expand the public consumer API with engine tuning options such as activation modes, interactive strategies, or layout hints.
 - Do not change hybrid-input behavior without tests.
 
 ## Constraints

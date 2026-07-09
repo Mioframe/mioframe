@@ -3,7 +3,8 @@ import {
   REORDER_IGNORE_ATTRIBUTE,
   REORDER_ITEM_ATTRIBUTE,
 } from './constants';
-import type { ReorderCommitPayload, ReorderInput, ReorderInputProfile } from './reorderTypes';
+import type { ReorderInput } from './reorderInput';
+import type { ReorderCommitPayload } from './reorderTypes';
 
 /** Full local session state used to reconcile drag preview with external updates. */
 export interface ReorderSurfaceState {
@@ -15,15 +16,15 @@ export interface ReorderSurfaceState {
   draggedId: string | undefined;
   /** Ordered ids captured at drag start. */
   dragStartOrder: string[];
-  /** Runtime input profile locked for the active drag session. */
-  activeProfile: ReorderInputProfile | undefined;
+  /** Input source locked for the active drag session. */
+  activeInput: ReorderInput | undefined;
   /** Optimistic order currently waiting for external confirmation. */
   optimisticOrderedIds: string[] | undefined;
   /** External baseline order used to detect temporary re-emission of stale data. */
   optimisticBaseOrderedIds: string[] | undefined;
   /** Unique marker that ties rollback to the in-flight commit that created it. */
   optimisticCommitMarker: symbol | undefined;
-  /** Whether SortableJS is currently inside an active drag session. */
+  /** Whether the engine is currently inside an active reorder session. */
   isDragging: boolean;
   /** Whether the next synthetic click should be suppressed. */
   suppressNextClick: boolean;
@@ -39,8 +40,8 @@ export interface StartReorderSurfaceDragOptions {
   orderedIds: readonly string[];
   /** Source index reported by the drag engine. */
   fromIndex: number;
-  /** Runtime input profile resolved for the session. */
-  profile: ReorderInputProfile;
+  /** Input source resolved for the session. */
+  input: ReorderInput;
 }
 
 /** Data required to resolve the final outcome of a drag session. */
@@ -120,7 +121,7 @@ export const clearOptimisticState = (state: ReorderSurfaceState) => {
 export const resetDragState = (state: ReorderSurfaceState) => {
   state.isDragging = false;
   state.draggedId = undefined;
-  state.activeProfile = undefined;
+  state.activeInput = undefined;
   state.dragStartOrder = [];
   state.shouldRollbackOnEnd = false;
 };
@@ -140,7 +141,7 @@ export const createReorderSurfaceState = (
     latestExternalItemIdList: initialItemIdList,
     draggedId: undefined,
     dragStartOrder: [],
-    activeProfile: undefined,
+    activeInput: undefined,
     optimisticOrderedIds: undefined,
     optimisticBaseOrderedIds: undefined,
     optimisticCommitMarker: undefined,
@@ -211,27 +212,15 @@ export const requestReorderSurfaceCancel = (state: ReorderSurfaceState) => {
  */
 export const startReorderSurfaceDrag = (
   state: ReorderSurfaceState,
-  { itemId, orderedIds, fromIndex, profile }: StartReorderSurfaceDragOptions,
+  { itemId, orderedIds, fromIndex, input }: StartReorderSurfaceDragOptions,
 ) => {
   state.draggedId = itemId;
-  state.activeProfile = profile;
+  state.activeInput = input;
   state.dragStartOrder = cloneReorderItemIdList(orderedIds);
   state.displayItemIdList = cloneReorderItemIdList(orderedIds);
   state.isDragging = true;
   state.suppressNextClick = false;
   state.shouldRollbackOnEnd = fromIndex < 0;
-};
-
-/**
- * Updates local display order while SortableJS is previewing a drag move.
- * @param state - Shared reorder-session state to update.
- * @param orderedIds - Intermediate ordered ids reported during drag preview.
- */
-export const previewReorderSurfaceDrag = (
-  state: ReorderSurfaceState,
-  orderedIds: readonly string[],
-) => {
-  state.displayItemIdList = cloneReorderItemIdList(orderedIds);
 };
 
 /**
@@ -245,16 +234,16 @@ export const completeReorderSurfaceDrag = (
   { orderedIds, fromIndex, toIndex, currentItemIdList }: CompleteReorderSurfaceDragOptions,
 ): CompleteReorderSurfaceDragResult => {
   const currentDraggedId = state.draggedId;
-  const currentProfile = state.activeProfile;
+  const currentInput = state.activeInput;
   const rollbackOrder = cloneReorderItemIdList(state.dragStartOrder);
   const latestExternalOrder = cloneReorderItemIdList(state.latestExternalItemIdList);
   const nextOrderedIds = cloneReorderItemIdList(orderedIds);
   const rollbackRequested = state.shouldRollbackOnEnd;
 
-  state.suppressNextClick = currentProfile?.suppressClickAfterDrag ?? true;
+  state.suppressNextClick = true;
   resetDragState(state);
 
-  if (!currentDraggedId || !currentProfile) {
+  if (!currentDraggedId || !currentInput) {
     state.displayItemIdList = cloneReorderItemIdList(currentItemIdList);
     return {
       type: 'noop',
@@ -299,7 +288,7 @@ export const completeReorderSurfaceDrag = (
       movedId: currentDraggedId,
       fromIndex,
       toIndex,
-      profile: currentProfile,
+      input: currentInput,
     },
   };
 };
@@ -524,9 +513,8 @@ export const isReorderItemTarget = (target: EventTarget | null): boolean =>
 export interface ReorderDocumentSelectionSuppressionOptions {
   /**
    * Also blocks touchmove's default action for the lifetime of this token. Only safe once an
-   * actual reorder drag is confirmed (SortableJS itself starts preventing default on move at
-   * that point too); activation-only callers must omit this so page scrolling still works for
-   * presses that never turn into a drag.
+   * actual reorder drag is confirmed; activation-only callers must omit this so page
+   * scrolling still works for presses that never turn into a drag.
    */
   suppressTouchMoveDefault?: boolean;
 }
@@ -536,7 +524,7 @@ export interface ReorderDocumentSelectionSuppressionOptions {
  *
  * Clears any selection already present in the document immediately, since native
  * selection can be created or extended in the window before this suppression takes
- * effect (e.g. between pointerdown activation and SortableJS reporting drag start).
+ * effect (e.g. between pointerdown activation and the engine reporting drag start).
  * @param options - Suppression tuning for this acquisition.
  * @returns Idempotent release function for the acquired suppression token.
  */
@@ -649,29 +637,13 @@ export const cleanupPostDragInteraction = (
 };
 
 /**
- * Skips drag activation on interactive descendants inside a reorder item.
+ * Skips reorder activation inside explicit ignore zones.
  *
- * An explicit `data-sortable-ignore` subtree always blocks drag. Otherwise, a nested
- * interactive descendant (button, link, input, etc.) also blocks activation so it stays
- * clickable instead of starting a drag.
+ * Reorder starts from anywhere on the row itself — including its primary action — so
+ * only an explicit `data-sortable-ignore` subtree blocks activation. Rows mark their
+ * trailing controls with `v-reorder-ignore` to keep them plainly clickable.
  * @param target - Event target to inspect.
- * @param interactiveSelector - Selector list describing descendants that must stay interactive.
- * @returns True when drag activation should be skipped for this target.
+ * @returns True when reorder activation should be skipped for this target.
  */
-export const shouldIgnoreTarget = (
-  target: EventTarget | null,
-  interactiveSelector: string,
-): boolean => {
-  if (!(target instanceof Element)) {
-    return false;
-  }
-
-  if (target.closest(`[${REORDER_IGNORE_ATTRIBUTE}]`) !== null) {
-    return true;
-  }
-
-  const reorderItem = target.closest(`[${REORDER_ITEM_ATTRIBUTE}]`);
-  const interactiveTarget = target.closest(interactiveSelector);
-
-  return interactiveTarget !== null && interactiveTarget !== reorderItem;
-};
+export const shouldIgnoreTarget = (target: EventTarget | null): boolean =>
+  target instanceof Element && target.closest(`[${REORDER_IGNORE_ATTRIBUTE}]`) !== null;

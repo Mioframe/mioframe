@@ -1,66 +1,41 @@
 import { effectScope, nextTick, ref, type ComputedRef, type EffectScope, type Ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type {
-  ReorderEngineCallbacks,
-  ReorderInputProfile,
-  ReorderActivation,
-  ReorderDensity,
-  ReorderLayout,
-} from './reorderTypes';
+import type { ReorderEngineCallbacks } from './reorderTypes';
 import {
   REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS,
+  REORDER_IGNORE_ATTRIBUTE,
   REORDER_SURFACE_ACTIVATING_CLASS,
-  REORDER_SURFACE_DRAGGING_CLASS,
 } from './constants';
 
-interface MockSortableAdapterState {
+interface MockReorderEngineState {
   callbacks: ReorderEngineCallbacks | undefined;
   cancel: ReturnType<typeof vi.fn>;
   disabled: ComputedRef<boolean> | undefined;
-  interactiveSelector: ComputedRef<string> | undefined;
-  layout: ComputedRef<ReorderLayout> | undefined;
-  profile: ComputedRef<ReorderInputProfile> | undefined;
 }
 
-const sortableAdapterState = vi.hoisted<MockSortableAdapterState>(() => ({
+const reorderEngineState = vi.hoisted<MockReorderEngineState>(() => ({
   callbacks: undefined,
   cancel: vi.fn(),
   disabled: undefined,
-  interactiveSelector: undefined,
-  layout: undefined,
-  profile: undefined,
 }));
 
-vi.mock('./sortableAdapter', () => ({
-  createSortableAdapter: (
+vi.mock('./reorderEngine', () => ({
+  createReorderEngine: (
     _container: unknown,
     {
       callbacks,
       disabled,
-      interactiveSelector,
-      layout,
-      profile,
     }: {
-      callbacks?: ReorderEngineCallbacks;
+      callbacks: ReorderEngineCallbacks;
       disabled?: ComputedRef<boolean>;
-      interactiveSelector?: ComputedRef<string>;
-      layout?: ComputedRef<ReorderLayout>;
-      profile?: ComputedRef<ReorderInputProfile>;
     },
   ) => {
-    sortableAdapterState.callbacks = callbacks;
-    sortableAdapterState.cancel = vi.fn();
-    sortableAdapterState.disabled = disabled;
-    sortableAdapterState.interactiveSelector = interactiveSelector;
-    sortableAdapterState.layout = layout;
-    sortableAdapterState.profile = profile;
+    reorderEngineState.callbacks = callbacks;
+    reorderEngineState.cancel = vi.fn();
+    reorderEngineState.disabled = disabled;
 
     return {
-      sortable: undefined,
-      destroy: vi.fn(),
-      sort: vi.fn(),
-      toArray: () => [],
-      cancel: sortableAdapterState.cancel,
+      cancel: reorderEngineState.cancel,
     };
   },
 }));
@@ -91,19 +66,11 @@ const rafMock = vi.fn<(callback: FrameRequestCallback) => number>((callback) => 
 
 const mountUseReorderSurface = ({
   itemIdList,
-  activation,
-  density,
   disabled,
-  interactiveSelector,
-  layout,
   onCommit = vi.fn().mockResolvedValue(undefined),
 }: {
-  activation?: Ref<ReorderActivation | undefined>;
-  density?: Ref<ReorderDensity | undefined>;
   disabled?: Ref<boolean | undefined>;
-  interactiveSelector?: Ref<string | undefined>;
   itemIdList: Ref<string[] | undefined>;
-  layout?: Ref<ReorderLayout | undefined>;
   onCommit?: (payload: unknown) => unknown;
 }) => {
   const scope = effectScope();
@@ -116,12 +83,8 @@ const mountUseReorderSurface = ({
 
   const api = scope.run(() =>
     useReorderSurface(container, {
-      activation,
-      density,
       disabled,
-      interactiveSelector,
       itemIdList,
-      layout,
       onCommit,
     }),
   );
@@ -144,11 +107,8 @@ afterEach(() => {
   });
   document.body.innerHTML = '';
   document.dispatchEvent(new Event('click'));
-  sortableAdapterState.callbacks = undefined;
-  sortableAdapterState.disabled = undefined;
-  sortableAdapterState.interactiveSelector = undefined;
-  sortableAdapterState.layout = undefined;
-  sortableAdapterState.profile = undefined;
+  reorderEngineState.callbacks = undefined;
+  reorderEngineState.disabled = undefined;
   vibrateMock.mockReset();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -156,7 +116,7 @@ afterEach(() => {
 });
 
 describe('useReorderSurface', () => {
-  it('treats a drag end without a valid item id as a no-op', async () => {
+  it('treats a drag end without a preceding session as a no-op', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const onCommit = vi.fn();
     const { api } = mountUseReorderSurface({
@@ -166,18 +126,7 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
-      itemId: '',
-      orderedIds: ['a', 'b', 'c'],
-      fromIndex: 0,
-      toIndex: 0,
-    });
-
-    expect(api.isDragging.value).toBe(false);
-    expect(api.draggedId.value).toBeUndefined();
-
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: '',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -197,28 +146,21 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
-    });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
+      input: 'pointer',
     });
 
     await nextTick();
 
-    expect(api.displayItemIdList.value).toEqual(['b', 'a', 'c']);
+    expect(api.displayItemIdList.value).toEqual(['a', 'b', 'c']);
 
     itemIdList.value = ['b', 'c', 'd'];
 
     await nextTick();
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -240,21 +182,14 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
-    });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
+      input: 'pointer',
     });
 
-    const endPromise = sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    const endPromise = reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -288,21 +223,14 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
-    });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
+      input: 'pointer',
     });
 
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -313,123 +241,120 @@ describe('useReorderSurface', () => {
     expect(api.displayItemIdList.value).toEqual(['a', 'b', 'c']);
   });
 
-  it('uses haptic feedback for touch input and cancels pointer drags on Escape', async () => {
+  it('passes the session input through to the commit payload', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const onCommit = vi.fn().mockResolvedValue(undefined);
+    mountUseReorderSurface({
+      itemIdList,
+      onCommit,
+    });
+
+    await nextTick();
+
+    reorderEngineState.callbacks?.onStart?.({
+      itemId: 'a',
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
+      input: 'touch',
+    });
+    await reorderEngineState.callbacks?.onEnd?.({
+      orderedIds: ['b', 'a', 'c'],
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    await nextTick();
+
+    expect(onCommit).toHaveBeenCalledWith({
+      orderedIds: ['b', 'a', 'c'],
+      movedId: 'a',
+      fromIndex: 0,
+      toIndex: 1,
+      input: 'touch',
+    });
+  });
+
+  it('uses haptic feedback for touch input and cancels drags on Escape', async () => {
     Object.defineProperty(navigator, 'vibrate', {
       value: vibrateMock,
       configurable: true,
     });
 
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { api, containerEl } = mountUseReorderSurface({
+    const { api } = mountUseReorderSurface({
       itemIdList,
     });
 
-    containerEl.dispatchEvent(new Event('touchstart', { bubbles: true }));
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'touch',
     });
 
     expect(vibrateMock).toHaveBeenCalledWith(10);
     expect(vibrateMock).toHaveBeenCalledTimes(1);
-    expect(api.activeProfile.value.input).toBe('touch');
-
-    containerEl.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    await nextTick();
-
-    sortableAdapterState.callbacks?.onStart?.({
-      itemId: 'a',
-      orderedIds: ['a', 'b', 'c'],
-      fromIndex: 0,
-      toIndex: 0,
-    });
+    expect(api.activeInput.value).toBe('touch');
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await nextTick();
 
-    expect(sortableAdapterState.cancel).toHaveBeenCalledTimes(1);
-    expect(vibrateMock).toHaveBeenCalledTimes(1);
+    expect(reorderEngineState.cancel).toHaveBeenCalledTimes(1);
     expect(api.suppressNextClick.value).toBe(true);
   });
 
-  it('reacts to layout, activation, density, disabled, and selector option refs', async () => {
+  it('does not use haptics for mouse input and forwards the disabled option', async () => {
+    Object.defineProperty(navigator, 'vibrate', {
+      value: vibrateMock,
+      configurable: true,
+    });
+
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const layout = ref<ReorderLayout | undefined>('grid');
-    const activation = ref<ReorderActivation | undefined>('longPress');
-    const density = ref<ReorderDensity | undefined>('dense');
     const disabled = ref<boolean | undefined>(false);
-    const interactiveSelector = ref<string | undefined>('[data-ignore]');
-
     mountUseReorderSurface({
-      activation,
-      density,
+      itemIdList,
       disabled,
-      interactiveSelector,
-      itemIdList,
-      layout,
     });
 
     await nextTick();
 
-    expect(sortableAdapterState.layout?.value).toBe('grid');
-    expect(sortableAdapterState.disabled?.value).toBe(false);
-    expect(sortableAdapterState.interactiveSelector?.value).toBe('[data-ignore]');
-    expect(sortableAdapterState.profile?.value).toMatchObject({
-      layout: 'grid',
-      activation: 'longPress',
-      density: 'dense',
-    });
+    expect(reorderEngineState.disabled?.value).toBe(false);
 
-    layout.value = 'horizontal';
-    activation.value = 'immediate';
-    density.value = 'precision';
     disabled.value = true;
-    interactiveSelector.value = 'button';
     await nextTick();
 
-    expect(sortableAdapterState.layout?.value).toBe('horizontal');
-    expect(sortableAdapterState.disabled?.value).toBe(true);
-    expect(sortableAdapterState.interactiveSelector?.value).toBe('button');
-    expect(sortableAdapterState.profile?.value).toMatchObject({
-      layout: 'horizontal',
-      activation: 'immediate',
-      density: 'precision',
-    });
-  });
+    expect(reorderEngineState.disabled?.value).toBe(true);
 
-  it('ignores non-Escape keys and touch drags for keyboard cancellation', async () => {
-    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { api, containerEl } = mountUseReorderSurface({
-      itemIdList,
-    });
-
-    containerEl.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    await nextTick();
-
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
+    });
+
+    expect(vibrateMock).not.toHaveBeenCalled();
+  });
+
+  it('ignores non-Escape keys for keyboard cancellation', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { api } = mountUseReorderSurface({
+      itemIdList,
+    });
+
+    await nextTick();
+
+    reorderEngineState.callbacks?.onStart?.({
+      itemId: 'a',
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
+      input: 'pointer',
     });
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     await nextTick();
 
-    expect(sortableAdapterState.cancel).not.toHaveBeenCalled();
-    expect(api.isDragging.value).toBe(true);
-
-    containerEl.dispatchEvent(new Event('touchstart', { bubbles: true }));
-    await nextTick();
-
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    await nextTick();
-
-    expect(sortableAdapterState.cancel).not.toHaveBeenCalled();
+    expect(reorderEngineState.cancel).not.toHaveBeenCalled();
     expect(api.isDragging.value).toBe(true);
   });
 
@@ -458,20 +383,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
-    });
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -511,20 +429,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
-    });
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -552,20 +463,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
-    });
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -590,14 +494,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       toIndex: 0,
@@ -618,20 +521,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
-    });
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'x'],
       fromIndex: 0,
       toIndex: 1,
@@ -652,24 +548,17 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
+      input: 'pointer',
+    });
+    reorderEngineState.callbacks?.onCancel?.();
+    await reorderEngineState.callbacks?.onEnd?.({
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
       toIndex: 0,
-    });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
-    });
-    sortableAdapterState.callbacks?.onCancel?.();
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
     });
     await nextTick();
 
@@ -689,53 +578,16 @@ describe('useReorderSurface', () => {
     expect(api.draggedId.value).toBeUndefined();
     expect(api.isReorderSession.value).toBe(false);
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'b',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 1,
-      toIndex: 1,
+      input: 'pointer',
     });
     await nextTick();
 
     expect(api.draggedId.value).toBe('b');
     expect(api.isReorderSession.value).toBe(true);
-  });
-
-  it('ignores interactive descendants when syncing pointer input', async () => {
-    vi.stubGlobal('requestAnimationFrame', rafMock);
-
-    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { api, containerEl } = mountUseReorderSurface({
-      itemIdList,
-    });
-    const reorderItem = document.createElement('div');
-    reorderItem.setAttribute('data-reorder-item', '');
-    const button = document.createElement('button');
-    reorderItem.appendChild(button);
-    containerEl.appendChild(reorderItem);
-
-    containerEl.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    await nextTick();
-    expect(api.activeProfile.value.input).toBe('pointer');
-
-    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
-    await nextTick();
-
-    expect(api.activeProfile.value.input).toBe('pointer');
-  });
-
-  it('returns early for mismatched event payloads on pointer listeners', async () => {
-    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { api, containerEl } = mountUseReorderSurface({
-      itemIdList,
-    });
-
-    containerEl.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    containerEl.dispatchEvent(new Event('touchstart', { bubbles: true }));
-    containerEl.dispatchEvent(new Event('mousedown', { bubbles: true }));
-    await nextTick();
-
-    expect(api.activeProfile.value.input).toBe('pointer');
   });
 
   it('suppresses document selection during the drag activation window and active drag', async () => {
@@ -765,16 +617,15 @@ describe('useReorderSurface', () => {
 
     row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     await nextTick();
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
     await nextTick();
 
     expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(true);
@@ -782,20 +633,17 @@ describe('useReorderSurface', () => {
     document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     await nextTick();
 
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(true);
 
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
     });
     await nextTick();
 
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(false);
@@ -827,11 +675,11 @@ describe('useReorderSurface', () => {
     selection.addRange(range);
     expect(selection.rangeCount).toBe(0);
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
 
     expect(selection.rangeCount).toBe(0);
@@ -938,40 +786,6 @@ describe('useReorderSurface', () => {
     await nextTick();
   });
 
-  it('keeps drag transitioning into active drag suppression after activation starts', async () => {
-    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { containerEl } = mountUseReorderSurface({
-      itemIdList,
-    });
-    const row = document.createElement('button');
-    row.setAttribute('data-sortable-id', 'a');
-    containerEl.appendChild(row);
-
-    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-
-    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
-
-    sortableAdapterState.callbacks?.onStart?.({
-      itemId: 'a',
-      orderedIds: ['a', 'b', 'c'],
-      fromIndex: 0,
-      toIndex: 0,
-    });
-    await nextTick();
-
-    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
-
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
-      orderedIds: ['a', 'b', 'c'],
-      fromIndex: 0,
-      toIndex: 0,
-    });
-    await nextTick();
-  });
-
   it('keeps activation release idempotent across repeated pointer-up-like events', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const { containerEl } = mountUseReorderSurface({
@@ -999,7 +813,31 @@ describe('useReorderSurface', () => {
     await nextTick();
   });
 
-  it('does not start activation suppression for interactive descendants', async () => {
+  it('does not start activation suppression inside explicit ignore zones', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('div');
+    row.setAttribute('data-sortable-id', 'a');
+    const ignoreZone = document.createElement('span');
+    ignoreZone.setAttribute(REORDER_IGNORE_ATTRIBUTE, '');
+    const button = document.createElement('button');
+    ignoreZone.appendChild(button);
+    row.appendChild(ignoreZone);
+    containerEl.appendChild(row);
+
+    button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+
+    await nextTick();
+  });
+
+  it('starts activation suppression from a nested interactive control that is not ignored', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const { containerEl } = mountUseReorderSurface({
       itemIdList,
@@ -1012,11 +850,9 @@ describe('useReorderSurface', () => {
 
     button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 
-    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
-    expect(
-      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
-    ).toBe(false);
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
 
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     await nextTick();
   });
 
@@ -1030,18 +866,17 @@ describe('useReorderSurface', () => {
     containerEl.appendChild(row);
 
     row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
     await nextTick();
 
-    sortableAdapterState.callbacks?.onCancel?.();
+    reorderEngineState.callbacks?.onCancel?.();
     await nextTick();
 
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(false);
@@ -1054,7 +889,6 @@ describe('useReorderSurface', () => {
     });
 
     expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(false);
@@ -1114,7 +948,7 @@ describe('useReorderSurface', () => {
     ).toBe(false);
   });
 
-  it('toggles the dragging class and runs touch cleanup through cancel()', async () => {
+  it('runs touch cleanup through cancel()', async () => {
     vi.stubGlobal('requestAnimationFrame', rafMock);
 
     const selection = document.getSelection();
@@ -1137,63 +971,28 @@ describe('useReorderSurface', () => {
     containerEl.appendChild(focusedButton);
     focusedButton.focus();
 
-    containerEl.dispatchEvent(new Event('touchstart', { bubbles: true }));
-    await nextTick();
-
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'touch',
     });
     await nextTick();
-    await nextTick();
-
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
 
     api.cancel();
     await nextTick();
 
-    expect(sortableAdapterState.cancel).toHaveBeenCalled();
+    expect(reorderEngineState.cancel).toHaveBeenCalled();
     expect(removeAllRangesSpy).toHaveBeenCalled();
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
 
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       toIndex: 0,
     });
     await nextTick();
 
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
-  });
-
-  it('moves the dragging class when the tracked container element changes', async () => {
-    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { container, containerEl } = mountUseReorderSurface({
-      itemIdList,
-    });
-    const nextContainerEl = document.createElement('div');
-    document.body.appendChild(nextContainerEl);
-
-    await nextTick();
-
-    sortableAdapterState.callbacks?.onStart?.({
-      itemId: 'a',
-      orderedIds: ['a', 'b', 'c'],
-      fromIndex: 0,
-      toIndex: 0,
-    });
-    await nextTick();
-
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
-
-    container.value = nextContainerEl;
-    await nextTick();
-
-    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
-    expect(nextContainerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
+    expect(api.isDragging.value).toBe(false);
   });
 
   it('does not schedule drag cleanup when cancel is called before any drag starts', async () => {
@@ -1208,7 +1007,7 @@ describe('useReorderSurface', () => {
 
     api.cancel();
 
-    expect(sortableAdapterState.cancel).toHaveBeenCalled();
+    expect(reorderEngineState.cancel).toHaveBeenCalled();
     expect(rafMock).not.toHaveBeenCalled();
     expect(api.suppressNextClick.value).toBe(false);
   });
@@ -1241,20 +1040,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    sortableAdapterState.callbacks?.onStart?.({
+    reorderEngineState.callbacks?.onStart?.({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      toIndex: 0,
+      input: 'pointer',
     });
-    sortableAdapterState.callbacks?.onChange?.({
-      itemId: 'a',
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
-    });
-    await sortableAdapterState.callbacks?.onEnd?.({
-      itemId: 'a',
+    await reorderEngineState.callbacks?.onEnd?.({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, reactive, ref, useTemplateRef } from 'vue';
-import { PlaygroundBoolean, PlaygroundStory } from '../playground';
+import { computed, ref, useTemplateRef } from 'vue';
+import { PlaygroundStory } from '../playground';
 import { randomInt } from 'es-toolkit';
 import { vReorderItem } from './reorderDirectives';
 import { useReorderSurface } from './useReorderSurface';
@@ -15,16 +15,11 @@ const list = ref(
   })),
 );
 
-const state = reactive({
-  isGrid: false,
-});
-
 const containerEl = useTemplateRef('containerEl');
 const itemMap = computed(() => new Map(list.value.map((item) => [String(item.id), item])));
 
 const { draggedId, displayItemIdList } = useReorderSurface(containerEl, {
   itemIdList: computed(() => list.value.map((item) => String(item.id))),
-  layout: () => (state.isGrid ? 'grid' : 'vertical'),
   onCommit: ({ orderedIds }) => {
     list.value = orderedIds
       .map((id) => itemMap.value.get(id))
@@ -40,19 +35,11 @@ const onItemContextMenu = (event: MouseEvent) => {
 <template>
   <PlaygroundStory>
     <template #controllers>
-      <PlaygroundBoolean v-model:model-value="state.isGrid" label="grid" />
-
       <pre>{{ list }}</pre>
     </template>
 
     <template #space>
-      <div
-        ref="containerEl"
-        class="container"
-        :class="{
-          _grid: state.isGrid,
-        }"
-      >
+      <div ref="containerEl" class="container">
         <TransitionGroup name="dnd">
           <div
             v-for="itemId in displayItemIdList"
@@ -81,11 +68,6 @@ const onItemContextMenu = (event: MouseEvent) => {
   padding: 16px;
   flex-direction: column;
   display: flex;
-
-  &._grid {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
 
   .item {
     display: inline-block;

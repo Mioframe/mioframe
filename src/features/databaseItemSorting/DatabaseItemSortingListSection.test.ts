@@ -45,7 +45,6 @@ interface MockedReorderSurfaceOptions {
 
 const { useReorderSurfaceMock } = vi.hoisted(() => ({
   useReorderSurfaceMock: vi.fn((_container: unknown, _options: unknown) => ({
-    activeProfile: ref({ input: 'mouse' }),
     displayItemIdList: ref<string[]>(sortingIdListState ?? []),
     draggedId: ref<string | undefined>(undefined),
     isDragging: ref(false),
@@ -82,16 +81,16 @@ describe('DatabaseItemSortingListSection', () => {
     sortingIdListState = [FAKE_PROPERTY_ID];
   });
 
-  it('configures full-row native activation with explicit-ignore-only interactive strategy', () => {
+  it('uses the simple reorder surface contract without engine tuning options', () => {
     mountSection();
 
-    expect(useReorderSurfaceMock).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        activation: 'fullRowNative',
-        interactiveStrategy: 'explicitIgnoreOnly',
-      }),
-    );
+    const options = getMockedOptions();
+
+    expect(options.itemIdList).toBeDefined();
+    expect(options.onCommit).toBeTypeOf('function');
+    expect(options).not.toHaveProperty('activation');
+    expect(options).not.toHaveProperty('interactiveStrategy');
+    expect(options).not.toHaveProperty('layout');
   });
 
   it('derives itemIdList from the current sorting id list', () => {

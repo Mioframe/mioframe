@@ -1,7 +1,7 @@
 .reorder-surface_activating,
 .reorder-surface_activating *,
-.reorder-surface_dragging,
-.reorder-surface_dragging *,
+.reorder-surface_active,
+.reorder-surface_active *,
 [data-sortable-id],
 [data-sortable-id] *,
 .reorder-selection-suppressed,
@@ -16,47 +16,48 @@
    something other than none while a reorder session is active. */
 
 /*
- * Drag visual policy.
+ * Reorder visual policy.
  *
- * Shared sortable uses SortableJS fallback mode for the visible moving surface on every
- * input type. The visible moving row is the fallback clone, not the native browser drag
- * image, and it is mounted on `<body>` so SortableJS keeps pointer tracking and reorder
- * hit-testing stable while the original in-list row can stay visually hidden.
+ * During an active session the engine renders the lifted item in `.reorder-overlay`, a
+ * fixed-position presentation layer mounted on `<body>`, so its elevation shadow is
+ * never clipped by the list or any scroll container. The in-list original becomes the
+ * `.reorder-item_slot`: it keeps its layout box (the open slot the item will land in)
+ * but is invisible, so no ghost/placeholder row is shown. Siblings travel through
+ * engine-set `transform` translations; the transition below keeps their movement
+ * smooth and stable.
  *
- * All selectors pair the state class with `[data-sortable-id]` so they only ever match
+ * Selectors pair state classes with `[data-sortable-id]` so they only ever match
  * reorder items and win over single-class component rules without `!important`.
  */
 
-/* In-list drop-position placeholder: keep the row's box (SortableJS animates it through
-   the list to preview insertion) but hide its content so the slot reads as a gap.
-   `opacity`, not `visibility`: the element must stay hit-testable for SortableJS
-   fallback hit detection. */
-[data-sortable-id].reorder-item_ghost {
-  opacity: 0;
+.reorder-surface_active [data-sortable-id] {
+  transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* A chosen row can already show elevated dragged styling supplied by its consumer (for
-   example the Material dragged state); keep it above later siblings so its shadow is
-   painted over adjacent rows instead of under them. */
-[data-sortable-id].reorder-item_chosen {
-  position: relative;
-  z-index: 1;
-  background-color: var(--md-sys-color-surface, Canvas);
-  border-radius: var(--md-sys-shape-corner-large, 16px);
-  box-shadow: var(
-    --md-sys-elevation-level4,
-    0 6px 10px 4px rgb(0 0 0 / 0.15),
-    0 2px 3px 0 rgb(0 0 0 / 0.3)
-  );
+@media (prefers-reduced-motion: reduce) {
+  .reorder-surface_active [data-sortable-id] {
+    transition: none;
+  }
 }
 
-/* Fallback clone: an elevated surface. The clone is mounted on <body>, outside its
- * list, so list-scoped surface fills do not reach it — give it an explicit fill,
- * elevation, and shape here. Material token values resolve app-wide; the literal
- * fallbacks keep non-Material consumers presentable. SortableJS pins inline
- * `opacity: 0.8` on this clone; that translucency is accepted rather than overridden,
- * since beating an inline style would require `!important`. */
-[data-sortable-id].reorder-item_fallback {
+/* The open slot: keeps the row's layout box but renders nothing. `visibility`, not
+   `display`: the box must keep its size so neighboring rows reorder around it. */
+[data-sortable-id].reorder-item_slot {
+  visibility: hidden;
+}
+
+/* Lifted presentation layer. Mounted on <body>, outside its list, so list-scoped
+ * surface fills do not reach it — give it an explicit fill, elevation, and shape.
+ * Material token values resolve app-wide; the literal fallbacks keep non-Material
+ * consumers presentable. The engine drives `left/top/width/height` and `transform`
+ * inline; everything visual lives here. */
+.reorder-overlay {
+  position: fixed;
+  /* Above app surfaces including bottom sheets and menus; the overlay only exists for
+     the duration of an active reorder session. */
+  z-index: 10000;
+  pointer-events: none;
+  overflow: hidden;
   background-color: var(--md-sys-color-surface, Canvas);
   border-radius: var(--md-sys-shape-corner-large, 16px);
   box-shadow: var(

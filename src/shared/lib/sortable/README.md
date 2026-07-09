@@ -1,319 +1,127 @@
-# sortable
+# Reorder surface
 
-Generic reorder primitives for Vue surfaces.
+A geometry-based reorder engine for bounded collections. It implements the
+native-feeling reorder interaction (Android/Windows style): the pointer changes an
+item's position **inside** its collection. It is not browser drag-and-drop — there is
+no native drag image, no ghost/placeholder row, and no free-floating clone following
+the cursor.
 
-This module is the shared drag-to-reorder layer used by feature and entity UIs.
-It is a `shared/lib` interaction primitive, not a Material List feature:
-`MDListItem` and the rest of `shared/ui/Lists` have no sortable/reorder
-knowledge, and reorder behavior must be composed by the consumer (usually a
-feature) around the shared list UI, never inside it.
-
-The module does not know anything about database views, sorting rules, or any
-other business data. Its contract is simple:
-
-- the caller provides a stable ordered list of string ids;
-- the library renders and previews reorder sessions against those ids;
-- the caller persists the new order in `onCommit`.
+This module is a `shared/lib` interaction primitive, not a Material List feature:
+`MDListItem` and the rest of `shared/ui/Lists` have no reorder knowledge, and reorder
+behavior must be composed by the consumer (usually a feature) around the shared list
+UI, never inside it. The module does not know anything about database views, sorting
+rules, or any other business data.
 
 ## Public API
 
 Import through `index.ts`.
 
-### `useReorderSurface(container, options)`
-
-High-level composable for reorderable surfaces.
-
-Inputs:
-
-- `itemIdList`: the authoritative external order.
-- `layout`: optional, defaults to `'vertical'`.
-- `activation`: optional, defaults to `'immediate'`. `'fullRowNative'` allows drag to
-  start from anywhere on the row itself, gated by input (long press on touch/pen,
-  intentional movement on mouse).
-- `density`: optional, defaults to `'comfortable'`.
-- `disabled`: disables reordering.
-- `interactiveSelector`: selector for controls that should not start drag. Only
-  consulted under `interactiveStrategy: 'blockInteractiveDescendants'`.
-- `interactiveStrategy`: optional, defaults to `'blockInteractiveDescendants'`.
-  `'explicitIgnoreOnly'` blocks drag only inside explicit `v-reorder-ignore` zones, so a
-  row's own primary action (button/link) does not block drag. Required alongside
-  `activation: 'fullRowNative'`.
-- `scrollContainer`: optional scroll target for auto-scroll.
-- `onCommit`: async or sync persistence callback.
-
-### Production Material-list recipe (full-row native reorder)
-
-Every production reorderable `MDListItem` surface must use this exact
-configuration. The two options are a required pair, not independent knobs:
-
 ```ts
-useReorderSurface(container, {
-  itemIdList,
-  activation: 'fullRowNative',
-  interactiveStrategy: 'explicitIgnoreOnly',
-  onCommit: ({ orderedIds }) => persistOrder(orderedIds),
+import { useReorderSurface, vReorderItem, vReorderIgnore } from '@shared/lib/sortable';
+
+const { displayItemIdList, draggedId } = useReorderSurface(containerRef, {
+  itemIdList, // authoritative ordered ids from the owning entity
+  onCommit: ({ orderedIds }) => reorder(orderedIds), // persist through the entity API
+  disabled, // optional
+  scrollContainer, // optional scrollable ancestor for edge auto-scroll
 });
 ```
-
-Consumer responsibilities:
-
-- put `v-reorder-item="id"` on each reorderable row host (the `MDListItem`
-  itself or the wrapper component that renders it);
-- mark trailing actions, menus, delete buttons, inputs, and every other
-  control that must stay clickable without starting drag with
-  `v-reorder-ignore`;
-- keep row click/tap behavior owned by the feature — pass the dragged fact
-  down through the row's explicit `dragged` prop and commit persistence
-  through the owning entity API in `onCommit`.
-
-Under `explicitIgnoreOnly`, explicit `v-reorder-ignore` zones are the only
-thing that blocks drag — the row's own primary action, even when it is a
-full-width button or link, does not.
-
-**Misconfiguration warning.** `activation: 'fullRowNative'` without
-`interactiveStrategy: 'explicitIgnoreOnly'` is wrong for `MDListItem` row
-consumers: the default `'blockInteractiveDescendants'` strategy treats the
-row's full-width primary action (a native button or link) as an interactive
-descendant, so drag activation is blocked on the entire row and full-row drag
-silently never starts. If you use `fullRowNative`, pair it with
-`explicitIgnoreOnly` and take over ignore-zone marking yourself.
-`useReorderSurface` logs a dev-mode `console.warn` for this combination
-(see `isReorderFullRowNativeMisconfigured`), but the pairing is still the
-consumer's responsibility in production builds.
-
-Outputs:
-
-- `displayItemIdList`: local display order used during drag preview and optimistic UI.
-- `draggedId`: the id currently being dragged.
-- `isDragging`: whether a drag is active.
-- `isReorderSession`: alias for drag session state.
-- `activeProfile`: resolved runtime input profile.
-- `suppressNextClick`: whether the next synthetic click is being suppressed.
-- `cancel()`: requests rollback of the active drag session.
-
-### `vReorderItem`
-
-Marks an element or component root as a reorderable item and assigns its stable
-id through `data-sortable-id`.
-
-Component-root usage is a supported contract: when the directive is placed on a
-component, Vue forwards it through single-root component levels to the actual
-rendered root element, so `v-reorder-item` also works on a wrapper component
-whose root is another component that ultimately renders one `HTMLElement` root
-(for example a feature row component wrapping `MDListItem`). Consumers never
-need to know or reach into the child component's internal DOM to mark sortable
-rows. The one requirement is that the component keeps a stable single
-`HTMLElement` root; a dev-mode warning fires when it does not
-(`reorderDirectives.ts`), and `reorderDirectives.test.ts` covers the nested
-component-root case.
-
-### `vReorderIgnore`
-
-Marks a subtree as non-draggable through `data-sortable-ignore`. Use this on
-buttons, menu triggers, delete actions, and other controls that should stay
-clickable without starting drag.
-
-## Drag Visual Policy
-
-Drag-state visuals are owned by this module (`reorderSurface.css`), not by
-shared Material list components: `MDListItem` styles its Material `dragged`
-state through its public `dragged` prop and knows nothing about SortableJS.
-
-The visual model is input-specific:
-
-- Desktop/pointer uses SortableJS fallback mode too. The user-visible moving
-  row is the fallback DOM clone with `reorder-item_fallback` plus
-  `reorder-item_drag`, not the browser's native drag image. On desktop the
-  clone is still the only visible moving row and shared CSS/adapter policy
-  raises it as the lifted surface while keeping any in-list ghost visually
-  hidden.
-- Touch/pen also uses SortableJS fallback mode. The moving row is a DOM clone with
-  `reorder-item_fallback` plus `reorder-item_drag`, mounted on `<body>` when
-  `fallbackOnBody` is enabled. Shared CSS gives that clone its surface fill,
-  shape, and elevation.
-
-Consumers must not restyle these classes per feature; if a surface needs a
-different drag look, change the shared policy here.
-
-## Typical Integration
 
 ```vue
-<script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
-import { useReorderSurface, vReorderIgnore, vReorderItem } from '@shared/lib/sortable';
-
-const container = useTemplateRef('container');
-const itemIdList = computed(() => props.items.map((item) => item.id));
-
-const { displayItemIdList, draggedId } = useReorderSurface(container, {
-  itemIdList,
-  onCommit: ({ orderedIds }) => persistOrder(orderedIds),
-});
-</script>
-
-<template>
-  <div ref="container">
-    <RowComponent
-      v-for="itemId in displayItemIdList"
-      :key="itemId"
-      v-reorder-item="itemId"
-      :class="{ 'md-state_drag': draggedId === itemId }"
-    >
-      <button v-reorder-ignore type="button">delete</button>
-    </RowComponent>
-  </div>
-</template>
+<MDList ref="containerRef">
+  <MDListItem
+    v-for="id in displayItemIdList"
+    :key="id"
+    v-reorder-item="id"
+    :dragged="draggedId === id"
+  >
+    <template #trailingAction>
+      <span v-reorder-ignore>…controls that must stay plainly clickable…</span>
+    </template>
+  </MDListItem>
+</MDList>
 ```
 
-## Why `displayItemIdList` Exists
+That is the whole production contract. Consumers do not configure activation modes,
+interactive strategies, or layout — input behavior is inferred internally:
 
-The library intentionally does not mutate the caller's source list directly.
+- **Mouse**: press and move; reorder starts after a small movement threshold
+  (4&nbsp;px), with no hold delay. A press without movement stays a plain click.
+- **Touch / pen**: reorder starts after a long press (180&nbsp;ms). Movement beyond a
+  small slop before the long press means scrolling, and the press is abandoned.
+- **Ignore zones**: a press inside a `v-reorder-ignore` subtree never starts reorder,
+  so trailing actions (menus, delete buttons) stay ordinary controls.
 
-Reasons:
+`v-reorder-item` may sit on a plain element or on a component root. Component-root
+usage relies on the component keeping a single `HTMLElement` root; a dev warning fires
+otherwise. `MDListItem` itself is reorder-agnostic — it only renders the `dragged` prop
+it is given.
 
-- business persistence belongs outside the generic reorder primitive;
-- drag preview needs a temporary local order before persistence succeeds;
-- optimistic UI should keep working even when external state updates arrive
-  asynchronously;
-- rollback and cancel flows must be able to restore the correct authoritative
-  order.
+## How it works
 
-`itemIdList` is the external source of truth.
-`displayItemIdList` is the local render order for the current session.
+The engine (`reorderEngine.ts`) owns one Pointer Events session per gesture:
 
-## Internal Flow
+1. `pointerdown` on a `[data-sortable-id]` item arms a pending press
+   (`setPointerCapture` is acquired once the session activates).
+2. Activation gating: movement threshold for mouse, long-press timer for touch/pen.
+3. At activation it measures the item rects once (`reorderGeometry.ts`), detects the
+   collection axis from those rects, and locks the session's geometry.
+4. On every move it computes the **target index** by comparing the dragged item's
+   clamped center against the session-start midpoints of the other items, and shifts
+   the affected siblings by one slot step with a CSS transform transition.
+5. On release it reports the final order; `useReorderSurface` applies it optimistically
+   and persists through `onCommit`, rolling back if persistence fails.
 
-### 1. Markup phase
+Ordering changes through this collection geometry — never by dropping a DOM node where
+the cursor happens to be.
 
-- every draggable row gets `v-reorder-item="id"`;
-- controls that should not start drag get `v-reorder-ignore`;
-- `useReorderSurface` receives the same ordered ids through `itemIdList`.
+### Lifted presentation layer
 
-### 2. Input and profile phase
+During an active session the engine renders the dragged row in `.reorder-overlay`
+(`reorderOverlay.ts`): a fixed-position clone mounted on `document.body`. It exists so
+the lifted row's Material elevation shadow is never clipped by the list or any
+`overflow` container. The overlay travel is clamped to the collection's own bounds and
+locked on the cross axis, so it reads as a lifted list row, not a cursor-following DnD
+clone. The in-list original becomes the invisible `.reorder-item_slot`: it keeps its
+layout box (the open slot the row will land in) but renders nothing, so there is no
+visible ghost row.
 
-- `useReorderSurface` tracks the most recent input type: pointer, touch, or pen;
-- pen input is treated as touch-like input;
-- `reorderGestureProfile.ts` resolves runtime behavior such as delay,
-  threshold, scroll sensitivity, and animation;
-- touch-like input can be upgraded from `immediate` to `longPress` to avoid
-  accidental drags on dense mobile surfaces.
+### Shared visual states
 
-### 3. Adapter phase
+Product-state classes, all owned by `reorderSurface.css`:
 
-- `sortableAdapter.ts` creates and owns the `SortableJS` instance;
-- runtime options are updated when layout, profile, disabled state, or scroll
-  target changes;
-- if the runtime profile ever switches across SortableJS native-vs-fallback
-  mode (`forceFallback` changes), the adapter recreates the SortableJS
-  instance so Sortable's construction-time `nativeDraggable` mode stays
-  correct;
-- the adapter emits generic `onStart`, `onChange`, and `onEnd` events with
-  string ids, not business objects.
+| Class                        | Where                | Meaning                                        |
+| ---------------------------- | -------------------- | ---------------------------------------------- |
+| `reorder-surface_activating` | container            | press is armed, activation gate not passed yet |
+| `reorder-surface_active`     | container            | a reorder session is running                   |
+| `reorder-item_slot`          | in-list original     | invisible open slot of the lifted item         |
+| `reorder-overlay`            | body-mounted overlay | the lifted row surface                         |
 
-### 4. Session phase
+### Suppression behaviors
 
-During a drag session, `useReorderSurface.ts` keeps local session state:
+- Text selection is suppressed document-wide from the moment a press is armed, and
+  cleared if the browser creates one anyway (`useReorderSurface.helpers.ts`).
+- The synthetic click browsers fire right after a completed reorder is swallowed, so a
+  drop never also activates the row it landed on (`reorderPostDragClick.ts`).
+- `dragstart` is prevented on reorder items, so no native browser drag (and no browser
+  drag image) can ever start from a row.
+- Listeners, timers, pointer capture, overlay, transforms, and suppression are all
+  released on end, cancel (`Escape`, `pointercancel`), disable, and unmount.
 
-- the dragged id;
-- the order at drag start;
-- the latest external order;
-- the current optimistic order, if a commit is in flight.
+## Module map
 
-This is what allows the library to separate drag preview from persistence.
+| Module                         | Responsibility                                             |
+| ------------------------------ | ---------------------------------------------------------- |
+| `useReorderSurface.ts`         | public composable: optimistic order state, commit/rollback |
+| `reorderEngine.ts`             | pointer session, activation gating, DOM writes             |
+| `reorderGeometry.ts`           | pure rect math: axis, target index, shifts, clamping       |
+| `reorderOverlay.ts`            | lifted presentation layer                                  |
+| `reorderAutoScroll.ts`         | edge auto-scroll inside `scrollContainer`                  |
+| `reorderInput.ts`              | input normalization and gating constants                   |
+| `reorderDirectives.ts`         | `v-reorder-item`, `v-reorder-ignore`                       |
+| `useReorderSurface.helpers.ts` | session state machine, selection suppression               |
+| `reorderPostDragClick.ts`      | post-reorder click suppression rules                       |
 
-### 5. Commit phase
-
-When drag ends:
-
-- unchanged order becomes a no-op;
-- changed order updates `displayItemIdList` immediately;
-- `onCommit` receives `orderedIds`, `movedId`, indices, and the runtime input
-  profile.
-
-The caller is responsible for persisting the new order and eventually emitting
-the updated `itemIdList`.
-
-## External Sync Rules
-
-These rules explain the behavior that is easiest to miss when reading the code.
-
-### External update during drag
-
-If the external list changes while drag is active, the session is marked for
-rollback. At drag end, the UI returns to the latest external order rather than
-the stale order from drag start.
-
-### Optimistic commit confirmation
-
-If the external list later matches the optimistic order, the optimistic session
-is considered confirmed and local optimistic state is cleared.
-
-### Temporary old-order re-emission
-
-If the external list temporarily re-emits the pre-drag order while the
-optimistic commit is still pending, the library ignores that single rollback to
-avoid visible flicker.
-
-### Competing external reorder
-
-If the external list emits a different order with the same set of ids, that
-order is treated as authoritative. The UI follows it and any later rejection
-from the older commit must not overwrite it.
-
-## Current Consumers
-
-- `src/features/databaseViewMapEdit/DatabaseViewListEdit.vue`: full-row native
-  view reorder over `MDListItem` rows, committing through
-  `useDatabaseViews().reorder`. Trailing action slot content is wrapped in a
-  `v-reorder-ignore` host.
-- `src/features/databaseItemSorting/DatabaseItemSortingListSection.vue`:
-  full-row native sorting-property reorder, committing through
-  `useDatabaseSorting().reorder`. The delete trailing action carries
-  `v-reorder-ignore`.
-- `ReorderSurfacePlayground.vue` (this module): dev/demo playground only. It
-  may keep default activation/strategy options; it is not a production
-  Material-list consumer and not a wiring reference for one — use the
-  production recipe above instead.
-
-## Verification Status
-
-- Desktop full drag-completion (real mouse gesture, order change, post-drag
-  click suppression) is covered by
-  `tests/e2e/reorderSurfaceFullRowNative.spec.ts`.
-- Desktop active-drag visual policy (real mouse drag, single visible fallback
-  moving surface, hidden ghost, no native browser drag image acceptance) is
-  covered by the same spec under the `github-actions` verify profile.
-- Desktop sorting-row drag-completion (component-root `v-reorder-item`
-  consumer, order change, persistence across sheet reopen) is covered by the
-  sorting-row test in the same spec.
-- Mobile Chrome tap-select, trailing ignore-zone activation, and
-  no-reorder-before-long-press are covered by active tests in the same spec.
-- Mobile Chrome full long-press drag-completion is a known e2e **harness
-  limitation**, not accepted product behavior: CDP touch synthesis arms the
-  gesture but the fallback hit-testing step never commits an order change in
-  the containerized headless Chromium. That scenario remains `test.fixme()`
-  with the full rationale documented inline in the spec; engine-level
-  long-press activation is covered by the real-SortableJS unit test in
-  `sortableAdapter.test.ts`. Revisit with a real device or an improved touch
-  harness.
-
-## File Map
-
-- `useReorderSurface.ts`: public composable, session state, DOM event wiring.
-- `sortableAdapter.ts`: `SortableJS` bridge and lifecycle ownership.
-- `reorderDirectives.ts`: item and ignore directives.
-- `reorderGestureProfile.ts`: platform and input heuristics.
-- `reorderInteractiveStrategy.ts`: resolves which descendants block drag activation.
-- `reorderPostDragClick.ts`: synthetic click suppression rules after drag.
-- `constants.ts`: shared attributes, class names, and selectors.
-- `reorderSurface.css`: selection suppression and the drag visual policy
-  (chosen/ghost/fallback styling).
-- `ReorderSurfacePlayground.vue`: manual playground for behavior checks.
-- `*.test.ts`: focused unit coverage for the touched invariants.
-
-## Invariants
-
-- Item ids must be stable, unique strings for the current surface.
-- The library is generic over item shape; only ids cross the public contract.
-- Business persistence must stay in `onCommit`, not inside shared reorder code.
-- Import the module through `@shared/lib/sortable`.
+The geometry layer works on item rects and pointer coordinates, not on a hard-coded
+vertical model, so horizontal or wrapped collections can be supported later without
+changing the consumer API. Vertical lists are the supported production scenario today.

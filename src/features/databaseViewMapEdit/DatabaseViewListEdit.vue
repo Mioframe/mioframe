@@ -40,8 +40,6 @@ const viewMap = computed(() => new Map(viewList.value ?? []));
 
 const { displayItemIdList, draggedId } = useReorderSurface(viewListContainerEl, {
   itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
-  activation: 'fullRowNative',
-  interactiveStrategy: 'explicitIgnoreOnly',
   onCommit: ({ orderedIds }) => {
     const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
 

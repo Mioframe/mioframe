@@ -22,37 +22,21 @@ import { performCdpTouchLongPressDrag } from './support/gestures/cdpTouchDrag';
 import { getCenterPoint } from './support/gestures/coordinates';
 import { performMouseDrag } from './support/gestures/mouseDrag';
 
-interface DragStateElementSnapshot {
-  backgroundColor: string;
-  boxShadow: string;
-  className: string | null;
-  onBody: boolean;
-  opacity: string;
-  parentTag: string | null;
-  position: string;
-  sortableId: string | null;
-  tag: string;
-  text: string | null;
-  visibility: string;
-  zIndex: string;
-}
-
-interface ActiveDragProbe {
-  bodyLevelDragChildren: Array<{
-    className: string | null;
-    sortableId: string | null;
-    text: string | null;
-  }>;
-  chosen: DragStateElementSnapshot[];
-  drag: DragStateElementSnapshot[];
-  fallback: DragStateElementSnapshot[];
-  fallbackCount: number;
-  ghost: DragStateElementSnapshot[];
-  movingSurface:
-    | (DragStateElementSnapshot & {
-        elementKind: 'fallback' | 'dragged-row';
-      })
-    | null;
+interface ActiveReorderProbe {
+  dragstartCount: number;
+  legacyArtifactCount: number;
+  overlayBackground: string | null;
+  overlayCount: number;
+  overlayLeft: number | null;
+  overlayOnBody: boolean;
+  overlayHasNestedItemAttr: boolean;
+  overlayPointerEvents: string | null;
+  overlayPosition: string | null;
+  overlayShadow: string | null;
+  overlayText: string | null;
+  slotId: string | null;
+  slotLeft: number | null;
+  slotVisibility: string | null;
 }
 
 const setupViewCatalog = async (page: Page, labPrefix: string) => {
@@ -75,93 +59,60 @@ const setupViewCatalog = async (page: Page, labPrefix: string) => {
   return { firstViewName, secondViewName, thirdViewName };
 };
 
-const probeActiveDesktopDrag = (page: Page) =>
-  page.evaluate<ActiveDragProbe>(() => {
-    const describeElement = (element: Element): DragStateElementSnapshot => {
-      const style = getComputedStyle(element);
-      return {
-        tag: element.tagName.toLowerCase(),
-        className: element.getAttribute('class'),
-        sortableId: element.getAttribute('data-sortable-id'),
-        parentTag: element.parentElement?.tagName.toLowerCase() ?? null,
-        onBody: element.parentElement === document.body,
-        opacity: style.opacity,
-        visibility: style.visibility,
-        position: style.position,
-        zIndex: style.zIndex,
-        backgroundColor: style.backgroundColor,
-        boxShadow: style.boxShadow,
-        text: element.textContent.trim(),
-      };
-    };
+/**
+ * Counts `dragstart` events so the probe can prove no native browser drag ever began.
+ * @param page
+ */
+const installDragStartCounter = (page: Page) =>
+  page.evaluate(() => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- widens window with the test-only dragstart counter shared between install and probe
+    const state = window as Window & { reorderDragstartCount?: number };
 
-    const describeElements = (selector: string) =>
-      [...document.querySelectorAll(selector)].map((element) => describeElement(element));
-    const fallbackElement = document.querySelector('.reorder-item_fallback');
-    const chosenElement = document.querySelector('.reorder-item_chosen');
-
-    return {
-      chosen: describeElements('.reorder-item_chosen'),
-      ghost: describeElements('.reorder-item_ghost'),
-      drag: describeElements('.reorder-item_drag'),
-      fallback: describeElements('.reorder-item_fallback'),
-      fallbackCount: document.querySelectorAll('.reorder-item_fallback').length,
-      movingSurface:
-        fallbackElement instanceof Element
-          ? {
-              ...describeElement(fallbackElement),
-              elementKind: 'fallback',
-            }
-          : chosenElement instanceof Element
-            ? {
-                ...describeElement(chosenElement),
-                elementKind: 'dragged-row',
-              }
-            : null,
-      bodyLevelDragChildren: [...document.body.children]
-        .filter(
-          (child) =>
-            child.classList.contains('reorder-item_fallback') ||
-            child.classList.contains('reorder-item_drag'),
-        )
-        .map((child) => ({
-          className: child.getAttribute('class'),
-          sortableId: child.getAttribute('data-sortable-id'),
-          text: child.textContent.trim(),
-        })),
-    };
+    state.reorderDragstartCount = 0;
+    window.addEventListener(
+      'dragstart',
+      () => {
+        state.reorderDragstartCount = (state.reorderDragstartCount ?? 0) + 1;
+      },
+      { capture: true },
+    );
   });
 
-const expectDesktopFallbackVisualModel = (probe: ActiveDragProbe, expectedLabel?: string) => {
-  expect(probe.drag.length).toBeGreaterThan(0);
-  expect(probe.fallback.length).toBeGreaterThan(0);
-  expect(probe.fallbackCount).toBeGreaterThan(0);
-  expect(probe.bodyLevelDragChildren.length).toBeGreaterThan(0);
-  expect(probe.movingSurface?.elementKind).toBe('fallback');
-  expect(probe.movingSurface?.sortableId).toBeTruthy();
-  expect(probe.movingSurface?.onBody).toBe(true);
-  expect(['absolute', 'fixed']).toContain(probe.movingSurface?.position ?? '');
-  expect(probe.movingSurface?.opacity).toBe('1');
-  expect(probe.movingSurface?.zIndex).not.toBe('auto');
-  expect(probe.movingSurface?.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-  expect(probe.movingSurface?.boxShadow).not.toBe('none');
-  if (expectedLabel) {
-    expect(probe.movingSurface?.text).toContain(expectedLabel);
-  }
-  expect(
-    probe.ghost.every((element) => element.opacity === '0' || element.visibility === 'hidden'),
-  ).toBe(true);
-};
+const probeActiveReorder = (page: Page) =>
+  page.evaluate<ActiveReorderProbe>(() => {
+    const overlay = document.querySelector('.reorder-overlay');
+    const slot = document.querySelector('.reorder-item_slot');
+    const overlayStyle = overlay instanceof Element ? getComputedStyle(overlay) : null;
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- widens window with the test-only dragstart counter shared between install and probe
+    const state = window as Window & { reorderDragstartCount?: number };
+
+    return {
+      dragstartCount: state.reorderDragstartCount ?? 0,
+      // The SortableJS visual model must be fully gone: no ghost row, no cursor-following
+      // fallback clone, no chosen/drag styling hooks.
+      legacyArtifactCount: document.querySelectorAll(
+        '.reorder-item_ghost, .reorder-item_fallback, .reorder-item_chosen, .reorder-item_drag',
+      ).length,
+      overlayBackground: overlayStyle?.backgroundColor ?? null,
+      overlayCount: document.querySelectorAll('.reorder-overlay').length,
+      overlayLeft: overlay?.getBoundingClientRect().left ?? null,
+      overlayOnBody: overlay?.parentElement === document.body,
+      overlayHasNestedItemAttr: overlay?.querySelector('[data-sortable-id]') !== null,
+      overlayPointerEvents: overlayStyle?.pointerEvents ?? null,
+      overlayPosition: overlayStyle?.position ?? null,
+      overlayShadow: overlayStyle?.boxShadow ?? null,
+      overlayText: overlay?.textContent.trim() ?? null,
+      slotId: slot?.getAttribute('data-sortable-id') ?? null,
+      slotLeft: slot?.getBoundingClientRect().left ?? null,
+      slotVisibility: slot instanceof Element ? getComputedStyle(slot).visibility : null,
+    };
+  });
 
 test('desktop: dragging a database view row by its full row reorders the list and suppresses the immediate post-drag click', async ({
   page,
   isMobile,
 }) => {
   test.skip(isMobile, 'desktop mouse full-row drag activation');
-  test.skip(
-    process.env.MIOFRAME_VERIFY_PROFILE !== 'github-actions',
-    'CI-profile-only desktop view drag completion proof; local container profile is flaky for this path',
-  );
 
   const { firstViewName, secondViewName, thirdViewName } = await setupViewCatalog(
     page,
@@ -290,15 +241,87 @@ test('desktop: dragging a database sorting row by its full row reorders the sort
   await closeBottomSheet(page, /database sort sheet/i);
 });
 
-test('desktop: an active full-row drag uses the accepted single-surface fallback model', async ({
+test('TEMP debug: held drag event trace', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'desktop debug');
+
+  const { firstViewName, secondViewName, thirdViewName } = await setupViewCatalog(
+    page,
+    'reorder debug',
+  );
+
+  const sheet = await openViewsSheet(page);
+  const viewNames = [firstViewName, secondViewName, thirdViewName];
+  await expect.poll(() => getViewRowOrder(sheet, viewNames)).toEqual(viewNames);
+
+  await page.evaluate(() => {
+    const log: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions -- temp debug
+    (window as any).__dbgLog = log;
+    ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture'].forEach(
+      (type) => {
+        window.addEventListener(
+          type,
+          (event) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions -- temp debug
+            const pe = event as any;
+            if (
+              type === 'pointermove' &&
+              log.filter((entry) => entry.startsWith('pointermove')).length > 5
+            ) {
+              return;
+            }
+            log.push(
+              `${type} id=${pe.pointerId} ptype=${pe.pointerType} target=${pe.target?.tagName}.${pe.target?.className?.toString?.().slice(0, 60)}`,
+            );
+          },
+          { capture: true },
+        );
+      },
+    );
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof Element && node.classList.contains('reorder-overlay')) {
+            log.push('overlay-added');
+          }
+        });
+        mutation.removedNodes.forEach((node) => {
+          if (node instanceof Element && node.classList.contains('reorder-overlay')) {
+            log.push('overlay-removed');
+          }
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true });
+  });
+
+  const firstRow = findListRow(sheet, firstViewName);
+  const thirdRow = findListRow(sheet, thirdViewName);
+  const from = await getCenterPoint(firstRow.getByRole('button', { name: firstViewName }).first());
+  const to = await getCenterPoint(thirdRow.getByRole('button', { name: thirdViewName }).first());
+
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x + 80, to.y, { steps: 20 });
+  await page.waitForTimeout(1000);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions -- temp debug
+  const log = await page.evaluate(() => (window as any).__dbgLog as string[]);
+  const overlayCount = await page.evaluate(
+    () => document.querySelectorAll('.reorder-overlay').length,
+  );
+
+  await page.mouse.up();
+
+  console.log('DBG-LOG:', JSON.stringify(log));
+  console.log('DBG-OVERLAY-COUNT:', overlayCount);
+});
+
+test('desktop: an active full-row reorder lifts the row into a constrained overlay with no ghost, fallback clone, or browser drag image', async ({
   page,
   isMobile,
 }) => {
   test.skip(isMobile, 'desktop mouse full-row drag activation');
-  test.skip(
-    process.env.MIOFRAME_VERIFY_PROFILE !== 'github-actions',
-    'CI-profile-only desktop drag DOM proof; local container profile is flaky for held-drag inspection',
-  );
 
   const { firstViewName, secondViewName, thirdViewName } = await setupViewCatalog(
     page,
@@ -309,6 +332,8 @@ test('desktop: an active full-row drag uses the accepted single-surface fallback
   const viewNames = [firstViewName, secondViewName, thirdViewName];
   await expect.poll(() => getViewRowOrder(sheet, viewNames)).toEqual(viewNames);
 
+  await installDragStartCounter(page);
+
   const firstRow = findListRow(sheet, firstViewName);
   const thirdRow = findListRow(sheet, thirdViewName);
   const from = await getCenterPoint(firstRow.getByRole('button', { name: firstViewName }).first());
@@ -316,15 +341,39 @@ test('desktop: an active full-row drag uses the accepted single-surface fallback
 
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(to.x, to.y, { steps: 20 });
-  await page.waitForTimeout(700);
+  // Move diagonally: the overlay must follow only the collection axis, not the pointer's
+  // horizontal travel, or it would behave like a free-floating DnD clone.
+  await page.mouse.move(to.x + 80, to.y, { steps: 20 });
 
-  await expect
-    .poll(async () => (await probeActiveDesktopDrag(page)).movingSurface?.elementKind)
-    .toBe('fallback');
-  expectDesktopFallbackVisualModel(await probeActiveDesktopDrag(page), firstViewName);
+  await expect.poll(async () => (await probeActiveReorder(page)).overlayCount).toBe(1);
+
+  const probe = await probeActiveReorder(page);
+
+  // Lifted presentation layer: mounted on <body> so no ancestor clips its elevation.
+  expect(probe.overlayOnBody).toBe(true);
+  expect(probe.overlayPosition).toBe('fixed');
+  expect(probe.overlayPointerEvents).toBe('none');
+  expect(probe.overlayShadow).not.toBe('none');
+  expect(probe.overlayBackground).not.toBe('rgba(0, 0, 0, 0)');
+  expect(probe.overlayText).toContain(firstViewName);
+  // The overlay clone must not register as a second collection item.
+  expect(probe.overlayHasNestedItemAttr).toBe(false);
+  // The in-list original is the invisible open slot, not a visible ghost row.
+  expect(probe.slotVisibility).toBe('hidden');
+  expect(probe.slotId).not.toBeNull();
+  // Constrained by collection geometry: the cross axis stays locked to the row's column
+  // even though the pointer moved 80px sideways.
+  expect(probe.overlayLeft).not.toBeNull();
+  expect(probe.slotLeft).not.toBeNull();
+  expect(Math.abs((probe.overlayLeft ?? 0) - (probe.slotLeft ?? 0))).toBeLessThan(2);
+  // No SortableJS artifacts and no native browser drag session.
+  expect(probe.legacyArtifactCount).toBe(0);
+  expect(probe.dragstartCount).toBe(0);
 
   await page.mouse.up();
+
+  // The overlay is torn down as soon as the session ends.
+  await expect.poll(async () => (await probeActiveReorder(page)).overlayCount).toBe(0);
 });
 
 test('desktop: clicking a trailing action opens its menu without starting a drag', async ({
@@ -397,15 +446,13 @@ test('Mobile Chrome: a quick vertical pointer movement over a row without a long
   const y = box.y + box.height / 2;
 
   // Dispatched as real DOM PointerEvents from inside the page (not via Playwright/CDP
-  // input synthesis): the drag engine binds its activation listener to
-  // `pointerdown`/`pointermove`, not `touchstart`/`touchmove`, whenever `PointerEvent`
-  // exists in the environment (true in real Chromium too) — a plain `TouchEvent` never
-  // reaches it.
+  // input synthesis): the reorder engine drives its whole session from Pointer Events.
   // This only proves that fast vertical movement with no press delay does not arm a
-  // drag: fullRowNative gates activation behind a long press on touch input. Because
-  // these are synthetic PointerEvents dispatched from inside the page rather than a
-  // real OS-level touch gesture, the browser's own scroll/compositor path never runs,
-  // so this test cannot and does not assert that the sheet actually scrolled.
+  // reorder: touch input gates activation behind a long press, and movement beyond the
+  // touch slop before the long press cancels the pending press. Because these are
+  // synthetic PointerEvents dispatched from inside the page rather than a real OS-level
+  // touch gesture, the browser's own scroll/compositor path never runs, so this test
+  // cannot and does not assert that the sheet actually scrolled.
   await page.evaluate(
     ({ startX, startY, endY }) => {
       const dispatch = (type: string, clientX: number, clientY: number) => {
@@ -432,22 +479,7 @@ test('Mobile Chrome: a quick vertical pointer movement over a row without a long
   await expect.poll(() => getViewRowOrder(sheet, viewNames)).toEqual(viewNames);
 });
 
-// This is a known e2e harness limitation, not accepted product behavior: real CDP
-// `Input.dispatchTouchEvent` (the same mechanism Playwright's own touch actions use)
-// reliably arms and moves the drag engine's touch gesture, but the fallback
-// hit-testing/insertion step never commits a new order in this containerized headless
-// Chromium — confirmed across 3 attempts with no order change at all, in both the
-// local and github-actions container profiles. The equivalent desktop mouse gesture
-// (performMouseDrag, real page.mouse APIs, see the active desktop full-row drag test
-// above) is fully reliable, so this is specific to touch input synthesis in this
-// container, not a production defect. Remaining confidence for mobile full-row drag
-// comes from: full-row native long-press activation at the engine level, proven by the
-// real-SortableJS unit test in sortableAdapter.test.ts; suppressNextClick/post-drag
-// click behavior, covered by useReorderSurface.test.ts and
-// reorderPostDragClick.test.ts; and touch tap-select, quick-movement-before-long-press,
-// and trailing ignore-zone behavior, covered by the other active Mobile Chrome tests in
-// this file. Revisit with a real device or an improved touch harness.
-test.fixme('Mobile Chrome: long-pressing then moving a row reorders the list', async ({
+test('Mobile Chrome: long-pressing then moving a row reorders the list', async ({
   page,
   isMobile,
 }) => {
@@ -463,9 +495,11 @@ test.fixme('Mobile Chrome: long-pressing then moving a row reorders the list', a
   const firstRow = sheet.getByRole('button', { name: firstViewName });
   const thirdRow = sheet.getByRole('button', { name: thirdViewName });
 
-  // Real touch input via CDP, not synthetic dispatchEvent — the drag starts on the
-  // row's own primary-action surface after a long press, matching the full-row native
-  // contract under test.
+  // Real touch input via CDP, not synthetic dispatchEvent — the reorder starts on the
+  // row's own primary-action surface after a long press, matching the full-row
+  // contract under test. The geometry engine computes the target slot from item rects
+  // and pointer coordinates, so it does not depend on the container's DnD hit-testing
+  // path that blocked this scenario under SortableJS.
   await performCdpTouchLongPressDrag(
     page,
     await getCenterPoint(firstRow),

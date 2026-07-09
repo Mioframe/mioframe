@@ -16,7 +16,6 @@ import {
   isPointerEvent,
   isSameOrderedIds,
   isTouchLikeEvent,
-  previewReorderSurfaceDrag,
   requestReorderSurfaceCancel,
   resetDragState,
   rollbackReorderSurfaceCommit,
@@ -26,29 +25,6 @@ import {
   syncReorderSurfaceExternalItemIdList,
   type ReorderSurfaceState,
 } from './useReorderSurface.helpers';
-import type { ReorderInputProfile } from './reorderTypes';
-
-const pointerProfile: ReorderInputProfile = {
-  input: 'pointer',
-  layout: 'vertical',
-  density: 'comfortable',
-  activation: 'immediate',
-  delay: 0,
-  moveThreshold: 3,
-  suppressClickAfterDrag: true,
-  forceFallback: false,
-  fallbackOnBody: false,
-  animation: 150,
-  scrollSpeed: 10,
-  scrollSensitivity: 30,
-};
-
-const touchProfile: ReorderInputProfile = {
-  ...pointerProfile,
-  input: 'touch',
-  forceFallback: true,
-  fallbackOnBody: true,
-};
 
 const createState = (
   itemIdList: readonly string[] | undefined = ['a', 'b', 'c'],
@@ -114,7 +90,7 @@ describe('useReorderSurface helpers', () => {
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: -1,
-      profile: pointerProfile,
+      input: 'pointer',
     });
 
     state.suppressNextClick = true;
@@ -123,7 +99,7 @@ describe('useReorderSurface helpers', () => {
 
     expect(state.isDragging).toBe(false);
     expect(state.draggedId).toBeUndefined();
-    expect(state.activeProfile).toBeUndefined();
+    expect(state.activeInput).toBeUndefined();
     expect(state.dragStartOrder).toEqual([]);
     expect(state.shouldRollbackOnEnd).toBe(false);
     expect(state.suppressNextClick).toBe(true);
@@ -135,7 +111,7 @@ describe('useReorderSurface helpers', () => {
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      profile: pointerProfile,
+      input: 'pointer',
     });
 
     syncReorderSurfaceExternalItemIdList(draggingState, ['a', 'b', 'c']);
@@ -181,16 +157,13 @@ describe('useReorderSurface helpers', () => {
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: -1,
-      profile: pointerProfile,
+      input: 'pointer',
     });
 
     expect(draggingState.suppressNextClick).toBe(false);
     expect(draggingState.draggedId).toBe('a');
-    expect(draggingState.activeProfile).toEqual(pointerProfile);
+    expect(draggingState.activeInput).toBe('pointer');
     expect(draggingState.shouldRollbackOnEnd).toBe(true);
-
-    previewReorderSurfaceDrag(draggingState, ['b', 'a', 'c']);
-    expect(draggingState.displayItemIdList).toEqual(['b', 'a', 'c']);
 
     requestReorderSurfaceCancel(draggingState);
     expect(draggingState.suppressNextClick).toBe(true);
@@ -214,7 +187,7 @@ describe('useReorderSurface helpers', () => {
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      profile: pointerProfile,
+      input: 'pointer',
     });
     requestReorderSurfaceCancel(rollbackState);
 
@@ -233,7 +206,7 @@ describe('useReorderSurface helpers', () => {
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      profile: pointerProfile,
+      input: 'pointer',
     });
 
     const differentSetResult = completeReorderSurfaceDrag(differentSetState, {
@@ -251,7 +224,7 @@ describe('useReorderSurface helpers', () => {
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      profile: pointerProfile,
+      input: 'pointer',
     });
 
     const unchangedResult = completeReorderSurfaceDrag(unchangedState, {
@@ -269,7 +242,7 @@ describe('useReorderSurface helpers', () => {
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
-      profile: touchProfile,
+      input: 'touch',
     });
 
     const commitResult = completeReorderSurfaceDrag(commitState, {
@@ -286,39 +259,17 @@ describe('useReorderSurface helpers', () => {
         movedId: 'a',
         fromIndex: 0,
         toIndex: 1,
-        profile: touchProfile,
+        input: 'touch',
       });
       expect(commitState.optimisticCommitMarker).toBe(commitResult.commitId);
     }
     expect(commitState.displayItemIdList).toEqual(['b', 'a', 'c']);
     expect(commitState.suppressNextClick).toBe(true);
-
-    const noSuppressionProfile = {
-      ...pointerProfile,
-      suppressClickAfterDrag: false,
-    };
-    const noSuppressionState = createState();
-    startReorderSurfaceDrag(noSuppressionState, {
-      itemId: 'a',
-      orderedIds: ['a', 'b', 'c'],
-      fromIndex: 0,
-      profile: noSuppressionProfile,
-    });
-
-    const noSuppressionResult = completeReorderSurfaceDrag(noSuppressionState, {
-      orderedIds: ['b', 'a', 'c'],
-      fromIndex: 0,
-      toIndex: 1,
-      currentItemIdList: ['a', 'b', 'c'],
-    });
-
-    expect(noSuppressionResult.type).toBe('commit');
-    expect(noSuppressionState.suppressNextClick).toBe(false);
   });
 
   it('treats partially missing drag payload as a noop', () => {
     const missingDraggedIdState = createState();
-    missingDraggedIdState.activeProfile = pointerProfile;
+    missingDraggedIdState.activeInput = 'pointer';
 
     const missingDraggedIdResult = completeReorderSurfaceDrag(missingDraggedIdState, {
       orderedIds: ['b', 'a', 'c'],
@@ -330,18 +281,18 @@ describe('useReorderSurface helpers', () => {
     expect(missingDraggedIdResult).toEqual({ type: 'noop' });
     expect(missingDraggedIdState.displayItemIdList).toEqual(['c', 'a', 'b']);
 
-    const missingProfileState = createState();
-    missingProfileState.draggedId = 'a';
+    const missingInputState = createState();
+    missingInputState.draggedId = 'a';
 
-    const missingProfileResult = completeReorderSurfaceDrag(missingProfileState, {
+    const missingInputResult = completeReorderSurfaceDrag(missingInputState, {
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
       currentItemIdList: ['c', 'a', 'b'],
     });
 
-    expect(missingProfileResult).toEqual({ type: 'noop' });
-    expect(missingProfileState.displayItemIdList).toEqual(['c', 'a', 'b']);
+    expect(missingInputResult).toEqual({ type: 'noop' });
+    expect(missingInputState.displayItemIdList).toEqual(['c', 'a', 'b']);
   });
 
   it('rolls back only the matching optimistic commit marker', () => {
@@ -900,20 +851,24 @@ describe('useReorderSurface helpers', () => {
     vi.unstubAllGlobals();
   });
 
-  it('ignores only interactive descendants and ignored subtrees inside reorder items', () => {
+  it('ignores only explicitly ignored subtrees inside reorder items', () => {
     const reorderItem = document.createElement('div');
     reorderItem.setAttribute(REORDER_ITEM_ATTRIBUTE, 'a');
     const button = document.createElement('button');
     const plainSpan = document.createElement('span');
     const ignored = document.createElement('div');
     ignored.setAttribute(REORDER_IGNORE_ATTRIBUTE, '');
+    const ignoredChild = document.createElement('button');
+    ignored.appendChild(ignoredChild);
     reorderItem.append(button, plainSpan, ignored);
     document.body.appendChild(reorderItem);
 
-    expect(shouldIgnoreTarget(button, 'button')).toBe(true);
-    expect(shouldIgnoreTarget(reorderItem, 'div')).toBe(false);
-    expect(shouldIgnoreTarget(plainSpan, 'button')).toBe(false);
-    expect(shouldIgnoreTarget(ignored, 'button')).toBe(true);
-    expect(shouldIgnoreTarget(null, 'button')).toBe(false);
+    // The row's own controls do not block full-row reorder; only ignore zones do.
+    expect(shouldIgnoreTarget(button)).toBe(false);
+    expect(shouldIgnoreTarget(reorderItem)).toBe(false);
+    expect(shouldIgnoreTarget(plainSpan)).toBe(false);
+    expect(shouldIgnoreTarget(ignored)).toBe(true);
+    expect(shouldIgnoreTarget(ignoredChild)).toBe(true);
+    expect(shouldIgnoreTarget(null)).toBe(false);
   });
 });
