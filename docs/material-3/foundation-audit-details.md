@@ -41,8 +41,8 @@ The project can proceed with gradual Material 3 normalization, but not with broa
 The main problem is not missing components. The main problem is that the foundation is only partially normalized:
 
 - system tokens exist, but public component tokens are mostly missing;
-- Material typography still uses legacy `pt` because `sp` conversion is absent;
-- state-layer system tokens are declared but not directly consumed by `MDStateLayer`;
+- Material typography now uses `sp`, but broader component-token migration is still pending;
+- state-layer system tokens are now consumed by `MDStateLayer` for hover, focus, pressed, and dragged through a generic private bridge contract;
 - Storybook and visual tests exist for the strongest pilot families, but the hierarchy still uses legacy `shared/ui/...` names;
 - overlay ownership is inconsistent: menus use the shared overlay/teleport model, while dialogs currently use a separate fixed native-dialog path.
 
@@ -55,7 +55,7 @@ The main problem is not missing components. The main problem is that the foundat
 Gaps:
 
 - most component-family values remain local variables such as `--md-button-*`, `--md-icon-button-*`, `--md-fab-*`, `--md-list-item-*`, and field-local border/padding variables;
-- `--unknownColor` is a debug fallback and should not become public API;
+- the debug fallback color now lives at `--app-debug-unknown-color`, which keeps it out of the public Material token surface;
 - `--md-sys-color-surface-tint-color` is already marked deprecated;
 - light/dark theme exists through `prefers-color-scheme`, but there is no explicit app-level theme override contract;
 - token validation does not yet enforce completeness or component-token shape.
@@ -64,19 +64,19 @@ Decision: keep the monolithic token file until the Buttons pilot proves the toke
 
 ### Units and typography
 
-`postcss.config.js` converts `step`, `pt`, and `dp`. It does not convert `sp`.
+`postcss.config.js` converts `step`, `pt`, `sp`, and `dp`.
 
-`tokens.css` still authors typescale sizes, line heights, and tracking with `pt`.
+`tokens.css` authors Material typescale sizes, line heights, and tracking with `sp`.
 
-Decision: add `sp` support before typography migration. Do not hide typography migration inside an unrelated component PR.
+Decision: keep `--one-sp: 1px` for now so the unit migration does not intentionally change rendered typography. Do not hide future typography-scaling policy inside an unrelated component PR.
 
 ### State layers
 
 `MDStateLayer` supports hover, focused, pressed, dragged, and disabled. `useStateLayer` centralizes hover, focus-visible, pressed, and dragged state, and is already used by the important interactive primitives.
 
-Gap: `tokens.css` declares `--md-sys-state-hover-state-layer-opacity`, `--md-sys-state-focus-state-layer-opacity`, and `--md-sys-state-pressed-state-layer-opacity`, but `MDStateLayer` consumes local aliases such as `--md-state-hover-layer-opacity` with fallback values.
+Current state: `MDStateLayer` consumes generic private bridge vars for hover, focus, pressed, and dragged, each with a fallback to the matching `--md-sys-state-*-state-layer-opacity` token.
 
-Decision: wire `MDStateLayer` to the declared system state tokens before or during the Buttons pilot. If local aliases remain, document them as private compatibility aliases. Dragged state should be source-backed or explicitly documented as a project extension.
+Decision: use the official `--md-sys-state-dragged-state-layer-opacity` token (`0.16`) and keep component families mapped into the generic `--md-private-state-*-state-layer-opacity` bridge vars. Do not revive the old `--md-state-*-layer-opacity` aliases.
 
 ### Storybook and visual coverage
 
@@ -109,11 +109,11 @@ Decision: rename Storybook hierarchy during each component-family migration and 
 
 Small focused implementation before the Buttons pilot:
 
-- add PostCSS `sp` support and the matching base variable;
-- wire `MDStateLayer` to system state opacity tokens;
-- decide/document dragged state as a project extension or source-backed token;
-- isolate/remove `--unknownColor` from public production token API if it is not intentionally public;
-- run focused visual checks for state-layer consumers.
+- keep the shipped `sp` unit support and `--one-sp` mapping stable until typography scaling is intentionally revisited;
+- preserve `MDStateLayer` wiring to system state opacity tokens;
+- keep dragged documented as the official `--md-sys-state-dragged-state-layer-opacity` token now that Material source verification exists;
+- keep the debug fallback outside the public Material token namespace;
+- rerun focused visual checks for state-layer consumers whenever foundation state tokens change again.
 
 ### PR 2: Buttons pilot
 

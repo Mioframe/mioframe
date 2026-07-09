@@ -52,6 +52,17 @@ const createState = (
   itemIdList: readonly string[] | undefined = ['a', 'b', 'c'],
 ): ReorderSurfaceState => createReorderSurfaceState(itemIdList);
 
+const createPointerMoveEvent = (pointerType: string): Event => {
+  const event = new Event('pointermove', { bubbles: true, cancelable: true });
+
+  Object.defineProperty(event, 'pointerType', {
+    value: pointerType,
+    configurable: true,
+  });
+
+  return event;
+};
+
 describe('useReorderSurface helpers', () => {
   it('clones item lists and preserves undefined as an empty list', () => {
     const source = ['a', 'b'];
@@ -561,6 +572,183 @@ describe('useReorderSurface helpers', () => {
     release();
   });
 
+  it('clears a selection created during active drag movement without relying on selectionchange', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+
+    expect(selection.rangeCount).toBe(0);
+
+    release();
+  });
+
+  it('cancels the default action of mousemove while suppression is active and clears selection, so the browser never re-creates a selection after this listener runs', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+
+    const mouseMoveEvent = new MouseEvent('mousemove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(mouseMoveEvent);
+    expect(mouseMoveEvent.defaultPrevented).toBe(true);
+    expect(selection.rangeCount).toBe(0);
+
+    release();
+
+    const releasedMoveEvent = new MouseEvent('mousemove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(releasedMoveEvent);
+    expect(releasedMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it('cancels the default action of pointermove with pointerType "mouse" while suppression is active', () => {
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const pointerMoveEvent = createPointerMoveEvent('mouse');
+    document.dispatchEvent(pointerMoveEvent);
+    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedPointerMoveEvent = createPointerMoveEvent('mouse');
+    document.dispatchEvent(releasedPointerMoveEvent);
+    expect(releasedPointerMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it.each(['touch', 'pen'] as const)(
+    'leaves pointermove with pointerType "%s" default-permitted during activation-only suppression, but still clears existing selection',
+    (pointerType) => {
+      const selection = document.getSelection();
+
+      if (!selection) {
+        throw new Error('Selection API is unavailable in the test environment');
+      }
+
+      const release = acquireReorderDocumentSelectionSuppression();
+
+      const range = document.createRange();
+      range.selectNode(document.body);
+      selection.addRange(range);
+
+      const pointerMoveEvent = createPointerMoveEvent(pointerType);
+      document.dispatchEvent(pointerMoveEvent);
+      expect(pointerMoveEvent.defaultPrevented).toBe(false);
+      expect(selection.rangeCount).toBe(0);
+
+      release();
+    },
+  );
+
+  it('cancels the default action of pointermove with pointerType "touch" once an active reorder drag is confirmed', () => {
+    const release = acquireReorderDocumentSelectionSuppression({ suppressTouchMoveDefault: true });
+
+    const pointerMoveEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(pointerMoveEvent);
+    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedPointerMoveEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(releasedPointerMoveEvent);
+    expect(releasedPointerMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it('keeps active-drag pointermove prevention scoped to the token that requested it under nested activation + active-drag acquisition', () => {
+    const activationRelease = acquireReorderDocumentSelectionSuppression();
+    const dragRelease = acquireReorderDocumentSelectionSuppression({
+      suppressTouchMoveDefault: true,
+    });
+
+    const pointerMoveEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(pointerMoveEvent);
+    expect(pointerMoveEvent.defaultPrevented).toBe(true);
+
+    dragRelease();
+
+    const afterDragReleaseEvent = createPointerMoveEvent('touch');
+    document.dispatchEvent(afterDragReleaseEvent);
+    expect(afterDragReleaseEvent.defaultPrevented).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    activationRelease();
+  });
+
+  it('leaves touchmove default-permitted during mere activation, so normal scrolling still works for presses that never become a drag', () => {
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    const touchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(touchMoveEvent);
+    expect(touchMoveEvent.defaultPrevented).toBe(false);
+
+    const range = document.createRange();
+    range.selectNode(document.body);
+    selection.addRange(range);
+    document.dispatchEvent(new Event('touchmove', { bubbles: true, cancelable: true }));
+    expect(selection.rangeCount).toBe(0);
+
+    release();
+  });
+
+  it('cancels the default action of touchmove once an active reorder drag is confirmed', () => {
+    const release = acquireReorderDocumentSelectionSuppression({ suppressTouchMoveDefault: true });
+
+    const touchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(touchMoveEvent);
+    expect(touchMoveEvent.defaultPrevented).toBe(true);
+
+    release();
+
+    const releasedTouchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(releasedTouchMoveEvent);
+    expect(releasedTouchMoveEvent.defaultPrevented).toBe(false);
+  });
+
+  it('keeps active-drag touchmove prevention scoped to the token that requested it under nested acquisition', () => {
+    const activationRelease = acquireReorderDocumentSelectionSuppression();
+    const dragRelease = acquireReorderDocumentSelectionSuppression({
+      suppressTouchMoveDefault: true,
+    });
+
+    const touchMoveEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(touchMoveEvent);
+    expect(touchMoveEvent.defaultPrevented).toBe(true);
+
+    dragRelease();
+
+    const afterDragReleaseEvent = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.dispatchEvent(afterDragReleaseEvent);
+    expect(afterDragReleaseEvent.defaultPrevented).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    activationRelease();
+  });
+
   it('stops clearing selection on selectionchange once suppression is fully released', () => {
     const selection = document.getSelection();
 
@@ -618,6 +806,96 @@ describe('useReorderSurface helpers', () => {
     expect(
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(false);
+  });
+
+  it('schedules a single bounded rAF fallback pass that re-clears selection created after a suppressed move event', () => {
+    const rafCallbacks: FrameRequestCallback[] = [];
+    const rafMock = vi.fn((callback: FrameRequestCallback) => {
+      rafCallbacks.push(callback);
+      return rafCallbacks.length;
+    });
+    vi.stubGlobal('requestAnimationFrame', rafMock);
+
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    // jsdom's real Selection.addRange() dispatches selectstart, which our own suppression
+    // would block while acquired. Overriding rangeCount directly simulates a selection anchor
+    // created through a native path that bypasses selectstart, which is the exact gap this
+    // fallback exists for.
+    let rangeCount = 0;
+    Object.defineProperty(selection, 'rangeCount', {
+      configurable: true,
+      get: () => rangeCount,
+    });
+    const removeAllRangesSpy = vi.spyOn(selection, 'removeAllRanges').mockImplementation(() => {
+      rangeCount = 0;
+    });
+    removeAllRangesSpy.mockClear();
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
+
+    expect(rafMock).toHaveBeenCalledTimes(1);
+
+    rangeCount = 1;
+    removeAllRangesSpy.mockClear();
+
+    rafCallbacks[0]?.(0);
+
+    expect(removeAllRangesSpy).toHaveBeenCalled();
+    expect(rangeCount).toBe(0);
+
+    release();
+    Reflect.deleteProperty(selection, 'rangeCount');
+    vi.unstubAllGlobals();
+  });
+
+  it('does not re-clear selection through a stale rAF fallback once suppression has fully released', () => {
+    const rafCallbacks: FrameRequestCallback[] = [];
+    const rafMock = vi.fn((callback: FrameRequestCallback) => {
+      rafCallbacks.push(callback);
+      return rafCallbacks.length;
+    });
+    vi.stubGlobal('requestAnimationFrame', rafMock);
+
+    const selection = document.getSelection();
+
+    if (!selection) {
+      throw new Error('Selection API is unavailable in the test environment');
+    }
+
+    let rangeCount = 0;
+    Object.defineProperty(selection, 'rangeCount', {
+      configurable: true,
+      get: () => rangeCount,
+    });
+    const removeAllRangesSpy = vi.spyOn(selection, 'removeAllRanges').mockImplementation(() => {
+      rangeCount = 0;
+    });
+
+    const release = acquireReorderDocumentSelectionSuppression();
+
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true }));
+    expect(rafMock).toHaveBeenCalledTimes(1);
+
+    release();
+
+    rangeCount = 1;
+    removeAllRangesSpy.mockClear();
+
+    rafCallbacks[0]?.(0);
+
+    expect(removeAllRangesSpy).not.toHaveBeenCalled();
+    expect(rangeCount).toBe(1);
+
+    Reflect.deleteProperty(selection, 'rangeCount');
+    vi.unstubAllGlobals();
   });
 
   it('ignores only interactive descendants and ignored subtrees inside reorder items', () => {

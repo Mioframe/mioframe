@@ -11,7 +11,10 @@
 
 .md-ripple {
   --md-ripple-color: var(--md-content-color, currentColor);
-  --md-ripple-pressed-layer-opacity: var(--md-state-pressed-layer-opacity, 0.1);
+  --md-ripple-pressed-layer-opacity: var(
+    --md-private-state-pressed-state-layer-opacity,
+    var(--md-sys-state-pressed-state-layer-opacity, 0.1)
+  );
   --md-ripple-duration-long: var(--md-sys-motion-duration-extra-long4, 1s);
   --md-ripple-duration-short: var(--md-sys-motion-duration-short4, 0.2s);
   --md-ripple-duration: var(--md-sys-motion-duration-short4, 0.2s);

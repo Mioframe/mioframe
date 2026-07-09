@@ -858,6 +858,147 @@ describe('useReorderSurface', () => {
     await nextTick();
   });
 
+  it('does not prevent default on a mouse mousedown over a reorder item before drag is confirmed', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    const documentMouseDownHandler = vi.fn();
+    document.addEventListener('mousedown', documentMouseDownHandler);
+
+    const mouseDownEvent = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    const stopPropagationSpy = vi.spyOn(mouseDownEvent, 'stopPropagation');
+
+    row.dispatchEvent(mouseDownEvent);
+
+    expect(mouseDownEvent.defaultPrevented).toBe(false);
+    expect(stopPropagationSpy).not.toHaveBeenCalled();
+    expect(documentMouseDownHandler).toHaveBeenCalledTimes(1);
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+
+    document.removeEventListener('mousedown', documentMouseDownHandler);
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await nextTick();
+  });
+
+  it('does not prevent default on a mouse, touch, or pen pointerdown over a reorder item before drag is confirmed', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    const mousePointerDownEvent = new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      pointerType: 'mouse',
+    });
+    const stopPropagationSpy = vi.spyOn(mousePointerDownEvent, 'stopPropagation');
+
+    row.dispatchEvent(mousePointerDownEvent);
+
+    expect(mousePointerDownEvent.defaultPrevented).toBe(false);
+    expect(stopPropagationSpy).not.toHaveBeenCalled();
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await nextTick();
+
+    const touchPointerDownEvent = new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      pointerType: 'touch',
+    });
+
+    row.dispatchEvent(touchPointerDownEvent);
+
+    expect(touchPointerDownEvent.defaultPrevented).toBe(false);
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+
+    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    await nextTick();
+
+    const penPointerDownEvent = new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      pointerType: 'pen',
+    });
+
+    row.dispatchEvent(penPointerDownEvent);
+
+    expect(penPointerDownEvent.defaultPrevented).toBe(false);
+
+    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    await nextTick();
+  });
+
+  it('keeps drag transitioning into active drag suppression after activation starts', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(false);
+
+    sortableAdapterState.callbacks?.onStart?.({
+      itemId: 'a',
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
+      toIndex: 0,
+    });
+    await nextTick();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
+    expect(containerEl.classList.contains(REORDER_SURFACE_DRAGGING_CLASS)).toBe(true);
+
+    await sortableAdapterState.callbacks?.onEnd?.({
+      itemId: 'a',
+      orderedIds: ['a', 'b', 'c'],
+      fromIndex: 0,
+      toIndex: 0,
+    });
+    await nextTick();
+  });
+
+  it('keeps activation release idempotent across repeated pointer-up-like events', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('button');
+    row.setAttribute('data-sortable-id', 'a');
+    containerEl.appendChild(row);
+
+    row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+
+    expect(() => {
+      document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    }).not.toThrow();
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(false);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(false);
+
+    await nextTick();
+  });
+
   it('does not start activation suppression for interactive descendants', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const { containerEl } = mountUseReorderSurface({

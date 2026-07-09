@@ -116,10 +116,22 @@
   --md-comp-list-list-item-selected-focus-state-layer-color: var(--md-sys-color-on-surface);
   --md-comp-list-list-item-selected-pressed-state-layer-color: var(--md-sys-color-on-surface);
   --md-private-list-item-state-layer-color: var(--md-comp-list-list-item-label-text-color);
-  --md-comp-list-list-item-hover-state-layer-opacity: var(--md-state-hover-layer-opacity, 0.08);
-  --md-comp-list-list-item-focus-state-layer-opacity: var(--md-state-focus-layer-opacity, 0.1);
-  --md-comp-list-list-item-pressed-state-layer-opacity: var(--md-state-pressed-layer-opacity, 0.1);
-  --md-comp-list-list-item-dragged-state-layer-opacity: var(--md-state-dragged-layer-opacity, 0.16);
+  --md-comp-list-list-item-hover-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity,
+    0.08
+  );
+  --md-comp-list-list-item-focus-state-layer-opacity: var(
+    --md-sys-state-focus-state-layer-opacity,
+    0.1
+  );
+  --md-comp-list-list-item-pressed-state-layer-opacity: var(
+    --md-sys-state-pressed-state-layer-opacity,
+    0.1
+  );
+  --md-comp-list-list-item-dragged-state-layer-opacity: var(
+    --md-sys-state-dragged-state-layer-opacity,
+    0.16
+  );
   --md-comp-list-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
   --md-comp-list-list-item-three-line-container-height: 88dp;
   --md-comp-list-list-item-trailing-icon-color: var(--md-sys-color-on-surface-variant);
@@ -144,10 +156,18 @@
     var(--md-private-list-item-resolved-container-height)
   );
   border: 0;
-  --md-state-hover-layer-opacity: var(--md-comp-list-list-item-hover-state-layer-opacity);
-  --md-state-focus-layer-opacity: var(--md-comp-list-list-item-focus-state-layer-opacity);
-  --md-state-pressed-layer-opacity: var(--md-comp-list-list-item-pressed-state-layer-opacity);
-  --md-state-dragged-layer-opacity: var(--md-comp-list-list-item-dragged-state-layer-opacity);
+  --md-private-state-hover-state-layer-opacity: var(
+    --md-comp-list-list-item-hover-state-layer-opacity
+  );
+  --md-private-state-focus-state-layer-opacity: var(
+    --md-comp-list-list-item-focus-state-layer-opacity
+  );
+  --md-private-state-pressed-state-layer-opacity: var(
+    --md-comp-list-list-item-pressed-state-layer-opacity
+  );
+  --md-private-state-dragged-state-layer-opacity: var(
+    --md-comp-list-list-item-dragged-state-layer-opacity
+  );
   /* Maps the list-owned state-layer token into MDStateLayer's generic private contract.
      MDStateLayer never reads list-specific variable names directly. */
   --md-private-state-layer-color: var(--md-private-list-item-state-layer-color);

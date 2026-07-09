@@ -106,7 +106,9 @@ export const useReorderSurface = (
     }
 
     setContainerClass(REORDER_SURFACE_DRAGGING_CLASS, true);
-    dragSelectionRelease = acquireReorderDocumentSelectionSuppression();
+    dragSelectionRelease = acquireReorderDocumentSelectionSuppression({
+      suppressTouchMoveDefault: true,
+    });
   };
 
   const endDragSelectionSuppression = () => {
@@ -277,7 +279,7 @@ export const useReorderSurface = (
 
       syncPointerInput(event);
     },
-    { capture: true, passive: true },
+    { capture: true, passive: false },
   );
 
   useEventListener(
@@ -319,7 +321,7 @@ export const useReorderSurface = (
 
       syncPointerInput(event);
     },
-    { capture: true, passive: true },
+    { capture: true, passive: false },
   );
 
   const clearActivationWindow = () => {
