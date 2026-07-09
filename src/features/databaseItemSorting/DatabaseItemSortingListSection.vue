@@ -45,6 +45,8 @@ const {
 
 const { displayItemIdList, draggedId } = useReorderSurface(container, {
   itemIdList: sortingIdList,
+  activation: 'fullRowNative',
+  interactiveStrategy: 'explicitIgnoreOnly',
   onCommit: ({ orderedIds }) => {
     const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabasePropertyId));
 
