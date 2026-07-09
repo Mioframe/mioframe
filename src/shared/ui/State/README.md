@@ -6,7 +6,8 @@
 - `useRipple` is an explicit opt-in host behavior. Hosts decide whether ripple is enabled.
 - Only one state layer should be visually active at a time unless a component intentionally combines states according to Material 3.
 - State layer color is resolved from `--md-private-state-layer-color`, falling back to host content color via `--md-content-color` when unset: `var(--md-private-state-layer-color, var(--md-content-color))`. `--md-private-state-layer-color` is `MDStateLayer`'s own generic private contract — it must never read a component-specific variable name (e.g. a List, Menu, or Button token) directly. Components that need a non-default state-layer color (such as List's selected/dragged rows) set `--md-private-state-layer-color` on their own private token first, then let it cascade down to the nested `MDStateLayer`.
-- Default state-layer opacities are hover `0.08`, focus `0.1`, pressed `0.1`, and dragged `0.16`.
+- `MDStateLayer` resolves state opacity through generic private bridge variables first: `--md-private-state-hover-state-layer-opacity`, `--md-private-state-focus-state-layer-opacity`, `--md-private-state-pressed-state-layer-opacity`, and `--md-private-state-dragged-state-layer-opacity`. Component families can map their own `--md-comp-*` state-layer opacity tokens into those bridge vars without making `MDStateLayer` read component-specific names directly.
+- The bridge vars fall back to the public Material system tokens `--md-sys-state-hover-state-layer-opacity`, `--md-sys-state-focus-state-layer-opacity`, `--md-sys-state-pressed-state-layer-opacity`, and `--md-sys-state-dragged-state-layer-opacity` (`0.16` for dragged).
 - Disabled components suppress interactive state layers.
 - `MDStateLayer` also supports a host parent-class protocol for deterministic rendering:
   `md-state_hover`, `md-state_focused`, `md-state_pressed`, and `md-state_dragged`.

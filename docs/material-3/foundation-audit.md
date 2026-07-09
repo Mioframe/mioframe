@@ -51,7 +51,7 @@ Use stable cache paths under `pages/components/...`. Avoid old failed or suspici
 Current gaps:
 
 - Component-family tokens are mostly still local implementation variables inside components. For example, `MDButton.vue` uses local `--md-button-*` variables instead of canonical public `--md-comp-button-*` tokens.
-- `--unknownColor` is a debug fallback and should not be treated as a production token.
+- Debug fallback color is isolated under the app/debug namespace `--app-debug-unknown-color`, not as a public Material token.
 - `--md-sys-color-surface-tint-color` is explicitly marked deprecated and should be removed or isolated as a compatibility alias during focused token cleanup.
 - The token bundle is monolithic. Keep it until the audit and pilot prove the next structure.
 - Baseline theme has light and dark system color mappings, but full parity with every Material role is not yet validated by tooling.
@@ -62,13 +62,14 @@ Current gaps:
 
 - `step` through `--one-step`;
 - `pt` through `--one-pt`;
+- `sp` through `--one-sp`;
 - `dp` through `--one-dp`.
 
-Confirmed gap:
+Confirmed state:
 
-- `sp` support is not currently present in PostCSS.
-- `tokens.css` still defines Material typescale sizes, tracking, and line heights with `pt`.
-- The next typography foundation task should add `sp` conversion first, then migrate Material typography authoring values from `pt` to `sp` without changing rendered output unintentionally.
+- `sp` support is present in PostCSS and in the shared base-unit definition.
+- `tokens.css` defines Material typescale sizes, tracking, and line heights with `sp`.
+- The current mapping keeps rendered typography stable by defining `--one-sp: 1px` for now.
 
 ### State layers
 
@@ -76,8 +77,9 @@ The shared state primitives exist as `MDStateLayer`, `useStateLayer`, and `useRi
 
 Current gaps:
 
-- `MDStateLayer` does not directly consume the declared `--md-sys-state-*-state-layer-opacity` tokens.
-- Dragged and selected states need per-component review rather than a global assumption.
+- `MDStateLayer` now consumes the declared `--md-sys-state-*-state-layer-opacity` tokens for hover, focus, and pressed.
+- Dragged now uses the official system token `--md-sys-state-dragged-state-layer-opacity` (`0.16`), and `MDStateLayer` resolves every state opacity through generic private bridge vars before falling back to the system tokens.
+- Selected states still need per-component review rather than a global assumption.
 - State-layer behavior should be documented as the canonical primitive for every interactive `MD*` component family.
 
 ### Icons
@@ -137,22 +139,22 @@ Use this classification during component-family conversion:
 - Private implementation variables: local component variables such as `--md-button-height` and `--md-button-padding`. Convert to `--md-comp-*` only when they are part of the public component contract.
 - App-specific tokens: project values outside Material vocabulary. Move them to `--app-*` instead of inventing new `--md-*` tokens.
 - Compatibility aliases: temporary aliases for old in-repo usage, such as `--md-sys-color-surface-tint-color`. Remove when possible and document if temporarily retained.
-- Obsolete or debug tokens: values such as `--unknownColor`. Remove or isolate from production token API.
+- Obsolete or debug tokens: values such as old `--unknownColor`. Remove or isolate from production token API.
 - Unresolved tokens: Material-looking variables without verified source or clear ownership. Block alignment until classified.
 
-## Typography migration plan
+## Typography migration result
 
-1. Add PostCSS conversion for `sp` through a stable base variable such as `--one-sp`.
-2. Define `--one-sp` where the other unit base variables are defined.
-3. Convert Material typescale token authoring values from `pt` to `sp` in a focused PR.
-4. Verify that rendered typography does not change unless the PR intentionally updates Material values.
-5. Keep non-Material text sizing outside Material tokens unless it maps to an official typescale role.
+1. PostCSS conversion for `sp` is wired through `--one-sp`.
+2. `--one-sp` is defined with the other shared base-unit variables.
+3. Material typescale token authoring values use `sp`, not `pt`.
+4. Rendered typography remains intentionally unchanged in this foundation pass because `--one-sp` currently maps to `1px`.
+5. Non-Material text sizing should still stay outside Material tokens unless it maps to an official typescale role.
 
 ## Baseline theme gap analysis
 
 - Reference palette: partial palette is present, but completeness across every role and tone is not validated.
 - System color: light and dark mappings exist; full role parity and deprecated alias removal need a token validation PR.
-- Typography: typescale tokens exist, but they use `pt` and need `sp` support before migration.
+- Typography: typescale tokens now use `sp`; future work can focus on source validation and any intentional scaling policy rather than unit migration.
 - Shape: core corner tokens exist, but mixed `px`, `dp`, and `cqmin` values need source-backed review.
 - Elevation: levels 0-5 exist, but dark-mode overrides and surface tint behavior need validation.
 - Motion: duration and easing tokens exist, but names and component usage need verification during component migration.
@@ -223,11 +225,10 @@ The smallest safe next implementation PR is foundation token wiring, followed by
 
 Foundation token wiring should:
 
-- add `sp` unit support;
-- wire `MDStateLayer` to system state opacity tokens;
-- decide and document dragged state;
-- isolate or remove `--unknownColor` from public production token API;
-- run focused visual checks for state-layer consumers.
+- preserve the current `sp`/state-layer/debug-token foundation;
+- keep dragged documented as the verified official system token `--md-sys-state-dragged-state-layer-opacity`;
+- avoid reintroducing public debug Material tokens;
+- run focused visual checks for state-layer consumers when the foundation changes again.
 
 Buttons pilot should:
 
