@@ -163,7 +163,7 @@ describe('useReorderSurface wiring', () => {
         {
           event: 'pointerdown',
           handler: expect.any(Function),
-          options: { capture: true, passive: true },
+          options: { capture: true, passive: false },
         },
         {
           event: 'touchstart',
@@ -173,7 +173,7 @@ describe('useReorderSurface wiring', () => {
         {
           event: 'mousedown',
           handler: expect.any(Function),
-          options: { capture: true, passive: true },
+          options: { capture: true, passive: false },
         },
         {
           event: 'pointerup',

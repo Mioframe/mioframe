@@ -222,10 +222,18 @@ if (import.meta.env.DEV) {
     --md-private-elevation-shadow-color: var(--md-comp-elevated-card-container-shadow-color);
 
     --md-private-state-layer-color: var(--md-comp-elevated-card-hover-state-layer-color);
-    --md-state-hover-layer-opacity: var(--md-comp-elevated-card-hover-state-layer-opacity);
-    --md-state-focus-layer-opacity: var(--md-comp-elevated-card-focus-state-layer-opacity);
-    --md-state-pressed-layer-opacity: var(--md-comp-elevated-card-pressed-state-layer-opacity);
-    --md-state-dragged-layer-opacity: var(--md-comp-elevated-card-dragged-state-layer-opacity);
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-elevated-card-hover-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-elevated-card-focus-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-elevated-card-pressed-state-layer-opacity
+    );
+    --md-private-state-dragged-state-layer-opacity: var(
+      --md-comp-elevated-card-dragged-state-layer-opacity
+    );
 
     --md-focus-indicator-color: var(--md-comp-elevated-card-focus-indicator-color);
     --md-focus-indicator-thickness: var(--md-comp-elevated-card-focus-indicator-thickness);
@@ -303,10 +311,18 @@ if (import.meta.env.DEV) {
     --md-private-elevation-shadow-color: var(--md-comp-filled-card-container-shadow-color);
 
     --md-private-state-layer-color: var(--md-comp-filled-card-hover-state-layer-color);
-    --md-state-hover-layer-opacity: var(--md-comp-filled-card-hover-state-layer-opacity);
-    --md-state-focus-layer-opacity: var(--md-comp-filled-card-focus-state-layer-opacity);
-    --md-state-pressed-layer-opacity: var(--md-comp-filled-card-pressed-state-layer-opacity);
-    --md-state-dragged-layer-opacity: var(--md-comp-filled-card-dragged-state-layer-opacity);
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-filled-card-hover-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-filled-card-focus-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-filled-card-pressed-state-layer-opacity
+    );
+    --md-private-state-dragged-state-layer-opacity: var(
+      --md-comp-filled-card-dragged-state-layer-opacity
+    );
 
     --md-focus-indicator-color: var(--md-comp-filled-card-focus-indicator-color);
     --md-focus-indicator-thickness: var(--md-comp-filled-card-focus-indicator-thickness);
@@ -388,10 +404,18 @@ if (import.meta.env.DEV) {
     --md-private-card-outline-width: var(--md-comp-outlined-card-outline-width);
 
     --md-private-state-layer-color: var(--md-comp-outlined-card-hover-state-layer-color);
-    --md-state-hover-layer-opacity: var(--md-comp-outlined-card-hover-state-layer-opacity);
-    --md-state-focus-layer-opacity: var(--md-comp-outlined-card-focus-state-layer-opacity);
-    --md-state-pressed-layer-opacity: var(--md-comp-outlined-card-pressed-state-layer-opacity);
-    --md-state-dragged-layer-opacity: var(--md-comp-outlined-card-dragged-state-layer-opacity);
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-outlined-card-hover-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-outlined-card-focus-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-outlined-card-pressed-state-layer-opacity
+    );
+    --md-private-state-dragged-state-layer-opacity: var(
+      --md-comp-outlined-card-dragged-state-layer-opacity
+    );
 
     --md-focus-indicator-color: var(--md-comp-outlined-card-focus-indicator-color);
     --md-focus-indicator-thickness: var(--md-comp-outlined-card-focus-indicator-thickness);

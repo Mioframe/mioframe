@@ -4,6 +4,7 @@
 
 :root {
   --one-pt: 1px;
+  --one-sp: 1px;
   --one-dp: 1px;
   --one-step: 4px;
   --md-container-color: var(--md-sys-color-surface-container);

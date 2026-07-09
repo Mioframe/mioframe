@@ -37,6 +37,13 @@ Focus behavior must be real browser behavior, not only visual styling. Keyboard 
 
 State layers and ripple behavior should be applied consistently with Material guidance and component specs. Disabling ripple or state layers requires a documented reason.
 
+Default state-layer opacities should come from the shared foundation:
+
+- hover: `--md-sys-state-hover-state-layer-opacity`
+- focused: `--md-sys-state-focus-state-layer-opacity`
+- pressed: `--md-sys-state-pressed-state-layer-opacity`
+- dragged: `--md-sys-state-dragged-state-layer-opacity`
+
 ## Verification
 
 Interaction state changes require browser-based verification. Use Storybook as the preferred isolated surface and Playwright screenshots for visual state regressions when appearance changes.
