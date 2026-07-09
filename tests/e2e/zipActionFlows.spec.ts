@@ -108,6 +108,13 @@ test('directory options menu exposes Import ZIP, and importing shows the ZIP dia
   await expect(doneButton).toBeVisible();
   await doneButton.click();
   await expect(successDialog).toHaveCount(0);
+
+  await openDirectory(page, directoryName);
+  await expect(page.getByText('imported-item.txt', { exact: true })).toBeVisible();
+
+  const addSheet = await openEntryAddSheet(page);
+  await expect(addSheet.getByText(/^import zip$/i)).toHaveCount(0);
+  await closeBottomSheet(page, /^add$/i);
 });
 
 test('document options menu exposes Export ZIP, and exporting shows the ZIP dialog until closed', async ({

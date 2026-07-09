@@ -26,25 +26,6 @@ vi.mock('@feature/entryManage', () => ({
       nonEmptyActionButtons: nonEmptyActionButtonsRef,
     };
   },
-  useEntryManageDialogState: () => ({
-    showCreateDirectoryDialog: ref(false),
-    showCreateDocumentDialog: ref(false),
-    showRenameDialog: ref(false),
-    onSelectCreateDirectory: vi.fn(),
-    onSelectCreateDocument: vi.fn(),
-    onSelectRename: vi.fn(),
-    onCloseCreateDirectoryDialog: vi.fn(),
-    onCloseCreateDocumentDialog: vi.fn(),
-    onCloseRenameDialog: vi.fn(),
-  }),
-}));
-
-vi.mock('@feature/entryRemove', () => ({
-  useRemoveFSEntry: () => ({ remove: vi.fn() }),
-}));
-
-vi.mock('@feature/importDocument', () => ({
-  useImportDocumentAction: () => ({ importDocument: vi.fn() }),
 }));
 
 vi.mock('@entity/fsEntry', () => ({
@@ -234,6 +215,86 @@ describe('RepositoryExplorerFileListItem', () => {
 
     expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
+  });
+
+  it('emits selectCreateDirectory with the entry path when the manage button selects create directory', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectCreateDirectory');
+
+    expect(wrapper.emitted('selectCreateDirectory')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectCreateDocument with the entry path when the manage button selects create document', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectCreateDocument');
+
+    expect(wrapper.emitted('selectCreateDocument')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectRename with the entry path when the manage button selects rename', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectRename');
+
+    expect(wrapper.emitted('selectRename')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectRemove with the entry path when the manage button selects remove', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectRemove');
+
+    expect(wrapper.emitted('selectRemove')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectImportJson with the entry path when the manage button selects import JSON', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectImportJson');
+
+    expect(wrapper.emitted('selectImportJson')).toEqual([['/repo/Nested']]);
   });
 
   it('emits selectExportZip with the entry path when the manage button selects export ZIP', async () => {

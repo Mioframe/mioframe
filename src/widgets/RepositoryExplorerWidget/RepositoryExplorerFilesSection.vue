@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import { DirectoryCreateDialog } from '@feature/directoryCreate';
+import { DocumentCreationDialog } from '@feature/documentCreate';
 import { ExportZipDialog, useExportDirectoryZip } from '@feature/exportZip';
 import type { ExportZipVisibleDialogState } from '@feature/exportZip';
+import { FSEntryRenameDialog } from '@feature/entryRename';
 import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
 import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { MDList } from '@shared/ui/Lists';
 import { computed } from 'vue';
 import RepositoryExplorerFileListItem from './RepositoryExplorerFileListItem.vue';
+import { useRepositoryExplorerFileRowActions } from './useRepositoryExplorerFileRowActions';
 
 type RepositoryExplorerFileEntry = readonly [name: string, stat: FSNodeStat];
 
@@ -38,6 +42,25 @@ const onSelectExportZip = async (entryPath: string) => {
 const onSelectImportZip = async (entryPath: string) => {
   await importDirectoryZip(entryPath);
 };
+
+const validEntryPaths = computed(
+  () =>
+    new Set(props.regularFileEntries.map(([name]) => PathUtils.join(props.directoryPath, name))),
+);
+
+const {
+  createDirectoryPath,
+  createDocumentPath,
+  renamePath,
+  onSelectCreateDirectory,
+  onSelectCreateDocument,
+  onSelectRename,
+  onSelectRemove,
+  onSelectImportJson,
+  onCloseCreateDirectoryDialog,
+  onCloseCreateDocumentDialog,
+  onCloseRenameDialog,
+} = useRepositoryExplorerFileRowActions(validEntryPaths);
 
 const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
 
@@ -95,6 +118,11 @@ const emptyText = computed(() =>
         :can-delete="capabilities?.canDelete"
         class="repository-explorer-files-section__list-item"
         @click="onClickEntry($event, nodeType)"
+        @select-create-directory="onSelectCreateDirectory"
+        @select-create-document="onSelectCreateDocument"
+        @select-rename="onSelectRename"
+        @select-remove="onSelectRemove"
+        @select-import-json="onSelectImportJson"
         @select-export-zip="onSelectExportZip"
         @select-import-zip="onSelectImportZip"
       />
@@ -114,6 +142,27 @@ const emptyText = computed(() =>
       v-if="importZipVisibleState"
       :state="importZipVisibleState"
       @close="closeImportZipDialog"
+    />
+
+    <DirectoryCreateDialog
+      v-if="createDirectoryPath"
+      :path="createDirectoryPath"
+      @cancel="onCloseCreateDirectoryDialog"
+      @created="onCloseCreateDirectoryDialog"
+    />
+
+    <DocumentCreationDialog
+      v-if="createDocumentPath"
+      :path="createDocumentPath"
+      @cancel="onCloseCreateDocumentDialog"
+      @created="onCloseCreateDocumentDialog"
+    />
+
+    <FSEntryRenameDialog
+      v-if="renamePath"
+      :path="renamePath"
+      @cancel="onCloseRenameDialog"
+      @renamed="onCloseRenameDialog"
     />
   </section>
 </template>

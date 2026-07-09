@@ -1,22 +1,6 @@
-<script lang="ts">
-// inheritAttrs is declared in a plain <script> block instead of defineOptions() in <script
-// setup> because defineOptions() options must stay statically hoistable; a plain module-scope
-// export does not have that restriction. Attrs (e.g. the list-item class) forward explicitly
-// onto the primary interactive element instead of Vue's default single-root behavior, since
-// this component's root is a fragment (list item plus its sibling entry-manage dialogs).
-export default {
-  inheritAttrs: false,
-};
-</script>
-
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
-import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import { useRemoveFSEntry } from '@feature/entryRemove';
-import { FSEntryRenameDialog } from '@feature/entryRename';
-import { DocumentCreationDialog } from '@feature/documentCreate';
-import { useImportDocumentAction } from '@feature/importDocument';
+import { useFSEntryManageActions } from '@feature/entryManage';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { computed, toRef } from 'vue';
 import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
@@ -33,6 +17,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   click: [name: string];
+  selectCreateDirectory: [entryPath: string];
+  selectCreateDocument: [entryPath: string];
+  selectRename: [entryPath: string];
+  selectRemove: [entryPath: string];
+  selectImportJson: [entryPath: string];
   selectExportZip: [entryPath: string];
   selectImportZip: [entryPath: string];
 }>();
@@ -50,26 +39,20 @@ const { hasActions, nonEmptyActionButtons } = useFSEntryManageActions({
 
 const entryPath = computed(() => PathUtils.join(props.directoryPath, props.name));
 
-const {
-  showCreateDirectoryDialog,
-  showCreateDocumentDialog,
-  showRenameDialog,
-  onSelectCreateDirectory,
-  onSelectCreateDocument,
-  onSelectRename,
-  onCloseCreateDirectoryDialog,
-  onCloseCreateDocumentDialog,
-  onCloseRenameDialog,
-} = useEntryManageDialogState(entryPath);
-
-const { remove } = useRemoveFSEntry();
-const { importDocument } = useImportDocumentAction();
-
-const onSelectRemove = async () => {
-  await remove(entryPath.value);
+const onSelectCreateDirectory = () => {
+  emit('selectCreateDirectory', entryPath.value);
 };
-const onSelectImportJson = async () => {
-  await importDocument(entryPath.value);
+const onSelectCreateDocument = () => {
+  emit('selectCreateDocument', entryPath.value);
+};
+const onSelectRename = () => {
+  emit('selectRename', entryPath.value);
+};
+const onSelectRemove = () => {
+  emit('selectRemove', entryPath.value);
+};
+const onSelectImportJson = () => {
+  emit('selectImportJson', entryPath.value);
 };
 const onSelectExportZip = () => {
   emit('selectExportZip', entryPath.value);
@@ -84,9 +67,7 @@ const onClickEntry = (name: string) => {
 </script>
 
 <template>
-  <!-- eslint-disable vue/no-restricted-v-bind -- transparent $attrs forwarding onto the primary root element, required because this component's root is a fragment (list item plus sibling entry-manage dialogs) -->
   <FSEntryMDListItem
-    v-bind="$attrs"
     :is-openable="
       entryType === FSNodeType.Directory ||
       (entryType === FSNodeType.File && name.toLowerCase().endsWith('.json'))
@@ -112,26 +93,4 @@ const onClickEntry = (name: string) => {
       />
     </template>
   </FSEntryMDListItem>
-  <!-- eslint-enable vue/no-restricted-v-bind -->
-
-  <DirectoryCreateDialog
-    v-if="showCreateDirectoryDialog"
-    :path="entryPath"
-    @cancel="onCloseCreateDirectoryDialog"
-    @created="onCloseCreateDirectoryDialog"
-  />
-
-  <DocumentCreationDialog
-    v-if="showCreateDocumentDialog"
-    :path="entryPath"
-    @cancel="onCloseCreateDocumentDialog"
-    @created="onCloseCreateDocumentDialog"
-  />
-
-  <FSEntryRenameDialog
-    v-if="showRenameDialog"
-    :path="entryPath"
-    @cancel="onCloseRenameDialog"
-    @renamed="onCloseRenameDialog"
-  />
 </template>
