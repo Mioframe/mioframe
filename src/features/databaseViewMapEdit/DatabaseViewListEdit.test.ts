@@ -36,10 +36,11 @@ const { useReorderSurfaceMock } = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('@shared/lib/sortable', () => ({
+// Keep the real directives: they are part of the row markup contract under test.
+// Only the composable is mocked, to capture the configuration and commit wiring.
+vi.mock('@shared/lib/sortable', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@shared/lib/sortable')>()),
   useReorderSurface: useReorderSurfaceMock,
-  vReorderIgnore: { mounted() {}, updated() {}, unmounted() {} },
-  vReorderItem: { mounted() {}, updated() {}, unmounted() {} },
 }));
 
 const mountEdit = (

@@ -52,16 +52,12 @@ const { useReorderSurfaceMock } = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('@shared/lib/sortable', () => ({
+// Keep the real directives: they are part of the row markup contract under test
+// (`data-sortable-id` on the row root, `data-sortable-ignore` on the delete action).
+// Only the composable is mocked, to capture the configuration and commit wiring.
+vi.mock('@shared/lib/sortable', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@shared/lib/sortable')>()),
   useReorderSurface: useReorderSurfaceMock,
-  vReorderIgnore: {
-    mounted(el: HTMLElement) {
-      el.setAttribute('data-reorder-ignore', '');
-    },
-    updated() {},
-    unmounted() {},
-  },
-  vReorderItem: { mounted() {}, updated() {}, unmounted() {} },
 }));
 
 const mountSection = () =>
@@ -127,6 +123,22 @@ describe('DatabaseItemSortingListSection', () => {
     const wrapper = mountSection();
 
     const deleteButton = wrapper.get('.md-list-item .md-icon-button');
-    expect(deleteButton.attributes('data-reorder-ignore')).toBeDefined();
+    expect(deleteButton.attributes('data-sortable-ignore')).toBeDefined();
+  });
+
+  it('exposes each sorting row to the reorder surface as a draggable row root', () => {
+    sortingIdListState = [FAKE_PROPERTY_ID, OTHER_PROPERTY_ID];
+
+    const wrapper = mountSection();
+
+    // The real v-reorder-item directive must land data-sortable-id on the rendered row
+    // root (the Material list item element, a direct child of the list container), even
+    // though the feature applies it to the DatabaseSortingListItem component.
+    const rows = [...wrapper.get('.md-list').element.children];
+    expect(rows.map((row) => row.getAttribute('data-sortable-id'))).toEqual([
+      FAKE_PROPERTY_ID,
+      OTHER_PROPERTY_ID,
+    ]);
+    expect(rows.every((row) => row.classList.contains('md-list-item'))).toBe(true);
   });
 });

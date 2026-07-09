@@ -96,11 +96,47 @@ Outputs:
 Marks an element or component root as a reorderable item and assigns its stable
 id through `data-sortable-id`.
 
+Component-root usage is a supported contract: when the directive is placed on a
+component, Vue forwards it through single-root component levels to the actual
+rendered root element, so `v-reorder-item` also works on a wrapper component
+whose root is another component that ultimately renders one `HTMLElement` root
+(for example a feature row component wrapping `MDListItem`). Consumers never
+need to know or reach into the child component's internal DOM to mark sortable
+rows. The one requirement is that the component keeps a stable single
+`HTMLElement` root; a dev-mode warning fires when it does not
+(`reorderDirectives.ts`), and `reorderDirectives.test.ts` covers the nested
+component-root case.
+
 ### `vReorderIgnore`
 
 Marks a subtree as non-draggable through `data-sortable-ignore`. Use this on
 buttons, menu triggers, delete actions, and other controls that should stay
 clickable without starting drag.
+
+## Drag Visual Policy
+
+Drag-state visuals are owned by this module (`reorderSurface.css`), not by
+shared Material list components: `MDListItem` styles its Material `dragged`
+state through its public `dragged` prop and knows nothing about SortableJS.
+
+SortableJS always runs in forced-fallback mode here, so an active session
+renders two elements, styled through the class names in `constants.ts`:
+
+- `reorder-item_chosen`: the pressed/lifting original row. Raised with
+  `position: relative; z-index` so consumer-supplied elevation (for example the
+  Material dragged shadow) paints above adjacent rows instead of under them.
+- `reorder-item_ghost`: the original row while it previews the drop position
+  inside the list. Rendered as an invisible slot (`opacity: 0`, still
+  hit-testable) so it reads as a gap, not as a duplicate placeholder row.
+- `reorder-item_fallback` + `reorder-item_drag`: the pointer-following clone,
+  mounted on `<body>` (`fallbackOnBody`). Because it is cloned outside its
+  list, it gets an explicit surface fill, dragged elevation, and shape from
+  `reorderSurface.css` (Material system tokens with neutral fallbacks).
+  SortableJS pins inline `opacity: 0.8` on it; that translucency is accepted
+  rather than overridden with `!important`.
+
+Consumers must not restyle these classes per feature; if a surface needs a
+different drag look, change the shared policy here.
 
 ## Typical Integration
 
@@ -245,6 +281,10 @@ from the older commit must not overwrite it.
   `tests/e2e/reorderSurfaceFullRowNative.spec.ts` and is active under the
   `github-actions` verify profile
   (`pnpm verify --profile github-actions --only e2e`).
+- Desktop sorting-row drag-completion (component-root `v-reorder-item`
+  consumer, order change, persistence across sheet reopen) is covered by the
+  sorting-row test in the same spec, under the same `github-actions` profile
+  gate.
 - Mobile Chrome tap-select, trailing ignore-zone activation, and
   no-reorder-before-long-press are covered by active tests in the same spec.
 - Mobile Chrome full long-press drag-completion is a known e2e **harness
@@ -265,7 +305,8 @@ from the older commit must not overwrite it.
 - `reorderInteractiveStrategy.ts`: resolves which descendants block drag activation.
 - `reorderPostDragClick.ts`: synthetic click suppression rules after drag.
 - `constants.ts`: shared attributes, class names, and selectors.
-- `reorderSurface.css`: drag-session CSS overrides.
+- `reorderSurface.css`: selection suppression and the drag visual policy
+  (chosen/ghost/fallback styling).
 - `ReorderSurfacePlayground.vue`: manual playground for behavior checks.
 - `*.test.ts`: focused unit coverage for the touched invariants.
 

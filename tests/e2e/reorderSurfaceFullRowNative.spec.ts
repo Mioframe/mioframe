@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   addDatabaseItem,
+  addSorting,
   addView,
   closeBottomSheet,
   createDatabaseDocument,
@@ -13,6 +14,7 @@ import {
   openDirectory,
   openDocumentFromExplorer,
   openOpfs,
+  openSortSheet,
   openViewsSheet,
   selectView,
 } from './helpers';
@@ -117,6 +119,61 @@ test('desktop: dragging a database view row by its full row reorders the list an
   );
 
   await closeBottomSheet(page, /database views sheet/i);
+});
+
+test('desktop: dragging a database sorting row by its full row reorders the sort list and persists', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'desktop mouse full-row drag activation');
+
+  // Same harness constraint as the view-row drag test above: SortableJS fallback
+  // hit-testing is only reliable under the github-actions container profile.
+  test.skip(
+    process.env.PLAYWRIGHT_CONTAINER_PROFILE !== 'github-actions',
+    'local verify container profile cannot reliably settle SortableJS fallback hit-testing under full-suite load; active under the github-actions profile (pnpm verify --profile github-actions --only e2e)',
+  );
+
+  await launchApp(page);
+  await openOpfs(page);
+
+  const directoryName = await createDirectory(page, createUniqueName('sorting drag lab'));
+  await openDirectory(page, directoryName);
+
+  const documentName = await createDatabaseDocument(page, createUniqueName('sorting drag catalog'));
+  await openDocumentFromExplorer(page, documentName);
+
+  const firstProperty = await createStringProperty(page, createUniqueName('alpha'));
+  const secondProperty = await createStringProperty(page, createUniqueName('bravo'));
+  await addDatabaseItem(page, firstProperty, createUniqueName('row'));
+
+  await addSorting(page, firstProperty);
+  await addSorting(page, secondProperty);
+
+  const sheet = await openSortSheet(page);
+  const propertyNames = [firstProperty, secondProperty];
+  await expect.poll(() => getViewRowOrder(sheet, propertyNames)).toEqual(propertyNames);
+
+  const firstRow = sheet.getByRole('button', { name: firstProperty });
+  const secondRow = sheet.getByRole('button', { name: secondProperty });
+
+  // Regression guard for the sorting-row drag defect: v-reorder-item is applied to the
+  // DatabaseSortingListItem component (a nested component-root consumer), and the drag
+  // starts on the row's own primary-action surface — the full-row native contract.
+  await performMouseDrag(page, await getCenterPoint(firstRow), await getCenterPoint(secondRow));
+
+  await expect
+    .poll(() => getViewRowOrder(sheet, propertyNames))
+    .toEqual([secondProperty, firstProperty]);
+
+  // The new order must be persisted through the entity, not just previewed optimistically.
+  await closeBottomSheet(page, /database sort sheet/i);
+  const reopenedSheet = await openSortSheet(page);
+  await expect
+    .poll(() => getViewRowOrder(reopenedSheet, propertyNames))
+    .toEqual([secondProperty, firstProperty]);
+
+  await closeBottomSheet(page, /database sort sheet/i);
 });
 
 test('desktop: clicking a trailing action opens its menu without starting a drag', async ({

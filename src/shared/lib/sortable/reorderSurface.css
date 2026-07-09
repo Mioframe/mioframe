@@ -14,3 +14,57 @@
 
 /* No !important: relies on no descendant content setting its own user-select to
    something other than none while a reorder session is active. */
+
+/*
+ * Drag visual policy.
+ *
+ * SortableJS always runs in forced-fallback mode here (see reorderGestureProfile.ts:
+ * forceFallback + fallbackOnBody), so an active drag session renders two elements:
+ *
+ * - the original row keeps its slot inside the list and carries `reorder-item_chosen`
+ *   plus `reorder-item_ghost`;
+ * - a clone of the row follows the pointer and carries `reorder-item_fallback` plus
+ *   `reorder-item_drag`, appended to <body> (fallbackOnBody), positioned and layered
+ *   (z-index) by SortableJS inline styles.
+ *
+ * Policy: the pointer-following clone is the lifted row; the in-list original becomes an
+ * invisible slot that previews the drop position. Without this policy both render as
+ * fully opaque duplicates, and the in-list original reads as a stray placeholder
+ * artifact under the moving row.
+ *
+ * All selectors pair the state class with `[data-sortable-id]` so they only ever match
+ * reorder items and win over single-class component rules without `!important`.
+ */
+
+/* In-list drop-position placeholder: keep the row's box (SortableJS animates it through
+   the list to preview insertion) but hide its content so the slot reads as a gap.
+   `opacity`, not `visibility`: the element must stay hit-testable for SortableJS
+   fallback hit detection. */
+[data-sortable-id].reorder-item_ghost {
+  opacity: 0;
+}
+
+/* A chosen row can already show elevated dragged styling supplied by its consumer (for
+   example the Material dragged state); keep it above later siblings so its shadow is
+   painted over adjacent rows instead of under them. */
+[data-sortable-id].reorder-item_chosen {
+  position: relative;
+  z-index: 1;
+}
+
+/* Pointer-following clone: an elevated surface. The clone is mounted on <body>, outside
+ * its list, so list-scoped surface fills do not reach it — give it an explicit fill,
+ * elevation, and shape here. Material token values resolve app-wide; the literal
+ * fallbacks keep non-Material consumers (e.g. the playground) presentable.
+ * SortableJS pins inline `opacity: 0.8` on this clone; that slight translucency over the
+ * opaque fill is accepted rather than overridden, since beating an inline style would
+ * require `!important`. */
+[data-sortable-id].reorder-item_fallback {
+  background-color: var(--md-sys-color-surface, Canvas);
+  border-radius: var(--md-sys-shape-corner-large, 16px);
+  box-shadow: var(
+    --md-sys-elevation-level4,
+    0 6px 10px 4px rgb(0 0 0 / 0.15),
+    0 2px 3px 0 rgb(0 0 0 / 0.3)
+  );
+}
