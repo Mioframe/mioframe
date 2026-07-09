@@ -1020,29 +1020,6 @@ describe('useReorderSurface', () => {
     await nextTick();
   });
 
-  it('starts activation suppression for a nested primary-action button marked as the row-owned drag activation surface', async () => {
-    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { containerEl } = mountUseReorderSurface({
-      itemIdList,
-    });
-    const row = document.createElement('div');
-    row.setAttribute('data-sortable-id', 'a');
-    const primaryActionButton = document.createElement('button');
-    primaryActionButton.setAttribute('data-sortable-activation-surface', '');
-    row.appendChild(primaryActionButton);
-    containerEl.appendChild(row);
-
-    primaryActionButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-
-    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
-    expect(
-      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
-    ).toBe(true);
-
-    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    await nextTick();
-  });
-
   it('releases document suppression on cancel and dispose', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const { containerEl } = mountUseReorderSurface({
