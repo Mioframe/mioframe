@@ -858,7 +858,7 @@ describe('useReorderSurface', () => {
     await nextTick();
   });
 
-  it('prevents default on a mouse mousedown over a reorder item without stopping propagation', async () => {
+  it('does not prevent default on a mouse mousedown over a reorder item before drag is confirmed', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const { containerEl } = mountUseReorderSurface({
       itemIdList,
@@ -875,7 +875,7 @@ describe('useReorderSurface', () => {
 
     row.dispatchEvent(mouseDownEvent);
 
-    expect(mouseDownEvent.defaultPrevented).toBe(true);
+    expect(mouseDownEvent.defaultPrevented).toBe(false);
     expect(stopPropagationSpy).not.toHaveBeenCalled();
     expect(documentMouseDownHandler).toHaveBeenCalledTimes(1);
     expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
@@ -885,7 +885,7 @@ describe('useReorderSurface', () => {
     await nextTick();
   });
 
-  it('prevents default on a mouse pointerdown over a reorder item but not on touch/pen pointerdown', async () => {
+  it('does not prevent default on a mouse, touch, or pen pointerdown over a reorder item before drag is confirmed', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const { containerEl } = mountUseReorderSurface({
       itemIdList,
@@ -903,7 +903,7 @@ describe('useReorderSurface', () => {
 
     row.dispatchEvent(mousePointerDownEvent);
 
-    expect(mousePointerDownEvent.defaultPrevented).toBe(true);
+    expect(mousePointerDownEvent.defaultPrevented).toBe(false);
     expect(stopPropagationSpy).not.toHaveBeenCalled();
     expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
 
@@ -938,7 +938,7 @@ describe('useReorderSurface', () => {
     await nextTick();
   });
 
-  it('keeps drag transitioning into active drag suppression after activation prevents default', async () => {
+  it('keeps drag transitioning into active drag suppression after activation starts', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const { containerEl } = mountUseReorderSurface({
       itemIdList,
@@ -1017,6 +1017,29 @@ describe('useReorderSurface', () => {
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(false);
 
+    await nextTick();
+  });
+
+  it('starts activation suppression for a nested primary-action button marked as the row-owned drag activation surface', async () => {
+    const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
+    const { containerEl } = mountUseReorderSurface({
+      itemIdList,
+    });
+    const row = document.createElement('div');
+    row.setAttribute('data-sortable-id', 'a');
+    const primaryActionButton = document.createElement('button');
+    primaryActionButton.setAttribute('data-sortable-activation-surface', '');
+    row.appendChild(primaryActionButton);
+    containerEl.appendChild(row);
+
+    primaryActionButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(containerEl.classList.contains(REORDER_SURFACE_ACTIVATING_CLASS)).toBe(true);
+    expect(
+      document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
+    ).toBe(true);
+
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     await nextTick();
   });
 

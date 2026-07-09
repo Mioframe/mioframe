@@ -274,10 +274,6 @@ export const useReorderSurface = (
       }
 
       if (isReorderItemTarget(event.target)) {
-        if (event.pointerType === 'mouse') {
-          event.preventDefault();
-        }
-
         startActivationWindow();
       }
 
@@ -320,7 +316,6 @@ export const useReorderSurface = (
       }
 
       if (isReorderItemTarget(event.target)) {
-        event.preventDefault();
         startActivationWindow();
       }
 

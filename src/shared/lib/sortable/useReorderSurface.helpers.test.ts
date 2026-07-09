@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  REORDER_ACTIVATION_SURFACE_ATTRIBUTE,
   REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS,
   REORDER_IGNORE_ATTRIBUTE,
   REORDER_ITEM_ATTRIBUTE,
@@ -913,5 +914,30 @@ describe('useReorderSurface helpers', () => {
     expect(shouldIgnoreTarget(plainSpan, 'button')).toBe(false);
     expect(shouldIgnoreTarget(ignored, 'button')).toBe(true);
     expect(shouldIgnoreTarget(null, 'button')).toBe(false);
+  });
+
+  it('does not ignore a nested primary-action button marked as the row-owned activation surface', () => {
+    const reorderItem = document.createElement('div');
+    reorderItem.setAttribute(REORDER_ITEM_ATTRIBUTE, 'a');
+    const activationButton = document.createElement('button');
+    activationButton.setAttribute(REORDER_ACTIVATION_SURFACE_ATTRIBUTE, '');
+    const trailingButton = document.createElement('button');
+    reorderItem.append(activationButton, trailingButton);
+    document.body.appendChild(reorderItem);
+
+    expect(shouldIgnoreTarget(activationButton, 'button')).toBe(false);
+    expect(shouldIgnoreTarget(trailingButton, 'button')).toBe(true);
+  });
+
+  it('keeps an explicit ignored subtree filtered even if it also carries the activation-surface marker', () => {
+    const reorderItem = document.createElement('div');
+    reorderItem.setAttribute(REORDER_ITEM_ATTRIBUTE, 'a');
+    const ignoredActivationButton = document.createElement('button');
+    ignoredActivationButton.setAttribute(REORDER_ACTIVATION_SURFACE_ATTRIBUTE, '');
+    ignoredActivationButton.setAttribute(REORDER_IGNORE_ATTRIBUTE, '');
+    reorderItem.append(ignoredActivationButton);
+    document.body.appendChild(reorderItem);
+
+    expect(shouldIgnoreTarget(ignoredActivationButton, 'button')).toBe(true);
   });
 });

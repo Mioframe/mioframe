@@ -1,4 +1,5 @@
 import {
+  REORDER_ACTIVATION_SURFACE_ATTRIBUTE,
   REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS,
   REORDER_IGNORE_ATTRIBUTE,
   REORDER_ITEM_ATTRIBUTE,
@@ -650,6 +651,12 @@ export const cleanupPostDragInteraction = (
 
 /**
  * Skips drag activation on interactive descendants inside a reorder item.
+ *
+ * An explicit `data-sortable-ignore` subtree always wins. Otherwise, a nested interactive
+ * descendant only blocks activation when it is a real separate control: an element carrying
+ * {@link REORDER_ACTIVATION_SURFACE_ATTRIBUTE} represents the reorder item's own row-owned
+ * drag activation surface (e.g. `MDListItem`'s internal primary-action button) and stays
+ * eligible to start drag even though it also matches the interactive selector.
  * @param target - Event target to inspect.
  * @param interactiveSelector - Selector list describing descendants that must stay interactive.
  * @returns True when drag activation should be skipped for this target.
@@ -662,11 +669,16 @@ export const shouldIgnoreTarget = (
     return false;
   }
 
+  if (target.closest(`[${REORDER_IGNORE_ATTRIBUTE}]`) !== null) {
+    return true;
+  }
+
   const reorderItem = target.closest(`[${REORDER_ITEM_ATTRIBUTE}]`);
   const interactiveTarget = target.closest(interactiveSelector);
 
-  return (
-    (interactiveTarget !== null && interactiveTarget !== reorderItem) ||
-    target.closest(`[${REORDER_IGNORE_ATTRIBUTE}]`) !== null
-  );
+  if (interactiveTarget === null || interactiveTarget === reorderItem) {
+    return false;
+  }
+
+  return !interactiveTarget.hasAttribute(REORDER_ACTIVATION_SURFACE_ATTRIBUTE);
 };

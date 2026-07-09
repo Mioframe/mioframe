@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // eslint-disable-next-line no-restricted-imports -- MDListItem is a documented transparent host/adaptor: it renders a polymorphic native element (`rootTag`) and forwards $attrs to that host as part of its public contract.
 import { computed, onBeforeUnmount, onMounted, ref, useAttrs, useTemplateRef } from 'vue';
+import { REORDER_ACTIVATION_SURFACE_ATTRIBUTE } from '@shared/lib/sortable';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import {
   warnListItemInsideSelectionList,
@@ -204,7 +205,13 @@ const rootClass = computed(() => ({
 
 const splitAttrs = computed(() => splitListItemAttrs(attrs, usesPrimaryActionSurface.value));
 const rootAttrs = computed(() => splitAttrs.value.rootAttrs);
-const interactiveAttrs = computed(() => splitAttrs.value.interactiveAttrs);
+// Marks the internal primary-action element as the reorder item's own row-owned drag
+// activation surface (see @shared/lib/sortable), so a sortable ancestor lets it start row
+// drag instead of treating it as an unrelated nested interactive control.
+const interactiveAttrs = computed(() => ({
+  ...splitAttrs.value.interactiveAttrs,
+  [REORDER_ACTIVATION_SURFACE_ATTRIBUTE]: '',
+}));
 
 const onAction = (event: MouseEvent) => {
   if (props.disabled) {

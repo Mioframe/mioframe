@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { REORDER_ACTIVATION_SURFACE_ATTRIBUTE } from '@shared/lib/sortable';
 import { MDList, MDListItem } from '.';
 
 const mountListItem = (
@@ -150,6 +151,45 @@ describe('MDListItem', () => {
     expect(primaryAction.attributes('aria-label')).toBe('Primary action label');
     expect(primaryAction.attributes('title')).toBe('Primary action title');
     expect(primaryAction.find('button').exists()).toBe(false);
+  });
+
+  describe('reorder activation surface', () => {
+    it('marks the internal primary action as the row-owned drag activation surface for single-action rows', () => {
+      const wrapper = mountListItem({ mode: 'single-action', onAction: vi.fn() }, { inList: true });
+      const primaryAction = wrapper.get('.md-list-item__primary-action');
+
+      expect(primaryAction.attributes(REORDER_ACTIVATION_SURFACE_ATTRIBUTE)).toBe('');
+    });
+
+    it('marks the internal primary action, not the trailing action, for multi-action rows', () => {
+      const wrapper = mountListItem(
+        { mode: 'multi-action', onAction: vi.fn() },
+        {
+          inList: true,
+          slots: {
+            trailingAction: '<button type="button">Secondary</button>',
+          },
+        },
+      );
+      const primaryAction = wrapper.get('.md-list-item__primary-action');
+      const trailingAction = wrapper.get('.md-list-item__trailing-action button');
+
+      expect(primaryAction.attributes(REORDER_ACTIVATION_SURFACE_ATTRIBUTE)).toBe('');
+      expect(trailingAction.attributes(REORDER_ACTIVATION_SURFACE_ATTRIBUTE)).toBeUndefined();
+    });
+
+    it('does not mark the root for standalone single-action rows, since the root is already its own interactive surface', () => {
+      const wrapper = mountListItem({ mode: 'single-action', onAction: vi.fn() });
+
+      expect(wrapper.attributes(REORDER_ACTIVATION_SURFACE_ATTRIBUTE)).toBeUndefined();
+      expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(false);
+    });
+
+    it('does not mark a static row, which has no primary action surface', () => {
+      const wrapper = mountListItem({}, { inList: true });
+
+      expect(wrapper.find('.md-list-item__primary-action').exists()).toBe(false);
+    });
   });
 
   it('uses li wrappers when the list tag is ul', () => {

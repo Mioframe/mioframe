@@ -1,5 +1,6 @@
 export {
   defaultReorderInteractiveSelector,
+  REORDER_ACTIVATION_SURFACE_ATTRIBUTE,
   REORDER_IGNORE_ATTRIBUTE,
   REORDER_ITEM_ATTRIBUTE,
 } from './constants';

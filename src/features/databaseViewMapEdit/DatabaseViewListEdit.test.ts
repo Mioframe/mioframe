@@ -16,6 +16,7 @@ vi.mock('@entity/databaseView', () => ({
 }));
 
 vi.mock('@shared/lib/sortable', () => ({
+  REORDER_ACTIVATION_SURFACE_ATTRIBUTE: 'data-sortable-activation-surface',
   useReorderSurface: () => ({
     activeProfile: ref({ input: 'mouse' }),
     displayItemIdList: ref([FAKE_VIEW_ID]),
@@ -86,5 +87,13 @@ describe('DatabaseViewListEdit', () => {
     const wrapper = mountEdit();
 
     expect(wrapper.get('.md-list-item__primary-action').attributes('aria-current')).toBeUndefined();
+  });
+
+  it('marks the row primary action as the reorder drag activation surface', () => {
+    const wrapper = mountEdit();
+
+    expect(
+      wrapper.get('.md-list-item__primary-action').attributes('data-sortable-activation-surface'),
+    ).toBe('');
   });
 });

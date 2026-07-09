@@ -50,6 +50,29 @@ Marks a subtree as non-draggable through `data-sortable-ignore`. Use this on
 buttons, menu triggers, delete actions, and other controls that should stay
 clickable without starting drag.
 
+### `REORDER_ACTIVATION_SURFACE_ATTRIBUTE`
+
+Attribute name (`data-sortable-activation-surface`) that marks a reorder
+item's own row-owned drag activation surface — a nested element (typically a
+primary-action button/link) that visually covers the row and is the actual
+mouse/touch press target, even though the reorder item id lives on an
+ancestor element.
+
+By default, any descendant matching the interactive selector (`button`,
+`a`, `input`, etc.) is treated as a separate interactive control and blocks
+drag activation. An element carrying this attribute is exempted from that
+filter, so pressing it can still start row drag — but only when it
+represents the row's own primary action, not an unrelated nested control.
+
+`MDListItem` sets this attribute on its internal
+`.md-list-item__primary-action` element, so a `v-reorder-item` row built
+from `MDListItem` supports mouse/touch drag from anywhere on the row while
+its trailing action, explicit `v-reorder-ignore` subtrees, and other real
+nested controls stay interactive-only.
+
+An explicit `v-reorder-ignore` subtree always wins over this attribute: if
+an element carries both, it stays non-draggable.
+
 ## Typical Integration
 
 ```vue
