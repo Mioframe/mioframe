@@ -1,11 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.mjs';
+
 const VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
 const RELEASE_SPEC_PREFIX = 'tests/e2e/release/';
 const E2E_DIR_PREFIX = 'tests/e2e/';
 const APP_E2E_SPEC_DIR = 'tests/e2e';
 const STORIES_PATTERN = /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/;
+const PACKAGE_JSON_PATH = 'package.json';
 
 const LOW_LEVEL_E2E_EXACT_FILES = new Set([
   'playwright.config.ts',
@@ -15,7 +18,6 @@ const LOW_LEVEL_E2E_EXACT_FILES = new Set([
   'scripts/playwrightContainer.mjs',
   'scripts/verify.mjs',
   'vite.config.ts',
-  'package.json',
   'pnpm-lock.yaml',
 ]);
 
@@ -376,14 +378,19 @@ export function isUnmappedSourcePath(filePath) {
 /**
  * Resolve the app e2e mode for the given changed files, in priority order:
  * invalid (scenario registry failed self-validation; fail closed instead of
- * silently skipping), full (low-level/unmapped/e2e-support risk), focused
- * (scenario registry matches and/or changed app e2e specs), or skip (no app
- * e2e relevant changes). Visual specs and visual-relevant paths never feed
- * this resolver; visual selection stays independent.
+ * silently skipping), full (low-level/unmapped/e2e-support/package.json
+ * risk), focused (scenario registry matches and/or changed app e2e specs),
+ * or skip (no app e2e relevant changes). Visual specs and visual-relevant
+ * paths never feed this resolver; visual selection stays independent.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param [options] Resolution options.
+ * @param [options.packageJsonOldRef] Git ref to compare the current
+ * `package.json` against, for the version-only e2e impact refinement. Pass
+ * `null` when no reliable base ref is known; that fails closed to
+ * runtime-relevant (full app e2e).
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
  */
-export function resolveAppE2EPlan(changedFiles) {
+export function resolveAppE2EPlan(changedFiles, { packageJsonOldRef = null } = {}) {
   const registryValidation = validateE2EScenarioRegistry();
 
   if (!registryValidation.valid) {
@@ -393,10 +400,17 @@ export function resolveAppE2EPlan(changedFiles) {
   const lowLevelHit = changedFiles.find(isLowLevelE2EPath);
   const unmappedHit = changedFiles.find(isUnmappedSourcePath);
   const supportHit = changedFiles.find(isAppE2ESupportPath);
+  const isPackageJsonRuntimeRelevant =
+    changedFiles.includes(PACKAGE_JSON_PATH) &&
+    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef });
   const fullReasons = [];
 
   if (lowLevelHit) {
     fullReasons.push(`low-level path ${lowLevelHit} -> full app e2e`);
+  }
+
+  if (isPackageJsonRuntimeRelevant) {
+    fullReasons.push(`runtime-relevant package.json change -> full app e2e`);
   }
 
   if (unmappedHit) {

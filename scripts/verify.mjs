@@ -1414,7 +1414,7 @@ export function buildCommands(
     isVisualRelevantPackageJsonChange({ oldRef: packageJsonOldRef });
   const hasVisualRelevantChanges =
     changedFiles.some(isVisualRelevantFile) || isPackageJsonVisualRelevant;
-  const appE2EPlan = resolveAppE2EPlan(changedFiles);
+  const appE2EPlan = resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
