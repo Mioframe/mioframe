@@ -18,6 +18,7 @@ export type {
   ReorderEngineCallbacks,
   ReorderInput,
   ReorderInputProfile,
+  ReorderInteractiveStrategy,
   ReorderLayout,
   UseReorderSurfaceOptions,
 } from './reorderTypes';

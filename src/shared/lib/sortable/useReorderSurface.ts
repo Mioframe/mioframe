@@ -15,6 +15,10 @@ import {
   resolveReorderPostDragClick,
   shouldClearReorderPostDragSuppressionOnInput,
 } from './reorderPostDragClick';
+import {
+  isReorderFullRowNativeMisconfigured,
+  resolveReorderInteractiveSelector,
+} from './reorderInteractiveStrategy';
 import { createSortableAdapter } from './sortableAdapter';
 import {
   acquireReorderDocumentSelectionSuppression,
@@ -53,6 +57,15 @@ export const useReorderSurface = (
   const interactiveSelector = computed(
     () => toValue(options.interactiveSelector) ?? defaultReorderInteractiveSelector,
   );
+  const interactiveStrategy = computed(
+    () => toValue(options.interactiveStrategy) ?? 'blockInteractiveDescendants',
+  );
+  const effectiveInteractiveSelector = computed(() =>
+    resolveReorderInteractiveSelector({
+      strategy: interactiveStrategy.value,
+      interactiveSelector: interactiveSelector.value,
+    }),
+  );
   const profile = computed(() =>
     getReorderGestureProfile({
       input: lastInput.value,
@@ -61,6 +74,26 @@ export const useReorderSurface = (
       density,
     }),
   );
+
+  if (import.meta.env.DEV) {
+    watch(
+      () => ({ activation: activation.value, strategy: interactiveStrategy.value }),
+      ({ activation: currentActivation, strategy: currentStrategy }) => {
+        if (
+          isReorderFullRowNativeMisconfigured({
+            activation: currentActivation,
+            strategy: currentStrategy,
+          })
+        ) {
+          console.warn(
+            "[sortable] activation: 'fullRowNative' requires interactiveStrategy: 'explicitIgnoreOnly'; " +
+              "otherwise the row's own primary action blocks drag activation.",
+          );
+        }
+      },
+      { immediate: true },
+    );
+  }
 
   const state = reactive(createReorderSurfaceState(toValue(options.itemIdList)));
   const isActivatingDrag = ref(false);
@@ -143,7 +176,7 @@ export const useReorderSurface = (
       state.suppressNextClick = false;
     }
 
-    if (shouldIgnoreTarget(event.target, interactiveSelector.value)) {
+    if (shouldIgnoreTarget(event.target, effectiveInteractiveSelector.value)) {
       return;
     }
 
@@ -200,7 +233,7 @@ export const useReorderSurface = (
   const engine = createSortableAdapter(container, {
     layout,
     disabled: computed(() => Boolean(toValue(options.disabled))),
-    interactiveSelector,
+    interactiveSelector: effectiveInteractiveSelector,
     profile,
     scrollContainer: options.scrollContainer,
     callbacks: {
@@ -269,7 +302,7 @@ export const useReorderSurface = (
         return;
       }
 
-      if (shouldIgnoreTarget(event.target, interactiveSelector.value)) {
+      if (shouldIgnoreTarget(event.target, effectiveInteractiveSelector.value)) {
         return;
       }
 
@@ -290,7 +323,7 @@ export const useReorderSurface = (
         return;
       }
 
-      if (shouldIgnoreTarget(event.target, interactiveSelector.value)) {
+      if (shouldIgnoreTarget(event.target, effectiveInteractiveSelector.value)) {
         return;
       }
 
@@ -311,7 +344,7 @@ export const useReorderSurface = (
         return;
       }
 
-      if (shouldIgnoreTarget(event.target, interactiveSelector.value)) {
+      if (shouldIgnoreTarget(event.target, effectiveInteractiveSelector.value)) {
         return;
       }
 

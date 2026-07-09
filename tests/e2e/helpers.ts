@@ -501,6 +501,21 @@ export const removeView = async (page: Page, name: string) => {
   await dialog.getByRole('button', { name: /^remove$/i }).click();
 };
 
+// Ranks the given view names by their row's vertical position in the sheet, rather than
+// reading row text: rows also render a leading checkbox and a trailing context-menu icon
+// as sibling content, and the sheet additionally renders a fixed "default view" row that
+// is not part of the reorderable set, so scraping row text would need to filter both out.
+export const getViewRowOrder = async (sheet: Locator, viewNames: readonly string[]) => {
+  const boxes = await Promise.all(
+    viewNames.map(async (name) => ({
+      name,
+      y: (await sheet.getByRole('button', { name }).boundingBox())?.y ?? Number.POSITIVE_INFINITY,
+    })),
+  );
+
+  return boxes.toSorted((a, b) => a.y - b.y).map(({ name }) => name);
+};
+
 export const openSortSheet = async (page: Page) => {
   const sheet = page.getByRole('dialog', { name: /database sort sheet/i });
   const alreadyVisible = await sheet.isVisible().catch(() => false);

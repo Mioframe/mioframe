@@ -41,6 +41,32 @@ describe('getReorderGestureProfile', () => {
     expect(profile.moveThreshold).toBe(3);
     expect(profile.suppressClickAfterDrag).toBe(true);
   });
+
+  it('resolves full-row native touch input to a long-press delay', () => {
+    const profile = getReorderGestureProfile({
+      input: 'touch',
+      layout: 'vertical',
+      activation: 'fullRowNative',
+      density: 'comfortable',
+    });
+
+    expect(profile.activation).toBe('fullRowNative');
+    expect(profile.delay).toBe(180);
+    expect(profile.moveThreshold).toBe(6);
+  });
+
+  it('resolves full-row native mouse input to a zero delay gated by movement threshold', () => {
+    const profile = getReorderGestureProfile({
+      input: 'pointer',
+      layout: 'vertical',
+      activation: 'fullRowNative',
+      density: 'comfortable',
+    });
+
+    expect(profile.activation).toBe('fullRowNative');
+    expect(profile.delay).toBe(0);
+    expect(profile.moveThreshold).toBe(4);
+  });
 });
 
 describe('getReorderInputFromPointerType', () => {

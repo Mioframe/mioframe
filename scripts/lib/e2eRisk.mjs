@@ -118,6 +118,7 @@ export const E2E_SCENARIO_SCOPES = [
     specs: [
       'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
       'tests/e2e/reorderSurfaceDragSmoke.spec.ts',
+      'tests/e2e/reorderSurfaceFullRowNative.spec.ts',
     ],
   },
   {

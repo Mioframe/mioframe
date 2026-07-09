@@ -6,22 +6,39 @@ import { generateViewId } from '@shared/lib/databaseDocument';
 import DatabaseViewListEdit from './DatabaseViewListEdit.vue';
 
 const FAKE_VIEW_ID = generateViewId();
+const OTHER_VIEW_ID = generateViewId();
 const FAKE_DOC_ID = new Repo().create({}).documentId;
+const INVALID_ID = 'not-a-database-view-id';
+
+const reorderMock = vi.fn();
+let viewsState: Array<[string, { name: string }]> | undefined = [
+  [FAKE_VIEW_ID, { name: 'My View' }],
+];
 
 vi.mock('@entity/databaseView', () => ({
   useDatabaseViews: () => ({
-    reorder: vi.fn(),
-    views: ref([[FAKE_VIEW_ID, { name: 'My View' }]]),
+    reorder: reorderMock,
+    views: ref(viewsState),
   }),
 }));
 
-vi.mock('@shared/lib/sortable', () => ({
-  useReorderSurface: () => ({
+interface MockedReorderSurfaceOptions {
+  itemIdList: { value: string[] };
+  onCommit: (payload: { orderedIds: string[] }) => unknown;
+}
+
+const { useReorderSurfaceMock } = vi.hoisted(() => ({
+  useReorderSurfaceMock: vi.fn((_container: unknown, _options: unknown) => ({
     activeProfile: ref({ input: 'mouse' }),
-    displayItemIdList: ref([FAKE_VIEW_ID]),
-    draggedId: ref(undefined),
+    displayItemIdList: ref<string[]>([FAKE_VIEW_ID]),
+    draggedId: ref<string | undefined>(undefined),
     isDragging: ref(false),
-  }),
+  })),
+}));
+
+vi.mock('@shared/lib/sortable', () => ({
+  useReorderSurface: useReorderSurfaceMock,
+  vReorderIgnore: { mounted() {}, updated() {}, unmounted() {} },
   vReorderItem: { mounted() {}, updated() {}, unmounted() {} },
 }));
 
@@ -39,9 +56,150 @@ const mountEdit = (
     slots,
   });
 
+const getMockedOptions = (callIndex = 0): MockedReorderSurfaceOptions =>
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- narrows the mock's untyped captured call args to the shape the component actually passes
+  useReorderSurfaceMock.mock.calls[callIndex]?.[1] as MockedReorderSurfaceOptions;
+
 describe('DatabaseViewListEdit', () => {
   afterEach(() => {
     document.body.innerHTML = '';
+    useReorderSurfaceMock.mockClear();
+    reorderMock.mockClear();
+    viewsState = [[FAKE_VIEW_ID, { name: 'My View' }]];
+  });
+
+  it('configures full-row native activation with explicit-ignore-only interactive strategy', () => {
+    mountEdit();
+
+    expect(useReorderSurfaceMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        activation: 'fullRowNative',
+        interactiveStrategy: 'explicitIgnoreOnly',
+      }),
+    );
+  });
+
+  it('passes the MDList root element as the reorder surface container', () => {
+    mountEdit();
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- narrows the mock's untyped captured call args to the container ref shape the component actually passes
+    const [containerArg] = useReorderSurfaceMock.mock.calls[0] as [{ value: unknown }, unknown];
+    expect(containerArg.value).toBeInstanceOf(HTMLElement);
+  });
+
+  it('derives itemIdList from the current view list', () => {
+    viewsState = [
+      [FAKE_VIEW_ID, { name: 'My View' }],
+      [OTHER_VIEW_ID, { name: 'Other View' }],
+    ];
+
+    mountEdit();
+
+    expect(getMockedOptions().itemIdList.value).toEqual([FAKE_VIEW_ID, OTHER_VIEW_ID]);
+  });
+
+  it('derives an empty itemIdList when there are no views yet', () => {
+    viewsState = undefined;
+
+    mountEdit();
+
+    expect(getMockedOptions().itemIdList.value).toEqual([]);
+  });
+
+  it('commits a reorder through the entity when every id is a valid database view id', () => {
+    viewsState = [
+      [FAKE_VIEW_ID, { name: 'My View' }],
+      [OTHER_VIEW_ID, { name: 'Other View' }],
+    ];
+    mountEdit();
+
+    getMockedOptions().onCommit({ orderedIds: [OTHER_VIEW_ID, FAKE_VIEW_ID] });
+
+    expect(reorderMock).toHaveBeenCalledWith([OTHER_VIEW_ID, FAKE_VIEW_ID]);
+  });
+
+  it('does not commit a reorder when any id fails database view id validation', () => {
+    mountEdit();
+
+    getMockedOptions().onCommit({ orderedIds: [FAKE_VIEW_ID, INVALID_ID] });
+
+    expect(reorderMock).not.toHaveBeenCalled();
+  });
+
+  it('filters out ids that are not valid database view ids from the displayed order', () => {
+    viewsState = [
+      [FAKE_VIEW_ID, { name: 'My View' }],
+      [OTHER_VIEW_ID, { name: 'Other View' }],
+    ];
+    useReorderSurfaceMock.mockReturnValueOnce({
+      activeProfile: ref({ input: 'mouse' }),
+      displayItemIdList: ref<string[]>([FAKE_VIEW_ID, INVALID_ID, OTHER_VIEW_ID]),
+      draggedId: ref<string | undefined>(undefined),
+      isDragging: ref(false),
+    });
+
+    const wrapper = mountEdit();
+
+    expect(wrapper.findAll('.md-list-item').length).toBe(2);
+  });
+
+  it('skips display ids that no longer exist in the current view map', () => {
+    viewsState = [[FAKE_VIEW_ID, { name: 'My View' }]];
+    useReorderSurfaceMock.mockReturnValueOnce({
+      activeProfile: ref({ input: 'mouse' }),
+      displayItemIdList: ref<string[]>([FAKE_VIEW_ID, OTHER_VIEW_ID]),
+      draggedId: ref<string | undefined>(undefined),
+      isDragging: ref(false),
+    });
+
+    const wrapper = mountEdit();
+
+    expect(wrapper.findAll('.md-list-item').length).toBe(1);
+  });
+
+  it('marks the row matching the dragged id as dragged', () => {
+    useReorderSurfaceMock.mockReturnValueOnce({
+      activeProfile: ref({ input: 'mouse' }),
+      displayItemIdList: ref<string[]>([FAKE_VIEW_ID]),
+      draggedId: ref<string | undefined>(FAKE_VIEW_ID),
+      isDragging: ref(true),
+    });
+
+    const wrapper = mountEdit();
+
+    expect(wrapper.get('.md-list-item').classes()).toContain('md-state_dragged');
+  });
+
+  it('does not mark a row as dragged when the dragged id fails database view id validation', () => {
+    useReorderSurfaceMock.mockReturnValueOnce({
+      activeProfile: ref({ input: 'mouse' }),
+      displayItemIdList: ref<string[]>([FAKE_VIEW_ID]),
+      draggedId: ref<string | undefined>(INVALID_ID),
+      isDragging: ref(true),
+    });
+
+    const wrapper = mountEdit();
+
+    expect(wrapper.get('.md-list-item').classes()).not.toContain('md-state_dragged');
+  });
+
+  it('emits clickView with the row id when the primary action is activated', async () => {
+    const wrapper = mountEdit();
+
+    await wrapper.get('.md-list-item__primary-action').trigger('click');
+
+    expect(wrapper.emitted('clickView')).toEqual([[FAKE_VIEW_ID]]);
+  });
+
+  it('wraps trailing action slot content in a reorder-ignore host element', () => {
+    const wrapper = mountEdit({
+      trailingAction: () => h('button', { type: 'button', 'data-testid': 'trailing-btn' }, 'Edit'),
+    });
+
+    const trailingButton = wrapper.find('[data-testid="trailing-btn"]');
+    expect(trailingButton.exists()).toBe(true);
+    expect(trailingButton.element.parentElement?.tagName).toBe('SPAN');
   });
 
   it('renders single-action rows when no trailingAction slot is provided', () => {

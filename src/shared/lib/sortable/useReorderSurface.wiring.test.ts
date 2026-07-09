@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, ref, type ComputedRef, type EffectScope } from 'vue';
-import { defaultReorderInteractiveSelector, REORDER_SURFACE_DRAGGING_CLASS } from './constants';
+import {
+  defaultReorderInteractiveSelector,
+  REORDER_IGNORE_ATTRIBUTE,
+  REORDER_SURFACE_DRAGGING_CLASS,
+} from './constants';
 import type {
   ReorderActivation,
   ReorderDensity,
   ReorderEngineCallbacks,
   ReorderInputProfile,
+  ReorderInteractiveStrategy,
   ReorderLayout,
 } from './reorderTypes';
 
@@ -100,6 +105,7 @@ const mountUseReorderSurface = async ({
   density,
   disabled,
   interactiveSelector,
+  interactiveStrategy,
   itemIdList = ref<string[] | undefined>(['a', 'b', 'c']),
   layout,
 }: {
@@ -107,6 +113,7 @@ const mountUseReorderSurface = async ({
   density?: ReturnType<typeof ref<ReorderDensity | undefined>>;
   disabled?: ReturnType<typeof ref<boolean | undefined>>;
   interactiveSelector?: ReturnType<typeof ref<string | undefined>>;
+  interactiveStrategy?: ReturnType<typeof ref<ReorderInteractiveStrategy | undefined>>;
   itemIdList?: ReturnType<typeof ref<string[] | undefined>>;
   layout?: ReturnType<typeof ref<ReorderLayout | undefined>>;
 } = {}) => {
@@ -122,6 +129,7 @@ const mountUseReorderSurface = async ({
       density,
       disabled,
       interactiveSelector,
+      interactiveStrategy,
       itemIdList,
       layout,
       onCommit: vi.fn(),
@@ -258,6 +266,24 @@ describe('useReorderSurface wiring', () => {
       density: 'dense',
       layout: 'grid',
     });
+  });
+
+  it('scopes the adapter selector to explicit ignore zones under explicitIgnoreOnly', async () => {
+    const interactiveSelector = ref<string | undefined>('button, a');
+    const interactiveStrategy = ref<ReorderInteractiveStrategy | undefined>('explicitIgnoreOnly');
+    const { adapterState } = await mountUseReorderSurface({
+      interactiveSelector,
+      interactiveStrategy,
+    });
+
+    expect(adapterState.interactiveSelector?.value).toBe(`[${REORDER_IGNORE_ATTRIBUTE}]`);
+  });
+
+  it('preserves the custom selector under the default blockInteractiveDescendants strategy', async () => {
+    const interactiveSelector = ref<string | undefined>('button, a');
+    const { adapterState } = await mountUseReorderSurface({ interactiveSelector });
+
+    expect(adapterState.interactiveSelector?.value).toBe('button, a');
   });
 
   it('returns early for mismatched listener event payloads when handlers are called directly', async () => {

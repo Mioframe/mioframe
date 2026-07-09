@@ -3,12 +3,31 @@ import type { MaybeRefOrGetter } from 'vue';
 
 /** Visual direction of the reorder surface. */
 export type ReorderLayout = 'vertical' | 'horizontal' | 'grid';
-/** How drag activation should begin from user input. */
-export type ReorderActivation = 'immediate' | 'longPress';
+/**
+ * How drag activation should begin from user input.
+ *
+ * `fullRowNative` allows drag to start from anywhere on the row itself (including a
+ * primary action element), gated by input: long press on touch/pen, intentional
+ * movement on mouse. It requires `interactiveStrategy: 'explicitIgnoreOnly'` — pair it
+ * with an interactive descendant strategy that only blocks explicit `v-reorder-ignore`
+ * zones, otherwise the row's own primary action blocks activation.
+ */
+export type ReorderActivation = 'immediate' | 'longPress' | 'fullRowNative';
 /** Density hint used to tune movement thresholds. */
 export type ReorderDensity = 'comfortable' | 'dense' | 'precision';
 /** Normalized input source for the current drag session. */
 export type ReorderInput = 'pointer' | 'touch';
+/**
+ * Controls which descendants inside a reorder item block drag activation.
+ *
+ * `blockInteractiveDescendants` is the safe default: buttons, links, inputs,
+ * contenteditable, role="button", and explicit `v-reorder-ignore` zones all block drag.
+ *
+ * `explicitIgnoreOnly` blocks drag only inside explicit `v-reorder-ignore` zones. The
+ * row's own primary action (even when implemented as a button or link) does not block
+ * drag. Required for `activation: 'fullRowNative'`.
+ */
+export type ReorderInteractiveStrategy = 'blockInteractiveDescendants' | 'explicitIgnoreOnly';
 
 /** Resolved runtime gesture profile used to configure the drag engine. */
 export interface ReorderInputProfile {
@@ -64,8 +83,14 @@ export interface UseReorderSurfaceOptions {
   density?: MaybeRefOrGetter<ReorderDensity | undefined>;
   /** Disables drag interactions when truthy. */
   disabled?: MaybeRefOrGetter<boolean | undefined>;
-  /** Custom selector for descendants that should stay interactive. */
+  /**
+   * Custom selector for descendants that should stay interactive. Only consulted under
+   * `interactiveStrategy: 'blockInteractiveDescendants'`; ignored under
+   * `'explicitIgnoreOnly'`, which always scopes to explicit `v-reorder-ignore` zones only.
+   */
   interactiveSelector?: MaybeRefOrGetter<string | undefined>;
+  /** Strategy for which descendants block drag activation. Defaults to `'blockInteractiveDescendants'`. */
+  interactiveStrategy?: MaybeRefOrGetter<ReorderInteractiveStrategy | undefined>;
   /** Optional scroll target used by SortableJS auto-scroll. */
   scrollContainer?: MaybeElementRef;
   /** Persistence callback invoked after a successful local reorder. */

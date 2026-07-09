@@ -22,12 +22,35 @@ Inputs:
 
 - `itemIdList`: the authoritative external order.
 - `layout`: optional, defaults to `'vertical'`.
-- `activation`: optional, defaults to `'immediate'`.
+- `activation`: optional, defaults to `'immediate'`. `'fullRowNative'` allows drag to
+  start from anywhere on the row itself, gated by input (long press on touch/pen,
+  intentional movement on mouse).
 - `density`: optional, defaults to `'comfortable'`.
 - `disabled`: disables reordering.
-- `interactiveSelector`: selector for controls that should not start drag.
+- `interactiveSelector`: selector for controls that should not start drag. Only
+  consulted under `interactiveStrategy: 'blockInteractiveDescendants'`.
+- `interactiveStrategy`: optional, defaults to `'blockInteractiveDescendants'`.
+  `'explicitIgnoreOnly'` blocks drag only inside explicit `v-reorder-ignore` zones, so a
+  row's own primary action (button/link) does not block drag. Required alongside
+  `activation: 'fullRowNative'`.
 - `scrollContainer`: optional scroll target for auto-scroll.
 - `onCommit`: async or sync persistence callback.
+
+### Full-row native reorder
+
+```ts
+useReorderSurface(container, {
+  itemIdList,
+  activation: 'fullRowNative',
+  interactiveStrategy: 'explicitIgnoreOnly',
+  onCommit: ({ orderedIds }) => persistOrder(orderedIds),
+});
+```
+
+Mark any control that must stay clickable without starting drag (trailing actions,
+menus, inputs) with `v-reorder-ignore`. Under `explicitIgnoreOnly`, that is the only
+thing that blocks drag — the row's own primary action, even when it is a full-width
+button or link, does not.
 
 Outputs:
 
@@ -177,6 +200,7 @@ from the older commit must not overwrite it.
 - `sortableAdapter.ts`: `SortableJS` bridge and lifecycle ownership.
 - `reorderDirectives.ts`: item and ignore directives.
 - `reorderGestureProfile.ts`: platform and input heuristics.
+- `reorderInteractiveStrategy.ts`: resolves which descendants block drag activation.
 - `reorderPostDragClick.ts`: synthetic click suppression rules after drag.
 - `constants.ts`: shared attributes, class names, and selectors.
 - `reorderSurface.css`: drag-session CSS overrides.

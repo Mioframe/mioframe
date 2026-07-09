@@ -104,6 +104,11 @@ const getMoveThreshold = ({
 
 /**
  * Returns the press delay used before drag activation begins.
+ *
+ * `longPress` and `fullRowNative` both use a press delay, but only on touch/pen input:
+ * `fullRowNative` behaves like `longPress` on touch (delay gates activation so scrolling
+ * still works) and like `immediate` on mouse (no delay; movement threshold gates it
+ * instead, see {@link getMoveThreshold}).
  * @param root0
  */
 const getDelay = ({
@@ -113,15 +118,13 @@ const getDelay = ({
   activation: ReorderActivation;
   input: ReorderInput;
 }): number => {
-  if (activation !== 'longPress') {
+  const isPressGatedActivation = activation === 'longPress' || activation === 'fullRowNative';
+
+  if (!isPressGatedActivation || input !== 'touch') {
     return 0;
   }
 
-  if (input === 'touch') {
-    return 180;
-  }
-
-  return 0;
+  return 180;
 };
 
 /**

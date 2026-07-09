@@ -7,7 +7,7 @@ import {
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { useReorderSurface, vReorderItem } from '@shared/lib/sortable';
+import { useReorderSurface, vReorderIgnore, vReorderItem } from '@shared/lib/sortable';
 import { MDList, MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs, useTemplateRef } from 'vue';
 
@@ -42,6 +42,8 @@ const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSu
   viewListContainerEl,
   {
     itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
+    activation: 'fullRowNative',
+    interactiveStrategy: 'explicitIgnoreOnly',
     onCommit: ({ orderedIds }) => {
       const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
 
@@ -102,7 +104,9 @@ const onClickView = (id: DatabaseViewId) => {
       </template>
 
       <template v-if="!!slots.trailingAction" #trailingAction>
-        <slot name="trailingAction" :view-id="id" />
+        <span v-reorder-ignore>
+          <slot name="trailingAction" :view-id="id" />
+        </span>
       </template>
     </MDListItem>
   </MDList>
