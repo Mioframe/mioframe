@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/packageJsonImpact.mjs', () => ({
   isVisualRelevantPackageJsonChange: vi.fn(),
+  isPackageJsonRuntimeRelevantChange: vi.fn(),
 }));
 
-import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
+import {
+  isPackageJsonRuntimeRelevantChange,
+  isVisualRelevantPackageJsonChange,
+} from './lib/packageJsonImpact.mjs';
 import {
   buildCommandEnv,
   buildCommands,
@@ -230,6 +234,62 @@ describe('buildCommands package.json visual relevance', () => {
     buildCommands(['src/app/main.ts'], { fullMode: false });
 
     expect(isVisualRelevantPackageJsonChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildCommands package.json app e2e relevance', () => {
+  beforeEach(() => {
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('skips app e2e for a confirmed version-only package.json change with no other e2e-relevant files', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const e2eEntry = commands.find((entry) => entry.label === 'e2e');
+
+    expect(e2eEntry.kind).toBe('skipped');
+    expect(e2eEntry.reason).toBe('empty e2e scope');
+    expect(isPackageJsonRuntimeRelevantChange).toHaveBeenCalledWith({ oldRef: 'HEAD~1' });
+  });
+
+  it('runs full app e2e when the package.json impact check is runtime-relevant', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const e2eEntry = commands.find((entry) => entry.label === 'e2e');
+
+    expect(e2eEntry.kind).toBe('run');
+    expect(e2eEntry.triggerReason).toContain('runtime-relevant package.json change');
+  });
+
+  it('runs full app e2e when the package.json comparison cannot be resolved', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const commands = buildCommands(['package.json'], { fullMode: false, packageJsonOldRef: null });
+    const e2eEntry = commands.find((entry) => entry.label === 'e2e');
+
+    expect(e2eEntry.kind).toBe('run');
+    expect(isPackageJsonRuntimeRelevantChange).toHaveBeenCalledWith({ oldRef: null });
+  });
+
+  it('still runs full app e2e for other full-app-e2e-relevant files when package.json is version-only', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json', 'src/shared/service/serviceWorker.ts'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const e2eEntry = commands.find((entry) => entry.label === 'e2e');
+
+    expect(e2eEntry.kind).toBe('run');
+    expect(e2eEntry.triggerReason).toContain('low-level path src/shared/service/serviceWorker.ts');
   });
 });
 

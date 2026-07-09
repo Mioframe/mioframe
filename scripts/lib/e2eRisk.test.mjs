@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('./packageJsonImpact.mjs', () => ({
+  isPackageJsonRuntimeRelevantChange: vi.fn(),
+}));
+
+import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.mjs';
 import {
   APP_E2E_STANDALONE_SPECS,
   E2E_SCENARIO_SCOPES,
@@ -38,8 +43,12 @@ describe('isLowLevelE2EPath', () => {
     expect(isLowLevelE2EPath('scripts/playwrightContainer.mjs')).toBe(true);
     expect(isLowLevelE2EPath('scripts/verify.mjs')).toBe(true);
     expect(isLowLevelE2EPath('scripts/lib/e2eRisk.mjs')).toBe(true);
-    expect(isLowLevelE2EPath('package.json')).toBe(true);
+    expect(isLowLevelE2EPath('pnpm-lock.yaml')).toBe(true);
     expect(isLowLevelE2EPath('tsconfig.app.json')).toBe(true);
+  });
+
+  it('does not unconditionally flag package.json; its e2e impact is resolved separately', () => {
+    expect(isLowLevelE2EPath('package.json')).toBe(false);
   });
 
   it('flags app bootstrap, shared service, and shared UI prefixes', () => {
@@ -263,5 +272,55 @@ describe('resolveAppE2EPlan', () => {
     const plan = resolveAppE2EPlan(['README.md']);
 
     expect(plan.mode).toBe('skip');
+  });
+});
+
+describe('resolveAppE2EPlan package.json impact', () => {
+  beforeEach(() => {
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('skips app e2e for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const plan = resolveAppE2EPlan(['package.json'], { packageJsonOldRef: 'HEAD~1' });
+
+    expect(plan.mode).toBe('skip');
+    expect(isPackageJsonRuntimeRelevantChange).toHaveBeenCalledWith({ oldRef: 'HEAD~1' });
+  });
+
+  it('runs full app e2e when the package.json change is runtime-relevant', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const plan = resolveAppE2EPlan(['package.json'], { packageJsonOldRef: 'HEAD~1' });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('runtime-relevant package.json change');
+  });
+
+  it('runs full app e2e when the old package.json ref is missing (fails closed)', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const plan = resolveAppE2EPlan(['package.json'], { packageJsonOldRef: null });
+
+    expect(plan.mode).toBe('full');
+    expect(isPackageJsonRuntimeRelevantChange).toHaveBeenCalledWith({ oldRef: null });
+  });
+
+  it('runs full app e2e for a version-only package.json change alongside another full-e2e path', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const plan = resolveAppE2EPlan(['package.json', 'playwright.config.ts'], {
+      packageJsonOldRef: 'HEAD~1',
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('low-level path playwright.config.ts');
+  });
+
+  it('does not consult the package.json impact check when package.json did not change', () => {
+    resolveAppE2EPlan(['src/app/setupApp.ts']);
+
+    expect(isPackageJsonRuntimeRelevantChange).not.toHaveBeenCalled();
   });
 });
