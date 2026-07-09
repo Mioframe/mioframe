@@ -4,21 +4,24 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/s
 
 ## Contains
 
-- The geometry-based reorder engine: pointer/touch session handling, rect geometry, the lifted overlay, reorder directives, and playground or test support.
+- The Vue-reactive reorder primitive: pointer/touch session handling, rect geometry, optimistic display order, container-local auto-scroll, reorder directives, playground support, and focused tests.
 
 ## Patterns
 
+- Use `REACTIVE_REORDER_HANDOFF.md` as the architecture contract for the PR 138 reorder rewrite.
 - Keep the reorder contract independent from business persistence and item shape.
 - Treat active input mode as runtime data rather than a hardcoded platform assumption.
-- Keep geometry logic pure and rect-driven so future non-vertical collections do not require public API changes.
-- Preserve predictable behavior under external list updates, cancel flows, and post-drag click suppression.
+- Keep geometry logic pure and rect-driven for the supported vertical-list production scenario.
+- Preserve predictable behavior under external list updates, cancel flows, commit failures, auto-scroll, and post-drag click suppression.
+- Keep consumer API narrow: `useReorderSurface`, `v-reorder-item`, and `v-reorder-ignore`.
 
 ## Anti-patterns
 
-- Do not couple reorder internals to one surface type such as lists or tables.
+- Do not couple reorder internals to feature-specific persistence or business behavior.
 - Do not mix feature-specific persistence logic into the generic reorder implementation.
-- Do not reintroduce browser drag-and-drop semantics: no native drag image, no visible ghost/placeholder, no cursor-following clone.
-- Do not expand the public consumer API with engine tuning options such as activation modes, interactive strategies, or layout hints.
+- Do not reintroduce browser drag-and-drop semantics: no native drag image, no DOM snapshot clone, no overlay, no visible ghost, and no cursor-following clone.
+- Do not expand the public consumer API with engine tuning options such as activation modes, interactive strategies, layout hints, render callbacks, or scroll containers.
+- Do not move reorder behavior into `shared/ui/Lists` or `MDListItem`.
 - Do not change hybrid-input behavior without tests.
 
 ## Constraints
