@@ -3,8 +3,13 @@
 Generic reorder primitives for Vue surfaces.
 
 This module is the shared drag-to-reorder layer used by feature and entity UIs.
-It does not know anything about database views, sorting rules, or any other
-business data. Its contract is simple:
+It is a `shared/lib` interaction primitive, not a Material List feature:
+`MDListItem` and the rest of `shared/ui/Lists` have no sortable/reorder
+knowledge, and reorder behavior must be composed by the consumer (usually a
+feature) around the shared list UI, never inside it.
+
+The module does not know anything about database views, sorting rules, or any
+other business data. Its contract is simple:
 
 - the caller provides a stable ordered list of string ids;
 - the library renders and previews reorder sessions against those ids;
@@ -36,7 +41,10 @@ Inputs:
 - `scrollContainer`: optional scroll target for auto-scroll.
 - `onCommit`: async or sync persistence callback.
 
-### Full-row native reorder
+### Production Material-list recipe (full-row native reorder)
+
+Every production reorderable `MDListItem` surface must use this exact
+configuration. The two options are a required pair, not independent knobs:
 
 ```ts
 useReorderSurface(container, {
@@ -47,10 +55,31 @@ useReorderSurface(container, {
 });
 ```
 
-Mark any control that must stay clickable without starting drag (trailing actions,
-menus, inputs) with `v-reorder-ignore`. Under `explicitIgnoreOnly`, that is the only
-thing that blocks drag — the row's own primary action, even when it is a full-width
-button or link, does not.
+Consumer responsibilities:
+
+- put `v-reorder-item="id"` on each reorderable row host (the `MDListItem`
+  itself or the wrapper component that renders it);
+- mark trailing actions, menus, delete buttons, inputs, and every other
+  control that must stay clickable without starting drag with
+  `v-reorder-ignore`;
+- keep row click/tap behavior owned by the feature — pass the dragged fact
+  down through the row's explicit `dragged` prop and commit persistence
+  through the owning entity API in `onCommit`.
+
+Under `explicitIgnoreOnly`, explicit `v-reorder-ignore` zones are the only
+thing that blocks drag — the row's own primary action, even when it is a
+full-width button or link, does not.
+
+**Misconfiguration warning.** `activation: 'fullRowNative'` without
+`interactiveStrategy: 'explicitIgnoreOnly'` is wrong for `MDListItem` row
+consumers: the default `'blockInteractiveDescendants'` strategy treats the
+row's full-width primary action (a native button or link) as an interactive
+descendant, so drag activation is blocked on the entire row and full-row drag
+silently never starts. If you use `fullRowNative`, pair it with
+`explicitIgnoreOnly` and take over ignore-zone marking yourself.
+`useReorderSurface` logs a dev-mode `console.warn` for this combination
+(see `isReorderFullRowNativeMisconfigured`), but the pairing is still the
+consumer's responsibility in production builds.
 
 Outputs:
 
@@ -193,6 +222,39 @@ avoid visible flicker.
 If the external list emits a different order with the same set of ids, that
 order is treated as authoritative. The UI follows it and any later rejection
 from the older commit must not overwrite it.
+
+## Current Consumers
+
+- `src/features/databaseViewMapEdit/DatabaseViewListEdit.vue`: full-row native
+  view reorder over `MDListItem` rows, committing through
+  `useDatabaseViews().reorder`. Trailing action slot content is wrapped in a
+  `v-reorder-ignore` host.
+- `src/features/databaseItemSorting/DatabaseItemSortingListSection.vue`:
+  full-row native sorting-property reorder, committing through
+  `useDatabaseSorting().reorder`. The delete trailing action carries
+  `v-reorder-ignore`.
+- `ReorderSurfacePlayground.vue` (this module): dev/demo playground only. It
+  may keep default activation/strategy options; it is not a production
+  Material-list consumer and not a wiring reference for one — use the
+  production recipe above instead.
+
+## Verification Status
+
+- Desktop full drag-completion (real mouse gesture, order change, post-drag
+  click suppression) is covered by
+  `tests/e2e/reorderSurfaceFullRowNative.spec.ts` and is active under the
+  `github-actions` verify profile
+  (`pnpm verify --profile github-actions --only e2e`).
+- Mobile Chrome tap-select, trailing ignore-zone activation, and
+  no-reorder-before-long-press are covered by active tests in the same spec.
+- Mobile Chrome full long-press drag-completion is a known e2e **harness
+  limitation**, not accepted product behavior: CDP touch synthesis arms the
+  gesture but the fallback hit-testing step never commits an order change in
+  the containerized headless Chromium. That scenario remains `test.fixme()`
+  with the full rationale documented inline in the spec; engine-level
+  long-press activation is covered by the real-SortableJS unit test in
+  `sortableAdapter.test.ts`. Revisit with a real device or an improved touch
+  harness.
 
 ## File Map
 

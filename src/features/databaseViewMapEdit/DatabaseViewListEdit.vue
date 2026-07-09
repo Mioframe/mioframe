@@ -38,23 +38,20 @@ const viewListContainerEl = computed(() => viewListEl.value?.$el ?? null);
 
 const viewMap = computed(() => new Map(viewList.value ?? []));
 
-const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(
-  viewListContainerEl,
-  {
-    itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
-    activation: 'fullRowNative',
-    interactiveStrategy: 'explicitIgnoreOnly',
-    onCommit: ({ orderedIds }) => {
-      const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
+const { displayItemIdList, draggedId } = useReorderSurface(viewListContainerEl, {
+  itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
+  activation: 'fullRowNative',
+  interactiveStrategy: 'explicitIgnoreOnly',
+  onCommit: ({ orderedIds }) => {
+    const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
 
-      if (nextOrderedIds.length !== orderedIds.length) {
-        return;
-      }
+    if (nextOrderedIds.length !== orderedIds.length) {
+      return;
+    }
 
-      return reorder(nextOrderedIds);
-    },
+    return reorder(nextOrderedIds);
   },
-);
+});
 
 const displayViewIdList = computed(() =>
   displayItemIdList.value.filter((id) => zodIs(id, zodDatabaseViewId)),
@@ -94,9 +91,6 @@ const onClickView = (id: DatabaseViewId) => {
       :dragged="draggedViewId === id"
       :aria-current="id === currentViewId ? 'true' : undefined"
       class="db-view-map-edit__view-item"
-      :class="{
-        'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
-      }"
       @action="onClickView(id)"
     >
       <template v-if="!!slots.leading" #leading>
