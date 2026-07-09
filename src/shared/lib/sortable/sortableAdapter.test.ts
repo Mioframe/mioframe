@@ -17,7 +17,7 @@ const buildContainer = () => {
   return container;
 };
 
-const baseProfile: ReorderInputProfile = {
+const fallbackProfile: ReorderInputProfile = {
   input: 'pointer',
   layout: 'vertical',
   density: 'comfortable',
@@ -30,6 +30,12 @@ const baseProfile: ReorderInputProfile = {
   animation: 150,
   scrollSpeed: 14,
   scrollSensitivity: 36,
+};
+
+const nativePointerProfile: ReorderInputProfile = {
+  ...fallbackProfile,
+  forceFallback: false,
+  fallbackOnBody: false,
 };
 
 /**
@@ -96,7 +102,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
       layout: 'vertical',
       disabled: false,
       interactiveSelector: `[${REORDER_IGNORE_ATTRIBUTE}]`,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {
         onStart: (payload) => started.push(payload),
       },
@@ -130,7 +136,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
       layout: 'vertical',
       disabled: false,
       interactiveSelector: `[${REORDER_IGNORE_ATTRIBUTE}]`,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {
         onStart: (payload) => started.push(payload),
       },
@@ -156,7 +162,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
       layout: 'vertical',
       disabled: false,
       interactiveSelector: 'button, a, input, textarea, select, option, [contenteditable]',
-      profile: { ...baseProfile, activation: 'immediate' },
+      profile: { ...fallbackProfile, activation: 'immediate' },
       callbacks: {
         onStart: (payload) => started.push(payload),
       },
@@ -183,7 +189,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
       layout: 'vertical',
       disabled: false,
       interactiveSelector: `[${REORDER_IGNORE_ATTRIBUTE}]`,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {
         onStart: (payload) => started.push(payload),
         onEnd: (payload) => ended.push(payload),
@@ -221,7 +227,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
       layout: 'vertical',
       disabled: false,
       interactiveSelector: `[${REORDER_IGNORE_ATTRIBUTE}]`,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {
         onStart: (payload) => started.push(payload),
       },
@@ -261,7 +267,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     const engine = createSortableAdapter(ref(container), {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {},
     });
 
@@ -277,7 +283,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     const engine = createSortableAdapter(ref(container), {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {},
     });
 
@@ -297,7 +303,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     createSortableAdapter(ref(container), {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {
         onCancel: () => cancelled.push(true),
       },
@@ -317,7 +323,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     createSortableAdapter(ref(container), {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {
         onCancel: () => cancelled.push(true),
       },
@@ -337,7 +343,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     createSortableAdapter(ref(container), {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {
         onCancel: () => cancelled.push(true),
       },
@@ -355,7 +361,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     const engine = createSortableAdapter(ref(container), {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {},
     });
 
@@ -377,7 +383,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     const engine = createSortableAdapter(containerRef, {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {},
     });
 
@@ -412,7 +418,7 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
       layout: 'vertical',
       disabled,
       interactiveSelector,
-      profile: baseProfile,
+      profile: fallbackProfile,
       scrollContainer: scrollContainerRef,
       callbacks: {},
     });
@@ -438,6 +444,33 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     document.body.removeChild(scrollContainer);
   });
 
+  it('recreates the SortableJS instance when forceFallback mode changes', async () => {
+    const container = buildContainer();
+    const profile = ref(fallbackProfile);
+
+    const engine = createSortableAdapter(ref(container), {
+      layout: 'vertical',
+      disabled: false,
+      profile,
+      callbacks: {},
+    });
+
+    const initialInstance = engine.sortable.value;
+
+    expect(getSortableOptions(engine)?.forceFallback).toBe(true);
+    expect(getSortableOptions(engine)?.fallbackOnBody).toBe(true);
+
+    profile.value = nativePointerProfile;
+    await nextTick();
+
+    expect(engine.sortable.value).toBeDefined();
+    expect(engine.sortable.value).not.toBe(initialInstance);
+    expect(getSortableOptions(engine)?.forceFallback).toBe(false);
+    expect(getSortableOptions(engine)?.fallbackOnBody).toBe(false);
+
+    document.body.removeChild(container);
+  });
+
   it('resolves the direction option from layout at creation time', () => {
     const verticalContainer = buildContainer();
     const gridContainer = buildContainer();
@@ -445,13 +478,13 @@ describe('createSortableAdapter (real SortableJS engine)', () => {
     const verticalEngine = createSortableAdapter(ref(verticalContainer), {
       layout: 'vertical',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {},
     });
     const gridEngine = createSortableAdapter(ref(gridContainer), {
       layout: 'grid',
       disabled: false,
-      profile: baseProfile,
+      profile: fallbackProfile,
       callbacks: {},
     });
 

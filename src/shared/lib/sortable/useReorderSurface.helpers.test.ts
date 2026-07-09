@@ -36,8 +36,8 @@ const pointerProfile: ReorderInputProfile = {
   delay: 0,
   moveThreshold: 3,
   suppressClickAfterDrag: true,
-  forceFallback: true,
-  fallbackOnBody: true,
+  forceFallback: false,
+  fallbackOnBody: false,
   animation: 150,
   scrollSpeed: 10,
   scrollSensitivity: 30,
@@ -46,6 +46,8 @@ const pointerProfile: ReorderInputProfile = {
 const touchProfile: ReorderInputProfile = {
   ...pointerProfile,
   input: 'touch',
+  forceFallback: true,
+  fallbackOnBody: true,
 };
 
 const createState = (

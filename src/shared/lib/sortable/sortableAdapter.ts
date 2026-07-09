@@ -13,6 +13,8 @@ import type { ReorderEngineCallbacks, ReorderInputProfile, ReorderLayout } from 
 interface SortableInternal extends Sortable {
   /** Internal SortableJS drop handler used to finish or cancel fallback sessions. */
   _onDrop?: (event?: Event) => void;
+  /** SortableJS decides native-vs-fallback at construction time. */
+  nativeDraggable?: boolean;
 }
 
 const reorderItemSelector = `[${REORDER_ITEM_ATTRIBUTE}]`;
@@ -95,16 +97,27 @@ export const createSortableAdapter = (
   const containerElRef = computed(() => unrefElement(container));
   const scrollContainerElRef = computed(() => unrefElement(scrollContainer));
   const sortableRef = shallowRef<Sortable>();
+  let instanceForceFallback: boolean | undefined;
 
   /** Applies the latest reactive options to an already created SortableJS instance. */
   const applyRuntimeOptions = () => {
     const sortable = sortableRef.value;
+    const containerEl = containerElRef.value;
     const resolvedProfile = toValue(profile);
     const resolvedInteractiveSelector = getReorderDescendantInteractiveSelector(
       toValue(interactiveSelector) ?? defaultReorderInteractiveSelector,
     );
 
     if (!sortable) {
+      return;
+    }
+
+    if (
+      instanceForceFallback !== undefined &&
+      instanceForceFallback !== resolvedProfile.forceFallback &&
+      containerEl instanceof HTMLElement
+    ) {
+      createInstance(containerEl);
       return;
     }
 
@@ -126,6 +139,7 @@ export const createSortableAdapter = (
   const destroy = () => {
     sortableRef.value?.destroy();
     sortableRef.value = undefined;
+    instanceForceFallback = undefined;
   };
 
   /**
@@ -185,6 +199,8 @@ export const createSortableAdapter = (
         });
       },
     });
+
+    instanceForceFallback = toValue(profile).forceFallback;
 
     applyRuntimeOptions();
   };

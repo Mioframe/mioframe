@@ -46,9 +46,9 @@ export interface ReorderInputProfile {
   /** Whether the synthetic click after drag should be swallowed. */
   suppressClickAfterDrag: boolean;
   /** Forces SortableJS fallback mode instead of native HTML5 DnD. */
-  forceFallback: true;
-  /** Mounts the fallback ghost on `document.body`. */
-  fallbackOnBody: true;
+  forceFallback: boolean;
+  /** Mounts the fallback ghost on `document.body` when fallback mode is active. */
+  fallbackOnBody: boolean;
   /** Reorder animation duration in milliseconds. */
   animation: number;
   /** Auto-scroll speed while dragging near an edge. */

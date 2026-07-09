@@ -119,21 +119,18 @@ Drag-state visuals are owned by this module (`reorderSurface.css`), not by
 shared Material list components: `MDListItem` styles its Material `dragged`
 state through its public `dragged` prop and knows nothing about SortableJS.
 
-SortableJS always runs in forced-fallback mode here, so an active session
-renders two elements, styled through the class names in `constants.ts`:
+The visual model is input-specific:
 
-- `reorder-item_chosen`: the pressed/lifting original row. Raised with
-  `position: relative; z-index` so consumer-supplied elevation (for example the
-  Material dragged shadow) paints above adjacent rows instead of under them.
-- `reorder-item_ghost`: the original row while it previews the drop position
-  inside the list. Rendered as an invisible slot (`opacity: 0`, still
-  hit-testable) so it reads as a gap, not as a duplicate placeholder row.
-- `reorder-item_fallback` + `reorder-item_drag`: the pointer-following clone,
-  mounted on `<body>` (`fallbackOnBody`). Because it is cloned outside its
-  list, it gets an explicit surface fill, dragged elevation, and shape from
-  `reorderSurface.css` (Material system tokens with neutral fallbacks).
-  SortableJS pins inline `opacity: 0.8` on it; that translucency is accepted
-  rather than overridden with `!important`.
+- Desktop/pointer uses SortableJS native HTML5 drag. The moving row the user
+  sees is the browser drag image, not a DOM clone appended by this module.
+  The in-list original row carries `reorder-item_chosen` and
+  `reorder-item_ghost`; shared CSS raises the chosen state so the browser drag
+  image captures the lifted surface styling, then hides the in-list ghost slot
+  (`opacity: 0`) so desktop reorder does not show a visible placeholder row.
+- Touch/pen uses SortableJS fallback mode. The moving row is a DOM clone with
+  `reorder-item_fallback` plus `reorder-item_drag`, mounted on `<body>` when
+  `fallbackOnBody` is enabled. Shared CSS gives that clone its surface fill,
+  shape, and elevation.
 
 Consumers must not restyle these classes per feature; if a surface needs a
 different drag look, change the shared policy here.
@@ -206,6 +203,9 @@ Reasons:
 - `sortableAdapter.ts` creates and owns the `SortableJS` instance;
 - runtime options are updated when layout, profile, disabled state, or scroll
   target changes;
+- if the runtime profile switches between native desktop drag and fallback drag
+  (`forceFallback` changes), the adapter recreates the SortableJS instance so
+  Sortable's construction-time `nativeDraggable` mode stays correct;
 - the adapter emits generic `onStart`, `onChange`, and `onEnd` events with
   string ids, not business objects.
 
@@ -278,13 +278,13 @@ from the older commit must not overwrite it.
 
 - Desktop full drag-completion (real mouse gesture, order change, post-drag
   click suppression) is covered by
-  `tests/e2e/reorderSurfaceFullRowNative.spec.ts` and is active under the
-  `github-actions` verify profile
-  (`pnpm verify --profile github-actions --only e2e`).
+  `tests/e2e/reorderSurfaceFullRowNative.spec.ts`.
+- Desktop active-drag visual policy (no body-level fallback clone, no visible
+  fallback classes, in-list chosen/ghost state on the dragged row) is covered
+  by the same spec.
 - Desktop sorting-row drag-completion (component-root `v-reorder-item`
   consumer, order change, persistence across sheet reopen) is covered by the
-  sorting-row test in the same spec, under the same `github-actions` profile
-  gate.
+  sorting-row test in the same spec.
 - Mobile Chrome tap-select, trailing ignore-zone activation, and
   no-reorder-before-long-press are covered by active tests in the same spec.
 - Mobile Chrome full long-press drag-completion is a known e2e **harness

@@ -14,6 +14,8 @@ describe('getReorderGestureProfile', () => {
     expect(profile.activation).toBe('longPress');
     expect(profile.delay).toBe(180);
     expect(profile.moveThreshold).toBe(6);
+    expect(profile.forceFallback).toBe(true);
+    expect(profile.fallbackOnBody).toBe(true);
   });
 
   it('keeps dense touch surfaces on long press', () => {
@@ -40,6 +42,8 @@ describe('getReorderGestureProfile', () => {
     expect(profile.delay).toBe(0);
     expect(profile.moveThreshold).toBe(3);
     expect(profile.suppressClickAfterDrag).toBe(true);
+    expect(profile.forceFallback).toBe(false);
+    expect(profile.fallbackOnBody).toBe(false);
   });
 
   it('resolves full-row native touch input to a long-press delay', () => {
