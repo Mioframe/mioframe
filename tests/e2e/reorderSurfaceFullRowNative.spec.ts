@@ -40,26 +40,35 @@ const setupViewCatalog = async (page: Page, labPrefix: string) => {
   return { firstViewName, secondViewName, thirdViewName };
 };
 
-// Known e2e harness limitation, not an accepted product behavior gap: a focused,
-// isolated run of this test with real Playwright `page.mouse` input passes reliably
-// (including with a 300ms drop-point settle margin — see MOUSE_DRAG_DROP_SETTLE_MS in
-// support/gestures/mouseDrag.ts). Under the memory/worker-constrained local verify
-// container profile specifically, running alongside the full 94-test suite, it fails
-// on all 3 attempts with an unchanged order: SortableJS's fallback drag hit-testing
-// polls the pointer position on a fixed interval rather than reacting synchronously,
-// and that poll can be starved under this profile's tighter CPU/memory budget. The
-// same gesture is reliable under the github-actions verify profile's more generous
-// container resources. Production drag/click-suppression behavior remains covered by
-// the real-SortableJS unit test (sortableAdapter.test.ts) and the suppressNextClick
-// unit coverage in useReorderSurface.test.ts / reorderPostDragClick.test.ts; row
-// click, trailing-action ignore, and touch activation remain covered by the other
-// reliable tests in this file. Revisit if the local profile's container resources
-// change or a lower-jitter e2e harness becomes available.
-test.fixme('desktop: dragging a database view row by its full row reorders the list and suppresses the immediate post-drag click', async ({
+test('desktop: dragging a database view row by its full row reorders the list and suppresses the immediate post-drag click', async ({
   page,
   isMobile,
 }) => {
   test.skip(isMobile, 'desktop mouse full-row drag activation');
+
+  // Known e2e harness limitation, not an accepted product behavior gap: a focused,
+  // isolated run of this test with real Playwright `page.mouse` input passes reliably
+  // (including with a 300ms drop-point settle margin — see MOUSE_DRAG_DROP_SETTLE_MS in
+  // support/gestures/mouseDrag.ts). Under the memory/worker-constrained local verify
+  // container profile specifically, running alongside the full 94-test suite, it fails
+  // on all 3 attempts with an unchanged order: SortableJS's fallback drag hit-testing
+  // polls the pointer position on a fixed interval rather than reacting synchronously,
+  // and that poll can be starved under this profile's tighter CPU/memory budget. The
+  // same gesture is fully reliable under the github-actions verify profile's more
+  // generous container resources, so this test stays active there rather than being
+  // disabled everywhere: skip only the local constrained profile, using the profile
+  // name the container run forwards via PLAYWRIGHT_CONTAINER_PROFILE (see
+  // scripts/playwrightContainer.mjs). Production drag/click-suppression behavior is
+  // also covered by the real-SortableJS unit test (sortableAdapter.test.ts) and the
+  // suppressNextClick unit coverage in useReorderSurface.test.ts /
+  // reorderPostDragClick.test.ts; row click, trailing-action ignore, and touch
+  // activation remain covered by the other reliable tests in this file. Revisit if the
+  // local profile's container resources change or a lower-jitter e2e harness becomes
+  // available.
+  test.skip(
+    process.env.PLAYWRIGHT_CONTAINER_PROFILE !== 'github-actions',
+    'local verify container profile cannot reliably settle SortableJS fallback hit-testing under full-suite load; active under the github-actions profile (pnpm verify --profile github-actions --only e2e)',
+  );
 
   const { firstViewName, secondViewName, thirdViewName } = await setupViewCatalog(
     page,
@@ -157,7 +166,7 @@ test('Mobile Chrome: tapping a database view row selects it without starting a d
   await expect.poll(() => getViewRowOrder(sheet, viewNames)).toEqual(viewNames);
 });
 
-test('Mobile Chrome: a quick vertical swipe over a row does not reorder the list', async ({
+test('Mobile Chrome: a quick vertical pointer movement over a row without a long press does not reorder the list', async ({
   page,
   isMobile,
 }) => {
@@ -165,7 +174,7 @@ test('Mobile Chrome: a quick vertical swipe over a row does not reorder the list
 
   const { firstViewName, secondViewName, thirdViewName } = await setupViewCatalog(
     page,
-    'reorder scroll preserved',
+    'reorder quick movement',
   );
 
   const sheet = await openViewsSheet(page);
@@ -184,8 +193,11 @@ test('Mobile Chrome: a quick vertical swipe over a row does not reorder the list
   // `pointerdown`/`pointermove`, not `touchstart`/`touchmove`, whenever `PointerEvent`
   // exists in the environment (true in real Chromium too) — a plain `TouchEvent` never
   // reaches it.
-  // Fast vertical movement with no press delay must read as a scroll gesture, not a
-  // drag: fullRowNative gates activation behind a long press on touch input.
+  // This only proves that fast vertical movement with no press delay does not arm a
+  // drag: fullRowNative gates activation behind a long press on touch input. Because
+  // these are synthetic PointerEvents dispatched from inside the page rather than a
+  // real OS-level touch gesture, the browser's own scroll/compositor path never runs,
+  // so this test cannot and does not assert that the sheet actually scrolled.
   await page.evaluate(
     ({ startX, startY, endY }) => {
       const dispatch = (type: string, clientX: number, clientY: number) => {
@@ -212,17 +224,21 @@ test('Mobile Chrome: a quick vertical swipe over a row does not reorder the list
   await expect.poll(() => getViewRowOrder(sheet, viewNames)).toEqual(viewNames);
 });
 
-// Known CI-environment limitation, not a rule violation of this project: real CDP
+// This is a known e2e harness limitation, not accepted product behavior: real CDP
 // `Input.dispatchTouchEvent` (the same mechanism Playwright's own touch actions use)
 // reliably arms and moves the drag engine's touch gesture, but the fallback
 // hit-testing/insertion step never commits a new order in this containerized headless
-// Chromium — confirmed across 3 attempts with no order change at all. The equivalent
-// desktop mouse gesture (performMouseDrag, real page.mouse APIs) is fully reliable, so
-// this is specific to touch input synthesis in this container, not a production defect.
-// Full-row native long-press activation is proven at the engine level by the
-// real-SortableJS unit test in sortableAdapter.test.ts; touch tap-select, scroll
-// preservation, and trailing ignore-zone behavior remain covered by the other Mobile
-// Chrome tests in this file. Revisit with a real device or an improved touch harness.
+// Chromium — confirmed across 3 attempts with no order change at all, in both the
+// local and github-actions container profiles. The equivalent desktop mouse gesture
+// (performMouseDrag, real page.mouse APIs, see the active desktop full-row drag test
+// above) is fully reliable, so this is specific to touch input synthesis in this
+// container, not a production defect. Remaining confidence for mobile full-row drag
+// comes from: full-row native long-press activation at the engine level, proven by the
+// real-SortableJS unit test in sortableAdapter.test.ts; suppressNextClick/post-drag
+// click behavior, covered by useReorderSurface.test.ts and
+// reorderPostDragClick.test.ts; and touch tap-select, quick-movement-before-long-press,
+// and trailing ignore-zone behavior, covered by the other active Mobile Chrome tests in
+// this file. Revisit with a real device or an improved touch harness.
 test.fixme('Mobile Chrome: long-pressing then moving a row reorders the list', async ({
   page,
   isMobile,

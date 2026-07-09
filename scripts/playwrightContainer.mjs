@@ -140,6 +140,8 @@ export async function runPlaywrightInContainer(
           CONTAINER_WORKDIR,
           '--env',
           'CI=1',
+          '--env',
+          `PLAYWRIGHT_CONTAINER_PROFILE=${resourceLimits.name}`,
         ];
 
         for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
