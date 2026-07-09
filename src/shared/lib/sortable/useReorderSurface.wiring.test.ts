@@ -231,8 +231,8 @@ describe('useReorderSurface wiring', () => {
     expect(adapterState.profile?.value).toMatchObject({
       activation: 'immediate',
       density: 'comfortable',
-      forceFallback: false,
-      fallbackOnBody: false,
+      forceFallback: true,
+      fallbackOnBody: true,
       layout: 'vertical',
       suppressClickAfterDrag: true,
     });

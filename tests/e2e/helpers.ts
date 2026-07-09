@@ -403,7 +403,11 @@ export const findDatabaseRow = (root: Page | Locator, value: string): Locator =>
   root.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
 
 export const findListRow = (root: Page | Locator, value: string | RegExp): Locator =>
-  root.getByRole('list').locator(':scope > *').filter({ hasText: value }).first();
+  root
+    .getByRole('list')
+    .locator(':scope > :not(.reorder-item_fallback):not(.reorder-item_drag)')
+    .filter({ hasText: value })
+    .first();
 
 export const editDatabaseItem = async (
   page: Page,
@@ -509,7 +513,7 @@ export const getViewRowOrder = async (sheet: Locator, viewNames: readonly string
   const boxes = await Promise.all(
     viewNames.map(async (name) => ({
       name,
-      y: (await sheet.getByRole('button', { name }).boundingBox())?.y ?? Number.POSITIVE_INFINITY,
+      y: (await findListRow(sheet, name).boundingBox())?.y ?? Number.POSITIVE_INFINITY,
     })),
   );
 

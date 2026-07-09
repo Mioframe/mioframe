@@ -11,6 +11,7 @@ import type { ReorderEngineCallbacks, ReorderInputProfile, ReorderLayout } from 
 
 /** Accesses the internal SortableJS drop hook used for cancel flows. */
 interface SortableInternal extends Sortable {
+  // oxlint-disable-next-line eslint/no-underscore-dangle -- SortableJS exposes this internal hook with a leading underscore; the adapter reads it verbatim for cancel/finish flows.
   /** Internal SortableJS drop handler used to finish or cancel fallback sessions. */
   _onDrop?: (event?: Event) => void;
   /** SortableJS decides native-vs-fallback at construction time. */
@@ -18,6 +19,22 @@ interface SortableInternal extends Sortable {
 }
 
 const reorderItemSelector = `[${REORDER_ITEM_ATTRIBUTE}]`;
+
+/**
+ * Normalizes SortableJS fallback clone inline styles that shared CSS cannot override.
+ * @param root0
+ */
+const applyFallbackVisualPolicy = ({
+  forceFallback,
+}: Pick<ReorderInputProfile, 'forceFallback'>) => {
+  if (!forceFallback) {
+    return;
+  }
+
+  if (Sortable.ghost instanceof HTMLElement) {
+    Sortable.ghost.style.opacity = '1';
+  }
+};
 
 /**
  * Reads the stable item id assigned through `data-sortable-id`.
@@ -175,6 +192,7 @@ export const createSortableAdapter = (
       touchStartThreshold: toValue(profile).moveThreshold,
       direction: resolveDirection(toValue(layout)),
       onStart: (event) => {
+        applyFallbackVisualPolicy(toValue(profile));
         callbacks?.onStart?.({
           itemId: readItemId(event.item),
           orderedIds: readOrderedIds(sortableRef.value),

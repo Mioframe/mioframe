@@ -121,13 +121,13 @@ state through its public `dragged` prop and knows nothing about SortableJS.
 
 The visual model is input-specific:
 
-- Desktop/pointer uses SortableJS native HTML5 drag. The moving row the user
-  sees is the browser drag image, not a DOM clone appended by this module.
-  The in-list original row carries `reorder-item_chosen` and
-  `reorder-item_ghost`; shared CSS raises the chosen state so the browser drag
-  image captures the lifted surface styling, then hides the in-list ghost slot
-  (`opacity: 0`) so desktop reorder does not show a visible placeholder row.
-- Touch/pen uses SortableJS fallback mode. The moving row is a DOM clone with
+- Desktop/pointer uses SortableJS fallback mode too. The user-visible moving
+  row is the fallback DOM clone with `reorder-item_fallback` plus
+  `reorder-item_drag`, not the browser's native drag image. On desktop the
+  clone is still the only visible moving row and shared CSS/adapter policy
+  raises it as the lifted surface while keeping any in-list ghost visually
+  hidden.
+- Touch/pen also uses SortableJS fallback mode. The moving row is a DOM clone with
   `reorder-item_fallback` plus `reorder-item_drag`, mounted on `<body>` when
   `fallbackOnBody` is enabled. Shared CSS gives that clone its surface fill,
   shape, and elevation.
@@ -203,9 +203,10 @@ Reasons:
 - `sortableAdapter.ts` creates and owns the `SortableJS` instance;
 - runtime options are updated when layout, profile, disabled state, or scroll
   target changes;
-- if the runtime profile switches between native desktop drag and fallback drag
-  (`forceFallback` changes), the adapter recreates the SortableJS instance so
-  Sortable's construction-time `nativeDraggable` mode stays correct;
+- if the runtime profile ever switches across SortableJS native-vs-fallback
+  mode (`forceFallback` changes), the adapter recreates the SortableJS
+  instance so Sortable's construction-time `nativeDraggable` mode stays
+  correct;
 - the adapter emits generic `onStart`, `onChange`, and `onEnd` events with
   string ids, not business objects.
 
@@ -279,9 +280,9 @@ from the older commit must not overwrite it.
 - Desktop full drag-completion (real mouse gesture, order change, post-drag
   click suppression) is covered by
   `tests/e2e/reorderSurfaceFullRowNative.spec.ts`.
-- Desktop active-drag visual policy (no body-level fallback clone, no visible
-  fallback classes, in-list chosen/ghost state on the dragged row) is covered
-  by the same spec.
+- Desktop active-drag visual policy (real mouse drag, single visible fallback
+  moving surface, hidden ghost, no native browser drag image acceptance) is
+  covered by the same spec under the `github-actions` verify profile.
 - Desktop sorting-row drag-completion (component-root `v-reorder-item`
   consumer, order change, persistence across sheet reopen) is covered by the
   sorting-row test in the same spec.

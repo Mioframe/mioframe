@@ -18,14 +18,10 @@
 /*
  * Drag visual policy.
  *
- * Desktop/pointer sessions use SortableJS native HTML5 drag. The user-visible moving row
- * is the browser drag image, not a DOM clone. The in-list original row keeps its slot
- * and carries `reorder-item_ghost`; make that slot invisible so desktop reorder feels
- * like the row itself is moving rather than leaving a visible placeholder artifact.
- *
- * Touch/pen sessions keep SortableJS fallback mode. There the pointer-following element
- * is a DOM clone carrying `reorder-item_fallback` plus `reorder-item_drag`, mounted on
- * `<body>` when `fallbackOnBody` is enabled.
+ * Shared sortable uses SortableJS fallback mode for the visible moving surface on every
+ * input type. The visible moving row is the fallback clone, not the native browser drag
+ * image, and it is mounted on `<body>` so SortableJS keeps pointer tracking and reorder
+ * hit-testing stable while the original in-list row can stay visually hidden.
  *
  * All selectors pair the state class with `[data-sortable-id]` so they only ever match
  * reorder items and win over single-class component rules without `!important`.
