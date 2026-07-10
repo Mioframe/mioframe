@@ -10,6 +10,21 @@ import { GoogleAuthError } from '../googleAuth';
 
 /** Shared worker/client transformer registry for service transport. */
 export const transformers = [
+  defineTransformer('ArrayBuffer', {
+    isApplicable: (value): value is ArrayBuffer => value instanceof ArrayBuffer,
+    serialize: (_provider, value) => value,
+    deserialize: (_provider, value) => value,
+  }),
+
+  defineTransformer('Uint8Array', {
+    isApplicable: (value): value is Uint8Array => value instanceof Uint8Array,
+    serialize: (_provider, value) =>
+      value.byteOffset === 0 && value.byteLength === value.buffer.byteLength
+        ? value.buffer
+        : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
+    deserialize: (_provider, value) => new Uint8Array(value),
+  }),
+
   defineTransformer('FileSystemHandle', {
     isApplicable: (v): v is FileSystemHandle => {
       try {

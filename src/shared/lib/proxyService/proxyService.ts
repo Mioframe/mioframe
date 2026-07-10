@@ -4,7 +4,6 @@
  *
  * This module provides utilities for creating clients and services that can communicate across different execution contexts,
  * allowing functions to be called remotely on a server-side object as if they were local.
- * @module ProxyService
  */
 
 import { isFunction, isString, isUndefined } from 'es-toolkit';
@@ -64,7 +63,6 @@ const callRemotePath = async (
       callId: uid(),
       args: serializedArgs.payload,
       path,
-      transferables: serializedArgs.transferables,
     };
 
     pendingRequests.set(requestPayload.callId, { resolve, reject });
@@ -277,7 +275,6 @@ const createProxyFunction = (
         callId,
         functionId,
         args: serializedArgs.payload,
-        transferables: serializedArgs.transferables,
       };
 
       pendingRequests.set(callId, { resolve, reject });
@@ -312,7 +309,6 @@ const sendResult = (provider: Provider, serviceId: string, resultId: string, res
     serviceId,
     resultId,
     result: serializedResult.payload,
-    transferables: serializedResult.transferables,
   };
 
   provider.postMessage(resultMessage, serializedResult.transferables);
@@ -334,7 +330,6 @@ const sendError = (provider: Provider, serviceId: string, resultId: string, erro
     serviceId,
     resultId,
     error: serializedError.payload,
-    transferables: serializedError.transferables,
   };
 
   provider.postMessage(resultMessage, serializedError.transferables);
@@ -359,81 +354,41 @@ const serviceRegister = new Set<string>();
 const superJson = new SuperJSON({ dedupe: true });
 
 /**
- * Serializes data using SuperJSON, marking it appropriately for deserialization.
- *
- * This function handles serialization of complex data structures so they can be sent
- * across execution contexts while preserving types and references.
- * @param data - Data to serialize
- * @returns Serialized representation that can be transmitted over the wire
+ * Collects unique ArrayBuffer leaves without mutating the serialized payload.
+ * @param payload - Already serialized SuperJSON payload.
+ * @returns Unique transferable buffers referenced by the payload.
  */
-const TRANSFER_MARKER = '__proxyTransferable';
-
-type TransferMarker =
-  | { [TRANSFER_MARKER]: 'arrayBuffer'; index: number }
-  | { [TRANSFER_MARKER]: 'uint8Array'; index: number; byteOffset: number; byteLength: number };
-
-const isTransferMarker = (value: unknown): value is TransferMarker =>
-  typeof value === 'object' &&
-  value !== null &&
-  TRANSFER_MARKER in value &&
-  ((value as Record<string, unknown>)[TRANSFER_MARKER] === 'arrayBuffer' ||
-    (value as Record<string, unknown>)[TRANSFER_MARKER] === 'uint8Array');
-
-const replaceBinaryValues = (value: unknown, transferables: Transferable[]): unknown => {
-  if (value instanceof ArrayBuffer) {
-    const index = transferables.push(value) - 1;
-    return { [TRANSFER_MARKER]: 'arrayBuffer', index };
-  }
-  if (value instanceof Uint8Array) {
-    const buffer =
-      value.byteOffset === 0 && value.byteLength === value.buffer.byteLength
-        ? value.buffer
-        : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
-    const index = transferables.push(buffer) - 1;
-    return { [TRANSFER_MARKER]: 'uint8Array', index, byteOffset: 0, byteLength: value.byteLength };
-  }
-  if (typeof value !== 'object' || value === null) return value;
-  if (Array.isArray(value)) return value.map((item) => replaceBinaryValues(item, transferables));
-  if (Object.getPrototypeOf(value) === Object.prototype) {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
-        key,
-        replaceBinaryValues(item, transferables),
-      ]),
-    );
-  }
-  return value;
+const collectTransferableBuffers = (payload: unknown): ArrayBuffer[] => {
+  const buffers = new Set<ArrayBuffer>();
+  const visited = new WeakSet<object>();
+  const visit = (value: unknown): void => {
+    if (value instanceof ArrayBuffer) {
+      buffers.add(value);
+      return;
+    }
+    if (typeof value !== 'object' || value === null || visited.has(value)) return;
+    visited.add(value);
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (Object.getPrototypeOf(value) !== Object.prototype) return;
+    for (const item of Object.values(value as Record<string, unknown>)) visit(item);
+  };
+  visit(payload);
+  return [...buffers];
 };
 
-const restoreBinaryValues = (value: unknown, transferables: Transferable[]): unknown => {
-  if (isTransferMarker(value)) {
-    const buffer = transferables[value.index];
-    if (!(buffer instanceof ArrayBuffer)) throw new Error('Missing transferred binary buffer');
-    return value[TRANSFER_MARKER] === 'arrayBuffer'
-      ? buffer
-      : new Uint8Array(buffer, value.byteOffset, value.byteLength);
-  }
-  if (typeof value !== 'object' || value === null) return value;
-  if (Array.isArray(value)) return value.map((item) => restoreBinaryValues(item, transferables));
-  if (Object.getPrototypeOf(value) === Object.prototype) {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
-        key,
-        restoreBinaryValues(item, transferables),
-      ]),
-    );
-  }
-  return value;
-};
-
-/** Serializes RPC data while preserving transferable binary buffers outside SuperJSON JSON data. */
+/**
+ * Serializes RPC data while preserving transferable binary buffers outside SuperJSON JSON data.
+ * @param data - Original RPC value graph.
+ * @returns SuperJSON payload and its deduplicated transfer list.
+ */
 export const serialize = <T>(data: T): SerializedEnvelope<T> => {
-  const transferables: Transferable[] = [];
-  const replaced = replaceBinaryValues(data, transferables);
+  const payload = superJson.serialize(data) as SerializeJson<T>;
   return {
-    // SuperJSON returns generic SuperJSONResult, we need branded SerializeJson type
-    payload: superJson.serialize(replaced) as SerializeJson<T>,
-    transferables,
+    payload,
+    transferables: collectTransferableBuffers(payload),
   };
 };
 
@@ -445,8 +400,8 @@ export const serialize = <T>(data: T): SerializedEnvelope<T> => {
  * @param data - Data that was serialized with the corresponding serialize function
  * @returns The deserialized value in its proper type
  */
-export const deserialize = <T>(data: SerializeJson<T>, transferables: Transferable[] = []) =>
-  restoreBinaryValues(superJson.deserialize<T>(data as SuperJSONResult), transferables) as T;
+export const deserialize = <T>(data: SerializeJson<T>) =>
+  superJson.deserialize<T>(data as SuperJSONResult);
 
 /**
  * Creates and registers a service for handling remote calls from clients.
@@ -495,24 +450,20 @@ export const createService = (
 
   const messageHandler = async ({ data }: { data: unknown }) => {
     if (state && zodIs(data, zodCallPathMessage) && data.serviceId === serviceId) {
-      const { args, callId, path, transferables } = data;
+      const { args, callId, path } = data;
       try {
-        const result = await callPath(
-          state,
-          path,
-          deserialize(args, transferables as Transferable[]),
-        );
+        const result = await callPath(state, path, deserialize(args));
         sendResult(provider, serviceId, callId, result);
       } catch (error) {
         sendError(provider, serviceId, callId, error);
       }
     } else if (zodIs(data, zodCallFunctionMessage) && data.serviceId === serviceId) {
-      const { args, callId, functionId, transferables } = data;
+      const { args, callId, functionId } = data;
 
       try {
         const fn = localFunctions.get(functionId);
         if (fn) {
-          const result = await fn(...deserialize(args, transferables as Transferable[]));
+          const result = await fn(...deserialize(args));
           sendResult(provider, serviceId, callId, result);
         } else {
           throw new Error(`function "${functionId}" not found`);
@@ -521,23 +472,21 @@ export const createService = (
         sendError(provider, serviceId, callId, error);
       }
     } else if (zodIs(data, zodResultMessage) && data.serviceId === serviceId) {
-      const { resultId, error, result, transferables } = data;
+      const { resultId, error, result } = data;
 
       const request = pendingRequests.get(resultId);
       if (request) {
         pendingRequests.delete(resultId);
         const { reject, resolve } = request;
         if (error) {
-          const deserializedError = deserialize(error, transferables as Transferable[]);
+          const deserializedError = deserialize(error);
           reject(
             deserializedError instanceof Error
               ? deserializedError
               : new Error('Service call failed', { cause: deserializedError }),
           );
         } else {
-          resolve(
-            !isUndefined(result) ? deserialize(result, transferables as Transferable[]) : undefined,
-          );
+          resolve(!isUndefined(result) ? deserialize(result) : undefined);
         }
       } else {
         console.warn(`don't have pending for result ${resultId}`);
@@ -554,4 +503,4 @@ export const createService = (
 
   postReady();
 };
-/* eslint-enable @typescript-eslint/consistent-type-assertions */
+/* eslint-enable @typescript-eslint/consistent-type-assertions -- RPC wire narrowing ends here */

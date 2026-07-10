@@ -87,9 +87,9 @@ Import ZIP is a folder options-menu action, not an **Add** sheet action.
 
 Then choose the ZIP file.
 
-Mioframe validates the archive and checks the target folder for conflicts before writing anything. Choose **Cancel** to abort with no writes, or **Skip existing** to import non-conflicting files while leaving existing files unchanged. Existing matching folders may be reused. Import never intentionally overwrites or renames files, but provider and concurrent filesystem changes cannot be globally atomic. A failure after writing starts can leave a partial result; retrying the same archive with **Skip existing** is the supported recovery path. Provider filename rules can differ, so importing into an empty folder remains the most predictable restore workflow.
+Mioframe validates the complete archive and checks the target folder before writing. Choose **Cancel** to abort with no writes, or **Skip existing** to import non-conflicting files while leaving existing files unchanged. Existing matching folders may be reused. Import never intentionally overwrites, deletes, or renames existing files, but provider and concurrent filesystem changes cannot be globally atomic. Provider filename and matching rules can differ, so an empty folder remains the most predictable restore target.
 
-Because writes happen only after the conflict check passes, a failure partway through writing (for example, if the browser loses folder access mid-import) can leave the folder with only some of the archive's files written. When this happens, Mioframe tells you the import may be incomplete so you know to check the folder contents, then you can re-import the missing files or start over in a clean target folder.
+If a provider operation fails after writing starts, Mioframe retains which one archive entry may be uncertain. Choose **Verify and continue** to retry safely. Before making another change, Mioframe checks the uncertain entry: a missing file is created normally, while an existing uncertain file must match the archive byte-for-byte and is counted as verified. A matching directory can be reused. If the file differs or the path has the wrong type, recovery stops without overwriting or deleting it. Importing the same archive into an empty folder is the safe fallback.
 
 ## Important limits
 

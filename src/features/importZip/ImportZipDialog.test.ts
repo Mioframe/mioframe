@@ -85,14 +85,18 @@ describe('ImportZipDialog', () => {
   it('renders the success state as a non-loading dialog with a Done action and no progress body', () => {
     const wrapper = mountDialog({
       status: 'success',
-      summary: { importedFiles: 2, skippedFiles: 0, createdDirectories: 1, reusedDirectories: 0 },
+      summary: {
+        importedFiles: 2,
+        verifiedFiles: 0,
+        skippedFiles: 0,
+        createdDirectories: 1,
+        reusedDirectories: 0,
+      },
     });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('ZIP archive imported');
-    expect(dialog.attributes('data-supporting-text')).toBe(
-      'Import completed. 2 files imported and 0 existing files skipped.',
-    );
+    expect(dialog.attributes('data-supporting-text')).toBe('Import completed. 2 files imported.');
     expect(dialog.attributes('data-loading')).toBe('false');
     expect(dialog.attributes('data-apply-label')).toBe('Done');
     expect(wrapper.find('[data-progress]').exists()).toBe(false);
@@ -114,7 +118,13 @@ describe('ImportZipDialog', () => {
   it('emits close when the dialog applies in a success state', async () => {
     const wrapper = mountDialog({
       status: 'success',
-      summary: { importedFiles: 2, skippedFiles: 0, createdDirectories: 1, reusedDirectories: 0 },
+      summary: {
+        importedFiles: 2,
+        verifiedFiles: 0,
+        skippedFiles: 0,
+        createdDirectories: 1,
+        reusedDirectories: 0,
+      },
     });
 
     await wrapper.find('[data-headline]').trigger('click');
@@ -127,6 +137,42 @@ describe('ImportZipDialog', () => {
 
     await wrapper.find('[data-headline]').trigger('click');
 
+    expect(wrapper.emitted('close')).toHaveLength(1);
+  });
+
+  it('offers verification rather than ordinary skipping for a partial import', async () => {
+    const wrapper = mountDialog({
+      status: 'partial',
+      summary: {
+        importedFiles: 1,
+        verifiedFiles: 0,
+        skippedFiles: 0,
+        createdDirectories: 0,
+        reusedDirectories: 0,
+      },
+      recovery: { uncertainEntry: { relativePath: 'file.txt', kind: 'file' } },
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-apply-label')).toBe(
+      'Verify and continue',
+    );
+    await wrapper.find('[data-headline]').trigger('click');
+    expect(wrapper.emitted('verifyAndContinue')).toHaveLength(1);
+    expect(wrapper.emitted('skipExisting')).toBeUndefined();
+  });
+
+  it('only closes unresolved recovery and explains the safe fallback', async () => {
+    const wrapper = mountDialog({
+      status: 'recoveryUnresolved',
+      relativePath: 'file.txt',
+      reason: 'contentMismatch',
+    });
+
+    const dialog = wrapper.find('[data-headline]');
+    expect(dialog.attributes('data-apply-label')).toBe('Close');
+    expect(dialog.attributes('data-supporting-text')).toContain('did not overwrite');
+    expect(dialog.attributes('data-supporting-text')).toContain('empty folder');
+    await dialog.trigger('click');
     expect(wrapper.emitted('close')).toHaveLength(1);
   });
 

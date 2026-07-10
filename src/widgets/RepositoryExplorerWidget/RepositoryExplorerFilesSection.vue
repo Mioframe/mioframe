@@ -8,7 +8,7 @@ import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
 import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { MDList } from '@shared/ui/Lists';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import RepositoryExplorerFileListItem from './RepositoryExplorerFileListItem.vue';
 import { useRepositoryExplorerFileRowActions } from './useRepositoryExplorerFileRowActions';
 
@@ -31,7 +31,11 @@ const {
   state: importZipState,
   closeImportZipDialog,
   retryImportSkippingExisting,
+  verifyAndContinueImport,
+  invalidateImportZipContext,
 } = useImportZipAction();
+
+watch(() => props.directoryPath, invalidateImportZipContext);
 
 const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
   exportZipState.value.status === 'idle' ? null : exportZipState.value,
@@ -148,6 +152,7 @@ const emptyText = computed(() =>
       :state="importZipVisibleState"
       @close="closeImportZipDialog"
       @skip-existing="retryImportSkippingExisting"
+      @verify-and-continue="verifyAndContinueImport"
     />
 
     <DirectoryCreateDialog

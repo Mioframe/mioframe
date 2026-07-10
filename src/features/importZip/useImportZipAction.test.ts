@@ -68,8 +68,22 @@ vi.mock('@shared/serviceClient/fileSystem', () => ({
 }));
 
 vi.mock('@shared/service', () => ({
+  getZipImportPartialFailureDetails: (error: unknown) => {
+    if (typeof error !== 'object' || error === null) return undefined;
+    const importSummary = Reflect.get(error, 'importSummary');
+    const recoveryContext = Reflect.get(error, 'recoveryContext');
+    return importSummary && recoveryContext
+      ? {
+          importSummary,
+          recoveryContext,
+          mutationMayHaveOccurred: true,
+        }
+      : undefined;
+  },
   RepositoryZipErrorCode: {
     importConflict: 'repositories.zipImportConflict',
+    importResourceLimitExceeded: 'repositories.zipImportResourceLimitExceeded',
+    importRecoveryContextInvalid: 'repositories.zipImportRecoveryContextInvalid',
     documentStorageFilesNotFound: 'repositories.zipDocumentStorageFilesNotFound',
   },
   useMainServiceClient: () => ({
@@ -92,7 +106,13 @@ describe('useImportZipAction', () => {
     requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
     importDirectoryZipMock.mockResolvedValue({
       status: 'completed',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: {
+        importedFiles: 1,
+        verifiedFiles: 0,
+        skippedFiles: 0,
+        createdDirectories: 0,
+        reusedDirectories: 0,
+      },
     });
   });
 
@@ -323,20 +343,57 @@ describe('useImportZipAction', () => {
     pickZipFileMock.mockResolvedValue(makeFile());
     const partialMessage =
       'The import stopped partway through. Some files may already have been written — check the target folder before retrying.';
-    importDirectoryZipMock.mockRejectedValue(
-      new DomainError(partialMessage, {
-        code: 'repositories.zipImportWritePartiallyFailed',
-        cause: new Error('storage failure'),
-      }),
+    importDirectoryZipMock.mockRejectedValueOnce(
+      Object.assign(
+        new DomainError(partialMessage, {
+          code: 'repositories.zipImportWritePartiallyFailed',
+          cause: new Error('storage failure'),
+        }),
+        {
+          importSummary: {
+            importedFiles: 1,
+            verifiedFiles: 0,
+            skippedFiles: 0,
+            createdDirectories: 0,
+            reusedDirectories: 0,
+          },
+          recoveryContext: { uncertainEntry: { relativePath: 'b.txt', kind: 'file' } },
+          mutationMayHaveOccurred: true,
+        },
+      ),
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip, state } = useImportZipAction();
+    const { importDirectoryZip, state, verifyAndContinueImport } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(state.value).toEqual({ status: 'error', message: partialMessage });
+    expect(state.value).toMatchObject({
+      status: 'partial',
+      recovery: { uncertainEntry: { relativePath: 'b.txt', kind: 'file' } },
+    });
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+
+    importDirectoryZipMock.mockResolvedValueOnce({
+      status: 'completed',
+      summary: {
+        importedFiles: 1,
+        verifiedFiles: 1,
+        skippedFiles: 0,
+        createdDirectories: 0,
+        reusedDirectories: 0,
+      },
+    });
+    await expect(verifyAndContinueImport()).resolves.toBe(true);
+    expect(importDirectoryZipMock).toHaveBeenLastCalledWith(
+      '/repo',
+      expect.any(File),
+      expect.any(Function),
+      {
+        conflictPolicy: 'skipExisting',
+        recovery: { uncertainEntry: { relativePath: 'b.txt', kind: 'file' } },
+      },
+    );
   });
 
   it('ignores a duplicate call while an import is already running', async () => {
@@ -363,6 +420,43 @@ describe('useImportZipAction', () => {
 
     resolveImport();
     await firstCall;
+  });
+
+  it('invalidates retained target state without cancelling an operation already in flight', async () => {
+    let resolveImport!: (result: unknown) => void;
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveImport = resolve;
+        }),
+    );
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip, invalidateImportZipContext, isRunning, state } =
+      useImportZipAction();
+
+    const running = importDirectoryZip('/old-target');
+    await Promise.resolve();
+    await Promise.resolve();
+    invalidateImportZipContext();
+
+    expect(state.value).toEqual({ status: 'idle' });
+    expect(isRunning.value).toBe(true);
+    await expect(importDirectoryZip('/new-target')).resolves.toBe(false);
+
+    resolveImport({
+      status: 'completed',
+      summary: {
+        importedFiles: 1,
+        verifiedFiles: 0,
+        skippedFiles: 0,
+        createdDirectories: 0,
+        reusedDirectories: 0,
+      },
+    });
+    await expect(running).resolves.toBe(false);
+    expect(state.value).toEqual({ status: 'idle' });
+    expect(isRunning.value).toBe(false);
   });
 
   it('does not close the dialog while running, but closes it after success or error', async () => {

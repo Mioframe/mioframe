@@ -4,9 +4,9 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { VirtualFileSystem } from '@shared/lib/virtualFileSystem';
-import { unpackZipArchive } from '@shared/lib/zipArchive';
 import { getDocumentStorageFiles } from './repositoryStorageFiles';
 import { exportDocumentZip } from './repositoryZipExport';
+import { importDirectoryZip } from './repositoryZipImport';
 
 const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -88,21 +88,16 @@ describe('exportDocumentZip integration: storage freshness', () => {
 
     await repo.shutdown();
 
-    const unpacked = unpackZipArchive(merge());
-    const exportedEntries = Object.entries(unpacked);
-    expect(exportedEntries.length).toBeGreaterThan(0);
-    expect(exportedEntries.every(([entryPath]) => !entryPath.startsWith(`${documentId}/`))).toBe(
-      true,
-    );
+    const archiveFile = new File([merge()], 'document.zip', { type: 'application/zip' });
 
     const reimportVfs = new VirtualFileSystem();
     reimportVfs.mount('/', new MemoryFileSystem());
     await reimportVfs.createDirectory(path);
 
-    for (const [fileName, content] of exportedEntries) {
-      // eslint-disable-next-line no-await-in-loop -- small, sequential fixture rehydration
-      await reimportVfs.writeFile(`${path}/${fileName}`, content);
-    }
+    await expect(importDirectoryZip(reimportVfs, path, archiveFile)).resolves.toMatchObject({
+      status: 'completed',
+      summary: { importedFiles: expect.any(Number) },
+    });
 
     const reimportRepo = new Repo({ storage: createVFSAdapter(reimportVfs, path) });
     const reimportHandle = await reimportRepo.find<{ name: string; body: string[] }>(documentId);

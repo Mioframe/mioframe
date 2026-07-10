@@ -437,5 +437,89 @@ describe('importDirectoryZip', () => {
     expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
     await expect(vfs.exists('/target/root')).resolves.toBe(true);
   });
+
+  it('verifies an exact uncertain file before importing remaining files', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.writeFile('/target/a.txt', 'archive content');
+    const archiveFile = toArchiveFile({
+      'a.txt': new TextEncoder().encode('archive content'),
+      'b.txt': new TextEncoder().encode('new content'),
+    });
+    const createFile = vi.spyOn(vfs, 'createFile');
+
+    await expect(
+      importDirectoryZip(vfs, '/target', archiveFile, undefined, {
+        conflictPolicy: 'skipExisting',
+        recovery: { uncertainEntry: { relativePath: 'a.txt', kind: 'file' } },
+      }),
+    ).resolves.toEqual({
+      status: 'completed',
+      summary: {
+        importedFiles: 1,
+        verifiedFiles: 1,
+        skippedFiles: 0,
+        createdDirectories: 0,
+        reusedDirectories: 0,
+      },
+    });
+    expect(createFile).not.toHaveBeenCalledWith('/target/a.txt', expect.anything());
+    await expect(vfs.readText('/target/b.txt')).resolves.toBe('new content');
+  });
+
+  it('returns unresolved recovery before new writes when an uncertain file differs', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.writeFile('/target/a.txt', 'damaged content');
+    const archiveFile = toArchiveFile({
+      'a.txt': new TextEncoder().encode('archive content'),
+      'b.txt': new TextEncoder().encode('new content'),
+    });
+    const createFile = vi.spyOn(vfs, 'createFile');
+
+    await expect(
+      importDirectoryZip(vfs, '/target', archiveFile, undefined, {
+        conflictPolicy: 'skipExisting',
+        recovery: { uncertainEntry: { relativePath: 'a.txt', kind: 'file' } },
+      }),
+    ).resolves.toEqual({
+      status: 'recoveryUnresolved',
+      report: { relativePath: 'a.txt', reason: 'contentMismatch' },
+    });
+    expect(createFile).not.toHaveBeenCalled();
+    await expect(vfs.exists('/target/b.txt')).resolves.toBe(false);
+  });
+
+  it('creates a missing uncertain file during recovery', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    const archiveFile = toArchiveFile({ 'a.txt': new TextEncoder().encode('archive content') });
+
+    await expect(
+      importDirectoryZip(vfs, '/target', archiveFile, undefined, {
+        conflictPolicy: 'skipExisting',
+        recovery: { uncertainEntry: { relativePath: 'a.txt', kind: 'file' } },
+      }),
+    ).resolves.toMatchObject({
+      status: 'completed',
+      summary: { importedFiles: 1, verifiedFiles: 0 },
+    });
+    await expect(vfs.readText('/target/a.txt')).resolves.toBe('archive content');
+  });
+
+  it('reads one directory snapshot for many sibling archive entries', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    const readDirectory = vi.spyOn(vfs, 'readDirectory');
+    const archiveFile = toArchiveFile({
+      'a.txt': new Uint8Array([1]),
+      'b.txt': new Uint8Array([2]),
+      'c.txt': new Uint8Array([3]),
+    });
+
+    await importDirectoryZip(vfs, '/target', archiveFile);
+
+    expect(readDirectory.mock.calls.filter(([path]) => path === '/target')).toHaveLength(1);
+  });
 });
-/* eslint-enable @typescript-eslint/consistent-type-assertions */
+/* eslint-enable @typescript-eslint/consistent-type-assertions -- partial-error inspection ends */

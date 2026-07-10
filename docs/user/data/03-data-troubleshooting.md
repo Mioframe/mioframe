@@ -54,23 +54,25 @@ Next action:
 
 ## ZIP import stopped because of a conflict with existing files
 
-Import ZIP stops before writing anything if any file or folder the archive would create already exists in the target folder with a different type (for example, the archive expects a folder where a file already exists), or if the archive itself uses the same path inconsistently. This is expected — Mioframe never overwrites, merges, or renames existing files during ZIP import.
+Import ZIP reports ordinary existing-file and wrong-type conflicts before writing. This is expected: Mioframe does not overwrite, delete, or rename existing files during ZIP import.
 
 Next action:
 
-- import into an empty folder, or a folder that does not yet contain those files;
-- if you meant to restore over existing files, remove or move them outside Mioframe first, then re-import;
-- if you are unsure which files conflict, export a new ZIP of the current folder first so you can compare before removing anything.
+- choose **Abort** to leave the target unchanged;
+- choose **Skip existing** to leave existing files unchanged and import only non-conflicting files; matching folders are reused;
+- import into an empty folder when provider filename rules or the target contents make conflicts unclear.
 
 ## A ZIP import stopped partway through with some files written
 
-If the browser loses folder access, or another write failure happens after the conflict check passed and at least one file was already written, Import ZIP may leave the folder with only some of the archive's files written. Mioframe tells you when this happens, since it can no longer promise that nothing changed. Mioframe does not roll back files that were already written.
+If the browser loses folder access or another provider operation fails after writing starts, Import ZIP may leave one attempted entry in an uncertain state. Mioframe does not roll back completed files and does not assume that the uncertain file is safe to skip.
 
 Next action:
 
-- check the folder contents to see which files were written;
-- grant folder access again if the browser is asking for it, then re-import the same archive — Import ZIP will now report a conflict for the files already written, so remove those from the archive or the folder before retrying with the rest;
-- if you are unsure what was written, export a fresh ZIP of the folder and compare it with the original archive.
+- grant folder access again if the browser asks for it;
+- choose **Verify and continue**. Mioframe checks an existing uncertain file byte-for-byte against its archive entry before any new write. A matching file is verified; a missing file is created normally; a matching directory is reused;
+- if the uncertain file differs or has the wrong type, Mioframe stops recovery without overwriting or deleting it. Import the archive into an empty folder as the safe fallback.
+
+ZIP import works at the file level. It does not validate Mioframe document semantics. If restored storage chunks belong to the same Automerge document identity, Automerge may combine the available history when the repository opens. External providers can also apply different filename matching rules, so behavior is not globally atomic across providers.
 
 ## ZIP export failed because the archive was too large for this browser
 

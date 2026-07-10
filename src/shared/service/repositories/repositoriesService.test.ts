@@ -1324,6 +1324,7 @@ describe('useRepositoriesService', () => {
         targetPath,
         archiveFile,
         undefined,
+        undefined,
       );
     });
 

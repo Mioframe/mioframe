@@ -14,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
   skipExisting: [];
+  verifyAndContinue: [];
 }>();
 
 const PHASE_LABELS: Record<ZipImportProgress['phase'], string> = {
@@ -40,6 +41,8 @@ const headline = computed(() => {
       return 'ZIP archive imported';
     case 'partial':
       return 'Import stopped before completion';
+    case 'recoveryUnresolved':
+      return 'Import recovery needs a new folder';
     case 'error':
       return 'Could not import ZIP archive';
     default:
@@ -54,9 +57,25 @@ const supportingText = computed(() => {
     case 'conflicts':
       return `${props.state.total} archive entries conflict with existing files. No files were written.`;
     case 'success':
-      return `Import completed. ${props.state.summary.importedFiles} files imported and ${props.state.summary.skippedFiles} existing files skipped.`;
+      return `Import completed. ${[
+        props.state.summary.importedFiles > 0
+          ? `${props.state.summary.importedFiles} files imported`
+          : undefined,
+        props.state.summary.verifiedFiles > 0
+          ? `${props.state.summary.verifiedFiles} files verified`
+          : undefined,
+        props.state.summary.skippedFiles > 0
+          ? `${props.state.summary.skippedFiles} existing files skipped`
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join(', ')}.`;
     case 'partial':
-      return `Import stopped before completion. ${props.state.summary.importedFiles} files were imported and ${props.state.summary.skippedFiles} were skipped. Some target files may already have changed.`;
+      return 'A provider operation may have changed one target entry. Mioframe must verify it against the archive before continuing.';
+    case 'recoveryUnresolved':
+      return props.state.reason === 'contentMismatch'
+        ? `The existing file "${props.state.relativePath}" differs from the archive. Mioframe did not overwrite it. Import into an empty folder to recover safely.`
+        : `The existing path "${props.state.relativePath}" has the wrong type. Mioframe did not overwrite or delete it. Import into an empty folder to recover safely.`;
     case 'error':
       return props.state.message;
     default:
@@ -65,9 +84,11 @@ const supportingText = computed(() => {
 });
 
 const applyLabel = computed(() => {
-  if (props.state.status === 'conflicts' || props.state.status === 'partial')
-    return 'Skip existing';
-  return props.state.status === 'error' ? 'Close' : 'Done';
+  if (props.state.status === 'conflicts') return 'Skip existing';
+  if (props.state.status === 'partial') return 'Verify and continue';
+  return props.state.status === 'error' || props.state.status === 'recoveryUnresolved'
+    ? 'Close'
+    : 'Done';
 });
 
 const cancelLabel = computed(() =>
@@ -107,7 +128,8 @@ const onApply = () => {
     return;
   }
 
-  if (props.state.status === 'conflicts' || props.state.status === 'partial') emit('skipExisting');
+  if (props.state.status === 'conflicts') emit('skipExisting');
+  else if (props.state.status === 'partial') emit('verifyAndContinue');
   else emit('close');
 };
 

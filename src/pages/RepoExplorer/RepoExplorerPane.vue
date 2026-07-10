@@ -72,7 +72,14 @@ const {
 
 const { remove } = useRemoveFSEntry();
 const { exportDirectoryZip, state: exportZipState, closeExportZipDialog } = useExportDirectoryZip();
-const { importDirectoryZip, state: importZipState, closeImportZipDialog } = useImportZipAction();
+const {
+  importDirectoryZip,
+  state: importZipState,
+  closeImportZipDialog,
+  retryImportSkippingExisting,
+  verifyAndContinueImport,
+  invalidateImportZipContext,
+} = useImportZipAction();
 
 const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
   exportZipState.value.status === 'idle' ? null : exportZipState.value,
@@ -98,6 +105,7 @@ watch(directoryPath, () => {
   showEntryAddSheet.value = false;
   showCreateDirectoryDialog.value = false;
   showCreateDocumentDialog.value = false;
+  invalidateImportZipContext();
 });
 
 const onClickAdd = () => {
@@ -209,6 +217,8 @@ const onClickReturnHome = async () => {
       v-if="importZipVisibleState"
       :state="importZipVisibleState"
       @close="closeImportZipDialog"
+      @skip-existing="retryImportSkippingExisting"
+      @verify-and-continue="verifyAndContinueImport"
     />
 
     <DirectoryCreateDialog

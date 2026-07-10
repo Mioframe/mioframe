@@ -39,6 +39,23 @@ const stubShowOpenFilePicker = async (page: Page, archiveBytes: Uint8Array) => {
   }, Array.from(archiveBytes));
 };
 
+const stubSequentialZipPickers = async (page: Page, archives: Uint8Array[]) => {
+  await page.addInitScript(
+    (archiveValues: number[][]) => {
+      let index = 0;
+      Reflect.set(globalThis, 'showOpenFilePicker', () => {
+        const bytes = archiveValues.at(index++);
+        if (bytes === undefined) throw new Error('No ZIP fixture remains');
+        const file = new File([new Uint8Array(bytes)], 'archive.zip', {
+          type: 'application/zip',
+        });
+        return Promise.resolve([{ getFile: () => Promise.resolve(file) }]);
+      });
+    },
+    archives.map((archive) => Array.from(archive)),
+  );
+};
+
 const openEntryOptionsMenu = async (page: Page, entryName: string) => {
   await page
     .getByRole('button', { name: new RegExp(`^options ${escapeRegex(entryName)}$`, 'i') })
@@ -115,6 +132,54 @@ test('directory options menu exposes Import ZIP, and importing shows the ZIP dia
   const addSheet = await openEntryAddSheet(page);
   await expect(addSheet.getByText(/^import zip$/i)).toHaveCount(0);
   await closeBottomSheet(page, /^add$/i);
+});
+
+test('current folder can skip an ordinary ZIP conflict without replacing the existing file', async ({
+  page,
+}) => {
+  await stubSequentialZipPickers(page, [
+    zipSync({ 'existing.txt': new TextEncoder().encode('original') }),
+    zipSync({
+      'existing.txt': new TextEncoder().encode('replacement'),
+      'new.txt': new TextEncoder().encode('new'),
+    }),
+  ]);
+  await launchApp(page);
+  await openOpfs(page);
+  const directoryName = await createDirectory(page, createUniqueName('zip-current-conflict'));
+  await openDirectory(page, directoryName);
+
+  await openEntryOptionsMenu(page, directoryName);
+  await page.getByRole('menuitem', { name: /^import zip$/i }).click();
+  await page
+    .getByRole('dialog', { name: /^zip archive imported$/i })
+    .getByRole('button', {
+      name: /^done$/i,
+    })
+    .click();
+
+  await openEntryOptionsMenu(page, directoryName);
+  await page.getByRole('menuitem', { name: /^import zip$/i }).click();
+  const conflictDialog = page.getByRole('dialog', { name: /^files already exist$/i });
+  await expect(conflictDialog).toBeVisible();
+  await conflictDialog.getByRole('button', { name: /^skip existing$/i }).click();
+
+  const successDialog = page.getByRole('dialog', { name: /^zip archive imported$/i });
+  await expect(successDialog).toContainText('1 files imported');
+  await expect(successDialog).toContainText('1 existing files skipped');
+  await successDialog.getByRole('button', { name: /^done$/i }).click();
+  await expect(page.getByText('existing.txt', { exact: true })).toBeVisible();
+  await expect(page.getByText('new.txt', { exact: true })).toBeVisible();
+
+  await expect
+    .poll(() =>
+      page.evaluate(async (name) => {
+        const root = await navigator.storage.getDirectory();
+        const directory = await root.getDirectoryHandle(name);
+        return (await (await directory.getFileHandle('existing.txt')).getFile()).text();
+      }, directoryName),
+    )
+    .toBe('original');
 });
 
 test('document options menu exposes Export ZIP, and exporting shows the ZIP dialog until closed', async ({

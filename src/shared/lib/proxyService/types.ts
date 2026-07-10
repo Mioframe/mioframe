@@ -3,7 +3,6 @@
  *
  * This module defines all TypeScript types used in the proxyService implementation
  * which enables remote function calls and object property access across different execution contexts.
- * @module ProxyServiceTypes
  */
 
 import type { Asyncify, UnknownRecord } from 'type-fest';
@@ -25,8 +24,6 @@ export type AnyFunction = (...param: any[]) => any;
  *
  * This type is used for creating proxies that route operations to a remote service.
  * The generic parameters allow for proper typing of both regular values and special exception types.
- * @template T - The type of the target record
- * @template Exceptions - Types that should not be transformed (remain as-is)
  */
 export type ClientObject<T extends Record<string, unknown>, Exceptions = never> = [T] extends [
   Exceptions,
@@ -41,8 +38,6 @@ export type ClientObject<T extends Record<string, unknown>, Exceptions = never> 
  *
  * This helper type recursively processes the types of properties in a ClientObject,
  * ensuring proper transformation of nested structures while preserving exception types.
- * @template T - The type of the value being processed
- * @template Exceptions - Types that should not be transformed (remain as-is)
  */
 type ClientValue<T, Exceptions = never> = [T] extends [Exceptions]
   ? T
@@ -67,7 +62,6 @@ export const zodFunctionDescription = z.object({
  *
  * This type describes the metadata needed to identify and route calls to functions
  * that have been exposed across execution contexts.
- * @template F - The type of the original function
  */
 export type FunctionDescription<F = unknown> = F extends AnyFunction
   ? z.output<typeof zodFunctionDescription> & {
@@ -81,8 +75,6 @@ export type FunctionDescription<F = unknown> = F extends AnyFunction
 const zodMessage = z.object({
   serviceId: z.string(),
 });
-
-const zodMessageTransferables = z.optional(z.array(z.unknown()));
 
 /**
  * Creates a Zod schema for serialized data that can be sent over the wire.
@@ -116,7 +108,6 @@ export const zodCallPathMessage = z.extend(zodMessage, {
   callId: z.string(),
   path: z.array(z.string()),
   args: zodSerializedData(z.array(z.unknown())),
-  transferables: zodMessageTransferables,
 });
 
 /**
@@ -131,7 +122,6 @@ export const zodResultMessage = z.extend(zodMessage, {
   resultId: z.string(),
   result: z.optional(zodSerializedData()),
   error: z.optional(zodSerializedData()),
-  transferables: zodMessageTransferables,
 });
 
 /**
@@ -146,7 +136,6 @@ export const zodCallFunctionMessage = z.extend(zodMessage, {
   callId: z.string(),
   functionId: z.string(),
   args: zodSerializedData(z.array(z.unknown())),
-  transferables: zodMessageTransferables,
 });
 /**
  * Type representing a function call message
@@ -234,7 +223,6 @@ type SERIALIZE_BRAND = typeof SERIALIZE_BRAND;
 
 /**
  * Type representing serialized data with branded typing for TypeScript inference.
- * @template T - The type of original value before serialization
  */
 export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
   meta?: SuperJSONResult['meta'] | undefined;
@@ -243,7 +231,9 @@ export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
 
 /** Serialized RPC data and the transferable binary buffers referenced by its payload. */
 export type SerializedEnvelope<T = unknown> = {
+  /** SuperJSON payload sent as part of the RPC message. */
   payload: SerializeJson<T>;
+  /** Unique transferable buffers already referenced by the payload. */
   transferables: Transferable[];
 };
 
@@ -252,8 +242,6 @@ export type SerializedEnvelope<T = unknown> = {
  *
  * This interface defines how custom data types should be serialized and deserialized when transmitted
  * across execution contexts, enabling support for complex objects beyond basic JavaScript primitives.
- * @template T - The original type being transformed
- * @template J - The JSON representation for serialization
  */
 export type CustomTransformer<T = unknown, J = unknown> = {
   /**
