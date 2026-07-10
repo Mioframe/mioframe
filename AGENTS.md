@@ -4,7 +4,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 
 ## Mandatory verification
 
-Use the `verification` skill when choosing targeted checks, using fix mode, interpreting failures, or preparing the final verification report.
+Use the `verification` skill when choosing targeted checks, using fix mode, interpreting failures, or preparing the final task and verification report.
 
 During implementation, use this command only when automatic formatting or lint fixes are useful:
 
@@ -34,6 +34,10 @@ Do not start manual e2e, visual, mutation, full lint, or full type-check command
 Final response must include:
 
 ```text
+TASK RESULT
+status: complete | partial | blocked
+remaining: none | <remaining required work, verification, or blocker>
+
 VERIFY RESULT
 command: pnpm verify
 status: passed | failed | not run | blocked by active local verification
