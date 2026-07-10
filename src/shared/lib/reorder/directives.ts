@@ -5,6 +5,7 @@
  * pointer session.
  */
 import type { Directive } from 'vue';
+import { reorderInvariant } from './invariant';
 import type { PointerSession } from './PointerSession';
 import { registerItem, unregisterItem, type ReorderRegistry } from './registry';
 import type { ReorderKey } from './types';
@@ -32,6 +33,10 @@ export const createReorderDirectives = <Key extends ReorderKey>(
 ): ReorderDirectives<Key> => {
   const vReorderContainer: Directive<HTMLElement> = {
     mounted(el) {
+      reorderInvariant(
+        registry.containerEl === null,
+        'a second container was mounted for this useReorder instance; only one v-reorder-container is allowed per useReorder call.',
+      );
       registry.containerEl = el;
       session.attachContainer(el);
     },

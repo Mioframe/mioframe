@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { useReorder } from '@shared/lib/reorder';
+import type { ReorderDragEndEvent } from './types';
 
 interface HarnessItem {
   id: string;
@@ -9,7 +10,7 @@ interface HarnessItem {
   height: number;
 }
 
-const items = ref<HarnessItem[]>([
+const initialItems: readonly HarnessItem[] = [
   { id: 'alpha', label: 'Alpha', width: 120, height: 60 },
   { id: 'bravo', label: 'Bravo', width: 200, height: 100 },
   { id: 'charlie', label: 'Charlie', width: 80, height: 140 },
@@ -18,20 +19,36 @@ const items = ref<HarnessItem[]>([
   { id: 'echo', label: 'Echo', width: 100, height: 80 },
   { id: 'foxtrot', label: 'Foxtrot', width: 140, height: 60 },
   { id: 'golf', label: 'Golf', width: 120, height: 120 },
-]);
+];
+const initialOrder = initialItems.map((item) => item.id).join(',');
 
+const items = ref<HarnessItem[]>([...initialItems]);
 const keys = computed(() => items.value.map((item) => item.id));
+
+const containerMounted = ref(true);
+const containerEl = useTemplateRef<HTMLElement>('containerEl');
+const scrollAncestorEl = useTemplateRef<HTMLElement>('scrollAncestorEl');
 
 const dragStartCount = ref(0);
 const reorderCount = ref(0);
 const dragEndCount = ref(0);
 const interactiveClickCount = ref(0);
 const ignoreClickCount = ref(0);
+const lastDragEndPayload = ref('');
+const rejectNextReorder = ref(false);
 
 const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReorder({
   keys,
   onReorder: ({ fromIndex, toIndex }) => {
     reorderCount.value += 1;
+
+    if (rejectNextReorder.value) {
+      // Simulates a consumer that declines a requested move: the controlled order is
+      // deliberately left unchanged.
+      rejectNextReorder.value = false;
+      return;
+    }
+
     const next = [...items.value];
     const [moved] = next.splice(fromIndex, 1);
     if (moved) next.splice(toIndex, 0, moved);
@@ -40,8 +57,9 @@ const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReor
   onDragStart: () => {
     dragStartCount.value += 1;
   },
-  onDragEnd: () => {
+  onDragEnd: (event: ReorderDragEndEvent<string>) => {
     dragEndCount.value += 1;
+    lastDragEndPayload.value = JSON.stringify(event);
   },
 });
 
@@ -52,6 +70,41 @@ const onInteractiveClick = () => {
 const onIgnoreClick = () => {
   ignoreClickCount.value += 1;
 };
+
+/** Reverses the controlled order without going through the library's own `onReorder` request. */
+const reverseOrderExternally = () => {
+  items.value = [...items.value].reverse();
+};
+
+/** Rotates the controlled order by one, another external (not library-requested) change. */
+const rotateOrderExternally = () => {
+  const next = [...items.value];
+  const first = next.shift();
+  if (first) next.push(first);
+  items.value = next;
+};
+
+/** Removes whichever item is currently dragging, if any. */
+const removeActiveKey = () => {
+  if (!draggingKey.value) return;
+  items.value = items.value.filter((item) => item.id !== draggingKey.value);
+};
+
+const toggleContainerMounted = () => {
+  containerMounted.value = !containerMounted.value;
+};
+
+const toggleRejectNextReorder = () => {
+  rejectNextReorder.value = !rejectNextReorder.value;
+};
+
+const resetScrollAndOrder = () => {
+  items.value = [...initialItems];
+  containerMounted.value = true;
+  rejectNextReorder.value = false;
+  if (containerEl.value) containerEl.value.scrollTo({ left: 0, top: 0 });
+  if (scrollAncestorEl.value) scrollAncestorEl.value.scrollTo({ left: 0, top: 0 });
+};
 </script>
 
 <template>
@@ -59,6 +112,8 @@ const onIgnoreClick = () => {
     <dl class="reorder-story-harness__meta">
       <dt>order</dt>
       <dd data-testid="reorder-order">{{ keys.join(',') }}</dd>
+      <dt>initialOrder</dt>
+      <dd data-testid="reorder-initial-order">{{ initialOrder }}</dd>
       <dt>draggingKey</dt>
       <dd data-testid="reorder-dragging-key">{{ draggingKey ?? '' }}</dd>
       <dt>onDragStart</dt>
@@ -67,15 +122,63 @@ const onIgnoreClick = () => {
       <dd data-testid="reorder-reorder-count">{{ reorderCount }}</dd>
       <dt>onDragEnd</dt>
       <dd data-testid="reorder-drag-end-count">{{ dragEndCount }}</dd>
+      <dt>lastDragEnd</dt>
+      <dd data-testid="reorder-last-drag-end">{{ lastDragEndPayload }}</dd>
       <dt>interactive clicks</dt>
       <dd data-testid="reorder-interactive-click-count">{{ interactiveClickCount }}</dd>
       <dt>ignored clicks</dt>
       <dd data-testid="reorder-ignore-click-count">{{ ignoreClickCount }}</dd>
     </dl>
 
-    <div class="reorder-story-harness__scroll-ancestor" data-testid="reorder-scroll-ancestor">
+    <div class="reorder-story-harness__controls">
+      <button
+        type="button"
+        data-testid="reorder-control-reverse-order"
+        @click="reverseOrderExternally"
+      >
+        reverse order externally
+      </button>
+      <button
+        type="button"
+        data-testid="reorder-control-rotate-order"
+        @click="rotateOrderExternally"
+      >
+        rotate order externally
+      </button>
+      <button type="button" data-testid="reorder-control-remove-active" @click="removeActiveKey">
+        remove active key
+      </button>
+      <button
+        type="button"
+        data-testid="reorder-control-toggle-container"
+        @click="toggleContainerMounted"
+      >
+        {{ containerMounted ? 'unmount' : 'remount' }} container
+      </button>
+      <button
+        type="button"
+        data-testid="reorder-control-reject-next-reorder"
+        @click="toggleRejectNextReorder"
+      >
+        {{ rejectNextReorder ? 'accepting' : 'reject' }} next reorder
+      </button>
+      <button type="button" data-testid="reorder-control-reset" @click="resetScrollAndOrder">
+        reset scroll and order
+      </button>
+      <div class="reorder-story-harness__click-control" data-testid="reorder-click-control">
+        click control (not reorderable)
+      </div>
+    </div>
+
+    <div
+      ref="scrollAncestorEl"
+      class="reorder-story-harness__scroll-ancestor"
+      data-testid="reorder-scroll-ancestor"
+    >
       <div class="reorder-story-harness__scroll-ancestor-spacer" aria-hidden="true" />
       <div
+        v-if="containerMounted"
+        ref="containerEl"
         v-reorder-container
         class="reorder-story-harness__container"
         data-testid="reorder-container"
@@ -121,6 +224,9 @@ const onIgnoreClick = () => {
         </div>
         <div class="reorder-story-harness__spacer" aria-hidden="true" />
       </div>
+      <p v-else data-testid="reorder-container-unmounted" class="reorder-story-harness__unmounted">
+        container unmounted
+      </p>
       <div class="reorder-story-harness__scroll-ancestor-spacer-bottom" aria-hidden="true" />
     </div>
   </div>
@@ -154,6 +260,28 @@ const onIgnoreClick = () => {
 .reorder-story-harness__meta dd {
   margin: 0;
   font-family: monospace;
+  word-break: break-all;
+}
+
+.reorder-story-harness__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.reorder-story-harness__click-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 60px;
+  padding: 6px;
+  box-sizing: border-box;
+  background: #f3f4f6;
+  border: 1px solid #9ca3af;
+  border-radius: 4px;
+  text-align: center;
 }
 
 .reorder-story-harness__scroll-ancestor {
@@ -186,6 +314,13 @@ const onIgnoreClick = () => {
   border: 1px dashed #999;
 }
 
+.reorder-story-harness__unmounted {
+  margin: 0;
+  padding: 8px;
+  font-style: italic;
+  color: #666;
+}
+
 .reorder-story-harness__item {
   display: flex;
   flex-direction: column;
@@ -197,7 +332,6 @@ const onIgnoreClick = () => {
   border: 1px solid #a5b4fc;
   border-radius: 4px;
   cursor: grab;
-  user-select: none;
 }
 
 .reorder-story-harness__item-label {

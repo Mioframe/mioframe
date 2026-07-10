@@ -189,33 +189,48 @@ describe('useReorder activation gating', () => {
     wrapper.unmount();
   });
 
-  it('does not activate a stale duplicate-key element after a later element re-registers the same key', () => {
+  it('throws when two elements are registered under the same controlled key', () => {
     const keys = ref(['dup', 'dup']);
     const onReorder = vi.fn();
     const onDragStart = vi.fn();
     const onDragEnd = vi.fn();
-    const wrapper = mountHarness(keys, { onReorder, onDragStart, onDragEnd });
 
-    const duplicateEls = wrapper.element.querySelectorAll('[data-key="dup"]');
-    expect(duplicateEls).toHaveLength(2);
+    expect(() => mountHarness(keys, { onReorder, onDragStart, onDragEnd })).toThrow(
+      /duplicate item key/,
+    );
+  });
 
-    const staleEl = duplicateEls[0];
-    if (!staleEl) throw new Error('missing stale duplicate element');
+  it('throws when a second container is mounted for the same useReorder instance', () => {
+    const keys = ref(['a', 'b']);
 
-    staleEl.dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
-    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
+    expect(() =>
+      mount(
+        {
+          setup() {
+            const { vReorderContainer, vReorderItem } = useReorder({
+              keys,
+              onReorder: vi.fn(),
+            });
 
-    expect(onDragStart).not.toHaveBeenCalled();
-
-    const activeEl = duplicateEls[1];
-    if (!activeEl) throw new Error('missing active duplicate element');
-
-    activeEl.dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
-    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
-
-    expect(onDragStart).toHaveBeenCalledTimes(1);
-
-    wrapper.unmount();
+            return () =>
+              h('div', {}, [
+                withDirectives(
+                  h(
+                    'div',
+                    { id: 'container-1' },
+                    keys.value.map((key) =>
+                      withDirectives(h('div', { key, 'data-key': key }), [[vReorderItem, key]]),
+                    ),
+                  ),
+                  [[vReorderContainer]],
+                ),
+                withDirectives(h('div', { id: 'container-2' }), [[vReorderContainer]]),
+              ]);
+          },
+        },
+        { attachTo: document.body },
+      ),
+    ).toThrow(/second container/);
   });
 });
 
@@ -288,6 +303,54 @@ describe('useReorder cancellation', () => {
       finalIndex: 0,
       cancelled: true,
     });
+
+    wrapper.unmount();
+  });
+
+  it('cancels an active session when a second pointer starts anywhere, including outside the container', () => {
+    const keys = ref(['a', 'b', 'c']);
+    const onReorder = vi.fn();
+    const onDragStart = vi.fn();
+    const onDragEnd = vi.fn();
+    const wrapper = mountHarness(keys, { onReorder, onDragStart, onDragEnd });
+
+    getItemEl(wrapper, 'a').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
+    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
+
+    expect(onDragStart).toHaveBeenCalledTimes(1);
+
+    // A second pointer, with a different pointerId, dispatched outside the reorder container.
+    window.dispatchEvent(
+      createPointerEvent('pointerdown', { pointerId: 2, clientX: 999, clientY: 999 }),
+    );
+
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+    expect(onDragEnd).toHaveBeenCalledWith({
+      key: 'a',
+      initialIndex: 0,
+      finalIndex: 0,
+      cancelled: true,
+    });
+
+    wrapper.unmount();
+  });
+
+  it('cancels a pending session when a second pointer starts before activation', () => {
+    const keys = ref(['a', 'b', 'c']);
+    const onReorder = vi.fn();
+    const onDragStart = vi.fn();
+    const onDragEnd = vi.fn();
+    const wrapper = mountHarness(keys, { onReorder, onDragStart, onDragEnd });
+
+    getItemEl(wrapper, 'a').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
+    window.dispatchEvent(
+      createPointerEvent('pointerdown', { pointerId: 2, clientX: 999, clientY: 999 }),
+    );
+
+    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
+
+    expect(onDragStart).not.toHaveBeenCalled();
+    expect(onDragEnd).not.toHaveBeenCalled();
 
     wrapper.unmount();
   });

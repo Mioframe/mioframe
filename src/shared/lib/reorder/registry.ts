@@ -5,6 +5,7 @@
  * `PointerSession.ts` and `hitTest.ts` read from it.
  */
 import { REORDER_INTERACTIVE_TAG_NAMES } from './constants';
+import { reorderInvariant } from './invariant';
 import type { ReorderKey } from './types';
 
 /** The registration state owned by a single `useReorder` instance. */
@@ -31,23 +32,32 @@ export const createReorderRegistry = <Key extends ReorderKey>(): ReorderRegistry
 });
 
 /**
- * Registers `el` under `key`, replacing any previous element registered for the same key. A
- * duplicate key is a consumer contract violation; the most recently mounted element wins and the
- * stale reverse mapping is cleaned up so it cannot resolve to a detached element.
+ * Registers `el` under `key`. Registering a second, different element under an already-registered
+ * key, or registering the same element under a second, different key, is a consumer contract
+ * violation (duplicate identities are programmer errors, not supported runtime states) and throws
+ * instead of silently letting the most recently mounted registration win.
  * @param registry - The instance registry to update.
  * @param key - The consumer-supplied item key.
  * @param el - The measurable element for `key`.
+ * @throws When `key` is already registered to a different element, or `el` is already registered
+ * under a different key.
  */
 export const registerItem = <Key extends ReorderKey>(
   registry: ReorderRegistry<Key>,
   key: Key,
   el: HTMLElement,
 ): void => {
-  const existingEl = registry.itemElements.get(key);
+  const existingElForKey = registry.itemElements.get(key);
+  reorderInvariant(
+    !existingElForKey || existingElForKey === el,
+    `duplicate item key "${String(key)}" registered to a different element; keys must be unique among currently mounted items.`,
+  );
 
-  if (existingEl && existingEl !== el) {
-    registry.itemKeys.delete(existingEl);
-  }
+  const existingKeyForEl = registry.itemKeys.get(el);
+  reorderInvariant(
+    existingKeyForEl === undefined || existingKeyForEl === key,
+    `element already registered under key "${String(existingKeyForEl)}"; cannot also register it under "${String(key)}".`,
+  );
 
   registry.itemElements.set(key, el);
   registry.itemKeys.set(el, key);

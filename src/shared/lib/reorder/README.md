@@ -65,9 +65,16 @@ For every live move, `onReorder({ key, fromIndex, toIndex })` fires and the cons
 its reactive order **synchronously**. Vue may commit the resulting DOM update asynchronously; the
 library waits for that commit before evaluating the next potential move.
 
+Internally, an active session keeps a non-authoritative snapshot of the sequence it expects the
+consumer's `keys` to be. That snapshot exists only to verify the controlled contract — it is never
+exposed publicly and never becomes another source of truth. Before evaluating every frame, and
+after every requested move, the library compares the consumer's live sequence against that
+snapshot in full (not just the active item's resulting index).
+
 If the controlled order does not reflect a requested move, or changes incompatibly mid-session
-(the active key disappears, for example), the session cancels safely instead of continuing with
-divergent state.
+(the active key disappears, or the consumer applies an unrelated change, for example), the session
+cancels safely instead of continuing with divergent state. An incompatible external change is
+never rolled back or overwritten by the library.
 
 ## Directive contract
 
@@ -79,8 +86,13 @@ divergent state.
   `button`/`a`/`input`/`textarea`/`select`/editable element) that must not start drag activation.
 
 Nested reorder containers and cross-container item movement are not supported. Only items
-registered by the same `useReorder` instance participate together, and duplicate keys are a
-consumer contract violation (the most recently mounted element wins).
+registered by the same `useReorder` instance participate together.
+
+Duplicate identities are programmer errors, not supported runtime states, and are rejected
+deterministically (a thrown `Error`) rather than resolved by "last mounted wins": a second
+`v-reorder-container` mounted for the same `useReorder` instance, two different elements
+registered under the same key, one element registered under two different keys, and duplicate
+values in the controlled `keys` sequence.
 
 The registered active element must keep its normal flow layout box while dragging — this library
 renders nothing extra and does not remove or collapse it. If your visual treatment (e.g. a
@@ -93,7 +105,9 @@ treatment.
 - `onReorder({ key, fromIndex, toIndex })` may fire multiple times during one live drag; at most
   once per animation frame.
 - `onDragEnd({ key, initialIndex, finalIndex, cancelled })` fires exactly once for every fired
-  `onDragStart`.
+  `onDragStart`. `finalIndex` is the item's actual index in the consumer's controlled `keys` when
+  the session ended, or `-1` when the active key no longer exists there (for example, the consumer
+  removed it mid-drag).
 - A pending pointer gesture that never activates (released before the threshold, or cancelled
   before the touch long-press delay) fires none of these callbacks.
 - `draggingKey` becomes the active key on activation and returns to `null` when the session ends.
@@ -113,27 +127,36 @@ styling, spacing, and motion are the consumer's responsibility — use `dragging
   blocked before activation; after activation, the gesture captures the pointer and suppresses
   scrolling, context menus, and text selection for that gesture only.
 
-A normal completed drag suppresses only its own resulting synthetic click; an unrelated click
-immediately after is unaffected.
+A normal completed drag arms one-shot suppression for the click the browser dispatches after the
+gesture's `pointerup`; that suppression survives the session's own (synchronous) teardown long
+enough to intercept it, then removes itself immediately, or after a bounded fallback if no click
+ever arrives. It suppresses only that one click — a later, genuinely unrelated click is never
+affected, and cancelling mid-drag before the physical release still arms the same one-shot
+suppression for the click that release would otherwise produce.
 
 ## Autoscroll
 
-Once activated, dragging near a visible edge of the reorder container or any of its existing
-scrollable ancestors scrolls that target using its own native scrolling — this library never makes
-an element scrollable by changing its styles. Horizontal and vertical axes scroll independently
-and can be owned by different ancestors; when the nearest eligible target reaches its scroll
-limit, the chain falls through to the next one. Speed increases smoothly near an edge and
-continues while the pointer is held still; a pointer beyond a visible edge keeps scrolling and
-reordering intuitively rather than stalling.
+Once activated, dragging near a visible edge of the reorder container, any of its existing
+scrollable ancestors, or the page viewport itself scrolls that target using its own native
+scrolling — this library never makes an element scrollable by changing its styles, and never
+treats the viewport as an ordinary overflow element. Horizontal and vertical axes scroll
+independently and can be owned by different targets; when the nearest eligible target reaches its
+scroll limit, the chain falls through to the next one, ending with the viewport as the final
+target. Only ancestors that actually clip (not `overflow: visible`) reduce an item's visible
+bounds. Speed increases smoothly near an edge and continues while the pointer is held still; a
+pointer beyond a visible edge keeps scrolling and reordering intuitively rather than stalling.
 
 ## Cancellation
 
-A session cancels safely on `Escape`, `pointercancel`, lost pointer capture, a second pointer,
-window blur, the document becoming hidden, container/active-item unmount, or an incompatible
-controlled-order change. When rollback is still valid, the active item is live-reordered back to
-its initial index before the session ends; otherwise it ends as cancelled without inventing or
-overwriting consumer state. Every activated session ends with exactly one `onDragEnd`, and all
-timers, listeners, capture, and animation-frame work are cleaned up deterministically.
+A session cancels safely on `Escape`, `pointercancel`, lost pointer capture, a second pointer
+(anywhere, not only inside the container), window blur, the document becoming hidden,
+container/active-item unmount, or an incompatible controlled-order change. When rollback is still
+valid — the active key still exists and the consumer's live sequence exactly matches what the
+library expects — the active item is live-reordered back to its initial index before the session
+ends; otherwise it ends as cancelled without inventing or overwriting consumer state, and never
+rolls back over an incompatible external mutation. Every activated session ends with exactly one
+`onDragEnd`, and all timers, listeners, capture, and animation-frame work are cleaned up
+deterministically.
 
 ## Non-goals
 

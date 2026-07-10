@@ -23,31 +23,52 @@ describe('registerItem / unregisterItem', () => {
     expect(registry.itemKeys.get(el)).toBe('a');
   });
 
-  it('overwrites a duplicate key registration and cleans up the stale reverse mapping', () => {
+  it('re-registering the same key/element pair is idempotent', () => {
     const registry = createReorderRegistry<string>();
-    const firstEl = document.createElement('div');
-    const secondEl = document.createElement('div');
+    const el = document.createElement('div');
 
-    registerItem(registry, 'a', firstEl);
-    registerItem(registry, 'a', secondEl);
+    registerItem(registry, 'a', el);
+    registerItem(registry, 'a', el);
 
-    expect(registry.itemElements.get('a')).toBe(secondEl);
-    expect(registry.itemKeys.get(secondEl)).toBe('a');
-    expect(registry.itemKeys.has(firstEl)).toBe(false);
+    expect(registry.itemElements.get('a')).toBe(el);
+    expect(registry.itemKeys.get(el)).toBe('a');
   });
 
-  it('does not unregister when a newer registration already replaced the entry', () => {
+  it('throws when a key is registered to a second, different element while the first is still mounted', () => {
     const registry = createReorderRegistry<string>();
     const firstEl = document.createElement('div');
     const secondEl = document.createElement('div');
 
     registerItem(registry, 'a', firstEl);
-    registerItem(registry, 'a', secondEl);
-    // Simulates an out-of-order unmount of the stale first element.
-    unregisterItem(registry, 'a', firstEl);
 
-    expect(registry.itemElements.get('a')).toBe(secondEl);
-    expect(registry.itemKeys.get(secondEl)).toBe('a');
+    expect(() => {
+      registerItem(registry, 'a', secondEl);
+    }).toThrow(/duplicate item key/);
+    expect(registry.itemElements.get('a')).toBe(firstEl);
+  });
+
+  it('throws when one element is registered under a second, different key', () => {
+    const registry = createReorderRegistry<string>();
+    const el = document.createElement('div');
+
+    registerItem(registry, 'a', el);
+
+    expect(() => {
+      registerItem(registry, 'b', el);
+    }).toThrow(/already registered under key/);
+    expect(registry.itemKeys.get(el)).toBe('a');
+  });
+
+  it('allows re-registering an element under a new key once the old key was unregistered first', () => {
+    const registry = createReorderRegistry<string>();
+    const el = document.createElement('div');
+
+    registerItem(registry, 'a', el);
+    unregisterItem(registry, 'a', el);
+    registerItem(registry, 'b', el);
+
+    expect(registry.itemKeys.get(el)).toBe('b');
+    expect(registry.itemElements.has('a')).toBe(false);
   });
 
   it('unregisters a matching key/element pair', () => {

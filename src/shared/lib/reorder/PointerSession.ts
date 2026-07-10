@@ -5,14 +5,33 @@
  *
  * Session state is a single non-reactive mutable object; only `draggingKey`
  * (owned by the caller) is Vue-reactive, keeping this module's per-frame work
- * free of reactivity overhead.
+ * free of reactivity overhead. Controlled-order verification/rollback lives in
+ * `orderConsistency.ts`, post-drag click suppression in `clickSuppression.ts`,
+ * and autoscroll geometry in `scrollChain.ts` — this module only orchestrates
+ * when each of those runs.
  */
 import { nextTick, type Ref } from 'vue';
+import { createClickSuppression } from './clickSuppression';
 import { MOUSE_ACTIVATION_THRESHOLD_PX, TOUCH_MOVEMENT_SLOP_PX } from './constants';
 import { getVirtualActiveRect, shouldDisplaceTarget, type Point, type Rect } from './geometry';
 import { getEffectiveHitTestPoint, resolveHitTestTarget } from './hitTest';
+import {
+  canRollback,
+  checkOrderConsistency,
+  confirmRequestedMove,
+  createOrderExpectation,
+  deriveMovedSequence,
+  sequencesEqual,
+  type OrderExpectation,
+} from './orderConsistency';
 import { resolveActivationTarget, type RegisteredTarget, type ReorderRegistry } from './registry';
-import { buildScrollChain, getVisibleClientRect, runAutoscrollTick } from './scrollChain';
+import {
+  buildScrollChain,
+  didAutoscroll,
+  getContainerVisibleRect,
+  runAutoscrollTick,
+  type ScrollChainEntry,
+} from './scrollChain';
 import type {
   ReorderDragEndEvent,
   ReorderDragStartEvent,
@@ -31,18 +50,17 @@ interface SessionState<Key extends ReorderKey> {
   lastPointer: Point;
   longPressTimer: ReturnType<typeof setTimeout> | null;
   initialIndex: number;
-  currentIndex: number;
+  orderExpectation: OrderExpectation<Key>;
   grabOffset: Point;
   size: { width: number; height: number };
   rawPointer: Point;
   lastFrameTime: number;
-  scrollChain: Element[];
+  scrollChain: ScrollChainEntry[];
   awaitingCommit: boolean;
   rafId: number | null;
   touchScrollGuard: ((event: TouchEvent) => void) | null;
   contextMenuGuard: ((event: Event) => void) | null;
   selectionGuard: ((event: Event) => void) | null;
-  clickSuppressor: ((event: MouseEvent) => void) | null;
 }
 
 const domRectToRect = (domRect: DOMRect): Rect => ({
@@ -91,6 +109,7 @@ export const createPointerSession = <Key extends ReorderKey>(
   options: CreatePointerSessionOptions<Key>,
 ): PointerSession<Key> => {
   const { registry } = options;
+  const clickSuppression = createClickSuppression();
   let session: SessionState<Key> | null = null;
 
   const onPointerMove = (event: PointerEvent) => {
@@ -153,10 +172,21 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (event.key === 'Escape') cancelSession();
   };
 
+  const onGlobalPointerDown = (event: PointerEvent) => {
+    if (!session || event.pointerId === session.pointerId) return;
+
+    // A second pointer anywhere (inside or outside the container) cancels the current session.
+    // Stopping propagation here, in the capture phase, prevents this same event from also being
+    // seen by the container's own bubble-phase pointerdown handler as a fresh activation attempt.
+    event.stopPropagation();
+    cancelSession();
+  };
+
   const addSessionListeners = () => {
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerCancelEvent);
+    window.addEventListener('pointerdown', onGlobalPointerDown, true);
     window.addEventListener('blur', onWindowBlur);
     document.addEventListener('visibilitychange', onVisibilityChange);
     document.addEventListener('keydown', onKeyDown);
@@ -166,17 +196,16 @@ export const createPointerSession = <Key extends ReorderKey>(
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerCancelEvent);
+    window.removeEventListener('pointerdown', onGlobalPointerDown, true);
     window.removeEventListener('blur', onWindowBlur);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     document.removeEventListener('keydown', onKeyDown);
   };
 
   const onContainerPointerDown = (event: PointerEvent) => {
-    if (session) {
-      // A second pointer cancels whatever session (pending or active) is already running.
-      if (event.pointerId !== session.pointerId) cancelSession();
-      return;
-    }
+    // A second pointer is handled globally (capture-phase, see onGlobalPointerDown) before it
+    // can reach here; this guard only covers same-tick re-entrancy.
+    if (session) return;
 
     if (event.pointerType !== 'mouse' && event.pointerType !== 'touch') return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -213,7 +242,7 @@ export const createPointerSession = <Key extends ReorderKey>(
       lastPointer: point,
       longPressTimer: null,
       initialIndex: -1,
-      currentIndex: -1,
+      orderExpectation: { sequence: [] },
       grabOffset: { x: 0, y: 0 },
       size: { width: 0, height: 0 },
       rawPointer: point,
@@ -224,7 +253,6 @@ export const createPointerSession = <Key extends ReorderKey>(
       touchScrollGuard: null,
       contextMenuGuard: null,
       selectionGuard: null,
-      clickSuppressor: null,
     };
 
     addSessionListeners();
@@ -253,6 +281,10 @@ export const createPointerSession = <Key extends ReorderKey>(
       return;
     }
 
+    // Validates uniqueness (throws on a consumer contract violation) and snapshots the expected
+    // sequence for this session before any capture/listener side effects are installed.
+    const orderExpectation = createOrderExpectation(currentKeys);
+
     try {
       containerEl.setPointerCapture(pointerId);
     } catch {
@@ -279,20 +311,13 @@ export const createPointerSession = <Key extends ReorderKey>(
       event.preventDefault();
     };
     document.addEventListener('selectstart', selectionGuard);
-
-    const clickSuppressor = (event: MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      containerEl.removeEventListener('click', clickSuppressor, true);
-    };
-    containerEl.addEventListener('click', clickSuppressor, true);
     containerEl.addEventListener('lostpointercapture', onLostPointerCapture);
 
     const itemRect = itemEl.getBoundingClientRect();
 
     session.phase = 'active';
     session.initialIndex = initialIndex;
-    session.currentIndex = initialIndex;
+    session.orderExpectation = orderExpectation;
     session.grabOffset = { x: lastPointer.x - itemRect.left, y: lastPointer.y - itemRect.top };
     session.size = { width: itemRect.width, height: itemRect.height };
     session.rawPointer = { ...lastPointer };
@@ -302,7 +327,6 @@ export const createPointerSession = <Key extends ReorderKey>(
     session.touchScrollGuard = touchScrollGuard;
     session.contextMenuGuard = contextMenuGuard;
     session.selectionGuard = selectionGuard;
-    session.clickSuppressor = clickSuppressor;
 
     options.draggingKey.value = key;
     options.onDragStart?.({ key, index: initialIndex });
@@ -332,19 +356,27 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (!session) return;
     const s = session;
 
-    runAutoscrollTick(s.scrollChain, s.rawPointer, deltaTimeMs);
+    const autoscrollResult = runAutoscrollTick(s.scrollChain, s.rawPointer, deltaTimeMs);
+
+    // A scroll write must never be followed by a hit-test/geometry read in the same frame; that
+    // work resumes next frame, once the post-scroll layout has settled.
+    if (didAutoscroll(autoscrollResult)) return;
 
     if (s.awaitingCommit) return;
 
     const currentKeys = options.getKeys();
-    const activeIndex = currentKeys.indexOf(s.key);
 
-    if (activeIndex === -1) {
+    if (checkOrderConsistency(s.orderExpectation, currentKeys) === 'external-mutation') {
       cancelSession({ skipRollback: true });
       return;
     }
 
-    const containerVisibleRect = getVisibleClientRect(s.containerEl, s.scrollChain.slice(1));
+    const activeIndex = currentKeys.indexOf(s.key);
+
+    const containerVisibleRect = getContainerVisibleRect(
+      s.scrollChain,
+      autoscrollResult.measurement,
+    );
     const effectivePoint = getEffectiveHitTestPoint(containerVisibleRect, s.rawPointer);
     const target = resolveHitTestTarget(registry, s.containerEl, effectivePoint, s.key);
     if (!target) return;
@@ -361,25 +393,29 @@ export const createPointerSession = <Key extends ReorderKey>(
     const movedKey = s.key;
     const fromIndex = activeIndex;
     const toIndex = targetIndex;
+    const expectedNextSequence = deriveMovedSequence(
+      s.orderExpectation.sequence,
+      fromIndex,
+      toIndex,
+    );
 
     s.awaitingCommit = true;
-    s.currentIndex = toIndex;
     options.onReorder({ key: movedKey, fromIndex, toIndex });
 
     void nextTick(() => {
       if (!session || session.key !== movedKey) return;
 
       const keysAfter = options.getKeys();
-      const activeIndexAfter = keysAfter.indexOf(movedKey);
 
-      if (activeIndexAfter === -1 || activeIndexAfter !== toIndex) {
-        // The controlled order doesn't reflect the requested move (or the key vanished):
-        // cancel safely rather than continue with divergent state.
+      if (confirmRequestedMove(expectedNextSequence, keysAfter) === 'rejected') {
+        // The controlled order doesn't reflect the requested move (rejected, a different change
+        // was applied, or the key vanished): cancel safely rather than continue with divergent
+        // state or overwrite whatever the consumer actually did.
         cancelSession({ skipRollback: true });
         return;
       }
 
-      session.currentIndex = activeIndexAfter;
+      session.orderExpectation = { sequence: expectedNextSequence };
       session.awaitingCommit = false;
     });
   };
@@ -390,10 +426,12 @@ export const createPointerSession = <Key extends ReorderKey>(
       return;
     }
 
-    const { key, initialIndex, currentIndex } = session;
+    const { key, initialIndex } = session;
+    const finalIndex = options.getKeys().indexOf(key);
+
     teardownSession();
     options.draggingKey.value = null;
-    options.onDragEnd?.({ key, initialIndex, finalIndex: currentIndex, cancelled: false });
+    options.onDragEnd?.({ key, initialIndex, finalIndex, cancelled: false });
   };
 
   const cancelSession = (cancelOptions: { skipRollback?: boolean } = {}) => {
@@ -404,18 +442,19 @@ export const createPointerSession = <Key extends ReorderKey>(
       return;
     }
 
-    const { key, initialIndex, currentIndex } = session;
-    let finalIndex = currentIndex;
+    const { key, initialIndex, orderExpectation } = session;
+    const currentKeys = options.getKeys();
+    let finalIndex = currentKeys.indexOf(key);
 
-    if (!cancelOptions.skipRollback) {
-      const currentKeys = options.getKeys();
-      const activeIndex = currentKeys.indexOf(key);
+    if (!cancelOptions.skipRollback && finalIndex !== -1 && finalIndex !== initialIndex) {
+      if (canRollback(orderExpectation, currentKeys, key, initialIndex)) {
+        const rollbackSequence = deriveMovedSequence(currentKeys, finalIndex, initialIndex);
+        options.onReorder({ key, fromIndex: finalIndex, toIndex: initialIndex });
 
-      if (activeIndex !== -1) {
-        if (activeIndex !== initialIndex) {
-          options.onReorder({ key, fromIndex: activeIndex, toIndex: initialIndex });
-        }
-        finalIndex = initialIndex;
+        const keysAfterRollback = options.getKeys();
+        finalIndex = sequencesEqual(keysAfterRollback, rollbackSequence)
+          ? initialIndex
+          : keysAfterRollback.indexOf(key);
       }
     }
 
@@ -447,7 +486,11 @@ export const createPointerSession = <Key extends ReorderKey>(
       if (s.touchScrollGuard) s.containerEl.removeEventListener('touchmove', s.touchScrollGuard);
       if (s.contextMenuGuard) s.containerEl.removeEventListener('contextmenu', s.contextMenuGuard);
       if (s.selectionGuard) document.removeEventListener('selectstart', s.selectionGuard);
-      if (s.clickSuppressor) s.containerEl.removeEventListener('click', s.clickSuppressor, true);
+
+      // The browser dispatches the resulting `click` after this synchronous teardown runs, for
+      // both a normal release and a mid-drag cancellation followed by the eventual release; arm
+      // suppression here so it survives long enough to intercept it.
+      clickSuppression.arm(s.containerEl);
     }
   };
 
@@ -466,6 +509,7 @@ export const createPointerSession = <Key extends ReorderKey>(
 
   const dispose = () => {
     cancelSession();
+    clickSuppression.disarm();
   };
 
   return { attachContainer, detachContainer, notifyItemUnmounted, dispose };

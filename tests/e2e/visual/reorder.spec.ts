@@ -16,6 +16,40 @@ const getCount = async (page: Page, testId: string): Promise<number> => {
 const getDraggingKey = async (page: Page): Promise<string> =>
   (await page.getByTestId('reorder-dragging-key').textContent()) ?? '';
 
+interface DragEndPayload {
+  key: string;
+  initialIndex: number;
+  finalIndex: number;
+  cancelled: boolean;
+}
+
+const isDragEndPayload = (value: unknown): value is DragEndPayload => {
+  if (typeof value !== 'object' || value === null) return false;
+  if (
+    !('key' in value) ||
+    !('initialIndex' in value) ||
+    !('finalIndex' in value) ||
+    !('cancelled' in value)
+  ) {
+    return false;
+  }
+
+  return (
+    typeof value.key === 'string' &&
+    typeof value.initialIndex === 'number' &&
+    typeof value.finalIndex === 'number' &&
+    typeof value.cancelled === 'boolean'
+  );
+};
+
+const getLastDragEnd = async (page: Page): Promise<DragEndPayload | null> => {
+  const text = await page.getByTestId('reorder-last-drag-end').textContent();
+  if (!text) return null;
+
+  const parsed: unknown = JSON.parse(text);
+  return isDragEndPayload(parsed) ? parsed : null;
+};
+
 const center = (box: { x: number; y: number; width: number; height: number }) => ({
   x: box.x + box.width / 2,
   y: box.y + box.height / 2,
@@ -60,6 +94,23 @@ const mouseDrag = async (
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: options.steps ?? 8 });
   if (options.release ?? true) await page.mouse.up();
+};
+
+/**
+ * Attaches a click counter to `locator` and returns a reader for it. Used to prove whether a
+ * given gesture would produce (or was prevented from producing) a browser `click`.
+ * @param locator - The element to observe.
+ * @returns An async reader for the current click count.
+ */
+const attachClickCounter = async (locator: Locator): Promise<() => Promise<number>> => {
+  await locator.evaluate((el) => {
+    el.setAttribute('data-click-count', '0');
+    el.addEventListener('click', () => {
+      const current = Number(el.getAttribute('data-click-count') ?? '0');
+      el.setAttribute('data-click-count', String(current + 1));
+    });
+  });
+  return async () => Number((await locator.getAttribute('data-click-count')) ?? '0');
 };
 
 // Chromium tracks in-flight touch sequence state per CDP client: opening a fresh session for
@@ -147,37 +198,67 @@ test.describe('mouse activation', () => {
     await ignoreZone.click();
     expect(await getCount(page, 'reorder-ignore-click-count')).toBe(1);
   });
+});
 
-  test('a normal completed drag suppresses only its associated synthetic click', async ({
+test.describe('click suppression', () => {
+  test('a completed drag suppresses only its own resulting click, and a later genuine click is unaffected', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
-
-    await container.evaluate((el) => {
-      el.setAttribute('data-click-count', '0');
-      el.addEventListener('click', () => {
-        const current = Number(el.getAttribute('data-click-count') ?? '0');
-        el.setAttribute('data-click-count', String(current + 1));
-      });
-    });
-    const readClickCount = async () =>
-      Number((await container.getAttribute('data-click-count')) ?? '0');
-
     const item = page.getByTestId('reorder-item-alpha');
     const box = await boxOf(item);
     const from = center(box);
-    const target = page.getByTestId('reorder-item-bravo');
-    const targetBox = await boxOf(target);
+    // Move by exactly the distance the drag itself will travel, so this control gesture proves
+    // the browser would otherwise dispatch a click for a gesture of this shape.
+    const moveDistance = 60;
 
-    await mouseDrag(page, from, center(targetBox));
+    const control = page.getByTestId('reorder-click-control');
+    const readControlClickCount = await attachClickCounter(control);
+    const controlBox = await boxOf(control);
+    const controlFrom = center(controlBox);
 
-    expect(await readClickCount()).toBe(0);
+    await mouseDrag(
+      page,
+      controlFrom,
+      { x: controlFrom.x + moveDistance, y: controlFrom.y },
+      { steps: 8 },
+    );
+    expect(await readControlClickCount()).toBe(1);
+
+    // The identically-shaped gesture, run on the reorder container, must not produce a click.
+    const container = page.getByTestId('reorder-container');
+    const readContainerClickCount = await attachClickCounter(container);
+
+    await mouseDrag(page, from, { x: from.x + moveDistance, y: from.y }, { steps: 8 });
+    expect(await readContainerClickCount()).toBe(0);
 
     // A genuinely new click afterward must still register normally.
     const alphaBoxAfter = await boxOf(page.getByTestId('reorder-item-alpha'));
     await page.mouse.click(center(alphaBoxAfter).x, center(alphaBoxAfter).y);
+    expect(await readContainerClickCount()).toBe(1);
+  });
 
-    expect(await readClickCount()).toBe(1);
+  test('Escape cancellation before pointer release still suppresses the resulting click', async ({
+    page,
+  }) => {
+    const container = page.getByTestId('reorder-container');
+    const readContainerClickCount = await attachClickCounter(container);
+
+    const item = page.getByTestId('reorder-item-alpha');
+    const box = await boxOf(item);
+    const from = center(box);
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    await page.keyboard.press('Escape');
+    expect(await getDraggingKey(page)).toBe('');
+
+    // The physical button is released only now, after cancellation already tore the session down.
+    await page.mouse.up();
+
+    expect(await readContainerClickCount()).toBe(0);
   });
 });
 
@@ -270,18 +351,27 @@ test.describe('live reorder geometry', () => {
 test.describe('touch activation', () => {
   test.use({ hasTouch: true });
 
-  test('movement before the long-press delay remains native scrolling and does not activate reorder', async ({
+  test('movement before the long-press delay causes real native scrolling, not merely the absence of activation', async ({
     page,
   }) => {
+    const container = page.getByTestId('reorder-container');
+    const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
+
     const item = page.getByTestId('reorder-item-alpha');
     const box = await boxOf(item);
     const point = touchGrabPoint(box);
 
     await dispatchTouch(page, 'touchStart', point);
-    await dispatchTouch(page, 'touchMove', { x: point.x, y: point.y + 30 });
+    for (let i = 1; i <= 6; i += 1) {
+      // eslint-disable-next-line no-await-in-loop -- touch moves must be sent in order, one at a time
+      await dispatchTouch(page, 'touchMove', { x: point.x, y: point.y - i * 15 });
+    }
     await dispatchTouch(page, 'touchEnd');
 
     expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+    await expect
+      .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 3000 })
+      .toBeGreaterThan(scrollTopBefore);
   });
 
   test('activates after the configured long-press delay', async ({ page }) => {
@@ -335,6 +425,34 @@ test.describe('touch activation', () => {
 
     expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
     expect(await getOrder(page)).not.toEqual(orderBefore);
+  });
+
+  test('after activation, further movement produces no native gesture scrolling beyond library autoscroll', async ({
+    page,
+  }) => {
+    const container = page.getByTestId('reorder-container');
+    const containerBox = await boxOf(container);
+    const item = page.getByTestId('reorder-item-alpha');
+    const box = await boxOf(item);
+    const point = touchGrabPoint(box);
+
+    await dispatchTouch(page, 'touchStart', point);
+    await page.waitForTimeout(700);
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
+
+    // Oscillate well clear of the autoscroll edge zone (56px), deep inside the container.
+    const midY = containerBox.y + containerBox.height / 2;
+    for (let i = 1; i <= 6; i += 1) {
+      // eslint-disable-next-line no-await-in-loop -- touch moves must be sent in order, one at a time
+      await dispatchTouch(page, 'touchMove', { x: point.x, y: midY + (i % 2 === 0 ? 40 : -40) });
+    }
+
+    const scrollTopAfter = await container.evaluate((el) => el.scrollTop);
+    expect(scrollTopAfter).toBe(scrollTopBefore);
+
+    await dispatchTouch(page, 'touchEnd');
   });
 });
 
@@ -399,12 +517,15 @@ test.describe('autoscroll', () => {
     await page.mouse.up();
   });
 
-  test('a pointer beyond the visible edge continues intuitive autoscroll and reorder', async ({
+  test('a pointer beyond the visible edge continues intuitive autoscroll and eventually causes a reorder', async ({
     page,
   }) => {
+    test.setTimeout(60000);
+
     const container = page.getByTestId('reorder-container');
     const containerBox = await boxOf(container);
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
+    const orderBefore = await getOrder(page);
 
     const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
 
@@ -419,7 +540,60 @@ test.describe('autoscroll', () => {
 
     expect(await getDraggingKey(page)).toBe('alpha');
 
+    // Keep the pointer beyond the edge long enough for autoscroll to bring another item under it
+    // and for the geometry-based hit test to actually request a reorder.
+    await expect.poll(() => getOrder(page), { timeout: 20000 }).not.toEqual(orderBefore);
+
     await page.mouse.up();
+  });
+
+  test.describe('viewport fallback', () => {
+    test.use({ viewport: { width: 500, height: 320 } });
+
+    test('falls back to the page viewport once the container and its scrollable ancestor are both exhausted', async ({
+      page,
+    }) => {
+      test.setTimeout(60000);
+
+      const container = page.getByTestId('reorder-container');
+      const scrollAncestor = page.getByTestId('reorder-scroll-ancestor');
+
+      const item = page.getByTestId('reorder-item-alpha');
+      const box = await boxOf(item);
+      const from = center(box);
+
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x, box.y + box.height + 100, { steps: 6 });
+
+      await expect
+        .poll(
+          () =>
+            container.evaluate((el) =>
+              Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight)),
+            ),
+          { timeout: 20000 },
+        )
+        .toBeLessThanOrEqual(2);
+
+      await expect
+        .poll(
+          () =>
+            scrollAncestor.evaluate((el) =>
+              Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight)),
+            ),
+          { timeout: 20000 },
+        )
+        .toBeLessThanOrEqual(2);
+
+      const pageScrollBefore = await page.evaluate(() => window.scrollY);
+
+      await expect
+        .poll(() => page.evaluate(() => window.scrollY), { timeout: 20000 })
+        .toBeGreaterThan(pageScrollBefore);
+
+      await page.mouse.up();
+    });
   });
 });
 
@@ -443,6 +617,27 @@ test.describe('cancellation and cleanup', () => {
     expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
   });
 
+  test('Escape after a completed live move rolls the active item back to its initial index', async ({
+    page,
+  }) => {
+    const orderBefore = await getOrder(page);
+    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const to = center(await boxOf(page.getByTestId('reorder-item-delta')));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 12 });
+
+    await expect.poll(() => getOrder(page)).not.toEqual(orderBefore);
+
+    await page.keyboard.press('Escape');
+
+    await expect.poll(() => getOrder(page)).toEqual(orderBefore);
+    expect(await getDraggingKey(page)).toBe('');
+
+    await page.mouse.up();
+  });
+
   test('losing window focus (blur) cancels an active drag', async ({ page }) => {
     const from = center(await boxOf(page.getByTestId('reorder-item-bravo')));
 
@@ -459,6 +654,89 @@ test.describe('cancellation and cleanup', () => {
     await page.mouse.up();
   });
 
+  test('pointercancel produces exactly one cancelled onDragEnd', async ({ page }) => {
+    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
+    });
+
+    expect(await getDraggingKey(page)).toBe('');
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect((await getLastDragEnd(page))?.cancelled).toBe(true);
+
+    // A stray pointerup afterward must not fire a second onDragEnd.
+    await page.mouse.up();
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+  });
+
+  test('visibility loss produces exactly one cancelled onDragEnd', async ({ page }) => {
+    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(await getDraggingKey(page)).toBe('');
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect((await getLastDragEnd(page))?.cancelled).toBe(true);
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.mouse.up();
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+  });
+
+  test.describe('second pointer', () => {
+    test.use({ hasTouch: true });
+
+    test('cancels a pending session when it starts outside the container', async ({ page }) => {
+      const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+
+      await dispatchTouch(page, 'touchStart', { x: 2, y: 2 });
+      await dispatchTouch(page, 'touchEnd');
+
+      await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+      expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+
+      await page.mouse.up();
+    });
+
+    test('cancels an active session when it starts outside the container', async ({ page }) => {
+      const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+      expect(await getDraggingKey(page)).toBe('alpha');
+
+      await dispatchTouch(page, 'touchStart', { x: 2, y: 2 });
+      await dispatchTouch(page, 'touchEnd');
+
+      expect(await getDraggingKey(page)).toBe('');
+      expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+      expect((await getLastDragEnd(page))?.cancelled).toBe(true);
+
+      await page.mouse.up();
+    });
+  });
+
   test('unmounting the container cancels an active drag deterministically', async ({ page }) => {
     const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
 
@@ -469,6 +747,76 @@ test.describe('cancellation and cleanup', () => {
 
     // Navigating away unmounts the story component entirely.
     await page.goto('about:blank');
+    await page.mouse.up();
+  });
+
+  test('active-item removal cancels the drag and reports finalIndex -1', async ({ page }) => {
+    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    await page.getByTestId('reorder-control-remove-active').evaluate((el: HTMLElement) => {
+      el.click();
+    });
+
+    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    const lastDragEnd = await getLastDragEnd(page);
+    expect(lastDragEnd?.cancelled).toBe(true);
+    expect(lastDragEnd?.finalIndex).toBe(-1);
+    expect(await getDraggingKey(page)).toBe('');
+    expect(await getOrder(page)).not.toContain('alpha');
+
+    await page.mouse.up();
+  });
+
+  test('an incompatible external order mutation cancels the session without overwriting it', async ({
+    page,
+  }) => {
+    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    await page.getByTestId('reorder-control-reverse-order').evaluate((el: HTMLElement) => {
+      el.click();
+    });
+    const reversedOrder = await getOrder(page);
+
+    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    const lastDragEnd = await getLastDragEnd(page);
+    expect(lastDragEnd?.cancelled).toBe(true);
+    expect(await getDraggingKey(page)).toBe('');
+
+    // The external mutation must stand exactly as applied; no library-issued rollback write.
+    expect(await getOrder(page)).toEqual(reversedOrder);
+
+    await page.mouse.up();
+  });
+
+  test('consumer rejection of a requested reorder cancels the session safely', async ({ page }) => {
+    await page.getByTestId('reorder-control-reject-next-reorder').click();
+    const orderBefore = await getOrder(page);
+
+    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const to = center(await boxOf(page.getByTestId('reorder-item-delta')));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 12 });
+
+    await expect.poll(() => getCount(page, 'reorder-reorder-count')).toBeGreaterThan(0);
+    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+
+    const lastDragEnd = await getLastDragEnd(page);
+    expect(lastDragEnd?.cancelled).toBe(true);
+    expect(await getOrder(page)).toEqual(orderBefore);
+    expect(await getDraggingKey(page)).toBe('');
+
     await page.mouse.up();
   });
 
