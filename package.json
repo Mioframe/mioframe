@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -72,7 +72,7 @@
     "modern-normalize": "^3.0.1",
     "p-limit": "^7.3.0",
     "parse-duration": "^2.1.6",
-    "perfect-debounce": "^2.1.0",
+    "perfect-debounce": "^1.0.0",
     "qs": "^6.15.3",
     "quickselect": "^3.0.0",
     "rxjs": "^7.8.2",
