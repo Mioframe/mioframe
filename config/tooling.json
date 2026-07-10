@@ -51,11 +51,11 @@
     "playwrightContainer": {
       "local": {
         "cpus": "2",
-        "memory": "4g",
-        "memorySwap": "4g",
-        "pidsLimit": "384",
+        "memory": "6g",
+        "memorySwap": "8g",
+        "pidsLimit": "512",
         "timeoutSeconds": "900",
-        "workers": "1"
+        "workers": "2"
       },
       "githubActions": {
         "cpus": "2",

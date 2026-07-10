@@ -3,8 +3,12 @@
  * `requestAnimationFrame` loop, live reorder callback invocation, autoscroll ticking, and
  * deterministic cancellation/cleanup.
  *
- * Session state is a single non-reactive mutable object; only `draggingKey` (owned by the caller)
- * is Vue-reactive, keeping this module's per-frame work free of reactivity overhead.
+ * Session state is one of three explicit, non-reactive phases — `PendingSession` (activation
+ * gating), `DraggingSession` (the physically active gesture), or `SettlingSession` (an accepted
+ * move still waiting for Vue's DOM commit after the pointer has already been physically released)
+ * — represented as a local discriminated union so each phase only carries the resources it can
+ * actually own; "ended" is `session === null`, not a stored phase. Only `draggingKey` (owned by
+ * the caller) is Vue-reactive, keeping this module's per-frame work free of reactivity overhead.
  * Controlled-order verification, rollback, and the pointerup completion decision live in
  * `orderConsistency.ts`; post-drag click suppression and early-cancellation release tracking live
  * in `clickSuppression.ts`; temporary window/document listeners and second-pointer exclusion live
@@ -42,8 +46,20 @@ import type {
   ReorderMoveEvent,
 } from './types';
 
-interface SessionState<Key extends ReorderKey> {
-  phase: 'pending' | 'active';
+/**
+ * Identifies exactly one accepted, not-yet-DOM-committed live move. Created fresh for every
+ * accepted move and cleared once its `nextTick` resolves; a later `nextTick` callback whose token
+ * no longer matches the current session's token belongs to a stale or superseded move and is a
+ * no-op.
+ */
+type CommitToken = symbol;
+
+/** How the original pointer stream has physically ended so far, for a `DraggingSession`. */
+type TerminationReason = 'released' | 'cancelled' | 'not-ended';
+
+/** Activation-gating phase: a candidate gesture that has not yet crossed the activation bar. */
+interface PendingSession<Key extends ReorderKey> {
+  phase: 'pending';
   pointerId: number;
   pointerType: 'mouse' | 'touch';
   key: Key;
@@ -52,33 +68,60 @@ interface SessionState<Key extends ReorderKey> {
   startPointer: Point;
   lastPointer: Point;
   longPressTimer: ReturnType<typeof setTimeout> | null;
+}
+
+/** The physically active drag: pointer capture is held and the per-frame loop is running. */
+interface DraggingSession<Key extends ReorderKey> {
+  phase: 'dragging';
+  pointerId: number;
+  pointerType: 'mouse' | 'touch';
+  key: Key;
+  itemEl: HTMLElement;
+  containerEl: HTMLElement;
   initialIndex: number;
   /** The last controlled sequence this session confirmed the consumer actually adopted. */
   confirmedSequence: Key[];
   /** A reorder request currently being synchronously validated, or `null` when none is in flight. */
   pendingRequestedSequence: Key[] | null;
-  /** Whether the last accepted move is still waiting for Vue's `nextTick` to confirm DOM commit. */
-  awaitingDomCommit: boolean;
-  /** Whether the original pointer was released while `awaitingDomCommit` was still `true`. */
-  finishRequested: boolean;
   /**
-   * How the original pointer stream has physically ended so far. `'released'` and `'cancelled'`
-   * are terminal: the browser has already ended the stream, so no release watcher is needed and
-   * (for `'cancelled'`) no click can ever follow. `'not-ended'` means the stream may still be
-   * physically live even though the session itself is tearing down for another reason (Escape,
-   * blur, visibility loss, a second pointer, active-item/container removal, or unexpected lost
-   * capture) — only that case needs a bounded release watcher.
+   * See {@link TerminationReason}. `'released'` and `'cancelled'` are terminal: the browser has
+   * already ended the stream, so no release watcher is needed and (for `'cancelled'`) no click can
+   * ever follow. `'not-ended'` means the stream may still be physically live even though the
+   * session itself is tearing down for another reason (Escape, blur, visibility loss, a second
+   * pointer, active-item/container removal, or unexpected lost capture) — only that case needs a
+   * bounded release watcher.
    */
-  terminationReason: 'released' | 'cancelled' | 'not-ended';
+  terminationReason: TerminationReason;
   grabOffset: Point;
   size: { width: number; height: number };
   rawPointer: Point;
   lastFrameTime: number;
   scrollChain: ScrollChainEntry[];
   rafId: number | null;
-  /** The active session's pointer-capture/guard DOM side effects, `null` until activation. */
+  /** The active session's pointer-capture/guard DOM side effects; `null` once stopped. */
   activeEffects: ActiveSessionEffects | null;
+  /** The current accepted move's awaited `nextTick` token, or `null` when none is in flight. */
+  commitToken: CommitToken | null;
 }
+
+/**
+ * Exists only after physical `pointerup`, when the last accepted controlled move is still waiting
+ * for Vue's DOM commit. Owns nothing pointer-runtime-related: capture, listeners, rAF, scroll
+ * chain, and guards were already stopped before this phase began.
+ */
+interface SettlingSession<Key extends ReorderKey> {
+  phase: 'settling';
+  key: Key;
+  initialIndex: number;
+  confirmedSequence: Key[];
+  /** The single move this settling session is waiting to see committed to the DOM. */
+  commitToken: CommitToken;
+}
+
+type SessionState<Key extends ReorderKey> =
+  | PendingSession<Key>
+  | DraggingSession<Key>
+  | SettlingSession<Key>;
 
 const domRectToRect = (domRect: DOMRect): Rect => ({
   left: domRect.left,
@@ -130,12 +173,16 @@ export const createPointerSession = <Key extends ReorderKey>(
   let session: SessionState<Key> | null = null;
 
   const onPointerMove = (event: PointerEvent) => {
-    if (!session || event.pointerId !== session.pointerId) return;
+    // A settling session owns no pointer identity to match: its global listeners are already
+    // detached, so this branch is structurally unreachable for it, but the guard keeps the
+    // narrowing below sound.
+    if (!session || session.phase === 'settling' || event.pointerId !== session.pointerId) return;
 
     const point: Point = { x: event.clientX, y: event.clientY };
-    session.lastPointer = point;
 
     if (session.phase === 'pending') {
+      session.lastPointer = point;
+
       const distance = Math.hypot(
         point.x - session.startPointer.x,
         point.y - session.startPointer.y,
@@ -146,7 +193,7 @@ export const createPointerSession = <Key extends ReorderKey>(
       } else if (distance >= TOUCH_MOVEMENT_SLOP_PX) {
         // Movement beyond slop before the long-press timer fires cancels the pending
         // gesture silently: it never activated, so no callback fires.
-        teardownSession();
+        teardownPendingSession(session);
       }
 
       return;
@@ -156,11 +203,11 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const onPointerUp = (event: PointerEvent) => {
-    if (!session || event.pointerId !== session.pointerId) return;
+    if (!session || session.phase === 'settling' || event.pointerId !== session.pointerId) return;
 
     if (session.phase === 'pending') {
       // Released before activation: a normal click, no callbacks fire.
-      teardownSession();
+      teardownPendingSession(session);
       return;
     }
 
@@ -179,18 +226,15 @@ export const createPointerSession = <Key extends ReorderKey>(
     // would otherwise cancel the deferred completion).
     stopGestureRuntime(s);
 
-    reconcilePointerUp();
+    reconcilePointerUp(s);
   };
 
-  const reconcilePointerUp = () => {
-    if (!session) return;
-    const s = session;
-
+  const reconcilePointerUp = (s: DraggingSession<Key>) => {
     const outcome = decidePointerUpOutcome({
       confirmedSequence: s.confirmedSequence,
       currentKeys: options.getKeys(),
       pendingRequestedSequence: s.pendingRequestedSequence,
-      awaitingDomCommit: s.awaitingDomCommit,
+      awaitingDomCommit: s.commitToken !== null,
     });
 
     if (outcome === 'cancel') {
@@ -199,27 +243,37 @@ export const createPointerSession = <Key extends ReorderKey>(
     }
 
     if (outcome === 'defer') {
-      s.finishRequested = true;
+      const commitToken = s.commitToken;
+      // decidePointerUpOutcome only returns 'defer' when a commit token is currently awaited.
+      if (commitToken === null) return;
+
+      session = {
+        phase: 'settling',
+        key: s.key,
+        initialIndex: s.initialIndex,
+        confirmedSequence: s.confirmedSequence,
+        commitToken,
+      };
       return;
     }
 
-    finishSession();
+    finishDraggingSession(s);
   };
 
   const onPointerCancelEvent = (event: PointerEvent) => {
-    if (!session || event.pointerId !== session.pointerId) return;
+    if (!session || session.phase === 'settling' || event.pointerId !== session.pointerId) return;
 
     // A direct `pointercancel` ends the original pointer stream completely: no click can ever
     // follow it, so no release watcher may be created for it (armReleaseWatcher is installed too
     // late to observe a `pointercancel` that already happened).
-    session.terminationReason = 'cancelled';
+    if (session.phase === 'dragging') session.terminationReason = 'cancelled';
     cancelSession();
   };
 
   const onLostPointerCapture = (event: PointerEvent) => {
     if (
       session &&
-      session.phase === 'active' &&
+      session.phase === 'dragging' &&
       event.pointerId === session.pointerId &&
       session.terminationReason === 'not-ended'
     ) {
@@ -240,7 +294,7 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const onSecondPointerDown = (event: PointerEvent) => {
-    if (!session || event.pointerId === session.pointerId) return;
+    if (!session || session.phase === 'settling' || event.pointerId === session.pointerId) return;
     cancelSession();
   };
 
@@ -303,19 +357,6 @@ export const createPointerSession = <Key extends ReorderKey>(
       startPointer: point,
       lastPointer: point,
       longPressTimer: null,
-      initialIndex: -1,
-      confirmedSequence: [],
-      pendingRequestedSequence: null,
-      awaitingDomCommit: false,
-      finishRequested: false,
-      terminationReason: 'not-ended',
-      grabOffset: { x: 0, y: 0 },
-      size: { width: 0, height: 0 },
-      rawPointer: point,
-      lastFrameTime: 0,
-      scrollChain: [],
-      rafId: null,
-      activeEffects: null,
     };
 
     globalListeners.attach();
@@ -329,32 +370,33 @@ export const createPointerSession = <Key extends ReorderKey>(
 
   const activateSession = () => {
     if (!session || session.phase !== 'pending') return;
+    const pending = session;
 
-    if (session.longPressTimer !== null) {
-      clearTimeout(session.longPressTimer);
-      session.longPressTimer = null;
+    if (pending.longPressTimer !== null) {
+      clearTimeout(pending.longPressTimer);
+      pending.longPressTimer = null;
     }
 
-    const { containerEl, itemEl, pointerId, pointerType, key, lastPointer } = session;
+    const { containerEl, itemEl, pointerId, pointerType, key, lastPointer } = pending;
 
     // Re-validated at commit time, using freshly read keys: the controlled data may have changed
     // during the pending phase (mouse threshold delay or touch long-press delay). Still in the
     // 'pending' phase here, so a thrown validation failure is a programmer/data-contract error
-    // before any drag callback fires, not a completed drag gesture: teardownSession() naturally
-    // skips every click-suppression/release-watcher side effect for a pending-phase session.
+    // before any drag callback fires, not a completed drag gesture: teardownPendingSession()
+    // naturally skips every click-suppression/release-watcher side effect for a pending session.
     let currentKeys: readonly Key[];
     try {
       currentKeys = options.getKeys();
       assertUniqueKeys(currentKeys);
     } catch (error) {
-      teardownSession();
+      teardownPendingSession(pending);
       throw error;
     }
 
     const initialIndex = currentKeys.indexOf(key);
 
     if (initialIndex === -1) {
-      teardownSession();
+      teardownPendingSession(pending);
       return;
     }
 
@@ -367,25 +409,32 @@ export const createPointerSession = <Key extends ReorderKey>(
 
     if (!activeEffects) {
       // Pointer already released or invalid; do not start a captureless drag.
-      teardownSession();
+      teardownPendingSession(pending);
       return;
     }
 
     const itemRect = itemEl.getBoundingClientRect();
 
-    session.phase = 'active';
-    session.initialIndex = initialIndex;
-    session.confirmedSequence = [...currentKeys];
-    session.pendingRequestedSequence = null;
-    session.awaitingDomCommit = false;
-    session.finishRequested = false;
-    session.terminationReason = 'not-ended';
-    session.grabOffset = { x: lastPointer.x - itemRect.left, y: lastPointer.y - itemRect.top };
-    session.size = { width: itemRect.width, height: itemRect.height };
-    session.rawPointer = { ...lastPointer };
-    session.lastFrameTime = performance.now();
-    session.scrollChain = buildScrollChain(containerEl);
-    session.activeEffects = activeEffects;
+    session = {
+      phase: 'dragging',
+      pointerId,
+      pointerType,
+      key,
+      itemEl,
+      containerEl,
+      initialIndex,
+      confirmedSequence: [...currentKeys],
+      pendingRequestedSequence: null,
+      terminationReason: 'not-ended',
+      grabOffset: { x: lastPointer.x - itemRect.left, y: lastPointer.y - itemRect.top },
+      size: { width: itemRect.width, height: itemRect.height },
+      rawPointer: { ...lastPointer },
+      lastFrameTime: performance.now(),
+      scrollChain: buildScrollChain(containerEl),
+      rafId: null,
+      activeEffects,
+      commitToken: null,
+    };
 
     options.draggingKey.value = key;
     options.onDragStart?.({ key, index: initialIndex });
@@ -394,37 +443,37 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const scheduleFrame = () => {
-    if (!session) return;
+    if (!session || session.phase !== 'dragging') return;
     session.rafId = requestAnimationFrame(tick);
   };
 
   const tick = (time: number) => {
-    if (!session || session.phase !== 'active') return;
+    if (!session || session.phase !== 'dragging') return;
 
     const deltaTimeMs = time - session.lastFrameTime;
     session.lastFrameTime = time;
 
     processActiveFrame(deltaTimeMs);
 
-    // scheduleFrame() re-checks for a live session itself: processActiveFrame may have
+    // scheduleFrame() re-checks for a live dragging session itself: processActiveFrame may have
     // ended the session synchronously (e.g. the active key disappeared).
     scheduleFrame();
   };
 
   const processActiveFrame = (deltaTimeMs: number) => {
-    if (!session) return;
+    if (!session || session.phase !== 'dragging') return;
     const s = session;
 
     const currentKeys = options.getKeys();
 
-    // The controlled-order check and the awaitingDomCommit gate both run before any autoscroll
+    // The controlled-order check and the awaited-commit gate both run before any autoscroll
     // write, so an incompatible external mutation is always caught before a scroll side effect.
     if (checkOrderConsistency(s.confirmedSequence, currentKeys) === 'external-mutation') {
       cancelSession({ skipRollback: true });
       return;
     }
 
-    if (s.awaitingDomCommit) return;
+    if (s.commitToken !== null) return;
 
     const autoscrollResult = runAutoscrollTick(s.scrollChain, s.rawPointer, deltaTimeMs);
 
@@ -455,7 +504,7 @@ export const createPointerSession = <Key extends ReorderKey>(
     requestMove(s, activeIndex, targetIndex);
   };
 
-  const requestMove = (s: SessionState<Key>, fromIndex: number, toIndex: number) => {
+  const requestMove = (s: DraggingSession<Key>, fromIndex: number, toIndex: number) => {
     const movedKey = s.key;
     const requestedSequence = deriveMovedSequence(s.confirmedSequence, fromIndex, toIndex);
 
@@ -476,79 +525,137 @@ export const createPointerSession = <Key extends ReorderKey>(
     // Promoted synchronously: an immediate cancellation right after this can already roll back
     // from the up-to-date confirmedSequence, without waiting for nextTick.
     s.confirmedSequence = outcome.confirmedSequence;
-    s.awaitingDomCommit = true;
+    const commitToken: CommitToken = Symbol('reorder-commit');
+    s.commitToken = commitToken;
 
     void nextTick(() => {
-      if (session !== s) return;
+      resolveCommitToken(commitToken);
+    });
+  };
 
-      if (checkOrderConsistency(s.confirmedSequence, options.getKeys()) === 'external-mutation') {
+  /**
+   * Resolves one accepted move's `nextTick` wait. Ignored entirely unless the current session (in
+   * either `dragging` or `settling` phase) is still awaiting exactly this `token` — an older
+   * `nextTick` callback can never mutate a replaced or ended session.
+   * @param token - The commit token captured when this move's `nextTick` wait was scheduled.
+   */
+  const resolveCommitToken = (token: CommitToken) => {
+    if (!session || session.phase === 'pending' || session.commitToken !== token) return;
+
+    const isExternalMutation =
+      checkOrderConsistency(session.confirmedSequence, options.getKeys()) === 'external-mutation';
+
+    if (session.phase === 'dragging') {
+      if (isExternalMutation) {
         cancelSession({ skipRollback: true });
         return;
       }
 
-      s.awaitingDomCommit = false;
-
       // The next scheduled animation frame naturally remeasures now that the gate is clear.
-      if (s.finishRequested) finishSession();
-    });
-  };
-
-  const finishSession = () => {
-    if (!session || session.phase !== 'active') {
-      teardownSession();
+      session.commitToken = null;
       return;
     }
 
-    const { key, initialIndex } = session;
-    const finalIndex = options.getKeys().indexOf(key);
+    if (isExternalMutation) {
+      cancelSettlingSession(session);
+      return;
+    }
 
-    teardownSession();
+    finishSettlingSession(session);
+  };
+
+  const finishDraggingSession = (s: DraggingSession<Key>) => {
+    const finalIndex = options.getKeys().indexOf(s.key);
+
+    session = null;
     options.draggingKey.value = null;
-    options.onDragEnd?.({ key, initialIndex, finalIndex, cancelled: false });
+    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: false });
+  };
+
+  const finishSettlingSession = (s: SettlingSession<Key>) => {
+    const finalIndex = options.getKeys().indexOf(s.key);
+
+    session = null;
+    options.draggingKey.value = null;
+    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: false });
   };
 
   const cancelSession = (cancelOptions: { skipRollback?: boolean } = {}) => {
     if (!session) return;
 
     if (session.phase === 'pending') {
-      teardownSession();
+      teardownPendingSession(session);
       return;
     }
 
-    const { key, initialIndex, confirmedSequence, pendingRequestedSequence } = session;
+    if (session.phase === 'dragging') {
+      cancelDraggingSession(session, cancelOptions);
+      return;
+    }
+
+    cancelSettlingSession(session);
+  };
+
+  const cancelDraggingSession = (
+    s: DraggingSession<Key>,
+    cancelOptions: { skipRollback?: boolean },
+  ) => {
     const currentKeys = options.getKeys();
-    let finalIndex = currentKeys.indexOf(key);
+    let finalIndex = currentKeys.indexOf(s.key);
 
     const rollbackAllowed =
       !cancelOptions.skipRollback &&
-      pendingRequestedSequence === null &&
+      s.pendingRequestedSequence === null &&
       finalIndex !== -1 &&
-      finalIndex !== initialIndex &&
-      canRollback(confirmedSequence, currentKeys, key, initialIndex);
+      finalIndex !== s.initialIndex &&
+      canRollback(s.confirmedSequence, currentKeys, s.key, s.initialIndex);
 
     if (rollbackAllowed) {
-      const rollbackSequence = deriveMovedSequence(currentKeys, finalIndex, initialIndex);
-      options.onReorder({ key, fromIndex: finalIndex, toIndex: initialIndex });
+      const rollbackSequence = deriveMovedSequence(currentKeys, finalIndex, s.initialIndex);
+      options.onReorder({ key: s.key, fromIndex: finalIndex, toIndex: s.initialIndex });
 
       const keysAfterRollback = options.getKeys();
       finalIndex = sequencesEqual(keysAfterRollback, rollbackSequence)
-        ? initialIndex
-        : keysAfterRollback.indexOf(key);
+        ? s.initialIndex
+        : keysAfterRollback.indexOf(s.key);
     }
 
-    teardownSession();
+    session = null;
+    stopGestureRuntime(s);
+
+    // If the physical release hasn't happened yet (Escape, blur, visibility loss, a second
+    // pointer, container removal, unmount, or unexpected lost capture), track it instead of
+    // arming a zero-delay fallback that would expire long before the pointer actually lifts. A
+    // normal release already armed suppression immediately inside the pointerup handling itself;
+    // a direct `pointercancel` never gets a click, so it never arms anything either.
+    if (s.terminationReason === 'not-ended') {
+      clickSuppression.armReleaseWatcher({ containerEl: s.containerEl, pointerId: s.pointerId });
+    }
+
     options.draggingKey.value = null;
-    options.onDragEnd?.({ key, initialIndex, finalIndex, cancelled: true });
+    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: true });
+  };
+
+  const cancelSettlingSession = (s: SettlingSession<Key>) => {
+    // No active pointer runtime to stop, and the original pointer already physically released
+    // (settling only exists after a physical pointerup), so no rollback and no release watcher
+    // ever apply here: just reconcile the current controlled sequence and finish as cancelled.
+    const finalIndex = options.getKeys().indexOf(s.key);
+
+    session = null;
+    options.draggingKey.value = null;
+    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: true });
   };
 
   /**
-   * Stops every active-session DOM-level and scheduling side effect: the rAF loop, the session's
-   * temporary global listeners, and pointer capture/touch/context-menu/selection guards. Safe to
-   * call multiple times (each step is a no-op once already stopped) so both the immediate
-   * physical-`pointerup` path and the eventual `teardownSession()` call can call it unconditionally
-   * without double-disposing anything.
+   * Stops every dragging-session DOM-level and scheduling side effect: the rAF loop, the
+   * session's temporary global listeners, and pointer capture/touch/context-menu/selection guards.
+   * Safe to call multiple times (each step is a no-op once already stopped) so both the immediate
+   * physical-`pointerup` path and a later cancellation can call it unconditionally without
+   * double-disposing anything.
+   * @param s - The dragging session whose runtime side effects should stop.
    */
-  const stopGestureRuntime = (s: SessionState<Key>): void => {
+  const stopGestureRuntime = (s: DraggingSession<Key>): void => {
     if (s.rafId !== null) {
       cancelAnimationFrame(s.rafId);
       s.rafId = null;
@@ -562,22 +669,10 @@ export const createPointerSession = <Key extends ReorderKey>(
     }
   };
 
-  const teardownSession = () => {
-    if (!session) return;
-    const s = session;
+  const teardownPendingSession = (s: PendingSession<Key>): void => {
     session = null;
-
     if (s.longPressTimer !== null) clearTimeout(s.longPressTimer);
-    stopGestureRuntime(s);
-
-    // If the physical release hasn't happened yet (Escape, blur, visibility loss, a second
-    // pointer, container removal, unmount, or unexpected lost capture), track it instead of
-    // arming a zero-delay fallback that would expire long before the pointer actually lifts. A
-    // normal release already armed suppression immediately inside the pointerup handling itself;
-    // a direct `pointercancel` never gets a click, so it never arms anything either.
-    if (s.phase === 'active' && s.terminationReason === 'not-ended') {
-      clickSuppression.armReleaseWatcher({ containerEl: s.containerEl, pointerId: s.pointerId });
-    }
+    globalListeners.detach();
   };
 
   const attachContainer = (containerEl: HTMLElement) => {
@@ -586,7 +681,10 @@ export const createPointerSession = <Key extends ReorderKey>(
 
   const detachContainer = (containerEl: HTMLElement) => {
     containerEl.removeEventListener('pointerdown', onContainerPointerDown);
-    if (session && session.containerEl === containerEl) cancelSession();
+    // Only one container may be mounted at a time per `useReorder` instance (enforced by
+    // `vReorderContainer`'s duplicate-mount invariant), so any live session at this point belongs
+    // to this containerEl regardless of its current phase.
+    if (session) cancelSession();
     clickSuppression.disarm();
   };
 

@@ -550,6 +550,15 @@ describe('getActionRequired', () => {
           processEnv: {
             GITHUB_ACTIONS: 'false',
           },
+          // Synthetic risk (not derived from the real, now-aligned local/github-actions config)
+          // so this proves printSummary's own rendering, independent of whether the two profiles
+          // currently happen to differ.
+          ciProfileRisk: {
+            affectedChecks: ['e2e'],
+            activeProfile: { name: 'local' },
+            githubActionsProfile: { name: 'github-actions' },
+            differences: ['workers: 1 -> 2'],
+          },
         },
       );
 
@@ -593,6 +602,24 @@ describe('getCiProfileRisk', () => {
         ],
         {
           GITHUB_ACTIONS: 'true',
+        },
+      ),
+    ).toBeNull();
+  });
+
+  it('omits CI-profile risk when the local and github-actions profiles have no differences', () => {
+    // The local and github-actions Playwright container profiles in config/tooling.json are kept
+    // aligned by design; this guards against a config drift silently reintroducing a risk.
+    expect(
+      getCiProfileRisk(
+        [
+          {
+            label: 'e2e',
+            status: 'passed',
+          },
+        ],
+        {
+          GITHUB_ACTIONS: 'false',
         },
       ),
     ).toBeNull();

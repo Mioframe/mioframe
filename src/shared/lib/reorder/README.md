@@ -68,7 +68,11 @@ exact sequence it requested — it never waits for Vue's `nextTick` to decide wh
 accepted. `nextTick` is used only afterward, to wait for Vue's DOM commit of an already-accepted
 move before remeasuring geometry on the next animation frame. If the original pointer is released
 while that DOM commit is still pending, completion is deferred until the commit resolves rather
-than reported prematurely.
+than reported prematurely — but the physical release still stops every part of the active gesture
+immediately (pointer capture, the per-frame loop, and all temporary listeners): only the final
+`onDragEnd` waits, nothing about the drag itself keeps running while it does. A later, real
+`lostpointercapture` from that same release resolving is expected and never turns a deferred
+completion into a cancellation.
 
 Internally, an active session keeps a non-authoritative snapshot (`confirmedSequence`) of the
 sequence it expects the consumer's `keys` to be. That snapshot exists only to verify the controlled
@@ -149,6 +153,11 @@ pointer removes the watcher without arming suppression (no click will follow), a
 timeout removes it if the pointer never reports back at all. Either way, only the just-ended
 gesture's own click can ever be suppressed — a genuinely unrelated later click always passes.
 
+A direct `pointercancel` on an active drag (not a `pointercancel` observed by an already-running
+release watcher) ends the original pointer stream completely and immediately: no click can ever
+follow it, so it never arms suppression and never starts a release watcher of its own — a real
+release of that same physical button afterward is treated as unrelated.
+
 ## Autoscroll
 
 Once activated, dragging near a visible edge of the reorder container, any of its existing
@@ -160,6 +169,12 @@ scroll limit, the chain falls through to the next one, ending with the viewport 
 target. Only ancestors that actually clip (not `overflow: visible`) reduce an item's visible
 bounds. Speed increases smoothly near an edge and continues while the pointer is held still; a
 pointer beyond a visible edge keeps scrolling and reordering intuitively rather than stalling.
+
+Every edge and clipping measurement is based on each ancestor's client (content) viewport — its
+border and any scrollbar gutter are excluded, never treated as scrollable or reorderable content.
+A container whose visible area is fully clipped or scrolled away (zero width or height) has no
+interior point to target at all: the library skips reordering for that frame instead of resolving
+an arbitrary point.
 
 ## Cancellation
 

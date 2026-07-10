@@ -40,6 +40,8 @@ const stubRect = (
  * Overrides an element's client viewport metrics independently of its border-box rect, so a test
  * can model a real border and/or scrollbar gutter (client rect narrower/offset from the border
  * rect `stubRect` configured).
+ * @param el - The element to override client viewport metrics on.
+ * @param client - The client-box left/top offsets and width/height to stub.
  */
 const stubClientBox = (
   el: Element,

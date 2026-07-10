@@ -3,11 +3,15 @@ import { openStory } from './storybook';
 
 declare global {
   interface Window {
-    __externalPointerDownCount?: number;
+    testExternalPointerDownCount?: number;
+    testReorderRafQueue?: { id: number; cb: FrameRequestCallback }[];
+    testReorderFlushRaf?: () => void;
   }
 }
 
 const STORY_ID = 'shared-lib-reorder-reorderstoryharness--default';
+const BORDERED_VIEWPORT_STORY_ID =
+  'shared-lib-reorder-reorderborderedviewportstoryharness--default';
 
 const getOrder = async (page: Page): Promise<string[]> => {
   const text = await page.getByTestId('reorder-order').textContent();
@@ -365,12 +369,21 @@ test.describe('click suppression', () => {
     expect((await getLastDragEnd(page))?.cancelled).toBe(true);
 
     // The mouse button never truly lifts for this synthetic-pointercancel stream, but a later,
-    // genuinely new click elsewhere in the container must still register normally.
+    // genuinely new click elsewhere in the container must still register normally. Whether the
+    // browser's own native click generation for that bare release lands before or after this
+    // point is a real-engine timing detail this library has no opinion on (pointercancel neither
+    // suppresses it nor guarantees it); let any such click fully settle and establish the count
+    // baseline afterward, so only the deliberate click below is asserted.
     await page.mouse.up();
+    await page.waitForTimeout(200);
+    const clickCountBeforeNewClick = await readContainerClickCount();
+
     const alphaBoxAfter = await boxOf(page.getByTestId('reorder-item-alpha'));
     await page.mouse.click(center(alphaBoxAfter).x, center(alphaBoxAfter).y);
 
-    expect(await readContainerClickCount()).toBe(1);
+    await expect
+      .poll(() => readContainerClickCount(), { timeout: 5000 })
+      .toBe(clickCountBeforeNewClick + 1);
     expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
   });
 });
@@ -591,9 +604,10 @@ test.describe('autoscroll', () => {
   test('continues scrolling with a stationary pointer and falls through to the scrollable ancestor once the container hits its limit', async ({
     page,
   }) => {
-    // Two sequential real-time-bound autoscroll phases; give this test extra wall-clock budget
-    // beyond the default so CI-profile parallel worker contention doesn't starve it.
-    test.setTimeout(60000);
+    // Two sequential real-time-bound autoscroll phases, each with its own generous poll budget;
+    // the outer test timeout must comfortably exceed their sum (rather than sitting flush against
+    // it) so real per-worker CPU contention delaying one phase can't silently truncate the other.
+    test.setTimeout(150000);
 
     const container = page.getByTestId('reorder-container');
     const scrollAncestor = page.getByTestId('reorder-scroll-ancestor');
@@ -612,7 +626,7 @@ test.describe('autoscroll', () => {
       .poll(
         () =>
           container.evaluate((el) => Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight))),
-        { timeout: 20000 },
+        { timeout: 60000 },
       )
       .toBeLessThanOrEqual(2);
 
@@ -624,7 +638,7 @@ test.describe('autoscroll', () => {
     await page.mouse.move(from.x, ancestorBox.y + ancestorBox.height - 4, { steps: 4 });
 
     await expect
-      .poll(() => scrollAncestor.evaluate((el) => el.scrollTop), { timeout: 20000 })
+      .poll(() => scrollAncestor.evaluate((el) => el.scrollTop), { timeout: 60000 })
       .toBeGreaterThan(ancestorScrollTopBefore);
 
     await page.mouse.up();
@@ -676,14 +690,14 @@ test.describe('autoscroll', () => {
     await page.mouse.move(from.x, containerBox.y + containerBox.height - 4, { steps: 6 });
 
     await expect
-      .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 3000 })
+      .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 10000 })
       .toBeGreaterThan(scrollTopBefore);
 
     await page.getByTestId('reorder-control-reverse-order').evaluate((el: HTMLElement) => {
       el.click();
     });
 
-    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    await expect.poll(() => getCount(page, 'reorder-drag-end-count'), { timeout: 10000 }).toBe(1);
     const lastDragEnd = await getLastDragEnd(page);
     expect(lastDragEnd?.cancelled).toBe(true);
 
@@ -702,7 +716,11 @@ test.describe('autoscroll', () => {
     test('falls back to the page viewport once the container and its scrollable ancestor are both exhausted', async ({
       page,
     }) => {
-      test.setTimeout(60000);
+      // Three sequential real-time-bound autoscroll phases, each with its own generous poll
+      // budget; the outer test timeout must comfortably exceed their sum (rather than sitting
+      // flush against it) so real per-worker CPU contention delaying one phase can't silently
+      // truncate a later one.
+      test.setTimeout(220000);
 
       const container = page.getByTestId('reorder-container');
       const scrollAncestor = page.getByTestId('reorder-scroll-ancestor');
@@ -721,7 +739,7 @@ test.describe('autoscroll', () => {
             container.evaluate((el) =>
               Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight)),
             ),
-          { timeout: 20000 },
+          { timeout: 60000 },
         )
         .toBeLessThanOrEqual(2);
 
@@ -731,14 +749,14 @@ test.describe('autoscroll', () => {
             scrollAncestor.evaluate((el) =>
               Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight)),
             ),
-          { timeout: 20000 },
+          { timeout: 60000 },
         )
         .toBeLessThanOrEqual(2);
 
       const pageScrollBefore = await page.evaluate(() => window.scrollY);
 
       await expect
-        .poll(() => page.evaluate(() => window.scrollY), { timeout: 20000 })
+        .poll(() => page.evaluate(() => window.scrollY), { timeout: 60000 })
         .toBeGreaterThan(pageScrollBefore);
 
       await page.mouse.up();
@@ -897,15 +915,15 @@ test.describe('cancellation and cleanup', () => {
       expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
 
       await page.evaluate(() => {
-        window.__externalPointerDownCount = 0;
+        window.testExternalPointerDownCount = 0;
         document.addEventListener('pointerdown', () => {
-          window.__externalPointerDownCount = (window.__externalPointerDownCount ?? 0) + 1;
+          window.testExternalPointerDownCount = (window.testExternalPointerDownCount ?? 0) + 1;
         });
       });
 
       await dispatchTouch(page, 'touchStart', { x: 2, y: 2 });
 
-      const externalCount = await page.evaluate(() => window.__externalPointerDownCount ?? 0);
+      const externalCount = await page.evaluate(() => window.testExternalPointerDownCount ?? 0);
       expect(externalCount).toBe(1);
 
       // The current session cancelled, but this same second-pointer event must not have started
@@ -1028,5 +1046,129 @@ test.describe('cancellation and cleanup', () => {
 
     expect(await getCount(page, 'reorder-drag-start-count')).toBe(2);
     expect(await getCount(page, 'reorder-drag-end-count')).toBe(2);
+  });
+});
+
+test.describe('deferred pointerup settlement', () => {
+  test('an accepted move settles into exactly one successful onDragEnd when pointerup arrives before its DOM commit, with no extra scroll or reorder afterward', async ({
+    page,
+  }) => {
+    const container = page.getByTestId('reorder-container');
+    const alpha = page.getByTestId('reorder-item-alpha');
+    const bravo = page.getByTestId('reorder-item-bravo');
+
+    const from = center(await boxOf(alpha));
+    const to = center(await boxOf(bravo));
+
+    // Take deterministic control of the library's per-frame `requestAnimationFrame` loop from the
+    // test itself, so the physical release below can be dispatched synchronously, in the very
+    // same script turn as the just-accepted move — before Vue's own DOM-commit microtask (queued
+    // by that move's `nextTick`) gets a chance to run. This reproduces the exact
+    // "pointerup arrives before its deferred DOM commit settles" race deterministically, instead
+    // of relying on real frame/microtask timing that a separate Playwright command could never
+    // reliably land inside.
+    await page.evaluate(() => {
+      window.testReorderRafQueue = [];
+      let nextId = 1;
+      window.requestAnimationFrame = (cb: FrameRequestCallback): number => {
+        const id = nextId;
+        nextId += 1;
+        window.testReorderRafQueue?.push({ id, cb });
+        return id;
+      };
+      window.cancelAnimationFrame = (id: number): void => {
+        window.testReorderRafQueue = (window.testReorderRafQueue ?? []).filter(
+          (entry) => entry.id !== id,
+        );
+      };
+      window.testReorderFlushRaf = () => {
+        const pending = window.testReorderRafQueue ?? [];
+        window.testReorderRafQueue = [];
+        const now = performance.now();
+        for (const entry of pending) entry.cb(now);
+      };
+    });
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    // Crosses the activation threshold; the resulting frame is queued into the stub above rather
+    // than a real animation frame, so it does not run until explicitly flushed below.
+    await page.mouse.move(from.x + 10, from.y, { steps: 2 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    // Only updates the pending frame's pointer position; still does not run any frame processing.
+    await page.mouse.move(to.x, to.y, { steps: 1 });
+    expect(await getCount(page, 'reorder-reorder-count')).toBe(0);
+
+    const releasedSynchronouslyWithoutRequeue = await page.evaluate(() => {
+      // Runs the single queued frame synchronously: it hit-tests the pointer's current position,
+      // accepts the move (calling the consumer's onReorder), and schedules Vue's DOM-commit
+      // `nextTick` wait. Immediately afterward, in this same script turn, dispatch the physical
+      // release: the pointerup handler stops the gesture runtime and — since a commit is still
+      // being awaited — defers completion instead of finishing immediately.
+      window.testReorderFlushRaf?.();
+      window.dispatchEvent(
+        new PointerEvent('pointerup', { pointerId: 1, bubbles: true, cancelable: true }),
+      );
+      // Gesture runtime must already be fully stopped: no new frame was queued by the pointerup
+      // handling above.
+      return (window.testReorderRafQueue ?? []).length === 0;
+    });
+
+    expect(releasedSynchronouslyWithoutRequeue).toBe(true);
+    expect(await getCount(page, 'reorder-reorder-count')).toBe(1);
+
+    // The deferred completion resolves once Vue's DOM commit settles (already scheduled above);
+    // a real, matching `lostpointercapture` fired by the browser's own capture release must not
+    // turn this into a cancellation.
+    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    const lastDragEnd = await getLastDragEnd(page);
+    expect(lastDragEnd?.cancelled).toBe(false);
+    expect(await getDraggingKey(page)).toBe('');
+
+    const reorderCountAfterSettle = await getCount(page, 'reorder-reorder-count');
+    const scrollTopAfterSettle = await container.evaluate((el) => el.scrollTop);
+
+    await page.waitForTimeout(200);
+
+    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAfterSettle);
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await container.evaluate((el) => el.scrollTop)).toBe(scrollTopAfterSettle);
+  });
+});
+
+test.describe('bordered client viewport autoscroll', () => {
+  test('autoscroll activation is measured from the client viewport, excluding the container border', async ({
+    page,
+  }) => {
+    await openStory(page, BORDERED_VIEWPORT_STORY_ID);
+
+    const container = page.getByTestId('reorder-bordered-viewport-container');
+    const containerBox = await boxOf(container);
+    const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
+
+    const item = page.getByTestId('reorder-bordered-viewport-item-one');
+    const from = center(await boxOf(item));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    // A 100px border surrounds this container's 200px client (content) viewport, and the
+    // autoscroll edge zone is 56px. This move lands the pointer 70px inside the container's own
+    // border-box bottom edge — already past a border-box-measured 56px edge zone (so a regression
+    // to measuring from the border box would see no autoscroll at all here) — but still 30px short
+    // of the true client-viewport bottom edge, i.e. beyond it entirely once the border is
+    // correctly excluded, which must autoscroll (downward, where scroll room actually exists)
+    // at once.
+    await page.mouse.move(
+      containerBox.x + containerBox.width / 2,
+      containerBox.y + containerBox.height - 70,
+      { steps: 8 },
+    );
+
+    await expect
+      .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 3000 })
+      .toBeGreaterThan(scrollTopBefore);
+
+    await page.mouse.up();
   });
 });

@@ -1,4 +1,4 @@
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, toValue } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPointerSession } from './PointerSession';
 import { createReorderRegistry, registerItem } from './registry';
@@ -14,6 +14,7 @@ import { createReorderRegistry, registerItem } from './registry';
 
 let rafCallbacks: Map<number, FrameRequestCallback>;
 let nextRafId: number;
+let releasePointerCaptureSpy: ReturnType<typeof vi.fn<(pointerId: number) => void>>;
 
 const createPointerEvent = (
   type: string,
@@ -24,20 +25,16 @@ const createPointerEvent = (
     clientY?: number;
     button?: number;
   } = {},
-): PointerEvent => {
-  const event = new Event(type, { bubbles: true, cancelable: true }) as PointerEvent;
-
-  Object.defineProperty(event, 'pointerId', { value: opts.pointerId ?? 1, configurable: true });
-  Object.defineProperty(event, 'pointerType', {
-    value: opts.pointerType ?? 'mouse',
-    configurable: true,
+): PointerEvent =>
+  new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    pointerId: opts.pointerId ?? 1,
+    pointerType: opts.pointerType ?? 'mouse',
+    clientX: opts.clientX ?? 0,
+    clientY: opts.clientY ?? 0,
+    button: opts.button ?? 0,
   });
-  Object.defineProperty(event, 'clientX', { value: opts.clientX ?? 0, configurable: true });
-  Object.defineProperty(event, 'clientY', { value: opts.clientY ?? 0, configurable: true });
-  Object.defineProperty(event, 'button', { value: opts.button ?? 0, configurable: true });
-
-  return event;
-};
 
 const dispatchClick = (el: HTMLElement): boolean =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -62,7 +59,10 @@ const stubRect = (
   Object.defineProperty(el, 'clientHeight', { value: rect.height, configurable: true });
 };
 
-/** Builds one session with two registered items, 'a' (100x100 @ 0,0) and 'b' (100x100 @ 200,0). */
+/**
+ * Builds one session with two registered items, 'a' (100x100 at 0,0) and 'b' (100x100 at 200,0).
+ * @returns The registry, elements, key state, callbacks, and session under test.
+ */
 const setupSession = () => {
   const registry = createReorderRegistry<string>();
   const containerEl = document.createElement('div');
@@ -120,7 +120,11 @@ const setupSession = () => {
   };
 };
 
-/** Dispatches pointerdown on `itemEl`, then a pointermove that crosses the mouse activation threshold. */
+/**
+ * Dispatches pointerdown on `itemEl`, then a pointermove that crosses the mouse activation threshold.
+ * @param itemEl - The item element to press down on.
+ * @param pointerId - The pointer id to dispatch both events with.
+ */
 const activateOnItem = (itemEl: HTMLElement, pointerId = 1): void => {
   itemEl.dispatchEvent(createPointerEvent('pointerdown', { pointerId, clientX: 10, clientY: 10 }));
   window.dispatchEvent(createPointerEvent('pointermove', { pointerId, clientX: 20, clientY: 10 }));
@@ -128,10 +132,11 @@ const activateOnItem = (itemEl: HTMLElement, pointerId = 1): void => {
 
 /** Runs the single currently-scheduled animation frame, if any. */
 const runFrame = (): void => {
-  const [id, cb] = [...rafCallbacks.entries()][0] ?? [undefined, undefined];
-  if (id === undefined || !cb) return;
-  rafCallbacks.delete(id);
-  cb(performance.now());
+  for (const [id, cb] of rafCallbacks) {
+    rafCallbacks.delete(id);
+    cb(performance.now());
+    return;
+  }
 };
 
 beforeEach(() => {
@@ -153,7 +158,8 @@ beforeEach(() => {
   document.elementsFromPoint = () => [];
 
   HTMLElement.prototype.setPointerCapture = vi.fn();
-  HTMLElement.prototype.releasePointerCapture = vi.fn();
+  releasePointerCaptureSpy = vi.fn();
+  HTMLElement.prototype.releasePointerCapture = releasePointerCaptureSpy;
   HTMLElement.prototype.hasPointerCapture = vi.fn(() => true);
 });
 
@@ -293,12 +299,15 @@ describe('validation cleanup during pending activation', () => {
     }).toThrow('boom');
 
     expect(onDragStart).not.toHaveBeenCalled();
-    expect(draggingKey.value).toBeNull();
+    expect(toValue(draggingKey)).toBeNull();
   });
 });
 
 describe('deferred pointerup settlement', () => {
-  /** Activates a drag on 'a', then drives one frame that requests and gets 'a'/'b' swapped. */
+  /**
+   * Activates a drag on 'a', then drives one frame that requests and gets 'a'/'b' swapped.
+   * @param setup - The session fixture returned by {@link setupSession}.
+   */
   const activateAndAcceptMove = (setup: ReturnType<typeof setupSession>): void => {
     activateOnItem(setup.itemA);
     setup.registry.itemKeys.set(setup.itemB, 'b');
@@ -315,12 +324,11 @@ describe('deferred pointerup settlement', () => {
     const setup = setupSession();
     activateAndAcceptMove(setup);
 
-    const releaseSpy = HTMLElement.prototype.releasePointerCapture as ReturnType<typeof vi.fn>;
-    releaseSpy.mockClear();
+    releasePointerCaptureSpy.mockClear();
 
     window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
 
-    expect(releaseSpy).toHaveBeenCalledWith(1);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
     expect(rafCallbacks.size).toBe(0);
     // Not settled yet: the DOM commit (nextTick) hasn't resolved.
     expect(setup.onDragEnd).not.toHaveBeenCalled();
@@ -386,5 +394,27 @@ describe('deferred pointerup settlement', () => {
 
     expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
     expect(setup.onDragEnd).toHaveBeenCalledWith(expect.objectContaining({ cancelled: true }));
+  });
+
+  it('cancelling (active-item unmount) during the deferred window fires exactly one cancelled onDragEnd, and the stale DOM-commit settlement afterward is a no-op', async () => {
+    const setup = setupSession();
+    activateAndAcceptMove(setup);
+
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(setup.onDragEnd).not.toHaveBeenCalled();
+
+    // The active key is removed while still waiting for the deferred DOM commit to resolve.
+    setup.session.notifyItemUnmounted('a');
+
+    expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
+    expect(setup.onDragEnd).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'a', cancelled: true }),
+    );
+
+    // The original accepted move's nextTick still resolves afterward, but the settling session it
+    // was waiting on has already ended: it must not mutate anything or fire a second onDragEnd.
+    await nextTick();
+
+    expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
   });
 });
