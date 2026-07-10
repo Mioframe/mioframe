@@ -67,7 +67,7 @@ describe('useReorderSurface helpers', () => {
     expect(state).toMatchObject({
       displayItemIdList: ['a', 'b', 'c'],
       latestExternalItemIdList: ['a', 'b', 'c'],
-      isDragging: false,
+      phase: 'idle',
       dragStartOrder: [],
       suppressNextClick: false,
       shouldRollbackOnEnd: false,
@@ -84,7 +84,7 @@ describe('useReorderSurface helpers', () => {
     expect(state.optimisticCommitMarker).toBeUndefined();
   });
 
-  it('resets transient drag fields after a session', () => {
+  it('resets transient drag fields but leaves phase for the caller to decide', () => {
     const state = createState();
     startReorderSurfaceDrag(state, {
       itemId: 'a',
@@ -97,7 +97,9 @@ describe('useReorderSurface helpers', () => {
 
     resetDragState(state);
 
-    expect(state.isDragging).toBe(false);
+    // resetDragState only clears session-transient fields; the composable is the one
+    // that decides the next phase (idle for a no-op end, committing for a pending commit).
+    expect(state.phase).toBe('dragging');
     expect(state.draggedId).toBeUndefined();
     expect(state.activeInput).toBeUndefined();
     expect(state.dragStartOrder).toEqual([]);
@@ -105,22 +107,18 @@ describe('useReorderSurface helpers', () => {
     expect(state.suppressNextClick).toBe(true);
   });
 
-  it('syncs external state across drag, optimistic confirmation, and stale rollback', () => {
-    const draggingState = createState();
-    startReorderSurfaceDrag(draggingState, {
-      itemId: 'a',
-      orderedIds: ['a', 'b', 'c'],
-      fromIndex: 0,
-      input: 'pointer',
-    });
+  it('applies an idle external order directly', () => {
+    const state = createState();
 
-    syncReorderSurfaceExternalItemIdList(draggingState, ['a', 'b', 'c']);
-    expect(draggingState.shouldRollbackOnEnd).toBe(false);
+    syncReorderSurfaceExternalItemIdList(state, ['c', 'a', 'b']);
 
-    syncReorderSurfaceExternalItemIdList(draggingState, ['b', 'c', 'd']);
-    expect(draggingState.shouldRollbackOnEnd).toBe(true);
+    expect(state.displayItemIdList).toEqual(['c', 'a', 'b']);
+    expect(state.latestExternalItemIdList).toEqual(['c', 'a', 'b']);
+  });
 
+  it('reconciles a committing session against confirmation, stale echoes, and genuine changes', () => {
     const confirmedState = createState();
+    confirmedState.phase = 'committing';
     confirmedState.optimisticOrderedIds = ['b', 'a', 'c'];
     confirmedState.optimisticBaseOrderedIds = ['a', 'b', 'c'];
     confirmedState.optimisticCommitMarker = Symbol('commit');
@@ -131,19 +129,30 @@ describe('useReorderSurface helpers', () => {
     expect(confirmedState.optimisticOrderedIds).toBeUndefined();
 
     const staleState = createState();
+    staleState.phase = 'committing';
     staleState.optimisticOrderedIds = ['b', 'a', 'c'];
     staleState.optimisticBaseOrderedIds = ['a', 'b', 'c'];
     staleState.optimisticCommitMarker = Symbol('commit');
 
     syncReorderSurfaceExternalItemIdList(staleState, ['a', 'b', 'c']);
 
+    // A stale echo of the pre-commit order does not overwrite the optimistic preview.
     expect(staleState.displayItemIdList).toEqual(['a', 'b', 'c']);
     expect(staleState.optimisticOrderedIds).toEqual(['b', 'a', 'c']);
 
-    syncReorderSurfaceExternalItemIdList(staleState, ['c', 'a', 'b']);
+    const genuinelyDifferentState = createState();
+    genuinelyDifferentState.phase = 'committing';
+    genuinelyDifferentState.optimisticOrderedIds = ['b', 'a', 'c'];
+    genuinelyDifferentState.optimisticBaseOrderedIds = ['a', 'b', 'c'];
+    genuinelyDifferentState.optimisticCommitMarker = Symbol('commit');
 
-    expect(staleState.displayItemIdList).toEqual(['c', 'a', 'b']);
-    expect(staleState.optimisticOrderedIds).toBeUndefined();
+    syncReorderSurfaceExternalItemIdList(genuinelyDifferentState, ['c', 'a', 'b']);
+
+    // A genuinely different external order arriving mid-commit is recorded but not
+    // merged into the active optimistic preview; it only takes effect once committing ends.
+    expect(genuinelyDifferentState.displayItemIdList).toEqual(['a', 'b', 'c']);
+    expect(genuinelyDifferentState.optimisticOrderedIds).toEqual(['b', 'a', 'c']);
+    expect(genuinelyDifferentState.latestExternalItemIdList).toEqual(['c', 'a', 'b']);
   });
 
   it('marks cancellation only while dragging and previews local order', () => {

@@ -6,6 +6,16 @@ import {
 import type { ReorderInput } from './reorderInput';
 import type { ReorderCommitPayload } from './reorderTypes';
 
+/**
+ * Explicit reorder session state machine.
+ *
+ * `idle` — no press and no pending commit. `pendingPress` — a press is armed but has not
+ * cleared its activation gate. `dragging` — an active reorder session is updating
+ * `displayItemIdList`. `committing` — the session ended with a changed order and
+ * `onCommit` has not settled yet.
+ */
+export type ReorderPhase = 'idle' | 'pendingPress' | 'dragging' | 'committing';
+
 /** Full local session state used to reconcile drag preview with external updates. */
 export interface ReorderSurfaceState {
   /** Local render order used for drag preview and optimistic UI. */
@@ -24,8 +34,8 @@ export interface ReorderSurfaceState {
   optimisticBaseOrderedIds: string[] | undefined;
   /** Unique marker that ties rollback to the in-flight commit that created it. */
   optimisticCommitMarker: symbol | undefined;
-  /** Whether the engine is currently inside an active reorder session. */
-  isDragging: boolean;
+  /** Current session phase. */
+  phase: ReorderPhase;
   /** Whether the next synthetic click should be suppressed. */
   suppressNextClick: boolean;
   /** Whether drag end should rollback instead of committing. */
@@ -115,11 +125,12 @@ export const clearOptimisticState = (state: ReorderSurfaceState) => {
 };
 
 /**
- * Resets the transient drag session fields once a session ends.
+ * Resets the transient drag session fields once a session ends. Does not touch `phase`:
+ * callers decide the next phase (`idle` for a no-op end, `committing` for a pending
+ * commit) since only they know the outcome of the session.
  * @param state - Shared reorder-session state to reset.
  */
 export const resetDragState = (state: ReorderSurfaceState) => {
-  state.isDragging = false;
   state.draggedId = undefined;
   state.activeInput = undefined;
   state.dragStartOrder = [];
@@ -145,14 +156,43 @@ export const createReorderSurfaceState = (
     optimisticOrderedIds: undefined,
     optimisticBaseOrderedIds: undefined,
     optimisticCommitMarker: undefined,
-    isDragging: false,
+    phase: 'idle',
     suppressNextClick: false,
     shouldRollbackOnEnd: false,
   };
 };
 
 /**
- * Reconciles a fresh external order with the current drag or optimistic session.
+ * Arms the pending-press phase from idle. No-op when a session is already pending, active,
+ * or committing.
+ * @param state - Shared reorder-session state to update.
+ */
+export const beginReorderSurfacePendingPress = (state: ReorderSurfaceState) => {
+  if (state.phase === 'idle') {
+    state.phase = 'pendingPress';
+  }
+};
+
+/**
+ * Returns a pending press to idle without it ever activating. No-op once the session has
+ * activated into `dragging`.
+ * @param state - Shared reorder-session state to update.
+ */
+export const endReorderSurfacePendingPress = (state: ReorderSurfaceState) => {
+  if (state.phase === 'pendingPress') {
+    state.phase = 'idle';
+  }
+};
+
+/**
+ * Reconciles a fresh external order with the current session phase.
+ *
+ * Callers must cancel an active `pendingPress`/`dragging` session (and drive `phase` back
+ * to `idle`) before calling this for that transition; this function only decides how the
+ * external order applies once `phase` is `idle` or `committing`. While `committing`, the
+ * optimistic order is authoritative until the in-flight commit settles — a genuinely
+ * different external order observed mid-commit is recorded but not merged in, per the
+ * external-update policy.
  * @param state - Shared reorder-session state to update.
  * @param rawItemIdList - Latest authoritative ordered ids received from the caller.
  */
@@ -164,16 +204,11 @@ export const syncReorderSurfaceExternalItemIdList = (
 
   state.latestExternalItemIdList = nextItemIdList;
 
-  if (state.isDragging) {
-    if (!isSameOrderedIds(state.dragStartOrder, nextItemIdList)) {
-      state.shouldRollbackOnEnd = true;
-    }
-
-    return;
-  }
-
-  if (state.optimisticOrderedIds) {
-    if (isSameOrderedIds(nextItemIdList, state.optimisticOrderedIds)) {
+  if (state.phase === 'committing') {
+    if (
+      state.optimisticOrderedIds &&
+      isSameOrderedIds(nextItemIdList, state.optimisticOrderedIds)
+    ) {
       clearOptimisticState(state);
       state.displayItemIdList = nextItemIdList;
       return;
@@ -183,10 +218,14 @@ export const syncReorderSurfaceExternalItemIdList = (
       state.optimisticBaseOrderedIds &&
       isSameOrderedIds(nextItemIdList, state.optimisticBaseOrderedIds)
     ) {
+      // Stale echo of the pre-commit order; keep waiting for the real confirmation.
       return;
     }
 
-    clearOptimisticState(state);
+    // A genuinely different external order arrived mid-commit: do not merge it into the
+    // active optimistic order. `latestExternalItemIdList` above already recorded it, so
+    // it takes effect once the commit settles.
+    return;
   }
 
   state.displayItemIdList = nextItemIdList;
@@ -197,7 +236,7 @@ export const syncReorderSurfaceExternalItemIdList = (
  * @param state - Shared reorder-session state to update.
  */
 export const requestReorderSurfaceCancel = (state: ReorderSurfaceState) => {
-  if (!state.isDragging) {
+  if (state.phase !== 'dragging') {
     return;
   }
 
@@ -218,7 +257,7 @@ export const startReorderSurfaceDrag = (
   state.activeInput = input;
   state.dragStartOrder = cloneReorderItemIdList(orderedIds);
   state.displayItemIdList = cloneReorderItemIdList(orderedIds);
-  state.isDragging = true;
+  state.phase = 'dragging';
   state.suppressNextClick = false;
   state.shouldRollbackOnEnd = fromIndex < 0;
 };
@@ -242,6 +281,7 @@ export const completeReorderSurfaceDrag = (
 
   state.suppressNextClick = true;
   resetDragState(state);
+  state.phase = 'idle';
 
   if (!currentDraggedId || !currentInput) {
     state.displayItemIdList = cloneReorderItemIdList(currentItemIdList);

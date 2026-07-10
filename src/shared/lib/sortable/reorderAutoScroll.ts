@@ -1,6 +1,6 @@
-import type { ReorderAxis } from './reorderGeometry';
+import { getReorderVisibleBounds } from './reorderBounds';
 
-/** Distance in CSS pixels from a scroll edge where auto-scroll starts. */
+/** Distance in CSS pixels from a visible edge where auto-scroll starts. */
 const REORDER_AUTO_SCROLL_EDGE = 36;
 
 /** Maximum auto-scroll speed in CSS pixels per animation frame. */
@@ -8,11 +8,9 @@ const REORDER_AUTO_SCROLL_MAX_SPEED = 14;
 
 /** Options for {@link createReorderAutoScroll}. */
 export interface CreateReorderAutoScrollOptions {
-  /** Element whose scroll position is driven while the pointer is near its edges. */
-  scrollEl: HTMLElement;
-  /** Primary movement axis of the reorder collection. */
-  axis: ReorderAxis;
-  /** Called after each applied scroll step so the engine can re-run its move logic. */
+  /** Reorder surface container; auto-scroll only ever scrolls this element. */
+  containerEl: HTMLElement;
+  /** Called after each applied scroll step so the session can refresh rects and intent. */
   onScrollStep: () => void;
 }
 
@@ -20,27 +18,40 @@ export interface CreateReorderAutoScrollOptions {
 export interface ReorderAutoScroll {
   /**
    * Updates the driver with the latest pointer position in viewport coordinates.
-   * @param clientX - Pointer x in viewport coordinates.
    * @param clientY - Pointer y in viewport coordinates.
    */
-  update: (clientX: number, clientY: number) => void;
+  update: (clientY: number) => void;
   /** Stops any pending scroll animation frame. */
   stop: () => void;
 }
 
 /**
- * Creates an edge-proximity auto-scroll driver for an active reorder session.
+ * Returns whether the container can still scroll further in the given direction.
+ * @param containerEl - Reorder surface container.
+ * @param velocity - Signed scroll step; negative scrolls up, positive scrolls down.
+ * @returns True when scrolling in that direction would move the container.
+ */
+const canScrollFurther = (containerEl: HTMLElement, velocity: number): boolean => {
+  if (velocity < 0) {
+    return containerEl.scrollTop > 0;
+  }
+
+  return containerEl.scrollTop + containerEl.clientHeight < containerEl.scrollHeight;
+};
+
+/**
+ * Creates a container-local edge-proximity auto-scroll driver for an active reorder
+ * session.
  *
- * While the pointer sits inside the edge zone of the scroll container, the container is
- * scrolled a bounded amount per animation frame along the collection axis, and the
- * engine is asked to re-run its move logic so target index and overlay clamping stay in
- * sync with the new scroll position.
- * @param options - Scroll element, axis, and per-step callback.
+ * The container is never assumed to be fully visible: edge zones are computed from the
+ * visible interaction bounds (the intersection of the container with the viewport and any
+ * clipping ancestor), so an offscreen container edge never triggers a scroll. Only the
+ * container itself is ever scrolled — never the document, a page, a pane, or a sheet.
+ * @param options - Container element and per-step callback.
  * @returns The auto-scroll driver.
  */
 export const createReorderAutoScroll = ({
-  scrollEl,
-  axis,
+  containerEl,
   onScrollStep,
 }: CreateReorderAutoScrollOptions): ReorderAutoScroll => {
   let velocity = 0;
@@ -49,21 +60,16 @@ export const createReorderAutoScroll = ({
   const step = () => {
     frameHandle = undefined;
 
-    if (velocity === 0) {
+    if (velocity === 0 || !canScrollFurther(containerEl, velocity)) {
+      velocity = 0;
       return;
     }
 
-    const before = axis === 'y' ? scrollEl.scrollTop : scrollEl.scrollLeft;
+    const before = containerEl.scrollTop;
 
-    if (axis === 'y') {
-      scrollEl.scrollTop = before + velocity;
-    } else {
-      scrollEl.scrollLeft = before + velocity;
-    }
+    containerEl.scrollTop = before + velocity;
 
-    const after = axis === 'y' ? scrollEl.scrollTop : scrollEl.scrollLeft;
-
-    if (after !== before) {
+    if (containerEl.scrollTop !== before) {
       onScrollStep();
     }
 
@@ -83,13 +89,10 @@ export const createReorderAutoScroll = ({
   };
 
   return {
-    update: (clientX, clientY) => {
-      const rect = scrollEl.getBoundingClientRect();
-      const pointer = axis === 'y' ? clientY : clientX;
-      const start = axis === 'y' ? rect.top : rect.left;
-      const end = axis === 'y' ? rect.bottom : rect.right;
-      const startDistance = pointer - start;
-      const endDistance = end - pointer;
+    update: (clientY) => {
+      const bounds = getReorderVisibleBounds(containerEl);
+      const startDistance = clientY - bounds.top;
+      const endDistance = bounds.bottom - clientY;
 
       if (startDistance < REORDER_AUTO_SCROLL_EDGE) {
         const strength = Math.min(1, Math.max(0, 1 - startDistance / REORDER_AUTO_SCROLL_EDGE));
@@ -103,7 +106,9 @@ export const createReorderAutoScroll = ({
         velocity = 0;
       }
 
-      scheduleStep();
+      if (velocity !== 0 && canScrollFurther(containerEl, velocity)) {
+        scheduleStep();
+      }
     },
     stop: () => {
       velocity = 0;

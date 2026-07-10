@@ -40,23 +40,21 @@ const onItemContextMenu = (event: MouseEvent) => {
 
     <template #space>
       <div ref="containerEl" class="container">
-        <TransitionGroup name="dnd">
-          <div
-            v-for="itemId in displayItemIdList"
-            :key="itemId"
-            v-reorder-item="itemId"
-            class="item"
-            :class="{
-              _draggable: draggedId === itemId,
-            }"
-            :style="{
-              background: itemMap.get(itemId)?.color,
-            }"
-            @contextmenu="onItemContextMenu"
-          >
-            {{ itemMap.get(itemId)?.label }}
-          </div>
-        </TransitionGroup>
+        <div
+          v-for="itemId in displayItemIdList"
+          :key="itemId"
+          v-reorder-item="itemId"
+          class="item"
+          :class="{
+            _draggable: draggedId === itemId,
+          }"
+          :style="{
+            background: itemMap.get(itemId)?.color,
+          }"
+          @contextmenu="onItemContextMenu"
+        >
+          {{ itemMap.get(itemId)?.label }}
+        </div>
       </div>
     </template>
   </PlaygroundStory>

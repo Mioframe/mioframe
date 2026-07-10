@@ -53,14 +53,14 @@ The sortable layer must not create a lifted visual overlay. The active row remai
 
 ## Ownership matrix
 
-| Layer | Ownership |
-| --- | --- |
+| Layer                 | Ownership                                                                                                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `shared/lib/sortable` | Gesture recognition, activation gating, target-index calculation, optimistic display order, cancellation, rollback, click suppression, selection suppression, container-local auto-scroll, reorder directives, low-level tests. |
-| `shared/ui/Lists` | Material list visuals only. It must not know about reorder, sortable sessions, persistence, or feature-specific behavior. |
-| Feature | Row scenarios, `v-reorder-item`, `v-reorder-ignore`, id validation, and calling the correct entity reorder API. |
-| Entity | Domain order state and persistence operations. |
-| Widget/page | Composition only. No reorder state, persistence, or business rules. |
-| Service/worker | Unchanged for this PR. |
+| `shared/ui/Lists`     | Material list visuals only. It must not know about reorder, sortable sessions, persistence, or feature-specific behavior.                                                                                                       |
+| Feature               | Row scenarios, `v-reorder-item`, `v-reorder-ignore`, id validation, and calling the correct entity reorder API.                                                                                                                 |
+| Entity                | Domain order state and persistence operations.                                                                                                                                                                                  |
+| Widget/page           | Composition only. No reorder state, persistence, or business rules.                                                                                                                                                             |
+| Service/worker        | Unchanged for this PR.                                                                                                                                                                                                          |
 
 ## Public API
 
@@ -77,8 +77,7 @@ const { displayItemIdList, draggedId, isDragging, cancel } = useReorderSurface(c
 The public directives are:
 
 ```vue
-v-reorder-item="id"
-v-reorder-ignore
+v-reorder-item="id" v-reorder-ignore
 ```
 
 Production consumers should look like this shape:
@@ -192,9 +191,9 @@ Auto-scroll is required, but only inside the reorder container.
 
 There are two different boundaries:
 
-| Boundary | Meaning |
-| --- | --- |
-| Logical reorder bounds | The full reorder container and its item range. Items cannot move outside this order. |
+| Boundary                   | Meaning                                                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Logical reorder bounds     | The full reorder container and its item range. Items cannot move outside this order.                                  |
 | Visible interaction bounds | The visible intersection of the container with the viewport and clipping ancestors. Edge zones use this visible area. |
 
 Rules:
@@ -261,27 +260,27 @@ Shared sortable should fail closed by cancelling the session. It should not gues
 
 ## Acceptance matrix
 
-| Scenario | Expected behavior |
-| --- | --- |
-| Desktop row click | Row action fires; reorder does not start. |
-| Desktop press plus threshold movement | Reorder starts. |
-| Desktop release after movement | `onCommit` receives final ordered ids if order changed. |
-| Desktop drag ending at original position | No commit. |
-| Post-drag synthetic click | Suppressed once inside the surface. |
-| Touch tap | Row action fires; reorder does not start. |
-| Touch vertical movement before long press | Treated as scroll intent; pending reorder is cancelled. |
-| Touch long press | Reorder starts and row enters dragged visual state. |
-| Drag crosses another row | `displayItemIdList` updates reactively. |
-| Drag hovers near boundary | Hysteresis prevents index bouncing. |
-| Drag near visible top/bottom edge | The reorder container auto-scrolls if it can scroll. |
-| Container taller than viewport | Edge zones use visible bounds, not offscreen container edges. |
-| Container clipped by parent | Edge zones use clipped visible bounds. |
-| Parent/page is scrollable | Parent/page does not scroll because of active reorder. |
-| Escape or pointercancel | Reorder cancels and optimistic order rolls back. |
-| Commit failure | Optimistic order rolls back. |
-| External order update during drag | Drag cancels and syncs to external order. |
-| Trailing action press | Reorder does not start; control remains usable. |
-| Component-root directive | `v-reorder-item` works only when the component resolves to a stable single `HTMLElement` root. |
+| Scenario                                  | Expected behavior                                                                              |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Desktop row click                         | Row action fires; reorder does not start.                                                      |
+| Desktop press plus threshold movement     | Reorder starts.                                                                                |
+| Desktop release after movement            | `onCommit` receives final ordered ids if order changed.                                        |
+| Desktop drag ending at original position  | No commit.                                                                                     |
+| Post-drag synthetic click                 | Suppressed once inside the surface.                                                            |
+| Touch tap                                 | Row action fires; reorder does not start.                                                      |
+| Touch vertical movement before long press | Treated as scroll intent; pending reorder is cancelled.                                        |
+| Touch long press                          | Reorder starts and row enters dragged visual state.                                            |
+| Drag crosses another row                  | `displayItemIdList` updates reactively.                                                        |
+| Drag hovers near boundary                 | Hysteresis prevents index bouncing.                                                            |
+| Drag near visible top/bottom edge         | The reorder container auto-scrolls if it can scroll.                                           |
+| Container taller than viewport            | Edge zones use visible bounds, not offscreen container edges.                                  |
+| Container clipped by parent               | Edge zones use clipped visible bounds.                                                         |
+| Parent/page is scrollable                 | Parent/page does not scroll because of active reorder.                                         |
+| Escape or pointercancel                   | Reorder cancels and optimistic order rolls back.                                               |
+| Commit failure                            | Optimistic order rolls back.                                                                   |
+| External order update during drag         | Drag cancels and syncs to external order.                                                      |
+| Trailing action press                     | Reorder does not start; control remains usable.                                                |
+| Component-root directive                  | `v-reorder-item` works only when the component resolves to a stable single `HTMLElement` root. |
 
 ## Required verification
 

@@ -18,16 +18,15 @@
 /*
  * Reorder visual policy.
  *
- * During an active session the engine renders the lifted item in `.reorder-overlay`, a
- * fixed-position presentation layer mounted on `<body>`, so its elevation shadow is
- * never clipped by the list or any scroll container. The in-list original becomes the
- * `.reorder-item_slot`: it keeps its layout box (the open slot the item will land in)
- * but is invisible, so no ghost/placeholder row is shown. Siblings travel through
- * engine-set `transform` translations; the transition below keeps their movement
- * smooth and stable.
+ * The dragged item stays a normal Vue-rendered row in the list; only its `dragged`
+ * visual state (owned by the consumer's list item, e.g. `MDListItem`) marks it as
+ * active. Reactive reorder moves rows by actually reordering `displayItemIdList`; the
+ * transition below animates that reactive move (a FLIP-style inverted `transform`
+ * applied in `reorderAnimation.ts`) so it reads as smooth movement instead of a jump.
+ * There is no lifted overlay, no clone, and no ghost/placeholder row.
  *
- * Selectors pair state classes with `[data-sortable-id]` so they only ever match
- * reorder items and win over single-class component rules without `!important`.
+ * The selector pairs the active-surface class with `[data-sortable-id]` so it only ever
+ * matches reorder items and wins over single-class component rules without `!important`.
  */
 
 .reorder-surface_active [data-sortable-id] {
@@ -40,29 +39,15 @@
   }
 }
 
-/* The open slot: keeps the row's layout box but renders nothing. `visibility`, not
-   `display`: the box must keep its size so neighboring rows reorder around it. */
-[data-sortable-id].reorder-item_slot {
-  visibility: hidden;
-}
-
-/* Lifted presentation layer. Mounted on <body>, outside its list, so list-scoped
- * surface fills do not reach it — give it an explicit fill, elevation, and shape.
- * Material token values resolve app-wide; the literal fallbacks keep non-Material
- * consumers presentable. The engine drives `left/top/width/height` and `transform`
- * inline; everything visual lives here. */
-.reorder-overlay {
-  position: fixed;
-  /* Above app surfaces including bottom sheets and menus; the overlay only exists for
-     the duration of an active reorder session. */
-  z-index: 10000;
-  pointer-events: none;
-  overflow: hidden;
-  background-color: var(--md-sys-color-surface, Canvas);
-  border-radius: var(--md-sys-shape-corner-large, 16px);
-  box-shadow: var(
-    --md-sys-elevation-level4,
-    0 6px 10px 4px rgb(0 0 0 / 0.15),
-    0 2px 3px 0 rgb(0 0 0 / 0.3)
-  );
+/*
+ * Reactive reorder actually moves rows in the DOM, which the browser's own scroll
+ * anchoring (CSS overflow-anchor) can read as "content above the viewport changed size
+ * or order" and compensate for by jumping a scrollable ancestor's scroll position — even
+ * though nothing here ever calls scrollTo on that ancestor. Opting active reorder items
+ * (and the surface container itself) out of anchor candidacy keeps any enclosing
+ * scrollable pane/sheet's scroll position untouched by the reorder gesture.
+ */
+.reorder-surface_active,
+.reorder-surface_active [data-sortable-id] {
+  overflow-anchor: none;
 }

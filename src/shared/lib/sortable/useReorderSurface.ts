@@ -1,22 +1,28 @@
 import { unrefElement, useEventListener, type MaybeElementRef } from '@vueuse/core';
-import { computed, onScopeDispose, reactive, ref, toValue, watch } from 'vue';
+import { computed, nextTick, onScopeDispose, reactive, toValue, watch } from 'vue';
 import './reorderSurface.css';
 import { REORDER_SURFACE_ACTIVATING_CLASS } from './constants';
-import { createReorderEngine } from './reorderEngine';
+import { applyReorderFlipAnimation, clearReorderItemTransforms } from './reorderAnimation';
 import {
   resolveReorderPostDragClick,
   shouldClearReorderPostDragSuppressionOnInput,
 } from './reorderPostDragClick';
+import { createReorderSession } from './reorderSession';
 import {
   acquireReorderDocumentSelectionSuppression,
+  beginReorderSurfacePendingPress,
   cleanupPostDragInteraction,
+  cloneReorderItemIdList,
   completeReorderSurfaceDrag,
   createReorderSurfaceState,
+  endReorderSurfacePendingPress,
   isReorderItemTarget,
   isMouseLikeEvent,
   isPointerEvent,
+  isSameOrderedIds,
   isTouchLikeEvent,
   requestReorderSurfaceCancel,
+  resetDragState,
   rollbackReorderSurfaceCommit,
   shouldIgnoreTarget,
   shouldUseBestEffortReorderHaptics,
@@ -27,14 +33,16 @@ import type { ReorderInput } from './reorderInput';
 import type { UseReorderSurfaceOptions } from './reorderTypes';
 
 /**
- * Public composable that wires the geometry-based reorder engine to optimistic order
- * state and persistence.
+ * Public composable that wires the reactive reorder session to optimistic order state and
+ * persistence.
  *
- * Input behavior is inferred internally: mouse presses activate after a small movement
- * threshold with no delay, touch/pen presses require a long press, and subtrees marked
- * with `v-reorder-ignore` never start a session.
+ * There is no lifted overlay and no DOM cloning: the sortable layer only updates
+ * `displayItemIdList`, and Vue re-renders the list in the new order. Input behavior is
+ * inferred internally — mouse presses activate after a small movement threshold with no
+ * delay, touch/pen presses require a long press, and subtrees marked with
+ * `v-reorder-ignore` never start a session.
  * @param container - Reorder-surface root element or component reference.
- * @param options - Reactive item order, commit handler, and optional tuning.
+ * @param options - Reactive item order, commit handler, and optional disabled flag.
  * @returns Reorder session state and control methods for the owning surface.
  */
 export const useReorderSurface = (
@@ -42,10 +50,7 @@ export const useReorderSurface = (
   options: UseReorderSurfaceOptions,
 ) => {
   const containerEl = computed(() => unrefElement(container));
-
   const state = reactive(createReorderSurfaceState(toValue(options.itemIdList)));
-  const isActivatingDrag = ref(false);
-  const isReorderSession = computed(() => state.isDragging);
   let activationSelectionRelease: (() => void) | undefined;
   let dragSelectionRelease: (() => void) | undefined;
 
@@ -61,21 +66,21 @@ export const useReorderSurface = (
   };
 
   const startActivationWindow = () => {
-    if (isActivatingDrag.value) {
+    if (state.phase !== 'idle') {
       return;
     }
 
-    isActivatingDrag.value = true;
+    beginReorderSurfacePendingPress(state);
     setContainerClass(REORDER_SURFACE_ACTIVATING_CLASS, true);
     activationSelectionRelease = acquireReorderDocumentSelectionSuppression();
   };
 
   const endActivationWindow = () => {
-    if (!isActivatingDrag.value) {
+    if (state.phase !== 'pendingPress') {
       return;
     }
 
-    isActivatingDrag.value = false;
+    endReorderSurfacePendingPress(state);
     setContainerClass(REORDER_SURFACE_ACTIVATING_CLASS, false);
     activationSelectionRelease?.();
     activationSelectionRelease = undefined;
@@ -112,7 +117,7 @@ export const useReorderSurface = (
   const clearStalePostDragSuppression = () => {
     if (
       shouldClearReorderPostDragSuppressionOnInput({
-        isDragging: state.isDragging,
+        isDragging: state.phase === 'dragging',
         suppressNextClick: state.suppressNextClick,
       })
     ) {
@@ -137,43 +142,36 @@ export const useReorderSurface = (
     }
   };
 
-  watch(
-    () => toValue(options.itemIdList),
-    (nextItemIdList) => {
-      syncReorderSurfaceExternalItemIdList(state, nextItemIdList);
-    },
-    {
-      immediate: true,
-    },
-  );
+  /**
+   * Cancels a pending or active session and drives `phase` back to `idle`.
+   *
+   * Rollback intent is requested before the underlying session tears down, so a session
+   * cancelled this way is always discarded rather than reported as a commit.
+   */
+  const cancelActiveInteraction = () => {
+    if (state.phase === 'idle' || state.phase === 'committing') {
+      return;
+    }
 
-  watch(
-    containerEl,
-    (nextContainerEl, prevContainerEl) => {
-      if (prevContainerEl instanceof HTMLElement) {
-        prevContainerEl.classList.remove(REORDER_SURFACE_ACTIVATING_CLASS);
-      }
+    const endInput = state.activeInput ?? 'pointer';
 
-      if (nextContainerEl instanceof HTMLElement) {
-        nextContainerEl.classList.toggle(REORDER_SURFACE_ACTIVATING_CLASS, isActivatingDrag.value);
-      }
-    },
-    {
-      immediate: true,
-      flush: 'sync',
-    },
-  );
-
-  onScopeDispose(() => {
+    requestReorderSurfaceCancel(state);
+    session.cancel();
     endActivationWindow();
     endDragSelectionSuppression();
-  });
+    // A real active session already reset these fields synchronously via its own
+    // `onEnd`; resetting again here is idempotent and also covers a pending press,
+    // which never reaches `onEnd`.
+    resetDragState(state);
+    state.phase = 'idle';
+    cleanupAfterDrag(endInput);
+  };
 
-  const engine = createReorderEngine(container, {
+  const session = createReorderSession(container, {
     disabled: computed(() => Boolean(toValue(options.disabled))),
-    scrollContainer: options.scrollContainer,
     callbacks: {
-      onStart: ({ itemId, orderedIds, fromIndex, input }) => {
+      getExpectedIds: () => state.displayItemIdList,
+      onActivate: ({ itemId, orderedIds, fromIndex, input }) => {
         endActivationWindow();
 
         if (
@@ -184,13 +182,19 @@ export const useReorderSurface = (
           navigator.vibrate(10);
         }
 
-        startReorderSurfaceDrag(state, {
-          itemId,
-          orderedIds,
-          fromIndex,
-          input,
-        });
+        startReorderSurfaceDrag(state, { itemId, orderedIds, fromIndex, input });
         startDragSelectionSuppression();
+      },
+      onOrderChange: ({ orderedIds, previousRects }) => {
+        state.displayItemIdList = orderedIds;
+
+        const containerElement = getContainerElement();
+
+        if (containerElement) {
+          void nextTick(() => {
+            applyReorderFlipAnimation(containerElement, previousRects);
+          });
+        }
       },
       onCancel: () => {
         endActivationWindow();
@@ -201,6 +205,7 @@ export const useReorderSurface = (
         endActivationWindow();
         endDragSelectionSuppression();
         const endInput = state.activeInput ?? 'pointer';
+        const containerElement = getContainerElement();
         const dragResult = completeReorderSurfaceDrag(state, {
           orderedIds,
           fromIndex,
@@ -208,11 +213,19 @@ export const useReorderSurface = (
           currentItemIdList: toValue(options.itemIdList),
         });
 
+        if (containerElement) {
+          clearReorderItemTransforms(containerElement);
+        }
+
         if (dragResult.type === 'commit') {
+          state.phase = 'committing';
+
           try {
             await options.onCommit(dragResult.payload);
           } catch {
             rollbackReorderSurfaceCommit(state, dragResult.commitId);
+          } finally {
+            state.phase = 'idle';
           }
         }
 
@@ -260,17 +273,11 @@ export const useReorderSurface = (
     { capture: true, passive: false },
   );
 
-  const clearActivationWindow = () => {
-    if (!state.isDragging) {
-      endActivationWindow();
-    }
-  };
-
-  useEventListener(document, 'pointerup', clearActivationWindow, { capture: true });
-  useEventListener(document, 'pointercancel', clearActivationWindow, { capture: true });
-  useEventListener(document, 'mouseup', clearActivationWindow, { capture: true });
-  useEventListener(document, 'touchend', clearActivationWindow, { capture: true });
-  useEventListener(document, 'touchcancel', clearActivationWindow, { capture: true });
+  useEventListener(document, 'pointerup', endActivationWindow, { capture: true });
+  useEventListener(document, 'pointercancel', endActivationWindow, { capture: true });
+  useEventListener(document, 'mouseup', endActivationWindow, { capture: true });
+  useEventListener(document, 'touchend', endActivationWindow, { capture: true });
+  useEventListener(document, 'touchcancel', endActivationWindow, { capture: true });
 
   useEventListener(
     document,
@@ -306,27 +313,53 @@ export const useReorderSurface = (
   );
 
   useEventListener(window, 'keydown', (event) => {
-    if (event.key !== 'Escape' || !state.isDragging) {
+    if (event.key !== 'Escape') {
       return;
     }
 
-    requestReorderSurfaceCancel(state);
-    engine.cancel();
+    cancelActiveInteraction();
+  });
+
+  useEventListener(window, 'blur', () => {
+    cancelActiveInteraction();
+  });
+
+  watch(
+    () => toValue(options.disabled),
+    (isDisabled) => {
+      if (isDisabled) {
+        cancelActiveInteraction();
+      }
+    },
+  );
+
+  watch(
+    () => toValue(options.itemIdList),
+    (nextItemIdList) => {
+      const normalized = cloneReorderItemIdList(nextItemIdList);
+
+      // A reactive source (e.g. an Automerge-backed entity) can re-emit an id list that
+      // is content-identical to what the surface already knows, just as a new array
+      // reference. That carries no new information and must not cancel a pending or
+      // active session — only a genuine order/content change does.
+      if (isSameOrderedIds(state.latestExternalItemIdList, normalized)) {
+        return;
+      }
+
+      cancelActiveInteraction();
+      syncReorderSurfaceExternalItemIdList(state, nextItemIdList);
+    },
+    { immediate: true },
+  );
+
+  onScopeDispose(() => {
+    cancelActiveInteraction();
   });
 
   return {
     displayItemIdList: computed(() => state.displayItemIdList),
     draggedId: computed(() => state.draggedId),
-    isDragging: computed(() => state.isDragging),
-    isReorderSession,
-    activeInput: computed(() => state.activeInput),
-    suppressNextClick: computed(() => state.suppressNextClick),
-    cancel: () => {
-      const endInput = state.activeInput ?? 'pointer';
-
-      requestReorderSurfaceCancel(state);
-      engine.cancel();
-      cleanupAfterDrag(endInput);
-    },
+    isDragging: computed(() => state.phase === 'dragging'),
+    cancel: cancelActiveInteraction,
   };
 };

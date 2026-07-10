@@ -403,11 +403,7 @@ export const findDatabaseRow = (root: Page | Locator, value: string): Locator =>
   root.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
 
 export const findListRow = (root: Page | Locator, value: string | RegExp): Locator =>
-  root
-    .getByRole('list')
-    .locator(':scope > :not(.reorder-item_fallback):not(.reorder-item_drag)')
-    .filter({ hasText: value })
-    .first();
+  root.getByRole('list').locator(':scope > *').filter({ hasText: value }).first();
 
 export const editDatabaseItem = async (
   page: Page,

@@ -64,18 +64,31 @@ watch(position, ({ scrollTop }) => {
 
 watch(
   [openModel, bodyHeight, bodyEl],
-  ([open, currentBodyHeight, currentBodyEl]) => {
-    if (currentBodyHeight && currentBodyEl) {
-      if (open) {
-        const top = Math.min(currentBodyHeight, currentBodyEl.offsetTop);
-        void scrollTo({
-          top,
-        });
-      } else {
-        void scrollTo({
-          top: 0,
-        });
+  ([open, currentBodyHeight, currentBodyEl], oldValues) => {
+    if (!currentBodyHeight || !currentBodyEl) {
+      return;
+    }
+
+    if (open) {
+      // Only scroll the body into view on the actual closed-to-open transition. Once
+      // open, bodyHeight keeps changing for reasons unrelated to opening (content
+      // added, removed, or reactively reordered) and must not hijack the sheet's
+      // current scroll position.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- oldValues is genuinely undefined on this watcher's immediate first call; Vue's types don't model that.
+      const wasOpen = oldValues?.[0] ?? false;
+
+      if (wasOpen) {
+        return;
       }
+
+      const top = Math.min(currentBodyHeight, currentBodyEl.offsetTop);
+      void scrollTo({
+        top,
+      });
+    } else {
+      void scrollTo({
+        top: 0,
+      });
     }
   },
   { immediate: true },

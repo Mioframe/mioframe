@@ -8,7 +8,3 @@ export const REORDER_SURFACE_ACTIVATING_CLASS = 'reorder-surface_activating';
 export const REORDER_SURFACE_ACTIVE_CLASS = 'reorder-surface_active';
 /** Class applied to the root document while reorder activation or drag suppresses text selection. */
 export const REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS = 'reorder-selection-suppressed';
-/** Class applied to the in-list original of the lifted item; it keeps the layout slot. */
-export const REORDER_ITEM_SLOT_CLASS = 'reorder-item_slot';
-/** Class of the lifted presentation layer mounted on `document.body`. */
-export const REORDER_OVERLAY_CLASS = 'reorder-overlay';

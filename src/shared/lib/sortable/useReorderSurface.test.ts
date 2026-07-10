@@ -1,41 +1,41 @@
 import { effectScope, nextTick, ref, type ComputedRef, type EffectScope, type Ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ReorderEngineCallbacks } from './reorderTypes';
+import type { ReorderSessionCallbacks } from './reorderSession';
 import {
   REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS,
   REORDER_IGNORE_ATTRIBUTE,
   REORDER_SURFACE_ACTIVATING_CLASS,
 } from './constants';
 
-interface MockReorderEngineState {
-  callbacks: ReorderEngineCallbacks | undefined;
+interface MockReorderSessionState {
+  callbacks: ReorderSessionCallbacks | undefined;
   cancel: ReturnType<typeof vi.fn>;
   disabled: ComputedRef<boolean> | undefined;
 }
 
-const reorderEngineState = vi.hoisted<MockReorderEngineState>(() => ({
+const reorderSessionState = vi.hoisted<MockReorderSessionState>(() => ({
   callbacks: undefined,
   cancel: vi.fn(),
   disabled: undefined,
 }));
 
-vi.mock('./reorderEngine', () => ({
-  createReorderEngine: (
+vi.mock('./reorderSession', () => ({
+  createReorderSession: (
     _container: unknown,
     {
       callbacks,
       disabled,
     }: {
-      callbacks: ReorderEngineCallbacks;
+      callbacks: ReorderSessionCallbacks;
       disabled?: ComputedRef<boolean>;
     },
   ) => {
-    reorderEngineState.callbacks = callbacks;
-    reorderEngineState.cancel = vi.fn();
-    reorderEngineState.disabled = disabled;
+    reorderSessionState.callbacks = callbacks;
+    reorderSessionState.cancel = vi.fn();
+    reorderSessionState.disabled = disabled;
 
     return {
-      cancel: reorderEngineState.cancel,
+      cancel: reorderSessionState.cancel,
     };
   },
 }));
@@ -107,8 +107,8 @@ afterEach(() => {
   });
   document.body.innerHTML = '';
   document.dispatchEvent(new Event('click'));
-  reorderEngineState.callbacks = undefined;
-  reorderEngineState.disabled = undefined;
+  reorderSessionState.callbacks = undefined;
+  reorderSessionState.disabled = undefined;
   vibrateMock.mockReset();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -126,7 +126,7 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -146,7 +146,7 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -160,7 +160,7 @@ describe('useReorderSurface', () => {
     itemIdList.value = ['b', 'c', 'd'];
 
     await nextTick();
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -171,7 +171,7 @@ describe('useReorderSurface', () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
-  it('accepts an external reorder of the same ids while an optimistic commit is pending', async () => {
+  it('defers a mid-commit external reorder of the same ids until the commit settles', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const commit = createDeferred<undefined>();
     const onCommit = vi.fn(() => commit.promise);
@@ -182,14 +182,14 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
 
-    const endPromise = reorderEngineState.callbacks?.onEnd?.({
+    const endPromise = reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -203,7 +203,9 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    expect(api.displayItemIdList.value).toEqual(['c', 'a', 'b']);
+    // Mid-commit, the optimistic preview is authoritative; a genuinely different
+    // external order is recorded but not merged in until the commit settles.
+    expect(api.displayItemIdList.value).toEqual(['b', 'a', 'c']);
 
     commit.reject(new Error('conflict'));
 
@@ -223,14 +225,14 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
 
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -251,13 +253,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'touch',
     });
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -286,7 +288,7 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -295,13 +297,13 @@ describe('useReorderSurface', () => {
 
     expect(vibrateMock).toHaveBeenCalledWith(10);
     expect(vibrateMock).toHaveBeenCalledTimes(1);
-    expect(api.activeInput.value).toBe('touch');
+    expect(api.isDragging.value).toBe(true);
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await nextTick();
 
-    expect(reorderEngineState.cancel).toHaveBeenCalledTimes(1);
-    expect(api.suppressNextClick.value).toBe(true);
+    expect(reorderSessionState.cancel).toHaveBeenCalledTimes(1);
+    expect(api.isDragging.value).toBe(false);
   });
 
   it('does not use haptics for mouse input and forwards the disabled option', async () => {
@@ -319,14 +321,14 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    expect(reorderEngineState.disabled?.value).toBe(false);
+    expect(reorderSessionState.disabled?.value).toBe(false);
 
     disabled.value = true;
     await nextTick();
 
-    expect(reorderEngineState.disabled?.value).toBe(true);
+    expect(reorderSessionState.disabled?.value).toBe(true);
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -344,7 +346,7 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -354,7 +356,7 @@ describe('useReorderSurface', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     await nextTick();
 
-    expect(reorderEngineState.cancel).not.toHaveBeenCalled();
+    expect(reorderSessionState.cancel).not.toHaveBeenCalled();
     expect(api.isDragging.value).toBe(true);
   });
 
@@ -362,7 +364,7 @@ describe('useReorderSurface', () => {
     vi.stubGlobal('requestAnimationFrame', rafMock);
 
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { api, containerEl } = mountUseReorderSurface({
+    const { containerEl } = mountUseReorderSurface({
       itemIdList,
     });
     const child = document.createElement('button');
@@ -383,20 +385,18 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
     });
     await nextTick();
-
-    expect(api.suppressNextClick.value).toBe(true);
 
     const clickEvent = new MouseEvent('click', {
       bubbles: true,
@@ -416,72 +416,97 @@ describe('useReorderSurface', () => {
     expect(selection.rangeCount).toBe(0);
     expect(rafMock).toHaveBeenCalledTimes(1);
     expect(blurSpy).toHaveBeenCalled();
-    expect(api.suppressNextClick.value).toBe(false);
+
+    // Suppression is a one-shot: the next click is no longer intercepted.
+    const nextClickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const nextPreventDefault = vi.spyOn(nextClickEvent, 'preventDefault');
+
+    child.dispatchEvent(nextClickEvent);
+    await nextTick();
+
+    expect(nextPreventDefault).not.toHaveBeenCalled();
   });
 
   it('clears suppression on an outside click without preventing it', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { api } = mountUseReorderSurface({
+    const { containerEl } = mountUseReorderSurface({
       itemIdList,
     });
+    const inside = document.createElement('button');
+    containerEl.appendChild(inside);
     const outside = document.createElement('button');
     document.body.appendChild(outside);
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
     });
     await nextTick();
 
-    const clickEvent = new MouseEvent('click', {
+    const outsideClickEvent = new MouseEvent('click', {
       bubbles: true,
       cancelable: true,
     });
-    const preventDefault = vi.spyOn(clickEvent, 'preventDefault');
+    const outsidePreventDefault = vi.spyOn(outsideClickEvent, 'preventDefault');
 
-    outside.dispatchEvent(clickEvent);
+    outside.dispatchEvent(outsideClickEvent);
     await nextTick();
 
-    expect(preventDefault).not.toHaveBeenCalled();
-    expect(api.suppressNextClick.value).toBe(false);
+    expect(outsidePreventDefault).not.toHaveBeenCalled();
+
+    // The outside click already cleared suppression, so a click back inside the surface
+    // is no longer intercepted either.
+    const insideClickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const insidePreventDefault = vi.spyOn(insideClickEvent, 'preventDefault');
+
+    inside.dispatchEvent(insideClickEvent);
+    await nextTick();
+
+    expect(insidePreventDefault).not.toHaveBeenCalled();
   });
 
   it('clears post-drag suppression on the next pointer input outside an active drag', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
-    const { api, containerEl } = mountUseReorderSurface({
+    const { containerEl } = mountUseReorderSurface({
       itemIdList,
     });
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
     });
     await nextTick();
 
-    expect(api.suppressNextClick.value).toBe(true);
-
+    // A new press on the surface clears stale post-drag suppression, so the click that
+    // follows it is no longer intercepted.
     containerEl.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     await nextTick();
 
-    expect(api.suppressNextClick.value).toBe(false);
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const preventDefault = vi.spyOn(clickEvent, 'preventDefault');
+
+    containerEl.dispatchEvent(clickEvent);
+    await nextTick();
+
+    expect(preventDefault).not.toHaveBeenCalled();
   });
 
   it('does not commit when drag end keeps the same order', async () => {
@@ -494,13 +519,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       toIndex: 0,
@@ -521,13 +546,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'x'],
       fromIndex: 0,
       toIndex: 1,
@@ -541,21 +566,21 @@ describe('useReorderSurface', () => {
   it('rolls back after onCancel without committing', async () => {
     const itemIdList = ref<string[] | undefined>(['a', 'b', 'c']);
     const onCommit = vi.fn();
-    const { api } = mountUseReorderSurface({
+    const { api, containerEl } = mountUseReorderSurface({
       itemIdList,
       onCommit,
     });
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
-    reorderEngineState.callbacks?.onCancel?.();
-    await reorderEngineState.callbacks?.onEnd?.({
+    reorderSessionState.callbacks?.onCancel();
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       toIndex: 0,
@@ -563,8 +588,15 @@ describe('useReorderSurface', () => {
     await nextTick();
 
     expect(api.displayItemIdList.value).toEqual(['a', 'b', 'c']);
-    expect(api.suppressNextClick.value).toBe(true);
     expect(onCommit).not.toHaveBeenCalled();
+
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const preventDefault = vi.spyOn(clickEvent, 'preventDefault');
+
+    containerEl.dispatchEvent(clickEvent);
+    await nextTick();
+
+    expect(preventDefault).toHaveBeenCalled();
   });
 
   it('exposes draggedId and reorder session state during an active drag', async () => {
@@ -576,9 +608,9 @@ describe('useReorderSurface', () => {
     await nextTick();
 
     expect(api.draggedId.value).toBeUndefined();
-    expect(api.isReorderSession.value).toBe(false);
+    expect(api.isDragging.value).toBe(false);
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'b',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 1,
@@ -587,7 +619,7 @@ describe('useReorderSurface', () => {
     await nextTick();
 
     expect(api.draggedId.value).toBe('b');
-    expect(api.isReorderSession.value).toBe(true);
+    expect(api.isDragging.value).toBe(true);
   });
 
   it('suppresses document selection during the drag activation window and active drag', async () => {
@@ -617,7 +649,7 @@ describe('useReorderSurface', () => {
 
     row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     await nextTick();
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -637,7 +669,7 @@ describe('useReorderSurface', () => {
       document.documentElement.classList.contains(REORDER_DOCUMENT_SELECTION_SUPPRESSED_CLASS),
     ).toBe(true);
 
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
@@ -675,7 +707,7 @@ describe('useReorderSurface', () => {
     selection.addRange(range);
     expect(selection.rangeCount).toBe(0);
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -866,7 +898,7 @@ describe('useReorderSurface', () => {
     containerEl.appendChild(row);
 
     row.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -874,7 +906,7 @@ describe('useReorderSurface', () => {
     });
     await nextTick();
 
-    reorderEngineState.callbacks?.onCancel?.();
+    reorderSessionState.callbacks?.onCancel();
     await nextTick();
 
     expect(
@@ -971,7 +1003,7 @@ describe('useReorderSurface', () => {
     containerEl.appendChild(focusedButton);
     focusedButton.focus();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
@@ -982,10 +1014,10 @@ describe('useReorderSurface', () => {
     api.cancel();
     await nextTick();
 
-    expect(reorderEngineState.cancel).toHaveBeenCalled();
+    expect(reorderSessionState.cancel).toHaveBeenCalled();
     expect(removeAllRangesSpy).toHaveBeenCalled();
 
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       toIndex: 0,
@@ -1007,9 +1039,10 @@ describe('useReorderSurface', () => {
 
     api.cancel();
 
-    expect(reorderEngineState.cancel).toHaveBeenCalled();
+    // Nothing was pending or dragging, so there is nothing to cancel or clean up.
+    expect(reorderSessionState.cancel).not.toHaveBeenCalled();
     expect(rafMock).not.toHaveBeenCalled();
-    expect(api.suppressNextClick.value).toBe(false);
+    expect(api.isDragging.value).toBe(false);
   });
 
   it('cleans selection without blurring elements outside the surface', async () => {
@@ -1040,13 +1073,13 @@ describe('useReorderSurface', () => {
 
     await nextTick();
 
-    reorderEngineState.callbacks?.onStart?.({
+    reorderSessionState.callbacks?.onActivate({
       itemId: 'a',
       orderedIds: ['a', 'b', 'c'],
       fromIndex: 0,
       input: 'pointer',
     });
-    await reorderEngineState.callbacks?.onEnd?.({
+    await reorderSessionState.callbacks?.onEnd({
       orderedIds: ['b', 'a', 'c'],
       fromIndex: 0,
       toIndex: 1,
