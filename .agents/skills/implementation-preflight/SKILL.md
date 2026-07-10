@@ -19,7 +19,7 @@ For non-local changes, write a short preflight artifact before the first product
 
 Required sections:
 
-0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat the full handoff. Restate only the decisions that affect the planned edits, verify the planned edits match that handoff, and do not replace it with a different architecture. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop before production edits.
+0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat the full handoff. Confirm its readiness verdict is `ready`, restate only the decisions that affect the planned edits, verify the planned edits match that handoff, and do not replace it with a different architecture. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop before production edits.
 1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
 2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
 3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
@@ -28,6 +28,8 @@ Required sections:
 6. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
 7. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
 8. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
+
+If the upstream handoff verdict is missing or `not ready`, stop and return it for resolution. Do not infer readiness from a detailed task description.
 
 If any owner in the owner map is unclear for a cross-layer change, stop and resolve the architecture before editing.
 
