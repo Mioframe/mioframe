@@ -44,6 +44,7 @@ Keep the handoff compact.
 Record the handoff with these fields:
 
 - Goal
+- Confirmed current problem or behavior and its evidence from the source of truth
 - Non-goals
 - Affected user scenarios
 - Boundaries: what changes and what must not be touched
@@ -67,27 +68,37 @@ Record the handoff with these fields:
 - Risk matrix
 - Required verification
 - Forbidden
+- Implementation readiness:
+  - required product and architecture decisions are resolved
+  - dependencies, required inputs, and agent-access boundaries are explicit
+  - unresolved blockers: `none` or a concrete list
+  - verdict: `ready` or `not ready`
 
-Keep the handoff concrete. Prefer specific owners, explicit preserved scenarios, and named entry points over generic architecture language. Considering a risk or edge case does not automatically require supporting it; include implementation behavior only when it is reachable through the current contract and required by a user scenario, existing consumer, repository invariant, platform constraint, or data-safety rule.
+Keep the handoff concrete. Prefer specific owners, explicit preserved scenarios, and named entry points over generic architecture language. Acceptance criteria should describe observable outcomes or required invariants; include implementation details only when they are approved architecture decisions. Considering a risk or edge case does not automatically require supporting it; include implementation behavior only when it is reachable through the current contract and required by a user scenario, existing consumer, repository invariant, platform constraint, or data-safety rule.
 
 ## Stop conditions before implementation
 
 Stop before production edits when any of these are true:
 
+- the current problem or behavior is unconfirmed and the task is not explicitly an investigation;
 - ownership is unclear;
 - source of truth is unclear;
 - expected final state is unclear;
 - more than two architecture questions are unresolved;
+- required dependencies, inputs, or agent-access boundaries are unclear or unavailable;
 - shared UI would be changed only to patch one feature without blast-radius review;
 - the task combines unrelated domains without an explicit pass order;
 - the proposed design adds abstractions, extension points, compatibility paths, stronger guarantees, recovery mechanisms, or optimizations that do not map to a current requirement, existing consumer, repository invariant, platform constraint, or measured need;
-- a narrower contract or fewer concepts can satisfy the same acceptance criteria without breaking ownership.
+- a narrower contract or fewer concepts can satisfy the same acceptance criteria without breaking ownership;
+- implementation readiness is `not ready`.
 
 When blocked, resolve the handoff first. Do not patch forward and hope review will reconcile the architecture later.
 
 ## Implementation contract
 
 - Treat the handoff as upstream input for agent tasking, implementation preflight, coding, PR description, and final review.
+- Do not hand the task to implementation while the readiness verdict is `not ready`.
+- Do not ask the coding agent to resolve product or architecture decisions left open by the handoff.
 - Restate only the implementation-relevant decisions in downstream steps; do not rewrite the architecture into a different plan.
 - If new facts invalidate the handoff, stop and update the handoff explicitly before continuing.
 - Do not silently replace rejected approaches, move ownership, or expand touched boundaries during implementation.
