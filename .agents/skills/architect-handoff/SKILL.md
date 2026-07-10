@@ -57,6 +57,10 @@ Record the handoff with these fields:
 - Source of truth
 - State shape
 - Public API / entry points
+- Minimum sufficient design:
+  - simplest design that satisfies the required scenarios
+  - behavior intentionally deferred or unsupported
+  - unavoidable added complexity and the current requirement that justifies it
 - Rejected approaches
 - Shared UI blast radius
 - Acceptance matrix
@@ -64,7 +68,7 @@ Record the handoff with these fields:
 - Required verification
 - Forbidden
 
-Keep the handoff concrete. Prefer specific owners, explicit preserved scenarios, and named entry points over generic architecture language.
+Keep the handoff concrete. Prefer specific owners, explicit preserved scenarios, and named entry points over generic architecture language. Considering a risk or edge case does not automatically require supporting it; include implementation behavior only when it is reachable through the current contract and required by a user scenario, existing consumer, repository invariant, platform constraint, or data-safety rule.
 
 ## Stop conditions before implementation
 
@@ -75,7 +79,9 @@ Stop before production edits when any of these are true:
 - expected final state is unclear;
 - more than two architecture questions are unresolved;
 - shared UI would be changed only to patch one feature without blast-radius review;
-- the task combines unrelated domains without an explicit pass order.
+- the task combines unrelated domains without an explicit pass order;
+- the proposed design adds abstractions, extension points, compatibility paths, stronger guarantees, recovery mechanisms, or optimizations that do not map to a current requirement, existing consumer, repository invariant, platform constraint, or measured need;
+- a narrower contract or fewer concepts can satisfy the same acceptance criteria without breaking ownership.
 
 When blocked, resolve the handoff first. Do not patch forward and hope review will reconcile the architecture later.
 
@@ -91,8 +97,10 @@ When blocked, resolve the handoff first. Do not patch forward and hope review wi
 Review the full implemented feature against the architecture handoff.
 
 - Do not review only the latest fix or latest changed files.
-- Check goal, non-goals, affected scenarios, ownership, dependency direction, state shape, API shape, public contracts, shared UI blast radius, verification coverage, simplicity, and future safety.
+- Check goal, non-goals, affected scenarios, ownership, dependency direction, state shape, API shape, public contracts, shared UI blast radius, verification coverage, simplicity, proportionality, and future safety.
+- Confirm that every added concept is justified by the handoff and that nothing can be removed without losing an acceptance criterion or required invariant.
 - Preserve all unresolved findings in one consolidated list instead of dropping earlier blockers when new issues appear.
+- If repeated review rounds add new concepts, protocols, branches, configuration, recovery paths, or abstractions instead of removing the root cause, stop patching and simplify the architecture handoff.
 - If repeated review rounds show ownership drift or mixed responsibilities, stop patching and redo the architecture handoff.
 
 ## Output discipline
