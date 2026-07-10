@@ -1,28 +1,30 @@
 /**
  * Pointer/touch session orchestration: activation gating, the single active
- * `requestAnimationFrame` loop, live reorder callback invocation, autoscroll
- * ticking, and deterministic cancellation/cleanup.
+ * `requestAnimationFrame` loop, live reorder callback invocation, autoscroll ticking, and
+ * deterministic cancellation/cleanup.
  *
- * Session state is a single non-reactive mutable object; only `draggingKey`
- * (owned by the caller) is Vue-reactive, keeping this module's per-frame work
- * free of reactivity overhead. Controlled-order verification/rollback lives in
- * `orderConsistency.ts`, post-drag click suppression in `clickSuppression.ts`,
- * and autoscroll geometry in `scrollChain.ts` — this module only orchestrates
- * when each of those runs.
+ * Session state is a single non-reactive mutable object; only `draggingKey` (owned by the caller)
+ * is Vue-reactive, keeping this module's per-frame work free of reactivity overhead.
+ * Controlled-order verification, rollback, and the pointerup completion decision live in
+ * `orderConsistency.ts`; post-drag click suppression and early-cancellation release tracking live
+ * in `clickSuppression.ts`; temporary window/document listeners and second-pointer exclusion live
+ * in `sessionGlobalListeners.ts`; autoscroll geometry lives in `scrollChain.ts`. This module only
+ * orchestrates session state transitions and decides when each of those runs.
  */
 import { nextTick, type Ref } from 'vue';
+import { acquireActiveSessionEffects, type ActiveSessionEffects } from './activeSessionEffects';
 import { createClickSuppression } from './clickSuppression';
 import { MOUSE_ACTIVATION_THRESHOLD_PX, TOUCH_MOVEMENT_SLOP_PX } from './constants';
 import { getVirtualActiveRect, shouldDisplaceTarget, type Point, type Rect } from './geometry';
 import { getEffectiveHitTestPoint, resolveHitTestTarget } from './hitTest';
 import {
+  assertUniqueKeys,
   canRollback,
   checkOrderConsistency,
-  confirmRequestedMove,
-  createOrderExpectation,
+  decidePointerUpOutcome,
   deriveMovedSequence,
+  evaluateRequestedMove,
   sequencesEqual,
-  type OrderExpectation,
 } from './orderConsistency';
 import { resolveActivationTarget, type RegisteredTarget, type ReorderRegistry } from './registry';
 import {
@@ -32,6 +34,7 @@ import {
   runAutoscrollTick,
   type ScrollChainEntry,
 } from './scrollChain';
+import { createSessionGlobalListeners } from './sessionGlobalListeners';
 import type {
   ReorderDragEndEvent,
   ReorderDragStartEvent,
@@ -50,17 +53,24 @@ interface SessionState<Key extends ReorderKey> {
   lastPointer: Point;
   longPressTimer: ReturnType<typeof setTimeout> | null;
   initialIndex: number;
-  orderExpectation: OrderExpectation<Key>;
+  /** The last controlled sequence this session confirmed the consumer actually adopted. */
+  confirmedSequence: Key[];
+  /** A reorder request currently being synchronously validated, or `null` when none is in flight. */
+  pendingRequestedSequence: Key[] | null;
+  /** Whether the last accepted move is still waiting for Vue's `nextTick` to confirm DOM commit. */
+  awaitingDomCommit: boolean;
+  /** Whether the original pointer was released while `awaitingDomCommit` was still `true`. */
+  finishRequested: boolean;
+  /** Whether the original pointer's physical release has already been observed. */
+  pointerReleased: boolean;
   grabOffset: Point;
   size: { width: number; height: number };
   rawPointer: Point;
   lastFrameTime: number;
   scrollChain: ScrollChainEntry[];
-  awaitingCommit: boolean;
   rafId: number | null;
-  touchScrollGuard: ((event: TouchEvent) => void) | null;
-  contextMenuGuard: ((event: Event) => void) | null;
-  selectionGuard: ((event: Event) => void) | null;
+  /** The active session's pointer-capture/guard DOM side effects, `null` until activation. */
+  activeEffects: ActiveSessionEffects | null;
 }
 
 const domRectToRect = (domRect: DOMRect): Rect => ({
@@ -147,6 +157,36 @@ export const createPointerSession = <Key extends ReorderKey>(
       return;
     }
 
+    // Arm suppression immediately, inside the original pointerup handling, regardless of how
+    // reconciliation below concludes: the browser's synthetic click follows this same physical
+    // release shortly after, so suppression must not wait for the finish/defer/cancel decision.
+    session.pointerReleased = true;
+    clickSuppression.arm(session.containerEl);
+
+    reconcilePointerUp();
+  };
+
+  const reconcilePointerUp = () => {
+    if (!session) return;
+    const s = session;
+
+    const outcome = decidePointerUpOutcome({
+      confirmedSequence: s.confirmedSequence,
+      currentKeys: options.getKeys(),
+      pendingRequestedSequence: s.pendingRequestedSequence,
+      awaitingDomCommit: s.awaitingDomCommit,
+    });
+
+    if (outcome === 'cancel') {
+      cancelSession({ skipRollback: true });
+      return;
+    }
+
+    if (outcome === 'defer') {
+      s.finishRequested = true;
+      return;
+    }
+
     finishSession();
   };
 
@@ -168,44 +208,29 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (document.hidden) cancelSession();
   };
 
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') cancelSession();
-  };
-
-  const onGlobalPointerDown = (event: PointerEvent) => {
+  const onSecondPointerDown = (event: PointerEvent) => {
     if (!session || event.pointerId === session.pointerId) return;
-
-    // A second pointer anywhere (inside or outside the container) cancels the current session.
-    // Stopping propagation here, in the capture phase, prevents this same event from also being
-    // seen by the container's own bubble-phase pointerdown handler as a fresh activation attempt.
-    event.stopPropagation();
     cancelSession();
   };
 
-  const addSessionListeners = () => {
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerCancelEvent);
-    window.addEventListener('pointerdown', onGlobalPointerDown, true);
-    window.addEventListener('blur', onWindowBlur);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    document.addEventListener('keydown', onKeyDown);
-  };
-
-  const removeSessionListeners = () => {
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('pointerup', onPointerUp);
-    window.removeEventListener('pointercancel', onPointerCancelEvent);
-    window.removeEventListener('pointerdown', onGlobalPointerDown, true);
-    window.removeEventListener('blur', onWindowBlur);
-    document.removeEventListener('visibilitychange', onVisibilityChange);
-    document.removeEventListener('keydown', onKeyDown);
-  };
+  const globalListeners = createSessionGlobalListeners({
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel: onPointerCancelEvent,
+    onSecondPointerDown,
+    onWindowBlur,
+    onVisibilityChange,
+    onEscapeKeyDown: () => {
+      cancelSession();
+    },
+  });
 
   const onContainerPointerDown = (event: PointerEvent) => {
-    // A second pointer is handled globally (capture-phase, see onGlobalPointerDown) before it
-    // can reach here; this guard only covers same-tick re-entrancy.
+    // A second pointer is handled globally (capture-phase, see sessionGlobalListeners) before it
+    // can reach here; isSecondPointerEvent covers same-dispatch re-entrancy once that handler has
+    // already cancelled any prior session synchronously.
     if (session) return;
+    if (globalListeners.isSecondPointerEvent(event)) return;
 
     if (event.pointerType !== 'mouse' && event.pointerType !== 'touch') return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -219,6 +244,12 @@ export const createPointerSession = <Key extends ReorderKey>(
       event.target instanceof Node ? event.target : null,
     );
     if (!target) return;
+
+    // Validate the controlled-key contract before any pending session, timer, or listener is
+    // created: a duplicate-key violation must throw here and leave nothing behind.
+    const currentKeys = options.getKeys();
+    assertUniqueKeys(currentKeys);
+    if (currentKeys.indexOf(target.key) === -1) return;
 
     startPendingSession(event, target, containerEl);
   };
@@ -242,20 +273,21 @@ export const createPointerSession = <Key extends ReorderKey>(
       lastPointer: point,
       longPressTimer: null,
       initialIndex: -1,
-      orderExpectation: { sequence: [] },
+      confirmedSequence: [],
+      pendingRequestedSequence: null,
+      awaitingDomCommit: false,
+      finishRequested: false,
+      pointerReleased: false,
       grabOffset: { x: 0, y: 0 },
       size: { width: 0, height: 0 },
       rawPointer: point,
       lastFrameTime: 0,
       scrollChain: [],
-      awaitingCommit: false,
       rafId: null,
-      touchScrollGuard: null,
-      contextMenuGuard: null,
-      selectionGuard: null,
+      activeEffects: null,
     };
 
-    addSessionListeners();
+    globalListeners.attach();
 
     if (pointerType === 'touch') {
       session.longPressTimer = setTimeout(() => {
@@ -274,6 +306,10 @@ export const createPointerSession = <Key extends ReorderKey>(
 
     const { containerEl, itemEl, pointerId, pointerType, key, lastPointer } = session;
     const currentKeys = options.getKeys();
+
+    // Re-validated at commit time, using freshly read keys: the controlled data may have changed
+    // during the pending phase (mouse threshold delay or touch long-press delay).
+    assertUniqueKeys(currentKeys);
     const initialIndex = currentKeys.indexOf(key);
 
     if (initialIndex === -1) {
@@ -281,52 +317,34 @@ export const createPointerSession = <Key extends ReorderKey>(
       return;
     }
 
-    // Validates uniqueness (throws on a consumer contract violation) and snapshots the expected
-    // sequence for this session before any capture/listener side effects are installed.
-    const orderExpectation = createOrderExpectation(currentKeys);
+    const activeEffects = acquireActiveSessionEffects(
+      containerEl,
+      pointerId,
+      pointerType,
+      onLostPointerCapture,
+    );
 
-    try {
-      containerEl.setPointerCapture(pointerId);
-    } catch {
+    if (!activeEffects) {
       // Pointer already released or invalid; do not start a captureless drag.
       teardownSession();
       return;
     }
 
-    let touchScrollGuard: ((event: TouchEvent) => void) | null = null;
-    let contextMenuGuard: ((event: Event) => void) | null = null;
-
-    if (pointerType === 'touch') {
-      touchScrollGuard = (event: TouchEvent) => {
-        event.preventDefault();
-      };
-      containerEl.addEventListener('touchmove', touchScrollGuard, { passive: false });
-      contextMenuGuard = (event: Event) => {
-        event.preventDefault();
-      };
-      containerEl.addEventListener('contextmenu', contextMenuGuard);
-    }
-
-    const selectionGuard = (event: Event) => {
-      event.preventDefault();
-    };
-    document.addEventListener('selectstart', selectionGuard);
-    containerEl.addEventListener('lostpointercapture', onLostPointerCapture);
-
     const itemRect = itemEl.getBoundingClientRect();
 
     session.phase = 'active';
     session.initialIndex = initialIndex;
-    session.orderExpectation = orderExpectation;
+    session.confirmedSequence = [...currentKeys];
+    session.pendingRequestedSequence = null;
+    session.awaitingDomCommit = false;
+    session.finishRequested = false;
+    session.pointerReleased = false;
     session.grabOffset = { x: lastPointer.x - itemRect.left, y: lastPointer.y - itemRect.top };
     session.size = { width: itemRect.width, height: itemRect.height };
     session.rawPointer = { ...lastPointer };
     session.lastFrameTime = performance.now();
     session.scrollChain = buildScrollChain(containerEl);
-    session.awaitingCommit = false;
-    session.touchScrollGuard = touchScrollGuard;
-    session.contextMenuGuard = contextMenuGuard;
-    session.selectionGuard = selectionGuard;
+    session.activeEffects = activeEffects;
 
     options.draggingKey.value = key;
     options.onDragStart?.({ key, index: initialIndex });
@@ -356,27 +374,26 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (!session) return;
     const s = session;
 
+    const currentKeys = options.getKeys();
+
+    // The controlled-order check and the awaitingDomCommit gate both run before any autoscroll
+    // write, so an incompatible external mutation is always caught before a scroll side effect.
+    if (checkOrderConsistency(s.confirmedSequence, currentKeys) === 'external-mutation') {
+      cancelSession({ skipRollback: true });
+      return;
+    }
+
+    if (s.awaitingDomCommit) return;
+
     const autoscrollResult = runAutoscrollTick(s.scrollChain, s.rawPointer, deltaTimeMs);
 
     // A scroll write must never be followed by a hit-test/geometry read in the same frame; that
     // work resumes next frame, once the post-scroll layout has settled.
     if (didAutoscroll(autoscrollResult)) return;
 
-    if (s.awaitingCommit) return;
-
-    const currentKeys = options.getKeys();
-
-    if (checkOrderConsistency(s.orderExpectation, currentKeys) === 'external-mutation') {
-      cancelSession({ skipRollback: true });
-      return;
-    }
-
     const activeIndex = currentKeys.indexOf(s.key);
 
-    const containerVisibleRect = getContainerVisibleRect(
-      s.scrollChain,
-      autoscrollResult.measurement,
-    );
+    const containerVisibleRect = getContainerVisibleRect(autoscrollResult.measurement);
     const effectivePoint = getEffectiveHitTestPoint(containerVisibleRect, s.rawPointer);
     const target = resolveHitTestTarget(registry, s.containerEl, effectivePoint, s.key);
     if (!target) return;
@@ -390,33 +407,44 @@ export const createPointerSession = <Key extends ReorderKey>(
 
     if (!shouldDisplaceTarget(virtualRect, activeFlowRect, targetRect)) return;
 
-    const movedKey = s.key;
-    const fromIndex = activeIndex;
-    const toIndex = targetIndex;
-    const expectedNextSequence = deriveMovedSequence(
-      s.orderExpectation.sequence,
-      fromIndex,
-      toIndex,
-    );
+    requestMove(s, activeIndex, targetIndex);
+  };
 
-    s.awaitingCommit = true;
+  const requestMove = (s: SessionState<Key>, fromIndex: number, toIndex: number) => {
+    const movedKey = s.key;
+    const requestedSequence = deriveMovedSequence(s.confirmedSequence, fromIndex, toIndex);
+
+    s.pendingRequestedSequence = requestedSequence;
     options.onReorder({ key: movedKey, fromIndex, toIndex });
 
+    const outcome = evaluateRequestedMove(requestedSequence, options.getKeys());
+    s.pendingRequestedSequence = null;
+
+    if (outcome.kind === 'rejected') {
+      // The controlled order doesn't reflect the requested move (rejected, a different change
+      // was applied, or the key vanished): cancel safely rather than continue with divergent
+      // state or overwrite whatever the consumer actually did.
+      cancelSession({ skipRollback: true });
+      return;
+    }
+
+    // Promoted synchronously: an immediate cancellation right after this can already roll back
+    // from the up-to-date confirmedSequence, without waiting for nextTick.
+    s.confirmedSequence = outcome.confirmedSequence;
+    s.awaitingDomCommit = true;
+
     void nextTick(() => {
-      if (!session || session.key !== movedKey) return;
+      if (session !== s) return;
 
-      const keysAfter = options.getKeys();
-
-      if (confirmRequestedMove(expectedNextSequence, keysAfter) === 'rejected') {
-        // The controlled order doesn't reflect the requested move (rejected, a different change
-        // was applied, or the key vanished): cancel safely rather than continue with divergent
-        // state or overwrite whatever the consumer actually did.
+      if (checkOrderConsistency(s.confirmedSequence, options.getKeys()) === 'external-mutation') {
         cancelSession({ skipRollback: true });
         return;
       }
 
-      session.orderExpectation = { sequence: expectedNextSequence };
-      session.awaitingCommit = false;
+      s.awaitingDomCommit = false;
+
+      // The next scheduled animation frame naturally remeasures now that the gate is clear.
+      if (s.finishRequested) finishSession();
     });
   };
 
@@ -442,20 +470,25 @@ export const createPointerSession = <Key extends ReorderKey>(
       return;
     }
 
-    const { key, initialIndex, orderExpectation } = session;
+    const { key, initialIndex, confirmedSequence, pendingRequestedSequence } = session;
     const currentKeys = options.getKeys();
     let finalIndex = currentKeys.indexOf(key);
 
-    if (!cancelOptions.skipRollback && finalIndex !== -1 && finalIndex !== initialIndex) {
-      if (canRollback(orderExpectation, currentKeys, key, initialIndex)) {
-        const rollbackSequence = deriveMovedSequence(currentKeys, finalIndex, initialIndex);
-        options.onReorder({ key, fromIndex: finalIndex, toIndex: initialIndex });
+    const rollbackAllowed =
+      !cancelOptions.skipRollback &&
+      pendingRequestedSequence === null &&
+      finalIndex !== -1 &&
+      finalIndex !== initialIndex &&
+      canRollback(confirmedSequence, currentKeys, key, initialIndex);
 
-        const keysAfterRollback = options.getKeys();
-        finalIndex = sequencesEqual(keysAfterRollback, rollbackSequence)
-          ? initialIndex
-          : keysAfterRollback.indexOf(key);
-      }
+    if (rollbackAllowed) {
+      const rollbackSequence = deriveMovedSequence(currentKeys, finalIndex, initialIndex);
+      options.onReorder({ key, fromIndex: finalIndex, toIndex: initialIndex });
+
+      const keysAfterRollback = options.getKeys();
+      finalIndex = sequencesEqual(keysAfterRollback, rollbackSequence)
+        ? initialIndex
+        : keysAfterRollback.indexOf(key);
     }
 
     teardownSession();
@@ -471,26 +504,18 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (s.longPressTimer !== null) clearTimeout(s.longPressTimer);
     if (s.rafId !== null) cancelAnimationFrame(s.rafId);
 
-    removeSessionListeners();
+    globalListeners.detach();
 
     if (s.phase === 'active') {
-      if (s.containerEl.hasPointerCapture(s.pointerId)) {
-        try {
-          s.containerEl.releasePointerCapture(s.pointerId);
-        } catch {
-          // Capture already released by the browser.
-        }
+      s.activeEffects?.dispose();
+
+      // If the physical release hasn't happened yet (Escape, blur, visibility loss, a second
+      // pointer, container removal, unmount, or lost capture), track it instead of arming a
+      // zero-delay fallback that would expire long before the pointer actually lifts. A normal
+      // release already armed suppression immediately inside the pointerup handling itself.
+      if (!s.pointerReleased) {
+        clickSuppression.armReleaseWatcher({ containerEl: s.containerEl, pointerId: s.pointerId });
       }
-
-      s.containerEl.removeEventListener('lostpointercapture', onLostPointerCapture);
-      if (s.touchScrollGuard) s.containerEl.removeEventListener('touchmove', s.touchScrollGuard);
-      if (s.contextMenuGuard) s.containerEl.removeEventListener('contextmenu', s.contextMenuGuard);
-      if (s.selectionGuard) document.removeEventListener('selectstart', s.selectionGuard);
-
-      // The browser dispatches the resulting `click` after this synchronous teardown runs, for
-      // both a normal release and a mid-drag cancellation followed by the eventual release; arm
-      // suppression here so it survives long enough to intercept it.
-      clickSuppression.arm(s.containerEl);
     }
   };
 
@@ -501,6 +526,7 @@ export const createPointerSession = <Key extends ReorderKey>(
   const detachContainer = (containerEl: HTMLElement) => {
     containerEl.removeEventListener('pointerdown', onContainerPointerDown);
     if (session && session.containerEl === containerEl) cancelSession();
+    clickSuppression.disarm();
   };
 
   const notifyItemUnmounted = (key: Key) => {

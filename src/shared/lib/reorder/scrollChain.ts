@@ -74,10 +74,13 @@ export const buildScrollChain = (containerEl: HTMLElement): ScrollChainEntry[] =
  * @param pointerCoord - The pointer coordinate along the axis being checked.
  * @param visibleStart - The start edge of the target's visible clipped rect along the axis.
  * @param visibleEnd - The end edge of the target's visible clipped rect along the axis.
- * @param edgeZonePx - The distance from an edge where autoscroll begins.
+ * @param edgeZonePx - The configured distance from an edge where autoscroll begins.
  * @returns A signed intensity in `[-1, 1]`; negative moves toward the start edge, positive
  * toward the end edge, `0` outside both edge zones. A pointer beyond the visible edge clamps
- * to maximum intensity so movement past the edge keeps autoscrolling.
+ * to maximum intensity so movement past the edge keeps autoscrolling. When the visible extent is
+ * smaller than twice `edgeZonePx`, the effective edge zone shrinks to half the visible extent so
+ * the start and end zones never overlap: the exact center then stays neutral instead of an
+ * arbitrary direction winning a tie.
  */
 export const computeEdgeIntensity = (
   pointerCoord: number,
@@ -85,14 +88,19 @@ export const computeEdgeIntensity = (
   visibleEnd: number,
   edgeZonePx: number = AUTOSCROLL_EDGE_ZONE_PX,
 ): number => {
-  if (visibleEnd <= visibleStart || edgeZonePx <= 0) return 0;
+  const visibleExtent = visibleEnd - visibleStart;
+  if (visibleExtent <= 0 || edgeZonePx <= 0) return 0;
+
+  const effectiveEdgeZone = Math.min(edgeZonePx, visibleExtent / 2);
+  if (effectiveEdgeZone <= 0) return 0;
 
   const distanceFromStart = Math.max(0, pointerCoord - visibleStart);
   const distanceFromEnd = Math.max(0, visibleEnd - pointerCoord);
 
   const startIntensity =
-    distanceFromStart >= edgeZonePx ? 0 : -(1 - distanceFromStart / edgeZonePx);
-  const endIntensity = distanceFromEnd >= edgeZonePx ? 0 : 1 - distanceFromEnd / edgeZonePx;
+    distanceFromStart >= effectiveEdgeZone ? 0 : -(1 - distanceFromStart / effectiveEdgeZone);
+  const endIntensity =
+    distanceFromEnd >= effectiveEdgeZone ? 0 : 1 - distanceFromEnd / effectiveEdgeZone;
 
   return Math.abs(startIntensity) >= Math.abs(endIntensity) ? startIntensity : endIntensity;
 };
@@ -241,15 +249,12 @@ export const measureScrollChain = (
 };
 
 /**
- * @param entries - The activation-time scroll chain structure.
  * @param measurement - The current frame's measurement snapshot.
  * @returns The reorder container's own actually-visible rect (the chain's first entry), used to
  * clamp the hit-test point so a pointer outside a visible edge still resolves intuitively.
  */
-export const getContainerVisibleRect = (
-  entries: readonly ScrollChainEntry[],
-  measurement: ScrollChainMeasurement,
-): Rect => measurement.entryVisibleRects[0] ?? measurement.viewportRect;
+export const getContainerVisibleRect = (measurement: ScrollChainMeasurement): Rect =>
+  measurement.entryVisibleRects[0] ?? measurement.viewportRect;
 
 /** A resolved, not-yet-applied scroll intention for one axis. */
 interface AxisIntention {

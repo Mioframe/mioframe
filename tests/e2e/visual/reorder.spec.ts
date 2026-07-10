@@ -1,6 +1,12 @@
 import { expect, test, type CDPSession, type Locator, type Page } from '@playwright/test';
 import { openStory } from './storybook';
 
+declare global {
+  interface Window {
+    __externalPointerDownCount?: number;
+  }
+}
+
 const STORY_ID = 'shared-lib-reorder-reorderstoryharness--default';
 
 const getOrder = async (page: Page): Promise<string[]> => {
@@ -259,6 +265,70 @@ test.describe('click suppression', () => {
     await page.mouse.up();
 
     expect(await readContainerClickCount()).toBe(0);
+  });
+
+  test('Escape cancellation followed by a delayed physical release still suppresses the resulting click', async ({
+    page,
+  }) => {
+    const container = page.getByTestId('reorder-container');
+    const readContainerClickCount = await attachClickCounter(container);
+
+    const item = page.getByTestId('reorder-item-alpha');
+    const box = await boxOf(item);
+    const from = center(box);
+    const moveDistance = 60;
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + moveDistance, from.y, { steps: 8 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    await page.keyboard.press('Escape');
+    expect(await getDraggingKey(page)).toBe('');
+
+    // Well past a single zero-delay timer turn: only a bounded release watcher, not a
+    // `setTimeout(..., 0)` fallback armed at cancellation time, could still be tracking the
+    // original pointer this long afterward.
+    await page.waitForTimeout(300);
+
+    await page.mouse.up();
+
+    expect(await readContainerClickCount()).toBe(0);
+
+    const alphaBoxAfter = await boxOf(page.getByTestId('reorder-item-alpha'));
+    await page.mouse.click(center(alphaBoxAfter).x, center(alphaBoxAfter).y);
+    expect(await readContainerClickCount()).toBe(1);
+  });
+
+  test("a pointercancel after early cancellation does not suppress the pointer stream's own later click", async ({
+    page,
+  }) => {
+    const container = page.getByTestId('reorder-container');
+    const readContainerClickCount = await attachClickCounter(container);
+
+    const item = page.getByTestId('reorder-item-alpha');
+    const box = await boxOf(item);
+    const from = center(box);
+    const moveDistance = 60;
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + moveDistance, from.y, { steps: 8 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    await page.keyboard.press('Escape');
+    expect(await getDraggingKey(page)).toBe('');
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
+    });
+
+    // The real mouse button, unaffected by the synthetic pointercancel, still lifts normally and
+    // produces its own click for this same gesture; the release watcher must have already removed
+    // itself without arming suppression, so this click is not suppressed.
+    await page.mouse.up();
+
+    expect(await readContainerClickCount()).toBe(1);
   });
 });
 
@@ -547,6 +617,42 @@ test.describe('autoscroll', () => {
     await page.mouse.up();
   });
 
+  test('an external order mutation while autoscrolling cancels before further scrolling occurs', async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+
+    const container = page.getByTestId('reorder-container');
+    const containerBox = await boxOf(container);
+    const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
+
+    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x, containerBox.y + containerBox.height - 4, { steps: 6 });
+
+    await expect
+      .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 3000 })
+      .toBeGreaterThan(scrollTopBefore);
+
+    await page.getByTestId('reorder-control-reverse-order').evaluate((el: HTMLElement) => {
+      el.click();
+    });
+
+    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    const lastDragEnd = await getLastDragEnd(page);
+    expect(lastDragEnd?.cancelled).toBe(true);
+
+    const scrollTopAtCancel = await container.evaluate((el) => el.scrollTop);
+    // The mutation check runs before any autoscroll write each frame, so once cancelled, no
+    // further scrolling should occur even across several more animation frames.
+    await page.waitForTimeout(300);
+    expect(await container.evaluate((el) => el.scrollTop)).toBe(scrollTopAtCancel);
+
+    await page.mouse.up();
+  });
+
   test.describe('viewport fallback', () => {
     test.use({ viewport: { width: 500, height: 320 } });
 
@@ -733,6 +839,39 @@ test.describe('cancellation and cleanup', () => {
       expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
       expect((await getLastDragEnd(page))?.cancelled).toBe(true);
 
+      await page.mouse.up();
+    });
+
+    test('still reaches an external page listener and does not start a new reorder session', async ({
+      page,
+    }) => {
+      const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+      expect(await getDraggingKey(page)).toBe('alpha');
+      expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
+
+      await page.evaluate(() => {
+        window.__externalPointerDownCount = 0;
+        document.addEventListener('pointerdown', () => {
+          window.__externalPointerDownCount = (window.__externalPointerDownCount ?? 0) + 1;
+        });
+      });
+
+      await dispatchTouch(page, 'touchStart', { x: 2, y: 2 });
+
+      const externalCount = await page.evaluate(() => window.__externalPointerDownCount ?? 0);
+      expect(externalCount).toBe(1);
+
+      // The current session cancelled, but this same second-pointer event must not have started
+      // a brand-new one: the drag-start count stays at its pre-second-pointer value.
+      expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
+      expect(await getDraggingKey(page)).toBe('');
+      expect((await getLastDragEnd(page))?.cancelled).toBe(true);
+
+      await dispatchTouch(page, 'touchEnd');
       await page.mouse.up();
     });
   });

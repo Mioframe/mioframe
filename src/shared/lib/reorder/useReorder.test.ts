@@ -200,6 +200,64 @@ describe('useReorder activation gating', () => {
     );
   });
 
+  // The controlled `keys` getter is deliberately decoupled from what's actually rendered: only
+  // "b" has a mounted item, but the controlled sequence itself already contains a duplicate "a"
+  // that this harness never registers a DOM element for. The registry's own registration-time
+  // uniqueness check (a different concern, covered elsewhere) can't catch this; only validating
+  // `options.getKeys()` at pointerdown time can.
+  const mountDuplicateControlledKeysHarness = (): VueWrapper => {
+    const controlledKeys: string[] = ['a', 'a', 'b'];
+
+    return mount(
+      {
+        setup() {
+          const { vReorderContainer, vReorderItem } = useReorder({
+            keys: () => controlledKeys,
+            onReorder: vi.fn(),
+          });
+
+          return () =>
+            withDirectives(
+              h('div', {}, [withDirectives(h('div', { 'data-key': 'b' }), [[vReorderItem, 'b']])]),
+              [[vReorderContainer]],
+            );
+        },
+      },
+      { attachTo: document.body },
+    );
+  };
+
+  it('throws for duplicate controlled keys before any global pointer listener is installed', () => {
+    const wrapper = mountDuplicateControlledKeysHarness();
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+
+    expect(() => {
+      getItemEl(wrapper, 'b').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
+    }).toThrow(/duplicate key/);
+
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('pointermove', expect.anything());
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('pointerup', expect.anything());
+
+    addEventListenerSpy.mockRestore();
+    wrapper.unmount();
+  });
+
+  it('throws for duplicate controlled keys before the touch long-press timer is scheduled', () => {
+    const wrapper = mountDuplicateControlledKeysHarness();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    expect(() => {
+      getItemEl(wrapper, 'b').dispatchEvent(
+        createPointerEvent('pointerdown', { clientX: 0, pointerType: 'touch' }),
+      );
+    }).toThrow(/duplicate key/);
+
+    expect(setTimeoutSpy).not.toHaveBeenCalled();
+
+    setTimeoutSpy.mockRestore();
+    wrapper.unmount();
+  });
+
   it('throws when a second container is mounted for the same useReorder instance', () => {
     const keys = ref(['a', 'b']);
 
@@ -352,6 +410,40 @@ describe('useReorder cancellation', () => {
     expect(onDragStart).not.toHaveBeenCalled();
     expect(onDragEnd).not.toHaveBeenCalled();
 
+    wrapper.unmount();
+  });
+
+  it('a second pointerdown on a registered item still reaches an external listener and does not start a new session in the same dispatch', () => {
+    const keys = ref(['a', 'b', 'c']);
+    const onReorder = vi.fn();
+    const onDragStart = vi.fn();
+    const onDragEnd = vi.fn();
+    const wrapper = mountHarness(keys, { onReorder, onDragStart, onDragEnd });
+
+    getItemEl(wrapper, 'a').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
+    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
+    expect(onDragStart).toHaveBeenCalledTimes(1);
+
+    // The second pointer lands on a different *registered* item ("b"): without the same-dispatch
+    // exclusion, the container's own bubble-phase handler would see no active session (the
+    // capture-phase guard already cancelled it) and would start a brand-new one for "b".
+    const itemB = getItemEl(wrapper, 'b');
+    const externalListener = vi.fn();
+    itemB.addEventListener('pointerdown', externalListener);
+
+    itemB.dispatchEvent(createPointerEvent('pointerdown', { pointerId: 2, clientX: 50 }));
+
+    expect(externalListener).toHaveBeenCalledTimes(1);
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+    expect(onDragEnd).toHaveBeenCalledWith({
+      key: 'a',
+      initialIndex: 0,
+      finalIndex: 0,
+      cancelled: true,
+    });
+    expect(onDragStart).toHaveBeenCalledTimes(1);
+
+    itemB.removeEventListener('pointerdown', externalListener);
     wrapper.unmount();
   });
 

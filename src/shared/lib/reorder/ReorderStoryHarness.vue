@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
-import { useReorder } from '@shared/lib/reorder';
-import type { ReorderDragEndEvent } from './types';
+import { useReorder, type ReorderDragEndEvent } from '@shared/lib/reorder';
 
 interface HarnessItem {
   id: string;

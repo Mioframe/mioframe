@@ -77,3 +77,103 @@ describe('createClickSuppression', () => {
     expect(bubbledToParent).toBe(false);
   });
 });
+
+const dispatchWindowPointer = (type: string, pointerId: number): void => {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'pointerId', { value: pointerId, configurable: true });
+  window.dispatchEvent(event);
+};
+
+describe('createClickSuppression release watcher', () => {
+  it('does not arm immediate suppression when only a release watcher is started', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 1 });
+
+    expect(dispatchClick(container)).toBe(true);
+  });
+
+  it('arms suppression once the original pointer physically releases, even long after cancellation', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+
+    // Well past a single zero-delay timer turn: proves the watcher, not a fallback timer, is
+    // what's carrying suppression across this gap.
+    vi.advanceTimersByTime(2000);
+    expect(dispatchClick(container)).toBe(true);
+
+    dispatchWindowPointer('pointerup', 7);
+
+    expect(dispatchClick(container)).toBe(false);
+    expect(dispatchClick(container)).toBe(true);
+  });
+
+  it('ignores a pointerup for a different pointer id', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    dispatchWindowPointer('pointerup', 99);
+
+    expect(dispatchClick(container)).toBe(true);
+  });
+
+  it('a matching pointercancel removes the watcher without arming suppression', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    dispatchWindowPointer('pointercancel', 7);
+
+    expect(dispatchClick(container)).toBe(true);
+
+    // The watcher is gone: a later matching pointerup must not retroactively arm suppression.
+    dispatchWindowPointer('pointerup', 7);
+    expect(dispatchClick(container)).toBe(true);
+  });
+
+  it('the bounded safety timeout cleans up the watcher if the pointer never releases', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    vi.runAllTimers();
+
+    dispatchWindowPointer('pointerup', 7);
+    expect(dispatchClick(container)).toBe(true);
+  });
+
+  it('disarm cancels a pending release watcher', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    suppression.disarm();
+
+    dispatchWindowPointer('pointerup', 7);
+    expect(dispatchClick(container)).toBe(true);
+  });
+
+  it('re-arming immediate suppression clears any previously pending release watcher', () => {
+    const containerA = document.createElement('div');
+    const containerB = document.createElement('div');
+    document.body.append(containerA, containerB);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: containerA, pointerId: 7 });
+    suppression.arm(containerB);
+
+    dispatchWindowPointer('pointerup', 7);
+    expect(dispatchClick(containerA)).toBe(true);
+    expect(dispatchClick(containerB)).toBe(false);
+  });
+});

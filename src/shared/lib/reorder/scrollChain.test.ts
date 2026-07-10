@@ -76,6 +76,21 @@ describe('computeEdgeIntensity', () => {
   it('returns 0 for a degenerate (empty) visible extent', () => {
     expect(computeEdgeIntensity(5, 10, 10, 10)).toBe(0);
   });
+
+  it('returns 0 at the exact center of a target smaller than twice the edge zone', () => {
+    // visible extent 10, configured edge zone 56: the zones would otherwise overlap.
+    expect(computeEdgeIntensity(5, 0, 10, 56)).toBe(0);
+  });
+
+  it('is negative approaching the start edge of a small target, symmetric with the end edge', () => {
+    expect(computeEdgeIntensity(0, 0, 10, 56)).toBe(-1);
+    expect(computeEdgeIntensity(2.5, 0, 10, 56)).toBeCloseTo(-0.5);
+  });
+
+  it('is positive approaching the end edge of a small target, symmetric with the start edge', () => {
+    expect(computeEdgeIntensity(10, 0, 10, 56)).toBe(1);
+    expect(computeEdgeIntensity(7.5, 0, 10, 56)).toBeCloseTo(0.5);
+  });
 });
 
 describe('computeScrollDelta', () => {
@@ -380,7 +395,7 @@ describe('getContainerVisibleRect', () => {
     ];
     const measurement = measureScrollChain(entries);
 
-    expect(getContainerVisibleRect(entries, measurement)).toEqual({
+    expect(getContainerVisibleRect(measurement)).toEqual({
       left: 10,
       top: 20,
       width: 100,
@@ -510,8 +525,12 @@ describe('runAutoscrollTick', () => {
       clientHeight: 200,
       scrollTop: 200,
     });
-    const scrollBy = vi.fn<(delta: { left?: number; top?: number }) => void>();
-    el.scrollBy = scrollBy;
+    // Element.scrollBy's overloaded signature collapses to a single (non-object) parameter type
+    // once wrapped by vi.spyOn's generic Mock<>, so a plain typed vi.fn() assigned through
+    // Object.defineProperty (rather than a direct, type-unsafe property assignment) is what stays
+    // both overload-safe and precisely typed for reading the call's `left`/`top` back out.
+    const scrollBy = vi.fn<(options: { left?: number; top?: number }) => void>();
+    Object.defineProperty(el, 'scrollBy', { value: scrollBy, configurable: true });
 
     const entries: ScrollChainEntry[] = [
       { element: el, scrollCandidateX: true, scrollCandidateY: true, clipsX: true, clipsY: true },

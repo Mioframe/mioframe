@@ -62,14 +62,20 @@ never keeps a second authoritative copy, and never infers identity from array in
 position — only from the key passed to `v-reorder-item`.
 
 For every live move, `onReorder({ key, fromIndex, toIndex })` fires and the consumer must update
-its reactive order **synchronously**. Vue may commit the resulting DOM update asynchronously; the
-library waits for that commit before evaluating the next potential move.
+its reactive order **synchronously**. The library confirms acceptance synchronously too, by
+re-reading the consumer's keys immediately after `onReorder` returns and comparing them to the
+exact sequence it requested — it never waits for Vue's `nextTick` to decide whether a move was
+accepted. `nextTick` is used only afterward, to wait for Vue's DOM commit of an already-accepted
+move before remeasuring geometry on the next animation frame. If the original pointer is released
+while that DOM commit is still pending, completion is deferred until the commit resolves rather
+than reported prematurely.
 
-Internally, an active session keeps a non-authoritative snapshot of the sequence it expects the
-consumer's `keys` to be. That snapshot exists only to verify the controlled contract — it is never
-exposed publicly and never becomes another source of truth. Before evaluating every frame, and
-after every requested move, the library compares the consumer's live sequence against that
-snapshot in full (not just the active item's resulting index).
+Internally, an active session keeps a non-authoritative snapshot (`confirmedSequence`) of the
+sequence it expects the consumer's `keys` to be. That snapshot exists only to verify the controlled
+contract — it is never exposed publicly and never becomes another source of truth. Before
+evaluating every frame, and immediately after every requested move, the library compares the
+consumer's live sequence against that snapshot in full (not just the active item's resulting
+index).
 
 If the controlled order does not reflect a requested move, or changes incompatibly mid-session
 (the active key disappears, or the consumer applies an unrelated change, for example), the session
@@ -127,12 +133,21 @@ styling, spacing, and motion are the consumer's responsibility — use `dragging
   blocked before activation; after activation, the gesture captures the pointer and suppresses
   scrolling, context menus, and text selection for that gesture only.
 
-A normal completed drag arms one-shot suppression for the click the browser dispatches after the
-gesture's `pointerup`; that suppression survives the session's own (synchronous) teardown long
-enough to intercept it, then removes itself immediately, or after a bounded fallback if no click
-ever arrives. It suppresses only that one click — a later, genuinely unrelated click is never
-affected, and cancelling mid-drag before the physical release still arms the same one-shot
-suppression for the click that release would otherwise produce.
+A normal completed drag arms one-shot click suppression immediately while handling the original
+`pointerup` — before any finish/defer/cancel decision, since the browser's resulting `click`
+follows that same physical release shortly after regardless of how the session concludes. That
+suppression survives the session's own (synchronous) teardown long enough to intercept the click,
+then removes itself immediately, or after a bounded fallback if no click ever arrives. It
+suppresses only that one click; a later, genuinely unrelated click is never affected.
+
+Cancelling mid-drag _before_ the physical release (`Escape`, blur, visibility loss, a second
+pointer, container removal, or unmount) cannot use that same immediate arm-and-fallback shape: the
+original pointer may stay physically pressed far longer than one event-loop turn. In that case the
+library instead starts a bounded release watcher for the original pointer's own `pointerup`, and
+arms suppression only once that release actually happens. A matching `pointercancel` for that same
+pointer removes the watcher without arming suppression (no click will follow), and a bounded safety
+timeout removes it if the pointer never reports back at all. Either way, only the just-ended
+gesture's own click can ever be suppressed — a genuinely unrelated later click always passes.
 
 ## Autoscroll
 
@@ -150,10 +165,12 @@ pointer beyond a visible edge keeps scrolling and reordering intuitively rather 
 
 A session cancels safely on `Escape`, `pointercancel`, lost pointer capture, a second pointer
 (anywhere, not only inside the container), window blur, the document becoming hidden,
-container/active-item unmount, or an incompatible controlled-order change. When rollback is still
-valid — the active key still exists and the consumer's live sequence exactly matches what the
-library expects — the active item is live-reordered back to its initial index before the session
-ends; otherwise it ends as cancelled without inventing or overwriting consumer state, and never
+container/active-item unmount, or an incompatible controlled-order change. A second pointer never
+consumes its own event for the rest of the page — no `stopPropagation`, `stopImmediatePropagation`,
+or `preventDefault` — it only prevents that same event from also starting a brand-new session in
+this library. When rollback is still valid — the active key still exists and the consumer's live
+sequence exactly matches what the library expects — the active item is live-reordered back to its
+initial index before the session ends; otherwise it ends as cancelled without inventing or overwriting consumer state, and never
 rolls back over an incompatible external mutation. Every activated session ends with exactly one
 `onDragEnd`, and all timers, listeners, capture, and animation-frame work are cleaned up
 deterministically.
