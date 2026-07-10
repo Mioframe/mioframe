@@ -1,6 +1,6 @@
 ---
 name: verification
-description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures or warnings, avoiding duplicate verification runs, or preparing the final VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
+description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures or warnings, avoiding duplicate verification runs, or preparing the final TASK RESULT and VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
 ---
 
 # Verification workflow
@@ -131,11 +131,31 @@ Do not start manual e2e, visual, mutation, full lint, or full type-check command
 
 Use only `pnpm verify`, `pnpm verify:status`, and `pnpm verify:resume` for verification state. Do not use unlisted commands for that workflow.
 
+## Task completion status
+
+Before the final response, compare the result with the task acceptance criteria, the architecture handoff and implementation preflight when applicable, and all required verification.
+
+Report exactly one task status:
+
+- `complete`: all required scope, acceptance criteria, and verification are satisfied, with no known required work remaining;
+- `partial`: useful work is implemented, but required scope, cleanup, documentation, or verification remains;
+- `blocked`: further progress requires an unresolved decision, unavailable input, unavailable capability, or handoff change that the coding agent cannot resolve.
+
+Do not use completion-equivalent wording such as `done`, `fixed`, `ready`, `code-complete`, `fully implemented`, or `all defects fixed` unless the task status is `complete`.
+
+A failed, skipped, unavailable, or incomplete required verification makes the task status `partial` or `blocked`, never `complete`. Use `blocked` only when the agent cannot continue independently; an ordinary failing test is `partial` until the agent has exhausted the permitted fixes.
+
+`TASK RESULT: complete` confirms only the coding agent's assigned scope and local evidence. It does not approve the architecture, GitHub CI, PR review, merge readiness, or product-task closure.
+
 ## Final response
 
-Always include this verification block after edits:
+Always include both blocks after edits:
 
 ```text
+TASK RESULT
+status: complete | partial | blocked
+remaining: none | <remaining required work, verification, or blocker>
+
 VERIFY RESULT
 command: pnpm verify
 status: passed | failed | not run | blocked by active local verification
