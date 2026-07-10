@@ -23,12 +23,15 @@ Required sections:
 1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
 2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
 3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
-4. **Acceptance matrix**: what non-happy-path states must work in the first implementation?
-5. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
-6. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
-7. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
+4. **Minimum sufficient design**: does every planned concept map to a current requirement or owner boundary, can the same result use fewer concepts or a narrower contract, and is any unrequested flexibility or stronger guarantee being introduced?
+5. **Acceptance matrix**: what non-happy-path states must work in the first implementation?
+6. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
+7. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
+8. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
 
 If any owner in the owner map is unclear for a cross-layer change, stop and resolve the architecture before editing.
+
+If the minimum sufficient design check finds an abstraction, extension point, compatibility path, recovery mechanism, optimization, or stronger guarantee without a current requirement, existing consumer, repository invariant, platform constraint, or measured need, stop and return the handoff for simplification. Do not silently redesign the contract and do not hide the same complexity by only splitting it across more files.
 
 For contract changes such as persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, or cross-layer behavior, also record:
 
@@ -56,7 +59,7 @@ For non-trivial UI, UX, or cross-layer refactors, do not edit production code un
 - shared UI primitives affected by the change and their consumer blast radius;
 - browser, visual, Storybook, e2e, mutation, and focused unit verification required for the changed surface.
 
-Before final handoff, compare the diff against this gate. If a scenario, invariant, owner layer, or public API decision changed during implementation, update the preflight and fix the implementation before claiming completion.
+Before final handoff, compare the diff against this gate. If a scenario, invariant, owner layer, public API decision, or minimum-design decision changed during implementation, update the preflight and fix the implementation before claiming completion.
 
 ## Service and worker source-of-truth gate
 
@@ -118,7 +121,7 @@ Use these rules for create/open/import/export, setup, picker, dialog, storage, p
 - Keep flow outcomes typed and local to the boundary that needs them. Avoid broad `status` protocols, command choreography, or result objects that mix field issues, transport failures, domain conflicts, and UI navigation unless several independent callers need the protocol.
 - If a feature needs a shared UI primitive change, decide whether that primitive change is a separate prerequisite. When it remains in the feature PR, keep it minimal, Material-verified, and independently tested so the feature review does not hide shared UI regressions.
 - Delete obsolete code paths, facades, providers, and tests in the same pass that introduces their replacement unless backwards compatibility is required. Do not leave dual flows for review to reconcile.
-- When two consecutive review rounds uncover ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Update the scenario matrix, owner map, and verification matrix before more edits.
+- When two consecutive review rounds add new concepts, abstractions, branches, protocols, configuration, recovery paths, ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Simplify the handoff, scenario matrix, owner map, and verification matrix before more edits.
 - Prefer tests for domain invariants and extracted state transitions before component wiring. Component tests should verify only contracts that the component owns; browser behavior, layout, focus, gestures, and Material visual states require browser or visual verification.
 
 ## Bounded reuse search
@@ -142,6 +145,8 @@ Include only states relevant to the task, but consider:
 - accessibility structure and heading hierarchy for rendered UI;
 - Material 3 component choice, placement, adaptive layout, focus, keyboard, touch, motion, and visual state guidance when UI/UX changes are involved;
 - CI, build, Storybook, Playwright, verify, fix, or verbose modes when tooling changes.
+
+Considering a matrix item does not automatically require implementing support for it. Include it in the first implementation only when it is reachable through the current contract and required by a user flow, existing consumer, data-safety rule, platform constraint, or repository invariant. Prefer explicit unsupported behavior over speculative mechanisms that expand the public or internal contract.
 
 The first implementation should cover the applicable matrix, not only the happy path. If a matrix item is intentionally not covered, state why.
 
