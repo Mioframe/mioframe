@@ -164,21 +164,31 @@ export const canScrollViewportOnAxis = (axis: ScrollAxis, direction: ScrollDirec
     : scrollPos < maxScrollPos - ROUNDING_EPSILON_PX;
 };
 
-const toRect = (domRect: DOMRect): Rect => ({
-  left: domRect.left,
-  top: domRect.top,
-  width: domRect.width,
-  height: domRect.height,
+/**
+ * @param element - The scroll-chain element to derive the client viewport rect for.
+ * @param borderRect - `element`'s already-read border-box rect from `getBoundingClientRect()`.
+ * @returns The element's client viewport rect: content + padding box, excluding its border and any
+ * scrollbar gutter. This, not the border box, is what overflow scrolling and clipping actually
+ * operate on.
+ */
+const toClientRect = (element: HTMLElement, borderRect: DOMRect): Rect => ({
+  left: borderRect.left + element.clientLeft,
+  top: borderRect.top + element.clientTop,
+  width: element.clientWidth,
+  height: element.clientHeight,
 });
 
 /** One linear-in-depth read pass over a {@link ScrollChainEntry} chain for a single frame. */
 export interface ScrollChainMeasurement {
-  /** Each entry's own bounding rect, index-aligned with the chain. */
-  entryRects: Rect[];
   /**
-   * Each entry's actually-visible rect (its own rect intersected with genuine clipping
-   * ancestors only), index-aligned with the chain. An `overflow: visible` ancestor never
-   * shrinks this.
+   * Each entry's own client viewport rect (see {@link toClientRect}), index-aligned with the
+   * chain.
+   */
+  entryClientRects: Rect[];
+  /**
+   * Each entry's actually-visible rect (its own client rect intersected with genuine clipping
+   * ancestors' client rects only), index-aligned with the chain. An `overflow: visible` ancestor
+   * never shrinks this.
    */
   entryVisibleRects: Rect[];
   /** The current viewport rect in viewport coordinates. */
@@ -187,17 +197,20 @@ export interface ScrollChainMeasurement {
 
 /**
  * Reads every dynamic value the current frame needs from `entries` exactly once: each element's
- * own bounding rect (a single `getBoundingClientRect()` call per element, never per axis, never
- * repeated through nested ancestor loops), then folds genuine clipping ancestors into a running
- * bound in one outer-to-inner pass so each entry's visible rect is derived in constant time. This
- * keeps the whole read phase linear in ancestor depth.
+ * own client viewport rect (a single `getBoundingClientRect()` call per element, never per axis,
+ * never repeated through nested ancestor loops, combined with its already layout-resident
+ * `clientLeft`/`clientTop`/`clientWidth`/`clientHeight`), then folds genuine clipping ancestors
+ * into a running bound in one outer-to-inner pass so each entry's visible rect is derived in
+ * constant time. This keeps the whole read phase linear in ancestor depth.
  * @param entries - The activation-time scroll chain structure.
  * @returns The frame's single measurement snapshot, reused for both axes and for hit-testing.
  */
 export const measureScrollChain = (
   entries: readonly ScrollChainEntry[],
 ): ScrollChainMeasurement => {
-  const entryRects = entries.map((entry) => toRect(entry.element.getBoundingClientRect()));
+  const entryClientRects = entries.map((entry) =>
+    toClientRect(entry.element, entry.element.getBoundingClientRect()),
+  );
   const viewportRect: Rect = {
     left: 0,
     top: 0,
@@ -213,7 +226,7 @@ export const measureScrollChain = (
 
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
-    const rect = entryRects[index];
+    const rect = entryClientRects[index];
     if (!entry || !rect) continue;
 
     const ownLeft = rect.left;
@@ -245,7 +258,7 @@ export const measureScrollChain = (
     }
   }
 
-  return { entryRects, entryVisibleRects, viewportRect };
+  return { entryClientRects, entryVisibleRects, viewportRect };
 };
 
 /**

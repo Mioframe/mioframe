@@ -273,7 +273,10 @@ const resetScrollAndOrder = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 140px;
+  /* Matches the "alpha" item's own dimensions (120x60): the click-suppression Playwright spec
+     drives an identically-shaped gesture on both surfaces to prove equivalent click-producing
+     geometry. */
+  width: 120px;
   height: 60px;
   padding: 6px;
   box-sizing: border-box;

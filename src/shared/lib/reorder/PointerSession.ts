@@ -61,8 +61,15 @@ interface SessionState<Key extends ReorderKey> {
   awaitingDomCommit: boolean;
   /** Whether the original pointer was released while `awaitingDomCommit` was still `true`. */
   finishRequested: boolean;
-  /** Whether the original pointer's physical release has already been observed. */
-  pointerReleased: boolean;
+  /**
+   * How the original pointer stream has physically ended so far. `'released'` and `'cancelled'`
+   * are terminal: the browser has already ended the stream, so no release watcher is needed and
+   * (for `'cancelled'`) no click can ever follow. `'not-ended'` means the stream may still be
+   * physically live even though the session itself is tearing down for another reason (Escape,
+   * blur, visibility loss, a second pointer, active-item/container removal, or unexpected lost
+   * capture) — only that case needs a bounded release watcher.
+   */
+  terminationReason: 'released' | 'cancelled' | 'not-ended';
   grabOffset: Point;
   size: { width: number; height: number };
   rawPointer: Point;
@@ -157,11 +164,20 @@ export const createPointerSession = <Key extends ReorderKey>(
       return;
     }
 
+    const s = session;
+
     // Arm suppression immediately, inside the original pointerup handling, regardless of how
     // reconciliation below concludes: the browser's synthetic click follows this same physical
     // release shortly after, so suppression must not wait for the finish/defer/cancel decision.
-    session.pointerReleased = true;
-    clickSuppression.arm(session.containerEl);
+    s.terminationReason = 'released';
+    clickSuppression.arm(s.containerEl);
+
+    // The physical release ends the interactive part of the gesture even when completion itself
+    // must defer until Vue's DOM commit: stop the rAF loop, global listeners, pointer capture, and
+    // touch/context-menu/selection guards right now so nothing keeps running (and so an expected
+    // `lostpointercapture` from the capture release below can no longer reach a listener that
+    // would otherwise cancel the deferred completion).
+    stopGestureRuntime(s);
 
     reconcilePointerUp();
   };
@@ -191,11 +207,26 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const onPointerCancelEvent = (event: PointerEvent) => {
-    if (session && event.pointerId === session.pointerId) cancelSession();
+    if (!session || event.pointerId !== session.pointerId) return;
+
+    // A direct `pointercancel` ends the original pointer stream completely: no click can ever
+    // follow it, so no release watcher may be created for it (armReleaseWatcher is installed too
+    // late to observe a `pointercancel` that already happened).
+    session.terminationReason = 'cancelled';
+    cancelSession();
   };
 
   const onLostPointerCapture = (event: PointerEvent) => {
-    if (session && session.phase === 'active' && event.pointerId === session.pointerId) {
+    if (
+      session &&
+      session.phase === 'active' &&
+      event.pointerId === session.pointerId &&
+      session.terminationReason === 'not-ended'
+    ) {
+      // Only cancel while the original pointer stream is still genuinely live. Once `pointerup`
+      // or `pointercancel` has already been processed, a later `lostpointercapture` is expected
+      // (the browser releasing capture as part of that same termination) and must not turn an
+      // already-decided outcome into a cancellation.
       cancelSession();
     }
   };
@@ -277,7 +308,7 @@ export const createPointerSession = <Key extends ReorderKey>(
       pendingRequestedSequence: null,
       awaitingDomCommit: false,
       finishRequested: false,
-      pointerReleased: false,
+      terminationReason: 'not-ended',
       grabOffset: { x: 0, y: 0 },
       size: { width: 0, height: 0 },
       rawPointer: point,
@@ -305,11 +336,21 @@ export const createPointerSession = <Key extends ReorderKey>(
     }
 
     const { containerEl, itemEl, pointerId, pointerType, key, lastPointer } = session;
-    const currentKeys = options.getKeys();
 
     // Re-validated at commit time, using freshly read keys: the controlled data may have changed
-    // during the pending phase (mouse threshold delay or touch long-press delay).
-    assertUniqueKeys(currentKeys);
+    // during the pending phase (mouse threshold delay or touch long-press delay). Still in the
+    // 'pending' phase here, so a thrown validation failure is a programmer/data-contract error
+    // before any drag callback fires, not a completed drag gesture: teardownSession() naturally
+    // skips every click-suppression/release-watcher side effect for a pending-phase session.
+    let currentKeys: readonly Key[];
+    try {
+      currentKeys = options.getKeys();
+      assertUniqueKeys(currentKeys);
+    } catch (error) {
+      teardownSession();
+      throw error;
+    }
+
     const initialIndex = currentKeys.indexOf(key);
 
     if (initialIndex === -1) {
@@ -338,7 +379,7 @@ export const createPointerSession = <Key extends ReorderKey>(
     session.pendingRequestedSequence = null;
     session.awaitingDomCommit = false;
     session.finishRequested = false;
-    session.pointerReleased = false;
+    session.terminationReason = 'not-ended';
     session.grabOffset = { x: lastPointer.x - itemRect.left, y: lastPointer.y - itemRect.top };
     session.size = { width: itemRect.width, height: itemRect.height };
     session.rawPointer = { ...lastPointer };
@@ -395,6 +436,10 @@ export const createPointerSession = <Key extends ReorderKey>(
 
     const containerVisibleRect = getContainerVisibleRect(autoscrollResult.measurement);
     const effectivePoint = getEffectiveHitTestPoint(containerVisibleRect, s.rawPointer);
+    // A zero-width/height visible area (fully clipped or scrolled-away container) has no interior
+    // point to hit-test at all; skip `elementsFromPoint` entirely rather than fabricate one.
+    if (!effectivePoint) return;
+
     const target = resolveHitTestTarget(registry, s.containerEl, effectivePoint, s.key);
     if (!target) return;
 
@@ -496,26 +541,42 @@ export const createPointerSession = <Key extends ReorderKey>(
     options.onDragEnd?.({ key, initialIndex, finalIndex, cancelled: true });
   };
 
+  /**
+   * Stops every active-session DOM-level and scheduling side effect: the rAF loop, the session's
+   * temporary global listeners, and pointer capture/touch/context-menu/selection guards. Safe to
+   * call multiple times (each step is a no-op once already stopped) so both the immediate
+   * physical-`pointerup` path and the eventual `teardownSession()` call can call it unconditionally
+   * without double-disposing anything.
+   */
+  const stopGestureRuntime = (s: SessionState<Key>): void => {
+    if (s.rafId !== null) {
+      cancelAnimationFrame(s.rafId);
+      s.rafId = null;
+    }
+
+    globalListeners.detach();
+
+    if (s.activeEffects) {
+      s.activeEffects.dispose();
+      s.activeEffects = null;
+    }
+  };
+
   const teardownSession = () => {
     if (!session) return;
     const s = session;
     session = null;
 
     if (s.longPressTimer !== null) clearTimeout(s.longPressTimer);
-    if (s.rafId !== null) cancelAnimationFrame(s.rafId);
+    stopGestureRuntime(s);
 
-    globalListeners.detach();
-
-    if (s.phase === 'active') {
-      s.activeEffects?.dispose();
-
-      // If the physical release hasn't happened yet (Escape, blur, visibility loss, a second
-      // pointer, container removal, unmount, or lost capture), track it instead of arming a
-      // zero-delay fallback that would expire long before the pointer actually lifts. A normal
-      // release already armed suppression immediately inside the pointerup handling itself.
-      if (!s.pointerReleased) {
-        clickSuppression.armReleaseWatcher({ containerEl: s.containerEl, pointerId: s.pointerId });
-      }
+    // If the physical release hasn't happened yet (Escape, blur, visibility loss, a second
+    // pointer, container removal, unmount, or unexpected lost capture), track it instead of
+    // arming a zero-delay fallback that would expire long before the pointer actually lifts. A
+    // normal release already armed suppression immediately inside the pointerup handling itself;
+    // a direct `pointercancel` never gets a click, so it never arms anything either.
+    if (s.phase === 'active' && s.terminationReason === 'not-ended') {
+      clickSuppression.armReleaseWatcher({ containerEl: s.containerEl, pointerId: s.pointerId });
     }
   };
 

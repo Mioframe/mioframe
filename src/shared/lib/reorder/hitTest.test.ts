@@ -8,16 +8,62 @@ afterEach(() => {
 });
 
 describe('getEffectiveHitTestPoint', () => {
-  it('clamps the raw pointer point to the container visible rect', () => {
+  it('clamps a point beyond the left/top edge inward to the edge itself', () => {
     const point = getEffectiveHitTestPoint(
       { left: 0, top: 0, width: 100, height: 100 },
-      {
-        x: -10,
-        y: 500,
-      },
+      { x: -10, y: -20 },
     );
 
-    expect(point).toEqual({ x: 0, y: 100 });
+    expect(point).toEqual({ x: 0, y: 0 });
+  });
+
+  it('clamps a point beyond the right/bottom edge to strictly inside the rect', () => {
+    const point = getEffectiveHitTestPoint(
+      { left: 0, top: 0, width: 100, height: 100 },
+      { x: 500, y: 500 },
+    );
+
+    expect(point).not.toBeNull();
+    expect(point?.x).toBeLessThan(100);
+    expect(point?.y).toBeLessThan(100);
+    expect(point?.x).toBeGreaterThan(99);
+    expect(point?.y).toBeGreaterThan(99);
+  });
+
+  it('returns a point exactly on the left/top edge unchanged (inclusive minimum)', () => {
+    const point = getEffectiveHitTestPoint(
+      { left: 10, top: 20, width: 100, height: 100 },
+      { x: 10, y: 20 },
+    );
+
+    expect(point).toEqual({ x: 10, y: 20 });
+  });
+
+  it('leaves an interior point untouched', () => {
+    const point = getEffectiveHitTestPoint(
+      { left: 0, top: 0, width: 100, height: 100 },
+      { x: 40, y: 60 },
+    );
+
+    expect(point).toEqual({ x: 40, y: 60 });
+  });
+
+  it('returns null for a zero-width visible rect', () => {
+    expect(
+      getEffectiveHitTestPoint({ left: 0, top: 0, width: 0, height: 100 }, { x: 5, y: 5 }),
+    ).toBeNull();
+  });
+
+  it('returns null for a zero-height visible rect', () => {
+    expect(
+      getEffectiveHitTestPoint({ left: 0, top: 0, width: 100, height: 0 }, { x: 5, y: 5 }),
+    ).toBeNull();
+  });
+
+  it('returns null for a fully collapsed (zero-width and zero-height) visible rect', () => {
+    expect(
+      getEffectiveHitTestPoint({ left: 10, top: 10, width: 0, height: 0 }, { x: 10, y: 10 }),
+    ).toBeNull();
   });
 });
 

@@ -53,7 +53,17 @@ export const acquireActiveSessionEffects = (
   document.addEventListener('selectstart', selectionGuard);
   containerEl.addEventListener('lostpointercapture', onLostPointerCapture);
 
+  let disposed = false;
+
   const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+
+    // Remove the lost-capture listener before releasing capture below: releasing capture is what
+    // can cause the browser to dispatch `lostpointercapture`, so removing the listener first rules
+    // out any reentrant call into session cancellation from this same dispose.
+    containerEl.removeEventListener('lostpointercapture', onLostPointerCapture);
+
     if (containerEl.hasPointerCapture(pointerId)) {
       try {
         containerEl.releasePointerCapture(pointerId);
@@ -62,7 +72,6 @@ export const acquireActiveSessionEffects = (
       }
     }
 
-    containerEl.removeEventListener('lostpointercapture', onLostPointerCapture);
     if (touchScrollGuard) containerEl.removeEventListener('touchmove', touchScrollGuard);
     if (contextMenuGuard) containerEl.removeEventListener('contextmenu', contextMenuGuard);
     document.removeEventListener('selectstart', selectionGuard);

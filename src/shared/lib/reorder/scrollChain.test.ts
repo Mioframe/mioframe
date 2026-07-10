@@ -26,6 +26,29 @@ const stubRect = (
   };
 
   el.getBoundingClientRect = () => domRect;
+
+  // jsdom never derives real layout metrics, so default the element's client viewport (the
+  // content + padding box `measureScrollChain` actually reads) to exactly match its border box —
+  // no border, no scrollbar gutter — unless a test overrides it via stubClientBox.
+  Object.defineProperty(el, 'clientLeft', { value: 0, configurable: true });
+  Object.defineProperty(el, 'clientTop', { value: 0, configurable: true });
+  Object.defineProperty(el, 'clientWidth', { value: rect.width, configurable: true });
+  Object.defineProperty(el, 'clientHeight', { value: rect.height, configurable: true });
+};
+
+/**
+ * Overrides an element's client viewport metrics independently of its border-box rect, so a test
+ * can model a real border and/or scrollbar gutter (client rect narrower/offset from the border
+ * rect `stubRect` configured).
+ */
+const stubClientBox = (
+  el: Element,
+  client: { clientLeft: number; clientTop: number; clientWidth: number; clientHeight: number },
+) => {
+  Object.defineProperty(el, 'clientLeft', { value: client.clientLeft, configurable: true });
+  Object.defineProperty(el, 'clientTop', { value: client.clientTop, configurable: true });
+  Object.defineProperty(el, 'clientWidth', { value: client.clientWidth, configurable: true });
+  Object.defineProperty(el, 'clientHeight', { value: client.clientHeight, configurable: true });
 };
 
 const stubScrollMetrics = (
@@ -590,7 +613,7 @@ describe('didAutoscroll', () => {
         x: { scrolled: true, element: null },
         y: { scrolled: false, element: null },
         measurement: {
-          entryRects: [],
+          entryClientRects: [],
           entryVisibleRects: [],
           viewportRect: { left: 0, top: 0, width: 0, height: 0 },
         },
@@ -604,11 +627,153 @@ describe('didAutoscroll', () => {
         x: { scrolled: false, element: null },
         y: { scrolled: false, element: null },
         measurement: {
-          entryRects: [],
+          entryClientRects: [],
           entryVisibleRects: [],
           viewportRect: { left: 0, top: 0, width: 0, height: 0 },
         },
       }),
     ).toBe(false);
+  });
+});
+
+describe('client viewport geometry', () => {
+  it('derives entryClientRects from the border rect offset by clientLeft/clientTop and sized by clientWidth/clientHeight, excluding border and scrollbar area', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    // A 10px border on every side plus a 15px scrollbar gutter on the right/bottom.
+    stubRect(container, { left: 0, top: 0, width: 300, height: 300 });
+    stubClientBox(container, {
+      clientLeft: 10,
+      clientTop: 10,
+      clientWidth: 265,
+      clientHeight: 280,
+    });
+    stubViewport(1000, 1000);
+
+    const entries: ScrollChainEntry[] = [
+      {
+        element: container,
+        scrollCandidateX: false,
+        scrollCandidateY: false,
+        clipsX: false,
+        clipsY: false,
+      },
+    ];
+
+    const measurement = measureScrollChain(entries);
+
+    expect(measurement.entryClientRects[0]).toEqual({ left: 10, top: 10, width: 265, height: 280 });
+    // The client rect must be strictly narrower than the border rect: the border/scrollbar area
+    // is excluded, not merely offset.
+    expect(measurement.entryClientRects[0]?.width).toBeLessThan(300);
+    expect(measurement.entryClientRects[0]?.height).toBeLessThan(300);
+  });
+
+  it('clips visible bounds using a clipping ancestor’s client rect, not its wider border rect', () => {
+    const ancestor = document.createElement('div');
+    const container = document.createElement('div');
+    document.body.append(ancestor, container);
+    stubRect(ancestor, { left: 0, top: 0, width: 300, height: 300 });
+    // The ancestor's own visible interior (excluding its border/scrollbar) stops well short of
+    // its border rect.
+    stubClientBox(ancestor, { clientLeft: 20, clientTop: 20, clientWidth: 200, clientHeight: 200 });
+    stubRect(container, { left: 50, top: 50, width: 400, height: 400 });
+    stubViewport(1000, 1000);
+
+    const entries: ScrollChainEntry[] = [
+      {
+        element: container,
+        scrollCandidateX: false,
+        scrollCandidateY: false,
+        clipsX: false,
+        clipsY: false,
+      },
+      {
+        element: ancestor,
+        scrollCandidateX: false,
+        scrollCandidateY: false,
+        clipsX: true,
+        clipsY: true,
+      },
+    ];
+
+    const measurement = measureScrollChain(entries);
+
+    // The ancestor's client rect spans [20, 220) on both axes; the border rect would have allowed
+    // up to [0, 300). Folding on the border rect would wrongly report a visible rect out to 300.
+    expect(measurement.entryVisibleRects[0]).toEqual({
+      left: 50,
+      top: 50,
+      width: 170,
+      height: 170,
+    });
+  });
+
+  it('computes autoscroll edge intensity against the visible client area, not the outer border edge', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    // A 10px border with no scrollbar gutter: client rect stops 10px short of the border rect.
+    stubRect(container, { left: 0, top: 0, width: 300, height: 300 });
+    stubClientBox(container, {
+      clientLeft: 10,
+      clientTop: 10,
+      clientWidth: 280,
+      clientHeight: 280,
+    });
+    stubScrollMetrics(container, { scrollHeight: 500, clientHeight: 280, scrollTop: 200 });
+    stubViewport(1000, 1000);
+    const scrollBy = vi.fn();
+    container.scrollBy = scrollBy;
+
+    const entries: ScrollChainEntry[] = [
+      {
+        element: container,
+        scrollCandidateX: false,
+        scrollCandidateY: true,
+        clipsX: false,
+        clipsY: true,
+      },
+    ];
+
+    // y = 275 is 15px from the client bottom edge (10 + 280 = 290) — inside a 20px edge zone —
+    // but 25px from the border's own bottom edge (300) — outside a 20px edge zone. Only measuring
+    // against the client area triggers autoscroll here.
+    const result = runAutoscrollTick(entries, { x: 0, y: 275 }, 16, 20, 900);
+
+    expect(result.y.scrolled).toBe(true);
+    expect(scrollBy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not autoscroll for a pointer still well inside the client edge zone threshold', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    stubRect(container, { left: 0, top: 0, width: 300, height: 300 });
+    stubClientBox(container, {
+      clientLeft: 10,
+      clientTop: 10,
+      clientWidth: 280,
+      clientHeight: 280,
+    });
+    stubScrollMetrics(container, { scrollHeight: 500, clientHeight: 280, scrollTop: 200 });
+    stubViewport(1000, 1000);
+    const scrollBy = vi.fn();
+    container.scrollBy = scrollBy;
+
+    const entries: ScrollChainEntry[] = [
+      {
+        element: container,
+        scrollCandidateX: false,
+        scrollCandidateY: true,
+        clipsX: false,
+        clipsY: true,
+      },
+    ];
+
+    // y = 220 is 70px from the client bottom edge (10 + 280 = 290), well outside a 5px edge zone
+    // measured against the client area.
+    const result = runAutoscrollTick(entries, { x: 0, y: 220 }, 16, 5, 900);
+
+    expect(result.y.scrolled).toBe(false);
+    expect(scrollBy).not.toHaveBeenCalled();
   });
 });

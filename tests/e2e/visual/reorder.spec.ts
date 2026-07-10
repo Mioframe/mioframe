@@ -214,12 +214,19 @@ test.describe('click suppression', () => {
     const box = await boxOf(item);
     const from = center(box);
     // Move by exactly the distance the drag itself will travel, so this control gesture proves
-    // the browser would otherwise dispatch a click for a gesture of this shape.
-    const moveDistance = 60;
+    // the browser would otherwise dispatch a click for a gesture of this shape. Kept well inside
+    // "alpha"'s own half-width (60px) so the endpoint lands clearly inside both source elements,
+    // never on the item's own boundary.
+    const moveDistance = 24;
 
+    // The click-control surface is sized to match "alpha" exactly (120x60): equivalent
+    // dimensions, down point (center), movement distance, and up point are what make this a
+    // genuinely comparable control for the reorder gesture below.
     const control = page.getByTestId('reorder-click-control');
     const readControlClickCount = await attachClickCounter(control);
     const controlBox = await boxOf(control);
+    expect(controlBox.width).toBeCloseTo(box.width, 0);
+    expect(controlBox.height).toBeCloseTo(box.height, 0);
     const controlFrom = center(controlBox);
 
     await mouseDrag(
@@ -329,6 +336,42 @@ test.describe('click suppression', () => {
     await page.mouse.up();
 
     expect(await readContainerClickCount()).toBe(1);
+  });
+
+  test('a direct pointercancel on an active drag leaves exactly one cancelled onDragEnd and does not suppress a later genuine click', async ({
+    page,
+  }) => {
+    const container = page.getByTestId('reorder-container');
+    const readContainerClickCount = await attachClickCounter(container);
+
+    const item = page.getByTestId('reorder-item-alpha');
+    const box = await boxOf(item);
+    const from = center(box);
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
+    expect(await getDraggingKey(page)).toBe('alpha');
+
+    // The pointer stream itself ends here: unlike Escape/blur/visibility (which cancel the
+    // session while the physical pointer may still be down), a real pointercancel means no click
+    // will ever follow this stream at all, so nothing may be armed to suppress one.
+    await page.evaluate(() => {
+      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
+    });
+
+    expect(await getDraggingKey(page)).toBe('');
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect((await getLastDragEnd(page))?.cancelled).toBe(true);
+
+    // The mouse button never truly lifts for this synthetic-pointercancel stream, but a later,
+    // genuinely new click elsewhere in the container must still register normally.
+    await page.mouse.up();
+    const alphaBoxAfter = await boxOf(page.getByTestId('reorder-item-alpha'));
+    await page.mouse.click(center(alphaBoxAfter).x, center(alphaBoxAfter).y);
+
+    expect(await readContainerClickCount()).toBe(1);
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
   });
 });
 
