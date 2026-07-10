@@ -82,6 +82,8 @@ const zodMessage = z.object({
   serviceId: z.string(),
 });
 
+const zodMessageTransferables = z.optional(z.array(z.unknown()));
+
 /**
  * Creates a Zod schema for serialized data that can be sent over the wire.
  *
@@ -114,6 +116,7 @@ export const zodCallPathMessage = z.extend(zodMessage, {
   callId: z.string(),
   path: z.array(z.string()),
   args: zodSerializedData(z.array(z.unknown())),
+  transferables: zodMessageTransferables,
 });
 
 /**
@@ -128,6 +131,7 @@ export const zodResultMessage = z.extend(zodMessage, {
   resultId: z.string(),
   result: z.optional(zodSerializedData()),
   error: z.optional(zodSerializedData()),
+  transferables: zodMessageTransferables,
 });
 
 /**
@@ -142,6 +146,7 @@ export const zodCallFunctionMessage = z.extend(zodMessage, {
   callId: z.string(),
   functionId: z.string(),
   args: zodSerializedData(z.array(z.unknown())),
+  transferables: zodMessageTransferables,
 });
 /**
  * Type representing a function call message
@@ -160,7 +165,8 @@ export interface Provider {
    * @param data - Data to send over the wire
    * @returns Result from the operation
    */
-  postMessage: (data: unknown) => unknown;
+  // Worker and Window expose incompatible overloads, so this matches their shared callable shape.
+  postMessage(data: unknown, transfer?: Transferable[]): unknown;
 
   /**
    * Adds an event listener for messages.
@@ -233,6 +239,12 @@ type SERIALIZE_BRAND = typeof SERIALIZE_BRAND;
 export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
   meta?: SuperJSONResult['meta'] | undefined;
   [SERIALIZE_BRAND]: T;
+};
+
+/** Serialized RPC data and the transferable binary buffers referenced by its payload. */
+export type SerializedEnvelope<T = unknown> = {
+  payload: SerializeJson<T>;
+  transferables: Transferable[];
 };
 
 /**

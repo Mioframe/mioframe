@@ -1,336 +1,301 @@
-import pLimit from 'p-limit';
 import { DomainError } from '@shared/lib/error';
-import {
-  FileSystemError,
-  FSNodeType,
-  PathUtils,
-  VfsError,
-  type VirtualFileSystem,
-} from '@shared/lib/virtualFileSystem';
+import { FSNodeType, PathUtils, type VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import {
   createZipArchiveReader,
   resolveSafeArchiveEntryTarget,
   streamBlobChunks,
 } from '@shared/lib/zipArchive';
-import { RepositoryZipErrorCode, type OnZipImportProgress } from './repositoryZipContracts';
+import {
+  RepositoryZipErrorCode,
+  ZIP_IMPORT_LIMITS,
+  type OnZipImportProgress,
+  type ZipImportConflictPolicy,
+  type ZipImportConflictReport,
+  type ZipImportResult,
+  type ZipImportSummary,
+} from './repositoryZipContracts';
 
-/** Bounded concurrency for conflict checks during ZIP import preflight. */
-const IMPORT_CONCURRENCY_LIMIT = 4;
+const CONFLICT_PATH_LIMIT = 20;
 
-type PlannedZipImportFile = {
-  /** Raw path exactly as recorded in the archive, used to match entries during the write pass. */
+type PlannedEntry = {
   archivePath: string;
-  /** Resolved absolute VFS path this entry should be written to. */
+  relativePath: string;
   targetPath: string;
+  isDirectory: boolean;
 };
 
-/**
- * Collects the ancestor directories of `path` up to (but not including) `rootPath`, ordered from
- * shallowest to deepest so each can be created before its children.
- * @param rootPath - Absolute path to the import target directory, assumed to already exist.
- * @param path - Absolute path whose ancestor directories should be collected.
- * @returns Ancestor directory paths between `rootPath` and `path`, shallowest first.
- */
-const collectAncestorDirectories = (rootPath: string, path: string): string[] => {
-  const ancestors: string[] = [];
-  let current = PathUtils.dirname(path);
-
-  while (current !== rootPath && PathUtils.isChildOrSame(rootPath, current)) {
-    ancestors.unshift(current);
-    current = PathUtils.dirname(current);
-  }
-
-  return ancestors;
+type ZipImportPlan = {
+  files: PlannedEntry[];
+  directories: PlannedEntry[];
 };
 
-/**
- * Creates a directory if it does not already exist.
- * @param vfs - Mounted virtual file system.
- * @param path - Absolute directory path to create.
- * @returns `true` when a new directory was created, `false` when it already existed.
- */
-const createDirectoryIfMissing = async (vfs: VirtualFileSystem, path: string): Promise<boolean> => {
-  try {
-    await vfs.createDirectory(path);
-    return true;
-  } catch (error) {
-    if (error instanceof VfsError && error.code === FileSystemError.FileExists) {
-      return false;
-    }
-
-    throw error;
-  }
+type ExecutablePlan = {
+  files: PlannedEntry[];
+  directoriesToCreate: PlannedEntry[];
+  reusedDirectories: number;
+  skippedFiles: number;
 };
 
-const importConflictError = (message: string) =>
-  new DomainError(message, { code: RepositoryZipErrorCode.importConflict });
+const resourceLimitError = (limit: keyof typeof ZIP_IMPORT_LIMITS) =>
+  new DomainError('The archive exceeds an import safety limit. No files were written.', {
+    cause: new Error(`ZIP import limit exceeded: ${limit}`),
+    code: RepositoryZipErrorCode.importResourceLimitExceeded,
+  });
 
-/**
- * Streams archive bytes from `archiveFile` into `reader`, awaiting each chunk's delivery before
- * reading more so decompressed content never accumulates unbounded.
- * @param archiveFile - The user-selected ZIP archive file.
- * @param push - Pushes one chunk of archive bytes; mirrors `ZipArchiveReader.push`.
- */
+const archiveConflictError = () =>
+  new DomainError('The archive uses the same path inconsistently. No files were written.', {
+    code: RepositoryZipErrorCode.importConflict,
+  });
+
 const streamArchiveInto = async (
   archiveFile: File,
   push: (chunk: Uint8Array, final: boolean) => Promise<void>,
 ): Promise<void> => {
   let buffered: Uint8Array | undefined;
-
   for await (const chunk of streamBlobChunks(archiveFile)) {
-    if (buffered !== undefined) {
-      await push(buffered, false);
-    }
+    if (buffered) await push(buffered, false);
     buffered = chunk;
   }
-
   await push(buffered ?? new Uint8Array(0), true);
 };
 
-/** Result of the metadata-only (pass 1) walk over the archive. */
-type ZipImportPlan = {
-  plannedFiles: PlannedZipImportFile[];
-  plannedDirectories: Set<string>;
-};
+const pathDepth = (relativePath: string) => relativePath.split('/').length;
+
+const relativePathFromTarget = (rootPath: string, targetPath: string) =>
+  targetPath.slice(rootPath === '/' ? 1 : rootPath.length + 1);
+
+const isWithin = (ancestor: string, candidate: string) =>
+  candidate === ancestor || candidate.startsWith(`${ancestor}/`);
 
 /**
- * Pass 1: streams the archive once to discover every entry's path and type, without decompressing
- * any file content. Validates archive-internal path safety and detects duplicate/type conflicts
- * within the archive itself.
- * @param archiveFile - The user-selected ZIP archive file.
- * @param targetDirectoryPath - Absolute path to the directory to import into.
- * @returns The planned files and directories to write.
- * @throws DomainError when an entry path is unsafe, a duplicate target path is found, or an
- * archive entry conflicts with another entry's type (file vs. directory).
+ * Fully validates and decompresses the archive before any target operation is attempted.
+ * Decompressed bytes are deliberately discarded in this pass.
  */
 const planZipImport = async (
   archiveFile: File,
   targetDirectoryPath: string,
 ): Promise<ZipImportPlan> => {
-  const plannedFiles: PlannedZipImportFile[] = [];
-  const plannedDirectories = new Set<string>();
-  const fileTargetPaths = new Set<string>();
+  const entries = new Map<string, PlannedEntry>();
+  let entryCount = 0;
+  let totalBytes = 0;
   let firstError: unknown;
 
   const reader = createZipArchiveReader((entry) => {
-    if (firstError) {
-      return;
-    }
-
+    if (firstError) return;
     try {
+      entryCount += 1;
+      if (entryCount > ZIP_IMPORT_LIMITS.maximumEntries) throw resourceLimitError('maximumEntries');
+
       const { targetPath, isDirectory } = resolveSafeArchiveEntryTarget(
         targetDirectoryPath,
         entry.rawPath,
       );
-
-      collectAncestorDirectories(targetDirectoryPath, targetPath).forEach((dir) =>
-        plannedDirectories.add(dir),
-      );
-
-      if (isDirectory) {
-        plannedDirectories.add(targetPath);
-        return;
+      const relativePath = relativePathFromTarget(targetDirectoryPath, targetPath);
+      if (relativePath.length > ZIP_IMPORT_LIMITS.maximumRelativePathLength) {
+        throw resourceLimitError('maximumRelativePathLength');
       }
-
-      if (fileTargetPaths.has(targetPath)) {
-        throw importConflictError(
-          'The archive contains duplicate entries for the same path. Import was stopped before any changes were made.',
-        );
+      if (pathDepth(relativePath) > ZIP_IMPORT_LIMITS.maximumPathDepth) {
+        throw resourceLimitError('maximumPathDepth');
       }
+      if (entries.has(targetPath)) throw archiveConflictError();
 
-      fileTargetPaths.add(targetPath);
-      plannedFiles.push({ archivePath: entry.rawPath, targetPath });
+      const planned: PlannedEntry = {
+        archivePath: entry.rawPath,
+        relativePath,
+        targetPath,
+        isDirectory,
+      };
+      entries.set(targetPath, planned);
+      let fileBytes = 0;
+      entry.read((chunk) => {
+        fileBytes += chunk.byteLength;
+        totalBytes += chunk.byteLength;
+        if (fileBytes > ZIP_IMPORT_LIMITS.maximumFileBytes)
+          throw resourceLimitError('maximumFileBytes');
+        if (totalBytes > ZIP_IMPORT_LIMITS.maximumTotalBytes)
+          throw resourceLimitError('maximumTotalBytes');
+      });
     } catch (error) {
       firstError = error;
     }
   });
 
   await streamArchiveInto(archiveFile, (chunk, final) => reader.push(chunk, final));
+  if (firstError instanceof Error) throw firstError;
 
-  if (firstError) {
-    // `catch` blocks only ever assign an Error/DomainError instance here (see the try above).
-    throw firstError instanceof Error
-      ? firstError
-      : new Error('Unexpected error while planning the ZIP import', { cause: firstError });
+  const all = [...entries.values()];
+  const files = all.filter((entry) => !entry.isDirectory);
+  const explicitDirectories = all.filter((entry) => entry.isDirectory);
+  const directories = new Map(explicitDirectories.map((entry) => [entry.targetPath, entry]));
+
+  for (const file of files) {
+    let current = PathUtils.dirname(file.targetPath);
+    while (current !== targetDirectoryPath) {
+      if (entries.get(current)?.isDirectory === false) throw archiveConflictError();
+      directories.set(current, {
+        archivePath: `${relativePathFromTarget(targetDirectoryPath, current)}/`,
+        relativePath: relativePathFromTarget(targetDirectoryPath, current),
+        targetPath: current,
+        isDirectory: true,
+      });
+      current = PathUtils.dirname(current);
+    }
+  }
+  for (const directory of directories.values()) {
+    if (entries.get(directory.targetPath)?.isDirectory === false) throw archiveConflictError();
   }
 
-  if (plannedFiles.some(({ targetPath }) => plannedDirectories.has(targetPath))) {
-    throw importConflictError(
-      'The archive uses the same path for both a file and a directory. Import was stopped before any changes were made.',
-    );
-  }
-
-  return { plannedFiles, plannedDirectories };
+  return {
+    files,
+    directories: [...directories.values()].sort(
+      (a, b) => pathDepth(a.relativePath) - pathDepth(b.relativePath),
+    ),
+  };
 };
 
-/**
- * Preflights every planned target against the VFS: files must not already exist, and any
- * directory path that already exists must actually be a directory. Stops before any write if any
- * conflict is found.
- * @param vfs - Mounted virtual file system.
- * @param plan - The plan produced by {@link planZipImport}.
- * @throws DomainError with code `RepositoryZipErrorCode.importConflict` when a target file already
- * exists, or an existing entry's type does not match what the archive expects.
- */
-const preflightZipImportConflicts = async (
+const createConflictReport = (paths: string[]): ZipImportConflictReport => ({
+  total: paths.length,
+  paths: paths.slice(0, CONFLICT_PATH_LIMIT),
+  truncated: paths.length > CONFLICT_PATH_LIMIT,
+});
+
+/** Inspects target state once and resolves the deterministic no-overwrite execution plan. */
+const resolveExecutablePlan = async (
   vfs: VirtualFileSystem,
   plan: ZipImportPlan,
-): Promise<void> => {
-  const limit = pLimit(IMPORT_CONCURRENCY_LIMIT);
-
-  const fileConflicts = await Promise.all(
-    plan.plannedFiles.map(({ targetPath }) => limit(() => vfs.exists(targetPath))),
-  );
-
-  if (fileConflicts.some(Boolean)) {
-    throw importConflictError(
-      'The selected directory already has files with the same names as the archive. Import was stopped before any changes were made.',
-    );
+  policy: ZipImportConflictPolicy,
+): Promise<ZipImportResult | ExecutablePlan> => {
+  const existing = new Map<string, FSNodeType>();
+  for (const entry of [...plan.directories, ...plan.files]) {
+    // eslint-disable-next-line no-await-in-loop -- stable plan and bounded provider pressure
+    if (await vfs.exists(entry.targetPath)) {
+      // eslint-disable-next-line no-await-in-loop -- paired with existence check
+      existing.set(entry.targetPath, (await vfs.stat(entry.targetPath)).type);
+    }
   }
 
-  const directoryTypeConflicts = await Promise.all(
-    Array.from(plan.plannedDirectories).map((directoryPath) =>
-      limit(async () => {
-        if (!(await vfs.exists(directoryPath))) {
-          return false;
-        }
-
-        const stat = await vfs.stat(directoryPath);
-        return stat.type !== FSNodeType.Directory;
-      }),
-    ),
-  );
-
-  if (directoryTypeConflicts.some(Boolean)) {
-    throw importConflictError(
-      'The selected directory already has a file where the archive expects a folder. Import was stopped before any changes were made.',
-    );
+  const conflictPaths = [
+    ...plan.directories.filter((entry) => existing.get(entry.targetPath) === FSNodeType.File),
+    ...plan.files.filter((entry) => existing.has(entry.targetPath)),
+  ].map((entry) => entry.relativePath);
+  if (policy === 'abort' && conflictPaths.length > 0) {
+    return { status: 'conflicts', report: createConflictReport(conflictPaths) };
   }
+
+  const blockedDirectories = plan.directories
+    .filter((entry) => existing.get(entry.targetPath) === FSNodeType.File)
+    .map((entry) => entry.relativePath);
+  const isBlocked = (entry: PlannedEntry) =>
+    blockedDirectories.some((path) => isWithin(path, entry.relativePath));
+  const files = plan.files.filter((entry) => !isBlocked(entry) && !existing.has(entry.targetPath));
+  const directoriesToCreate = plan.directories.filter(
+    (entry) => !isBlocked(entry) && !existing.has(entry.targetPath),
+  );
+  const reusedDirectories = plan.directories.filter(
+    (entry) => !isBlocked(entry) && existing.get(entry.targetPath) === FSNodeType.Directory,
+  ).length;
+
+  return {
+    files,
+    directoriesToCreate,
+    reusedDirectories,
+    skippedFiles: plan.files.length - files.length,
+  };
 };
 
-/**
- * Pass 2: streams the archive a second time, writing only the entries planned by
- * {@link planZipImport}, using no-overwrite semantics. Tracks whether any write actually
- * mutated storage so callers can classify a mid-write failure as a possible partial import.
- * An already-existing ancestor directory is not a mutation, so leaving one in place before a
- * later failure does not count as partial progress.
- * @param vfs - Mounted virtual file system.
- * @param archiveFile - The user-selected ZIP archive file.
- * @param plan - The plan produced by {@link planZipImport}.
- * @param onProgress - Optional progress callback.
- * @throws DomainError with code `RepositoryZipErrorCode.importWritePartiallyFailed` when a write
- * fails after at least one earlier write already mutated storage; otherwise rethrows the original
- * error.
- */
-const writeZipImportPlan = async (
+const partialFailure = (
+  error: unknown,
+  summary: ZipImportSummary,
+  currentRelativePath: string | undefined,
+) => {
+  const failure = Object.assign(
+    new DomainError(
+      'The import stopped before completion. Some target files may already have changed.',
+      { cause: error, code: RepositoryZipErrorCode.importWritePartiallyFailed },
+    ),
+    {
+      importSummary: summary,
+      ...(currentRelativePath === undefined ? {} : { currentRelativePath }),
+      mutationMayHaveOccurred: true as const,
+    },
+  );
+  return failure;
+};
+
+const executePlan = async (
   vfs: VirtualFileSystem,
   archiveFile: File,
-  plan: ZipImportPlan,
+  executable: ExecutablePlan,
   onProgress?: OnZipImportProgress,
-): Promise<void> => {
-  let anyMutationSucceeded = false;
-
-  const runWrite = async (write: () => Promise<boolean>): Promise<void> => {
-    try {
-      const mutated = await write();
-      anyMutationSucceeded ||= mutated;
-    } catch (error) {
-      if (!anyMutationSucceeded) {
-        // Nothing has actually mutated storage yet, so a write-access failure here is still safe
-        // to recover from and retry: granting access and retrying the whole import cannot
-        // conflict with anything this import has already written.
-        throw error;
-      }
-
-      // At least one write already mutated storage. Even a write-access-recovery error must not
-      // be rethrown raw here, since the caller's recovery flow retries the whole import, which
-      // would then hit conflicts caused by the files this attempt already wrote.
-      throw new DomainError(
-        'The import stopped partway through. Some files may already have been written — check the target folder before retrying.',
-        { cause: error, code: RepositoryZipErrorCode.importWritePartiallyFailed },
-      );
-    }
+): Promise<ZipImportSummary> => {
+  const summary: ZipImportSummary = {
+    importedFiles: 0,
+    skippedFiles: executable.skippedFiles,
+    createdDirectories: 0,
+    reusedDirectories: executable.reusedDirectories,
+  };
+  let mutationMayHaveOccurred = false;
+  let currentRelativePath: string | undefined;
+  const attemptMutation = async (entry: PlannedEntry, operation: () => Promise<void>) => {
+    currentRelativePath = entry.relativePath;
+    mutationMayHaveOccurred = true;
+    await operation();
+  };
+  const classify = (error: unknown): never => {
+    if (mutationMayHaveOccurred) throw partialFailure(error, summary, currentRelativePath);
+    throw error;
   };
 
-  const orderedDirectories = Array.from(plan.plannedDirectories).sort(
-    (a, b) => PathUtils.split(a).length - PathUtils.split(b).length,
-  );
-
-  for (const directoryPath of orderedDirectories) {
-    // eslint-disable-next-line no-await-in-loop -- parent directories must exist before child writes
-    await runWrite(() => createDirectoryIfMissing(vfs, directoryPath));
-  }
-
-  const plannedByArchivePath = new Map(plan.plannedFiles.map((file) => [file.archivePath, file]));
-  let current = 0;
-
-  const reader = createZipArchiveReader((entry) => {
-    const planned = plannedByArchivePath.get(entry.rawPath);
-
-    if (!planned) {
-      return;
+  try {
+    for (const directory of executable.directoriesToCreate) {
+      // eslint-disable-next-line no-await-in-loop -- parent directories precede descendants
+      await attemptMutation(directory, () => vfs.createDirectory(directory.targetPath));
+      summary.createdDirectories += 1;
     }
 
-    const chunks: Uint8Array[] = [];
-
-    entry.read(async (data, final) => {
-      chunks.push(data);
-
-      if (!final) {
-        return;
-      }
-
-      const total = chunks.reduce((sum, part) => sum + part.length, 0);
-      const merged = new Uint8Array(total);
-      let offset = 0;
-      for (const part of chunks) {
-        merged.set(part, offset);
-        offset += part.length;
-      }
-
-      await runWrite(async () => {
-        await vfs.createFile(planned.targetPath, merged);
-        return true;
+    const filesByArchivePath = new Map(executable.files.map((entry) => [entry.archivePath, entry]));
+    const reader = createZipArchiveReader((entry) => {
+      const planned = filesByArchivePath.get(entry.rawPath);
+      const chunks: Uint8Array[] = [];
+      entry.read(async (decompressedChunk, final) => {
+        if (planned) chunks.push(decompressedChunk);
+        if (!final || !planned) return;
+        const parts = chunks.map((chunk) => Uint8Array.from(chunk));
+        await attemptMutation(planned, () => vfs.createFile(planned.targetPath, new Blob(parts)));
+        summary.importedFiles += 1;
+        onProgress?.({
+          phase: 'unpacking',
+          current: summary.importedFiles,
+          total: executable.files.length,
+        });
       });
-      current += 1;
-      onProgress?.({ phase: 'unpacking', current, total: plan.plannedFiles.length });
     });
-  });
-
-  await streamArchiveInto(archiveFile, (chunk, final) => reader.push(chunk, final));
+    await streamArchiveInto(archiveFile, (chunk, final) => reader.push(chunk, final));
+    return summary;
+  } catch (error) {
+    return classify(error);
+  }
 };
 
 /**
- * Validates and imports a ZIP archive into a directory using a two-pass, bounded-memory strategy:
- * a metadata-only pass discovers and preflights every entry, then a second pass streams and
- * writes only the entries that passed preflight. Stops before any write if a conflict is found.
- * Directories (including explicit empty-directory markers) are created as needed.
- * @param vfs - Mounted virtual file system.
- * @param targetDirectoryPath - Absolute path to the directory to import into.
- * @param archiveFile - The user-selected ZIP archive file. Read twice: once to plan and preflight,
- * once to write, so the archive never needs to be held in memory as one flat decompressed map.
- * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
- * @returns Promise that resolves once every planned entry has been written.
- * @throws DomainError with code `RepositoryZipErrorCode.importConflict` when any target file or
- * directory conflicts with the archive, with `RepositoryZipErrorCode.importWritePartiallyFailed`
- * when a write fails after at least one earlier write already succeeded, or with a
- * `ZipArchiveErrorCode` when the archive itself is unsafe or damaged.
+ * Imports arbitrary safe ZIP contents into a directory. Validation fully decompresses every entry
+ * before any provider call. The operation is file-level only and performs no Mioframe validation.
  */
 export const importDirectoryZip = async (
   vfs: VirtualFileSystem,
   targetDirectoryPath: string,
   archiveFile: File,
   onProgress?: OnZipImportProgress,
-): Promise<void> => {
+  conflictPolicy: ZipImportConflictPolicy = 'abort',
+): Promise<ZipImportResult> => {
   onProgress?.({ phase: 'validatingArchive' });
-
   const plan = await planZipImport(archiveFile, targetDirectoryPath);
-
   onProgress?.({ phase: 'checkingConflicts' });
-
-  await preflightZipImportConflicts(vfs, plan);
-
-  onProgress?.({ phase: 'unpacking' });
-
-  await writeZipImportPlan(vfs, archiveFile, plan, onProgress);
+  const resolved = await resolveExecutablePlan(vfs, plan, conflictPolicy);
+  if ('status' in resolved) return resolved;
+  onProgress?.({ phase: 'unpacking', current: 0, total: resolved.files.length });
+  return {
+    status: 'completed',
+    summary: await executePlan(vfs, archiveFile, resolved, onProgress),
+  };
 };

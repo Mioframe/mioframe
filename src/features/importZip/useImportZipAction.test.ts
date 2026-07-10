@@ -90,6 +90,10 @@ describe('useImportZipAction', () => {
     confirmMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
     requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
+    importDirectoryZipMock.mockResolvedValue({
+      status: 'completed',
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+    });
   });
 
   it('silently ignores file picker cancellation and leaves the dialog idle', async () => {
@@ -124,23 +128,21 @@ describe('useImportZipAction', () => {
   });
 
   it('shows a conflict error from the service in the dialog without reporting it to diagnostics', async () => {
-    const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
-    importDirectoryZipMock.mockRejectedValue(
-      new DomainError(
-        'The selected directory already has files with the same names as the archive. Import was stopped before any changes were made.',
-        { code: 'repositories.zipImportConflict' },
-      ),
-    );
+    importDirectoryZipMock.mockResolvedValue({
+      status: 'conflicts',
+      report: { total: 1, paths: ['existing.txt'], truncated: false },
+    });
 
     const { useImportZipAction } = await import('./useImportZipAction');
     const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
     expect(state.value).toEqual({
-      status: 'error',
-      message:
-        'The selected directory already has files with the same names as the archive. Import was stopped before any changes were made.',
+      status: 'conflicts',
+      total: 1,
+      paths: ['existing.txt'],
+      truncated: false,
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
@@ -180,7 +182,15 @@ describe('useImportZipAction', () => {
           status: 'running',
           progress: { phase: 'unpacking', current: 1, total: 2 },
         });
-        return Promise.resolve(undefined);
+        return Promise.resolve({
+          status: 'completed',
+          summary: {
+            importedFiles: 1,
+            skippedFiles: 0,
+            createdDirectories: 0,
+            reusedDirectories: 0,
+          },
+        });
       },
     );
 
@@ -192,14 +202,17 @@ describe('useImportZipAction', () => {
 
     expect(state.value).toEqual({
       status: 'success',
-      message: 'ZIP archive imported into this folder.',
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
     expect(isRunning.value).toBe(false);
   });
 
   it('leaves the dialog state in success after import completes, without a duplicate snackbar', async () => {
     pickZipFileMock.mockResolvedValue(makeFile());
-    importDirectoryZipMock.mockResolvedValue(undefined);
+    importDirectoryZipMock.mockResolvedValue({
+      status: 'completed',
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+    });
 
     const { useImportZipAction } = await import('./useImportZipAction');
     const { importDirectoryZip, state } = useImportZipAction();
@@ -207,7 +220,7 @@ describe('useImportZipAction', () => {
     await expect(importDirectoryZip('/repo')).resolves.toBe(true);
     expect(state.value).toEqual({
       status: 'success',
-      message: 'ZIP archive imported into this folder.',
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
@@ -259,7 +272,10 @@ describe('useImportZipAction', () => {
       .mockRejectedValueOnce(
         createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
       )
-      .mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce({
+        status: 'completed',
+        summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      });
     confirmMock.mockResolvedValue(true);
     requestAccessMock.mockResolvedValue({ status: 'granted' });
 
@@ -276,7 +292,7 @@ describe('useImportZipAction', () => {
     expect(pickZipFileMock).toHaveBeenCalledTimes(1);
     expect(state.value).toEqual({
       status: 'success',
-      message: 'ZIP archive imported into this folder.',
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
   });

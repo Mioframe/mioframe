@@ -37,6 +37,38 @@ export type ZipImportProgress = {
 /** Callback invoked with import progress updates as the service validates and writes files. */
 export type OnZipImportProgress = (progress: ZipImportProgress) => void;
 
+/** Conflict behavior selected for generic ZIP extraction. */
+export type ZipImportConflictPolicy = 'abort' | 'skipExisting';
+
+/** Centrally owned safety limits for a generic ZIP import. */
+export const ZIP_IMPORT_LIMITS = {
+  maximumEntries: 10_000,
+  maximumFileBytes: 128 * 1024 * 1024,
+  maximumTotalBytes: 1024 * 1024 * 1024,
+  maximumRelativePathLength: 1024,
+  maximumPathDepth: 64,
+} as const;
+
+/** Bounded report returned for expected target conflicts. */
+export type ZipImportConflictReport = {
+  total: number;
+  paths: string[];
+  truncated: boolean;
+};
+
+/** Completed generic ZIP extraction counts. */
+export type ZipImportSummary = {
+  importedFiles: number;
+  skippedFiles: number;
+  createdDirectories: number;
+  reusedDirectories: number;
+};
+
+/** Expected outcome of a generic ZIP import. */
+export type ZipImportResult =
+  | { status: 'conflicts'; report: ZipImportConflictReport }
+  | { status: 'completed'; summary: ZipImportSummary };
+
 /**
  * Stable error codes for repository ZIP export/import failures.
  * Archive structure failures (damaged archive, unsafe entry path) use `ZipArchiveErrorCode`
@@ -45,6 +77,7 @@ export type OnZipImportProgress = (progress: ZipImportProgress) => void;
 export enum RepositoryZipErrorCode {
   documentStorageFilesNotFound = 'repositories.zipDocumentStorageFilesNotFound',
   importConflict = 'repositories.zipImportConflict',
+  importResourceLimitExceeded = 'repositories.zipImportResourceLimitExceeded',
   /**
    * A ZIP import write failed after at least one earlier write in the same import already
    * succeeded. Unlike `importConflict`, the target directory may now hold a partial import.

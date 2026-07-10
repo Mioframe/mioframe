@@ -26,7 +26,12 @@ const emit = defineEmits<{
 }>();
 
 const { exportDirectoryZip, state: exportZipState, closeExportZipDialog } = useExportDirectoryZip();
-const { importDirectoryZip, state: importZipState, closeImportZipDialog } = useImportZipAction();
+const {
+  importDirectoryZip,
+  state: importZipState,
+  closeImportZipDialog,
+  retryImportSkippingExisting,
+} = useImportZipAction();
 
 const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
   exportZipState.value.status === 'idle' ? null : exportZipState.value,
@@ -142,6 +147,7 @@ const emptyText = computed(() =>
       v-if="importZipVisibleState"
       :state="importZipVisibleState"
       @close="closeImportZipDialog"
+      @skip-existing="retryImportSkippingExisting"
     />
 
     <DirectoryCreateDialog

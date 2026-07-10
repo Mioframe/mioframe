@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: [];
+  skipExisting: [];
 }>();
 
 const PHASE_LABELS: Record<ZipImportProgress['phase'], string> = {
@@ -33,8 +34,12 @@ const headline = computed(() => {
   switch (props.state.status) {
     case 'running':
       return 'Importing ZIP archive';
+    case 'conflicts':
+      return 'Files already exist';
     case 'success':
       return 'ZIP archive imported';
+    case 'partial':
+      return 'Import stopped before completion';
     case 'error':
       return 'Could not import ZIP archive';
     default:
@@ -46,7 +51,12 @@ const supportingText = computed(() => {
   switch (props.state.status) {
     case 'running':
       return PHASE_LABELS[props.state.progress?.phase ?? 'validatingArchive'];
+    case 'conflicts':
+      return `${props.state.total} archive entries conflict with existing files. No files were written.`;
     case 'success':
+      return `Import completed. ${props.state.summary.importedFiles} files imported and ${props.state.summary.skippedFiles} existing files skipped.`;
+    case 'partial':
+      return `Import stopped before completion. ${props.state.summary.importedFiles} files were imported and ${props.state.summary.skippedFiles} were skipped. Some target files may already have changed.`;
     case 'error':
       return props.state.message;
     default:
@@ -54,7 +64,23 @@ const supportingText = computed(() => {
   }
 });
 
-const applyLabel = computed(() => (props.state.status === 'error' ? 'Close' : 'Done'));
+const applyLabel = computed(() => {
+  if (props.state.status === 'conflicts' || props.state.status === 'partial')
+    return 'Skip existing';
+  return props.state.status === 'error' ? 'Close' : 'Done';
+});
+
+const cancelLabel = computed(() =>
+  props.state.status === 'conflicts'
+    ? 'Cancel'
+    : props.state.status === 'partial'
+      ? 'Close'
+      : undefined,
+);
+
+const hasCancelAction = computed(
+  () => props.state.status === 'conflicts' || props.state.status === 'partial',
+);
 
 const isLoading = computed(() => props.state.status === 'running');
 
@@ -81,6 +107,11 @@ const onApply = () => {
     return;
   }
 
+  if (props.state.status === 'conflicts' || props.state.status === 'partial') emit('skipExisting');
+  else emit('close');
+};
+
+const onCancel = () => {
   emit('close');
 };
 </script>
@@ -89,10 +120,12 @@ const onApply = () => {
   <MDDialog
     :headline="headline"
     :supporting-text="supportingText"
+    :cancel-label="cancelLabel"
     :apply-label="applyLabel"
-    :has-cancel-action="false"
+    :has-cancel-action="hasCancelAction"
     :loading="isLoading"
     @apply="onApply"
+    @cancel="onCancel"
   >
     <div v-if="state.status === 'running'" class="import-zip-dialog__body">
       <MDCircularProgressIndicator :progress="progressFraction" :size="48" />
@@ -104,6 +137,10 @@ const onApply = () => {
         {{ progressCountLabel }}
       </p>
     </div>
+    <ul v-if="state.status === 'conflicts'" class="import-zip-dialog__conflicts">
+      <li v-for="path in state.paths" :key="path">{{ path }}</li>
+      <li v-if="state.truncated">Additional conflicting entries are not shown.</li>
+    </ul>
   </MDDialog>
 </template>
 

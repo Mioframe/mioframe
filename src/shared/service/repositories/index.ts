@@ -10,7 +10,7 @@ export {
 } from './repositoryStorageFiles';
 export type { RepositoryDirectoryEntry } from './repositoryContracts';
 export type { RepositoryFacts } from './repositoryStorageFiles';
-export { RepositoryZipErrorCode } from './repositoryZipContracts';
+export { RepositoryZipErrorCode, ZIP_IMPORT_LIMITS } from './repositoryZipContracts';
 export type {
   OnZipExportChunk,
   OnZipExportProgress,
@@ -19,4 +19,8 @@ export type {
   ZipExportProgress,
   ZipImportPhase,
   ZipImportProgress,
+  ZipImportConflictPolicy,
+  ZipImportConflictReport,
+  ZipImportResult,
+  ZipImportSummary,
 } from './repositoryZipContracts';

@@ -13,7 +13,7 @@ These actions are document-level only, and JSON is a content snapshot — it doe
 
 - **Export ZIP** on a folder archives the contents of that folder — the files and sub-folders inside it, including internal Mioframe storage files (`.mf` chunks and marker files) — directly at the top of the ZIP archive. This is a storage-level export, not a document snapshot. It does not create an extra folder inside the archive named after the exported folder.
 - **Export ZIP** on a document archives that document's own storage files (its `.mf` chunks) directly at the top of the ZIP archive, using their storage file names. It does not wrap them in a folder named after the document's internal id. This is not the same as Export JSON — it does not produce a JSON snapshot, and it is not meant to be opened outside Mioframe.
-- **Import ZIP** unpacks the archive's contents directly into the folder you choose. It does not create an extra folder automatically — if you want the imported contents inside a new nested folder, create (or open) that folder first and import into it. Mioframe checks the archive first — files, folders, and any path the archive uses inconsistently as both a file and a folder — and only starts writing if none of those conflict with what is already in that folder.
+- **Import ZIP** is a generic storage-level directory extraction: it unpacks safe archive contents directly into the folder you choose and does not validate Mioframe document semantics. It does not create an extra folder automatically. Mioframe fully validates the archive and checks conflicts before writing.
 
 Use ZIP when you want a faithful copy of Mioframe's own storage (for example, to restore a whole folder later). Use JSON when you want a single, portable, human-readable snapshot of one document's content.
 
@@ -87,7 +87,7 @@ Import ZIP is a folder options-menu action, not an **Add** sheet action.
 
 Then choose the ZIP file.
 
-Mioframe validates the archive and checks the target folder for conflicts before writing anything — including files that already exist, folders that already exist as files (or vice versa), and paths the archive itself uses inconsistently. If any conflict is found, the import stops and nothing is written — Import ZIP never overwrites, merges, or renames existing files. To retry, import into an empty folder or a folder that does not yet contain those files.
+Mioframe validates the archive and checks the target folder for conflicts before writing anything. Choose **Cancel** to abort with no writes, or **Skip existing** to import non-conflicting files while leaving existing files unchanged. Existing matching folders may be reused. Import never intentionally overwrites or renames files, but provider and concurrent filesystem changes cannot be globally atomic. A failure after writing starts can leave a partial result; retrying the same archive with **Skip existing** is the supported recovery path. Provider filename rules can differ, so importing into an empty folder remains the most predictable restore workflow.
 
 Because writes happen only after the conflict check passes, a failure partway through writing (for example, if the browser loses folder access mid-import) can leave the folder with only some of the archive's files written. When this happens, Mioframe tells you the import may be incomplete so you know to check the folder contents, then you can re-import the missing files or start over in a clean target folder.
 
@@ -96,7 +96,7 @@ Because writes happen only after the conflict check passes, a failure partway th
 - Export JSON and Import JSON work on one document at a time, as a content snapshot.
 - Importing a JSON file always creates a new document; it does not restore the original document's storage identity, `.mf` chunks, or edit history.
 - Export ZIP and Import ZIP work at the storage level: raw files for a folder, or raw storage files for one document. They are not a document content snapshot and cannot be opened as a normal document file.
-- Import ZIP does not overwrite, merge, or rename existing files. It stops before writing anything if a file, folder, or type conflict is found.
+- Import ZIP is file-level extraction, not Mioframe semantic validation. If storage chunks for the same Automerge document identity coexist, Automerge can combine available history when the repository opens.
 - On browsers without file-system access support, Export ZIP falls back to a bounded in-memory archive (currently 200 MB) instead of streaming to disk; exports larger than that fail with an error on those browsers.
 - Mioframe cannot recreate data that was never exported or otherwise preserved.
 

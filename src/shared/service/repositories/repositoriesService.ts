@@ -48,6 +48,7 @@ import {
   type OnZipExportChunk,
   type OnZipExportProgress,
   type OnZipImportProgress,
+  type ZipImportConflictPolicy,
 } from './repositoryZipContracts';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
@@ -513,9 +514,12 @@ const setupRepositoriesService = () => {
     targetDirectoryPath: string,
     archiveFile: File,
     onProgress?: OnZipImportProgress,
+    conflictPolicy?: ZipImportConflictPolicy,
   ) => {
     await ensureRepositoryStorageFreshBeforeImport(targetDirectoryPath);
-    return importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress);
+    return conflictPolicy === undefined
+      ? importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress)
+      : importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress, conflictPolicy);
   };
 
   const documentIdList = defineObservableQuery(getDocumentIdList$);

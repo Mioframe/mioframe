@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions -- tests inspect structured partial-import error details. */
 import { describe, expect, it, vi } from 'vitest';
 import { DomainError } from '@shared/lib/error';
 import { VirtualFileSystem } from '@shared/lib/virtualFileSystem';
@@ -40,7 +41,7 @@ describe('importDirectoryZip', () => {
     await expect(vfs.exists('/target/root/empty')).resolves.toBe(true);
     expect(onProgress).toHaveBeenCalledWith({ phase: 'validatingArchive' });
     expect(onProgress).toHaveBeenCalledWith({ phase: 'checkingConflicts' });
-    expect(onProgress).toHaveBeenCalledWith({ phase: 'unpacking' });
+    expect(onProgress).toHaveBeenCalledWith({ phase: 'unpacking', current: 0, total: 2 });
   });
 
   it('stops before writing anything when a target file already exists', async () => {
@@ -54,15 +55,10 @@ describe('importDirectoryZip', () => {
       'root/other.txt': new TextEncoder().encode('other content'),
     });
 
-    let caught: unknown;
-    try {
-      await importDirectoryZip(vfs, '/target', archiveFile);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(DomainError);
-    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1, paths: ['root/file.txt'] },
+    });
     await expect(vfs.readText('/target/root/file.txt')).resolves.toBe('already here');
     await expect(vfs.exists('/target/root/other.txt')).resolves.toBe(false);
   });
@@ -77,15 +73,10 @@ describe('importDirectoryZip', () => {
       'other.txt': new TextEncoder().encode('other content'),
     });
 
-    let caught: unknown;
-    try {
-      await importDirectoryZip(vfs, '/target', archiveFile);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(DomainError);
-    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1, paths: ['file.txt'] },
+    });
     await expect(vfs.readText('/target/file.txt')).resolves.toBe('already here');
     await expect(vfs.exists('/target/other.txt')).resolves.toBe(false);
   });
@@ -99,15 +90,10 @@ describe('importDirectoryZip', () => {
       'root/nested/file.txt': new TextEncoder().encode('content'),
     });
 
-    let caught: unknown;
-    try {
-      await importDirectoryZip(vfs, '/target', archiveFile);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(DomainError);
-    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1, paths: ['root'] },
+    });
     await expect(vfs.exists('/target/root/nested')).resolves.toBe(false);
   });
 
@@ -310,9 +296,8 @@ describe('importDirectoryZip', () => {
       caught = error;
     }
 
-    // Nothing was written yet, so the caller's write-access recovery flow can safely retry the
-    // whole import after granting access.
-    expect(caught).toBe(accessError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    expect((caught as DomainError).cause).toBe(accessError);
   });
 
   it('surfaces a pre-write conflict, not a partial-import error, when retried after a partial write', async () => {
@@ -349,15 +334,10 @@ describe('importDirectoryZip', () => {
     // (e.g. after mistaking `importWritePartiallyFailed` for a recoverable access error). The
     // retry must stop at preflight with a conflict, not silently overwrite or continue the
     // partial write.
-    let retryError: unknown;
-    try {
-      await importDirectoryZip(vfs, '/target', archiveFile);
-    } catch (error) {
-      retryError = error;
-    }
-
-    expect(retryError).toBeInstanceOf(DomainError);
-    expect(retryError).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1 },
+    });
   });
 
   it('does not report a partial failure when the very first write fails', async () => {
@@ -379,8 +359,7 @@ describe('importDirectoryZip', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Error);
-    expect(caught).not.toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
   });
 
   it('preserves the original write-access-recovery error when only an already-existing ancestor directory preceded it', async () => {
@@ -408,10 +387,8 @@ describe('importDirectoryZip', () => {
       caught = error;
     }
 
-    // No real mutation happened (the ancestor directory already existed), so this must surface as
-    // the raw recoverable error, not a partial-import error, so the caller's write-access recovery
-    // flow can safely retry the whole import after granting access.
-    expect(caught).toBe(accessError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    expect((caught as DomainError).cause).toBe(accessError);
   });
 
   it('preserves the original storage/VFS error when only an already-existing ancestor directory preceded it', async () => {
@@ -433,8 +410,8 @@ describe('importDirectoryZip', () => {
       caught = error;
     }
 
-    expect(caught).toBe(storageError);
-    expect(caught).not.toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    expect((caught as DomainError).cause).toBe(storageError);
   });
 
   it('classifies a write failure as partial when only a real new-directory mutation preceded it', async () => {
@@ -461,3 +438,4 @@ describe('importDirectoryZip', () => {
     await expect(vfs.exists('/target/root')).resolves.toBe(true);
   });
 });
+/* eslint-enable @typescript-eslint/consistent-type-assertions */

@@ -85,13 +85,13 @@ describe('ImportZipDialog', () => {
   it('renders the success state as a non-loading dialog with a Done action and no progress body', () => {
     const wrapper = mountDialog({
       status: 'success',
-      message: 'ZIP archive imported into this folder.',
+      summary: { importedFiles: 2, skippedFiles: 0, createdDirectories: 1, reusedDirectories: 0 },
     });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('ZIP archive imported');
     expect(dialog.attributes('data-supporting-text')).toBe(
-      'ZIP archive imported into this folder.',
+      'Import completed. 2 files imported and 0 existing files skipped.',
     );
     expect(dialog.attributes('data-loading')).toBe('false');
     expect(dialog.attributes('data-apply-label')).toBe('Done');
@@ -114,7 +114,7 @@ describe('ImportZipDialog', () => {
   it('emits close when the dialog applies in a success state', async () => {
     const wrapper = mountDialog({
       status: 'success',
-      message: 'ZIP archive imported into this folder.',
+      summary: { importedFiles: 2, skippedFiles: 0, createdDirectories: 1, reusedDirectories: 0 },
     });
 
     await wrapper.find('[data-headline]').trigger('click');

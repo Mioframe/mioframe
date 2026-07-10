@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions -- RPC envelopes require runtime narrowing from unknown wire data. */
 /**
  * Implementation of proxy service functionality that enables remote function calls and object property access.
  *
@@ -22,6 +23,7 @@ import type {
   RemoveFunctionMessage,
   ResultMessage,
   SerializeJson,
+  SerializedEnvelope,
   TransformerRegistration,
 } from './types';
 import {
@@ -56,16 +58,18 @@ const callRemotePath = async (
   await waitServiceReady(provider, serviceId);
 
   return new Promise((resolve, reject) => {
+    const serializedArgs = serialize(args);
     const requestPayload: CallPathMessage = {
       serviceId,
       callId: uid(),
-      args: serialize(args),
+      args: serializedArgs.payload,
       path,
+      transferables: serializedArgs.transferables,
     };
 
     pendingRequests.set(requestPayload.callId, { resolve, reject });
 
-    provider.postMessage(requestPayload);
+    provider.postMessage(requestPayload, serializedArgs.transferables);
   });
 };
 
@@ -109,7 +113,6 @@ const createProxy = <T extends Record<string, unknown>, Exceptions = never>(
 ): ClientObject<T, Exceptions> => {
   const target: object = () => ({});
 
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Proxy construction for ClientObject requires assertion
   return new Proxy(target, {
     get: (_target, prop) => {
       if (isString(prop)) {
@@ -215,7 +218,6 @@ const createFunctionDescription = <F extends AnyFunction>(
   const functionId = uid();
 
   // FunctionDescription is a branded type requiring assertion to match inferred type
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Branded type requires assertion to preserve function type
   const functionDescription: FunctionDescription<F> = {
     functionId,
   } as FunctionDescription<F>;
@@ -269,16 +271,18 @@ const createProxyFunction = (
 
     return new Promise((resolve, reject) => {
       const callId = uid();
+      const serializedArgs = serialize(args);
       const callDescription: CallFunctionMessage = {
         serviceId,
         callId,
         functionId,
-        args: serialize(args),
+        args: serializedArgs.payload,
+        transferables: serializedArgs.transferables,
       };
 
       pendingRequests.set(callId, { resolve, reject });
 
-      provider.postMessage(callDescription);
+      provider.postMessage(callDescription, serializedArgs.transferables);
     });
   };
 
@@ -303,13 +307,15 @@ const createProxyFunction = (
  * @param result - The actual result data to send
  */
 const sendResult = (provider: Provider, serviceId: string, resultId: string, result: unknown) => {
+  const serializedResult = serialize(result);
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
-    result: serialize(result),
+    result: serializedResult.payload,
+    transferables: serializedResult.transferables,
   };
 
-  provider.postMessage(resultMessage);
+  provider.postMessage(resultMessage, serializedResult.transferables);
 };
 
 /**
@@ -323,13 +329,15 @@ const sendResult = (provider: Provider, serviceId: string, resultId: string, res
  * @param error - The error object to send
  */
 const sendError = (provider: Provider, serviceId: string, resultId: string, error: unknown) => {
+  const serializedError = serialize(error);
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
-    error: serialize(error),
+    error: serializedError.payload,
+    transferables: serializedError.transferables,
   };
 
-  provider.postMessage(resultMessage);
+  provider.postMessage(resultMessage, serializedError.transferables);
 };
 
 /**
@@ -358,10 +366,76 @@ const superJson = new SuperJSON({ dedupe: true });
  * @param data - Data to serialize
  * @returns Serialized representation that can be transmitted over the wire
  */
-export const serialize = <T>(data: T) =>
-  // SuperJSON returns generic SuperJSONResult, we need branded SerializeJson type
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required to cast to branded SerializeJson type
-  superJson.serialize(data) as SerializeJson<T>;
+const TRANSFER_MARKER = '__proxyTransferable';
+
+type TransferMarker =
+  | { [TRANSFER_MARKER]: 'arrayBuffer'; index: number }
+  | { [TRANSFER_MARKER]: 'uint8Array'; index: number; byteOffset: number; byteLength: number };
+
+const isTransferMarker = (value: unknown): value is TransferMarker =>
+  typeof value === 'object' &&
+  value !== null &&
+  TRANSFER_MARKER in value &&
+  ((value as Record<string, unknown>)[TRANSFER_MARKER] === 'arrayBuffer' ||
+    (value as Record<string, unknown>)[TRANSFER_MARKER] === 'uint8Array');
+
+const replaceBinaryValues = (value: unknown, transferables: Transferable[]): unknown => {
+  if (value instanceof ArrayBuffer) {
+    const index = transferables.push(value) - 1;
+    return { [TRANSFER_MARKER]: 'arrayBuffer', index };
+  }
+  if (value instanceof Uint8Array) {
+    const buffer =
+      value.byteOffset === 0 && value.byteLength === value.buffer.byteLength
+        ? value.buffer
+        : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+    const index = transferables.push(buffer) - 1;
+    return { [TRANSFER_MARKER]: 'uint8Array', index, byteOffset: 0, byteLength: value.byteLength };
+  }
+  if (typeof value !== 'object' || value === null) return value;
+  if (Array.isArray(value)) return value.map((item) => replaceBinaryValues(item, transferables));
+  if (Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        replaceBinaryValues(item, transferables),
+      ]),
+    );
+  }
+  return value;
+};
+
+const restoreBinaryValues = (value: unknown, transferables: Transferable[]): unknown => {
+  if (isTransferMarker(value)) {
+    const buffer = transferables[value.index];
+    if (!(buffer instanceof ArrayBuffer)) throw new Error('Missing transferred binary buffer');
+    return value[TRANSFER_MARKER] === 'arrayBuffer'
+      ? buffer
+      : new Uint8Array(buffer, value.byteOffset, value.byteLength);
+  }
+  if (typeof value !== 'object' || value === null) return value;
+  if (Array.isArray(value)) return value.map((item) => restoreBinaryValues(item, transferables));
+  if (Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        restoreBinaryValues(item, transferables),
+      ]),
+    );
+  }
+  return value;
+};
+
+/** Serializes RPC data while preserving transferable binary buffers outside SuperJSON JSON data. */
+export const serialize = <T>(data: T): SerializedEnvelope<T> => {
+  const transferables: Transferable[] = [];
+  const replaced = replaceBinaryValues(data, transferables);
+  return {
+    // SuperJSON returns generic SuperJSONResult, we need branded SerializeJson type
+    payload: superJson.serialize(replaced) as SerializeJson<T>,
+    transferables,
+  };
+};
 
 /**
  * Deserializes data back to its original types using SuperJSON.
@@ -371,11 +445,8 @@ export const serialize = <T>(data: T) =>
  * @param data - Data that was serialized with the corresponding serialize function
  * @returns The deserialized value in its proper type
  */
-export const deserialize = <T>(data: SerializeJson<T>) =>
-  superJson.deserialize<T>(
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- SuperJSON accepts the serialized shape, while our branded type widens optional meta for exactOptionalPropertyTypes
-    data as SuperJSONResult,
-  );
+export const deserialize = <T>(data: SerializeJson<T>, transferables: Transferable[] = []) =>
+  restoreBinaryValues(superJson.deserialize<T>(data as SuperJSONResult), transferables) as T;
 
 /**
  * Creates and registers a service for handling remote calls from clients.
@@ -424,20 +495,24 @@ export const createService = (
 
   const messageHandler = async ({ data }: { data: unknown }) => {
     if (state && zodIs(data, zodCallPathMessage) && data.serviceId === serviceId) {
-      const { args, callId, path } = data;
+      const { args, callId, path, transferables } = data;
       try {
-        const result = await callPath(state, path, deserialize(args));
+        const result = await callPath(
+          state,
+          path,
+          deserialize(args, transferables as Transferable[]),
+        );
         sendResult(provider, serviceId, callId, result);
       } catch (error) {
         sendError(provider, serviceId, callId, error);
       }
     } else if (zodIs(data, zodCallFunctionMessage) && data.serviceId === serviceId) {
-      const { args, callId, functionId } = data;
+      const { args, callId, functionId, transferables } = data;
 
       try {
         const fn = localFunctions.get(functionId);
         if (fn) {
-          const result = await fn(...deserialize(args));
+          const result = await fn(...deserialize(args, transferables as Transferable[]));
           sendResult(provider, serviceId, callId, result);
         } else {
           throw new Error(`function "${functionId}" not found`);
@@ -446,21 +521,23 @@ export const createService = (
         sendError(provider, serviceId, callId, error);
       }
     } else if (zodIs(data, zodResultMessage) && data.serviceId === serviceId) {
-      const { resultId, error, result } = data;
+      const { resultId, error, result, transferables } = data;
 
       const request = pendingRequests.get(resultId);
       if (request) {
         pendingRequests.delete(resultId);
         const { reject, resolve } = request;
         if (error) {
-          const deserializedError = deserialize(error);
+          const deserializedError = deserialize(error, transferables as Transferable[]);
           reject(
             deserializedError instanceof Error
               ? deserializedError
               : new Error('Service call failed', { cause: deserializedError }),
           );
         } else {
-          resolve(!isUndefined(result) ? deserialize(result) : undefined);
+          resolve(
+            !isUndefined(result) ? deserialize(result, transferables as Transferable[]) : undefined,
+          );
         }
       } else {
         console.warn(`don't have pending for result ${resultId}`);
@@ -477,3 +554,4 @@ export const createService = (
 
   postReady();
 };
+/* eslint-enable @typescript-eslint/consistent-type-assertions */

@@ -1,7 +1,7 @@
 export { useMainServiceClient } from './useService';
 export { RepositoryImportErrorCode } from './repositories/repositoryContracts';
 export type { RepositoryDirectoryEntry } from './repositories/repositoryContracts';
-export { RepositoryZipErrorCode } from './repositories/repositoryZipContracts';
+export { RepositoryZipErrorCode, ZIP_IMPORT_LIMITS } from './repositories/repositoryZipContracts';
 export type {
   OnZipExportChunk,
   OnZipExportProgress,
@@ -10,6 +10,9 @@ export type {
   ZipExportProgress,
   ZipImportPhase,
   ZipImportProgress,
+  ZipImportConflictPolicy,
+  ZipImportResult,
+  ZipImportSummary,
 } from './repositories/repositoryZipContracts';
 export {
   DEVICE_FILES_ROOT_NAME,

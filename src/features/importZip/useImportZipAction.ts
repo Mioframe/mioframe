@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions -- validates the structured service error extension at this UI boundary. */
 import { computed, ref } from 'vue';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
@@ -5,7 +6,7 @@ import { getFileSystemAccessRecovery, isUserFileSelectionCancel } from '@shared/
 import { ZipArchiveErrorCode } from '@shared/lib/zipArchive';
 import { useMainServiceClient } from '@shared/service';
 import { RepositoryZipErrorCode } from '@shared/service';
-import type { ZipImportProgress } from '@shared/service';
+import type { ZipImportProgress, ZipImportSummary } from '@shared/service';
 import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
@@ -21,7 +22,9 @@ import { useImportZip } from './useImportZip';
 export type ImportZipDialogState =
   | { status: 'idle' }
   | { status: 'running'; progress?: ZipImportProgress }
-  | { status: 'success'; message: string }
+  | { status: 'conflicts'; total: number; paths: string[]; truncated: boolean }
+  | { status: 'success'; summary: ZipImportSummary }
+  | { status: 'partial'; summary: ZipImportSummary }
   | { status: 'error'; message: string };
 
 /** Visible-only import ZIP dialog states. The dialog component must never render `idle`. */
@@ -60,9 +63,6 @@ export const useImportZipAction = () => {
   const state = ref<ImportZipDialogState>({ status: 'idle' });
   const isRunning = computed(() => state.value.status === 'running');
 
-  // A partial-write DomainError's message already says the target folder may hold a partial
-  // import (see RepositoryZipErrorCode.importWritePartiallyFailed), so no special-casing is
-  // needed here beyond the existing DomainError message passthrough.
   const resolveImportErrorMessage = (error: unknown): string => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
 
@@ -106,10 +106,10 @@ export const useImportZipAction = () => {
    * @param retry - Operation to retry after access is granted.
    * @returns Whether the retry ran and completed successfully.
    */
-  const withWriteAccessRecovery = async (
+  const withWriteAccessRecovery = async <T>(
     error: unknown,
-    retry: () => Promise<void>,
-  ): Promise<boolean> => {
+    retry: () => Promise<T>,
+  ): Promise<T | undefined> => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
 
     if (!recovery) {
@@ -128,7 +128,7 @@ export const useImportZipAction = () => {
         status: 'error',
         message: 'Grant write access to import a ZIP archive into this remembered space.',
       };
-      return false;
+      return undefined;
     }
 
     const result = await requestAccess({
@@ -149,11 +149,10 @@ export const useImportZipAction = () => {
             ? 'Importing a ZIP archive is not allowed in this remembered space because your browser denied write access.'
             : 'Could not request browser permission. Try again from this action.',
       };
-      return false;
+      return undefined;
     }
 
-    await retry();
-    return true;
+    return await retry();
   };
 
   /**
@@ -165,15 +164,66 @@ export const useImportZipAction = () => {
    * @returns `true` when the import succeeds, `false` when cancelled, ignored as a duplicate
    * call, or on a handled error.
    */
+  let selectedFile: File | undefined;
+  let selectedPath: string | undefined;
+
+  const partialSummary = (error: unknown): ZipImportSummary | undefined => {
+    if (
+      !(error instanceof DomainError) ||
+      error.code !== RepositoryZipErrorCode.importWritePartiallyFailed ||
+      !('importSummary' in error)
+    ) {
+      return undefined;
+    }
+    const { importSummary } = error;
+    return importSummary && typeof importSummary === 'object'
+      ? (importSummary as ZipImportSummary)
+      : undefined;
+  };
+
+  const showImportResult = (result: Awaited<ReturnType<typeof importDirectoryZip>>) => {
+    if (result.status === 'conflicts') {
+      state.value = { status: 'conflicts', ...result.report };
+      return false;
+    }
+    state.value = { status: 'success', summary: result.summary };
+    return true;
+  };
+
+  const runImport = async (policy: 'abort' | 'skipExisting'): Promise<boolean> => {
+    if (!selectedFile || !selectedPath) return false;
+    const archiveFile = selectedFile;
+    const targetPath = selectedPath;
+    state.value = { status: 'running' };
+    const onProgress = (nextProgress: ZipImportProgress) => {
+      state.value = { status: 'running', progress: nextProgress };
+    };
+    try {
+      try {
+        return showImportResult(
+          await importDirectoryZip(targetPath, archiveFile, onProgress, policy),
+        );
+      } catch (error) {
+        const recoveredResult = await withWriteAccessRecovery(error, () =>
+          importDirectoryZip(targetPath, archiveFile, onProgress, policy),
+        );
+        return recoveredResult ? showImportResult(recoveredResult) : false;
+      }
+    } catch (error) {
+      const summary = partialSummary(error);
+      if (summary) state.value = { status: 'partial', summary };
+      else failImportDialog(error, 'importDirectoryZip');
+      return false;
+    }
+  };
+
   const importDirectoryZipArchive = async (path: string): Promise<boolean> => {
     if (state.value.status === 'running') {
       return false;
     }
 
-    let file: File | undefined;
-
     try {
-      file = await pickZipFile();
+      selectedFile = await pickZipFile();
     } catch (error) {
       // No dialog is open yet at this point, so a picker error is reported through the snackbar.
       addSnackbar({ text: resolveImportErrorMessage(error) });
@@ -181,38 +231,17 @@ export const useImportZipAction = () => {
       return false;
     }
 
-    if (file === undefined) {
+    if (selectedFile === undefined) {
       return false;
     }
+    selectedPath = path;
+    return runImport('abort');
+  };
 
-    state.value = { status: 'running' };
-
-    const onProgress = (nextProgress: ZipImportProgress) => {
-      state.value = { status: 'running', progress: nextProgress };
-    };
-
-    try {
-      let succeeded = false;
-
-      try {
-        await importDirectoryZip(path, file, onProgress);
-        succeeded = true;
-      } catch (error) {
-        succeeded = await withWriteAccessRecovery(error, () =>
-          importDirectoryZip(path, file, onProgress),
-        );
-      }
-
-      if (!succeeded) {
-        return false;
-      }
-
-      state.value = { status: 'success', message: 'ZIP archive imported into this folder.' };
-      return true;
-    } catch (error) {
-      failImportDialog(error, 'importDirectoryZip');
-      return false;
-    }
+  /** Retries the currently retained archive without intentionally overwriting existing entries. */
+  const retryImportSkippingExisting = async () => {
+    if (state.value.status === 'running') return false;
+    return runImport('skipExisting');
   };
 
   /**
@@ -225,12 +254,16 @@ export const useImportZipAction = () => {
     }
 
     state.value = { status: 'idle' };
+    selectedFile = undefined;
+    selectedPath = undefined;
   };
 
   return {
     importDirectoryZip: importDirectoryZipArchive,
     state,
     isRunning,
+    retryImportSkippingExisting,
     closeImportZipDialog,
   };
 };
+/* eslint-enable @typescript-eslint/consistent-type-assertions */
