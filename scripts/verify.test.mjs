@@ -113,6 +113,7 @@ describe('buildCommands full mode', () => {
     expect(runByLabel['type-check']).toBe('run');
     expect(runByLabel['unit-tests']).toBe('run');
     expect(runByLabel.e2e).toBe('run');
+    expect(runByLabel['storybook-behavior']).toBe('run');
     expect(runByLabel.visual).toBe('run');
   });
 
@@ -290,6 +291,82 @@ describe('buildCommands package.json app e2e relevance', () => {
 
     expect(e2eEntry.kind).toBe('run');
     expect(e2eEntry.triggerReason).toContain('low-level path src/shared/service/serviceWorker.ts');
+  });
+});
+
+describe('buildCommands storybook-behavior lane', () => {
+  beforeEach(() => {
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('runs after e2e and before visual', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels.indexOf('e2e')).toBeLessThan(labels.indexOf('storybook-behavior'));
+    expect(labels.indexOf('storybook-behavior')).toBeLessThan(labels.indexOf('visual'));
+  });
+
+  it('skips storybook-behavior for an empty scope', () => {
+    const commands = buildCommands(['src/app/main.ts'], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'storybook-behavior');
+
+    expect(entry.kind).toBe('skipped');
+    expect(entry.reason).toBe('empty storybook behavior scope');
+  });
+
+  it('runs the full lane for a Storybook infrastructure change', () => {
+    const commands = buildCommands(['playwright.storybook.config.ts'], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'storybook-behavior');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.args).toEqual(['test:storybook-behavior']);
+    expect(entry.triggerReason).toContain('Storybook/Playwright infrastructure path');
+  });
+
+  it('runs the full lane for a .storybook/ path change', () => {
+    const commands = buildCommands(['.storybook/main.ts'], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'storybook-behavior');
+
+    expect(entry.kind).toBe('run');
+  });
+
+  it('runs a focused lane for the changed smoke spec', () => {
+    const commands = buildCommands(['tests/e2e/storybook/storybook.smoke.spec.ts'], {
+      fullMode: false,
+    });
+    const entry = commands.find((item) => item.label === 'storybook-behavior');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.args).toEqual([
+      'test:storybook-behavior',
+      'tests/e2e/storybook/storybook.smoke.spec.ts',
+    ]);
+  });
+
+  it('skips storybook-behavior for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const entry = commands.find((item) => item.label === 'storybook-behavior');
+
+    expect(entry.kind).toBe('skipped');
+  });
+
+  it('runs the full lane when the package.json impact check is runtime-relevant', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const entry = commands.find((item) => item.label === 'storybook-behavior');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.triggerReason).toContain('runtime-relevant package.json change');
   });
 });
 
@@ -521,7 +598,7 @@ describe('getActionRequired', () => {
     }
   });
 
-  it('reports CI-profile risk in the summary when local e2e passed under the local profile', () => {
+  it('reports no CI-profile risk in the summary once local and GitHub Actions defaults are canonical', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
@@ -553,17 +630,16 @@ describe('getActionRequired', () => {
         },
       );
 
-      expect(summary).toEqual({ status: 'passed', hasFailed: false, hasCiProfileRisk: true });
+      expect(summary).toEqual({ status: 'passed', hasFailed: false, hasCiProfileRisk: false });
 
       const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
       expect(output).toContain('profile: local (source: default-local)');
       expect(output).toContain('base ref: origin/develop');
-      expect(output).toContain('status: passed with CI-profile risk');
+      expect(output).toContain('status: passed ✅');
       expect(output).toContain('heavy-check triggers:');
       expect(output).toContain('e2e: low-level path scripts/verify.mjs -> full app e2e');
       expect(output).toContain('ci profile risk:');
-      expect(output).toContain('Affected checks: e2e');
-      expect(output).toContain('workers: 1 -> 2');
+      expect(output).toContain('- none');
     } finally {
       logSpy.mockRestore();
     }
@@ -593,6 +669,22 @@ describe('getCiProfileRisk', () => {
         ],
         {
           GITHUB_ACTIONS: 'true',
+        },
+      ),
+    ).toBeNull();
+  });
+
+  it('omits CI-profile risk for a passed storybook-behavior check since defaults are canonical', () => {
+    expect(
+      getCiProfileRisk(
+        [
+          {
+            label: 'storybook-behavior',
+            status: 'passed',
+          },
+        ],
+        {
+          GITHUB_ACTIONS: 'false',
         },
       ),
     ).toBeNull();

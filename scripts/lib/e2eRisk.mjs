@@ -5,6 +5,7 @@ import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.mjs';
 
 const VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
 const RELEASE_SPEC_PREFIX = 'tests/e2e/release/';
+const STORYBOOK_BEHAVIOR_SPEC_PREFIX = 'tests/e2e/storybook/';
 const E2E_DIR_PREFIX = 'tests/e2e/';
 const APP_E2E_SPEC_DIR = 'tests/e2e';
 const STORIES_PATTERN = /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/;
@@ -210,8 +211,20 @@ export function isReleaseE2ESpecPath(filePath) {
 }
 
 /**
- * Check whether a changed file is a non-visual, non-release app e2e spec
- * under `tests/e2e/`.
+ * Check whether a changed file belongs to the separately owned Storybook
+ * browser-behavior lane under `tests/e2e/storybook/`. That lane has its own
+ * risk resolver in `scripts/lib/storybookBehaviorRisk.mjs`; app e2e must
+ * never select these paths.
+ * @param filePath Repository-relative changed file path.
+ * @returns True when the path is a Storybook behavior lane path.
+ */
+export function isStorybookBehaviorPath(filePath) {
+  return filePath.startsWith(STORYBOOK_BEHAVIOR_SPEC_PREFIX);
+}
+
+/**
+ * Check whether a changed file is a non-visual, non-release, non-Storybook-behavior
+ * app e2e spec under `tests/e2e/`.
  * @param filePath Repository-relative changed file path.
  * @returns True when the path is an app e2e spec file.
  */
@@ -220,14 +233,15 @@ export function isAppE2ESpecPath(filePath) {
     filePath.startsWith(E2E_DIR_PREFIX) &&
     !isVisualE2ESpecPath(filePath) &&
     !isReleaseE2ESpecPath(filePath) &&
+    !isStorybookBehaviorPath(filePath) &&
     filePath.endsWith('.spec.ts')
   );
 }
 
 /**
  * Check whether a changed file is a non-spec e2e helper/fixture/page-object
- * under `tests/e2e/` (excluding visual and release). These are
- * reverse-resolved conservatively to a full app e2e run by
+ * under `tests/e2e/` (excluding visual, release, and Storybook behavior).
+ * These are reverse-resolved conservatively to a full app e2e run by
  * {@link resolveAppE2EPlan}.
  * @param filePath Repository-relative changed file path.
  * @returns True when the path is an app e2e support file.
@@ -237,6 +251,7 @@ export function isAppE2ESupportPath(filePath) {
     filePath.startsWith(E2E_DIR_PREFIX) &&
     !isVisualE2ESpecPath(filePath) &&
     !isReleaseE2ESpecPath(filePath) &&
+    !isStorybookBehaviorPath(filePath) &&
     !isAppE2ESpecPath(filePath) &&
     filePath.endsWith('.ts')
   );

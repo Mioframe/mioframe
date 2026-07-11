@@ -8,7 +8,7 @@ const storybookURL = `http://${host}:${port}`;
 const viteBin = './node_modules/.bin/vite';
 
 export default defineConfig({
-  testDir: './tests/e2e/visual',
+  testDir: './tests/e2e/storybook',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -16,13 +16,6 @@ export default defineConfig({
   failOnFlakyTests: !!process.env.CI,
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   workers: 1,
-  expect: {
-    toHaveScreenshot: {
-      animations: 'disabled',
-      caret: 'hide',
-      scale: 'css',
-    },
-  },
   use: {
     ...devices['Desktop Chrome'],
     channel: 'chromium',

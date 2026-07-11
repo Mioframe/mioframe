@@ -23,6 +23,7 @@ export function classifyCommandWeight({ label, fileCount = 0, isFullRepo = false
       return 'medium';
     case 'e2e':
     case 'e2e-install':
+    case 'storybook-behavior':
     case 'visual':
     case 'visual-update':
     case 'mutation':

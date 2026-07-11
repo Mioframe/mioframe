@@ -73,7 +73,7 @@ describe('applyProcessResult', () => {
 });
 
 describe('runPlaywrightInContainer', () => {
-  it('formats profile differences from the owned comparable field list', () => {
+  it('resolves identical canonical resource limits for local and GitHub Actions', () => {
     const localProfile = resolvePlaywrightContainerProfile({
       GITHUB_ACTIONS: 'false',
     });
@@ -81,11 +81,20 @@ describe('runPlaywrightInContainer', () => {
       [VERIFY_PROFILE_ENV]: 'github-actions',
     });
 
-    expect(comparePlaywrightContainerProfiles(localProfile, githubActionsProfile)).toEqual([
-      { key: 'memory', label: 'memory', left: '4g', right: '6g' },
-      { key: 'memorySwap', label: 'memory-swap', left: '4g', right: '8g' },
-      { key: 'pidsLimit', label: 'pids-limit', left: '384', right: '512' },
-      { key: 'workers', label: 'workers', left: '1', right: '2' },
+    expect(comparePlaywrightContainerProfiles(localProfile, githubActionsProfile)).toEqual([]);
+  });
+
+  it('still reports a difference when an explicit override diverges from the canonical profile', () => {
+    const localProfile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'false',
+    });
+    const overriddenProfile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'false',
+      PLAYWRIGHT_CONTAINER_MEMORY: '2g',
+    });
+
+    expect(comparePlaywrightContainerProfiles(localProfile, overriddenProfile)).toEqual([
+      { key: 'memory', label: 'memory', left: '6g', right: '2g' },
     ]);
   });
 
@@ -96,9 +105,9 @@ describe('runPlaywrightInContainer', () => {
 
     expect(profile.name).toBe('local');
     expect(profile.cpus).toBe('2');
-    expect(profile.memory).toBe('4g');
-    expect(profile.memorySwap).toBe('4g');
-    expect(profile.pidsLimit).toBe('384');
+    expect(profile.memory).toBe('6g');
+    expect(profile.memorySwap).toBe('8g');
+    expect(profile.pidsLimit).toBe('512');
     expect(profile.workers).toBe('1');
   });
 
@@ -108,10 +117,11 @@ describe('runPlaywrightInContainer', () => {
     });
 
     expect(profile.name).toBe('github-actions');
+    expect(profile.cpus).toBe('2');
     expect(profile.memory).toBe('6g');
     expect(profile.memorySwap).toBe('8g');
     expect(profile.pidsLimit).toBe('512');
-    expect(profile.workers).toBe('2');
+    expect(profile.workers).toBe('1');
   });
 
   it('prefers the explicit verify profile override over the host environment', () => {
@@ -122,7 +132,7 @@ describe('runPlaywrightInContainer', () => {
 
     expect(profile.name).toBe('github-actions');
     expect(profile.source).toBe(VERIFY_PROFILE_ENV);
-    expect(profile.workers).toBe('2');
+    expect(profile.workers).toBe('1');
   });
 
   it('rejects unsupported explicit verify profile overrides', () => {
@@ -253,11 +263,11 @@ describe('runPlaywrightInContainer', () => {
         '--cpus',
         '2',
         '--memory',
-        '4g',
+        '6g',
         '--memory-swap',
-        '4g',
+        '8g',
         '--pids-limit',
-        '384',
+        '512',
       ]),
       command: 'podman',
       env: process.env,
@@ -303,9 +313,9 @@ describe('runPlaywrightInContainer', () => {
       expect(output).toContain('config: playwright.visual.config.ts');
       expect(output).toContain('  cpus: 2  override: PLAYWRIGHT_CONTAINER_CPUS');
       expect(output).toContain('profile: local');
-      expect(output).toContain('  memory: 4g  override: PLAYWRIGHT_CONTAINER_MEMORY');
-      expect(output).toContain('  memory-swap: 4g  override: PLAYWRIGHT_CONTAINER_MEMORY_SWAP');
-      expect(output).toContain('  pids-limit: 384  override: PLAYWRIGHT_CONTAINER_PIDS_LIMIT');
+      expect(output).toContain('  memory: 6g  override: PLAYWRIGHT_CONTAINER_MEMORY');
+      expect(output).toContain('  memory-swap: 8g  override: PLAYWRIGHT_CONTAINER_MEMORY_SWAP');
+      expect(output).toContain('  pids-limit: 512  override: PLAYWRIGHT_CONTAINER_PIDS_LIMIT');
       expect(output).toContain('  timeout: 900  override: PLAYWRIGHT_CONTAINER_TIMEOUT');
       expect(output).toContain('  workers: 1  override: PLAYWRIGHT_CONTAINER_WORKERS');
       expect(output).toContain(

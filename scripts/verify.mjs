@@ -9,6 +9,7 @@ import { applyProcessResult } from './lib/processResult.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
+import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import {
   comparePlaywrightContainerProfiles,
@@ -35,6 +36,7 @@ const VERIFY_LABELS = [
   'unit-tests',
   'e2e-install',
   'e2e',
+  'storybook-behavior',
   'visual',
   'mutation',
   'release-version',
@@ -62,6 +64,7 @@ const KILL_GRACE_MS = 10_000;
 const COMMAND_TIMEOUT_MS_BY_LABEL = {
   'e2e-install': 10 * 60 * 1000,
   e2e: 12 * 60 * 1000,
+  'storybook-behavior': 15 * 60 * 1000,
   visual: 15 * 60 * 1000,
   mutation: 20 * 60 * 1000,
   build: 10 * 60 * 1000,
@@ -1010,7 +1013,7 @@ function getHeavyCheckTriggerLines(results) {
  * @returns Risk details when local Playwright settings differ from GitHub Actions.
  */
 export function getCiProfileRisk(results, processEnv = process.env) {
-  const relevantLabels = new Set(['e2e', 'visual']);
+  const relevantLabels = new Set(['e2e', 'storybook-behavior', 'visual']);
   const affectedChecks = results
     .filter((result) => result.status === 'passed' && relevantLabels.has(result.label))
     .map((result) => result.label);
@@ -1328,6 +1331,18 @@ function createE2ECommand(extraArgs = [], note = null) {
   };
 }
 
+function createStorybookBehaviorCommand(extraArgs = [], note = null) {
+  return {
+    kind: 'run',
+    label: 'storybook-behavior',
+    command: 'pnpm',
+    args: ['test:storybook-behavior', ...extraArgs],
+    weight: classifyCommandWeight({ label: 'storybook-behavior' }),
+    note,
+    triggerReason: note,
+  };
+}
+
 function addReleaseOnlyCommands(commands) {
   commands.push({
     kind: 'run',
@@ -1415,6 +1430,7 @@ export function buildCommands(
   const hasVisualRelevantChanges =
     changedFiles.some(isVisualRelevantFile) || isPackageJsonVisualRelevant;
   const appE2EPlan = resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
+  const storybookBehaviorPlan = resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
@@ -1575,6 +1591,33 @@ export function buildCommands(
       label: 'e2e',
       command: 'pnpm e2e:container',
       reason: 'empty e2e scope',
+    });
+  }
+
+  if (fullMode) {
+    commands.push(createStorybookBehaviorCommand([], 'full-project release verification'));
+  } else if (storybookBehaviorPlan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'storybook-behavior',
+      command: 'pnpm test:storybook-behavior',
+      reason: `invalid Storybook behavior scenario registry state: ${storybookBehaviorPlan.reasons.join('; ')}`,
+    });
+  } else if (storybookBehaviorPlan.mode === 'full') {
+    commands.push(createStorybookBehaviorCommand([], storybookBehaviorPlan.reasons.join('; ')));
+  } else if (storybookBehaviorPlan.mode === 'focused') {
+    commands.push(
+      createStorybookBehaviorCommand(
+        storybookBehaviorPlan.specs,
+        storybookBehaviorPlan.reasons.join('; '),
+      ),
+    );
+  } else {
+    commands.push({
+      kind: 'skipped',
+      label: 'storybook-behavior',
+      command: 'pnpm test:storybook-behavior',
+      reason: 'empty storybook behavior scope',
     });
   }
 
