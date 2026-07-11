@@ -16,6 +16,7 @@ export default defineConfig({
       'config/**/*.test.ts',
       'scripts/**/*.test.ts',
       'scripts/**/*.test.mjs',
+      'playwright.*.test.ts',
     ],
     exclude: ['tests/e2e/**', 'node_modules/**', '.*/**'],
     coverage: {

@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -37,6 +37,7 @@
     "e2e:release": "node scripts/e2eReleaseContainer.mjs",
     "test:visual": "node scripts/visual.mjs test",
     "test:visual:update": "node scripts/visual.mjs update",
+    "test:storybook-behavior": "node scripts/storybookBehavior.mjs",
     "test": "vitest",
     "test:run": "node scripts/vitestRun.mjs",
     "test:coverage": "node scripts/vitestRun.mjs --coverage",
