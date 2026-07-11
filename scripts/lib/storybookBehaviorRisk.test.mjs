@@ -32,7 +32,7 @@ describe('isStorybookBehaviorSpecPath', () => {
 
 describe('isStorybookBehaviorSupportPath', () => {
   it('flags non-spec .ts helpers under tests/e2e/storybook/', () => {
-    expect(isStorybookBehaviorSupportPath('tests/e2e/storybook/storybook.ts')).toBe(true);
+    expect(isStorybookBehaviorSupportPath('tests/e2e/storybook/storybook.testUtils.ts')).toBe(true);
   });
 
   it('does not flag the spec files themselves', () => {
@@ -176,7 +176,7 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
   it('fails when a standalone entry references a non-.spec.ts file inside the lane', () => {
     const validation = validateStorybookBehaviorScenarioRegistry({
       scenarios: [],
-      standaloneSpecs: ['tests/e2e/storybook/storybook.ts'],
+      standaloneSpecs: ['tests/e2e/storybook/storybook.testUtils.ts'],
     });
 
     expect(validation.valid).toBe(false);
@@ -289,7 +289,7 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 
   it('runs the full lane for a behavior support file change', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/storybook.ts']);
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/storybook.testUtils.ts']);
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('behavior support file');

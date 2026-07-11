@@ -41,7 +41,7 @@ describe('isAppE2ESpecPath and isAppE2ESupportPath exclude release specs', () =>
 describe('isStorybookBehaviorPath', () => {
   it('flags spec and support paths under tests/e2e/storybook/', () => {
     expect(isStorybookBehaviorPath('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
-    expect(isStorybookBehaviorPath('tests/e2e/storybook/storybook.ts')).toBe(true);
+    expect(isStorybookBehaviorPath('tests/e2e/storybook/storybook.testUtils.ts')).toBe(true);
     expect(isStorybookBehaviorPath('tests/e2e/storybook/reorder/reorder.spec.ts')).toBe(true);
   });
 
@@ -64,7 +64,7 @@ describe('isAppE2ESpecPath and isAppE2ESupportPath exclude Storybook behavior pa
   });
 
   it('does not classify a Storybook behavior support file as app e2e support', () => {
-    expect(isAppE2ESupportPath('tests/e2e/storybook/storybook.ts')).toBe(false);
+    expect(isAppE2ESupportPath('tests/e2e/storybook/storybook.testUtils.ts')).toBe(false);
   });
 });
 
@@ -279,7 +279,7 @@ describe('resolveAppE2EPlan', () => {
   });
 
   it('does not trigger a full app e2e plan for a Storybook behavior support-only change', () => {
-    const plan = resolveAppE2EPlan(['tests/e2e/storybook/storybook.ts']);
+    const plan = resolveAppE2EPlan(['tests/e2e/storybook/storybook.testUtils.ts']);
 
     expect(plan.mode).toBe('skip');
   });
