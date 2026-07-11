@@ -3,6 +3,7 @@ import type { Preview } from '@storybook/vue3-vite';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import 'material-symbols/rounded.css';
 import '../src/app/styles/styles.css';
+import './reset.css';
 import './visual.css';
 
 // Some shared overlay primitives (Menu, Sheets, Tooltips) depend on an

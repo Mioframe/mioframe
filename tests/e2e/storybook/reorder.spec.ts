@@ -1,5 +1,5 @@
 import { expect, test, type CDPSession, type Locator, type Page } from '@playwright/test';
-import { openStory } from './storybook';
+import { openStory } from './storybook.testUtils';
 
 declare global {
   interface Window {

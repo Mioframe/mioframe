@@ -1,0 +1,15 @@
+/*
+ * The product app shell (`src/app/styles/styles.css`) fixes `html`/`body` to `100svh` with
+ * `overflow: auto` so the product's own root can manage viewport-chrome-aware sizing. Imported
+ * as-is into Storybook, that same rule turns `body` into its own internal scroll container
+ * instead of leaving the ordinary document/viewport scrollable: any story whose content overflows
+ * the configured viewport height silently scrolls inside `body` while `window.scrollY` never
+ * moves. Restore normal document-level scroll semantics for the Storybook runtime specifically,
+ * per the project rule that the Storybook runtime must not inherit product app effects.
+ */
+html,
+body {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}

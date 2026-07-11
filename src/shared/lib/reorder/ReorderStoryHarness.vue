@@ -286,9 +286,17 @@ const resetScrollAndOrder = () => {
   text-align: center;
 }
 
+/*
+ * Taller than the top spacer (80px) plus the container's own rendered height (280px) by a margin
+ * clearly larger than the autoscroll edge zone (56px): at rest, the container's own bottom edge
+ * must sit well outside the ancestor's own bottom edge, so a pointer parked at the container's
+ * edge (draining only the container) does not also fall inside the ancestor's own edge zone and
+ * drain it in the same stationary-pointer window. Autoscroll fallthrough coverage relies on this
+ * separation to observe the container-only and ancestor-only phases distinctly.
+ */
 .reorder-story-harness__scroll-ancestor {
   width: 420px;
-  max-height: 360px;
+  max-height: 460px;
   overflow: auto;
   border: 1px solid #ccc;
 }

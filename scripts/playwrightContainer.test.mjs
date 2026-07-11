@@ -73,36 +73,7 @@ describe('applyProcessResult', () => {
 });
 
 describe('runPlaywrightInContainer', () => {
-  it('formats profile differences from the owned comparable field list', () => {
-    // Synthetic profiles (not the real resolved local/github-actions config) so this proves the
-    // diffing mechanism itself stays correct independent of whatever the two profiles currently
-    // resolve to.
-    const leftProfile = {
-      cpus: '2',
-      memory: '4g',
-      memorySwap: '4g',
-      pidsLimit: '384',
-      timeoutSeconds: '900',
-      workers: '1',
-    };
-    const rightProfile = {
-      cpus: '2',
-      memory: '6g',
-      memorySwap: '8g',
-      pidsLimit: '512',
-      timeoutSeconds: '900',
-      workers: '2',
-    };
-
-    expect(comparePlaywrightContainerProfiles(leftProfile, rightProfile)).toEqual([
-      { key: 'memory', label: 'memory', left: '4g', right: '6g' },
-      { key: 'memorySwap', label: 'memory-swap', left: '4g', right: '8g' },
-      { key: 'pidsLimit', label: 'pids-limit', left: '384', right: '512' },
-      { key: 'workers', label: 'workers', left: '1', right: '2' },
-    ]);
-  });
-
-  it('reports no differences between the local and github-actions profiles (kept aligned by design)', () => {
+  it('resolves identical canonical resource limits for local and GitHub Actions', () => {
     const localProfile = resolvePlaywrightContainerProfile({
       GITHUB_ACTIONS: 'false',
     });
@@ -113,7 +84,21 @@ describe('runPlaywrightInContainer', () => {
     expect(comparePlaywrightContainerProfiles(localProfile, githubActionsProfile)).toEqual([]);
   });
 
-  it('resolves local resource limits matching the GitHub Actions profile outside GitHub Actions', () => {
+  it('still reports a difference when an explicit override diverges from the canonical profile', () => {
+    const localProfile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'false',
+    });
+    const overriddenProfile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'false',
+      PLAYWRIGHT_CONTAINER_MEMORY: '2g',
+    });
+
+    expect(comparePlaywrightContainerProfiles(localProfile, overriddenProfile)).toEqual([
+      { key: 'memory', label: 'memory', left: '6g', right: '2g' },
+    ]);
+  });
+
+  it('resolves conservative local resource limits outside GitHub Actions', () => {
     const profile = resolvePlaywrightContainerProfile({
       GITHUB_ACTIONS: 'false',
     });
@@ -123,7 +108,7 @@ describe('runPlaywrightInContainer', () => {
     expect(profile.memory).toBe('6g');
     expect(profile.memorySwap).toBe('8g');
     expect(profile.pidsLimit).toBe('512');
-    expect(profile.workers).toBe('2');
+    expect(profile.workers).toBe('1');
   });
 
   it('resolves the GitHub Actions profile when GITHUB_ACTIONS=true', () => {
@@ -132,10 +117,11 @@ describe('runPlaywrightInContainer', () => {
     });
 
     expect(profile.name).toBe('github-actions');
+    expect(profile.cpus).toBe('2');
     expect(profile.memory).toBe('6g');
     expect(profile.memorySwap).toBe('8g');
     expect(profile.pidsLimit).toBe('512');
-    expect(profile.workers).toBe('2');
+    expect(profile.workers).toBe('1');
   });
 
   it('prefers the explicit verify profile override over the host environment', () => {
@@ -146,7 +132,7 @@ describe('runPlaywrightInContainer', () => {
 
     expect(profile.name).toBe('github-actions');
     expect(profile.source).toBe(VERIFY_PROFILE_ENV);
-    expect(profile.workers).toBe('2');
+    expect(profile.workers).toBe('1');
   });
 
   it('rejects unsupported explicit verify profile overrides', () => {
@@ -287,7 +273,7 @@ describe('runPlaywrightInContainer', () => {
       env: process.env,
     });
     expect(runLocalCommand.mock.calls[0][0].args).toContain('--workers');
-    expect(runLocalCommand.mock.calls[0][0].args).toContain('2');
+    expect(runLocalCommand.mock.calls[0][0].args).toContain('1');
     expect(spawnSync).not.toHaveBeenCalled();
   });
 
@@ -331,7 +317,7 @@ describe('runPlaywrightInContainer', () => {
       expect(output).toContain('  memory-swap: 8g  override: PLAYWRIGHT_CONTAINER_MEMORY_SWAP');
       expect(output).toContain('  pids-limit: 512  override: PLAYWRIGHT_CONTAINER_PIDS_LIMIT');
       expect(output).toContain('  timeout: 900  override: PLAYWRIGHT_CONTAINER_TIMEOUT');
-      expect(output).toContain('  workers: 2  override: PLAYWRIGHT_CONTAINER_WORKERS');
+      expect(output).toContain('  workers: 1  override: PLAYWRIGHT_CONTAINER_WORKERS');
       expect(output).toContain(
         'If Podman reports an unsupported resource option, rerun with the matching override or adjust config/tooling.json.',
       );

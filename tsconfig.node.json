@@ -6,6 +6,7 @@
     "vite.config.*",
     "vitest.config.*",
     "playwright*.config.*",
+    "playwright*.test.*",
     "pwa-assets.config.*",
     "eslint.config.*",
     "tests/**/*.ts"
