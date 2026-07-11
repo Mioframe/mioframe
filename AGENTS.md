@@ -8,6 +8,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` refines it.
 - Read the root and applicable nested `AGENTS.md` files before editing. Use the relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
+- Update the applicable `AGENTS.md` or skill when a change moves ownership, changes a public API or dependency boundary, or changes the verification workflow.
 
 ## Architecture and implementation workflow
 
@@ -39,6 +40,7 @@ Dependency rules:
 - Use public `index.ts` entry points when available. Do not hide dependency violations behind helpers, lifecycle hooks, or deep imports.
 - Service and worker layers own persistence, protocol interpretation, indexing, lifecycle, cache invalidation, and canonical storage facts. UI layers request actions and render typed facts; they must not reconstruct service-owned state from implementation details.
 - Define errors next to the boundary that detects them. UI-facing records must not expose clients, adapters, providers, credentials, callbacks, capabilities, or service bags.
+- Do not duplicate schemas, type aliases, constants, or non-trivial algorithms across layers. Keep one owner and expose a narrow public contract.
 
 ## Required skills
 
@@ -60,9 +62,12 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - Prefer explicit, local, readable code over broad generic frameworks or hidden orchestration.
 - Reuse existing project mechanisms and algorithms when they already own the behavior. Do not create a parallel implementation that can drift.
-- Keep modules cohesive and responsibilities explicit. File size is a review signal, not a reason to split cohesive code or introduce pass-through abstractions.
+- Keep modules cohesive and responsibilities explicit. Treat 500+ line production files as an extraction review trigger, not an automatic rewrite; do not grow an ordinary implementation file beyond 500 lines without a clear cohesion-based reason.
 - Separate behavior-preserving extraction from behavior changes when practical. Remove obsolete paths, exports, tests, and comments when their replacement is introduced unless compatibility is explicitly required.
-- Keep public APIs narrow and documented with accurate TSDoc. Prefer IDs, primitives, small typed records, explicit props, emits, slots, and actions over broad configuration or mixed read/write objects.
+- Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc. Prefer IDs, primitives, small typed records, explicit props, emits, slots, and actions over broad configuration or mixed read/write objects.
+- Keep validation, parsing, and extraction close to the boundary that defines them. Use typed collection helpers for typed records instead of local assertions that paper over `Object.keys`, `Object.values`, or `Object.entries` typing.
+- Keep unit tests and their helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels; create shared test utilities only after unrelated modules need the same helper.
+- Test files may be larger when scenarios remain uniform. Split them by behavior when setup becomes conditional, fixtures stop being local, or failures no longer identify one behavior.
 - `!important` is forbidden. Shared UI changes require consumer and blast-radius review.
 - Optimize user-visible behavior for mobile browsers, large datasets, and low-end devices; keep main-thread work bounded.
 
