@@ -14,6 +14,16 @@
  * bounded release watcher that listens for the *original* pointer's own `pointerup`/`pointercancel`
  * and only arms suppression once that release actually happens (or gives up after a bounded
  * safety timeout, or once a matching `pointercancel` proves no click will ever follow).
+ *
+ * The same bounded window also re-installs the `selectstart`-prevention guard that
+ * `activeSessionEffects.ts` owns during an active drag. Diagnosed via Playwright-only scroll
+ * instrumentation (see `tests/e2e/storybook/reorder.spec.ts`'s external-order-mutation autoscroll
+ * test): once a session cancels mid-gesture, `activeSessionEffects.dispose()` removes that guard
+ * immediately, but the physical mouse button can still be down and stationary near the (former)
+ * autoscroll edge; with the guard gone, Chromium's own native "extend a text selection near a
+ * scrollable edge autoscrolls it" behavior can pick up and keep scrolling the container with zero
+ * further library-issued `scrollBy` calls. Re-arming the same guard for this bounded window
+ * prevents exactly that native behavior without reviving any part of the ended session.
  */
 import { RELEASE_WATCHER_SAFETY_TIMEOUT_MS } from './constants';
 
@@ -43,11 +53,14 @@ export interface ClickSuppressionController {
    * session is cancelled before that release is known to have happened. On a matching
    * `pointerup`, arms suppression as {@link arm} would. On a matching `pointercancel`, or once the
    * bounded safety timeout elapses, cleans up without arming suppression. Clears any previously
-   * armed suppression or pending watcher first.
+   * armed suppression or pending watcher first. Also re-installs a `selectstart`-prevention guard
+   * for the same bounded window, so native browser scrolling (Chromium's own drag-a-selection-
+   * near-an-edge autoscroll) can't continue after the session's own guards are torn down while the
+   * physical pointer is still down; see the module-level doc comment for the diagnosis.
    * @param target - The original gesture's container and pointer id to watch for.
    */
   armReleaseWatcher: (target: ReleaseWatcherTarget) => void;
-  /** Clears any pending suppression or release watcher immediately; safe to call when idle. */
+  /** Clears any pending suppression, release watcher, or guard immediately; safe when idle. */
   disarm: () => void;
 }
 
@@ -66,6 +79,12 @@ export const createClickSuppression = (): ClickSuppressionController => {
     safetyTimer: ReturnType<typeof setTimeout>;
   } | null = null;
 
+  /**
+   * The bounded post-cancellation `selectstart` guard, installed only while a release watcher is
+   * pending; see the module-level doc comment for why this specific guard is re-armed here.
+   */
+  let selectStartGuard: ((event: Event) => void) | null = null;
+
   const disarm = (): void => {
     if (armedContainerEl && clickListener) {
       armedContainerEl.removeEventListener('click', clickListener, true);
@@ -82,6 +101,11 @@ export const createClickSuppression = (): ClickSuppressionController => {
       window.removeEventListener('pointercancel', releaseWatcher.onPointerCancel);
       clearTimeout(releaseWatcher.safetyTimer);
       releaseWatcher = null;
+    }
+
+    if (selectStartGuard) {
+      document.removeEventListener('selectstart', selectStartGuard);
+      selectStartGuard = null;
     }
   };
 
@@ -122,6 +146,12 @@ export const createClickSuppression = (): ClickSuppressionController => {
 
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerCancel);
+
+    const guard = (event: Event): void => {
+      event.preventDefault();
+    };
+    document.addEventListener('selectstart', guard);
+    selectStartGuard = guard;
 
     releaseWatcher = { onPointerUp, onPointerCancel, safetyTimer };
   };

@@ -84,6 +84,9 @@ const dispatchWindowPointer = (type: string, pointerId: number): void => {
   window.dispatchEvent(event);
 };
 
+const dispatchSelectStart = (): boolean =>
+  document.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true }));
+
 describe('createClickSuppression release watcher', () => {
   it('does not arm immediate suppression when only a release watcher is started', () => {
     const container = document.createElement('div');
@@ -93,6 +96,10 @@ describe('createClickSuppression release watcher', () => {
     suppression.armReleaseWatcher({ containerEl: container, pointerId: 1 });
 
     expect(dispatchClick(container)).toBe(true);
+
+    // Never released within this test; disarm explicitly so its pending watcher/guard don't leak
+    // into a later test.
+    suppression.disarm();
   });
 
   it('arms suppression once the original pointer physically releases, even long after cancellation', () => {
@@ -122,6 +129,10 @@ describe('createClickSuppression release watcher', () => {
     dispatchWindowPointer('pointerup', 99);
 
     expect(dispatchClick(container)).toBe(true);
+
+    // The mismatched pointerup was ignored, so the watcher/guard are still pending; disarm
+    // explicitly so they don't leak into a later test.
+    suppression.disarm();
   });
 
   it('a matching pointercancel removes the watcher without arming suppression', () => {
@@ -175,5 +186,75 @@ describe('createClickSuppression release watcher', () => {
     dispatchWindowPointer('pointerup', 7);
     expect(dispatchClick(containerA)).toBe(true);
     expect(dispatchClick(containerB)).toBe(false);
+  });
+});
+
+describe('createClickSuppression post-cancellation selectstart guard', () => {
+  it('prevents selectstart while a release watcher is pending', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+
+    expect(dispatchSelectStart()).toBe(false);
+
+    // `selectstart` is guarded at the `document` level, which outlives this test's own DOM
+    // fixture; disarm so a later test's dispatch isn't caught by this instance's listener.
+    suppression.disarm();
+  });
+
+  it('stops preventing selectstart once the original pointer physically releases', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    dispatchWindowPointer('pointerup', 7);
+
+    expect(dispatchSelectStart()).toBe(true);
+  });
+
+  it('stops preventing selectstart once a matching pointercancel arrives', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    dispatchWindowPointer('pointercancel', 7);
+
+    expect(dispatchSelectStart()).toBe(true);
+  });
+
+  it('stops preventing selectstart once the bounded safety timeout elapses', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    vi.runAllTimers();
+
+    expect(dispatchSelectStart()).toBe(true);
+  });
+
+  it('does not install the guard for a normal completed-drag arm', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.arm(container);
+
+    expect(dispatchSelectStart()).toBe(true);
+  });
+
+  it('disarm removes a pending guard immediately', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const suppression = createClickSuppression();
+
+    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    suppression.disarm();
+
+    expect(dispatchSelectStart()).toBe(true);
   });
 });
