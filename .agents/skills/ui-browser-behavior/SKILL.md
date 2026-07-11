@@ -76,6 +76,8 @@ Use focused unit tests only when the tested logic is extracted into a composable
 
 Use a reproducible browser smoke check when no suitable Playwright spec exists and adding one would be broader than the task.
 
+Pointer, touch, scrolling, focus, and browser lifecycle assertions against an isolated Storybook story belong in `tests/e2e/storybook` (`playwright.storybook.config.ts`), not `tests/e2e/visual`. Storybook is a rendering harness there, not evidence that the test is visual — it must not assert screenshots.
+
 ## Mobile-first checks
 
 Assume mobile browsers and low-end devices are important. Avoid solutions that rely on hover, precise pointer input, desktop viewport assumptions, or unbounded main-thread work.

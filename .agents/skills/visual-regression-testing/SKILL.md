@@ -63,6 +63,8 @@ tests/e2e/visual/<surface>.spec.ts
 
 Prefer one spec per stable visual surface or component family. Do not mix unrelated components in one visual spec unless they intentionally share a single visual gallery.
 
+Storybook is the harness, not evidence that a test belongs here. Pointer, touch, scrolling, focus, and browser lifecycle assertions against a Storybook story belong in `tests/e2e/storybook` (`playwright.storybook.config.ts`) instead, even though they render through the same static Storybook build.
+
 ## When to add visual tests
 
 Add visual tests for:

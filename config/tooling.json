@@ -19,7 +19,7 @@
     "devServer": {
       "port": 6006
     },
-    "visualPreview": {
+    "testPreview": {
       "port": 6007,
       "strictPort": true
     },
@@ -49,22 +49,12 @@
       "maxLocalConcurrency": 1
     },
     "playwrightContainer": {
-      "local": {
-        "cpus": "2",
-        "memory": "4g",
-        "memorySwap": "4g",
-        "pidsLimit": "384",
-        "timeoutSeconds": "900",
-        "workers": "1"
-      },
-      "githubActions": {
-        "cpus": "2",
-        "memory": "6g",
-        "memorySwap": "8g",
-        "pidsLimit": "512",
-        "timeoutSeconds": "900",
-        "workers": "2"
-      }
+      "cpus": "2",
+      "memory": "6g",
+      "memorySwap": "8g",
+      "pidsLimit": "512",
+      "timeoutSeconds": "900",
+      "workers": "1"
     }
   }
 }
