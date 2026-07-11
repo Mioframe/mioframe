@@ -41,13 +41,21 @@ export const createReorderDirectives = <Key extends ReorderKey>(
       session.attachContainer(el);
     },
     unmounted(el) {
-      session.detachContainer(el);
-
-      if (registry.containerEl === el) registry.containerEl = null;
-
-      registry.itemElements.clear();
-      registry.itemKeys.clear();
-      registry.ignoreEls.clear();
+      try {
+        session.detachContainer(el);
+      } finally {
+        // Hard cleanup boundary: registry ownership must not survive a failed detach, even when
+        // `detachContainer` throws (a consumer-owned `getKeys`/`onReorder`/`onDragEnd` call during
+        // cancellation is outside the library's trust boundary). Only clear when this unmounted
+        // element is still the registered container, so an out-of-order unmount can never clobber
+        // a newer container's registration.
+        if (registry.containerEl === el) {
+          registry.containerEl = null;
+          registry.itemElements.clear();
+          registry.itemKeys.clear();
+          registry.ignoreEls.clear();
+        }
+      }
     },
   };
 

@@ -2,6 +2,29 @@
 import { computed, ref, useTemplateRef } from 'vue';
 import { useReorder, type ReorderDragEndEvent } from '@shared/lib/reorder';
 
+/**
+ * Test-fixture-only synchronous observability, read by Playwright: production `useReorder`
+ * consumers never see this. It exists because the Vue-rendered `reorder-last-drag-end` text used
+ * previously is observed by a `MutationObserver`, whose own scheduling can lag the library's real
+ * synchronous `onDragEnd` call under heavy same-frame work — this log is written from directly
+ * inside that synchronous callback instead, so a Playwright spec can use it as the authoritative
+ * cancellation timestamp. Playwright initializes `window.testReorderHarnessEvents` before the
+ * story loads; the harness only ever pushes to it when present.
+ */
+interface ReorderHarnessEvent {
+  type: 'drag-end';
+  cancelled: boolean;
+  timeMs: number;
+  scrollTop: number | null;
+  order: string[];
+}
+
+declare global {
+  interface Window {
+    testReorderHarnessEvents?: ReorderHarnessEvent[];
+  }
+}
+
 interface HarnessItem {
   id: string;
   label: string;
@@ -57,6 +80,14 @@ const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReor
     dragStartCount.value += 1;
   },
   onDragEnd: (event: ReorderDragEndEvent<string>) => {
+    // Recorded synchronously, before the counters below, so it reflects the real callback timing.
+    window.testReorderHarnessEvents?.push({
+      type: 'drag-end',
+      cancelled: event.cancelled,
+      timeMs: performance.now(),
+      scrollTop: containerEl.value?.scrollTop ?? null,
+      order: [...keys.value],
+    });
     dragEndCount.value += 1;
     lastDragEndPayload.value = JSON.stringify(event);
   },

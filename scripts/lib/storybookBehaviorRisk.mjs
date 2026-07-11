@@ -42,12 +42,10 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
-      'tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts',
     ],
     specs: [
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
-      'tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts',
     ],
   },
 ];

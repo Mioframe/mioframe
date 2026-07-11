@@ -32,19 +32,19 @@
  * `activeSessionEffects.dispose()` removes `activeSessionEffects.ts`'s own active-drag guard. A
  * causal Playwright A/B investigation (see `tests/e2e/storybook/reorder.autoscroll.spec.ts`'s
  * external-order-mutation autoscroll test) disproved that theory: with the guard fully disabled, a
- * real text selection reliably formed and extended across the post-cancellation window, yet the
- * observed `scrollTop` settling after cancellation was statistically identical, in both shape and
- * magnitude, to runs where no selection ever formed. A further controlled investigation
- * (`tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts`) also ruled out CSS scroll
- * anchoring (the same result reproduces with `overflow-anchor: none`, and even with no DOM reorder
- * at all) and a literal `scroll-behavior: smooth` interaction. In every one of those conditions,
- * zero additional library-issued `scrollBy`/`window.scrollBy` calls are ever timestamped after
- * cancellation — the settling is not caused by selection, scroll anchoring, smooth-scroll CSS, or
- * any further library scroll write. A more specific cause (e.g. a particular browser compositor
- * mechanism) is deliberately not claimed: it could not be distinguished from lag in the
- * DOM-mutation-based way these investigations observe "cancelled". Do not reintroduce a post-cancel
- * `selectstart` guard, and do not attribute the settling to a specific browser mechanism, without
- * new causal evidence.
+ * real text selection reliably formed and extended across the post-cancellation window, yet no
+ * `scrollTop` movement of any kind followed cancellation, with or without a selection. An earlier
+ * version of that same investigation appeared to show `scrollTop` still "settling" for a further
+ * handful of frames after cancellation; a later, more precise measurement — comparing rAF-sampled
+ * `scrollTop` directly against the harness's own synchronous `onDragEnd` timestamp
+ * (`ReorderStoryHarness.vue`), instead of the delayed `MutationObserver`-observed DOM text used
+ * previously — found zero further `scrollTop` movement in any frame after real cancellation. That
+ * confirms the earlier "settling" was measurement lag in the DOM-mutation-based signal itself, not
+ * real continued scrolling, and rules out CSS scroll anchoring and `scroll-behavior: smooth` as
+ * causes along with it (`overflow-anchor: none` and a no-DOM-reorder control both reproduced the
+ * same zero-further-`scrollBy` and zero-further-movement result). Do not reintroduce a post-cancel
+ * `selectstart` guard, and do not attribute renewed post-cancellation movement to a specific
+ * browser mechanism, without new causal evidence using the synchronous signal.
  */
 import { RELEASE_WATCHER_SAFETY_TIMEOUT_MS } from './constants';
 

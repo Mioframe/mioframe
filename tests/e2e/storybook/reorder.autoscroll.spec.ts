@@ -22,7 +22,7 @@ interface ReorderScrollLogEntry {
   afterTop: number;
   /** Monotonic call order, assigned in-page. */
   seq: number;
-  /** `performance.now()` at call time, comparable to `testReorderCancelledAtMs`. */
+  /** `performance.now()` at call time, comparable to a harness `drag-end` event's `timeMs`. */
   timeMs: number;
 }
 
@@ -32,11 +32,28 @@ interface SelectStartLogEntry {
   timeMs: number;
 }
 
+/**
+ * The harness's own synchronous `onDragEnd` event log (see `ReorderStoryHarness.vue`), used as
+ * the authoritative cancellation timestamp instead of observing a Vue-rendered DOM mutation: a
+ * `MutationObserver` on rendered text can lag the library's real synchronous callback under heavy
+ * same-frame work, and a controlled Playwright investigation (rAF-sampled `scrollTop` compared
+ * against this exact signal) found zero `scrollTop` movement in any frame after it — confirming
+ * that a prior appearance of continued post-cancellation scrolling, measured via the DOM-mutation
+ * signal, was exactly that lag, not real further movement.
+ */
+interface ReorderHarnessEvent {
+  type: 'drag-end';
+  cancelled: boolean;
+  timeMs: number;
+  scrollTop: number | null;
+  order: string[];
+}
+
 declare global {
   interface Window {
     testReorderScrollLog?: ReorderScrollLogEntry[];
-    testReorderCancelledAtMs?: number | null;
     testReorderSelectStartLog?: SelectStartLogEntry[];
+    testReorderHarnessEvents?: ReorderHarnessEvent[];
   }
 }
 
@@ -65,17 +82,18 @@ const autoscrollBudgetMs = (extentPx: number): number =>
 /**
  * Installs Playwright-only instrumentation that records every native `Element.scrollBy`/
  * `window.scrollBy` call (target identity, requested delta, before/after position, and a
- * monotonic timestamp), plus the timestamp `onDragEnd(cancelled: true)` first becomes observable
- * in the DOM. Must be installed before the story navigates so the wrap is already in place before
- * any library code runs; the caller is responsible for (re)navigating afterward.
+ * monotonic timestamp), plus initializes `window.testReorderHarnessEvents` so
+ * `ReorderStoryHarness.vue`'s synchronous `onDragEnd` log has somewhere to write. Must be
+ * installed before the story navigates so the wrap and the log are already in place before any
+ * library code runs; the caller is responsible for (re)navigating afterward.
  * @param page - The Playwright page to instrument.
  * @returns A promise that resolves once the instrumentation script is registered.
  */
 const installScrollInstrumentation = async (page: Page): Promise<void> => {
   await page.addInitScript(() => {
     window.testReorderScrollLog = [];
-    window.testReorderCancelledAtMs = null;
     window.testReorderSelectStartLog = [];
+    window.testReorderHarnessEvents = [];
     let seq = 0;
 
     const targetIdentity = (element: Element): string =>
@@ -166,47 +184,21 @@ const installScrollInstrumentation = async (page: Page): Promise<void> => {
       });
     }
     window.scrollBy = patchedWindowScrollBy;
-
-    const isCancelledPayload = (value: unknown): boolean =>
-      typeof value === 'object' &&
-      value !== null &&
-      'cancelled' in value &&
-      value.cancelled === true;
-
-    const observeCancellation = (): void => {
-      const el = document.querySelector('[data-testid="reorder-last-drag-end"]');
-      if (!el) {
-        requestAnimationFrame(observeCancellation);
-        return;
-      }
-      const check = (): void => {
-        if (window.testReorderCancelledAtMs !== null) return;
-        try {
-          const parsed: unknown = JSON.parse(el.textContent || 'null');
-          if (isCancelledPayload(parsed)) window.testReorderCancelledAtMs = performance.now();
-        } catch {
-          // Not yet valid JSON (initial empty text); wait for the next mutation.
-        }
-      };
-      new MutationObserver(check).observe(el, {
-        childList: true,
-        characterData: true,
-        subtree: true,
-      });
-      check();
-    };
-    requestAnimationFrame(observeCancellation);
   });
 };
 
 const getScrollLog = (page: Page): Promise<ReorderScrollLogEntry[]> =>
   page.evaluate(() => window.testReorderScrollLog ?? []);
 
-const getCancelledAtMs = (page: Page): Promise<number | null> =>
-  page.evaluate(() => window.testReorderCancelledAtMs ?? null);
-
 const getSelectStartLog = (page: Page): Promise<SelectStartLogEntry[]> =>
   page.evaluate(() => window.testReorderSelectStartLog ?? []);
+
+/**
+ * @param page - The Playwright page to read from.
+ * @returns The harness's own synchronous `onDragEnd` event log (see `ReorderStoryHarness.vue`).
+ */
+const getHarnessEvents = (page: Page): Promise<ReorderHarnessEvent[]> =>
+  page.evaluate(() => window.testReorderHarnessEvents ?? []);
 
 test.beforeEach(async ({ page }) => {
   await openStory(page, STORY_ID);
@@ -339,11 +331,12 @@ test.describe('autoscroll', () => {
     await page.mouse.up();
   });
 
-  test('an external order mutation while autoscrolling cancels before any further library scroll write, with no selection involvement, and the container settles to a stable position', async ({
+  test('an external order mutation while autoscrolling cancels before any further library scroll write, with no selection involvement, and the container stays stable', async ({
     page,
   }) => {
     // Instrumentation must be installed and the story navigated with it in place before the
-    // gesture starts, so every native scrollBy call the library could possibly make is captured.
+    // gesture starts, so every native scrollBy call and the harness's own drag-end log are
+    // captured/initialized from the very first frame.
     await installScrollInstrumentation(page);
     await openStory(page, STORY_ID);
 
@@ -373,72 +366,65 @@ test.describe('autoscroll', () => {
     await page.getByTestId('reorder-control-reverse-order').evaluate((el: HTMLElement) => {
       el.click();
     });
+    const orderAfterMutation = await getOrder(page);
 
-    // 3. Wait for exactly one cancelled onDragEnd.
+    // 3. Exactly one cancelled onDragEnd, recorded synchronously by the harness. This is the
+    // authoritative cancellation boundary: unlike observing the same event through its
+    // Vue-rendered DOM text, it cannot lag behind the library's real synchronous callback. A
+    // controlled Playwright investigation (rAF-sampled `scrollTop` compared against this exact
+    // signal, for a further 300ms/~20 frames) found zero `scrollTop` movement after it — the
+    // earlier appearance of continued post-cancellation scrolling, measured only via the
+    // DOM-mutation signal, was exactly that signal's own lag, not real further movement. See
+    // `ReorderStoryHarness.vue`'s `onDragEnd` handler.
     await expect.poll(() => getCount(page, 'reorder-drag-end-count'), { timeout: 10000 }).toBe(1);
     const lastDragEnd = await getLastDragEnd(page);
     expect(lastDragEnd?.cancelled).toBe(true);
+    const reorderCountAtCancellation = await getCount(page, 'reorder-reorder-count');
 
-    const cancelledAtMs = await getCancelledAtMs(page);
-    expect(cancelledAtMs).not.toBeNull();
+    const harnessEvents = await getHarnessEvents(page);
+    const dragEndEvent = harnessEvents.at(-1);
+    expect(dragEndEvent?.cancelled).toBe(true);
+    if (!dragEndEvent) throw new Error('unreachable: asserted defined above');
+    const cancelledAtMs = dragEndEvent.timeMs;
 
-    // 4. Wait for the container to settle: a causal A/B investigation (guard-disabled Control A,
-    // reproducing a real, confirmed text selection via `selectionchange`/`rangeCount`, vs.
-    // guard-enabled Control B, with zero selection activity) found the `scrollTop` reported right
-    // at cancellation is not yet final — it keeps climbing toward its eventual resting value for a
-    // further handful of animation frames, statistically identically in both conditions. That
-    // rules out Chromium's native "extend a selection near a scrollable edge autoscrolls it"
-    // behavior as the cause: it never correlates with whether a selection exists. A further
-    // controlled investigation (`reorder.postCancellationScrollDiagnosis.spec.ts`) also ruled out
-    // CSS scroll anchoring (the same zero-further-`scrollBy` result reproduces with
-    // `overflow-anchor: none` and even with no DOM reorder at all) and a literal
-    // `scroll-behavior: smooth` interaction (`getComputedStyle` stays `'auto'`). No further
-    // library-issued `scrollBy` call is ever timestamped after cancellation in any of those
-    // conditions, so this is not a library or CSS-driven scroll; a more specific cause is not
-    // claimed here, since it could not be distinguished from lag in this test's own
-    // DOM-mutation-based "cancelled" observation. Poll for two consecutive equal readings, bounded
-    // well above the settling window observed in that investigation (well under 200ms), before
-    // treating the position as final.
-    let previousScrollTop = await container.evaluate((el) => el.scrollTop);
-    await expect
-      .poll(
-        async () => {
-          const current = await container.evaluate((el) => el.scrollTop);
-          const stable = current === previousScrollTop;
-          previousScrollTop = current;
-          return stable;
-        },
-        { timeout: 2000, intervals: [30] },
-      )
-      .toBe(true);
-    const scrollTopAfterSettle = previousScrollTop;
+    // 4. `draggingKey` is cleared.
+    expect(await getDraggingKey(page)).toBe('');
 
-    // 5/6. Keep the physical mouse button down and observe both the real scroll position and the
-    // instrumented call log across several more real animation frames, well past settling.
-    await page.waitForTimeout(300);
-
+    // 5/6. No library-issued scroll write, and no selection, is ever timestamped after
+    // cancellation: `processActiveFrame` in `PointerSession.ts` runs the controlled-order
+    // mutation check before any autoscroll write each frame, and `cancelSession` clears `session`
+    // synchronously, so `scheduleFrame`'s own `session` guard prevents any further frame (queued
+    // or reentrant) from running at all. The active-drag guard in `activeSessionEffects.ts` stays
+    // installed until that same synchronous cancellation removes it, so no `selectstart` ever
+    // reaches the document either.
     const scrollLog = await getScrollLog(page);
-    const writesAfterCancellation = scrollLog.filter(
-      (entry) => cancelledAtMs !== null && entry.timeMs > cancelledAtMs,
-    );
+    const writesAfterCancellation = scrollLog.filter((entry) => entry.timeMs > cancelledAtMs);
     const selectStartAfterCancellation = (await getSelectStartLog(page)).filter(
-      (entry) => cancelledAtMs !== null && entry.timeMs > cancelledAtMs,
+      (entry) => entry.timeMs > cancelledAtMs,
     );
-
-    // No library-issued scroll write occurs after cancellation: `processActiveFrame` in
-    // `PointerSession.ts` runs the controlled-order mutation check before any autoscroll write
-    // each frame, and `cancelSession` clears `session` synchronously, so `scheduleFrame`'s own
-    // `session` guard prevents any further frame (queued or reentrant) from running at all.
     expect(writesAfterCancellation).toEqual([]);
-    // Selection is never even attempted: the active-drag guard in `activeSessionEffects.ts` is
-    // still installed at the moment of cancellation (it is only removed as part of this same
-    // synchronous cancellation), so no `selectstart` reaches the document during this test.
     expect(selectStartAfterCancellation).toEqual([]);
-    // Once settled, the position stays exactly there: no ongoing scroll of any kind remains.
-    expect(await container.evaluate((el) => el.scrollTop)).toBe(scrollTopAfterSettle);
 
-    // 7. Release the pointer only after every observation above has completed.
+    // 7. The library never rolls back or overwrites the externally supplied order: the order the
+    // harness's synchronous event captured at cancellation, and the live order read back now,
+    // both still match the externally-mutated order from step 2.
+    expect(dragEndEvent.order).toEqual(orderAfterMutation);
+    expect(await getOrder(page)).toEqual(orderAfterMutation);
+
+    // 8. No later `onReorder` callback occurs.
+    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAtCancellation);
+
+    // 9. The scroll position recorded synchronously at cancellation matches the container's
+    // position read back immediately, and stays there through a bounded real-time window well
+    // past the confirmed-zero-movement window above — the same invariant the controlled
+    // investigation proved, kept here as a narrow regression guard.
+    expect(await container.evaluate((el) => el.scrollTop)).toBe(dragEndEvent.scrollTop);
+    await page.waitForTimeout(300);
+    expect(await container.evaluate((el) => el.scrollTop)).toBe(dragEndEvent.scrollTop);
+
+    // 10. Releasing the still-held physical pointer afterward does not fire another onDragEnd.
     await page.mouse.up();
+    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
   });
 
   test.describe('viewport fallback', () => {
