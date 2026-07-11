@@ -1,6 +1,6 @@
 ---
 name: verification
-description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures or warnings, avoiding duplicate verification runs, or preparing the final VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
+description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures or warnings, avoiding duplicate verification runs, or preparing the final TASK RESULT and VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
 ---
 
 # Verification workflow
@@ -20,6 +20,10 @@ Do not replace the final read-only check with manually selected commands. Do not
 A local coding agent must not report "done", "fixed", "ready", or equivalent completion after code edits unless it includes the final local `pnpm verify` result. If `pnpm verify` was not run, the work is not complete; say `not run`, explain why, and list the exact remaining command.
 
 Local coding agents work only with repository files and local commands. Do not treat GitHub CI, PR threads, PR metadata, reviewer requests, or bot comments as actions the local coding agent can complete. Leave GitHub state for the reviewer unless the user explicitly assigns GitHub work to a GitHub-capable assistant.
+
+If CI auto-commits safe fixer output to the current branch, synchronize the local checkout before continuing so implementation and final verification use the actual branch head.
+
+Unless the assigned task explicitly targets repository-owned verification infrastructure, treat the verification runner and its browser/container runtime as an opaque project boundary. For ordinary product work, do not invoke, inspect, configure, or independently diagnose Podman, Docker, container sockets, runtime directories, or other infrastructure used internally by `pnpm verify`; report the failing verify step and its own output instead. For an explicit verification-infrastructure task, inspect only the relevant repository-owned scripts and configuration, keep `pnpm verify` as the public entry point, and do not bypass its ownership boundaries.
 
 ## When to use fix mode
 
@@ -44,12 +48,16 @@ pnpm verify --only eslint --files <paths...>
 pnpm verify --only type-check
 pnpm verify --only unit-tests --files <paths...>
 pnpm verify --only e2e --files <spec-paths...>
-pnpm verify --only visual
+pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only visual --files <paths...>
+pnpm verify --only mutation --files <paths...>
 ```
+
+When an `AGENTS.md`, skill, or project document names a minimum underlying check such as `pnpm type-check`, raw Vitest, Playwright, or Stryker, run the corresponding `pnpm verify --only <label>` form instead whenever the verify runner supports that mode. Direct commands are diagnostic or exceptional modes, not completion gates.
 
 Do not run raw `vitest`, `playwright`, `eslint`, `oxlint`, `oxfmt`, `pnpm type-check`, visual, mutation, or e2e commands as a substitute for verify-managed checks.
 
-Raw underlying commands are allowed only for narrow diagnostics after a verify-managed check fails, or when the verify script cannot express the required mode. Report them as diagnostic commands, not verification gates, and still return to verify-managed checks before completion.
+Raw underlying commands are allowed only for narrow code or test diagnostics after a verify-managed check fails, or when the verify script cannot express the required mode. Report them as diagnostic commands, not verification gates, and still return to verify-managed checks before completion. For ordinary product work, this exception does not permit direct diagnosis of the verification runner's container or browser infrastructure.
 
 `pnpm verify --only e2e` alone is not a forced e2e run when the inferred e2e scope is empty.
 
@@ -86,7 +94,7 @@ Examples:
 - verify script changes: check default mode, `--fix`, and `--verbose` when affected;
 - GitHub Actions changes: ensure the workflow command still exposes useful logs and annotations;
 - Storybook changes: run the Storybook build or the narrow visual command that exercises the changed config;
-- Playwright config changes: run the affected project or config, not only a generic unit test;
+- Playwright config changes: run the affected verify-managed project or config mode, not only a generic unit test;
 - package, dependency, or config changes: run type-check or build when runtime behavior or generated types can be affected.
 
 Do not rely on final `pnpm verify` alone when the changed behavior is a mode that `pnpm verify` does not exercise directly.
@@ -99,7 +107,7 @@ If `pnpm verify` fails:
 2. Fix the failure if it is caused by the current change.
 3. Rerun the narrow failed check through `pnpm verify --only <label>` when possible.
 4. Rerun final `pnpm verify` before reporting completion.
-5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output.
+5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output. For ordinary product work, do not independently diagnose infrastructure behind the verify step.
 6. Do not claim the task is complete while final verification is failing.
 7. If `pnpm verify` cannot start because verification is already running, run `pnpm verify:status`, inspect `.verify/logs`, and report the status clearly.
 8. If `pnpm verify:status` reports that verification is ready to resume, run `pnpm verify:resume` only after inspecting `.verify/logs`.
@@ -129,11 +137,31 @@ Do not start manual e2e, visual, mutation, full lint, or full type-check command
 
 Use only `pnpm verify`, `pnpm verify:status`, and `pnpm verify:resume` for verification state. Do not use unlisted commands for that workflow.
 
+## Task completion status
+
+Before the final response, compare the result with the task acceptance criteria, the architecture handoff and implementation preflight when applicable, and all required verification.
+
+Report exactly one task status:
+
+- `complete`: all required scope, acceptance criteria, and verification are satisfied, with no known required work remaining;
+- `partial`: useful work is implemented, but required scope, cleanup, documentation, or verification remains;
+- `blocked`: further progress requires an unresolved decision, unavailable input, unavailable capability, or handoff change that the coding agent cannot resolve.
+
+Do not use completion-equivalent wording such as `done`, `fixed`, `ready`, `code-complete`, `fully implemented`, or `all defects fixed` unless the task status is `complete`.
+
+A failed, skipped, unavailable, or incomplete required verification makes the task status `partial` or `blocked`, never `complete`. Use `blocked` only when the agent cannot continue independently; an ordinary failing test is `partial` until the agent has exhausted the permitted fixes.
+
+`TASK RESULT: complete` confirms only the coding agent's assigned scope and local evidence. It does not approve the architecture, GitHub CI, PR review, merge readiness, or product-task closure.
+
 ## Final response
 
-Always include this verification block after edits:
+Always include both blocks after edits:
 
 ```text
+TASK RESULT
+status: complete | partial | blocked
+remaining: none | <remaining required work, verification, or blocker>
+
 VERIFY RESULT
 command: pnpm verify
 status: passed | failed | not run | blocked by active local verification

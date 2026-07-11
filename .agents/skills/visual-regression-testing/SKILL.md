@@ -101,8 +101,8 @@ Before adding or updating snapshots:
 5. Wait for fonts, icons, and async rendering to settle before taking the screenshot.
 6. Mask dynamic regions when they cannot be made deterministic.
 7. Keep screenshots small enough for reviewers to understand the diff.
-8. Accept or refresh baselines only from stable Linux/Chromium rendering such as CI or a pinned Playwright image through Podman; treat local diffs from other environments as advisory.
-9. Do not refresh baselines from headed mode, do not hide ordinary text, and do not raise screenshot thresholds just to suppress text anti-aliasing noise.
+8. Accept or refresh baselines only from stable Linux/Chromium rendering such as CI or the canonical pinned Playwright container flow; treat local host-rendered diffs from other environments as advisory.
+9. Do not refresh baselines from headed mode, hide ordinary text, or raise screenshot thresholds only to suppress text anti-aliasing noise.
 
 ## Interaction state rule
 
@@ -116,19 +116,21 @@ Do not assert business behavior in visual tests. Use e2e tests for behavior and 
 
 ## Commands
 
-Run the focused visual spec while developing:
+Run the visual gate through the repository verification entry point:
 
 ```bash
-pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts
+pnpm verify --only visual --files <changed-source-story-or-visual-spec-paths...>
 ```
 
-Update snapshots only when the visual change is intentional:
+Update snapshots only when the visual change is intentional and after inspecting the diff:
 
 ```bash
-pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts --update-snapshots
+pnpm test:visual:update
+pnpm verify --only visual --files <changed-source-story-or-visual-spec-paths...>
 ```
 
-Do not update snapshots as a reflex. Inspect the diff first and confirm the appearance change is intended.
+Do not invoke Playwright directly as a verification substitute. Final completion still requires the read-only `pnpm verify` defined by the `verification` skill.
+
 If a test intentionally verifies typography or text rendering, keep it explicit and separate from general-purpose visual baselines.
 
 ## Review checklist

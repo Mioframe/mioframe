@@ -1,39 +1,97 @@
 # /
 
-Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
+Applies to the whole repository unless a deeper `AGENTS.md` refines it.
+
+## Source of truth and instruction loading
+
+- The current repository, its `AGENTS.md` tree, `.agents/skills/*/SKILL.md`, project documentation, code, and tests are the source of truth.
+- Read the root and applicable nested `AGENTS.md` files before editing. Use the relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
+- Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
+- If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
+
+## Architecture and implementation workflow
+
+- For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, use `architect-handoff` before implementation.
+- Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while the handoff is missing, contradicted, or `not ready`.
+- Prefer the minimum complete design for confirmed requirements. Every added abstraction, state, layer, compatibility path, recovery mechanism, guarantee, or optimization must map to a current requirement, existing consumer, repository invariant, platform constraint, or measured need.
+- Compare the proposed design with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
+- Treat the handoff as the contract for tasking, implementation, PR description, and review. If new facts invalidate it, stop and update it explicitly.
+- Preserve existing user scenarios unless the task explicitly changes them. Reachability alone is not preservation when discoverability, interaction tier, steps, or context regress.
+- If two correction rounds still add concepts, workarounds, ownership drift, mixed responsibilities, or missing scenarios, stop patching and redo the architecture decision.
+
+## Ownership and dependency direction
+
+- `src/app`: bootstrap, routing, global shells, and global styles.
+- `src/pages`: route and pane composition, navigation, and pane layout state.
+- `src/widgets`: product-block composition from lower layers.
+- `src/features`: user-triggered actions, flows, and feature state.
+- `src/entities`: domain models, domain reads, entity operations, and small entity UI.
+- `src/shared`: upper-layer-independent infrastructure, services, schemas, utilities, and shared UI.
+
+Dependency rules:
+
+- `shared` must not import upper layers.
+- `entities` may import only `shared`.
+- `features` may import `entities` and `shared`.
+- `widgets` and `pages` may compose lower layers but must not own domain rules or duplicate lower-layer state.
+- UI-facing layers may access background logic only through explicit public proxy/client APIs; do not directly import `*Service` modules.
+- Keep behavior in the layer that owns it. Do not move logic into `shared`, a widget, or a page merely to remove duplication or reduce file count.
+- Use public `index.ts` entry points when available. Do not hide dependency violations behind helpers, lifecycle hooks, or deep imports.
+- Service and worker layers own persistence, protocol interpretation, indexing, lifecycle, cache invalidation, and canonical storage facts. UI layers request actions and render typed facts; they must not reconstruct service-owned state from implementation details.
+- Define errors next to the boundary that detects them. UI-facing records must not expose clients, adapters, providers, credentials, callbacks, capabilities, or service bags.
+
+## Required skills
+
+Use the applicable skill instead of duplicating its rules in the task:
+
+- `material3-guidelines`: user-visible UI/UX and Material decisions;
+- `vue-component-implementation`: `.vue` components and UI composables;
+- `shared-ui-implementation`: public or materially changed `src/shared/ui` primitives, paired with Material guidance;
+- `test-first`: reproducible behavior changes, bug fixes, migrations, storage semantics, and transformations;
+- `component-contract-testing`: small Vue render/props/emits/slots/wiring contracts;
+- `ui-browser-behavior`: layout, focus, keyboard, pointer/touch, scrolling, overlays, browser APIs, and mobile behavior;
+- `visual-regression-testing`: appearance and screenshot coverage;
+- `mutation-testing`: high-risk pure/domain/service logic when applicable;
+- `crdt-storage`: Automerge, VFS, storage, repository lifecycle, and managed resources;
+- `diagnostic-events`: Sentry-backed diagnostics, privacy, and error reporting;
+- `verification`: focused checks, failure handling, and final task/verify reporting.
+
+## Implementation quality
+
+- Prefer explicit, local, readable code over broad generic frameworks or hidden orchestration.
+- Reuse existing project mechanisms and algorithms when they already own the behavior. Do not create a parallel implementation that can drift.
+- Keep modules cohesive and responsibilities explicit. File size is a review signal, not a reason to split cohesive code or introduce pass-through abstractions.
+- Separate behavior-preserving extraction from behavior changes when practical. Remove obsolete paths, exports, tests, and comments when their replacement is introduced unless compatibility is explicitly required.
+- Keep public APIs narrow and documented with accurate TSDoc. Prefer IDs, primitives, small typed records, explicit props, emits, slots, and actions over broad configuration or mixed read/write objects.
+- `!important` is forbidden. Shared UI changes require consumer and blast-radius review.
+- Optimize user-visible behavior for mobile browsers, large datasets, and low-end devices; keep main-thread work bounded.
+
+## Naming and repository conventions
+
+- Use `pnpm` for package management and project commands. Use Conventional Commits.
+- `pages` and `widgets` directories use PascalCase; other submodules use lower camel case.
+- Vue components and class-centric files use PascalCase; other TypeScript files use lower camel case or lowercase.
+- Feature modules use user-action names such as `<domain><Action>`; entity modules use stable domain concepts.
+- Visual components use concrete surface suffixes such as `Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, or `State`. Reserve `MD*` for shared Material-style primitives.
+- `use*` exposes reactive or lifecycle-managed capabilities; `setup*` wires dependencies and cleanup; `define*` is side-effect-light; `create*` returns a fresh owned instance; `get*` derives or looks up; `is*` is boolean; `zod*` exports schemas; `*Service` is background infrastructure; `on*` names handlers; `$` suffix is reserved for raw RxJS observables.
+- Add a child `AGENTS.md` only for stable local invariants that the parent cannot express cleanly. Child files refine rather than repeat parent rules.
 
 ## Mandatory verification
 
-Use the `verification` skill when choosing targeted checks, using fix mode, interpreting failures, or preparing the final verification report.
+- Use the `verification` skill for targeted checks, fix mode, failure interpretation, and the final report.
+- Use `pnpm verify --fix` only when safe automatic formatting or lint fixes are useful.
+- Before reporting completion after edits, run the final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
+- Use `pnpm verify --only <label> --files ...` for focused feedback when supported. Do not substitute raw underlying test, lint, visual, mutation, or e2e commands for verify-managed checks.
+- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active.
+- If final verification fails or required verification is missing, do not claim the task is complete. Report the exact failure and remaining work.
 
-During implementation, use this command only when automatic formatting or lint fixes are useful:
-
-```bash
-pnpm verify --fix
-```
-
-For same-repository pull requests, CI may auto-commit safe mechanical fixer output produced by `pnpm ci:autofix` before the final read-only gate, but only when `BEAVER_CI_AUTOFIX_TOKEN` is configured. `pnpm ci:autofix` is limited to changed-file `oxfmt`, `oxlint --fix`, and `eslint --fix`; it must not run expensive verification gates or auto-update visual snapshots. Without that secret, CI may still run read-only verification but must not push autofix commits. Agents should still run `pnpm verify --fix` locally when useful before the final local `pnpm verify`.
-
-Before reporting completion after edits, always run the read-only check:
-
-```bash
-pnpm verify
-```
-
-Do not replace the final read-only check with manually selected checks. The final verification must not use `--fix`.
-
-If `pnpm verify` fails, fix failures caused by the change. Otherwise report the exact failing command and output, and do not claim the task is complete. After `pnpm verify`, report the verify summary itself, including active profile/environment and whether unresolved CI-profile risk remains. Do not collapse a pass-with-risk result to just "verify passed".
-
-For local verification safety, agents may run focused checks for limited files, but must not start multiple expensive checks in parallel. Use `pnpm verify --only <label> --files ...` for focused local feedback, keep full `pnpm verify` as the completion gate, and if an expensive command is already running, inspect its logs or wait instead of starting another heavy command.
-
-If `pnpm verify` exits because another local verification or a standalone expensive command is already active, do not rerun `pnpm verify` immediately. Run `pnpm verify:status`, inspect `.verify/logs`, and report `VERIFY RESULT: blocked by active local verification` when the final read-only gate could not start. `pnpm verify:status` reports both the verify lock and the expensive-command lock so agents can distinguish which lock is blocking.
-If local Playwright-backed checks need CI-equivalent confidence, rerun the relevant verify step with `--profile github-actions` or `MIOFRAME_VERIFY_PROFILE=github-actions`; plain `pnpm verify` remains the default local workflow.
-
-Do not start manual e2e, visual, mutation, full lint, or full type-check commands while the local verify lock is active. `CI=true` in a local shell or container does not bypass local verification safety; only `GITHUB_ACTIONS=true` counts as GitHub Actions.
-
-Final response must include:
+Final response after edits must include:
 
 ```text
+TASK RESULT
+status: complete | partial | blocked
+remaining: none | <remaining required work, verification, or blocker>
+
 VERIFY RESULT
 command: pnpm verify
 status: passed | failed | not run | blocked by active local verification
@@ -42,229 +100,13 @@ reason if not run:
 
 ## Release
 
-`develop` is the active development branch; `main` is the stable public
-branch; stable publish only happens from `main`. Every PR into `develop` or
-`main` must bump `package.json` version, with narrow, test-covered
-exceptions for pre-tag release repairs and release sync-back PRs from `main`
-into `develop` (see `docs/release.md#pre-tag-release-repair` and
-`docs/release.md#release-sync-back`). `develop <-> main` synchronization
-PRs must use a merge commit, never squash or rebase. `pnpm verify` stays the
-focused development gate; `pnpm verify:release`
-(`node scripts/verify.mjs --full`) is the full-project release gate required
-for `main`. See `docs/release.md` for the full policy and
-`docs/release-checklist.md` for the promotion and hotfix checklist.
-
-## Contains
-
-- `src/app`: bootstrap, routing, global shells, and global styles.
-- `src/pages`: route-level and pane-level composition plus navigation state.
-- `src/widgets`: screen-scale compositions built from lower layers.
-- `src/features`: user-triggered flows such as dialogs, forms, menus, and destructive actions.
-- `src/entities`: domain read models, typed access patterns, and small reusable UI.
-- `src/shared`: cross-layer infrastructure, background services, schemas, utilities, and shared UI.
-
-## Patterns
-
-- Prefer plan-first implementation over broad discovery.
-- For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, start from an explicit architecture handoff before implementation and use the `architect-handoff` skill.
-- The architecture handoff must cover goal, non-goals, affected scenarios, ownership matrix, source of truth, state/API shape, rejected approaches, acceptance matrix, risk matrix, required verification, and forbidden paths.
-- Treat the architecture handoff as the contract for agent tasks, implementation preflight, implementation, and PR review. If implementation details contradict the handoff, stop and resolve the mismatch instead of silently choosing a different architecture.
-- Use the `implementation-preflight` skill before non-trivial implementation work to identify owner boundaries, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
-- Persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, and cross-layer behavior must start from architecture handoff and implementation preflight; do not patch individual files before ownership, source of truth, affected consumers, compatibility, and verification are explicit.
-- Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
-- For cross-layer changes, write a compact owner map before production edits: source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner. If any owner is unclear, stop and resolve the architecture before editing.
-- Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.
-- Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
-- Pages may compose panes and own route navigation state, but must not orchestrate provider/service recovery flows, permission or auth prompts, pending request registries, or duplicate entity data reads. Put provider recovery state and user actions in entities/features/widgets.
-- Errors must be defined next to the boundary that owns and detects the failure. Provider failures belong next to the provider; service failures belong next to the service. Do not define a provider error in a service module only because the service supplies surrounding context.
-- UI-facing display records must not expose capabilities, credentials, clients, adapters, provider instances, callbacks, or service bags. Expose these only through explicit action or recovery APIs.
-- Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern. Raw `cause` may be preserved in trusted in-app proxy transfer. Do not place capabilities, clients, callbacks, or provider objects in `message`, `cause`, `toJSON`, or user-facing payloads.
-- Keep files small enough for agents to reason about locally. Prefer 100-300 lines for new production implementation files, treat 300-500 lines as acceptable only when the file is cohesive, and avoid growing ordinary implementation files beyond 500 lines without a clear reason.
-- Treat 500+ line implementation files as an extraction review trigger, not an automatic rewrite trigger. Before adding logic to such a file, identify its current responsibilities and extract the smallest stable unit that matches the change.
-- Avoid keeping 700+ line implementation files unless they are linear, generated-like, schema-heavy, registry-like, or mostly repetitive config/test data.
-- When extracting from a large or mixed-responsibility file, extract by FSD ownership first: pure logic to `shared/lib`, infrastructure to `shared/service`, domain reads to `entities`, user actions to `features`, and composition to `widgets` or `pages`.
-- Do not split files by line count alone. Keep one cohesive module intact when splitting would hide invariants, create noisy pass-through modules, or make imports harder to trace.
-- For Vue components, keep templates focused on declarative layout and explicit component contracts. Extract complex browser interaction state, data mapping, derived state, and persistence orchestration into named composables or pure helpers before adding more template and script complexity.
-- Use the `vue-component-implementation` skill before implementing or materially changing `.vue` components or UI composables, to define the component contract and avoid imperative DOM-style coordination, `dispatchEvent`/`querySelector` communication, broad `v-bind` prop bags, and unjustified `:deep()` overrides.
-- `!important` is forbidden everywhere in the repository, including Vue SFC `<style>` blocks, test helpers, and visual harnesses. Use higher-specificity selectors instead. This is currently a documented review rule, not yet enforced by automated CSS linting.
-- Keep composables, helpers, and services focused on one capability. Split lifecycle setup, pure derivation, boundary validation, and storage or network side effects when they start changing for different reasons.
-- Test files may be larger than production files when scenarios are uniform. Split tests by behavior when setup becomes conditional, fixtures become hard to localize, or failures no longer point to one behavior.
-- For large refactors, keep behavior-preserving extraction separate from behavior changes. Verify the extraction first, then make functional changes in a smaller diff.
-- Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
-- Do not hide cross-layer dependencies behind incidental lifecycle, storage, or helper composable imports. When a layer needs another owner’s readiness, availability, permissions, capability, or state, expose that fact through the owning domain API with a named field or action and depend on that API instead.
-- When existing code already owns a non-trivial matching, parsing, filtering, or storage algorithm, reuse that implementation or extract a shared helper first; do not reimplement the same algorithm in another layer and let it drift.
-- Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
-- Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
-- If CI auto-commits fixer output to a same-repository PR branch, pull or rebase before continuing local work so local diffs and final verification match the branch tip.
-- CI autofix is limited to existing safe fixer output from `pnpm ci:autofix`; it requires `BEAVER_CI_AUTOFIX_TOKEN` to push, stops the old workflow run after pushing so a fresh run can validate the updated head, and must not auto-update visual snapshots, rewrite test expectations, change mutation thresholds, or perform GitHub-side review operations.
-- Use the `component-contract-testing` skill for adding or reviewing Vue component unit tests for small render, props, emits, slots, or child-component wiring contracts.
-- Do not use component contract tests for browser behavior; use Playwright/e2e or a reproducible browser smoke check instead.
-- Use the `mutation-testing` skill for high-risk changes to pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations when focused unit/integration tests were added or changed.
-- Do not use mutation testing for UI component behavior, Playwright/e2e-only flows, refactors, type-only changes, formatting, comments, renames, or documentation.
-- Use the `ui-browser-behavior` skill for UI changes involving real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, Material state visuals, or mobile behavior.
-- Use the `visual-regression-testing` skill for visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage.
-- Use Storybook as the preferred component playground and visual state harness.
-- Do not use Vitest, happy-dom, or Vue Test Utils for visual appearance; use Playwright screenshots against Storybook stories.
-- Use the `crdt-storage` skill for Automerge/CRDT changes, repo or document handle lifecycle, storage helpers, VFS behavior, subscriptions, listeners, workers, timers, caches, file handles, or blob URLs.
-- Use the `diagnostic-events` skill when adding, reviewing, or testing Sentry-backed observability: technical breadcrumbs, compact diagnostic events, captured exceptions, optional logs, sanitizer rules, consent-aware delivery, or diagnostic wrappers. Keep the layer thin; do not add flow-specific telemetry protocols or large diagnostic summary interfaces. See also `docs/diagnostics.md`.
-- Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
-- Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
-- Keep provider adapters focused on storage operations and typed access failures. Delayed Automerge save replay belongs to Automerge persistence and repository-service coordination, while `serviceClient` keeps browser user-activation permission prompts on the main thread.
-- Keep component and composable contracts narrow. Prefer IDs, primitive values, small display records, and explicit emits or slots over service bags, deeply nested configs, or mixed read/write models.
-- Keep TSDoc on every public API accurate and complete. If you touch a public export that is missing TSDoc or has stale TSDoc, update it as part of the same change.
-- Prefer explicit component props and named handlers over object-literal `v-bind` bags and inline template callbacks. Keep template contracts readable and mechanically checkable.
-- Emitted component events should describe the user action or selection owned by that component, not a parent command. Prefer domain names such as `select*` for list or menu choices, and avoid `open*` unless the component itself opens the pane, dialog, or route.
-- Keep validation, parsing, and extraction close to the contract or boundary that defines them.
-- Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
-- When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
-- Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
-- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention.
-
-## Styling
-
-- Use component-scoped styles for Vue component implementation styles. Put global CSS only in app-level style modules or explicitly documented design-token/theme files.
-- The root class of a Vue component must match the component name in kebab-case, for example `MDFab` -> `md-fab` and `RepositoryExplorerWidget` -> `repository-explorer-widget`.
-- New Vue components must render a single stable root. Fragments (multiple root nodes), conditional root shape changes, and empty `<template>` branches as a component root are not allowed. Parent components own conditional rendering.
-- A root child component is allowed when it renders a stable single root and forwards attributes and classes as expected. Do not add a wrapper element only to satisfy block-class naming.
-- Add a wrapper element only when the component owns layout, spacing, semantic grouping, accessibility, or integration styling that cannot live on the root child component. Components that only compose or forward another presentational component do not need an extra block wrapper unless they own local styles.
-- Do not add a wrapper element only to satisfy the single-root rule. Single-root must be achieved through a real element with a layout, semantic, accessibility, or integration purpose. A component that only forwards an action control should use that control as its root.
-- Do not render invisible placeholder DOM when the real content may be absent. Components must not have a normal empty render path; parent composition owns the show/hide decision. Do not render a component whose only real content is conditionally absent.
-- Dialogs, sheets, and teleported surfaces must not be used as a reason to add a wrapper around an action control. If a component would need a wrapper only to co-locate inactive dialogs, move the dialog rendering to the parent composition instead.
-- When a component renders a placeholder plus teleported or floating content, keep the root class on the root DOM element and model the teleported/floating surface as a BEM element, for example `md-fab-container` with `md-fab-container__surface`.
-- Use classic BEM syntax: block `block`, element `block__element`, boolean modifier `block_modifier`, key-value modifier `block_modifier_value`, element modifier `block__element_modifier`, and element key-value modifier `block__element_modifier_value`.
-- Do not introduce `block--modifier` or `block__element--modifier` naming unless a local legacy component already uses that style and the task is only preserving untouched code.
-- Avoid loose implementation classes that do not belong to the component block, such as `title`, `content`, or `empty-icon`. Prefer block-owned element classes such as `repository-explorer-section__title` or `md-fab__empty-icon`.
-- Prefer explicit key-value modifiers when a component has multiple modifier axes, for example `md-fab_color_primary` and `md-fab_size_medium` instead of ambiguous `md-fab_primary` and `md-fab_medium`.
-- Keep styling ownership local. A parent component should not style a child component's internal classes through `:deep()` unless this is an explicit integration boundary with documented blast radius. Prefer child props, slots, CSS custom properties, or parent-owned wrapper elements.
-- Use project Material tokens and component custom properties before hard-coded values. Preserve Material authoring units such as `dp` and `sp` where the project token pipeline expects them; do not rewrite them to `px` only because a generic CSS reviewer suggests it.
-- When a native interactive element is visually reset, restore required interaction affordances in the owning component, including an appropriate cursor for clickable enabled states and visible focus/state-layer behavior. Do not make disabled or non-action states look clickable.
-- Treat shared UI style changes as blast-radius changes: inspect consumers, preserve the public visual contract by default, and update Storybook/visual coverage when appearance, layout, interaction affordance, or Material state rendering changes.
-
-## Shared UI implementation
-
-Use both the `material3-guidelines` skill (Material 3 source-of-truth workflow) and the `shared-ui-implementation` skill (Vue implementation-quality workflow) before implementing shared Material/list-family components.
-
-- Prefer small, named `computed` states (for example `isAction`, `isLinkAction`, `usesPrimaryActionSurface`) over inline boolean algebra for static render conditions. Do not introduce a central topology/state-machine resolver object unless the component has real workflow transitions or impossible intermediate states.
-- Keep component-owned DOM-critical attrs (`href`, `type`, `disabled`, `tabindex`, `role`, `aria-*`) explicit in the template. Object `v-bind` bags are acceptable only for controlled fallthrough-attrs forwarding, never for these attrs.
-- Shared UI runtime code must not use `dispatchEvent()` or other synthetic DOM events to emulate user activation. Rely on native button/link keyboard and pointer semantics.
-- Shared Material component source CSS must use standard CSS properties with a non-prefixed form; handwritten vendor-prefixed runtime CSS (`-webkit-*`, `-moz-*`, etc.) for such properties is forbidden, with no narrow compatibility exception. Browser prefixes and fallback transforms are owned by the build pipeline (PostCSS/browserslist), not component source. If a standard property does not render the required layout in a verification environment, replace it with a standard-CSS fallback that preserves the same layout contract; do not hardcode a prefix and do not drop the layout/clamping behavior. Genuinely non-standardized vendor-only APIs with no standard equivalent (e.g. `-webkit-tap-highlight-color`) are not covered by this rule.
-- A parent shared UI component must not use `:deep()` to style a child component's internal classes. Child components own their own internal anatomy/state styling; pass shape-relevant facts down through props or list/provide context instead.
-- Supported externally controlled component states must be explicit props (for example `dragged`). Internal CSS classes such as `md-state_*` are implementation details, not a public state API.
-- Do not preserve removed shared UI component props as wrapper compatibility aliases (for example `is` / `isButton`). Migrate wrapper consumers to the current API or a domain-intent prop in the same change.
-
-## Implementation quality gates
-
-- Treat implementation preflight as a contract, not a planning note. Before final verification, compare the resulting diff against the preflight owner-layer plan, acceptance matrix, and risk matrix. If the diff violates the plan, either refactor it or explicitly report the remaining risk instead of claiming completion.
-- Review the complete implemented feature against the architecture handoff, not only the latest requested fix or the files changed in the last iteration.
-- Preserve known unresolved findings in one consolidated list. Do not drop earlier blockers when new issues are found.
-- A PR is not ready if it only satisfies the latest coding task but still violates the feature-level goal, ownership matrix, user scenarios, public contracts, or shared UI blast-radius constraints from the architecture handoff.
-- For cross-layer changes, final handoff must include a short architecture check: owner map respected, dependency direction respected, no page-owned domain flow, no capability leak in UI records, errors defined at the detecting boundary, and no duplicate data reads for the same state.
-- Preserve existing user scenarios unless the task explicitly removes them. When replacing a menu, navigation control, status indicator, or shared surface, list the old user actions it provided and ensure they are still reachable or intentionally removed by the task.
-- Do not treat a green `pnpm verify` as architectural approval. Verification proves that automated checks passed; it does not prove FSD ownership, Material correctness, browser behavior, accessibility, or UX acceptance unless those checks were actually covered.
-- Treat a failed final `pnpm verify` as a blocker. Do not present the task as complete, ready for merge, or acceptable when the final read-only verification failed, unless the user explicitly asked for a partial result.
-- Treat mutation-test failures in the touched scope as actionable quality failures. Strengthen tests, reduce the mutation scope by reverting unrelated changes, or fix the implementation before final handoff; do not use passing browser or visual checks to override a failing mutation gate.
-- Treat mutation timeouts on active progress as infrastructure failures, not test success. Prefer improving timeout/progress handling over excluding changed logic from mutation coverage.
-- Keep verification gates distinct. Browser and visual checks validate rendered behavior and appearance; unit, integration, and mutation checks validate logic robustness. Passing one gate does not excuse skipping or failing another gate that applies to the change.
-- Keep user-facing copy in the application's established UI language. Task descriptions, design notes, and review comments may use another language; do not copy their text into product UI unless that language already matches the surrounding UI.
-- After user-facing UI changes, perform a final copy-language scan of touched files and newly added UI surfaces. Remove mixed-language strings, stale task wording, and technical terms that are not already part of the surrounding product UI.
-- For user-visible UI tasks, verify the primary acceptance scenario in the rendered product or a representative Storybook/browser harness before final completion. Unit or component-contract tests may support this, but they must not replace browser verification for layout, scrolling, focus, overlays, touch, or Material visual states.
-- Before changing a shared UI primitive, perform a blast-radius check: inspect existing consumers, define the public API change, preserve existing behavior by default, update or add Storybook/visual/browser coverage when appearance or interaction changes, and avoid one-off props that only serve a single feature.
-- Keep high-risk cross-layer work incremental. Prefer committing or verifying pure read-model changes before feature sheets, widget composition, shared UI primitives, and visual behavior changes. Do not bundle unrelated architectural changes only because they are needed by the same screen.
-- Before final handoff after a refactor, scan for leftover artifacts from abandoned approaches: unused files, exports, stories, tests, feature modules, comments, and stale imports. Delete them or explain why they remain.
-- Treat later user clarifications as higher-priority than earlier task text. When a domain rule in the task conflicts with a later clarification or existing project invariant, stop and align the implementation with the latest confirmed rule instead of silently choosing one.
-
-## Testing UI and Components
-
-- Do not use unit tests as the default verification method for Vue UI components.
-- Component behavior that depends on real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, or Material state visuals must be verified with Playwright/e2e or a reproducible browser smoke check.
-- Use `@vue/test-utils` only for component contract tests: conditional rendering, props, emits, slots, simple child-component wiring, and connecting extracted composable or helper state to template output.
-- Use Storybook for manual component playground work and deterministic visual state coverage.
-- Do not hand-roll component mounting with repeated `createApp`, manual `document.body` cleanup, ad hoc inline stubs, and `querySelector`-driven assertions.
-- Prefer assertions against emitted events, props passed to stubs, slot content, and stable accessible text or labels when they are part of the component contract.
-- Avoid adding `data-testid` only for unit tests unless there is no stable user-visible or component-level contract to assert.
-- Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
-- Colocate test helpers as `*.testUtils.ts` next to the tested module or test files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not create ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
-- Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
-- The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
-
-## Visual regression testing
-
-- Use Playwright screenshot assertions for appearance regressions; do not use Vitest, happy-dom, or Vue Test Utils for visual appearance.
-- Use Storybook as the preferred visual harness. Render screenshots through isolated Storybook stories, not through `MainApp.vue` or the product `/playground`.
-- The Storybook runtime must not inherit product app effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or product router lifecycle behavior.
-- Keep stories deterministic and fixture-driven. They must not own business logic, storage orchestration, stores, or network behavior.
-- Use colocated CSF stories named `<Component>.stories.ts`, add the `visual` tag to stories that are intended for screenshot coverage, and keep fixtures small and local.
-- Existing product/dev playground is legacy manual-only. Do not add new visual regression surfaces there; migrate useful examples to Storybook gradually.
-- Place visual specs under `tests/e2e/visual/<surface>.spec.ts` so Playwright and focused verification can discover them.
-- Prefer locator screenshots of a single stable surface, component gallery, dialog, sheet, menu, or responsive layout region over full-page screenshots.
-- Add visual tests only for shared UI primitives, important Material states, mobile/desktop layout regressions, previously broken visual states, or CSS-heavy components where visual regressions are likely and costly.
-- Do not add visual snapshots for every component by default.
-- Keep visual tests deterministic: fixed viewport, fixed fixture data, no network, no random IDs, no live dates, no loading spinners, disabled animations/transitions, settled fonts/icons/rendering, and masked dynamic regions when needed.
-- Accept and update visual baselines only through the canonical stable Linux/Chromium container flow such as CI or `pnpm test:visual:update`, which runs a pinned Playwright image through Podman; treat local host-rendered diffs from other environments as advisory/debugging only.
-- Do not update visual baselines from headed mode, do not hide ordinary text in screenshots, and do not loosen screenshot thresholds only to suppress text anti-aliasing noise.
-- If a future test intentionally validates typography or text rendering, keep that coverage explicit and separate from generic component visual baselines.
-- Do not use Storybook as an e2e runner.
-- Update snapshots only after inspecting the visual diff and confirming the appearance change is intentional.
-
-## CRDT and lifecycle invariants
-
-- For CRDT-backed state, mutate live nested objects inside the owning change callback, never assign a live document object back into the same document, and prefer shared helpers such as `put`, `patch`, `deepPutJsonObject`, and `deepPatchJsonObject` when they match the write shape.
-- Treat subscriptions, listeners, workers, timers, caches, file handles, and blob URLs as lifecycle-managed resources.
-
-## Privacy-safe errors
-
-Two concerns are distinct and must not be conflated:
-
-1. **Trusted in-app runtime and proxy transfer**: `DomainError.cause` may hold raw runtime errors inside the app and across trusted proxy boundaries. This preserves debuggability and does not require sanitization.
-2. **External diagnostics export**: Sensitive values must not leave the app via Sentry, logs, or copied diagnostic payloads. The `beforeSend` sanitizer enforces this at the outgoing event boundary by scrubbing exception messages, tags, extras, contexts, and breadcrumbs.
-
-Rules:
-
-- `DomainError.message` is a safe user-facing message. Do not put paths, names, ids, URLs, or raw external text in it.
-- `DomainError.code` is a stable string enum value defined close to the error's source. Do not create a global error-code registry.
-- `DomainError.cause` may hold the original runtime cause. Raw `cause` is allowed inside the app and in trusted proxy transfer.
-- Sentry `beforeSend` sanitizes outgoing events: exception messages, linked cause messages, tags, extras, contexts, breadcrumbs, and user fields.
-- Do not create feature-local error classifiers or manual VFS-to-feature error mappings. Use enum codes and raw cause instead.
-- Do not pass path, name, id, URL, or other user-controlled values to `captureDiagnosticException` context, Sentry `extra`, or Sentry `tags`.
-- Do not replace real Sentry exceptions with synthetic masked errors. Pass the original error object so native stack and grouping work correctly.
-- Do not send raw paths, names, ids, URLs with secrets, provider payloads, document content, or raw external messages to Sentry.
-
-## Anti-patterns
-
-- Do not pull dependencies upward against the intended layer direction.
-- Do not bypass entity or service APIs with direct storage access or ad hoc document mutation.
-- Do not duplicate schemas, type aliases, or constants across layers.
-- Do not push orchestration complexity into component props.
-- Do not treat desktop performance, hover, or precise pointer input as the default interaction model.
-- Do not use `AGENTS.md` as an architecture essay, a file dump, or a place for temporary notes.
-
-## Constraints
-
-- `shared` must not import upper layers.
-- `entities` may import only `shared`.
-- `features` build on `entities` and `shared`.
-- `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
-- UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
-- Use `pnpm` for package management and project commands.
-- After edits, run the narrowest relevant verification for the touched scope. For TypeScript or other logic changes, run at least `pnpm type-check`; add the corresponding focused test or smoke check for changed tests, UI/e2e behavior, or schema, service, and storage behavior.
-- Run lint and format only for the touched scope with targeted `oxlint`, `eslint --fix`, and/or `oxfmt` as relevant. Use full e2e, full lint, or broad mutation checks only when explicitly requested or as final verification before a wide merge.
-- Use Conventional Commits.
-- `pages` and `widgets` directories use PascalCase. Other submodules use lower camel case.
-- Vue components and class-centric files use PascalCase. Other TypeScript files use lower camel case or lowercase.
-- Feature modules are named for user actions such as `<domain><Action>`. Entity modules are named for stable domain concepts.
-- Visual components are named for the rendered surface, using concrete suffixes such as `Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, or `State`, not vague roles such as `Manager` or `Helper`.
-- Use the `MD*` prefix only for shared Material-style primitives.
-- `use*` exposes reactive or lifecycle-managed capabilities. `setup*` wires dependencies and cleanup. `define*` stays side-effect-light and declarative. `create*` returns a fresh owned instance. `get*` is pure lookup or derivation. `is*` is boolean. `zod*` exports schemas. `*Service` is reserved for background-side infrastructure.
-- Use `on*` for component event handlers and callback bindings.
-- Reserve the `$` suffix for raw RxJS observables.
-- Add a child `AGENTS.md` only when a directory has local invariants, blast-radius rules, or reproducible verification guidance that the parent cannot express cleanly.
-- Child `AGENTS.md` files should refine the parent rather than repeat it, and their `Contains` sections should describe stable responsibilities instead of the current file list.
-- Update the `AGENTS.md` tree together with ownership, public API, dependency, or verification-boundary changes.
+- `develop` is the active development branch; `main` is the stable public branch.
+- Every PR into `develop` or `main` must increase `package.json` version, except the documented pre-tag repair and `main` to `develop` release-sync cases.
+- `develop`/`main` synchronization PRs use merge commits, never squash or rebase.
+- `pnpm verify` is the focused development gate. `pnpm verify:release` is the full release gate required for `main`.
+- Follow `docs/release.md` and `docs/release-checklist.md` for the complete release policy.
 
 ## Agent environment compatibility
 
-`AGENTS.md` files and `.agents/skills/*/SKILL.md` are the canonical source of truth for agent instructions and project skills. Claude Code reads `CLAUDE.md` and `.claude/skills` instead; these are managed compatibility files generated from the canonical sources.
-
-- Do not duplicate project rules into `CLAUDE.md` files. Edit `AGENTS.md` or a skill `SKILL.md` instead.
-- Run `pnpm verify --fix` after adding, moving, or removing an `AGENTS.md` file or a skill to regenerate the compatibility layer.
-- `pnpm verify` fails when the compatibility layer is missing or stale.
+- `AGENTS.md` and `.agents/skills/*/SKILL.md` are canonical. Do not edit generated `CLAUDE.md` or `.claude/skills` directly.
+- After changing the instruction tree, run `pnpm verify --fix` to regenerate compatibility files, then final `pnpm verify`.
