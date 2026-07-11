@@ -7,7 +7,10 @@ import type { ZipImportProgress, ZipImportSummary } from '@shared/service';
 import type { ImportZipVisibleDialogState } from './useImportZipAction';
 
 const props = defineProps<{
-  /** Current import dialog lifecycle state: running, success, or error. Never `idle`. */
+  /**
+   * Current import dialog lifecycle state: running, conflicts, success, partial, or error. Never
+   * `idle`.
+   */
   state: ImportZipVisibleDialogState;
 }>();
 
@@ -80,8 +83,13 @@ const supportingText = computed(() => {
   switch (props.state.status) {
     case 'running':
       return PHASE_LABELS[props.state.progress?.phase ?? 'validatingArchive'];
-    case 'conflicts':
-      return `${props.state.total} archive entries conflict with existing files. No files were written.`;
+    case 'conflicts': {
+      const { total } = props.state;
+      const entryPhrase = total === 1 ? '1 archive entry' : `${total} archive entries`;
+      const verb = total === 1 ? 'conflicts' : 'conflict';
+      const targetPhrase = total === 1 ? 'an existing file' : 'existing files';
+      return `${entryPhrase} ${verb} with ${targetPhrase}. No files were written.`;
+    }
     case 'success': {
       const parts = formatSummaryParts(props.state.summary);
       return parts.length > 0

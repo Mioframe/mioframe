@@ -103,6 +103,32 @@ describe('ImportZipDialog', () => {
     expect(wrapper.find('[data-progress]').exists()).toBe(false);
   });
 
+  it('renders a grammatically correct singular conflict count', () => {
+    const wrapper = mountDialog({
+      status: 'conflicts',
+      total: 1,
+      paths: ['existing.txt'],
+      truncated: false,
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
+      '1 archive entry conflicts with an existing file. No files were written.',
+    );
+  });
+
+  it('renders a grammatically correct plural conflict count', () => {
+    const wrapper = mountDialog({
+      status: 'conflicts',
+      total: 2,
+      paths: ['existing.txt', 'other.txt'],
+      truncated: false,
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
+      '2 archive entries conflict with existing files. No files were written.',
+    );
+  });
+
   it('renders a grammatically correct singular count', () => {
     const wrapper = mountDialog({
       status: 'success',

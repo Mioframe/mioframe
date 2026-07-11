@@ -5,6 +5,7 @@ import { FSNodeType, VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { unpackZipArchive } from '@shared/lib/zipArchive';
 import { RepositoryZipErrorCode } from './repositoryZipContracts';
+import type { OnZipExportProgress } from './repositoryZipContracts';
 import type { RepositoryDirectoryEntry } from './repositoryContracts';
 
 const getDocumentStorageFilesMock = vi.hoisted(() =>
@@ -111,6 +112,49 @@ describe('exportDirectoryZip', () => {
 
     expect(maxInFlight).toBe(1);
   });
+
+  it('awaits an async onProgress callback before continuing', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/repo');
+    await vfs.writeFile('/repo/a.txt', 'a');
+    await vfs.writeFile('/repo/b.txt', 'b');
+
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const onProgress = vi.fn(async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      await Promise.resolve();
+      inFlight -= 1;
+    });
+
+    const { onChunk } = collectChunks();
+    await exportDirectoryZip(vfs, '/repo', onChunk, onProgress);
+
+    expect(maxInFlight).toBe(1);
+  });
+
+  it('coalesces intermediate reading progress and always emits a non-boundary final count', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/repo');
+    const fileCount = 130;
+    for (let index = 0; index < fileCount; index += 1) {
+      // eslint-disable-next-line no-await-in-loop -- fixture setup, sequential writes are simplest here
+      await vfs.writeFile(`/repo/file-${index}.txt`, 'x');
+    }
+
+    const onProgress = vi.fn<OnZipExportProgress>();
+    const { onChunk } = collectChunks();
+    await exportDirectoryZip(vfs, '/repo', onChunk, onProgress);
+
+    const readingCounts = onProgress.mock.calls
+      .map(([progress]) => progress)
+      .filter((progress) => progress.phase === 'reading')
+      .map((progress) => progress.current);
+
+    expect(readingCounts).toEqual([0, 50, 100, fileCount]);
+  });
 });
 
 describe('exportDocumentZip', () => {
@@ -137,8 +181,59 @@ describe('exportDocumentZip', () => {
     expect(Object.keys(unpacked).some((entryPath) => entryPath.startsWith(`${documentId}/`))).toBe(
       false,
     );
-    expect(onProgress).toHaveBeenCalledWith({ phase: 'reading', current: 1, total: 2 });
+    expect(onProgress).toHaveBeenCalledWith({ phase: 'reading', current: 0, total: 2 });
     expect(onProgress).toHaveBeenCalledWith({ phase: 'reading', current: 2, total: 2 });
+  });
+
+  it('awaits an async onProgress callback before reading the next storage file', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/repo');
+    await vfs.writeFile('/repo/storage-file-1', 'chunk one');
+    await vfs.writeFile('/repo/storage-file-2', 'chunk two');
+    getDocumentStorageFilesMock.mockResolvedValue([
+      ['storage-file-1', { type: FSNodeType.File }],
+      ['storage-file-2', { type: FSNodeType.File }],
+    ]);
+
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const onProgress = vi.fn(async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      await Promise.resolve();
+      inFlight -= 1;
+    });
+
+    const { onChunk } = collectChunks();
+    await exportDocumentZip(vfs, '/repo', documentId, onChunk, onProgress);
+
+    expect(maxInFlight).toBe(1);
+  });
+
+  it('coalesces intermediate reading progress and always emits a non-boundary final count', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/repo');
+    const fileCount = 130;
+    const storageFiles: RepositoryDirectoryEntry[] = [];
+    for (let index = 0; index < fileCount; index += 1) {
+      const name = `storage-file-${index}`;
+      // eslint-disable-next-line no-await-in-loop -- fixture setup, sequential writes are simplest here
+      await vfs.writeFile(`/repo/${name}`, 'x');
+      storageFiles.push([name, { type: FSNodeType.File }]);
+    }
+    getDocumentStorageFilesMock.mockResolvedValue(storageFiles);
+
+    const onProgress = vi.fn<OnZipExportProgress>();
+    const { onChunk } = collectChunks();
+    await exportDocumentZip(vfs, '/repo', documentId, onChunk, onProgress);
+
+    const readingCounts = onProgress.mock.calls
+      .map(([progress]) => progress)
+      .filter((progress) => progress.phase === 'reading')
+      .map((progress) => progress.current);
+
+    expect(readingCounts).toEqual([0, 50, 100, fileCount]);
   });
 
   it('throws documentStorageFilesNotFound when the document has no storage files', async () => {

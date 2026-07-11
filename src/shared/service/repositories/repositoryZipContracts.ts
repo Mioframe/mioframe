@@ -15,8 +15,12 @@ export type ZipExportProgress = {
   total?: number;
 };
 
-/** Callback invoked with export progress updates as the service builds the archive. */
-export type OnZipExportProgress = (progress: ZipExportProgress) => void;
+/**
+ * Callback invoked with export progress updates as the service builds the archive. May return a
+ * promise; producers await every call so progress delivery across the worker boundary cannot
+ * accumulate concurrent pending RPC requests.
+ */
+export type OnZipExportProgress = (progress: ZipExportProgress) => void | Promise<void>;
 
 /**
  * Callback invoked with one packed archive chunk as a service-owned ZIP export produces it, so
@@ -38,8 +42,12 @@ export type ZipImportProgress = {
   total?: number;
 };
 
-/** Callback invoked with import progress updates as the service validates and writes files. */
-export type OnZipImportProgress = (progress: ZipImportProgress) => void;
+/**
+ * Callback invoked with import progress updates as the service validates and writes files. May
+ * return a promise; producers await every call so progress delivery across the worker boundary
+ * cannot accumulate concurrent pending RPC requests.
+ */
+export type OnZipImportProgress = (progress: ZipImportProgress) => void | Promise<void>;
 
 /** Conflict behavior selected for generic ZIP extraction. */
 export type ZipImportConflictPolicy = 'abort' | 'skipExisting';
@@ -112,6 +120,12 @@ export enum RepositoryZipErrorCode {
    * document changes or previously queued/failed saves) before preflight. No write was attempted.
    */
   importStorageNotReady = 'repositories.zipImportStorageNotReady',
+  /**
+   * Repository storage for the export source could not be brought to a settled state (unflushed
+   * document changes or previously queued/failed saves) before export. No archive bytes were
+   * emitted.
+   */
+  exportStorageNotReady = 'repositories.zipExportStorageNotReady',
 }
 
 const zodZipImportPartialFailureDetails = z.object({

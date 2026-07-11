@@ -12,6 +12,7 @@ import {
   type OnZipExportChunk,
   type OnZipExportProgress,
 } from './repositoryZipContracts';
+import { isZipProgressCountDue } from './repositoryZipProgress';
 
 const writeDirectoryEntriesRecursively = async (
   vfs: VirtualFileSystem,
@@ -52,7 +53,10 @@ const writeDirectoryEntriesRecursively = async (
       // eslint-disable-next-line no-await-in-loop -- sequential writes keep archive entry order stable
       await writer.writeFileEntry(childArchivePath, streamBlobChunks(file));
       progressState.current += 1;
-      onProgress?.({ phase: 'reading', current: progressState.current });
+      if (isZipProgressCountDue(progressState.current, undefined)) {
+        // eslint-disable-next-line no-await-in-loop -- progress delivery is awaited to bound concurrent worker RPC requests
+        await onProgress?.({ phase: 'reading', current: progressState.current });
+      }
     }
   }
 };
@@ -79,13 +83,18 @@ export const exportDirectoryZip = async (
   onChunk: OnZipExportChunk,
   onProgress?: OnZipExportProgress,
 ): Promise<void> => {
-  onProgress?.({ phase: 'preparing' });
+  await onProgress?.({ phase: 'preparing' });
 
   const writer = createZipArchiveWriter(onChunk);
 
-  await writeDirectoryEntriesRecursively(vfs, writer, path, '', { current: 0 }, onProgress);
+  const progressState = { current: 0 };
+  await onProgress?.({ phase: 'reading', current: 0 });
+  await writeDirectoryEntriesRecursively(vfs, writer, path, '', progressState, onProgress);
+  if (!isZipProgressCountDue(progressState.current, undefined)) {
+    await onProgress?.({ phase: 'reading', current: progressState.current });
+  }
 
-  onProgress?.({ phase: 'packing' });
+  await onProgress?.({ phase: 'packing' });
 
   await writer.end();
 };
@@ -115,7 +124,7 @@ export const exportDocumentZip = async (
   onChunk: OnZipExportChunk,
   onProgress?: OnZipExportProgress,
 ): Promise<void> => {
-  onProgress?.({ phase: 'preparing' });
+  await onProgress?.({ phase: 'preparing' });
 
   const documentStorageFiles = await getDocumentStorageFiles(vfs, path, documentId);
 
@@ -126,7 +135,9 @@ export const exportDocumentZip = async (
   }
 
   const writer = createZipArchiveWriter(onChunk);
+  const total = documentStorageFiles.length;
   let current = 0;
+  await onProgress?.({ phase: 'reading', current: 0, total });
 
   for (const [name] of documentStorageFiles) {
     // eslint-disable-next-line no-await-in-loop -- sequential reads keep progress reporting simple
@@ -134,10 +145,13 @@ export const exportDocumentZip = async (
     // eslint-disable-next-line no-await-in-loop -- sequential writes keep archive entry order stable
     await writer.writeFileEntry(name, streamBlobChunks(file));
     current += 1;
-    onProgress?.({ phase: 'reading', current, total: documentStorageFiles.length });
+    if (isZipProgressCountDue(current, total)) {
+      // eslint-disable-next-line no-await-in-loop -- progress delivery is awaited to bound concurrent worker RPC requests
+      await onProgress?.({ phase: 'reading', current, total });
+    }
   }
 
-  onProgress?.({ phase: 'packing' });
+  await onProgress?.({ phase: 'packing' });
 
   await writer.end();
 };

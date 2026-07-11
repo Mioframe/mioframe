@@ -19,6 +19,7 @@ import {
   type ZipImportExecutablePlan,
   type ZipImportPlan,
 } from './repositoryZipImportPlanning';
+import { isZipProgressCountDue } from './repositoryZipProgress';
 
 const resourceLimitError = (limit: keyof typeof ZIP_IMPORT_LIMITS) =>
   new DomainError('The archive exceeds an import safety limit. No files were written.', {
@@ -151,6 +152,7 @@ const executePlan = async (
       summary.createdDirectories += 1;
     }
     const filesByArchivePath = new Map(executable.files.map((entry) => [entry.archivePath, entry]));
+    const total = executable.files.length;
     const reader = createZipArchiveReader((entry) => {
       const planned = filesByArchivePath.get(entry.rawPath);
       const parts: BlobPart[] = [];
@@ -159,14 +161,15 @@ const executePlan = async (
         if (!final || !planned) return;
         await mutate(() => vfs.createFile(planned.targetPath, new Blob(parts)));
         summary.importedFiles += 1;
-        onProgress?.({
-          phase: 'unpacking',
-          current: summary.importedFiles,
-          total: executable.files.length,
-        });
+        if (isZipProgressCountDue(summary.importedFiles, total)) {
+          await onProgress?.({ phase: 'unpacking', current: summary.importedFiles, total });
+        }
       });
     });
     await streamArchiveInto(archiveFile, (chunk, final) => reader.push(chunk, final));
+    if (!isZipProgressCountDue(summary.importedFiles, total)) {
+      await onProgress?.({ phase: 'unpacking', current: summary.importedFiles, total });
+    }
     return summary;
   } catch (error) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- mutationInFlight is reassigned inside the mutate() closure, which type narrowing can't see across this catch boundary
@@ -177,9 +180,13 @@ const executePlan = async (
 
 /**
  * Imports arbitrary safe ZIP contents using complete validation, preflight, then writes. Never
- * overwrites an existing file or directory entry. If a failure occurs after mutation may have
- * started, the import stops immediately and reports a terminal partial result — it is not resumed
- * or retried automatically.
+ * overwrites an existing file or directory entry. Before the first mutation, a non-mutating
+ * write-access check runs when the executable plan requires at least one directory or file
+ * creation; a missing permission surfaces as the existing recoverable write-access error with no
+ * write attempted, so the caller can request access and retry the whole import once. Once a
+ * mutation call begins, any failure — including permission loss during that first mutation —
+ * stops the import immediately and reports a terminal partial result; it is not resumed or
+ * retried automatically.
  * @param vfs - Target virtual filesystem.
  * @param targetDirectoryPath - Absolute selected target directory.
  * @param archiveFile - User-selected archive, read once per required pass.
@@ -194,16 +201,19 @@ export const importDirectoryZip = async (
   onProgress?: OnZipImportProgress,
   options: ZipImportOptions = {},
 ): Promise<ZipImportResult> => {
-  onProgress?.({ phase: 'validatingArchive' });
+  await onProgress?.({ phase: 'validatingArchive' });
   const plan = await planZipImport(archiveFile, targetDirectoryPath);
-  onProgress?.({ phase: 'checkingConflicts' });
+  await onProgress?.({ phase: 'checkingConflicts' });
   const resolved = await resolveZipImportExecutablePlan(
     vfs,
     plan,
     options.conflictPolicy ?? 'abort',
   );
   if ('status' in resolved) return resolved;
-  onProgress?.({ phase: 'unpacking', current: 0, total: resolved.files.length });
+  if (resolved.files.length > 0 || resolved.directoriesToCreate.length > 0) {
+    await vfs.checkWriteAccess(targetDirectoryPath);
+  }
+  await onProgress?.({ phase: 'unpacking', current: 0, total: resolved.files.length });
   return {
     status: 'completed',
     summary: await executePlan(vfs, archiveFile, resolved, onProgress),

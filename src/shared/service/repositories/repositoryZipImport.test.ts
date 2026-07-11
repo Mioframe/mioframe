@@ -272,12 +272,14 @@ describe('importDirectoryZip', () => {
     await expect(vfs.readText('/target/root/a.txt')).resolves.toBe('a content');
   });
 
-  it('still surfaces a raw write-access-recovery error when it happens before any write succeeded', async () => {
+  it('classifies a write-access-recovery error as partial when it happens during the very first actual mutation, even though the non-mutating preflight already succeeded', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
 
     // A top-level entry needs no ancestor directory creation, so the file write is the very
-    // first VFS mutation attempted — nothing has been written yet when it fails.
+    // first VFS mutation attempted — nothing has been written yet when it fails. The preflight
+    // write-access check still ran and succeeded first (MemoryFileSystem has no permission model
+    // to check), so this is permission loss during the mutation itself, not at preflight.
     const archiveFile = toArchiveFile({
       'a.txt': new TextEncoder().encode('a content'),
     });
@@ -454,9 +456,10 @@ describe('importDirectoryZip', () => {
     expect(readDirectory.mock.calls.filter(([path]) => path === '/target')).toHaveLength(1);
   });
 
-  it('resolves a large flat archive without quadratic directory-scan cost', async () => {
+  it('resolves a large flat archive with bounded, non-quadratic directory reads', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
+    const readDirectory = vi.spyOn(vfs, 'readDirectory');
 
     const entryCount = 1000;
     const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
@@ -465,17 +468,19 @@ describe('importDirectoryZip', () => {
     }
     const archiveFile = toArchiveFile(entries);
 
-    const start = performance.now();
     const result = await importDirectoryZip(vfs, '/target', archiveFile);
-    const elapsedMs = performance.now() - start;
 
     expect(result).toMatchObject({
       status: 'completed',
       summary: { importedFiles: entryCount, createdDirectories: entryCount },
     });
-    // A per-entry scan over every previously-discovered directory would make this archive size
-    // pathologically slow (seconds+); indexed ancestor lookups keep it near-linear.
-    expect(elapsedMs).toBeLessThan(2000);
+    // A per-entry scan over every previously-discovered directory would read the target directory
+    // once per archive entry (O(entryCount) growing calls, quadratic overall work). Indexed
+    // ancestor lookups mean every one of these 1000 top-level directories shares one cached
+    // snapshot of their common parent, so the target directory is read exactly once regardless of
+    // archive size.
+    expect(readDirectory.mock.calls.filter(([path]) => path === '/target')).toHaveLength(1);
+    expect(readDirectory).toHaveBeenCalledTimes(1);
   });
 
   it('excludes an entire blocked subtree without snapshotting any of its descendants', async () => {
@@ -502,6 +507,158 @@ describe('importDirectoryZip', () => {
     // Only the target root is ever read; nothing under the blocked "blocked" entry is snapshotted,
     // since the whole subtree is excluded by one ancestor-set lookup instead of a directory read.
     expect(readDirectory).toHaveBeenCalledTimes(1);
+  });
+
+  describe('progress delivery', () => {
+    it('awaits an async onProgress callback before continuing to the next entry', async () => {
+      const vfs = createVfs();
+      await vfs.createDirectory('/target');
+
+      const archiveFile = toArchiveFile({
+        'a.txt': new TextEncoder().encode('a'),
+        'b.txt': new TextEncoder().encode('b'),
+      });
+
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const onProgress = vi.fn(async () => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await Promise.resolve();
+        await Promise.resolve();
+        inFlight -= 1;
+      });
+
+      await importDirectoryZip(vfs, '/target', archiveFile, onProgress);
+
+      expect(maxInFlight).toBe(1);
+    });
+
+    it('coalesces intermediate unpacking progress and always emits a non-boundary final count', async () => {
+      const vfs = createVfs();
+      await vfs.createDirectory('/target');
+
+      const entryCount = 130;
+      const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+      for (let index = 0; index < entryCount; index += 1) {
+        entries[`file-${index}.txt`] = new TextEncoder().encode('x');
+      }
+      const archiveFile = toArchiveFile(entries);
+
+      const onProgress = vi.fn();
+      await importDirectoryZip(vfs, '/target', archiveFile, onProgress);
+
+      const unpackingCounts = onProgress.mock.calls
+        .map(([progress]) => progress as { phase: string; current?: number; total?: number })
+        .filter((progress) => progress.phase === 'unpacking')
+        .map((progress) => progress.current);
+
+      expect(unpackingCounts).toEqual([0, 50, 100, entryCount]);
+    });
+  });
+
+  describe('write-access preflight', () => {
+    const createVfsWithWriteAccessCheck = (checkWriteAccess: (path: string) => Promise<void>) => {
+      const memoryFS = new MemoryFileSystem();
+      const vfs = new VirtualFileSystem();
+      vfs.mount('/', {
+        stat: (path) => memoryFS.stat(path),
+        readFile: (path) => memoryFS.readFile(path),
+        writeFile: (path, content, options) => memoryFS.writeFile(path, content, options),
+        readDirectory: (path) => memoryFS.readDirectory(path),
+        createDirectory: (path) => memoryFS.createDirectory(path),
+        delete: (path, recursive) => memoryFS.delete(path, recursive),
+        move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
+        checkWriteAccess,
+      });
+      return vfs;
+    };
+
+    it('surfaces the preflight write-access-recovery error before any mutation is attempted', async () => {
+      const accessError = new WebFileSystemAccessRequiredError({
+        mode: 'readwrite',
+        spaceName: 'Test space',
+      });
+      const checkWriteAccess = vi.fn().mockRejectedValue(accessError);
+      const vfs = createVfsWithWriteAccessCheck(checkWriteAccess);
+      await vfs.createDirectory('/target');
+
+      const archiveFile = toArchiveFile({
+        'a.txt': new TextEncoder().encode('a content'),
+      });
+
+      const createFile = vi.spyOn(vfs, 'createFile');
+
+      let caught: unknown;
+      try {
+        await importDirectoryZip(vfs, '/target', archiveFile);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBe(accessError);
+      expect(createFile).not.toHaveBeenCalled();
+      await expect(vfs.exists('/target/a.txt')).resolves.toBe(false);
+    });
+
+    it('does not run the write-access preflight when the executable plan is fully skipped', async () => {
+      const checkWriteAccess = vi.fn().mockResolvedValue(undefined);
+      const vfs = createVfsWithWriteAccessCheck(checkWriteAccess);
+      await vfs.createDirectory('/target');
+      await vfs.createDirectory('/target/root');
+      await vfs.writeFile('/target/root/file.txt', 'already here');
+
+      const archiveFile = toArchiveFile({
+        'root/file.txt': new TextEncoder().encode('new content'),
+      });
+
+      await importDirectoryZip(vfs, '/target', archiveFile, undefined, {
+        conflictPolicy: 'skipExisting',
+      });
+
+      expect(checkWriteAccess).not.toHaveBeenCalled();
+    });
+
+    it('does not run the write-access preflight for an archive with no entries', async () => {
+      const checkWriteAccess = vi.fn().mockResolvedValue(undefined);
+      const vfs = createVfsWithWriteAccessCheck(checkWriteAccess);
+      await vfs.createDirectory('/target');
+
+      const archiveFile = toArchiveFile({});
+
+      await importDirectoryZip(vfs, '/target', archiveFile);
+
+      expect(checkWriteAccess).not.toHaveBeenCalled();
+    });
+
+    it('runs the write-access preflight once for the target directory before writing when the plan has mutations', async () => {
+      const checkWriteAccess = vi.fn().mockResolvedValue(undefined);
+      const vfs = createVfsWithWriteAccessCheck(checkWriteAccess);
+      await vfs.createDirectory('/target');
+
+      const archiveFile = toArchiveFile({
+        'a.txt': new TextEncoder().encode('a content'),
+      });
+
+      await importDirectoryZip(vfs, '/target', archiveFile);
+
+      expect(checkWriteAccess).toHaveBeenCalledTimes(1);
+      expect(checkWriteAccess).toHaveBeenCalledWith('/target');
+    });
+
+    it('runs the write-access preflight when the plan only creates directories', async () => {
+      const checkWriteAccess = vi.fn().mockResolvedValue(undefined);
+      const vfs = createVfsWithWriteAccessCheck(checkWriteAccess);
+      await vfs.createDirectory('/target');
+
+      const archiveFile = toArchiveFile({
+        'empty/': new Uint8Array(0),
+      });
+
+      await importDirectoryZip(vfs, '/target', archiveFile);
+
+      expect(checkWriteAccess).toHaveBeenCalledTimes(1);
+    });
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions -- partial-error inspection ends */

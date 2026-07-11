@@ -449,6 +449,15 @@ const setupRepositoriesService = () => {
     await getRepo(path, true);
   };
 
+  const throwIfNotSettled = (settled: WriteAccessRecoveryResult) => {
+    if (settled.status !== 'flushed') {
+      throw new DomainError(
+        'Some earlier changes have not finished saving yet, so the export was stopped before reading any files.',
+        { code: RepositoryZipErrorCode.exportStorageNotReady, cause: settled },
+      );
+    }
+  };
+
   /**
    * Streams a directory's raw storage contents, including internal Mioframe storage files, as a
    * ZIP archive. This is a storage-level export, not a document JSON snapshot. Delivers packed
@@ -459,13 +468,15 @@ const setupRepositoriesService = () => {
    * @param onChunk - Invoked with each packed archive chunk as it becomes available.
    * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
    * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
+   * @throws DomainError with code `RepositoryZipErrorCode.exportStorageNotReady` when any cached
+   * repository under `path` cannot be settled. No archive bytes are emitted in that case.
    */
   const exportDirectoryZipArchive = async (
     path: string,
     onChunk: OnZipExportChunk,
     onProgress?: OnZipExportProgress,
   ) => {
-    await settleCachedRepositoriesUnderPath(path);
+    throwIfNotSettled(await settleCachedRepositoriesUnderPath(path));
     return exportDirectoryZip(vfs, path, onChunk, onProgress);
   };
 
@@ -480,6 +491,8 @@ const setupRepositoriesService = () => {
    * @param onChunk - Invoked with each packed archive chunk as it becomes available.
    * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
    * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
+   * @throws DomainError with code `RepositoryZipErrorCode.exportStorageNotReady` when the cached
+   * repository at `path` cannot be settled. No archive bytes are emitted in that case.
    */
   const exportDocumentZipArchive = async (
     path: string,
@@ -487,7 +500,7 @@ const setupRepositoriesService = () => {
     onChunk: OnZipExportChunk,
     onProgress?: OnZipExportProgress,
   ) => {
-    await settleCachedRepository(path);
+    throwIfNotSettled(await settleCachedRepository(path));
     return exportDocumentZip(vfs, path, id, onChunk, onProgress);
   };
 

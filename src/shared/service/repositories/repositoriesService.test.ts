@@ -1479,6 +1479,80 @@ describe('useRepositoriesService', () => {
       expect(repoInstances.get(path)).toBeUndefined();
       expect(lowLevelExportDirectory).toHaveBeenCalled();
     });
+
+    it('stops before emitting any chunk when a cached repository under the directory is still blocked', async () => {
+      const path = '/export-directory-blocked';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'stillBlocked' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDirectory = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(path);
+
+      const onChunk = vi.fn();
+      const error = await service.exportDirectoryZip(path, onChunk).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDirectory).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+
+    it('stops before emitting any chunk when a cached repository under the directory fails to settle', async () => {
+      const path = '/export-directory-failed';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'failed' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDirectory = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(path);
+
+      const onChunk = vi.fn();
+      const error = await service.exportDirectoryZip(path, onChunk).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDirectory).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
+    });
   });
 
   describe('exportDocumentZip', () => {
@@ -1547,6 +1621,94 @@ describe('useRepositoriesService', () => {
 
       expect(repoInstances.get(path)).toBeUndefined();
       expect(lowLevelExportDocument).toHaveBeenCalled();
+    });
+
+    it('stops before emitting any chunk when the cached repository is still blocked', async () => {
+      const path = '/export-document-blocked';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'stillBlocked' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDocument = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      const documentId = await service.createDocument(path, {
+        body: [],
+        name: 'Doc',
+        type: 'document',
+        version: 1,
+      } satisfies CFRDocumentContent);
+
+      const onChunk = vi.fn();
+      const error = await service
+        .exportDocumentZip(path, documentId, onChunk)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDocument).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+
+    it('stops before emitting any chunk when the cached repository fails to settle', async () => {
+      const path = '/export-document-failed';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'failed' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDocument = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      const documentId = await service.createDocument(path, {
+        body: [],
+        name: 'Doc',
+        type: 'document',
+        version: 1,
+      } satisfies CFRDocumentContent);
+
+      const onChunk = vi.fn();
+      const error = await service
+        .exportDocumentZip(path, documentId, onChunk)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDocument).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
     });
   });
 });
