@@ -66,7 +66,7 @@ Verification must exercise the resulting user path at the same level as the chan
 
 ## Diagnostics and privacy
 
-This section refines the root `Privacy-safe errors` rules for source code under `src`.
+This section defines source-code error and diagnostics invariants under `src`.
 
 The goal is not to hide all unexpected errors from diagnostics. Sentry must still receive actionable internal failures so real bugs can be fixed.
 
@@ -78,6 +78,7 @@ The goal is not to hide all unexpected errors from diagnostics. Sentry must stil
 **Error construction rules for `src` code:**
 
 - Wrap boundary failures in a `DomainError` with a project-controlled user-facing `message`, a stable `code` enum value, and the raw runtime error as `cause`.
+- Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern. Do not put clients, adapters, providers, callbacks, capabilities, credentials, or service objects in `message`, `cause`, serialization, or user-facing payloads.
 - Do not create feature-local classifiers or manual VFS-to-feature error mappings. Use enum codes and raw cause instead.
 - Keep `DomainError.message` free of paths, names, ids, URLs, and raw external text.
 - `DomainError.cause` may hold the original raw error — the Sentry sanitizer handles scrubbing at the outgoing event boundary.
