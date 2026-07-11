@@ -57,19 +57,17 @@ The first focused test should target the highest-risk applicable matrix item, no
 
 ## Targeted command patterns
 
-Use project scripts first:
+Use the repository verification entry point whenever it can express the target:
 
 ```bash
-pnpm test:run <test-file-or-pattern>
-pnpm e2e <test-file-or-pattern>
+pnpm verify --only unit-tests --files <test-or-source-paths...>
+pnpm verify --only e2e --files <spec-paths...>
+pnpm verify --only storybook-behavior --files <spec-or-source-paths...>
 ```
 
-Use direct runner flags only when the project script cannot express the narrow target:
+A reproducible manual browser smoke check is acceptable when no focused automated target exists and adding one would broaden the task.
 
-```bash
-pnpm vitest run <test-file-or-pattern>
-pnpm playwright test <test-file-or-pattern>
-```
+Do not invoke Vitest or Playwright directly as a verification substitute. Raw runner commands are allowed only for narrow diagnostics after a verify-managed check fails, or when the verify runner cannot express the required mode. Report them as diagnostic commands and return to verify-managed checks before completion.
 
 Keep targeted checks narrow. Do not replace the final `pnpm verify` requirement.
 
