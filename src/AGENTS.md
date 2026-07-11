@@ -64,6 +64,18 @@ New labels, icons, grouping, and containers must honestly describe the full set 
 
 Verification must exercise the resulting user path at the same level as the changed behavior. Component stubs can verify wiring contracts, but primary product flows require browser or e2e coverage when layout, discovery, focus, overlays, menus, sheets, or action hierarchy changes.
 
+## Vue, styling, stories, and copy
+
+For Vue and user-visible UI work, follow the applicable Vue, Material, browser, and visual skills and preserve these project conventions:
+
+- The root class of a Vue component matches the component name in kebab-case. Components keep one stable meaningful root; parent composition owns whether the component renders.
+- Use classic BEM syntax: `block`, `block__element`, `block_modifier`, and explicit key-value modifiers such as `block_size_medium`. Do not introduce `block--modifier`, loose unowned classes, or ambiguous modifier names.
+- Keep component implementation styles scoped. Global CSS belongs only in app-level style modules or documented token/theme files.
+- Use project Material tokens and preserve project authoring units such as `dp` and `sp` where the token pipeline expects them; do not rewrite them to `px` only because a generic reviewer suggests it.
+- When visually resetting a native interactive element, restore the enabled clickable cursor and visible focus/state-layer behavior. Disabled or non-action states must not appear clickable.
+- Colocate CSF stories as `<Component>.stories.ts`. Add the `visual` tag only to stories intentionally used for screenshot coverage.
+- Keep user-facing copy in the application's established UI language. After user-visible changes, scan touched surfaces for mixed-language strings, stale task wording, and unnecessary technical terms.
+
 ## Diagnostics and privacy
 
 This section defines source-code error and diagnostics invariants under `src`.
