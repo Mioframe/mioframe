@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.mjs';
 
@@ -25,7 +26,10 @@ export const STORYBOOK_BEHAVIOR_STANDALONE_SPECS = [];
 export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   {
     name: 'storybook behavior infrastructure smoke',
-    sourcePrefixes: [],
+    sourcePrefixes: [
+      'src/shared/ui/Button/MDButton.stories.ts',
+      'src/shared/ui/Button/MDButton.vue',
+    ],
     specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
   },
 ];
@@ -37,10 +41,12 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
 const FULL_LANE_EXACT_FILES = new Set([
   'config/tooling.json',
   'playwright.storybook.config.ts',
+  'pnpm-lock.yaml',
   'scripts/lib/storybookBehaviorRisk.mjs',
   'scripts/playwrightContainer.mjs',
   'scripts/storybook.mjs',
   'scripts/storybookBehavior.mjs',
+  'scripts/verify.mjs',
   'tsconfig.storybook.json',
 ]);
 
@@ -58,13 +64,34 @@ function isExistingFile(filePath) {
   }
 }
 
-function findStorybookBehaviorSpecFiles(specDir) {
-  return uniqSorted(
-    fs
-      .readdirSync(specDir, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.spec.ts'))
-      .map((entry) => `${specDir}/${entry.name}`),
-  );
+/**
+ * Recursively discover `*.spec.ts` files under `dir`, matching Playwright's
+ * recursive `testDir` discovery so nested behavior specs (for example
+ * `tests/e2e/storybook/reorder/reorder.spec.ts`) are covered by registry
+ * validation instead of being silently invisible to it.
+ * @param dir Directory to walk, relative to the repository root.
+ * @returns Sorted unique list of discovered spec file paths.
+ */
+function findStorybookBehaviorSpecFiles(dir) {
+  const specFiles = [];
+  const pendingDirs = [dir];
+
+  while (pendingDirs.length > 0) {
+    const currentDir = pendingDirs.pop();
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.posix.join(currentDir, entry.name);
+
+      if (entry.isDirectory()) {
+        pendingDirs.push(entryPath);
+      } else if (entry.isFile() && entryPath.endsWith('.spec.ts')) {
+        specFiles.push(entryPath);
+      }
+    }
+  }
+
+  return uniqSorted(specFiles);
 }
 
 function getAllRegistrySpecs(scenarios) {
@@ -118,10 +145,13 @@ export function isFullStorybookBehaviorLanePath(filePath) {
 
 /**
  * Validate the scenario registry and standalone exception list as a
- * verification contract: every referenced spec must exist, and every
- * existing Storybook behavior spec on disk must be covered by the registry
- * or the standalone list. A broken registry must fail verification rather
- * than degrade to a skipped behavior run.
+ * verification contract: every referenced spec must exist, be a `.spec.ts`
+ * file, and live under `tests/e2e/storybook/` (rejecting app e2e, visual,
+ * release, or otherwise arbitrary paths), and every existing Storybook
+ * behavior spec on disk — discovered recursively, matching Playwright's
+ * `testDir` discovery — must be covered by the registry or the standalone
+ * list. A broken registry must fail verification rather than degrade to a
+ * skipped behavior run.
  * @param overrides Test-only overrides for the scenario registry, standalone
  * exception list, and spec directory. Production callers should omit this
  * argument so the real registry and exception list are validated.
@@ -135,12 +165,26 @@ export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
   const registrySpecs = getAllRegistrySpecs(scenarios).map(String);
 
   for (const spec of registrySpecs) {
+    if (!isStorybookBehaviorSpecPath(spec)) {
+      errors.push(
+        `scenario registry must only reference specs under ${STORYBOOK_BEHAVIOR_SPEC_PREFIX} ending in .spec.ts, got ${spec}`,
+      );
+      continue;
+    }
+
     if (!isExistingFile(spec)) {
       errors.push(`scenario registry references missing spec ${spec}`);
     }
   }
 
   for (const spec of standaloneSpecs) {
+    if (!isStorybookBehaviorSpecPath(spec)) {
+      errors.push(
+        `STORYBOOK_BEHAVIOR_STANDALONE_SPECS must only reference specs under ${STORYBOOK_BEHAVIOR_SPEC_PREFIX} ending in .spec.ts, got ${spec}`,
+      );
+      continue;
+    }
+
     if (!isExistingFile(spec)) {
       errors.push(`STORYBOOK_BEHAVIOR_STANDALONE_SPECS references missing spec ${spec}`);
     }

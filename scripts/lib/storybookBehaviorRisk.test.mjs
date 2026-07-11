@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./packageJsonImpact.mjs', () => ({
   isPackageJsonRuntimeRelevantChange: vi.fn(),
@@ -51,6 +52,8 @@ describe('isFullStorybookBehaviorLanePath', () => {
     expect(isFullStorybookBehaviorLanePath('scripts/lib/storybookBehaviorRisk.mjs')).toBe(true);
     expect(isFullStorybookBehaviorLanePath('config/tooling.json')).toBe(true);
     expect(isFullStorybookBehaviorLanePath('tsconfig.storybook.json')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('pnpm-lock.yaml')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('scripts/verify.mjs')).toBe(true);
   });
 
   it('flags any path under .storybook/', () => {
@@ -109,6 +112,116 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
       ),
     ).toBe(true);
   });
+
+  it('fails when a scenario references an application e2e spec', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [
+        {
+          name: 'bad scenario',
+          sourcePrefixes: [],
+          specs: ['tests/e2e/appSmoke.spec.ts'],
+        },
+      ],
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) =>
+        error.includes('must only reference specs under tests/e2e/storybook/'),
+      ),
+    ).toBe(true);
+  });
+
+  it('fails when a scenario references a visual spec', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [
+        {
+          name: 'bad scenario',
+          sourcePrefixes: [],
+          specs: ['tests/e2e/visual/shared-ui.spec.ts'],
+        },
+      ],
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) =>
+        error.includes('must only reference specs under tests/e2e/storybook/'),
+      ),
+    ).toBe(true);
+  });
+
+  it('fails when a scenario references a release spec', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [
+        {
+          name: 'bad scenario',
+          sourcePrefixes: [],
+          specs: ['tests/e2e/release/productionArtifactSmoke.spec.ts'],
+        },
+      ],
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) =>
+        error.includes('must only reference specs under tests/e2e/storybook/'),
+      ),
+    ).toBe(true);
+  });
+
+  it('fails when a standalone entry references a non-.spec.ts file inside the lane', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [],
+      standaloneSpecs: ['tests/e2e/storybook/storybook.ts'],
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) =>
+        error.includes(
+          'STORYBOOK_BEHAVIOR_STANDALONE_SPECS must only reference specs under tests/e2e/storybook/',
+        ),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('validateStorybookBehaviorScenarioRegistry recursive nested spec discovery', () => {
+  const fixtureDir = 'tests/e2e/storybook/__registryFixtureTmp__';
+  const nestedSpecPath = `${fixtureDir}/nested/example.spec.ts`;
+
+  beforeEach(() => {
+    fs.mkdirSync(`${fixtureDir}/nested`, { recursive: true });
+    fs.writeFileSync(nestedSpecPath, '');
+  });
+
+  afterEach(() => {
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+  });
+
+  it('detects a nested spec that is not registered or standalone as invalid', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [],
+      standaloneSpecs: [],
+      specDir: fixtureDir,
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) => error.includes(`${nestedSpecPath} is not covered`)),
+    ).toBe(true);
+  });
+
+  it('accepts a nested spec that is registered as standalone', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [],
+      standaloneSpecs: [nestedSpecPath],
+      specDir: fixtureDir,
+    });
+
+    expect(validation).toEqual({ valid: true, errors: [] });
+  });
 });
 
 describe('resolveStorybookBehaviorPlan', () => {
@@ -141,6 +254,42 @@ describe('resolveStorybookBehaviorPlan', () => {
 
   it('does not run the full lane for an arbitrary unrelated src change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/features/documentCreate/index.ts']);
+
+    expect(plan.mode).toBe('none');
+  });
+
+  it('runs the full lane for a pnpm-lock.yaml change', () => {
+    const plan = resolveStorybookBehaviorPlan(['pnpm-lock.yaml']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('Storybook/Playwright infrastructure path pnpm-lock.yaml');
+  });
+
+  it('runs the full lane for a scripts/verify.mjs change', () => {
+    const plan = resolveStorybookBehaviorPlan(['scripts/verify.mjs']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain(
+      'Storybook/Playwright infrastructure path scripts/verify.mjs',
+    );
+  });
+
+  it('focuses the smoke spec for an MDButton story change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.stories.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+  });
+
+  it('focuses the smoke spec for an MDButton component change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.vue']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+  });
+
+  it('does not run the full lane for an unrelated src/shared/ui change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.vue']);
 
     expect(plan.mode).toBe('none');
   });
