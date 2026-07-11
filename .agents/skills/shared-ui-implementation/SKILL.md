@@ -58,6 +58,10 @@ Define, in a few lines:
 - If a standard property does not render the required layout in the project's pinned visual-test engine, do not delete the layout/clamping behavior and do not add a hardcoded prefix. Replace it with a browser-neutral fallback built from properties every target browser already supports (e.g. `max-height` computed from `line-height * line count` plus `overflow: hidden`, instead of box-layout line-clamp). Preserving the existing line-count/overflow contract is mandatory; only the implementation technique changes.
 - The one narrow exception is a genuinely non-standardized vendor-only API with no standard CSS equivalent at all (e.g. `-webkit-tap-highlight-color`, which controls a WebKit-only tap-feedback affordance that has no standard property). That is not a prefix for a standard property and is a different case from a one-off hack around a property that does have a standard form — do not use it as precedent for handwritten clamping or layout prefixes.
 
+## Typography tokens
+
+- Use the `MD_TYPESCALE` constants / `.md-typescale-*` classes from `shared/lib/md` for typography-only Material text. Do not hand-write `font-family`, `font-size`, `font-weight`, `line-height`, or `letter-spacing` type-scale token declarations in component CSS unless the change is to the type-scale utility contract itself.
+
 ## Public API and legacy props
 
 - Wrapper components must call the current shared UI API (e.g. `mode`, `containerTag`) directly, or expose a domain-intent prop that the wrapper itself owns (e.g. `isOpenable` for a file-system entry row), never a removed shared component prop kept as a compatibility alias (e.g. a wrapper-level `is` / `isButton` mirroring a removed `MDListItem` prop).

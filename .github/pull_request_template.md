@@ -15,6 +15,12 @@
 
 ## State Shape / API Contract
 
+## Minimum Sufficient Design
+
+- Simplest design that satisfies the required scenarios:
+- Intentionally deferred or unsupported:
+- Added complexity and its current justification:
+
 ## User Scenarios Preserved
 
 ## Shared UI / Blast Radius
