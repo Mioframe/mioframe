@@ -21,7 +21,7 @@ A local coding agent must not report "done", "fixed", "ready", or equivalent com
 
 Local coding agents work only with repository files and local commands. Do not treat GitHub CI, PR threads, PR metadata, reviewer requests, or bot comments as actions the local coding agent can complete. Leave GitHub state for the reviewer unless the user explicitly assigns GitHub work to a GitHub-capable assistant.
 
-Treat the verification runner and its browser/container runtime as an opaque project boundary. Do not invoke, inspect, configure, or independently diagnose Podman, Docker, container sockets, runtime directories, or other infrastructure used internally by `pnpm verify`. Report the failing verify step and its own output instead.
+Unless the assigned task explicitly targets repository-owned verification infrastructure, treat the verification runner and its browser/container runtime as an opaque project boundary. For ordinary product work, do not invoke, inspect, configure, or independently diagnose Podman, Docker, container sockets, runtime directories, or other infrastructure used internally by `pnpm verify`; report the failing verify step and its own output instead. For an explicit verification-infrastructure task, inspect only the relevant repository-owned scripts and configuration, keep `pnpm verify` as the public entry point, and do not bypass its ownership boundaries.
 
 ## When to use fix mode
 
@@ -51,7 +51,7 @@ pnpm verify --only visual
 
 Do not run raw `vitest`, `playwright`, `eslint`, `oxlint`, `oxfmt`, `pnpm type-check`, visual, mutation, or e2e commands as a substitute for verify-managed checks.
 
-Raw underlying commands are allowed only for narrow code or test diagnostics after a verify-managed check fails, or when the verify script cannot express the required mode. Report them as diagnostic commands, not verification gates, and still return to verify-managed checks before completion. This exception does not permit direct diagnosis of the verification runner's container or browser infrastructure.
+Raw underlying commands are allowed only for narrow code or test diagnostics after a verify-managed check fails, or when the verify script cannot express the required mode. Report them as diagnostic commands, not verification gates, and still return to verify-managed checks before completion. For ordinary product work, this exception does not permit direct diagnosis of the verification runner's container or browser infrastructure.
 
 `pnpm verify --only e2e` alone is not a forced e2e run when the inferred e2e scope is empty.
 
@@ -101,7 +101,7 @@ If `pnpm verify` fails:
 2. Fix the failure if it is caused by the current change.
 3. Rerun the narrow failed check through `pnpm verify --only <label>` when possible.
 4. Rerun final `pnpm verify` before reporting completion.
-5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output without independently diagnosing infrastructure behind the verify step.
+5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output. For ordinary product work, do not independently diagnose infrastructure behind the verify step.
 6. Do not claim the task is complete while final verification is failing.
 7. If `pnpm verify` cannot start because verification is already running, run `pnpm verify:status`, inspect `.verify/logs`, and report the status clearly.
 8. If `pnpm verify:status` reports that verification is ready to resume, run `pnpm verify:resume` only after inspecting `.verify/logs`.
