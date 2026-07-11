@@ -18,7 +18,10 @@ const GENERIC_PIDS_LIMIT_ENV = 'PLAYWRIGHT_CONTAINER_PIDS_LIMIT';
 const GENERIC_TIMEOUT_ENV = 'PLAYWRIGHT_CONTAINER_TIMEOUT';
 const GENERIC_WORKERS_ENV = 'PLAYWRIGHT_CONTAINER_WORKERS';
 export const VERIFY_PROFILE_ENV = 'MIOFRAME_VERIFY_PROFILE';
-const containerProfiles = toolingConfig.verification.playwrightContainer;
+// One canonical resource profile is shared by local and GitHub Actions so the
+// two environments cannot drift independently; `profileName` below still
+// distinguishes them for reporting purposes only.
+const canonicalContainerProfile = toolingConfig.verification.playwrightContainer;
 const PLAYWRIGHT_CONTAINER_LIMITS = [
   {
     envName: GENERIC_CPUS_ENV,
@@ -321,8 +324,7 @@ export function resolvePlaywrightContainerProfile(processEnv = process.env) {
     profileName = processEnv.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local';
   }
 
-  const profileDefaults =
-    profileName === 'github-actions' ? containerProfiles.githubActions : containerProfiles.local;
+  const profileDefaults = canonicalContainerProfile;
   const source =
     requestedProfile !== undefined && requestedProfile !== ''
       ? VERIFY_PROFILE_ENV
