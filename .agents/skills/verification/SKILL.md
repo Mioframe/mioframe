@@ -21,6 +21,8 @@ A local coding agent must not report "done", "fixed", "ready", or equivalent com
 
 Local coding agents work only with repository files and local commands. Do not treat GitHub CI, PR threads, PR metadata, reviewer requests, or bot comments as actions the local coding agent can complete. Leave GitHub state for the reviewer unless the user explicitly assigns GitHub work to a GitHub-capable assistant.
 
+If CI auto-commits safe fixer output to the current branch, synchronize the local checkout before continuing so implementation and final verification use the actual branch head.
+
 Unless the assigned task explicitly targets repository-owned verification infrastructure, treat the verification runner and its browser/container runtime as an opaque project boundary. For ordinary product work, do not invoke, inspect, configure, or independently diagnose Podman, Docker, container sockets, runtime directories, or other infrastructure used internally by `pnpm verify`; report the failing verify step and its own output instead. For an explicit verification-infrastructure task, inspect only the relevant repository-owned scripts and configuration, keep `pnpm verify` as the public entry point, and do not bypass its ownership boundaries.
 
 ## When to use fix mode
@@ -46,8 +48,12 @@ pnpm verify --only eslint --files <paths...>
 pnpm verify --only type-check
 pnpm verify --only unit-tests --files <paths...>
 pnpm verify --only e2e --files <spec-paths...>
-pnpm verify --only visual
+pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only visual --files <paths...>
+pnpm verify --only mutation --files <paths...>
 ```
+
+When an `AGENTS.md`, skill, or project document names a minimum underlying check such as `pnpm type-check`, raw Vitest, Playwright, or Stryker, run the corresponding `pnpm verify --only <label>` form instead whenever the verify runner supports that mode. Direct commands are diagnostic or exceptional modes, not completion gates.
 
 Do not run raw `vitest`, `playwright`, `eslint`, `oxlint`, `oxfmt`, `pnpm type-check`, visual, mutation, or e2e commands as a substitute for verify-managed checks.
 
@@ -88,7 +94,7 @@ Examples:
 - verify script changes: check default mode, `--fix`, and `--verbose` when affected;
 - GitHub Actions changes: ensure the workflow command still exposes useful logs and annotations;
 - Storybook changes: run the Storybook build or the narrow visual command that exercises the changed config;
-- Playwright config changes: run the affected project or config, not only a generic unit test;
+- Playwright config changes: run the affected verify-managed project or config mode, not only a generic unit test;
 - package, dependency, or config changes: run type-check or build when runtime behavior or generated types can be affected.
 
 Do not rely on final `pnpm verify` alone when the changed behavior is a mode that `pnpm verify` does not exercise directly.
