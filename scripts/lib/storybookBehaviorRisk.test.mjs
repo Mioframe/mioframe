@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./packageJsonImpact.mjs', () => ({
@@ -7,6 +9,7 @@ vi.mock('./packageJsonImpact.mjs', () => ({
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.mjs';
 import {
+  findStorybookBehaviorSpecFiles,
   isFullStorybookBehaviorLanePath,
   isStorybookBehaviorSpecPath,
   isStorybookBehaviorSupportPath,
@@ -187,24 +190,43 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
   });
 });
 
-describe('validateStorybookBehaviorScenarioRegistry recursive nested spec discovery', () => {
-  const fixtureDir = 'tests/e2e/storybook/__registryFixtureTmp__';
-  const nestedSpecPath = `${fixtureDir}/nested/example.spec.ts`;
+describe('findStorybookBehaviorSpecFiles', () => {
+  let tmpDir;
 
   beforeEach(() => {
-    fs.mkdirSync(`${fixtureDir}/nested`, { recursive: true });
-    fs.writeFileSync(nestedSpecPath, '');
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'storybook-behavior-risk-'));
   });
 
   afterEach(() => {
-    fs.rmSync(fixtureDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('detects a nested spec that is not registered or standalone as invalid', () => {
+  it('recursively discovers nested .spec.ts files under an OS temporary directory', () => {
+    fs.mkdirSync(path.join(tmpDir, 'nested'), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'nested', 'example.spec.ts'), '');
+    fs.writeFileSync(path.join(tmpDir, 'nested', 'example.ts'), '');
+    fs.writeFileSync(path.join(tmpDir, 'top.spec.ts'), '');
+
+    const specFiles = findStorybookBehaviorSpecFiles(tmpDir);
+
+    expect(specFiles).toEqual(
+      [
+        path.posix.join(tmpDir, 'nested/example.spec.ts'),
+        path.posix.join(tmpDir, 'top.spec.ts'),
+      ].sort((left, right) => left.localeCompare(right)),
+    );
+  });
+});
+
+describe('validateStorybookBehaviorScenarioRegistry deterministic spec injection', () => {
+  const nestedSpecPath = 'tests/e2e/storybook/reorder/reorder.spec.ts';
+
+  it('detects a nested discovered spec that is not registered or standalone as invalid', () => {
     const validation = validateStorybookBehaviorScenarioRegistry({
       scenarios: [],
       standaloneSpecs: [],
-      specDir: fixtureDir,
+      specFiles: [nestedSpecPath],
+      fileExists: () => true,
     });
 
     expect(validation.valid).toBe(false);
@@ -213,14 +235,42 @@ describe('validateStorybookBehaviorScenarioRegistry recursive nested spec discov
     ).toBe(true);
   });
 
-  it('accepts a nested spec that is registered as standalone', () => {
+  it('accepts the same nested spec when registered via a scenario', () => {
     const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [],
-      standaloneSpecs: [nestedSpecPath],
-      specDir: fixtureDir,
+      scenarios: [{ name: 'reorder', sourcePrefixes: [], specs: [nestedSpecPath] }],
+      standaloneSpecs: [],
+      specFiles: [nestedSpecPath],
+      fileExists: () => true,
     });
 
     expect(validation).toEqual({ valid: true, errors: [] });
+  });
+
+  it('accepts the same nested spec when registered as standalone', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [],
+      standaloneSpecs: [nestedSpecPath],
+      specFiles: [nestedSpecPath],
+      fileExists: () => true,
+    });
+
+    expect(validation).toEqual({ valid: true, errors: [] });
+  });
+
+  it('detects a scenario that references a missing nested spec as invalid', () => {
+    const validation = validateStorybookBehaviorScenarioRegistry({
+      scenarios: [{ name: 'reorder', sourcePrefixes: [], specs: [nestedSpecPath] }],
+      standaloneSpecs: [],
+      specFiles: [],
+      fileExists: () => false,
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(
+      validation.errors.some((error) =>
+        error.includes(`scenario registry references missing spec ${nestedSpecPath}`),
+      ),
+    ).toBe(true);
   });
 });
 

@@ -68,11 +68,13 @@ function isExistingFile(filePath) {
  * Recursively discover `*.spec.ts` files under `dir`, matching Playwright's
  * recursive `testDir` discovery so nested behavior specs (for example
  * `tests/e2e/storybook/reorder/reorder.spec.ts`) are covered by registry
- * validation instead of being silently invisible to it.
- * @param dir Directory to walk, relative to the repository root.
+ * validation instead of being silently invisible to it. Exported so tests
+ * can exercise recursive discovery directly against an OS temporary
+ * directory instead of the real Storybook behavior spec directory.
+ * @param dir Directory to walk, relative to the repository root or absolute.
  * @returns Sorted unique list of discovered spec file paths.
  */
-function findStorybookBehaviorSpecFiles(dir) {
+export function findStorybookBehaviorSpecFiles(dir) {
   const specFiles = [];
   const pendingDirs = [dir];
 
@@ -153,14 +155,22 @@ export function isFullStorybookBehaviorLanePath(filePath) {
  * list. A broken registry must fail verification rather than degrade to a
  * skipped behavior run.
  * @param overrides Test-only overrides for the scenario registry, standalone
- * exception list, and spec directory. Production callers should omit this
- * argument so the real registry and exception list are validated.
+ * exception list, spec directory, discovered spec paths, and spec-existence
+ * check. Production callers should omit this argument so the real registry,
+ * exception list, and filesystem are validated.
+ * @param [overrides.specFiles] Test-only override for the discovered spec
+ * paths, bypassing filesystem discovery under `specDir`. Lets registry
+ * coverage be tested against deterministic virtual paths.
+ * @param [overrides.fileExists] Test-only override for the spec-existence
+ * check used for registry and standalone entries, bypassing the real
+ * filesystem.
  * @returns Validation result with `valid` and human-readable `errors`.
  */
 export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
   const scenarios = overrides.scenarios ?? STORYBOOK_BEHAVIOR_SCENARIO_SCOPES;
   const standaloneSpecs = overrides.standaloneSpecs ?? STORYBOOK_BEHAVIOR_STANDALONE_SPECS;
   const specDir = overrides.specDir ?? STORYBOOK_BEHAVIOR_SPEC_DIR;
+  const fileExists = overrides.fileExists ?? isExistingFile;
   const errors = [];
   const registrySpecs = getAllRegistrySpecs(scenarios).map(String);
 
@@ -172,7 +182,7 @@ export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
       continue;
     }
 
-    if (!isExistingFile(spec)) {
+    if (!fileExists(spec)) {
       errors.push(`scenario registry references missing spec ${spec}`);
     }
   }
@@ -185,18 +195,22 @@ export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
       continue;
     }
 
-    if (!isExistingFile(spec)) {
+    if (!fileExists(spec)) {
       errors.push(`STORYBOOK_BEHAVIOR_STANDALONE_SPECS references missing spec ${spec}`);
     }
   }
 
   let specFiles;
 
-  try {
-    specFiles = findStorybookBehaviorSpecFiles(specDir);
-  } catch (error) {
-    errors.push(`unable to list ${specDir}/*.spec.ts: ${error.message}`);
-    specFiles = [];
+  if (overrides.specFiles) {
+    specFiles = uniqSorted(overrides.specFiles);
+  } else {
+    try {
+      specFiles = findStorybookBehaviorSpecFiles(specDir);
+    } catch (error) {
+      errors.push(`unable to list ${specDir}/*.spec.ts: ${error.message}`);
+      specFiles = [];
+    }
   }
 
   const coveredSpecs = new Set([...registrySpecs, ...standaloneSpecs]);
