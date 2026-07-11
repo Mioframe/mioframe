@@ -194,11 +194,12 @@ Container unmount and composable scope disposal are hard cleanup boundaries: the
 in-flight session immediately, in every phase, and unconditionally remove every remaining library
 side effect — the active session runtime (animation frame, pointer capture, session listeners,
 touch/context-menu/selection guards), click suppression, and any pending bounded release watcher
-and its safety timeout. Nothing from an ended `useReorder` instance is ever left listening on
-`window` or `document`. An active-item unmount alone (the container and composable staying
-mounted) is different: if the original pointer may still be physically held, the bounded release
-watcher described above is still armed and kept, because a later real release on the same
-still-mounted container remains observable.
+and its safety timeout, even if a consumer callback (`keys`, `onReorder`, or `onDragEnd`) throws
+while that in-flight session is being cancelled. Nothing from an ended `useReorder` instance is
+ever left listening on `window` or `document`. An active-item unmount alone (the container and
+composable staying mounted) is different: if the original pointer may still be physically held,
+the bounded release watcher described above is still armed and kept, because a later real release
+on the same still-mounted container remains observable.
 
 ### Consumer exceptions
 

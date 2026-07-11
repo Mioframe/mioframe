@@ -388,11 +388,17 @@ test.describe('autoscroll', () => {
     // at cancellation is not yet final — it keeps climbing toward its eventual resting value for a
     // further handful of animation frames, statistically identically in both conditions. That
     // rules out Chromium's native "extend a selection near a scrollable edge autoscrolls it"
-    // behavior as the cause: it never correlates with whether a selection exists. It is the
-    // browser's own scroll compositor visually finishing an already-issued, already-correctly-
-    // stopped scroll, not a new library- or selection-driven scroll. Poll for two consecutive
-    // equal readings, bounded well above the settling window observed in that investigation
-    // (well under 200ms), before treating the position as final.
+    // behavior as the cause: it never correlates with whether a selection exists. A further
+    // controlled investigation (`reorder.postCancellationScrollDiagnosis.spec.ts`) also ruled out
+    // CSS scroll anchoring (the same zero-further-`scrollBy` result reproduces with
+    // `overflow-anchor: none` and even with no DOM reorder at all) and a literal
+    // `scroll-behavior: smooth` interaction (`getComputedStyle` stays `'auto'`). No further
+    // library-issued `scrollBy` call is ever timestamped after cancellation in any of those
+    // conditions, so this is not a library or CSS-driven scroll; a more specific cause is not
+    // claimed here, since it could not be distinguished from lag in this test's own
+    // DOM-mutation-based "cancelled" observation. Poll for two consecutive equal readings, bounded
+    // well above the settling window observed in that investigation (well under 200ms), before
+    // treating the position as final.
     let previousScrollTop = await container.evaluate((el) => el.scrollTop);
     await expect
       .poll(

@@ -352,6 +352,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
     ]);
   });
@@ -362,6 +363,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
     ]);
   });
@@ -372,6 +374,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
     ]);
   });
@@ -382,6 +385,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
     ]);
   });
@@ -392,6 +396,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
     ]);
   });

@@ -1,5 +1,6 @@
 import { nextTick, ref, toValue } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { RELEASE_WATCHER_SAFETY_TIMEOUT_MS } from './constants';
 import { createPointerSession } from './PointerSession';
 import { createReorderRegistry, registerItem } from './registry';
 
@@ -774,5 +775,243 @@ describe('unmount / dispose hard cleanup', () => {
     expect(dispatchClick(setup.containerEl)).toBe(true);
     // Still exactly one onDragEnd overall: detachContainer found no active session left to cancel.
     expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('hard cleanup exception safety', () => {
+  /**
+   * Activates a drag on 'a', then drives one frame that requests and gets 'a'/'b' swapped —
+   * mirrors the `deferred pointerup settlement` describe block's own helper, needed here to reach
+   * cancellation's rollback branch. Consumes exactly 4 `getKeys()` calls and 1 `onReorder` call.
+   * @param setup - The throwing-session fixture returned by {@link setupThrowingSession}.
+   */
+  const activateAndAcceptMove = (setup: ReturnType<typeof setupThrowingSession>): void => {
+    activateOnItem(setup.itemA);
+    setup.registry.itemKeys.set(setup.itemB, 'b');
+    document.elementsFromPoint = () => [setup.itemB, setup.containerEl];
+    window.dispatchEvent(
+      createPointerEvent('pointermove', { pointerId: 1, clientX: 250, clientY: 10 }),
+    );
+    runFrame();
+  };
+
+  /**
+   * Runs `action` (expected to throw `boom` while hard-cancelling `setup`'s in-flight dragging
+   * session), then asserts every cleanup guarantee the hard-cleanup exception boundary owes
+   * regardless of which consumer call threw: the exact original error propagates, every
+   * dragging-session side effect is gone, and no release watcher or click suppression survives to
+   * observe a later matching release or the bounded safety timeout.
+   * @param setup - The throwing-session fixture returned by {@link setupThrowingSession}.
+   * @param action - The hard-cleanup call under test (`detachContainer` or `dispose`).
+   * @param boom - The exact error instance the throwing consumer callback throws.
+   */
+  const expectExceptionSafeHardCleanup = (
+    setup: ReturnType<typeof setupThrowingSession>,
+    action: () => void,
+    boom: Error,
+  ): void => {
+    let caught: unknown;
+    try {
+      action();
+    } catch (error) {
+      caught = error;
+    }
+    // The exact original error object is rethrown, not wrapped or replaced.
+    expect(caught).toBe(boom);
+
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+    expect(setup.draggingKey.value).toBeNull();
+
+    const dragEndCallsAfterThrow = setup.onDragEnd.mock.calls.length;
+    // onDragEnd is never invoked twice by the throwing cleanup itself (at most the one call whose
+    // own throw we just caught, for the onDragEnd-throws case; zero for every other throw point).
+    expect(dragEndCallsAfterThrow).toBeLessThanOrEqual(1);
+
+    // A later matching pointerup does not arm or suppress a click: no release watcher survived to
+    // observe it.
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(true);
+
+    // A later matching pointercancel has no effect either: nothing is left listening for it.
+    window.dispatchEvent(createPointerEvent('pointercancel', { pointerId: 1 }));
+    expect(setup.onDragEnd.mock.calls.length).toBe(dragEndCallsAfterThrow);
+
+    // Further pointer movement cannot invoke reorder behavior: no session is left to hit-test or
+    // request a move from.
+    const onReorderCallsAfterThrow = setup.onReorder.mock.calls.length;
+    window.dispatchEvent(
+      createPointerEvent('pointermove', { pointerId: 1, clientX: 300, clientY: 10 }),
+    );
+    expect(setup.onReorder.mock.calls.length).toBe(onReorderCallsAfterThrow);
+    expect(rafCallbacks.size).toBe(0);
+
+    // Advancing beyond the bounded release-watcher safety timeout produces no delayed behavior:
+    // it was cleared by disarm(), not merely outrun.
+    vi.advanceTimersByTime(RELEASE_WATCHER_SAFETY_TIMEOUT_MS + 1000);
+    expect(setup.onDragEnd.mock.calls.length).toBe(dragEndCallsAfterThrow);
+    expect(dispatchClick(setup.containerEl)).toBe(true);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('detachContainer()', () => {
+    it('still disarms and propagates when cancellation-time getKeys() (before rollback evaluation) throws', () => {
+      const boom = new Error('boom-detach-keys-before-rollback');
+      let callCount = 0;
+      const setup = setupThrowingSession({
+        wrapGetKeys: (getKeys) => () => {
+          callCount += 1;
+          // Call 1: onContainerPointerDown's validation. Call 2: activateSession's own read.
+          // Call 3: cancelDraggingSession's pre-rollback read (no move was accepted, so no
+          // further getKeys()/onReorder call happens before this one).
+          if (callCount === 3) throw boom;
+          return getKeys();
+        },
+      });
+
+      activateOnItem(setup.itemA);
+      expect(setup.onDragStart).toHaveBeenCalledTimes(1);
+
+      expectExceptionSafeHardCleanup(
+        setup,
+        () => {
+          setup.session.detachContainer(setup.containerEl);
+        },
+        boom,
+      );
+    });
+
+    it('still disarms and propagates when the rollback onReorder call throws', () => {
+      const boom = new Error('boom-detach-rollback-reorder');
+      let onReorderCalls = 0;
+      const setup = setupThrowingSession({
+        onReorder: (event, helpers) => {
+          onReorderCalls += 1;
+          if (onReorderCalls === 2) throw boom;
+
+          const next = [...helpers.getKeys()];
+          const [moved] = next.splice(event.fromIndex, 1);
+          if (moved !== undefined) next.splice(event.toIndex, 0, moved);
+          helpers.setKeys(next);
+        },
+      });
+
+      activateAndAcceptMove(setup);
+      expect(onReorderCalls).toBe(1);
+      expect(setup.getKeys()).toEqual(['b', 'a']);
+
+      expectExceptionSafeHardCleanup(
+        setup,
+        () => {
+          setup.session.detachContainer(setup.containerEl);
+        },
+        boom,
+      );
+
+      expect(onReorderCalls).toBe(2);
+      // The failed rollback leaves the controlled order exactly as the accepted live move left it.
+      expect(setup.getKeys()).toEqual(['b', 'a']);
+    });
+
+    it('still disarms and propagates when getKeys() evaluated after a successful rollback throws', () => {
+      const boom = new Error('boom-detach-keys-after-rollback');
+      let callCount = 0;
+      const setup = setupThrowingSession({
+        wrapGetKeys: (getKeys) => () => {
+          callCount += 1;
+          // Call 1-2: activation. Call 3: the first active frame's own read. Call 4:
+          // requestMove's post-onReorder read. Call 5: cancelDraggingSession's pre-rollback
+          // read. Call 6: cancelDraggingSession's post-rollback read.
+          if (callCount === 6) throw boom;
+          return getKeys();
+        },
+      });
+
+      activateAndAcceptMove(setup);
+      expect(setup.onReorder).toHaveBeenCalledTimes(1);
+      expect(setup.getKeys()).toEqual(['b', 'a']);
+
+      expectExceptionSafeHardCleanup(
+        setup,
+        () => {
+          setup.session.detachContainer(setup.containerEl);
+        },
+        boom,
+      );
+
+      // The rollback's own onReorder call still ran (and mutated the controlled order back)
+      // before the post-rollback getKeys() read threw.
+      expect(setup.onReorder).toHaveBeenCalledTimes(2);
+    });
+
+    it('still disarms and propagates when onDragEnd throws', () => {
+      const boom = new Error('boom-detach-drag-end');
+      const setup = setupThrowingSession({
+        onDragEnd: () => {
+          throw boom;
+        },
+      });
+
+      activateOnItem(setup.itemA);
+      expect(setup.onDragStart).toHaveBeenCalledTimes(1);
+
+      expectExceptionSafeHardCleanup(
+        setup,
+        () => {
+          setup.session.detachContainer(setup.containerEl);
+        },
+        boom,
+      );
+    });
+  });
+
+  describe('dispose()', () => {
+    it('still disarms and propagates when cancellation-time getKeys() throws', () => {
+      const boom = new Error('boom-dispose-keys');
+      let callCount = 0;
+      const setup = setupThrowingSession({
+        wrapGetKeys: (getKeys) => () => {
+          callCount += 1;
+          if (callCount === 3) throw boom;
+          return getKeys();
+        },
+      });
+
+      activateOnItem(setup.itemA);
+
+      expectExceptionSafeHardCleanup(
+        setup,
+        () => {
+          setup.session.dispose();
+        },
+        boom,
+      );
+    });
+
+    it('still disarms and propagates when onDragEnd throws', () => {
+      const boom = new Error('boom-dispose-drag-end');
+      const setup = setupThrowingSession({
+        onDragEnd: () => {
+          throw boom;
+        },
+      });
+
+      activateOnItem(setup.itemA);
+
+      expectExceptionSafeHardCleanup(
+        setup,
+        () => {
+          setup.session.dispose();
+        },
+        boom,
+      );
+    });
   });
 });

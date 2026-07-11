@@ -19,10 +19,12 @@
  * Container/composable removal (`PointerSession.detachContainer`/`dispose`) is a *hard* cleanup
  * boundary, not one more release-watcher trigger: cancelling a still-physically-held dragging
  * session as part of that removal would otherwise start exactly this watcher, but both callers
- * unconditionally call {@link ClickSuppressionController.disarm} immediately afterward, in the
- * same synchronous call, so no watcher (or its safety timeout) ever survives past a
- * `detachContainer`/`dispose` call — there is no longer a container left to observe a future click
- * on, or a mounted composable left to own the watcher.
+ * unconditionally call {@link ClickSuppressionController.disarm} immediately afterward, in a
+ * `finally` around that cancellation — even if cancellation itself throws (a consumer-owned
+ * `getKeys`/`onReorder`/`onDragEnd` call during cancellation is outside the library's trust
+ * boundary) — so no watcher (or its safety timeout) ever survives past a `detachContainer`/`dispose`
+ * call — there is no longer a container left to observe a future click on, or a mounted composable
+ * left to own the watcher.
  *
  * This module does not re-install any `selectstart`-prevention guard for the bounded window: an
  * earlier version did, on the theory that Chromium's native "extend a text selection near a
@@ -32,12 +34,17 @@
  * external-order-mutation autoscroll test) disproved that theory: with the guard fully disabled, a
  * real text selection reliably formed and extended across the post-cancellation window, yet the
  * observed `scrollTop` settling after cancellation was statistically identical, in both shape and
- * magnitude, to runs where no selection ever formed. In every run, in both conditions, zero
- * additional library-issued `scrollBy`/`window.scrollBy` calls occurred after cancellation — the
- * settling is the browser's own scroll compositor finishing already-issued, already-correctly-
- * stopped scrolling over a few more frames, not a new scroll caused by selection or by anything
- * else post-cancellation. Do not reintroduce a post-cancel `selectstart` guard without new causal
- * evidence.
+ * magnitude, to runs where no selection ever formed. A further controlled investigation
+ * (`tests/e2e/storybook/reorder.postCancellationScrollDiagnosis.spec.ts`) also ruled out CSS scroll
+ * anchoring (the same result reproduces with `overflow-anchor: none`, and even with no DOM reorder
+ * at all) and a literal `scroll-behavior: smooth` interaction. In every one of those conditions,
+ * zero additional library-issued `scrollBy`/`window.scrollBy` calls are ever timestamped after
+ * cancellation — the settling is not caused by selection, scroll anchoring, smooth-scroll CSS, or
+ * any further library scroll write. A more specific cause (e.g. a particular browser compositor
+ * mechanism) is deliberately not claimed: it could not be distinguished from lag in the
+ * DOM-mutation-based way these investigations observe "cancelled". Do not reintroduce a post-cancel
+ * `selectstart` guard, and do not attribute the settling to a specific browser mechanism, without
+ * new causal evidence.
  */
 import { RELEASE_WATCHER_SAFETY_TIMEOUT_MS } from './constants';
 

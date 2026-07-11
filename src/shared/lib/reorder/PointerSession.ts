@@ -159,13 +159,17 @@ export interface CreatePointerSessionOptions<Key extends ReorderKey> {
  *
  * `detachContainer` and `dispose` are both hard cleanup boundaries: library ownership ends
  * immediately and unconditionally, not only when the pointer eventually releases. Both cancel any
- * in-flight session (any phase) and then unconditionally disarm click suppression — which removes
- * a pending bounded release watcher and its safety timeout, even though cancelling a
- * still-physically-held dragging session would otherwise start exactly that watcher (see
- * `clickSuppression.ts`). The watcher is only ever observable across an *earlier* cancellation
- * that leaves the composable and its container still mounted (for example
- * {@link notifyItemUnmounted} alone, without a following `detachContainer`); it cannot outlive a
- * `detachContainer`/`dispose` call itself, since the disarm happens synchronously right after.
+ * in-flight session (any phase) inside a `try` and then unconditionally disarm click suppression in
+ * a matching `finally` — which removes a pending bounded release watcher and its safety timeout,
+ * even though cancelling a still-physically-held dragging session would otherwise start exactly
+ * that watcher (see `clickSuppression.ts`), and even though cancellation itself can throw: any of
+ * the consumer-owned `getKeys`/`onReorder`/`onDragEnd` calls it makes (cancellation-time key
+ * re-validation, rollback, or the final callback) are outside the library's trust boundary. The
+ * `finally` guarantees the disarm still runs and the original error still propagates unchanged. The
+ * watcher is only ever observable across an *earlier* cancellation that leaves the composable and
+ * its container still mounted (for example {@link notifyItemUnmounted} alone, without a following
+ * `detachContainer`); it cannot outlive a `detachContainer`/`dispose` call itself, since the disarm
+ * happens unconditionally right after, success or throw.
  */
 export interface PointerSession<Key extends ReorderKey> {
   /** Starts listening for activation gestures on the registered reorder container. */
@@ -767,14 +771,19 @@ export const createPointerSession = <Key extends ReorderKey>(
 
   const detachContainer = (containerEl: HTMLElement) => {
     containerEl.removeEventListener('pointerdown', onContainerPointerDown);
-    // Only one container may be mounted at a time per `useReorder` instance (enforced by
-    // `vReorderContainer`'s duplicate-mount invariant), so any live session at this point belongs
-    // to this containerEl regardless of its current phase.
-    if (session) cancelSession();
-    // Hard cleanup boundary: disarm unconditionally, right after cancelSession(), so a release
-    // watcher/guard/timeout that cancellation may have just armed (the container/pointer is being
-    // removed, so no future release can ever be observed for it) never survives this call.
-    clickSuppression.disarm();
+    try {
+      // Only one container may be mounted at a time per `useReorder` instance (enforced by
+      // `vReorderContainer`'s duplicate-mount invariant), so any live session at this point
+      // belongs to this containerEl regardless of its current phase.
+      if (session) cancelSession();
+    } finally {
+      // Hard cleanup boundary: disarm unconditionally, even if cancelSession() above threw (a
+      // consumer-owned `getKeys`/`onReorder`/`onDragEnd` call during cancellation can throw), so a
+      // release watcher/guard/timeout that cancellation may have just armed (the container/pointer
+      // is being removed, so no future release can ever be observed for it) never survives this
+      // call. The original error, if any, still propagates unchanged past this `finally`.
+      clickSuppression.disarm();
+    }
   };
 
   const notifyItemUnmounted = (key: Key) => {
@@ -782,9 +791,12 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const dispose = () => {
-    cancelSession();
-    // Hard cleanup boundary; see detachContainer's comment above.
-    clickSuppression.disarm();
+    try {
+      cancelSession();
+    } finally {
+      // Hard cleanup boundary; see detachContainer's comment above.
+      clickSuppression.disarm();
+    }
   };
 
   return { attachContainer, detachContainer, notifyItemUnmounted, dispose };
