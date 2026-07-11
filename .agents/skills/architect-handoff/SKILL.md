@@ -44,7 +44,7 @@ Keep the handoff compact.
 Record the handoff with these fields:
 
 - Goal
-- Confirmed current problem or behavior and its evidence from the source of truth
+- Confirmed current behavior and repository evidence, or confirmed product requirement and its source
 - Non-goals
 - Affected user scenarios
 - Boundaries: what changes and what must not be touched
@@ -80,7 +80,7 @@ Keep the handoff concrete. Prefer specific owners, explicit preserved scenarios,
 
 Stop before production edits when any of these are true:
 
-- the current problem or behavior is unconfirmed and the task is not explicitly an investigation;
+- a claimed current behavior is unconfirmed, or a new product requirement lacks a confirmed source, and the task is not explicitly an investigation;
 - ownership is unclear;
 - source of truth is unclear;
 - expected final state is unclear;
