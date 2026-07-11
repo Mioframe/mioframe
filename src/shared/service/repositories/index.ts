@@ -27,8 +27,6 @@ export type {
   ZipImportConflictReport,
   ZipImportOptions,
   ZipImportPartialFailureDetails,
-  ZipImportRecoveryContext,
   ZipImportResult,
   ZipImportSummary,
-  ZipImportUncertainEntry,
 } from './repositoryZipContracts';

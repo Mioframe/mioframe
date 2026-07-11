@@ -165,8 +165,8 @@ test('current folder can skip an ordinary ZIP conflict without replacing the exi
   await conflictDialog.getByRole('button', { name: /^skip existing$/i }).click();
 
   const successDialog = page.getByRole('dialog', { name: /^zip archive imported$/i });
-  await expect(successDialog).toContainText('1 files imported');
-  await expect(successDialog).toContainText('1 existing files skipped');
+  await expect(successDialog).toContainText('1 file imported');
+  await expect(successDialog).toContainText('1 existing file skipped');
   await successDialog.getByRole('button', { name: /^done$/i }).click();
   await expect(page.getByText('existing.txt', { exact: true })).toBeVisible();
   await expect(page.getByText('new.txt', { exact: true })).toBeVisible();

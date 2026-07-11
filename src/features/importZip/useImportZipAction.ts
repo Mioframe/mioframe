@@ -5,12 +5,7 @@ import { getFileSystemAccessRecovery, isUserFileSelectionCancel } from '@shared/
 import { ZipArchiveErrorCode } from '@shared/lib/zipArchive';
 import { useMainServiceClient } from '@shared/service';
 import { getZipImportPartialFailureDetails, RepositoryZipErrorCode } from '@shared/service';
-import type {
-  ZipImportOptions,
-  ZipImportProgress,
-  ZipImportRecoveryContext,
-  ZipImportSummary,
-} from '@shared/service';
+import type { ZipImportOptions, ZipImportProgress, ZipImportSummary } from '@shared/service';
 import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
@@ -28,12 +23,7 @@ export type ImportZipDialogState =
   | { status: 'running'; progress?: ZipImportProgress }
   | { status: 'conflicts'; total: number; paths: string[]; truncated: boolean }
   | { status: 'success'; summary: ZipImportSummary }
-  | { status: 'partial'; summary: ZipImportSummary; recovery: ZipImportRecoveryContext }
-  | {
-      status: 'recoveryUnresolved';
-      relativePath: string;
-      reason: 'contentMismatch' | 'typeMismatch';
-    }
+  | { status: 'partial'; summary: ZipImportSummary }
   | { status: 'error'; message: string };
 
 /** Visible-only import ZIP dialog states. The dialog component must never render `idle`. */
@@ -51,8 +41,7 @@ const shouldSkipImportErrorReport = (error: unknown) =>
     (error.code === ZipArchiveErrorCode.unsafeEntryPath ||
       error.code === ZipArchiveErrorCode.archiveDamaged ||
       error.code === RepositoryZipErrorCode.importConflict ||
-      error.code === RepositoryZipErrorCode.importResourceLimitExceeded ||
-      error.code === RepositoryZipErrorCode.importRecoveryContextInvalid));
+      error.code === RepositoryZipErrorCode.importResourceLimitExceeded));
 
 /**
  * Runs the directory ZIP import flow with shared snackbar, write-access recovery, and diagnostics
@@ -189,10 +178,6 @@ export const useImportZipAction = () => {
       state.value = { status: 'conflicts', ...result.report };
       return false;
     }
-    if (result.status === 'recoveryUnresolved') {
-      state.value = { status: 'recoveryUnresolved', ...result.report };
-      return false;
-    }
     state.value = { status: 'success', summary: result.summary };
     return true;
   };
@@ -226,11 +211,7 @@ export const useImportZipAction = () => {
       if (generation !== contextGeneration) return false;
       const partial = getZipImportPartialFailureDetails(error);
       if (partial) {
-        state.value = {
-          status: 'partial',
-          summary: partial.importSummary,
-          recovery: partial.recoveryContext,
-        };
+        state.value = { status: 'partial', summary: partial.importSummary };
         reportImportDiagnostics(error, 'importDirectoryZipPartial');
       } else failImportDialog(error, 'importDirectoryZip');
       return false;
@@ -271,17 +252,8 @@ export const useImportZipAction = () => {
   };
 
   /**
-   * Verifies the retained service-issued uncertain entry before continuing the partial import.
-   * @returns Whether recovery completed successfully.
-   */
-  const verifyAndContinueImport = async () => {
-    if (operationRunning.value || state.value.status !== 'partial') return false;
-    return runImport({ conflictPolicy: 'skipExisting', recovery: state.value.recovery });
-  };
-
-  /**
-   * Closes the import ZIP dialog. Does nothing while the import is running; only `success` and
-   * `error` states can be dismissed.
+   * Closes the import ZIP dialog. Does nothing while the import is running. `partial` is a
+   * terminal result with no resume guarantee, so closing it is always safe.
    */
   const closeImportZipDialog = () => {
     if (operationRunning.value) {
@@ -306,7 +278,6 @@ export const useImportZipAction = () => {
     state,
     isRunning,
     retryImportSkippingExisting,
-    verifyAndContinueImport,
     closeImportZipDialog,
     invalidateImportZipContext,
   };

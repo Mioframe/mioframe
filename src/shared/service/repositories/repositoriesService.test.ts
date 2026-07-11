@@ -15,6 +15,7 @@ import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 type MockRepoInstance = {
   create: ReturnType<typeof vi.fn<(initialValue: CFRDocumentContent) => { documentId: string }>>;
   delete: ReturnType<typeof vi.fn>;
+  flush: ReturnType<typeof vi.fn<() => Promise<void>>>;
 };
 
 const directoryContentByPath = vi.hoisted(
@@ -160,6 +161,7 @@ vi.mock('@automerge/automerge-repo', async (importOriginal) => {
     });
 
     readonly delete = vi.fn();
+    readonly flush = vi.fn().mockResolvedValue(undefined);
     lastCreatedValue?: CFRDocumentContent | undefined;
 
     constructor(readonly config: RepoConfig & { storage?: { path?: string | undefined } }) {
@@ -184,7 +186,16 @@ describe('useRepositoriesService', () => {
     repoInstances.clear();
     registerWriteAccessRecoveryHandlerMock.mockReset();
     registerWriteAccessRecoveryHandlerMock.mockReturnValue(() => undefined);
-    createRetryingStorageAdapterMock.mockClear();
+    createRetryingStorageAdapterMock.mockReset();
+    createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+      ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+      flushPendingSaves: vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 0,
+        status: 'flushed' as const,
+      }),
+      hasPendingSaves: vi.fn().mockReturnValue(false),
+    }));
     vfsReadDirectory.mockClear();
     vfsReadFile.mockClear();
     vfsDelete.mockClear();
@@ -1362,6 +1373,180 @@ describe('useRepositoriesService', () => {
       expect(error).toMatchObject({ code: RepositoryZipErrorCode.importStorageNotReady });
       expect(flushPendingSaves).toHaveBeenCalled();
       expect(lowLevelImport).not.toHaveBeenCalled();
+    });
+
+    it('settles every nested cached repository under the import target before preflight', async () => {
+      const targetPath = '/zip-import-nested-target';
+      const nestedPath = '/zip-import-nested-target/child';
+      const callOrder: string[] = [];
+
+      const lowLevelImport = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelImport');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipImport', () => ({ importDirectoryZip: lowLevelImport }));
+
+      createDirectoryContentSubject(targetPath, []);
+      createDirectoryContentSubject(nestedPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(targetPath);
+      await service.initializeRepository(nestedPath);
+
+      const targetRepo = repoInstances.get(targetPath)?.[0];
+      const nestedRepo = repoInstances.get(nestedPath)?.[0];
+      targetRepo?.flush.mockImplementation(() => {
+        callOrder.push('flush:target');
+        return Promise.resolve();
+      });
+      nestedRepo?.flush.mockImplementation(() => {
+        callOrder.push('flush:nested');
+        return Promise.resolve();
+      });
+
+      const archiveFile = new File([new Uint8Array()], 'archive.zip');
+      await service.importDirectoryZip(targetPath, archiveFile);
+
+      expect(callOrder).toEqual(['flush:target', 'flush:nested', 'lowLevelImport']);
+    });
+  });
+
+  describe('exportDirectoryZip', () => {
+    afterEach(() => {
+      vi.doUnmock('./repositoryZipExport');
+    });
+
+    it('settles every cached repository under the exported directory before delegating to the low-level export', async () => {
+      const path = '/export-directory-target';
+      const nestedPath = '/export-directory-target/nested';
+      const callOrder: string[] = [];
+
+      const lowLevelExportDirectory = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelExportDirectory');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      createDirectoryContentSubject(nestedPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(path);
+      await service.initializeRepository(nestedPath);
+
+      const repo = repoInstances.get(path)?.[0];
+      const nestedRepo = repoInstances.get(nestedPath)?.[0];
+      repo?.flush.mockImplementation(() => {
+        callOrder.push('flush:root');
+        return Promise.resolve();
+      });
+      nestedRepo?.flush.mockImplementation(() => {
+        callOrder.push('flush:nested');
+        return Promise.resolve();
+      });
+
+      const onChunk = vi.fn();
+      await service.exportDirectoryZip(path, onChunk);
+
+      expect(callOrder).toEqual(['flush:root', 'flush:nested', 'lowLevelExportDirectory']);
+      expect(lowLevelExportDirectory).toHaveBeenCalledWith(
+        expect.anything(),
+        path,
+        onChunk,
+        undefined,
+      );
+    });
+
+    it('does not instantiate a repository for an on-disk-only directory', async () => {
+      const path = '/export-directory-disk-only';
+      const lowLevelExportDirectory = vi.fn().mockResolvedValue(undefined);
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.exportDirectoryZip(path, vi.fn());
+
+      expect(repoInstances.get(path)).toBeUndefined();
+      expect(lowLevelExportDirectory).toHaveBeenCalled();
+    });
+  });
+
+  describe('exportDocumentZip', () => {
+    afterEach(() => {
+      vi.doUnmock('./repositoryZipExport');
+    });
+
+    it('settles the exact cached repository, even one newly cached with no storage-visible file yet, before delegating to the low-level export', async () => {
+      const path = '/export-document-target';
+      const callOrder: string[] = [];
+      const lowLevelExportDocument = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelExportDocument');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      // The repo is freshly cached by `createDocument` with no storage-visible file confirmed on
+      // disk yet (`vfsReadDirectory` still reports the empty directory set above).
+      const documentId = await service.createDocument(path, {
+        body: [],
+        name: 'Doc',
+        type: 'document',
+        version: 1,
+      } satisfies CFRDocumentContent);
+
+      const repo = repoInstances.get(path)?.[0];
+      repo?.flush.mockImplementation(() => {
+        callOrder.push('flush');
+        return Promise.resolve();
+      });
+
+      const onChunk = vi.fn();
+      await service.exportDocumentZip(path, documentId, onChunk);
+
+      expect(callOrder).toEqual(['flush', 'lowLevelExportDocument']);
+      expect(lowLevelExportDocument).toHaveBeenCalledWith(
+        expect.anything(),
+        path,
+        documentId,
+        onChunk,
+        undefined,
+      );
+    });
+
+    it('does not instantiate a repository for an on-disk-only document directory', async () => {
+      const path = '/export-document-disk-only';
+      const documentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+      const lowLevelExportDocument = vi.fn().mockResolvedValue(undefined);
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.exportDocumentZip(path, documentId, vi.fn());
+
+      expect(repoInstances.get(path)).toBeUndefined();
+      expect(lowLevelExportDocument).toHaveBeenCalled();
     });
   });
 });

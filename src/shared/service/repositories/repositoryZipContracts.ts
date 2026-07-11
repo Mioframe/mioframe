@@ -44,26 +44,10 @@ export type OnZipImportProgress = (progress: ZipImportProgress) => void;
 /** Conflict behavior selected for generic ZIP extraction. */
 export type ZipImportConflictPolicy = 'abort' | 'skipExisting';
 
-/** Archive entry whose provider mutation may have taken effect before it rejected. */
-export type ZipImportUncertainEntry = {
-  /** Safe path relative to the selected import target. */
-  relativePath: string;
-  /** Archive entry kind attempted by the provider. */
-  kind: 'file' | 'directory';
-};
-
-/** Service-issued context required to safely continue an uncertain import. */
-export type ZipImportRecoveryContext = {
-  /** Provider mutation whose completion is uncertain, when one was active. */
-  uncertainEntry?: ZipImportUncertainEntry | undefined;
-};
-
-/** Explicit options for conflict handling and service-issued partial recovery. */
+/** Explicit options for conflict handling during a generic ZIP import. */
 export type ZipImportOptions = {
   /** Existing-target behavior; defaults to abort. */
   conflictPolicy?: ZipImportConflictPolicy;
-  /** Previously returned service recovery identity. */
-  recovery?: ZipImportRecoveryContext;
 };
 
 /** Centrally owned safety limits for a generic ZIP import. */
@@ -89,8 +73,6 @@ export type ZipImportConflictReport = {
 export type ZipImportSummary = {
   /** Files newly created from the archive. */
   importedFiles: number;
-  /** Existing uncertain files proven identical to the archive. */
-  verifiedFiles: number;
   /** Ordinary existing files left unchanged by skip-existing policy. */
   skippedFiles: number;
   /** Directories newly created from the archive plan. */
@@ -102,23 +84,12 @@ export type ZipImportSummary = {
 /** Expected outcome of a generic ZIP import. */
 export type ZipImportResult =
   | { status: 'conflicts'; report: ZipImportConflictReport }
-  | {
-      status: 'recoveryUnresolved';
-      report: {
-        relativePath: string;
-        reason: 'contentMismatch' | 'typeMismatch';
-      };
-    }
   | { status: 'completed'; summary: ZipImportSummary };
 
-/** Transfer-safe details attached to an uncertain provider failure. */
+/** Transfer-safe details attached to a terminal partial-import failure. */
 export type ZipImportPartialFailureDetails = {
   /** Counts completed before the provider failure. */
   importSummary: ZipImportSummary;
-  /** Service-issued identity required for a safe retry. */
-  recoveryContext: ZipImportRecoveryContext;
-  /** Indicates the active provider call may have changed its target. */
-  mutationMayHaveOccurred: true;
 };
 
 /**
@@ -133,10 +104,9 @@ export enum RepositoryZipErrorCode {
   /**
    * A ZIP import write failed after at least one earlier write in the same import already
    * succeeded. Unlike `importConflict`, the target directory may now hold a partial import.
+   * This is a terminal outcome: the import is not retried or resumed automatically.
    */
   importWritePartiallyFailed = 'repositories.zipImportWritePartiallyFailed',
-  /** A caller supplied stale or invalid recovery context. */
-  importRecoveryContextInvalid = 'repositories.zipImportRecoveryContextInvalid',
   /**
    * Repository storage for the import target could not be brought to a settled state (unflushed
    * document changes or previously queued/failed saves) before preflight. No write was attempted.
@@ -147,17 +117,10 @@ export enum RepositoryZipErrorCode {
 const zodZipImportPartialFailureDetails = z.object({
   importSummary: z.object({
     importedFiles: z.number(),
-    verifiedFiles: z.number(),
     skippedFiles: z.number(),
     createdDirectories: z.number(),
     reusedDirectories: z.number(),
   }),
-  recoveryContext: z.object({
-    uncertainEntry: z.optional(
-      z.object({ relativePath: z.string(), kind: z.enum(['file', 'directory']) }),
-    ),
-  }),
-  mutationMayHaveOccurred: z.literal(true),
 });
 
 /**

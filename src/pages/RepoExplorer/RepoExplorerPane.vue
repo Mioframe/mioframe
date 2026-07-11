@@ -77,7 +77,6 @@ const {
   state: importZipState,
   closeImportZipDialog,
   retryImportSkippingExisting,
-  verifyAndContinueImport,
   invalidateImportZipContext,
 } = useImportZipAction();
 
@@ -218,7 +217,6 @@ const onClickReturnHome = async () => {
       :state="importZipVisibleState"
       @close="closeImportZipDialog"
       @skip-existing="retryImportSkippingExisting"
-      @verify-and-continue="verifyAndContinueImport"
     />
 
     <DirectoryCreateDialog

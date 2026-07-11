@@ -17,10 +17,8 @@ export type {
   ZipImportConflictPolicy,
   ZipImportOptions,
   ZipImportPartialFailureDetails,
-  ZipImportRecoveryContext,
   ZipImportResult,
   ZipImportSummary,
-  ZipImportUncertainEntry,
 } from './repositories/repositoryZipContracts';
 export {
   DEVICE_FILES_ROOT_NAME,

@@ -340,12 +340,13 @@ describe('importDirectoryZip', () => {
     });
   });
 
-  it('does not report a partial failure when the very first write fails', async () => {
+  it('classifies a write failure as partial even when it is the very first write attempted', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
 
     // A top-level entry needs no ancestor directory creation, so the file write is the very
-    // first VFS mutation attempted — nothing should have been written before it fails.
+    // first VFS mutation attempted. The write may have partially taken effect at the provider
+    // before rejecting, so this is still reported as a terminal partial import, not a plain error.
     const archiveFile = toArchiveFile({
       'a.txt': new TextEncoder().encode('a content'),
     });
@@ -438,75 +439,6 @@ describe('importDirectoryZip', () => {
     await expect(vfs.exists('/target/root')).resolves.toBe(true);
   });
 
-  it('verifies an exact uncertain file before importing remaining files', async () => {
-    const vfs = createVfs();
-    await vfs.createDirectory('/target');
-    await vfs.writeFile('/target/a.txt', 'archive content');
-    const archiveFile = toArchiveFile({
-      'a.txt': new TextEncoder().encode('archive content'),
-      'b.txt': new TextEncoder().encode('new content'),
-    });
-    const createFile = vi.spyOn(vfs, 'createFile');
-
-    await expect(
-      importDirectoryZip(vfs, '/target', archiveFile, undefined, {
-        conflictPolicy: 'skipExisting',
-        recovery: { uncertainEntry: { relativePath: 'a.txt', kind: 'file' } },
-      }),
-    ).resolves.toEqual({
-      status: 'completed',
-      summary: {
-        importedFiles: 1,
-        verifiedFiles: 1,
-        skippedFiles: 0,
-        createdDirectories: 0,
-        reusedDirectories: 0,
-      },
-    });
-    expect(createFile).not.toHaveBeenCalledWith('/target/a.txt', expect.anything());
-    await expect(vfs.readText('/target/b.txt')).resolves.toBe('new content');
-  });
-
-  it('returns unresolved recovery before new writes when an uncertain file differs', async () => {
-    const vfs = createVfs();
-    await vfs.createDirectory('/target');
-    await vfs.writeFile('/target/a.txt', 'damaged content');
-    const archiveFile = toArchiveFile({
-      'a.txt': new TextEncoder().encode('archive content'),
-      'b.txt': new TextEncoder().encode('new content'),
-    });
-    const createFile = vi.spyOn(vfs, 'createFile');
-
-    await expect(
-      importDirectoryZip(vfs, '/target', archiveFile, undefined, {
-        conflictPolicy: 'skipExisting',
-        recovery: { uncertainEntry: { relativePath: 'a.txt', kind: 'file' } },
-      }),
-    ).resolves.toEqual({
-      status: 'recoveryUnresolved',
-      report: { relativePath: 'a.txt', reason: 'contentMismatch' },
-    });
-    expect(createFile).not.toHaveBeenCalled();
-    await expect(vfs.exists('/target/b.txt')).resolves.toBe(false);
-  });
-
-  it('creates a missing uncertain file during recovery', async () => {
-    const vfs = createVfs();
-    await vfs.createDirectory('/target');
-    const archiveFile = toArchiveFile({ 'a.txt': new TextEncoder().encode('archive content') });
-
-    await expect(
-      importDirectoryZip(vfs, '/target', archiveFile, undefined, {
-        conflictPolicy: 'skipExisting',
-        recovery: { uncertainEntry: { relativePath: 'a.txt', kind: 'file' } },
-      }),
-    ).resolves.toMatchObject({
-      status: 'completed',
-      summary: { importedFiles: 1, verifiedFiles: 0 },
-    });
-    await expect(vfs.readText('/target/a.txt')).resolves.toBe('archive content');
-  });
-
   it('reads one directory snapshot for many sibling archive entries', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
@@ -520,6 +452,56 @@ describe('importDirectoryZip', () => {
     await importDirectoryZip(vfs, '/target', archiveFile);
 
     expect(readDirectory.mock.calls.filter(([path]) => path === '/target')).toHaveLength(1);
+  });
+
+  it('resolves a large flat archive without quadratic directory-scan cost', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const entryCount = 1000;
+    const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+    for (let index = 0; index < entryCount; index += 1) {
+      entries[`dir-${index}/file.txt`] = new TextEncoder().encode('x');
+    }
+    const archiveFile = toArchiveFile(entries);
+
+    const start = performance.now();
+    const result = await importDirectoryZip(vfs, '/target', archiveFile);
+    const elapsedMs = performance.now() - start;
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      summary: { importedFiles: entryCount, createdDirectories: entryCount },
+    });
+    // A per-entry scan over every previously-discovered directory would make this archive size
+    // pathologically slow (seconds+); indexed ancestor lookups keep it near-linear.
+    expect(elapsedMs).toBeLessThan(2000);
+  });
+
+  it('excludes an entire blocked subtree without snapshotting any of its descendants', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.writeFile('/target/blocked', 'this is a file, not a directory');
+
+    const fileCount = 500;
+    const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+    for (let index = 0; index < fileCount; index += 1) {
+      entries[`blocked/level-${index}/deep-${index}/file.txt`] = new TextEncoder().encode('x');
+    }
+    const archiveFile = toArchiveFile(entries);
+    const readDirectory = vi.spyOn(vfs, 'readDirectory');
+
+    const result = await importDirectoryZip(vfs, '/target', archiveFile, undefined, {
+      conflictPolicy: 'skipExisting',
+    });
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      summary: { importedFiles: 0, skippedFiles: fileCount },
+    });
+    // Only the target root is ever read; nothing under the blocked "blocked" entry is snapshotted,
+    // since the whole subtree is excluded by one ancestor-set lookup instead of a directory read.
+    expect(readDirectory).toHaveBeenCalledTimes(1);
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions -- partial-error inspection ends */

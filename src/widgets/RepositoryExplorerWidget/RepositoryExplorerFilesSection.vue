@@ -31,7 +31,6 @@ const {
   state: importZipState,
   closeImportZipDialog,
   retryImportSkippingExisting,
-  verifyAndContinueImport,
   invalidateImportZipContext,
 } = useImportZipAction();
 
@@ -152,7 +151,6 @@ const emptyText = computed(() =>
       :state="importZipVisibleState"
       @close="closeImportZipDialog"
       @skip-existing="retryImportSkippingExisting"
-      @verify-and-continue="verifyAndContinueImport"
     />
 
     <DirectoryCreateDialog

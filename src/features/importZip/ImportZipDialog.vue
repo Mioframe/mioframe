@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
-import type { ZipImportProgress } from '@shared/service';
+import type { ZipImportProgress, ZipImportSummary } from '@shared/service';
 import type { ImportZipVisibleDialogState } from './useImportZipAction';
 
 const props = defineProps<{
@@ -14,7 +14,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
   skipExisting: [];
-  verifyAndContinue: [];
 }>();
 
 const PHASE_LABELS: Record<ZipImportProgress['phase'], string> = {
@@ -41,8 +40,6 @@ const headline = computed(() => {
       return 'ZIP archive imported';
     case 'partial':
       return 'Import stopped before completion';
-    case 'recoveryUnresolved':
-      return 'Import recovery needs a new folder';
     case 'error':
       return 'Could not import ZIP archive';
     default:
@@ -50,32 +47,55 @@ const headline = computed(() => {
   }
 });
 
+/**
+ * Formats a count with a singular/plural noun, e.g. `1 file` or `2 files`.
+ * @param count - Number of items.
+ * @param noun - Singular form of the noun.
+ * @returns The formatted `count noun`/`count nouns` phrase.
+ */
+const formatCount = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+/**
+ * Builds the human-readable parts of a ZIP import summary, omitting zero counts.
+ * @param summary - Completed or partial import summary counts.
+ * @returns Non-empty summary phrases such as `"2 files imported"`.
+ */
+const formatSummaryParts = (summary: ZipImportSummary): string[] =>
+  [
+    summary.importedFiles > 0
+      ? `${formatCount(summary.importedFiles, 'file')} imported`
+      : undefined,
+    summary.createdDirectories > 0
+      ? `${formatCount(summary.createdDirectories, 'folder')} created`
+      : undefined,
+    summary.skippedFiles > 0
+      ? `${formatCount(summary.skippedFiles, 'existing file')} skipped`
+      : undefined,
+    summary.reusedDirectories > 0
+      ? `${formatCount(summary.reusedDirectories, 'existing folder')} reused`
+      : undefined,
+  ].filter((part): part is string => part !== undefined);
+
 const supportingText = computed(() => {
   switch (props.state.status) {
     case 'running':
       return PHASE_LABELS[props.state.progress?.phase ?? 'validatingArchive'];
     case 'conflicts':
       return `${props.state.total} archive entries conflict with existing files. No files were written.`;
-    case 'success':
-      return `Import completed. ${[
-        props.state.summary.importedFiles > 0
-          ? `${props.state.summary.importedFiles} files imported`
-          : undefined,
-        props.state.summary.verifiedFiles > 0
-          ? `${props.state.summary.verifiedFiles} files verified`
-          : undefined,
-        props.state.summary.skippedFiles > 0
-          ? `${props.state.summary.skippedFiles} existing files skipped`
-          : undefined,
-      ]
-        .filter(Boolean)
-        .join(', ')}.`;
-    case 'partial':
-      return 'A provider operation may have changed one target entry. Mioframe must verify it against the archive before continuing.';
-    case 'recoveryUnresolved':
-      return props.state.reason === 'contentMismatch'
-        ? `The existing file "${props.state.relativePath}" differs from the archive. Mioframe did not overwrite it. Import into an empty folder to recover safely.`
-        : `The existing path "${props.state.relativePath}" has the wrong type. Mioframe did not overwrite or delete it. Import into an empty folder to recover safely.`;
+    case 'success': {
+      const parts = formatSummaryParts(props.state.summary);
+      return parts.length > 0
+        ? `Import completed. ${parts.join(', ')}.`
+        : 'Import completed. The archive was empty.';
+    }
+    case 'partial': {
+      const parts = formatSummaryParts(props.state.summary);
+      const completedText =
+        parts.length > 0
+          ? `Before stopping: ${parts.join(', ')}.`
+          : 'Nothing was written before the import stopped.';
+      return `${completedText} The target directory may now contain a partially imported archive. Import into an empty target directory to retry cleanly.`;
+    }
     case 'error':
       return props.state.message;
     default:
@@ -85,23 +105,12 @@ const supportingText = computed(() => {
 
 const applyLabel = computed(() => {
   if (props.state.status === 'conflicts') return 'Skip existing';
-  if (props.state.status === 'partial') return 'Verify and continue';
-  return props.state.status === 'error' || props.state.status === 'recoveryUnresolved'
-    ? 'Close'
-    : 'Done';
+  return props.state.status === 'error' || props.state.status === 'partial' ? 'Close' : 'Done';
 });
 
-const cancelLabel = computed(() =>
-  props.state.status === 'conflicts'
-    ? 'Cancel'
-    : props.state.status === 'partial'
-      ? 'Close'
-      : undefined,
-);
+const cancelLabel = computed(() => (props.state.status === 'conflicts' ? 'Cancel' : undefined));
 
-const hasCancelAction = computed(
-  () => props.state.status === 'conflicts' || props.state.status === 'partial',
-);
+const hasCancelAction = computed(() => props.state.status === 'conflicts');
 
 const isLoading = computed(() => props.state.status === 'running');
 
@@ -129,7 +138,6 @@ const onApply = () => {
   }
 
   if (props.state.status === 'conflicts') emit('skipExisting');
-  else if (props.state.status === 'partial') emit('verifyAndContinue');
   else emit('close');
 };
 

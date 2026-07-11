@@ -20,7 +20,6 @@ const importDirectoryZipMock = vi.fn();
 const closeExportZipDialogMock = vi.fn();
 const closeImportZipDialogMock = vi.fn();
 const retryImportSkippingExistingMock = vi.fn();
-const verifyAndContinueImportMock = vi.fn();
 const invalidateImportZipContextMock = vi.fn();
 const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
 const importZipStateRef = ref<{ status: string }>({ status: 'idle' });
@@ -89,13 +88,12 @@ vi.mock('@feature/importZip', () => ({
     state: importZipStateRef,
     closeImportZipDialog: closeImportZipDialogMock,
     retryImportSkippingExisting: retryImportSkippingExistingMock,
-    verifyAndContinueImport: verifyAndContinueImportMock,
     invalidateImportZipContext: invalidateImportZipContextMock,
   }),
   ImportZipDialog: defineComponent({
     name: 'ImportZipDialogStub',
     props: { state: { type: Object, required: true } },
-    emits: ['close', 'skipExisting', 'verifyAndContinue'],
+    emits: ['close', 'skipExisting'],
     setup(_props, { emit }) {
       return () =>
         h('div', {
@@ -105,9 +103,6 @@ vi.mock('@feature/importZip', () => ({
           },
           onDblclick: () => {
             emit('skipExisting');
-          },
-          onContextmenu: () => {
-            emit('verifyAndContinue');
           },
         });
     },
@@ -731,17 +726,15 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
   });
 
-  it('wires current-directory conflict and recovery actions to the import feature', async () => {
+  it('wires current-directory conflict actions to the import feature', async () => {
     importZipStateRef.value = { status: 'conflicts' };
     const wrapper = await mountPane();
     const dialog = wrapper.findComponent({ name: 'ImportZipDialogStub' });
 
     dialog.vm.$emit('skipExisting');
-    dialog.vm.$emit('verifyAndContinue');
     await wrapper.vm.$nextTick();
 
     expect(retryImportSkippingExistingMock).toHaveBeenCalledOnce();
-    expect(verifyAndContinueImportMock).toHaveBeenCalledOnce();
   });
 
   it('keeps the export ZIP result dialog mounted after the export completes, until closed', async () => {

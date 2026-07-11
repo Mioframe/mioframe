@@ -89,7 +89,7 @@ Then choose the ZIP file.
 
 Mioframe validates the complete archive and checks the target folder before writing. Choose **Cancel** to abort with no writes, or **Skip existing** to import non-conflicting files while leaving existing files unchanged. Existing matching folders may be reused. Import never intentionally overwrites, deletes, or renames existing files, but provider and concurrent filesystem changes cannot be globally atomic. Provider filename and matching rules can differ, so an empty folder remains the most predictable restore target.
 
-If a provider operation fails after writing starts, Mioframe retains which one archive entry may be uncertain. Choose **Verify and continue** to retry safely. Before making another change, Mioframe checks the uncertain entry: a missing file is created normally, while an existing uncertain file must match the archive byte-for-byte and is counted as verified. A matching directory can be reused. If the file differs or the path has the wrong type, recovery stops without overwriting or deleting it. Importing the same archive into an empty folder is the safe fallback.
+If a provider operation fails after writing has started, Import ZIP stops immediately instead of continuing or retrying automatically. Mioframe reports which files and folders completed before the stop. The target folder may then contain a partially imported archive, so importing the same archive into that folder again is not safe — choose an empty target folder to retry the import cleanly.
 
 ## Important limits
 

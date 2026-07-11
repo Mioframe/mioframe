@@ -71,19 +71,11 @@ vi.mock('@shared/service', () => ({
   getZipImportPartialFailureDetails: (error: unknown) => {
     if (typeof error !== 'object' || error === null) return undefined;
     const importSummary = Reflect.get(error, 'importSummary');
-    const recoveryContext = Reflect.get(error, 'recoveryContext');
-    return importSummary && recoveryContext
-      ? {
-          importSummary,
-          recoveryContext,
-          mutationMayHaveOccurred: true,
-        }
-      : undefined;
+    return importSummary ? { importSummary } : undefined;
   },
   RepositoryZipErrorCode: {
     importConflict: 'repositories.zipImportConflict',
     importResourceLimitExceeded: 'repositories.zipImportResourceLimitExceeded',
-    importRecoveryContextInvalid: 'repositories.zipImportRecoveryContextInvalid',
     documentStorageFilesNotFound: 'repositories.zipDocumentStorageFilesNotFound',
   },
   useMainServiceClient: () => ({
@@ -106,13 +98,7 @@ describe('useImportZipAction', () => {
     requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
     importDirectoryZipMock.mockResolvedValue({
       status: 'completed',
-      summary: {
-        importedFiles: 1,
-        verifiedFiles: 0,
-        skippedFiles: 0,
-        createdDirectories: 0,
-        reusedDirectories: 0,
-      },
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
   });
 
@@ -338,11 +324,11 @@ describe('useImportZipAction', () => {
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('shows and reports the explicit partial-import message when a write fails after an earlier write succeeded', async () => {
+  it('reports a terminal partial state with no continuation action when a write fails after an earlier write succeeded', async () => {
     const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
     const partialMessage =
-      'The import stopped partway through. Some files may already have been written — check the target folder before retrying.';
+      'The import stopped before completion. The target directory may contain a partial import.';
     importDirectoryZipMock.mockRejectedValueOnce(
       Object.assign(
         new DomainError(partialMessage, {
@@ -352,48 +338,91 @@ describe('useImportZipAction', () => {
         {
           importSummary: {
             importedFiles: 1,
-            verifiedFiles: 0,
             skippedFiles: 0,
             createdDirectories: 0,
             reusedDirectories: 0,
           },
-          recoveryContext: { uncertainEntry: { relativePath: 'b.txt', kind: 'file' } },
-          mutationMayHaveOccurred: true,
         },
       ),
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip, state, verifyAndContinueImport } = useImportZipAction();
+    const action = useImportZipAction();
+    const { importDirectoryZip, state } = action;
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(state.value).toMatchObject({
+    expect(state.value).toEqual({
       status: 'partial',
-      recovery: { uncertainEntry: { relativePath: 'b.txt', kind: 'file' } },
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    // No continuation action is exposed for a partial import — it is a terminal result.
+    expect(action).not.toHaveProperty('verifyAndContinueImport');
+    expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
+  });
 
-    importDirectoryZipMock.mockResolvedValueOnce({
-      status: 'completed',
-      summary: {
-        importedFiles: 1,
-        verifiedFiles: 1,
-        skippedFiles: 0,
-        createdDirectories: 0,
-        reusedDirectories: 0,
-      },
-    });
-    await expect(verifyAndContinueImport()).resolves.toBe(true);
-    expect(importDirectoryZipMock).toHaveBeenLastCalledWith(
-      '/repo',
-      expect.any(File),
-      expect.any(Function),
-      {
-        conflictPolicy: 'skipExisting',
-        recovery: { uncertainEntry: { relativePath: 'b.txt', kind: 'file' } },
-      },
+  it('reports a terminal partial state when write access is lost after an earlier write succeeded, without retrying', async () => {
+    const partialMessage =
+      'The import stopped before completion. The target directory may contain a partial import.';
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockRejectedValueOnce(
+      Object.assign(new Error(partialMessage), {
+        code: 'repositories.zipImportWritePartiallyFailed',
+        importSummary: {
+          importedFiles: 1,
+          skippedFiles: 0,
+          createdDirectories: 0,
+          reusedDirectories: 0,
+        },
+        cause: createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
+      }),
     );
+
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip, state } = useImportZipAction();
+
+    await expect(importDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toEqual({
+      status: 'partial',
+      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+    });
+    // A write-access failure after mutation began is a terminal partial result, not a
+    // recoverable permission prompt — the grant-access flow must not be offered here.
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(requestAccessMock).not.toHaveBeenCalled();
+    expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the partial dialog back to idle, clearing feature state', async () => {
+    const { DomainError } = await import('@shared/lib/error');
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockRejectedValueOnce(
+      Object.assign(
+        new DomainError('The import stopped before completion.', {
+          code: 'repositories.zipImportWritePartiallyFailed',
+          cause: new Error('storage failure'),
+        }),
+        {
+          importSummary: {
+            importedFiles: 1,
+            skippedFiles: 0,
+            createdDirectories: 0,
+            reusedDirectories: 0,
+          },
+        },
+      ),
+    );
+
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip, state, closeImportZipDialog } = useImportZipAction();
+
+    await expect(importDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toMatchObject({ status: 'partial' });
+
+    closeImportZipDialog();
+
+    expect(state.value).toEqual({ status: 'idle' });
   });
 
   it('ignores a duplicate call while an import is already running', async () => {
@@ -448,7 +477,6 @@ describe('useImportZipAction', () => {
       status: 'completed',
       summary: {
         importedFiles: 1,
-        verifiedFiles: 0,
         skippedFiles: 0,
         createdDirectories: 0,
         reusedDirectories: 0,

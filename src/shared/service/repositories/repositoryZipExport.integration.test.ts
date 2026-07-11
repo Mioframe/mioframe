@@ -53,7 +53,7 @@ const collectChunks = () => {
 };
 
 describe('exportDocumentZip integration: storage freshness', () => {
-  it('includes a change made after document creation once flushRepositoryPath flushes it, using a real Repo and VFS storage adapter', async () => {
+  it('includes a change made after document creation once the caller flushes the repo, using a real Repo and VFS storage adapter', async () => {
     const path = '/repo';
     const vfs = new VirtualFileSystem();
     vfs.mount('/', new MemoryFileSystem());
@@ -74,17 +74,10 @@ describe('exportDocumentZip integration: storage freshness', () => {
 
     const { onChunk, merge } = collectChunks();
 
-    // Uses the real `repo.flush` as the service wiring does (see
-    // repositoriesService.ts's flushRepositoryPath), not a mocked callback.
-    await exportDocumentZip(
-      vfs,
-      async (_flushPath, documentIds) => {
-        await repo.flush(documentIds);
-      },
-      path,
-      documentId,
-      onChunk,
-    );
+    // The caller (repositoriesService's settleCachedRepository in production) is responsible for
+    // flushing the repo before export; exportDocumentZip itself just reads whatever is on disk.
+    await repo.flush([documentId]);
+    await exportDocumentZip(vfs, path, documentId, onChunk);
 
     await repo.shutdown();
 

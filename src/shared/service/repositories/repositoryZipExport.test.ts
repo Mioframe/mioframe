@@ -54,37 +54,32 @@ describe('exportDirectoryZip', () => {
     await vfs.writeFile('/repo/.mioframe-marker', 'marker');
     await vfs.createDirectory('/repo/empty');
 
-    const flushRepositoryPath = vi.fn().mockResolvedValue(undefined);
     const onProgress = vi.fn();
     const { onChunk, merge } = collectChunks();
 
-    await exportDirectoryZip(vfs, flushRepositoryPath, '/repo', onChunk, onProgress);
+    await exportDirectoryZip(vfs, '/repo', onChunk, onProgress);
     const unpacked = unpackZipArchive(merge());
 
     expect(new TextDecoder().decode(unpacked['file.txt'])).toBe('hello');
     expect(new TextDecoder().decode(unpacked['.mioframe-marker'])).toBe('marker');
     expect(Object.keys(unpacked)).toContain('empty/');
     expect(Object.keys(unpacked).some((entryPath) => entryPath.startsWith('repo/'))).toBe(false);
-    expect(flushRepositoryPath).toHaveBeenCalledWith('/repo');
     expect(onProgress).toHaveBeenCalledWith({ phase: 'preparing' });
     expect(onProgress).toHaveBeenCalledWith({ phase: 'packing' });
   });
 
-  it('recurses into nested directories, preserving relative paths, and flushes each one before reading it', async () => {
+  it('recurses into nested directories, preserving relative paths', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/repo');
     await vfs.createDirectory('/repo/nested');
     await vfs.writeFile('/repo/nested/deep.txt', 'deep content');
 
-    const flushRepositoryPath = vi.fn().mockResolvedValue(undefined);
     const { onChunk, merge } = collectChunks();
 
-    await exportDirectoryZip(vfs, flushRepositoryPath, '/repo', onChunk);
+    await exportDirectoryZip(vfs, '/repo', onChunk);
     const unpacked = unpackZipArchive(merge());
 
     expect(new TextDecoder().decode(unpacked['nested/deep.txt'])).toBe('deep content');
-    expect(flushRepositoryPath).toHaveBeenCalledWith('/repo');
-    expect(flushRepositoryPath).toHaveBeenCalledWith('/repo/nested');
   });
 
   it('produces a valid, empty ZIP archive when the selected directory is empty', async () => {
@@ -92,7 +87,7 @@ describe('exportDirectoryZip', () => {
     await vfs.createDirectory('/repo');
     const { onChunk, merge } = collectChunks();
 
-    await exportDirectoryZip(vfs, vi.fn().mockResolvedValue(undefined), '/repo', onChunk);
+    await exportDirectoryZip(vfs, '/repo', onChunk);
     const unpacked = unpackZipArchive(merge());
 
     expect(Object.keys(unpacked)).toEqual([]);
@@ -112,7 +107,7 @@ describe('exportDirectoryZip', () => {
       inFlight -= 1;
     };
 
-    await exportDirectoryZip(vfs, vi.fn().mockResolvedValue(undefined), '/repo', onChunk);
+    await exportDirectoryZip(vfs, '/repo', onChunk);
 
     expect(maxInFlight).toBe(1);
   });
@@ -121,7 +116,7 @@ describe('exportDirectoryZip', () => {
 describe('exportDocumentZip', () => {
   const documentId = new Repo().create({}).documentId;
 
-  it('packs the document storage files directly at archive root, without a documentId wrapper, and flushes just that document', async () => {
+  it('packs the document storage files directly at archive root, without a documentId wrapper', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/repo');
     await vfs.writeFile('/repo/storage-file-1', 'chunk one');
@@ -131,11 +126,10 @@ describe('exportDocumentZip', () => {
       ['storage-file-2', { type: FSNodeType.File }],
     ]);
 
-    const flushRepositoryPath = vi.fn().mockResolvedValue(undefined);
     const onProgress = vi.fn();
     const { onChunk, merge } = collectChunks();
 
-    await exportDocumentZip(vfs, flushRepositoryPath, '/repo', documentId, onChunk, onProgress);
+    await exportDocumentZip(vfs, '/repo', documentId, onChunk, onProgress);
     const unpacked = unpackZipArchive(merge());
 
     expect(new TextDecoder().decode(unpacked['storage-file-1'])).toBe('chunk one');
@@ -143,7 +137,6 @@ describe('exportDocumentZip', () => {
     expect(Object.keys(unpacked).some((entryPath) => entryPath.startsWith(`${documentId}/`))).toBe(
       false,
     );
-    expect(flushRepositoryPath).toHaveBeenCalledWith('/repo', [documentId]);
     expect(onProgress).toHaveBeenCalledWith({ phase: 'reading', current: 1, total: 2 });
     expect(onProgress).toHaveBeenCalledWith({ phase: 'reading', current: 2, total: 2 });
   });
@@ -154,13 +147,7 @@ describe('exportDocumentZip', () => {
 
     let caught: unknown;
     try {
-      await exportDocumentZip(
-        vfs,
-        vi.fn().mockResolvedValue(undefined),
-        '/repo',
-        documentId,
-        vi.fn(),
-      );
+      await exportDocumentZip(vfs, '/repo', documentId, vi.fn());
     } catch (error) {
       caught = error;
     }

@@ -58,19 +58,18 @@ Import ZIP reports ordinary existing-file and wrong-type conflicts before writin
 
 Next action:
 
-- choose **Abort** to leave the target unchanged;
+- choose **Cancel** to leave the target unchanged;
 - choose **Skip existing** to leave existing files unchanged and import only non-conflicting files; matching folders are reused;
 - import into an empty folder when provider filename rules or the target contents make conflicts unclear.
 
 ## A ZIP import stopped partway through with some files written
 
-If the browser loses folder access or another provider operation fails after writing starts, Import ZIP may leave one attempted entry in an uncertain state. Mioframe does not roll back completed files and does not assume that the uncertain file is safe to skip.
+If the browser loses folder access or another provider operation fails after writing starts, Import ZIP stops immediately. It does not roll back files it already wrote, and it does not resume or retry the import automatically.
 
 Next action:
 
-- grant folder access again if the browser asks for it;
-- choose **Verify and continue**. Mioframe checks an existing uncertain file byte-for-byte against its archive entry before any new write. A matching file is verified; a missing file is created normally; a matching directory is reused;
-- if the uncertain file differs or has the wrong type, Mioframe stops recovery without overwriting or deleting it. Import the archive into an empty folder as the safe fallback.
+- check the reported summary of what completed before the import stopped;
+- import the same archive into a new, empty target folder to retry cleanly — Mioframe does not overwrite, delete, or resume into a folder that already holds a partial import.
 
 ZIP import works at the file level. It does not validate Mioframe document semantics. If restored storage chunks belong to the same Automerge document identity, Automerge may combine the available history when the repository opens. External providers can also apply different filename matching rules, so behavior is not globally atomic across providers.
 

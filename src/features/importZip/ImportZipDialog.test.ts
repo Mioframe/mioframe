@@ -87,7 +87,6 @@ describe('ImportZipDialog', () => {
       status: 'success',
       summary: {
         importedFiles: 2,
-        verifiedFiles: 0,
         skippedFiles: 0,
         createdDirectories: 1,
         reusedDirectories: 0,
@@ -96,10 +95,50 @@ describe('ImportZipDialog', () => {
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('ZIP archive imported');
-    expect(dialog.attributes('data-supporting-text')).toBe('Import completed. 2 files imported.');
+    expect(dialog.attributes('data-supporting-text')).toBe(
+      'Import completed. 2 files imported, 1 folder created.',
+    );
     expect(dialog.attributes('data-loading')).toBe('false');
     expect(dialog.attributes('data-apply-label')).toBe('Done');
     expect(wrapper.find('[data-progress]').exists()).toBe(false);
+  });
+
+  it('renders a grammatically correct singular count', () => {
+    const wrapper = mountDialog({
+      status: 'success',
+      summary: {
+        importedFiles: 1,
+        skippedFiles: 1,
+        createdDirectories: 0,
+        reusedDirectories: 0,
+      },
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
+      'Import completed. 1 file imported, 1 existing file skipped.',
+    );
+  });
+
+  it('renders valid success text for an empty archive', () => {
+    const wrapper = mountDialog({
+      status: 'success',
+      summary: { importedFiles: 0, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
+      'Import completed. The archive was empty.',
+    );
+  });
+
+  it('renders valid success text for a directory-only archive', () => {
+    const wrapper = mountDialog({
+      status: 'success',
+      summary: { importedFiles: 0, skippedFiles: 0, createdDirectories: 3, reusedDirectories: 0 },
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
+      'Import completed. 3 folders created.',
+    );
   });
 
   it('renders the error state with the explicit partial-import message and a Close action', () => {
@@ -120,7 +159,6 @@ describe('ImportZipDialog', () => {
       status: 'success',
       summary: {
         importedFiles: 2,
-        verifiedFiles: 0,
         skippedFiles: 0,
         createdDirectories: 1,
         reusedDirectories: 0,
@@ -140,40 +178,40 @@ describe('ImportZipDialog', () => {
     expect(wrapper.emitted('close')).toHaveLength(1);
   });
 
-  it('offers verification rather than ordinary skipping for a partial import', async () => {
+  it('renders a partial import as a terminal, closeable-only result explaining the empty-target retry', async () => {
     const wrapper = mountDialog({
       status: 'partial',
       summary: {
         importedFiles: 1,
-        verifiedFiles: 0,
         skippedFiles: 0,
         createdDirectories: 0,
         reusedDirectories: 0,
       },
-      recovery: { uncertainEntry: { relativePath: 'file.txt', kind: 'file' } },
-    });
-
-    expect(wrapper.find('[data-headline]').attributes('data-apply-label')).toBe(
-      'Verify and continue',
-    );
-    await wrapper.find('[data-headline]').trigger('click');
-    expect(wrapper.emitted('verifyAndContinue')).toHaveLength(1);
-    expect(wrapper.emitted('skipExisting')).toBeUndefined();
-  });
-
-  it('only closes unresolved recovery and explains the safe fallback', async () => {
-    const wrapper = mountDialog({
-      status: 'recoveryUnresolved',
-      relativePath: 'file.txt',
-      reason: 'contentMismatch',
     });
 
     const dialog = wrapper.find('[data-headline]');
+    expect(dialog.attributes('data-headline')).toBe('Import stopped before completion');
     expect(dialog.attributes('data-apply-label')).toBe('Close');
-    expect(dialog.attributes('data-supporting-text')).toContain('did not overwrite');
-    expect(dialog.attributes('data-supporting-text')).toContain('empty folder');
+    expect(dialog.attributes('data-has-cancel-action')).toBe('false');
+    expect(dialog.attributes('data-supporting-text')).toContain('1 file imported');
+    expect(dialog.attributes('data-supporting-text')).toContain('partially imported archive');
+    expect(dialog.attributes('data-supporting-text')).toContain('empty target directory');
+
     await dialog.trigger('click');
+
     expect(wrapper.emitted('close')).toHaveLength(1);
+    expect(wrapper.emitted('skipExisting')).toBeUndefined();
+  });
+
+  it('explains a partial import where nothing was written before the stop', () => {
+    const wrapper = mountDialog({
+      status: 'partial',
+      summary: { importedFiles: 0, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toContain(
+      'Nothing was written before the import stopped.',
+    );
   });
 
   it('does not emit close on its own while running', () => {

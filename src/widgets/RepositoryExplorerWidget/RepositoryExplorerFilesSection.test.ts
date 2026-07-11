@@ -11,7 +11,6 @@ const importDirectoryZip = vi.fn();
 const closeExportZipDialog = vi.fn();
 const closeImportZipDialog = vi.fn();
 const retryImportSkippingExisting = vi.fn();
-const verifyAndContinueImport = vi.fn();
 const invalidateImportZipContext = vi.fn();
 const removeEntry = vi.fn();
 const importDocument = vi.fn();
@@ -116,7 +115,6 @@ vi.mock('@feature/importZip', () => ({
     state: importZipStateRef,
     closeImportZipDialog,
     retryImportSkippingExisting,
-    verifyAndContinueImport,
     invalidateImportZipContext,
   }),
   ImportZipDialog: defineComponent({
@@ -125,7 +123,6 @@ vi.mock('@feature/importZip', () => ({
     emits: {
       close: () => true,
       skipExisting: () => true,
-      verifyAndContinue: () => true,
     },
     setup(_props, { emit }) {
       return () =>
@@ -137,9 +134,6 @@ vi.mock('@feature/importZip', () => ({
           },
           onDblclick: () => {
             emit('skipExisting');
-          },
-          onContextmenu: () => {
-            emit('verifyAndContinue');
           },
         });
     },
@@ -540,7 +534,7 @@ describe('RepositoryExplorerFilesSection', () => {
     expect(closeImportZipDialog).toHaveBeenCalledOnce();
   });
 
-  it('wires nested-directory conflict and recovery actions to the import feature', async () => {
+  it('wires nested-directory conflict actions to the import feature', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');
     importZipStateRef.value = { status: 'conflicts' };
@@ -550,11 +544,9 @@ describe('RepositoryExplorerFilesSection', () => {
     const dialog = wrapper.findComponent({ name: 'ImportZipDialogStub' });
 
     dialog.vm.$emit('skipExisting');
-    dialog.vm.$emit('verifyAndContinue');
     await wrapper.vm.$nextTick();
 
     expect(retryImportSkippingExisting).toHaveBeenCalledOnce();
-    expect(verifyAndContinueImport).toHaveBeenCalledOnce();
   });
 
   it('removes an entry using the emitted entry path', async () => {

@@ -38,8 +38,6 @@ export type ZipImportExecutablePlan = {
   reusedDirectories: number;
   /** Ordinary existing files omitted by skip-existing policy. */
   skippedFiles: number;
-  /** Existing target types retained for recovery verification. */
-  existingTypes: Map<string, FSNodeType>;
 };
 
 /**
@@ -59,13 +57,21 @@ export const relativePathFromTarget = (rootPath: string, targetPath: string) =>
 export const pathDepth = (relativePath: string) => relativePath.split('/').length;
 
 /**
- * Tests whether a candidate is the same path or below an ancestor.
- * @param ancestor - Possible ancestor path.
- * @param candidate - Candidate same-or-descendant path.
- * @returns Whether the candidate is within the ancestor.
+ * Tests whether any ancestor of a path is present in a set, walking up one parent at a time.
+ * Bounded by the path's own depth instead of the number of entries in `set`.
+ * @param set - Candidate ancestor paths.
+ * @param path - Path whose ancestors are checked, inclusive of `path` itself.
+ * @returns Whether `path` or one of its ancestors is present in `set`.
  */
-export const isWithin = (ancestor: string, candidate: string) =>
-  candidate === ancestor || candidate.startsWith(`${ancestor}/`);
+const hasAncestorIn = (set: ReadonlySet<string>, path: string): boolean => {
+  let current: string | undefined = path;
+  while (current !== undefined) {
+    if (set.has(current)) return true;
+    const parent = PathUtils.dirname(current);
+    current = parent === current ? undefined : parent;
+  }
+  return false;
+};
 
 /**
  * Creates a safe planned entry from one raw archive path.
@@ -110,7 +116,7 @@ export const resolveZipImportExecutablePlan = async (
   const snapshots = new Map<string, Map<string, FSNodeType>>();
   const existingTypes = new Map<string, FSNodeType>();
   const plannedNewDirectories = new Set<string>();
-  const blockedDirectories: string[] = [];
+  const blockedDirectories = new Set<string>();
 
   const snapshot = async (path: string) => {
     const cached = snapshots.get(path);
@@ -125,8 +131,8 @@ export const resolveZipImportExecutablePlan = async (
   const classify = async (entry: PlannedZipEntry): Promise<FSNodeType | undefined> => {
     const parent = PathUtils.dirname(entry.targetPath);
     if (
-      [...plannedNewDirectories].some((directory) => isWithin(directory, entry.targetPath)) ||
-      blockedDirectories.some((directory) => isWithin(directory, entry.relativePath))
+      hasAncestorIn(plannedNewDirectories, entry.targetPath) ||
+      hasAncestorIn(blockedDirectories, entry.targetPath)
     ) {
       return undefined;
     }
@@ -139,7 +145,7 @@ export const resolveZipImportExecutablePlan = async (
     // eslint-disable-next-line no-await-in-loop -- child lookup depends on parent depth classification
     const type = await classify(directory);
     if (type === undefined) plannedNewDirectories.add(directory.targetPath);
-    else if (type === FSNodeType.File) blockedDirectories.push(directory.relativePath);
+    else if (type === FSNodeType.File) blockedDirectories.add(directory.targetPath);
   }
   for (const file of plan.files) {
     // eslint-disable-next-line no-await-in-loop -- existing parent snapshots are reused by siblings
@@ -154,8 +160,7 @@ export const resolveZipImportExecutablePlan = async (
     return { status: 'conflicts', report: createConflictReport(conflictPaths) };
   }
 
-  const isBlocked = (entry: PlannedZipEntry) =>
-    blockedDirectories.some((path) => isWithin(path, entry.relativePath));
+  const isBlocked = (entry: PlannedZipEntry) => hasAncestorIn(blockedDirectories, entry.targetPath);
   const files = plan.files.filter(
     (entry) => !isBlocked(entry) && !existingTypes.has(entry.targetPath),
   );
@@ -171,6 +176,5 @@ export const resolveZipImportExecutablePlan = async (
     directoriesToCreate,
     reusedDirectories,
     skippedFiles: plan.files.length - files.length,
-    existingTypes,
   };
 };

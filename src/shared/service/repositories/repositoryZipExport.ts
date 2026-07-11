@@ -13,23 +13,14 @@ import {
   type OnZipExportProgress,
 } from './repositoryZipContracts';
 
-/**
- * Flushes pending Automerge saves for the repository rooted at `path`, if one exists.
- * When `documentIds` is omitted, every document currently loaded for that repository is flushed.
- */
-export type FlushRepositoryPath = (path: string, documentIds?: AMDocumentId[]) => Promise<void>;
-
 const writeDirectoryEntriesRecursively = async (
   vfs: VirtualFileSystem,
-  flushRepositoryPath: FlushRepositoryPath,
   writer: ZipArchiveWriter,
   directoryPath: string,
   archivePath: string,
   progressState: { current: number },
   onProgress?: OnZipExportProgress,
 ): Promise<void> => {
-  await flushRepositoryPath(directoryPath);
-
   const directoryEntries = await vfs.readDirectory(directoryPath);
 
   if (directoryEntries.length === 0) {
@@ -49,7 +40,6 @@ const writeDirectoryEntriesRecursively = async (
       // eslint-disable-next-line no-await-in-loop -- recursive tree walk stays ordered per directory
       await writeDirectoryEntriesRecursively(
         vfs,
-        flushRepositoryPath,
         writer,
         childPath,
         childArchivePath,
@@ -71,14 +61,13 @@ const writeDirectoryEntriesRecursively = async (
  * Streams a ZIP archive of a directory's raw storage contents, including internal Mioframe
  * storage files such as `.mf` chunks and repository marker files. Archive entry paths are
  * relative to the selected directory itself — the archive has no wrapper folder named after the
- * exported directory, so its contents land directly at archive root. Flushes each nested
- * repository's pending Automerge saves before reading its storage files so the export reflects
+ * exported directory, so its contents land directly at archive root. Callers are responsible for
+ * settling any cached repository state under `path` before calling this, so the export reflects
  * the latest document state.
  *
  * Reads and packs one file at a time and delivers packed bytes through `onChunk` as they become
  * available, so the archive is never held in memory as one contiguous buffer.
  * @param vfs - Mounted virtual file system.
- * @param flushRepositoryPath - Flushes pending Automerge saves for the repository at a path.
  * @param path - Absolute path to the directory to export.
  * @param onChunk - Invoked with each packed archive chunk as it becomes available.
  * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
@@ -86,7 +75,6 @@ const writeDirectoryEntriesRecursively = async (
  */
 export const exportDirectoryZip = async (
   vfs: VirtualFileSystem,
-  flushRepositoryPath: FlushRepositoryPath,
   path: string,
   onChunk: OnZipExportChunk,
   onProgress?: OnZipExportProgress,
@@ -95,15 +83,7 @@ export const exportDirectoryZip = async (
 
   const writer = createZipArchiveWriter(onChunk);
 
-  await writeDirectoryEntriesRecursively(
-    vfs,
-    flushRepositoryPath,
-    writer,
-    path,
-    '',
-    { current: 0 },
-    onProgress,
-  );
+  await writeDirectoryEntriesRecursively(vfs, writer, path, '', { current: 0 }, onProgress);
 
   onProgress?.({ phase: 'packing' });
 
@@ -113,14 +93,13 @@ export const exportDirectoryZip = async (
 /**
  * Streams a ZIP archive of one document's storage files, written directly at archive root using
  * their storage file names — the archive is not wrapped in a folder named after the document's
- * technical id. Flushes the document's pending Automerge saves before reading storage files so
- * the export reflects the latest document state. This reads raw storage files, not the decoded
- * document state — it is not a JSON snapshot.
+ * technical id. This reads raw storage files, not the decoded document state — it is not a JSON
+ * snapshot. Callers are responsible for settling any cached repository state at `path` before
+ * calling this, so the export reflects the latest document state.
  *
  * Reads and packs one file at a time and delivers packed bytes through `onChunk` as they become
  * available, so the archive is never held in memory as one contiguous buffer.
  * @param vfs - Mounted virtual file system.
- * @param flushRepositoryPath - Flushes pending Automerge saves for the repository at a path.
  * @param path - Absolute path to the directory containing the document.
  * @param documentId - Target document id.
  * @param onChunk - Invoked with each packed archive chunk as it becomes available.
@@ -131,15 +110,12 @@ export const exportDirectoryZip = async (
  */
 export const exportDocumentZip = async (
   vfs: VirtualFileSystem,
-  flushRepositoryPath: FlushRepositoryPath,
   path: string,
   documentId: AMDocumentId,
   onChunk: OnZipExportChunk,
   onProgress?: OnZipExportProgress,
 ): Promise<void> => {
   onProgress?.({ phase: 'preparing' });
-
-  await flushRepositoryPath(path, [documentId]);
 
   const documentStorageFiles = await getDocumentStorageFiles(vfs, path, documentId);
 
