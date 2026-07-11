@@ -46,10 +46,10 @@ describe('assertUniqueKeys', () => {
     }).not.toThrow();
   });
 
-  it('throws for a duplicate key', () => {
+  it('throws for duplicate controlled keys', () => {
     expect(() => {
       assertUniqueKeys(['a', 'b', 'a']);
-    }).toThrow(/duplicate key/);
+    }).toThrow(/duplicate controlled keys/);
   });
 });
 

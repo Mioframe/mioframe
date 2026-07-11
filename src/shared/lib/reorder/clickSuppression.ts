@@ -8,22 +8,36 @@
  * a bounded next-task fallback.
  *
  * A session cancelled *before* the original pointer physically releases (`Escape`, blur,
- * visibility loss, a second pointer, container removal, or another mid-gesture event) cannot use
- * that same immediate arm-and-fallback shape: the physical release may be arbitrarily far in the
- * future, well past one event-loop turn. For that case this module instead starts a minimal,
- * bounded release watcher that listens for the *original* pointer's own `pointerup`/`pointercancel`
- * and only arms suppression once that release actually happens (or gives up after a bounded
- * safety timeout, or once a matching `pointercancel` proves no click will ever follow).
+ * visibility loss, a second pointer, an active-item unmount, or another mid-gesture event while
+ * the container/composable stay mounted) cannot use that same immediate arm-and-fallback shape:
+ * the physical release may be arbitrarily far in the future, well past one event-loop turn. For
+ * that case this module instead starts a minimal, bounded release watcher that listens for the
+ * original pointer's own `pointerup`/`pointercancel` and only arms suppression once that release
+ * actually happens (or gives up after a bounded safety timeout, or once a matching `pointercancel`
+ * proves no click will ever follow).
  *
- * The same bounded window also re-installs the `selectstart`-prevention guard that
- * `activeSessionEffects.ts` owns during an active drag. Diagnosed via Playwright-only scroll
- * instrumentation (see `tests/e2e/storybook/reorder.spec.ts`'s external-order-mutation autoscroll
- * test): once a session cancels mid-gesture, `activeSessionEffects.dispose()` removes that guard
- * immediately, but the physical mouse button can still be down and stationary near the (former)
- * autoscroll edge; with the guard gone, Chromium's own native "extend a text selection near a
- * scrollable edge autoscrolls it" behavior can pick up and keep scrolling the container with zero
- * further library-issued `scrollBy` calls. Re-arming the same guard for this bounded window
- * prevents exactly that native behavior without reviving any part of the ended session.
+ * Container/composable removal (`PointerSession.detachContainer`/`dispose`) is a *hard* cleanup
+ * boundary, not one more release-watcher trigger: cancelling a still-physically-held dragging
+ * session as part of that removal would otherwise start exactly this watcher, but both callers
+ * unconditionally call {@link ClickSuppressionController.disarm} immediately afterward, in the
+ * same synchronous call, so no watcher (or its safety timeout) ever survives past a
+ * `detachContainer`/`dispose` call — there is no longer a container left to observe a future click
+ * on, or a mounted composable left to own the watcher.
+ *
+ * This module does not re-install any `selectstart`-prevention guard for the bounded window: an
+ * earlier version did, on the theory that Chromium's native "extend a text selection near a
+ * scrollable edge autoscrolls it" behavior could otherwise continue scrolling the container after
+ * `activeSessionEffects.dispose()` removes `activeSessionEffects.ts`'s own active-drag guard. A
+ * causal Playwright A/B investigation (see `tests/e2e/storybook/reorder.autoscroll.spec.ts`'s
+ * external-order-mutation autoscroll test) disproved that theory: with the guard fully disabled, a
+ * real text selection reliably formed and extended across the post-cancellation window, yet the
+ * observed `scrollTop` settling after cancellation was statistically identical, in both shape and
+ * magnitude, to runs where no selection ever formed. In every run, in both conditions, zero
+ * additional library-issued `scrollBy`/`window.scrollBy` calls occurred after cancellation — the
+ * settling is the browser's own scroll compositor finishing already-issued, already-correctly-
+ * stopped scrolling over a few more frames, not a new scroll caused by selection or by anything
+ * else post-cancellation. Do not reintroduce a post-cancel `selectstart` guard without new causal
+ * evidence.
  */
 import { RELEASE_WATCHER_SAFETY_TIMEOUT_MS } from './constants';
 
@@ -53,14 +67,12 @@ export interface ClickSuppressionController {
    * session is cancelled before that release is known to have happened. On a matching
    * `pointerup`, arms suppression as {@link arm} would. On a matching `pointercancel`, or once the
    * bounded safety timeout elapses, cleans up without arming suppression. Clears any previously
-   * armed suppression or pending watcher first. Also re-installs a `selectstart`-prevention guard
-   * for the same bounded window, so native browser scrolling (Chromium's own drag-a-selection-
-   * near-an-edge autoscroll) can't continue after the session's own guards are torn down while the
-   * physical pointer is still down; see the module-level doc comment for the diagnosis.
+   * armed suppression or pending watcher first. See the module-level doc comment for why this does
+   * not re-install a `selectstart`-prevention guard.
    * @param target - The original gesture's container and pointer id to watch for.
    */
   armReleaseWatcher: (target: ReleaseWatcherTarget) => void;
-  /** Clears any pending suppression, release watcher, or guard immediately; safe when idle. */
+  /** Clears any pending suppression or release watcher immediately; safe when idle. */
   disarm: () => void;
 }
 
@@ -79,12 +91,6 @@ export const createClickSuppression = (): ClickSuppressionController => {
     safetyTimer: ReturnType<typeof setTimeout>;
   } | null = null;
 
-  /**
-   * The bounded post-cancellation `selectstart` guard, installed only while a release watcher is
-   * pending; see the module-level doc comment for why this specific guard is re-armed here.
-   */
-  let selectStartGuard: ((event: Event) => void) | null = null;
-
   const disarm = (): void => {
     if (armedContainerEl && clickListener) {
       armedContainerEl.removeEventListener('click', clickListener, true);
@@ -101,11 +107,6 @@ export const createClickSuppression = (): ClickSuppressionController => {
       window.removeEventListener('pointercancel', releaseWatcher.onPointerCancel);
       clearTimeout(releaseWatcher.safetyTimer);
       releaseWatcher = null;
-    }
-
-    if (selectStartGuard) {
-      document.removeEventListener('selectstart', selectStartGuard);
-      selectStartGuard = null;
     }
   };
 
@@ -146,12 +147,6 @@ export const createClickSuppression = (): ClickSuppressionController => {
 
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerCancel);
-
-    const guard = (event: Event): void => {
-      event.preventDefault();
-    };
-    document.addEventListener('selectstart', guard);
-    selectStartGuard = guard;
 
     releaseWatcher = { onPointerUp, onPointerCancel, safetyTimer };
   };

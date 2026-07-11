@@ -121,6 +121,93 @@ const setupSession = () => {
 };
 
 /**
+ * Like {@link setupSession}, but lets each consumer callback be swapped out for a test-controlled
+ * implementation — used to exercise the consumer exception-safety boundary. `onReorder`'s override
+ * receives `helpers` so a test can still perform the default accept-and-mutate behavior on some
+ * calls (e.g. the live move) while throwing on others (e.g. the rollback). `wrapGetKeys` wraps
+ * every `getKeys()` call the session makes, letting a test throw on a specific call by count.
+ * @param overrides - Per-callback test overrides; omitted callbacks keep {@link setupSession}'s
+ * default behavior.
+ * @returns The registry, elements, key state, callbacks, and session under test.
+ */
+const setupThrowingSession = (
+  overrides: {
+    onReorder?: (
+      event: { key: string; fromIndex: number; toIndex: number },
+      helpers: { getKeys: () => string[]; setKeys: (next: string[]) => void },
+    ) => void;
+    onDragStart?: () => void;
+    onDragEnd?: () => void;
+    wrapGetKeys?: (getKeys: () => string[]) => () => string[];
+  } = {},
+) => {
+  const registry = createReorderRegistry<string>();
+  const containerEl = document.createElement('div');
+  const itemA = document.createElement('div');
+  const itemB = document.createElement('div');
+  containerEl.append(itemA, itemB);
+  document.body.append(containerEl);
+  registry.containerEl = containerEl;
+  registerItem(registry, 'a', itemA);
+  registerItem(registry, 'b', itemB);
+
+  stubRect(containerEl, { left: 0, top: 0, width: 400, height: 400 });
+  stubRect(itemA, { left: 0, top: 0, width: 100, height: 100 });
+  stubRect(itemB, { left: 200, top: 0, width: 100, height: 100 });
+
+  let keys: string[] = ['a', 'b'];
+  const baseGetKeys = (): string[] => keys;
+  const setKeys = (next: string[]): void => {
+    keys = next;
+  };
+  const getKeys = overrides.wrapGetKeys ? overrides.wrapGetKeys(baseGetKeys) : baseGetKeys;
+  const draggingKey = ref<string | null>(null);
+
+  const defaultOnReorder = (event: { key: string; fromIndex: number; toIndex: number }): void => {
+    const next = [...keys];
+    const [moved] = next.splice(event.fromIndex, 1);
+    if (moved !== undefined) next.splice(event.toIndex, 0, moved);
+    keys = next;
+  };
+
+  const onReorder = vi.fn((event: { key: string; fromIndex: number; toIndex: number }) => {
+    if (overrides.onReorder) {
+      overrides.onReorder(event, { getKeys: baseGetKeys, setKeys });
+      return;
+    }
+    defaultOnReorder(event);
+  });
+  const onDragStart = vi.fn(overrides.onDragStart);
+  const onDragEnd = vi.fn(overrides.onDragEnd);
+
+  const session = createPointerSession<string>({
+    registry,
+    getKeys,
+    getLongPressDelay: () => 400,
+    draggingKey,
+    onReorder,
+    onDragStart,
+    onDragEnd,
+  });
+
+  session.attachContainer(containerEl);
+
+  return {
+    registry,
+    containerEl,
+    itemA,
+    itemB,
+    getKeys: baseGetKeys,
+    setKeys,
+    draggingKey,
+    onReorder,
+    onDragStart,
+    onDragEnd,
+    session,
+  };
+};
+
+/**
  * Dispatches pointerdown on `itemEl`, then a pointermove that crosses the mouse activation threshold.
  * @param itemEl - The item element to press down on.
  * @param pointerId - The pointer id to dispatch both events with.
@@ -220,7 +307,7 @@ describe('validation cleanup during pending activation', () => {
       window.dispatchEvent(
         createPointerEvent('pointermove', { pointerId: 1, clientX: 20, clientY: 10 }),
       );
-    }).toThrow(/duplicate key/);
+    }).toThrow(/duplicate controlled keys/);
 
     // A brand-new session must be startable immediately: the failed one left no stale session,
     // timer, or global listener behind.
@@ -247,7 +334,7 @@ describe('validation cleanup during pending activation', () => {
 
       expect(() => {
         vi.advanceTimersByTime(400);
-      }).toThrow(/duplicate key/);
+      }).toThrow(/duplicate controlled keys/);
 
       // No further timer is left scheduled for the failed session.
       const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
@@ -415,6 +502,277 @@ describe('deferred pointerup settlement', () => {
     // was waiting on has already ended: it must not mutate anything or fire a second onDragEnd.
     await nextTick();
 
+    expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('consumer exception safety', () => {
+  it('cleans up a throwing onDragStart, rethrows it unchanged, and still allows a later gesture', () => {
+    const boom = new Error('boom-drag-start');
+    let dragStartCalls = 0;
+    const setup = setupThrowingSession({
+      onDragStart: () => {
+        dragStartCalls += 1;
+        if (dragStartCalls === 1) throw boom;
+      },
+    });
+
+    expect(() => {
+      activateOnItem(setup.itemA);
+    }).toThrow(boom);
+
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+    expect(setup.draggingKey.value).toBeNull();
+    expect(setup.onReorder).not.toHaveBeenCalled();
+    expect(setup.onDragEnd).not.toHaveBeenCalled();
+
+    // The pointer was still physically held at the throw: a bounded release watcher was armed.
+    // Its matching real release suppresses the next click, then cleans itself up.
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(false);
+    expect(setup.onDragEnd).not.toHaveBeenCalled();
+
+    // A brand-new gesture (a different pointer) activates normally: nothing from the aborted
+    // session — no stale `session`, listener, capture, or guard — is left behind.
+    activateOnItem(setup.itemB, 2);
+    expect(dragStartCalls).toBe(2);
+    expect(setup.draggingKey.value).toBe('b');
+
+    // End the second gesture so this session's global listeners don't leak into later tests.
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 2 }));
+  });
+
+  it('cleans up a throwing live onReorder mid-frame and rethrows it unchanged', () => {
+    const boom = new Error('boom-reorder');
+    const setup = setupThrowingSession({
+      onReorder: () => {
+        throw boom;
+      },
+    });
+
+    activateOnItem(setup.itemA);
+    setup.registry.itemKeys.set(setup.itemB, 'b');
+    document.elementsFromPoint = () => [setup.itemB, setup.containerEl];
+    window.dispatchEvent(
+      createPointerEvent('pointermove', { pointerId: 1, clientX: 250, clientY: 10 }),
+    );
+
+    expect(() => {
+      runFrame();
+    }).toThrow(boom);
+
+    expect(setup.onReorder).toHaveBeenCalledTimes(1);
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+    expect(setup.draggingKey.value).toBeNull();
+    expect(setup.onDragEnd).not.toHaveBeenCalled();
+    // No rollback and no other consumer callback: the controlled order is untouched.
+    expect(setup.getKeys()).toEqual(['a', 'b']);
+
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(false);
+  });
+
+  it('cleans up a throwing getKeys() during an active frame and rethrows it unchanged', () => {
+    const boom = new Error('boom-active-frame-keys');
+    let callCount = 0;
+    const setup = setupThrowingSession({
+      wrapGetKeys: (getKeys) => () => {
+        callCount += 1;
+        // Call 1 is onContainerPointerDown's validation, call 2 is activateSession's; call 3 is
+        // the first active frame's own getKeys() read.
+        if (callCount === 3) throw boom;
+        return getKeys();
+      },
+    });
+
+    activateOnItem(setup.itemA);
+    expect(setup.onDragStart).toHaveBeenCalledTimes(1);
+
+    expect(() => {
+      runFrame();
+    }).toThrow(boom);
+
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+    expect(setup.draggingKey.value).toBeNull();
+    expect(setup.onReorder).not.toHaveBeenCalled();
+    expect(setup.onDragEnd).not.toHaveBeenCalled();
+
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(false);
+  });
+
+  it('cleans up a throwing rollback onReorder and rethrows it unchanged', () => {
+    const boom = new Error('boom-rollback');
+    let onReorderCalls = 0;
+    const setup = setupThrowingSession({
+      onReorder: (event, helpers) => {
+        onReorderCalls += 1;
+        if (onReorderCalls === 2) throw boom;
+
+        const next = [...helpers.getKeys()];
+        const [moved] = next.splice(event.fromIndex, 1);
+        if (moved !== undefined) next.splice(event.toIndex, 0, moved);
+        helpers.setKeys(next);
+      },
+    });
+
+    activateOnItem(setup.itemA);
+    setup.registry.itemKeys.set(setup.itemB, 'b');
+    document.elementsFromPoint = () => [setup.itemB, setup.containerEl];
+    window.dispatchEvent(
+      createPointerEvent('pointermove', { pointerId: 1, clientX: 250, clientY: 10 }),
+    );
+    runFrame();
+
+    expect(onReorderCalls).toBe(1);
+    expect(setup.getKeys()).toEqual(['b', 'a']);
+
+    // Escape cancels mid-drag, before physical release: rollback is attempted and its own
+    // onReorder call throws.
+    expect(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    }).toThrow(boom);
+
+    expect(onReorderCalls).toBe(2);
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+    expect(setup.draggingKey.value).toBeNull();
+    expect(setup.onDragEnd).not.toHaveBeenCalled();
+    // The failed rollback leaves the controlled order exactly as the accepted live move left it:
+    // no further consumer callback and no invented state.
+    expect(setup.getKeys()).toEqual(['b', 'a']);
+
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(false);
+  });
+
+  it('cleans up a throwing getKeys() during pointerup reconciliation and rethrows it unchanged', () => {
+    const boom = new Error('boom-pointerup-keys');
+    let callCount = 0;
+    const setup = setupThrowingSession({
+      wrapGetKeys: (getKeys) => () => {
+        callCount += 1;
+        // Call 1 is onContainerPointerDown's validation, call 2 is activateSession's; call 3 is
+        // reconcilePointerUp's own getKeys() read.
+        if (callCount === 3) throw boom;
+        return getKeys();
+      },
+    });
+
+    activateOnItem(setup.itemA);
+
+    expect(() => {
+      window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    }).toThrow(boom);
+
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+    expect(setup.draggingKey.value).toBeNull();
+    expect(setup.onDragEnd).not.toHaveBeenCalled();
+
+    // The physical release already happened: normal click suppression was armed immediately
+    // inside the original pointerup handling, before reconciliation's getKeys() ever threw — not
+    // a bounded watcher (there is nothing left to watch for).
+    expect(dispatchClick(setup.containerEl)).toBe(false);
+  });
+
+  it('has already cleaned up all session state before a throwing onDragEnd propagates', () => {
+    const boom = new Error('boom-drag-end');
+    const setup = setupThrowingSession({
+      onDragEnd: () => {
+        throw boom;
+      },
+    });
+
+    activateOnItem(setup.itemA);
+
+    expect(() => {
+      window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    }).toThrow(boom);
+
+    // Cleanup already happened before onDragEnd was invoked, not in reaction to its throw.
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+    expect(setup.draggingKey.value).toBeNull();
+
+    // A brand-new gesture activates normally afterward.
+    activateOnItem(setup.itemB, 2);
+    expect(setup.draggingKey.value).toBe('b');
+
+    // End the second gesture (onDragEnd throws again) so this session's global listeners don't
+    // leak into later tests.
+    expect(() => {
+      window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 2 }));
+    }).toThrow(boom);
+  });
+});
+
+describe('unmount / dispose hard cleanup', () => {
+  it('detachContainer cancels an active drag and leaves no release watcher or click suppression behind', () => {
+    const setup = setupSession();
+    activateOnItem(setup.itemA);
+    expect(setup.draggingKey.value).toBe('a');
+
+    setup.session.detachContainer(setup.containerEl);
+
+    expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
+    expect(setup.onDragEnd).toHaveBeenCalledWith(expect.objectContaining({ cancelled: true }));
+    expect(setup.draggingKey.value).toBeNull();
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+
+    // selectstart is never prevented after cancellation (no post-cancel guard exists).
+    const selectStartEvent = new Event('selectstart', { cancelable: true });
+    document.dispatchEvent(selectStartEvent);
+    expect(selectStartEvent.defaultPrevented).toBe(false);
+
+    // No pending release watcher survives: the original pointer's later release suppresses nothing.
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(true);
+  });
+
+  it('dispose cancels an active drag and leaves no release watcher or click suppression behind', () => {
+    const setup = setupSession();
+    activateOnItem(setup.itemA);
+
+    setup.session.dispose();
+
+    expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
+    expect(setup.onDragEnd).toHaveBeenCalledWith(expect.objectContaining({ cancelled: true }));
+    expect(setup.draggingKey.value).toBeNull();
+    expect(rafCallbacks.size).toBe(0);
+    expect(releasePointerCaptureSpy).toHaveBeenCalledWith(1);
+
+    const selectStartEvent = new Event('selectstart', { cancelable: true });
+    document.dispatchEvent(selectStartEvent);
+    expect(selectStartEvent.defaultPrevented).toBe(false);
+
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(true);
+  });
+
+  it('detachContainer during a bounded release watcher (armed by an earlier active-item removal) still tears it down', () => {
+    const setup = setupSession();
+    activateOnItem(setup.itemA);
+
+    // The active item unmounts while the container/composable stay mounted: a bounded release
+    // watcher is armed because the physical pointer may still be held.
+    setup.session.notifyItemUnmounted('a');
+    expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
+
+    // The container itself now unmounts before that watcher ever observes a release.
+    setup.session.detachContainer(setup.containerEl);
+
+    const selectStartEvent = new Event('selectstart', { cancelable: true });
+    document.dispatchEvent(selectStartEvent);
+    expect(selectStartEvent.defaultPrevented).toBe(false);
+
+    window.dispatchEvent(createPointerEvent('pointerup', { pointerId: 1 }));
+    expect(dispatchClick(setup.containerEl)).toBe(true);
+    // Still exactly one onDragEnd overall: detachContainer found no active session left to cancel.
     expect(setup.onDragEnd).toHaveBeenCalledTimes(1);
   });
 });

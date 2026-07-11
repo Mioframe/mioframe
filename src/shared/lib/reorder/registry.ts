@@ -50,13 +50,13 @@ export const registerItem = <Key extends ReorderKey>(
   const existingElForKey = registry.itemElements.get(key);
   reorderInvariant(
     !existingElForKey || existingElForKey === el,
-    `duplicate item key "${String(key)}" registered to a different element; keys must be unique among currently mounted items.`,
+    'an item key is already registered to another element.',
   );
 
   const existingKeyForEl = registry.itemKeys.get(el);
   reorderInvariant(
     existingKeyForEl === undefined || existingKeyForEl === key,
-    `element already registered under key "${String(existingKeyForEl)}"; cannot also register it under "${String(key)}".`,
+    'an element is already registered under another key.',
   );
 
   registry.itemElements.set(key, el);

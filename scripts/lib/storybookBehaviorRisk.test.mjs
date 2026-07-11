@@ -82,6 +82,7 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
 
     expect(coveredSpecs.has('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/storybook/reorder.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/reorder.autoscroll.spec.ts')).toBe(true);
   });
 
   it('fails when a scenario references a spec missing from disk', () => {
@@ -345,32 +346,61 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('none');
   });
 
-  it('focuses the reorder spec for a reorder library source change', () => {
+  it('focuses both reorder specs for a reorder library source change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/scrollChain.ts']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/reorder.spec.ts']);
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.spec.ts',
+    ]);
   });
 
-  it('focuses the reorder spec for a reorder story change', () => {
+  it('focuses both reorder specs for a reorder story change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/Reorder.stories.ts']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/reorder.spec.ts']);
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.spec.ts',
+    ]);
   });
 
-  it('focuses the reorder spec for a reorder story harness change', () => {
+  it('focuses both reorder specs for a reorder story harness change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/ReorderStoryHarness.vue']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/reorder.spec.ts']);
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.spec.ts',
+    ]);
   });
 
-  it('runs the changed reorder behavior spec directly', () => {
+  it('runs the changed reorder behavior spec directly when only the general spec changed', () => {
     const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/reorder.spec.ts']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/reorder.spec.ts']);
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.spec.ts',
+    ]);
+  });
+
+  it('runs both reorder specs when only the autoscroll spec changed', () => {
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/reorder.autoscroll.spec.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.spec.ts',
+    ]);
+  });
+
+  it('runs the full lane for a change to the shared reorder Playwright test helper', () => {
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/reorder.testUtils.ts']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('behavior support file');
   });
 
   it('reports none for an empty changed-file scope', () => {

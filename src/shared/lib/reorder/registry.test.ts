@@ -43,7 +43,7 @@ describe('registerItem / unregisterItem', () => {
 
     expect(() => {
       registerItem(registry, 'a', secondEl);
-    }).toThrow(/duplicate item key/);
+    }).toThrow(/already registered to another element/);
     expect(registry.itemElements.get('a')).toBe(firstEl);
   });
 
@@ -55,7 +55,7 @@ describe('registerItem / unregisterItem', () => {
 
     expect(() => {
       registerItem(registry, 'b', el);
-    }).toThrow(/already registered under key/);
+    }).toThrow(/already registered under another key/);
     expect(registry.itemKeys.get(el)).toBe('a');
   });
 

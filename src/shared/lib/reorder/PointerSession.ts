@@ -14,6 +14,12 @@
  * in `clickSuppression.ts`; temporary window/document listeners and second-pointer exclusion live
  * in `sessionGlobalListeners.ts`; autoscroll geometry lives in `scrollChain.ts`. This module only
  * orchestrates session state transitions and decides when each of those runs.
+ *
+ * Every call into consumer-owned `keys`, `onDragStart`, or `onReorder` is guarded by
+ * {@link callConsumer}: on a thrown error it deterministically aborts the current session via
+ * {@link abortSessionOnConsumerError} — the same hard cleanup `detachContainer`/`dispose` use —
+ * before rethrowing the original error unchanged, without rollback and without calling
+ * `onDragEnd`. See the module README's "Consumer exceptions" section for the full contract.
  */
 import { nextTick, type Ref } from 'vue';
 import { acquireActiveSessionEffects, type ActiveSessionEffects } from './activeSessionEffects';
@@ -148,15 +154,35 @@ export interface CreatePointerSessionOptions<Key extends ReorderKey> {
   onDragEnd?: ((event: ReorderDragEndEvent<Key>) => void) | undefined;
 }
 
-/** The imperative session controller returned by {@link createPointerSession}. */
+/**
+ * The imperative session controller returned by {@link createPointerSession}.
+ *
+ * `detachContainer` and `dispose` are both hard cleanup boundaries: library ownership ends
+ * immediately and unconditionally, not only when the pointer eventually releases. Both cancel any
+ * in-flight session (any phase) and then unconditionally disarm click suppression — which removes
+ * a pending bounded release watcher and its safety timeout, even though cancelling a
+ * still-physically-held dragging session would otherwise start exactly that watcher (see
+ * `clickSuppression.ts`). The watcher is only ever observable across an *earlier* cancellation
+ * that leaves the composable and its container still mounted (for example
+ * {@link notifyItemUnmounted} alone, without a following `detachContainer`); it cannot outlive a
+ * `detachContainer`/`dispose` call itself, since the disarm happens synchronously right after.
+ */
 export interface PointerSession<Key extends ReorderKey> {
   /** Starts listening for activation gestures on the registered reorder container. */
   attachContainer: (containerEl: HTMLElement) => void;
-  /** Stops listening on `containerEl` and safely cancels any session it owns. */
+  /**
+   * Stops listening on `containerEl` and hard-cancels any session it owns: the active session
+   * runtime (rAF, capture, listeners, guards), click suppression, and any pending release
+   * watcher and its safety timeout are all removed immediately. See the interface-level doc
+   * comment.
+   */
   detachContainer: (containerEl: HTMLElement) => void;
   /** Safely cancels the active session if it belongs to `key` (the item unmounted). */
   notifyItemUnmounted: (key: Key) => void;
-  /** Cancels any in-flight session and releases every listener; call on scope dispose. */
+  /**
+   * Hard-cancels any in-flight session and releases every listener, exactly like
+   * `detachContainer`; call on scope dispose. See the interface-level doc comment.
+   */
   dispose: () => void;
 }
 
@@ -230,9 +256,11 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const reconcilePointerUp = (s: DraggingSession<Key>) => {
+    const currentKeys = callConsumer(() => options.getKeys());
+
     const outcome = decidePointerUpOutcome({
       confirmedSequence: s.confirmedSequence,
-      currentKeys: options.getKeys(),
+      currentKeys,
       pendingRequestedSequence: s.pendingRequestedSequence,
       awaitingDomCommit: s.commitToken !== null,
     });
@@ -437,7 +465,7 @@ export const createPointerSession = <Key extends ReorderKey>(
     };
 
     options.draggingKey.value = key;
-    options.onDragStart?.({ key, index: initialIndex });
+    callConsumer(() => options.onDragStart?.({ key, index: initialIndex }));
 
     scheduleFrame();
   };
@@ -464,7 +492,7 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (!session || session.phase !== 'dragging') return;
     const s = session;
 
-    const currentKeys = options.getKeys();
+    const currentKeys = callConsumer(() => options.getKeys());
 
     // The controlled-order check and the awaited-commit gate both run before any autoscroll
     // write, so an incompatible external mutation is always caught before a scroll side effect.
@@ -509,9 +537,14 @@ export const createPointerSession = <Key extends ReorderKey>(
     const requestedSequence = deriveMovedSequence(s.confirmedSequence, fromIndex, toIndex);
 
     s.pendingRequestedSequence = requestedSequence;
-    options.onReorder({ key: movedKey, fromIndex, toIndex });
+    callConsumer(() => {
+      options.onReorder({ key: movedKey, fromIndex, toIndex });
+    });
 
-    const outcome = evaluateRequestedMove(requestedSequence, options.getKeys());
+    const outcome = evaluateRequestedMove(
+      requestedSequence,
+      callConsumer(() => options.getKeys()),
+    );
     s.pendingRequestedSequence = null;
 
     if (outcome.kind === 'rejected') {
@@ -543,7 +576,10 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (!session || session.phase === 'pending' || session.commitToken !== token) return;
 
     const isExternalMutation =
-      checkOrderConsistency(session.confirmedSequence, options.getKeys()) === 'external-mutation';
+      checkOrderConsistency(
+        session.confirmedSequence,
+        callConsumer(() => options.getKeys()),
+      ) === 'external-mutation';
 
     if (session.phase === 'dragging') {
       if (isExternalMutation) {
@@ -565,7 +601,7 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const finishDraggingSession = (s: DraggingSession<Key>) => {
-    const finalIndex = options.getKeys().indexOf(s.key);
+    const finalIndex = callConsumer(() => options.getKeys()).indexOf(s.key);
 
     session = null;
     options.draggingKey.value = null;
@@ -573,7 +609,7 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const finishSettlingSession = (s: SettlingSession<Key>) => {
-    const finalIndex = options.getKeys().indexOf(s.key);
+    const finalIndex = callConsumer(() => options.getKeys()).indexOf(s.key);
 
     session = null;
     options.draggingKey.value = null;
@@ -600,7 +636,7 @@ export const createPointerSession = <Key extends ReorderKey>(
     s: DraggingSession<Key>,
     cancelOptions: { skipRollback?: boolean },
   ) => {
-    const currentKeys = options.getKeys();
+    const currentKeys = callConsumer(() => options.getKeys());
     let finalIndex = currentKeys.indexOf(s.key);
 
     const rollbackAllowed =
@@ -612,9 +648,11 @@ export const createPointerSession = <Key extends ReorderKey>(
 
     if (rollbackAllowed) {
       const rollbackSequence = deriveMovedSequence(currentKeys, finalIndex, s.initialIndex);
-      options.onReorder({ key: s.key, fromIndex: finalIndex, toIndex: s.initialIndex });
+      callConsumer(() => {
+        options.onReorder({ key: s.key, fromIndex: finalIndex, toIndex: s.initialIndex });
+      });
 
-      const keysAfterRollback = options.getKeys();
+      const keysAfterRollback = callConsumer(() => options.getKeys());
       finalIndex = sequencesEqual(keysAfterRollback, rollbackSequence)
         ? s.initialIndex
         : keysAfterRollback.indexOf(s.key);
@@ -640,7 +678,7 @@ export const createPointerSession = <Key extends ReorderKey>(
     // No active pointer runtime to stop, and the original pointer already physically released
     // (settling only exists after a physical pointerup), so no rollback and no release watcher
     // ever apply here: just reconcile the current controlled sequence and finish as cancelled.
-    const finalIndex = options.getKeys().indexOf(s.key);
+    const finalIndex = callConsumer(() => options.getKeys()).indexOf(s.key);
 
     session = null;
     options.draggingKey.value = null;
@@ -675,6 +713,54 @@ export const createPointerSession = <Key extends ReorderKey>(
     globalListeners.detach();
   };
 
+  /**
+   * Cleans up all library-owned runtime for the current session when consumer-owned `keys`,
+   * `onDragStart`, or `onReorder` throws, without invoking any further consumer callback (no
+   * rollback, no `onDragEnd`). A dragging session's bounded release watcher is armed only when the
+   * original pointer may still be physically held (`terminationReason === 'not-ended'`) and the
+   * container is still mounted; a settling session owns no pointer runtime to stop, because
+   * physical release has already happened by the time settling exists. See {@link callConsumer}.
+   */
+  const abortSessionOnConsumerError = (): void => {
+    if (!session) return;
+    const s = session;
+    session = null;
+    options.draggingKey.value = null;
+
+    if (s.phase === 'pending') {
+      if (s.longPressTimer !== null) clearTimeout(s.longPressTimer);
+      globalListeners.detach();
+      return;
+    }
+
+    if (s.phase === 'settling') return;
+
+    stopGestureRuntime(s);
+
+    const containerStillMounted = registry.containerEl === s.containerEl;
+    if (containerStillMounted && s.terminationReason === 'not-ended') {
+      clickSuppression.armReleaseWatcher({ containerEl: s.containerEl, pointerId: s.pointerId });
+    }
+  };
+
+  /**
+   * Invokes `fn` — a call into consumer-owned `keys`, `onDragStart`, or `onReorder` — and, if it
+   * throws, deterministically aborts the current session via {@link abortSessionOnConsumerError}
+   * before rethrowing the original error unchanged. Never wraps `onDragEnd`: its own exceptional
+   * contract requires every effect to already be cleaned up before it is invoked, not cleaned up
+   * in reaction to its own throw.
+   * @param fn - The consumer call to guard.
+   * @returns `fn`'s return value.
+   */
+  const callConsumer = <T>(fn: () => T): T => {
+    try {
+      return fn();
+    } catch (error) {
+      abortSessionOnConsumerError();
+      throw error;
+    }
+  };
+
   const attachContainer = (containerEl: HTMLElement) => {
     containerEl.addEventListener('pointerdown', onContainerPointerDown);
   };
@@ -685,6 +771,9 @@ export const createPointerSession = <Key extends ReorderKey>(
     // `vReorderContainer`'s duplicate-mount invariant), so any live session at this point belongs
     // to this containerEl regardless of its current phase.
     if (session) cancelSession();
+    // Hard cleanup boundary: disarm unconditionally, right after cancelSession(), so a release
+    // watcher/guard/timeout that cancellation may have just armed (the container/pointer is being
+    // removed, so no future release can ever be observed for it) never survives this call.
     clickSuppression.disarm();
   };
 
@@ -694,6 +783,7 @@ export const createPointerSession = <Key extends ReorderKey>(
 
   const dispose = () => {
     cancelSession();
+    // Hard cleanup boundary; see detachContainer's comment above.
     clickSuppression.disarm();
   };
 

@@ -56,10 +56,7 @@ export const assertUniqueKeys = (keys: readonly ReorderKey[]): void => {
   const seen = new Set<ReorderKey>();
 
   for (const key of keys) {
-    reorderInvariant(
-      !seen.has(key),
-      `duplicate key "${String(key)}" found in controlled keys; keys must be unique.`,
-    );
+    reorderInvariant(!seen.has(key), 'duplicate controlled keys are not allowed.');
     seen.add(key);
   }
 };

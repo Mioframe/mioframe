@@ -190,6 +190,28 @@ rolls back over an incompatible external mutation. Every activated session ends 
 `onDragEnd`, and all timers, listeners, capture, and animation-frame work are cleaned up
 deterministically.
 
+Container unmount and composable scope disposal are hard cleanup boundaries: they cancel any
+in-flight session immediately, in every phase, and unconditionally remove every remaining library
+side effect — the active session runtime (animation frame, pointer capture, session listeners,
+touch/context-menu/selection guards), click suppression, and any pending bounded release watcher
+and its safety timeout. Nothing from an ended `useReorder` instance is ever left listening on
+`window` or `document`. An active-item unmount alone (the container and composable staying
+mounted) is different: if the original pointer may still be physically held, the bounded release
+watcher described above is still armed and kept, because a later real release on the same
+still-mounted container remains observable.
+
+### Consumer exceptions
+
+`keys`, `onDragStart`, and `onReorder` are outside the library's trust boundary. If any of them
+throws, the active session (whichever phase it is in) is aborted the same way container/composable
+disposal cleans up — deterministically and immediately, before the error is rethrown unchanged: no
+rollback is attempted, and `onDragEnd` is not called for that aborted session. The exact-one-
+`onDragEnd` guarantee above applies to sessions whose consumer getter/callback calls do not throw.
+If the original pointer may still be physically held and the container is still mounted, the
+bounded release watcher is armed exactly as an ordinary early cancellation would arm it. If
+`onDragEnd` itself throws, every other effect has already been cleaned up beforehand; the error
+still propagates unchanged.
+
 ## Non-goals
 
 This library does not provide: consumer migration, cross-container transfer, nested containers,

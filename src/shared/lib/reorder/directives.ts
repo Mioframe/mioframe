@@ -35,7 +35,7 @@ export const createReorderDirectives = <Key extends ReorderKey>(
     mounted(el) {
       reorderInvariant(
         registry.containerEl === null,
-        'a second container was mounted for this useReorder instance; only one v-reorder-container is allowed per useReorder call.',
+        'only one reorder container may be mounted per useReorder instance.',
       );
       registry.containerEl = el;
       session.attachContainer(el);

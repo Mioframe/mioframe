@@ -189,72 +189,22 @@ describe('createClickSuppression release watcher', () => {
   });
 });
 
-describe('createClickSuppression post-cancellation selectstart guard', () => {
-  it('prevents selectstart while a release watcher is pending', () => {
+describe('createClickSuppression selectstart', () => {
+  // A causal Playwright A/B investigation disproved the "Chromium native text-selection
+  // autoscroll" theory an earlier version of this module relied on to justify re-installing a
+  // `selectstart`-prevention guard for the bounded release-watcher window; see the module-level
+  // doc comment. This regression guards against silently reintroducing that guard without new
+  // causal evidence.
+  it('never prevents selectstart, with or without a pending release watcher', () => {
     const container = document.createElement('div');
     document.body.append(container);
     const suppression = createClickSuppression();
 
+    expect(dispatchSelectStart()).toBe(true);
+
     suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
+    expect(dispatchSelectStart()).toBe(true);
 
-    expect(dispatchSelectStart()).toBe(false);
-
-    // `selectstart` is guarded at the `document` level, which outlives this test's own DOM
-    // fixture; disarm so a later test's dispatch isn't caught by this instance's listener.
     suppression.disarm();
-  });
-
-  it('stops preventing selectstart once the original pointer physically releases', () => {
-    const container = document.createElement('div');
-    document.body.append(container);
-    const suppression = createClickSuppression();
-
-    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
-    dispatchWindowPointer('pointerup', 7);
-
-    expect(dispatchSelectStart()).toBe(true);
-  });
-
-  it('stops preventing selectstart once a matching pointercancel arrives', () => {
-    const container = document.createElement('div');
-    document.body.append(container);
-    const suppression = createClickSuppression();
-
-    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
-    dispatchWindowPointer('pointercancel', 7);
-
-    expect(dispatchSelectStart()).toBe(true);
-  });
-
-  it('stops preventing selectstart once the bounded safety timeout elapses', () => {
-    const container = document.createElement('div');
-    document.body.append(container);
-    const suppression = createClickSuppression();
-
-    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
-    vi.runAllTimers();
-
-    expect(dispatchSelectStart()).toBe(true);
-  });
-
-  it('does not install the guard for a normal completed-drag arm', () => {
-    const container = document.createElement('div');
-    document.body.append(container);
-    const suppression = createClickSuppression();
-
-    suppression.arm(container);
-
-    expect(dispatchSelectStart()).toBe(true);
-  });
-
-  it('disarm removes a pending guard immediately', () => {
-    const container = document.createElement('div');
-    document.body.append(container);
-    const suppression = createClickSuppression();
-
-    suppression.armReleaseWatcher({ containerEl: container, pointerId: 7 });
-    suppression.disarm();
-
-    expect(dispatchSelectStart()).toBe(true);
   });
 });

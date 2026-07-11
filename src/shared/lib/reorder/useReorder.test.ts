@@ -196,7 +196,7 @@ describe('useReorder activation gating', () => {
     const onDragEnd = vi.fn();
 
     expect(() => mountHarness(keys, { onReorder, onDragStart, onDragEnd })).toThrow(
-      /duplicate item key/,
+      /already registered to another element/,
     );
   });
 
@@ -233,7 +233,7 @@ describe('useReorder activation gating', () => {
 
     expect(() => {
       getItemEl(wrapper, 'b').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
-    }).toThrow(/duplicate key/);
+    }).toThrow(/duplicate controlled keys/);
 
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('pointermove', expect.anything());
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('pointerup', expect.anything());
@@ -250,7 +250,7 @@ describe('useReorder activation gating', () => {
       getItemEl(wrapper, 'b').dispatchEvent(
         createPointerEvent('pointerdown', { clientX: 0, pointerType: 'touch' }),
       );
-    }).toThrow(/duplicate key/);
+    }).toThrow(/duplicate controlled keys/);
 
     expect(setTimeoutSpy).not.toHaveBeenCalled();
 
@@ -288,7 +288,7 @@ describe('useReorder activation gating', () => {
         },
         { attachTo: document.body },
       ),
-    ).toThrow(/second container/);
+    ).toThrow(/only one reorder container/);
   });
 });
 
