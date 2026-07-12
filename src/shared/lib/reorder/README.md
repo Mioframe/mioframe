@@ -144,14 +144,16 @@ suppression survives the session's own (synchronous) teardown long enough to int
 then removes itself immediately, or after a bounded fallback if no click ever arrives. It
 suppresses only that one click; a later, genuinely unrelated click is never affected.
 
-Cancelling mid-drag _before_ the physical release (`Escape`, blur, visibility loss, a second
-pointer, container removal, or unmount) cannot use that same immediate arm-and-fallback shape: the
-original pointer may stay physically pressed far longer than one event-loop turn. In that case the
-library instead starts a bounded release watcher for the original pointer's own `pointerup`, and
-arms suppression only once that release actually happens. A matching `pointercancel` for that same
-pointer removes the watcher without arming suppression (no click will follow), and a bounded safety
-timeout removes it if the pointer never reports back at all. Either way, only the just-ended
-gesture's own click can ever be suppressed — a genuinely unrelated later click always passes.
+Cancelling mid-drag _before_ the physical release while the container and composable remain
+mounted (`Escape`, blur, visibility loss, a second pointer, active-item removal, or a consumer
+exception) cannot use that same immediate arm-and-fallback shape: the original pointer may stay
+physically pressed far longer than one event-loop turn. In that case the library instead starts a
+bounded release watcher for the original pointer's own `pointerup`, and arms suppression only once
+that release actually happens. A matching `pointercancel` for that same pointer removes the watcher
+without arming suppression (no click will follow), and a bounded safety timeout removes it if the
+pointer never reports back at all. Either way, only the just-ended gesture's own click can ever be
+suppressed — a genuinely unrelated later click always passes. Container unmount and composable
+scope disposal are hard cleanup boundaries and remove this watcher immediately, as described below.
 
 A direct `pointercancel` on an active drag (not a `pointercancel` observed by an already-running
 release watcher) ends the original pointer stream completely and immediately: no click can ever
