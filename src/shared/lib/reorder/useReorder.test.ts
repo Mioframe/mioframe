@@ -1,6 +1,6 @@
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref, withDirectives, type Ref } from 'vue';
+import { defineComponent, h, ref, watch, withDirectives, type Ref } from 'vue';
 import type { ReorderDragEndEvent, ReorderDragStartEvent, ReorderMoveEvent } from './types';
 import { useReorder } from './useReorder';
 
@@ -468,5 +468,73 @@ describe('useReorder cancellation', () => {
       finalIndex: 0,
       cancelled: true,
     });
+  });
+});
+
+describe('useReorder draggingKey', () => {
+  const mountHarnessWithDraggingKey = (
+    keys: Ref<string[]>,
+  ): { wrapper: VueWrapper; draggingKey: Ref<string | null> } => {
+    let draggingKey!: Ref<string | null>;
+    const wrapper = mount(
+      {
+        setup() {
+          const reorder = useReorder({ keys, onReorder: vi.fn() });
+          draggingKey = reorder.draggingKey;
+
+          return () =>
+            withDirectives(
+              h(
+                'div',
+                { id: 'container' },
+                keys.value.map((key) =>
+                  withDirectives(h('div', { key, 'data-key': key }), [[reorder.vReorderItem, key]]),
+                ),
+              ),
+              [[reorder.vReorderContainer]],
+            );
+        },
+      },
+      { attachTo: document.body },
+    );
+    return { wrapper, draggingKey };
+  };
+
+  it('starts null, tracks activation, restores null on completion, and notifies observers', () => {
+    const keys = ref(['a', 'b', 'c']);
+    const { wrapper, draggingKey } = mountHarnessWithDraggingKey(keys);
+
+    expect(draggingKey.value).toBeNull();
+
+    const observed: (string | null)[] = [];
+    watch(draggingKey, (value) => observed.push(value), { immediate: true, flush: 'sync' });
+
+    getItemEl(wrapper, 'b').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
+    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
+
+    expect(draggingKey.value).toBe('b');
+
+    window.dispatchEvent(createPointerEvent('pointerup', { clientX: 10 }));
+
+    expect(draggingKey.value).toBeNull();
+    expect(observed).toEqual([null, 'b', null]);
+
+    wrapper.unmount();
+  });
+
+  it('restores null when the session is cancelled', () => {
+    const keys = ref(['a', 'b', 'c']);
+    const { wrapper, draggingKey } = mountHarnessWithDraggingKey(keys);
+
+    getItemEl(wrapper, 'a').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
+    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
+
+    expect(draggingKey.value).toBe('a');
+
+    document.dispatchEvent(createKeyDownEvent('Escape'));
+
+    expect(draggingKey.value).toBeNull();
+
+    wrapper.unmount();
   });
 });

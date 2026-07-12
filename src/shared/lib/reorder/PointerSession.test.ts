@@ -60,88 +60,34 @@ const stubRect = (
   Object.defineProperty(el, 'clientHeight', { value: rect.height, configurable: true });
 };
 
+/** Per-callback test overrides accepted by {@link setupSession}; omitted callbacks keep the default accept-and-mutate behavior. */
+interface SessionFixtureOverrides {
+  /**
+   * Overrides the live/rollback `onReorder` behavior. Receives `helpers` so a test can still
+   * perform the default accept-and-mutate behavior on some calls (e.g. the live move) while
+   * throwing on others (e.g. the rollback).
+   */
+  onReorder?: (
+    event: { key: string; fromIndex: number; toIndex: number },
+    helpers: { getKeys: () => string[]; setKeys: (next: string[]) => void },
+  ) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  /** Wraps every `getKeys()` call the session makes, letting a test throw on a specific call by count. */
+  wrapGetKeys?: (getKeys: () => string[]) => () => string[];
+  /** Long-press delay, in milliseconds, passed as `getLongPressDelay`. Defaults to 400. */
+  longPressDelay?: number;
+}
+
 /**
  * Builds one session with two registered items, 'a' (100x100 at 0,0) and 'b' (100x100 at 200,0).
+ * Every consumer callback defaults to an ordinary accept-and-mutate implementation; pass
+ * `overrides` to swap in test-controlled behavior, e.g. to exercise the consumer
+ * exception-safety boundary.
+ * @param overrides - Per-callback test overrides; omitted callbacks keep the default behavior.
  * @returns The registry, elements, key state, callbacks, and session under test.
  */
-const setupSession = () => {
-  const registry = createReorderRegistry<string>();
-  const containerEl = document.createElement('div');
-  const itemA = document.createElement('div');
-  const itemB = document.createElement('div');
-  containerEl.append(itemA, itemB);
-  document.body.append(containerEl);
-  registry.containerEl = containerEl;
-  registerItem(registry, 'a', itemA);
-  registerItem(registry, 'b', itemB);
-
-  stubRect(containerEl, { left: 0, top: 0, width: 400, height: 400 });
-  stubRect(itemA, { left: 0, top: 0, width: 100, height: 100 });
-  stubRect(itemB, { left: 200, top: 0, width: 100, height: 100 });
-
-  let keys: string[] = ['a', 'b'];
-  const getKeys = (): string[] => keys;
-  const setKeys = (next: string[]): void => {
-    keys = next;
-  };
-  const draggingKey = ref<string | null>(null);
-  const onReorder = vi.fn((event: { key: string; fromIndex: number; toIndex: number }) => {
-    const next = [...keys];
-    const [moved] = next.splice(event.fromIndex, 1);
-    if (moved !== undefined) next.splice(event.toIndex, 0, moved);
-    keys = next;
-  });
-  const onDragStart = vi.fn();
-  const onDragEnd = vi.fn();
-
-  const session = createPointerSession<string>({
-    registry,
-    getKeys,
-    getLongPressDelay: () => 400,
-    draggingKey,
-    onReorder,
-    onDragStart,
-    onDragEnd,
-  });
-
-  session.attachContainer(containerEl);
-
-  return {
-    registry,
-    containerEl,
-    itemA,
-    itemB,
-    getKeys,
-    setKeys,
-    draggingKey,
-    onReorder,
-    onDragStart,
-    onDragEnd,
-    session,
-  };
-};
-
-/**
- * Like {@link setupSession}, but lets each consumer callback be swapped out for a test-controlled
- * implementation — used to exercise the consumer exception-safety boundary. `onReorder`'s override
- * receives `helpers` so a test can still perform the default accept-and-mutate behavior on some
- * calls (e.g. the live move) while throwing on others (e.g. the rollback). `wrapGetKeys` wraps
- * every `getKeys()` call the session makes, letting a test throw on a specific call by count.
- * @param overrides - Per-callback test overrides; omitted callbacks keep {@link setupSession}'s
- * default behavior.
- * @returns The registry, elements, key state, callbacks, and session under test.
- */
-const setupThrowingSession = (
-  overrides: {
-    onReorder?: (
-      event: { key: string; fromIndex: number; toIndex: number },
-      helpers: { getKeys: () => string[]; setKeys: (next: string[]) => void },
-    ) => void;
-    onDragStart?: () => void;
-    onDragEnd?: () => void;
-    wrapGetKeys?: (getKeys: () => string[]) => () => string[];
-  } = {},
-) => {
+const setupSession = (overrides: SessionFixtureOverrides = {}) => {
   const registry = createReorderRegistry<string>();
   const containerEl = document.createElement('div');
   const itemA = document.createElement('div');
@@ -184,7 +130,7 @@ const setupThrowingSession = (
   const session = createPointerSession<string>({
     registry,
     getKeys,
-    getLongPressDelay: () => 400,
+    getLongPressDelay: () => overrides.longPressDelay ?? 400,
     draggingKey,
     onReorder,
     onDragStart,
@@ -348,35 +294,17 @@ describe('validation cleanup during pending activation', () => {
   });
 
   it('cleans up the pending session when getKeys() itself throws during activation', () => {
-    const registry = createReorderRegistry<string>();
-    const containerEl = document.createElement('div');
-    const itemA = document.createElement('div');
-    containerEl.append(itemA);
-    document.body.append(containerEl);
-    registry.containerEl = containerEl;
-    registerItem(registry, 'a', itemA);
-
     let callCount = 0;
-    const getKeys = (): string[] => {
-      callCount += 1;
-      if (callCount === 2) throw new Error('boom');
-      return ['a', 'b'];
-    };
-
-    const draggingKey = ref<string | null>(null);
-    const onDragStart = vi.fn();
-    const session = createPointerSession<string>({
-      registry,
-      getKeys,
-      getLongPressDelay: () => 400,
-      draggingKey,
-      onReorder: vi.fn(),
-      onDragStart,
-      onDragEnd: vi.fn(),
+    const setup = setupSession({
+      wrapGetKeys: (getKeys) => () => {
+        callCount += 1;
+        // Call 1 is onContainerPointerDown's validation; call 2 is activateSession's own read.
+        if (callCount === 2) throw new Error('boom');
+        return getKeys();
+      },
     });
-    session.attachContainer(containerEl);
 
-    itemA.dispatchEvent(
+    setup.itemA.dispatchEvent(
       createPointerEvent('pointerdown', { pointerId: 1, clientX: 10, clientY: 10 }),
     );
 
@@ -386,8 +314,8 @@ describe('validation cleanup during pending activation', () => {
       );
     }).toThrow('boom');
 
-    expect(onDragStart).not.toHaveBeenCalled();
-    expect(toValue(draggingKey)).toBeNull();
+    expect(setup.onDragStart).not.toHaveBeenCalled();
+    expect(toValue(setup.draggingKey)).toBeNull();
   });
 });
 
@@ -511,7 +439,7 @@ describe('consumer exception safety', () => {
   it('cleans up a throwing onDragStart, rethrows it unchanged, and still allows a later gesture', () => {
     const boom = new Error('boom-drag-start');
     let dragStartCalls = 0;
-    const setup = setupThrowingSession({
+    const setup = setupSession({
       onDragStart: () => {
         dragStartCalls += 1;
         if (dragStartCalls === 1) throw boom;
@@ -546,7 +474,7 @@ describe('consumer exception safety', () => {
 
   it('cleans up a throwing live onReorder mid-frame and rethrows it unchanged', () => {
     const boom = new Error('boom-reorder');
-    const setup = setupThrowingSession({
+    const setup = setupSession({
       onReorder: () => {
         throw boom;
       },
@@ -578,7 +506,7 @@ describe('consumer exception safety', () => {
   it('cleans up a throwing getKeys() during an active frame and rethrows it unchanged', () => {
     const boom = new Error('boom-active-frame-keys');
     let callCount = 0;
-    const setup = setupThrowingSession({
+    const setup = setupSession({
       wrapGetKeys: (getKeys) => () => {
         callCount += 1;
         // Call 1 is onContainerPointerDown's validation, call 2 is activateSession's; call 3 is
@@ -608,7 +536,7 @@ describe('consumer exception safety', () => {
   it('cleans up a throwing rollback onReorder and rethrows it unchanged', () => {
     const boom = new Error('boom-rollback');
     let onReorderCalls = 0;
-    const setup = setupThrowingSession({
+    const setup = setupSession({
       onReorder: (event, helpers) => {
         onReorderCalls += 1;
         if (onReorderCalls === 2) throw boom;
@@ -653,7 +581,7 @@ describe('consumer exception safety', () => {
   it('cleans up a throwing getKeys() during pointerup reconciliation and rethrows it unchanged', () => {
     const boom = new Error('boom-pointerup-keys');
     let callCount = 0;
-    const setup = setupThrowingSession({
+    const setup = setupSession({
       wrapGetKeys: (getKeys) => () => {
         callCount += 1;
         // Call 1 is onContainerPointerDown's validation, call 2 is activateSession's; call 3 is
@@ -682,7 +610,7 @@ describe('consumer exception safety', () => {
 
   it('has already cleaned up all session state before a throwing onDragEnd propagates', () => {
     const boom = new Error('boom-drag-end');
-    const setup = setupThrowingSession({
+    const setup = setupSession({
       onDragEnd: () => {
         throw boom;
       },
@@ -783,9 +711,9 @@ describe('hard cleanup exception safety', () => {
    * Activates a drag on 'a', then drives one frame that requests and gets 'a'/'b' swapped —
    * mirrors the `deferred pointerup settlement` describe block's own helper, needed here to reach
    * cancellation's rollback branch. Consumes exactly 4 `getKeys()` calls and 1 `onReorder` call.
-   * @param setup - The throwing-session fixture returned by {@link setupThrowingSession}.
+   * @param setup - The session fixture returned by {@link setupSession}.
    */
-  const activateAndAcceptMove = (setup: ReturnType<typeof setupThrowingSession>): void => {
+  const activateAndAcceptMove = (setup: ReturnType<typeof setupSession>): void => {
     activateOnItem(setup.itemA);
     setup.registry.itemKeys.set(setup.itemB, 'b');
     document.elementsFromPoint = () => [setup.itemB, setup.containerEl];
@@ -801,12 +729,12 @@ describe('hard cleanup exception safety', () => {
    * regardless of which consumer call threw: the exact original error propagates, every
    * dragging-session side effect is gone, and no release watcher or click suppression survives to
    * observe a later matching release or the bounded safety timeout.
-   * @param setup - The throwing-session fixture returned by {@link setupThrowingSession}.
+   * @param setup - The session fixture returned by {@link setupSession}.
    * @param action - The hard-cleanup call under test (`detachContainer` or `dispose`).
    * @param boom - The exact error instance the throwing consumer callback throws.
    */
   const expectExceptionSafeHardCleanup = (
-    setup: ReturnType<typeof setupThrowingSession>,
+    setup: ReturnType<typeof setupSession>,
     action: () => void,
     boom: Error,
   ): void => {
@@ -865,7 +793,7 @@ describe('hard cleanup exception safety', () => {
     it('still disarms and propagates when cancellation-time getKeys() (before rollback evaluation) throws', () => {
       const boom = new Error('boom-detach-keys-before-rollback');
       let callCount = 0;
-      const setup = setupThrowingSession({
+      const setup = setupSession({
         wrapGetKeys: (getKeys) => () => {
           callCount += 1;
           // Call 1: onContainerPointerDown's validation. Call 2: activateSession's own read.
@@ -891,7 +819,7 @@ describe('hard cleanup exception safety', () => {
     it('still disarms and propagates when the rollback onReorder call throws', () => {
       const boom = new Error('boom-detach-rollback-reorder');
       let onReorderCalls = 0;
-      const setup = setupThrowingSession({
+      const setup = setupSession({
         onReorder: (event, helpers) => {
           onReorderCalls += 1;
           if (onReorderCalls === 2) throw boom;
@@ -923,7 +851,7 @@ describe('hard cleanup exception safety', () => {
     it('still disarms and propagates when getKeys() evaluated after a successful rollback throws', () => {
       const boom = new Error('boom-detach-keys-after-rollback');
       let callCount = 0;
-      const setup = setupThrowingSession({
+      const setup = setupSession({
         wrapGetKeys: (getKeys) => () => {
           callCount += 1;
           // Call 1-2: activation. Call 3: the first active frame's own read. Call 4:
@@ -953,7 +881,7 @@ describe('hard cleanup exception safety', () => {
 
     it('still disarms and propagates when onDragEnd throws', () => {
       const boom = new Error('boom-detach-drag-end');
-      const setup = setupThrowingSession({
+      const setup = setupSession({
         onDragEnd: () => {
           throw boom;
         },
@@ -976,7 +904,7 @@ describe('hard cleanup exception safety', () => {
     it('still disarms and propagates when cancellation-time getKeys() throws', () => {
       const boom = new Error('boom-dispose-keys');
       let callCount = 0;
-      const setup = setupThrowingSession({
+      const setup = setupSession({
         wrapGetKeys: (getKeys) => () => {
           callCount += 1;
           if (callCount === 3) throw boom;
@@ -997,7 +925,7 @@ describe('hard cleanup exception safety', () => {
 
     it('still disarms and propagates when onDragEnd throws', () => {
       const boom = new Error('boom-dispose-drag-end');
-      const setup = setupThrowingSession({
+      const setup = setupSession({
         onDragEnd: () => {
           throw boom;
         },

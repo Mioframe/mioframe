@@ -36,7 +36,12 @@ export interface ReorderDragEndEvent<Key extends ReorderKey = ReorderKey> {
 
 /** Options for {@link useReorder}. */
 export interface UseReorderOptions<Key extends ReorderKey = ReorderKey> {
-  /** The consumer-owned ordered keys. The library never mutates or duplicates this order. */
+  /**
+   * Consumer-owned ordered keys: the only authoritative source of order. The library never
+   * mutates them; an active drag session keeps its own internal, non-authoritative confirmation
+   * snapshot to detect external mutations and decide safe rollback, but that snapshot never
+   * substitutes for this option as a source of truth.
+   */
   keys: MaybeRefOrGetter<readonly Key[]>;
   /**
    * Called synchronously for every live move; the consumer must update its reactive order in

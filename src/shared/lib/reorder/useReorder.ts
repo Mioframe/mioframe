@@ -3,34 +3,12 @@
  * directives together and exposes the reactive `draggingKey` state.
  */
 import { tryOnScopeDispose } from '@vueuse/core';
-import { customRef, toValue, type Ref } from 'vue';
+import { shallowRef, toValue, type Ref } from 'vue';
 import { DEFAULT_LONG_PRESS_DELAY_MS } from './constants';
 import { createReorderDirectives } from './directives';
 import { createPointerSession } from './PointerSession';
 import { createReorderRegistry } from './registry';
 import type { ReorderKey, UseReorderOptions, UseReorderReturn } from './types';
-
-/**
- * `ref<Key | null>(null)` resolves to a union of Vue's literal-narrowing `ref` overloads when
- * `Key` is an unresolved generic, which TypeScript then rejects on assignment back to
- * `Ref<Key | null>`. `customRef` has a single generic signature and sidesteps that limitation
- * while keeping standard ref reactivity (no deep unwrap is needed for a primitive key anyway).
- * @returns A plain `Ref<Key | null>`, initialized to `null`.
- */
-const createDraggingKeyRef = <Key extends ReorderKey>(): Ref<Key | null> => {
-  let value: Key | null = null;
-
-  return customRef<Key | null>((track, trigger) => ({
-    get() {
-      track();
-      return value;
-    },
-    set(newValue) {
-      value = newValue;
-      trigger();
-    },
-  }));
-};
 
 /**
  * Enables live pointer-driven reordering for a consumer-owned list of keys.
@@ -46,7 +24,7 @@ export const useReorder = <Key extends ReorderKey = ReorderKey>(
   options: UseReorderOptions<Key>,
 ): UseReorderReturn<Key> => {
   const registry = createReorderRegistry<Key>();
-  const draggingKey = createDraggingKeyRef<Key>();
+  const draggingKey: Ref<Key | null> = shallowRef<Key | null>(null);
 
   const session = createPointerSession<Key>({
     registry,
