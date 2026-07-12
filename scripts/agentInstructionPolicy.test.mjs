@@ -71,14 +71,27 @@ describe('agent instruction policy', () => {
     ).toEqual(['alpha', 'beta']);
   });
 
-  it('reports stale forms, skill-directory mismatches, and missing routed skills', () => {
+  it('allows a skill name to differ from its directory', () => {
+    const root = createRoot();
+    writeFile(root, 'AGENTS.md', '# root\n');
+    writeFile(
+      root,
+      '.agents/skills/commit-message/SKILL.md',
+      '---\nname: commit-message-generator\n---\n',
+    );
+
+    expect(checkAgentInstructionPolicy(root, false).errors).toEqual([]);
+  });
+
+  it('reports stale forms, duplicate skill names, and missing routed skills', () => {
     const root = createRoot();
     writeFile(
       root,
       'AGENTS.md',
       'Applies until a deeper `AGENTS.md` overrides it.\n\n## Required skills\n\n- `missing`: test.\n',
     );
-    writeFile(root, '.agents/skills/example/SKILL.md', '---\nname: other\n---\n');
+    writeFile(root, '.agents/skills/first/SKILL.md', '---\nname: duplicate\n---\n');
+    writeFile(root, '.agents/skills/second/SKILL.md', '---\nname: duplicate\n---\n');
 
     const result = checkAgentInstructionPolicy(root, false);
 
@@ -86,8 +99,8 @@ describe('agent instruction policy', () => {
     expect(result.errors).toEqual(
       expect.arrayContaining([
         expect.stringContaining('AGENTS.md contains a legacy instruction form'),
-        expect.stringContaining("declares skill name 'other' but its directory is 'example'"),
-        expect.stringContaining("routes to missing or misnamed skill 'missing'"),
+        expect.stringContaining("Skill name 'duplicate' is declared by both"),
+        expect.stringContaining("AGENTS.md routes to missing skill 'missing'"),
       ]),
     );
   });
