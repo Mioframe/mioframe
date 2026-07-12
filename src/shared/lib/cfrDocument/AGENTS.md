@@ -1,6 +1,6 @@
 # src/shared/lib/cfrDocument
 
-Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/cfrDocument` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/cfrDocument` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/c
 ## Constraints
 
 - Any change here needs a backward-compatibility check.
-- Minimum verification: `pnpm type-check`, then verify the touched legacy caller still loads and migrates the relevant document or repo state.
+- Minimum verification: run `pnpm verify --only type-check`, then verify the touched legacy caller still loads and migrates the relevant document or repo state through focused verify-managed coverage. Final completion still requires `pnpm verify`.
