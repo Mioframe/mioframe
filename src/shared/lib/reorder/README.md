@@ -29,7 +29,7 @@ const items = ref<Item[]>([
 ]);
 const itemKeys = computed(() => items.value.map((item) => item.id));
 
-const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReorder({
+const { draggingKey, vReorderContainer, vReorderItem } = useReorder({
   keys: itemKeys,
   onReorder: ({ fromIndex, toIndex }) => {
     const next = [...items.value];
@@ -38,6 +38,10 @@ const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReor
     items.value = next;
   },
 });
+
+const onRemove = (id: string): void => {
+  items.value = items.value.filter((item) => item.id !== id);
+};
 </script>
 
 <template>
@@ -49,11 +53,15 @@ const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReor
       :class="{ 'is-dragging': draggingKey === item.id }"
     >
       {{ item.label }}
-      <button type="button" v-reorder-ignore @click="onRemove(item.id)">Remove</button>
+      <button type="button" @click="onRemove(item.id)">Remove</button>
     </div>
   </div>
 </template>
 ```
+
+Native interactive descendants such as `button`, `a`, and form controls are excluded from drag
+activation automatically. Use `v-reorder-ignore` only for a custom interactive descendant that is
+not recognized natively.
 
 ## Source-of-truth contract
 
