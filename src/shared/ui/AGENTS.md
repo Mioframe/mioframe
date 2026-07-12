@@ -1,6 +1,6 @@
 # src/shared/ui
 
-Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and its descendants until a deeper `AGENTS.md` refines it.
 
 Use the `shared-ui-implementation` skill for detailed guidance on Vue state composition, DOM-critical attrs, native activation semantics, parent/child styling boundaries, and browser-specific CSS when implementing or reviewing shared UI / Material primitives.
 
@@ -26,4 +26,4 @@ Use the `shared-ui-implementation` skill for detailed guidance on Vue state comp
 ## Constraints
 
 - Base control and layout changes have a wide UI blast radius.
-- Minimum verification: `pnpm type-check`, then check the touched control with keyboard and pointer input and recheck real focus, overlay, and scroll-container behavior when those contracts changed.
+- Minimum verification: run `pnpm verify --only type-check`, then use focused verify-managed browser or visual checks for the touched control when keyboard, pointer, focus, overlay, scroll-container, or appearance contracts changed. Final completion still requires `pnpm verify`.
