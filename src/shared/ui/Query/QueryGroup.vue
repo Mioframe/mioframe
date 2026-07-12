@@ -21,12 +21,6 @@ const slots = defineSlots<{
 
 const emptyPath: PropertyKey[] = [];
 const prependIndexToPath = (index: number, path: PropertyKey[]) => [index, ...path];
-
-// Distinct from every possible array `index` so the append slot keeps its DOM
-// identity when the keyed v-for length changes; an unkeyed trailing sibling
-// can otherwise be remounted, invalidating refs consumers (e.g. a Floating UI
-// anchor) hold into it.
-const appendSlotKey = Symbol('query-group-append');
 </script>
 
 <template>
@@ -66,9 +60,6 @@ const appendSlotKey = Symbol('query-group-append');
       />
     </template>
 
-    <!-- @vue-expect-error `key` is a compiler-recognized vnode attribute here (verified: it keeps
-    this slot's rendered element identity stable in QueryObject.test.ts), not a real groupAppend
-    slot prop; vue-tsc still type-checks it against the defineSlots prop shape. -->
-    <slot :key="appendSlotKey" name="groupAppend" :path="emptyPath" :operator="operator" />
+    <slot name="groupAppend" :path="emptyPath" :operator="operator" />
   </QueryContainer>
 </template>

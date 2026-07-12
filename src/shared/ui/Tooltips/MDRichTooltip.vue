@@ -69,12 +69,15 @@ useEventListener(targetElementRef, 'click', () => {
   }
 });
 
+const showState = ref(false);
+
 onInteractionOutside(tooltipEl, (e) => {
+  if (!showState.value) {
+    return;
+  }
   emit('interactionOutside', e);
   showOnClick.value = false;
 });
-
-const showState = ref(false);
 
 const showStateWatchHandle = watch(showState, (v) => {
   showModelWatchHandle.pause();
