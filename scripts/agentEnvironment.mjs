@@ -131,7 +131,7 @@ function siblingClaudePath(agentsRelPath) {
 /**
  * Derive the sibling AGENTS.md path from a CLAUDE.md path.
  * @param claudeRelPath Relative CLAUDE.md path.
- * @returns Relative sibling CLAUDE.md path.
+ * @returns Relative sibling AGENTS.md path.
  */
 function siblingAgentsPath(claudeRelPath) {
   return claudeRelPath.replace(/CLAUDE\.md$/, 'AGENTS.md');
