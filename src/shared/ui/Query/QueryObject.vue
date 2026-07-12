@@ -26,12 +26,6 @@ const lastKey = computed(() => keyList.value.at(-1));
 
 const emptyPath: PropertyKey[] = [];
 const prependQueryKeyToPath = (queryKey: string, path: PropertyKey[]) => [queryKey, ...path];
-
-// Distinct from every possible `queryKey` so the append slot keeps its DOM
-// identity when the keyed v-for length changes; an unkeyed trailing sibling
-// can otherwise be remounted, invalidating refs consumers (e.g. a Floating UI
-// anchor) hold into it.
-const appendSlotKey = Symbol('query-object-append');
 </script>
 
 <template>
@@ -70,9 +64,6 @@ const appendSlotKey = Symbol('query-object-append');
       />
     </template>
 
-    <!-- @vue-expect-error `key` is a compiler-recognized vnode attribute here (verified: it keeps
-    this slot's rendered element identity stable in QueryObject.test.ts), not a real objectAppend
-    slot prop; vue-tsc still type-checks it against the defineSlots prop shape. -->
-    <slot :key="appendSlotKey" name="objectAppend" :path="emptyPath" />
+    <slot name="objectAppend" :path="emptyPath" />
   </QueryContainer>
 </template>

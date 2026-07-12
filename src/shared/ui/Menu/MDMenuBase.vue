@@ -94,6 +94,9 @@ const ignoreElements = computed(() => {
 onInteractionOutside(
   listContainerRef,
   () => {
+    if (!showModel.value) {
+      return;
+    }
     emit('interactionOutside');
     showModel.value = false;
   },
