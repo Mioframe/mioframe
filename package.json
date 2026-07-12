@@ -21,7 +21,7 @@
     "verify:release": "node scripts/verify.mjs --full",
     "verify:status": "node scripts/verifyStatus.mjs",
     "verify:resume": "node scripts/verifyResume.mjs",
-    "ci:autofix": "node scripts/ciAutofixDiagnostics.mjs",
+    "ci:autofix": "node scripts/verify.mjs --fix-only",
     "verify:fix": "node scripts/verify.mjs --fix",
     "type-check": "node scripts/typeCheck.mjs",
     "lint": "run-s lint:oxlint lint:eslint",
