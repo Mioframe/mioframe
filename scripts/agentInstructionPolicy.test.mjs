@@ -51,11 +51,9 @@ describe('agent instruction policy', () => {
       'Applies until a deeper `AGENTS.md` overrides it. Run `pnpm type-check` and `pnpm lint:oxlint`.';
 
     expect(normalizeInstructionContent(legacy, 'src/AGENTS.md')).toBe(
-      'Applies until a deeper `AGENTS.md` refines it. Run `pnpm verify --only type-check` and `pnpm verify --only oxlint`.\n',
+      'Applies until a deeper `AGENTS.md` refines it. Run `pnpm verify --only type-check` and `pnpm verify --only oxlint`.',
     );
-    expect(normalizeInstructionContent(legacy, '.agents/skills/example/SKILL.md')).toBe(
-      `${legacy}\n`,
-    );
+    expect(normalizeInstructionContent(legacy, '.agents/skills/example/SKILL.md')).toBe(legacy);
   });
 
   it('reads quoted and unquoted skill names', () => {
@@ -104,7 +102,7 @@ describe('agent instruction policy', () => {
     expect(result.errors).toEqual([]);
     expect(result.fixes).toEqual(['normalized AGENTS.md']);
     expect(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toBe(
-      'Run `pnpm verify --only type-check`.\n',
+      'Run `pnpm verify --only type-check`.',
     );
   });
 });
