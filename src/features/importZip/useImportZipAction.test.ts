@@ -225,7 +225,7 @@ describe('useImportZipAction', () => {
     expect(reportedError.cause).toBe(error);
   });
 
-  it('propagates a write-access-recovery error as a plain terminal error before mutation starts, with no automatic retry', async () => {
+  it('propagates a write-access-recovery error as a plain terminal error before mutation starts, with no automatic retry and no diagnostics report', async () => {
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValueOnce(
       createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
@@ -237,13 +237,38 @@ describe('useImportZipAction', () => {
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
     expect(state.value).toEqual({
       status: 'error',
-      message: 'Permission required to open this remembered local space',
+      message:
+        'Write access is required. Open "Save failed", choose "Grant write access", then start the import again.',
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
+    // An expected recoverable access error is not a diagnostic exception.
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).not.toHaveBeenCalled();
     // No permission grant/retry flow is offered — the user grants access through the general
     // application recovery mechanism and starts a new import manually.
     expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
     expect(pickZipFileMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates a read-access-recovery error as a plain terminal error with no diagnostics report', async () => {
+    pickZipFileMock.mockResolvedValue(makeFile());
+    importDirectoryZipMock.mockRejectedValueOnce(
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    );
+
+    const { useImportZipAction } = await import('./useImportZipAction');
+    const { importDirectoryZip, state } = useImportZipAction();
+
+    await expect(importDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toEqual({
+      status: 'error',
+      message:
+        'Folder access is required. Restore access to this remembered local space, then start the import again.',
+    });
+    expect(addSnackbarMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(requestHomeDiagnosticsPromptAfterHandledErrorMock).not.toHaveBeenCalled();
+    expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
   });
 
   it('reports a terminal partial state with no continuation action when a write fails after an earlier write succeeded', async () => {

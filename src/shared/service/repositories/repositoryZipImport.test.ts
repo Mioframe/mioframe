@@ -272,14 +272,14 @@ describe('importDirectoryZip', () => {
     await expect(vfs.readText('/target/root/a.txt')).resolves.toBe('a content');
   });
 
-  it('classifies a write-access-recovery error as partial when it happens during the very first actual mutation, even though the non-mutating preflight already succeeded', async () => {
+  it('classifies a write-access failure during the first mutation as a terminal partial import', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
 
     // A top-level entry needs no ancestor directory creation, so the file write is the very
-    // first VFS mutation attempted — nothing has been written yet when it fails. The preflight
-    // write-access check still ran and succeeded first (MemoryFileSystem has no permission model
-    // to check), so this is permission loss during the mutation itself, not at preflight.
+    // first VFS mutation attempted — nothing has been written yet when it fails. Since this
+    // failure happens at or after the mutation phase starts, it is classified as a terminal
+    // partial import rather than a plain propagated error.
     const archiveFile = toArchiveFile({
       'a.txt': new TextEncoder().encode('a content'),
     });
@@ -365,11 +365,12 @@ describe('importDirectoryZip', () => {
     expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
   });
 
-  it('preserves the original write-access-recovery error when only an already-existing ancestor directory preceded it', async () => {
+  it('preserves the first file mutation error as the cause after reusing an existing ancestor directory', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
-    // The archive's only ancestor directory already exists, so `createDirectoryIfMissing` is a
-    // no-op and must not count as a mutation before the first (and only) file write.
+    // The archive's only ancestor directory already exists, so planning excludes it from
+    // `directoriesToCreate` and it must not count as a mutation before the first (and only) file
+    // write.
     await vfs.createDirectory('/target/root');
 
     const archiveFile = toArchiveFile({
@@ -394,7 +395,7 @@ describe('importDirectoryZip', () => {
     expect((caught as DomainError).cause).toBe(accessError);
   });
 
-  it('preserves the original storage/VFS error when only an already-existing ancestor directory preceded it', async () => {
+  it('preserves the first storage error as the cause after reusing an existing ancestor directory', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
     await vfs.createDirectory('/target/root');

@@ -83,7 +83,7 @@ const supportingText = computed(() => {
       const { total } = props.state;
       const entryPhrase = total === 1 ? '1 archive entry' : `${total} archive entries`;
       const verb = total === 1 ? 'conflicts' : 'conflict';
-      const targetPhrase = total === 1 ? 'an existing file' : 'existing files';
+      const targetPhrase = total === 1 ? 'an existing entry' : 'existing entries';
       return `${entryPhrase} ${verb} with ${targetPhrase}. No files were written. Import into an empty or different target directory.`;
     }
     case 'success': {
@@ -96,9 +96,9 @@ const supportingText = computed(() => {
       const parts = formatSummaryParts(props.state.summary);
       const completedText =
         parts.length > 0
-          ? `Before stopping: ${parts.join(', ')}.`
-          : 'Nothing was written before the import stopped.';
-      return `${completedText} The target directory may now contain a partially imported archive. Import into an empty target directory to retry cleanly.`;
+          ? `Completed before stopping: ${parts.join(', ')}.`
+          : 'No completed writes were recorded before the import stopped.';
+      return `${completedText} The failed storage operation may still have changed the target directory. Retry only in a new empty target directory.`;
     }
     case 'error':
       return props.state.message;

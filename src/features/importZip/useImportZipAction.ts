@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
-import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import { getFileSystemAccessRecovery, isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { ZipArchiveErrorCode } from '@shared/lib/zipArchive';
 import { useMainServiceClient } from '@shared/service';
 import { getZipImportPartialFailureDetails, RepositoryZipErrorCode } from '@shared/service';
@@ -35,6 +35,7 @@ export type ImportZipVisibleDialogState = Exclude<
 
 const shouldSkipImportErrorReport = (error: unknown) =>
   isUserFileSelectionCancel(error) ||
+  getFileSystemAccessRecovery(error) !== undefined ||
   (error instanceof DomainError &&
     (error.code === ZipArchiveErrorCode.unsafeEntryPath ||
       error.code === ZipArchiveErrorCode.archiveDamaged ||
@@ -61,8 +62,16 @@ export const useImportZipAction = () => {
   const isRunning = computed(() => operationRunning.value);
   let contextGeneration = 0;
 
-  const resolveImportErrorMessage = (error: unknown): string =>
-    error instanceof DomainError ? error.message : 'Could not import the ZIP archive';
+  const resolveImportErrorMessage = (error: unknown): string => {
+    const recovery = getFileSystemAccessRecovery(error);
+    if (recovery?.operation === 'write') {
+      return 'Write access is required. Open "Save failed", choose "Grant write access", then start the import again.';
+    }
+    if (recovery?.operation === 'read') {
+      return 'Folder access is required. Restore access to this remembered local space, then start the import again.';
+    }
+    return error instanceof DomainError ? error.message : 'Could not import the ZIP archive';
+  };
 
   const reportImportDiagnostics = (error: unknown, diagnosticsAction: string) => {
     if (!shouldSkipImportErrorReport(error)) {

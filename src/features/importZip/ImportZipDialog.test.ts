@@ -104,7 +104,7 @@ describe('ImportZipDialog', () => {
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
-      '1 archive entry conflicts with an existing file. No files were written. Import into an empty or different target directory.',
+      '1 archive entry conflicts with an existing entry. No files were written. Import into an empty or different target directory.',
     );
   });
 
@@ -117,7 +117,7 @@ describe('ImportZipDialog', () => {
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
-      '2 archive entries conflict with existing files. No files were written. Import into an empty or different target directory.',
+      '2 archive entries conflict with existing entries. No files were written. Import into an empty or different target directory.',
     );
   });
 
@@ -213,8 +213,11 @@ describe('ImportZipDialog', () => {
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Import stopped before completion');
     expect(dialog.attributes('data-apply-label')).toBe('Close');
+    expect(dialog.attributes('data-supporting-text')).toContain('Completed before stopping');
     expect(dialog.attributes('data-supporting-text')).toContain('1 file imported');
-    expect(dialog.attributes('data-supporting-text')).toContain('partially imported archive');
+    expect(dialog.attributes('data-supporting-text')).toContain(
+      'may still have changed the target directory',
+    );
     expect(dialog.attributes('data-supporting-text')).toContain('empty target directory');
 
     await dialog.trigger('click');
@@ -223,14 +226,14 @@ describe('ImportZipDialog', () => {
     expect(wrapper.emitted('skipExisting')).toBeUndefined();
   });
 
-  it('explains a partial import where nothing was written before the stop', () => {
+  it('explains a partial import with no confirmed completed writes before the stop', () => {
     const wrapper = mountDialog({
       status: 'partial',
       summary: { importedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toContain(
-      'Nothing was written before the import stopped.',
+      'No completed writes were recorded before the import stopped.',
     );
   });
 
