@@ -4,7 +4,7 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/s
 
 ## Contains
 
-- Generic reorder surfaces, SortableJS integration, gesture profiling, and playground or test support.
+- Generic reorder surfaces, SortableJS integration, gesture profiling, and Storybook story or focused test support.
 
 ## Patterns
 
