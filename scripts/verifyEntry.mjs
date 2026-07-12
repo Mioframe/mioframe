@@ -1,5 +1,9 @@
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+
+const scriptsDirectory = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(scriptsDirectory, '..');
 
 /**
  * Select whether canonical instruction policy should check or fix.
@@ -12,12 +16,13 @@ export function resolveInstructionPolicyMode(args) {
 
 /**
  * Run a repository Node script with inherited stdio.
- * @param {string} scriptPath Repository-relative script path.
+ * @param {string} fileName Script file name under scripts/.
  * @param {string[]} args Script arguments.
  * @returns {number} Process exit code.
  */
-function runScript(scriptPath, args) {
-  const result = spawnSync(process.execPath, [scriptPath, ...args], {
+function runScript(fileName, args) {
+  const result = spawnSync(process.execPath, [path.join(scriptsDirectory, fileName), ...args], {
+    cwd: repositoryRoot,
     stdio: 'inherit',
   });
 
@@ -30,16 +35,15 @@ function runScript(scriptPath, args) {
 
 function main() {
   const args = process.argv.slice(2);
-  const policyStatus = runScript(
-    'scripts/agentInstructionPolicy.mjs',
-    [resolveInstructionPolicyMode(args)],
-  );
+  const policyStatus = runScript('agentInstructionPolicy.mjs', [
+    resolveInstructionPolicyMode(args),
+  ]);
 
   if (policyStatus !== 0) {
     process.exit(policyStatus);
   }
 
-  process.exit(runScript('scripts/verify.mjs', args));
+  process.exit(runScript('verify.mjs', args));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
