@@ -69,15 +69,15 @@ export function findCanonicalInstructionFiles(root) {
  * @returns Normalized content.
  */
 export function normalizeInstructionContent(content, relativePath) {
-  let normalized = content;
-
-  if (relativePath.endsWith('AGENTS.md')) {
-    for (const [legacy, replacement] of AGENTS_LEGACY_REPLACEMENTS) {
-      normalized = normalized.replaceAll(legacy, replacement);
-    }
+  if (!relativePath.endsWith('AGENTS.md')) {
+    return content;
   }
 
-  return normalized.endsWith('\n') ? normalized : `${normalized}\n`;
+  let normalized = content;
+  for (const [legacy, replacement] of AGENTS_LEGACY_REPLACEMENTS) {
+    normalized = normalized.replaceAll(legacy, replacement);
+  }
+  return normalized;
 }
 
 /**
@@ -141,9 +141,7 @@ export function checkAgentInstructionPolicy(root, fix) {
         fs.writeFileSync(absolutePath, normalized, 'utf8');
         fixes.push(`normalized ${relativePath}`);
       } else {
-        errors.push(
-          `${relativePath} contains a legacy instruction form or lacks a final newline; run pnpm verify --fix`,
-        );
+        errors.push(`${relativePath} contains a legacy instruction form; run pnpm verify --fix`);
       }
     }
 
