@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { checkAgentInstructionPolicy } from './agentInstructionPolicy.mjs';
 
 const MANAGED_MARKER = '<!-- managed:agent-compat -->';
 
@@ -24,7 +25,7 @@ const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\\*/SKILL.md instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\*/SKILL.md instead.
 `;
 
 const NESTED_CLAUDE_MD = `<!-- managed:agent-compat -->
@@ -389,13 +390,24 @@ export function checkGitignoreCompatibility(root) {
  * @returns Collected errors and applied fixes for the full agent environment.
  */
 export function checkAgentEnvironment(root, fix) {
+  const instructionResult = checkAgentInstructionPolicy(root, fix);
   const claudeResult = checkClaudeMdAdapters(root, fix);
   const skillsResult = checkSkillsSymlink(root, fix);
   const gitignoreResult = checkGitignoreCompatibility(root);
 
   return {
-    errors: [...claudeResult.errors, ...skillsResult.errors, ...gitignoreResult.errors],
-    fixes: [...claudeResult.fixes, ...skillsResult.fixes, ...gitignoreResult.fixes],
+    errors: [
+      ...instructionResult.errors,
+      ...claudeResult.errors,
+      ...skillsResult.errors,
+      ...gitignoreResult.errors,
+    ],
+    fixes: [
+      ...instructionResult.fixes,
+      ...claudeResult.fixes,
+      ...skillsResult.fixes,
+      ...gitignoreResult.fixes,
+    ],
   };
 }
 
