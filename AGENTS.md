@@ -1,6 +1,6 @@
 # /
 
-Applies to the whole repository unless a deeper `AGENTS.md` refines it.
+Applies to the whole repository. Applicable instructions are cumulative: a deeper `AGENTS.md` may add narrower constraints, but must not replace or weaken parent rules.
 
 ## Source of truth and instruction loading
 
@@ -8,7 +8,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` refines it.
 - Read the root and applicable nested `AGENTS.md` files before editing. Use the relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
-- Update the applicable `AGENTS.md` or skill when a change moves ownership, changes a public API or dependency boundary, or changes the verification workflow.
+- Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
 
@@ -87,6 +87,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Use `pnpm verify --fix` only when safe automatic formatting or lint fixes are useful.
 - Before reporting completion after edits, run the final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
 - Use `pnpm verify --only <label> --files ...` for focused feedback when supported. Do not substitute raw underlying test, lint, visual, mutation, or e2e commands for verify-managed checks.
+- A minimum check named in a nested `AGENTS.md` describes required coverage, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
 - Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active.
 - If final verification fails or required verification is missing, do not claim the task is complete. Report the exact failure and remaining work.
 
