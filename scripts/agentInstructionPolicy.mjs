@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const IGNORED_DIRS = new Set([
   '.claude',
@@ -31,9 +30,9 @@ const AGENTS_LEGACY_REPLACEMENTS = [
 ];
 
 /**
- * Recursively find canonical instruction files.
- * @param {string} root Repository root.
- * @returns {string[]} Relative POSIX paths.
+ * Recursively find canonical AGENTS.md and skill files.
+ * @param root Repository root.
+ * @returns Relative POSIX paths.
  */
 export function findCanonicalInstructionFiles(root) {
   const results = [];
@@ -49,12 +48,11 @@ export function findCanonicalInstructionFiles(root) {
         continue;
       }
 
-      if (
-        entry.isFile() &&
-        (entry.name === 'AGENTS.md' ||
-          (entry.name === 'SKILL.md' &&
-            absolutePath.includes(`${path.sep}.agents${path.sep}skills${path.sep}`)))
-      ) {
+      const isSkill =
+        entry.name === 'SKILL.md' &&
+        absolutePath.includes(`${path.sep}.agents${path.sep}skills${path.sep}`);
+
+      if (entry.isFile() && (entry.name === 'AGENTS.md' || isSkill)) {
         results.push(path.relative(root, absolutePath).split(path.sep).join('/'));
       }
     }
@@ -65,10 +63,10 @@ export function findCanonicalInstructionFiles(root) {
 }
 
 /**
- * Normalize exact legacy instruction forms without changing policy meaning.
- * @param {string} content Instruction file content.
- * @param {string} relativePath Canonical instruction path.
- * @returns {string} Normalized content.
+ * Apply safe mechanical normalization to a canonical instruction file.
+ * @param content Instruction file content.
+ * @param relativePath Canonical instruction path.
+ * @returns Normalized content.
  */
 export function normalizeInstructionContent(content, relativePath) {
   let normalized = content;
@@ -84,8 +82,8 @@ export function normalizeInstructionContent(content, relativePath) {
 
 /**
  * Read a skill frontmatter name.
- * @param {string} content Skill file content.
- * @returns {string | null} Skill name.
+ * @param content Skill file content.
+ * @returns Skill name, or null when frontmatter is invalid.
  */
 export function readSkillName(content) {
   if (!content.startsWith('---\n')) {
@@ -98,29 +96,24 @@ export function readSkillName(content) {
   }
 
   const frontmatter = content.slice(4, closingIndex);
-  const match = frontmatter.match(/^name:\s*['"]?([^'"\n]+)['"]?\s*$/m);
-  return match?.[1]?.trim() ?? null;
+  return frontmatter.match(/^name:\s*['"]?([^'"\n]+)['"]?\s*$/m)?.[1]?.trim() ?? null;
 }
 
 /**
  * Read skill names routed from the root Required skills section.
- * @param {string} content Root AGENTS.md content.
- * @returns {string[]} Routed skill names.
+ * @param content Root AGENTS.md content.
+ * @returns Routed skill names.
  */
 export function readRequiredSkillNames(content) {
   const heading = '## Required skills\n';
-  const headingIndex = content.indexOf(heading);
-
-  if (headingIndex === -1) {
+  const sectionStart = content.indexOf(heading);
+  if (sectionStart === -1) {
     return [];
   }
 
-  const sectionStart = headingIndex + heading.length;
-  const nextHeadingIndex = content.indexOf('\n## ', sectionStart);
-  const section = content.slice(
-    sectionStart,
-    nextHeadingIndex === -1 ? content.length : nextHeadingIndex,
-  );
+  const contentStart = sectionStart + heading.length;
+  const nextHeading = content.indexOf('\n## ', contentStart);
+  const section = content.slice(contentStart, nextHeading === -1 ? content.length : nextHeading);
 
   return [...section.matchAll(/^- `([^`]+)`:/gm)]
     .map((match) => match[1])
@@ -129,17 +122,16 @@ export function readRequiredSkillNames(content) {
 
 /**
  * Check and optionally normalize canonical agent instructions.
- * @param {string} root Repository root.
- * @param {boolean} fix Whether to apply safe mechanical fixes.
- * @returns {{errors: string[], fixes: string[]}} Policy result.
+ * @param root Repository root.
+ * @param fix Whether to apply safe mechanical fixes.
+ * @returns Policy errors and applied fixes.
  */
 export function checkAgentInstructionPolicy(root, fix) {
   const errors = [];
   const fixes = [];
-  const files = findCanonicalInstructionFiles(root);
   const availableSkillNames = new Set();
 
-  for (const relativePath of files) {
+  for (const relativePath of findCanonicalInstructionFiles(root)) {
     const absolutePath = path.join(root, relativePath);
     const content = fs.readFileSync(absolutePath, 'utf8');
     const normalized = normalizeInstructionContent(content, relativePath);
@@ -150,12 +142,12 @@ export function checkAgentInstructionPolicy(root, fix) {
         fixes.push(`normalized ${relativePath}`);
       } else {
         errors.push(
-          `${relativePath} contains a legacy instruction form or lacks a final newline; run the repository autofix before final verification`,
+          `${relativePath} contains a legacy instruction form or lacks a final newline; run pnpm verify --fix`,
         );
       }
     }
 
-    if (!relativePath.startsWith('.agents/skills/') || !relativePath.endsWith('/SKILL.md')) {
+    if (!relativePath.startsWith('.agents/skills/')) {
       continue;
     }
 
@@ -178,10 +170,7 @@ export function checkAgentInstructionPolicy(root, fix) {
 
   const rootAgentsPath = path.join(root, 'AGENTS.md');
   if (fs.existsSync(rootAgentsPath)) {
-    const rootContent = normalizeInstructionContent(
-      fs.readFileSync(rootAgentsPath, 'utf8'),
-      'AGENTS.md',
-    );
+    const rootContent = fs.readFileSync(rootAgentsPath, 'utf8');
 
     for (const requiredSkillName of readRequiredSkillNames(rootContent)) {
       if (!availableSkillNames.has(requiredSkillName)) {
@@ -191,40 +180,4 @@ export function checkAgentInstructionPolicy(root, fix) {
   }
 
   return { errors, fixes };
-}
-
-function main() {
-  const args = process.argv.slice(2);
-  const fix = args.includes('--fix');
-  const check = args.includes('--check');
-
-  if (!fix && !check) {
-    console.error('Usage: node scripts/agentInstructionPolicy.mjs --check | --fix');
-    process.exit(1);
-  }
-
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const { errors, fixes } = checkAgentInstructionPolicy(root, fix);
-
-  for (const message of fixes) {
-    console.log(`[agent-instructions] fixed: ${message}`);
-  }
-
-  for (const message of errors) {
-    console.error(`[agent-instructions] error: ${message}`);
-  }
-
-  if (errors.length > 0) {
-    process.exit(1);
-  }
-
-  if (check) {
-    console.log('[agent-instructions] ok');
-  } else if (fixes.length === 0) {
-    console.log('[agent-instructions] nothing to fix');
-  }
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main();
 }
