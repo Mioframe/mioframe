@@ -1,6 +1,6 @@
 # src/shared/lib/databaseDocument
 
-Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/databaseDocument` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/databaseDocument` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/d
 ## Constraints
 
 - Changes here affect old-document loading, services, entities, and import or export behavior.
-- Minimum verification: `pnpm type-check`, then verify the touched schema path against validation, migration from an older payload, and effective-value behavior when defaults are involved.
+- Minimum verification: run `pnpm verify --only type-check`, then verify the touched schema path against validation, migration from an older payload, and effective-value behavior when defaults are involved through focused verify-managed tests. Final completion still requires `pnpm verify`.

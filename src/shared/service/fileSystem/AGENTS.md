@@ -1,6 +1,6 @@
 # src/shared/service/fileSystem
 
-Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/service/fileSystem` and its descendants.
+Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/service/fileSystem` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -32,4 +32,4 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 ## Constraints
 
 - Changes here affect mounted directories, persisted handles, browser filesystem flows, and repository access at once.
-- Minimum verification: `pnpm type-check`, then run focused filesystem service tests for refresh behavior, provider updates, handle hydration, and provider recovery lifecycle when those paths change.
+- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed filesystem service tests for refresh behavior, provider updates, handle hydration, and provider recovery lifecycle when those paths change. Final completion still requires `pnpm verify`.

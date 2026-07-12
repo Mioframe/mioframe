@@ -1,6 +1,6 @@
 # src/features
 
-Inherits the rules from `src/AGENTS.md`. Applies to `src/features` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/AGENTS.md`. Applies to `src/features` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -27,4 +27,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/features` and its desce
 ## Constraints
 
 - Features should stay replaceable composition units rather than hidden global state.
-- Minimum verification: `pnpm type-check`, then open the touched action, exercise cancel and submit paths, and reopen it to confirm state reset or persistence behavior.
+- Minimum verification: run `pnpm verify --only type-check`, then open the touched action, exercise cancel and submit paths, and reopen it to confirm state reset or persistence behavior. Use focused verify-managed unit or browser checks for the changed flow. Final completion still requires `pnpm verify`.
