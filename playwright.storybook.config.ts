@@ -36,13 +36,6 @@ export default defineConfig({
         deviceScaleFactor: 1,
       },
     },
-    {
-      name: 'Mobile Chrome',
-      use: {
-        ...devices['Pixel 5'],
-        channel: 'chromium',
-      },
-    },
   ],
   webServer: {
     command:

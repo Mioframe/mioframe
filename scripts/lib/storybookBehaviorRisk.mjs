@@ -37,10 +37,10 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     sourcePrefixes: [
       'src/shared/lib/onInteractionOutside.ts',
       'src/shared/ui/Menu/MDMenuBase.vue',
-      'src/shared/ui/Menu/MDMenuBase.stories.ts',
-      'src/shared/ui/Menu/stories/MDMenuLifecycleRegressionStory.vue',
       'src/shared/ui/Tooltips/MDOverlayTooltip.vue',
       'src/shared/ui/Tooltips/MDRichTooltip.vue',
+      'src/shared/ui/Overlay/OverlayLifecycleRegression.stories.ts',
+      'src/shared/ui/Overlay/stories/OverlayLifecycleRegressionStory.vue',
     ],
     specs: ['tests/e2e/storybook/overlayLifecycle.spec.ts'],
   },
