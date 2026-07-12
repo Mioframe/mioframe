@@ -56,6 +56,9 @@ const { floatingStyles: alignCenterStyle, update } = useFloating(targetElementRe
 useEventListener(window.visualViewport, 'resize', update);
 
 onInteractionOutside(tooltipEl, () => {
+  if (!showState.value) {
+    return;
+  }
   emit('interactionOutside');
 });
 

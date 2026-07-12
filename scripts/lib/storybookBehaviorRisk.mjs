@@ -48,6 +48,18 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
     ],
   },
+  {
+    name: 'shared overlay outside-interaction lifecycle',
+    sourcePrefixes: [
+      'src/shared/lib/onInteractionOutside.ts',
+      'src/shared/ui/Menu/MDMenuBase.vue',
+      'src/shared/ui/Tooltips/MDOverlayTooltip.vue',
+      'src/shared/ui/Tooltips/MDRichTooltip.vue',
+      'src/shared/ui/Overlay/OverlayLifecycleRegression.stories.ts',
+      'src/shared/ui/Overlay/stories/OverlayLifecycleRegressionStory.vue',
+    ],
+    specs: ['tests/e2e/storybook/overlayLifecycle.spec.ts'],
+  },
 ];
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior
