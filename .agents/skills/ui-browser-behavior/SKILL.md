@@ -81,7 +81,7 @@ Pointer, touch, scrolling, focus, and browser lifecycle assertions against an is
 ## E2E interaction fidelity
 
 - Drive browser scenarios through the same public UI surfaces and input mechanisms available to users. Prefer role, label, text, or test-id locators that identify user-visible controls, and use normal Playwright `click`, `press`, `fill`, pointer, touch, or keyboard actions.
-- Do not complete a user flow by calling component methods, dispatching synthetic DOM events from `evaluate`, mutating Vue state, invoking application internals, or writing storage directly, unless that setup is outside the behavior under test and cannot be reached through the product UI.
+- Do not complete the behavior under test by calling component methods, dispatching synthetic DOM events from `evaluate`, mutating Vue state, invoking application internals, or writing storage directly. Lower-level setup is allowed when it is outside the behavior under test, produces the same valid initial state available to users, and does not bypass the behavior or boundary being verified.
 - Wait for observable readiness and outcomes: visible and enabled controls, focus, rendered content, URL, persisted state, or another user-visible contract. Do not synchronize against Vue internals, implementation callbacks, arbitrary sleeps, or assumed animation durations.
 - Do not add human-reaction delays. A normal action immediately after a control becomes actionable is a valid user interaction.
 - Treat a visible or actionable target that detaches, is replaced during the action, or loses an ordinary click as potential production UI instability. Investigate render identity, overlay lifecycle, focus, and positioning before changing the test.
