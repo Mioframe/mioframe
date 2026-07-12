@@ -33,16 +33,18 @@ Local folders can become unavailable if:
 
 If that happens, Mioframe may no longer be able to open the affected files until access is granted again or the files are restored outside the app.
 
-## How Mioframe stores documents: `.mf` files
+## How Mioframe stores documents
 
-Inside a local folder or Browser Storage, Mioframe keeps each document's data in Automerge storage chunks with the `.mf` file extension. A single document is typically represented by more than one `.mf` chunk, not one file per document.
+Current Mioframe storage normally uses Automerge storage files with the `.mf` extension. Spaces created by older versions may also contain legacy storage filenames that Mioframe still recognizes. A single document is typically represented by more than one physical storage file, not one file per document.
 
-`.mf` files are internal storage for the whole Mioframe space in that folder, not a standalone exported document. Treat them as part of the folder's storage, not as something to move, copy, or share individually:
+These files are internal storage for the whole Mioframe space in that folder, not standalone exported documents. Treat them as part of the folder's storage, not as something to move, copy, or share individually:
 
-- Move or back up `.mf` files only as part of moving or backing up the entire Mioframe space folder, or by using **Export ZIP** on that folder.
-- Do not pick out a single `.mf` file expecting it to represent one document — use **Export ZIP** on the folder or the document instead, or open or move the whole folder.
-- To get a single, portable, human-readable file for one document, use **Export JSON** instead of copying a `.mf` file.
-- To get a faithful copy of a folder's or a document's actual storage files, use **Export ZIP** instead of copying individual `.mf` files by hand.
+- Move or back up internal storage files only as part of moving or backing up the entire Mioframe space folder, or by using **Export ZIP** on that folder.
+- Do not pick out a single `.mf` or legacy storage file expecting it to represent one document — use **Export ZIP** on the folder or the document instead, or open or move the whole folder.
+- To get a single, portable, human-readable file for one document, use **Export JSON** instead of copying an internal storage file.
+- To get a storage-level copy of a folder's file contents and directory structure, or of one document's physical storage files, use **Export ZIP** instead of copying individual internal files by hand.
+
+ZIP export preserves file bytes, storage filenames, directory structure, and empty directories where applicable. It does not preserve filesystem permissions, timestamps, or symbolic links.
 
 ## Google Drive and other synced or shared folders
 
@@ -54,6 +56,6 @@ Access to that data is controlled by the storage provider or folder permissions 
 
 Browser Storage should not be your only backup for important documents.
 
-If you want a separate backup copy of a document's content, use Mioframe's document-level **Export JSON** action and keep the exported file somewhere you control. If you want a backup of a whole folder's storage, or of one document's raw storage files, use **Export ZIP** instead.
+If you want a separate backup copy of a document's content, use Mioframe's document-level **Export JSON** action and keep the exported file somewhere you control. If you want a storage-level copy of a whole folder's file contents and directory structure, or of one document's physical storage files, use **Export ZIP** instead.
 
 For practical backup and restore steps, see [Backup and restore](./02-backup-and-restore.md). For common failure scenarios, see [Troubleshooting data problems](./03-data-troubleshooting.md).
