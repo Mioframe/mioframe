@@ -1,6 +1,6 @@
 # src/features/databaseViewCreate
 
-Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseViewCreate` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseViewCreate` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 ## Constraints
 
 - Changes here must stay compatible with view selection, sorting, filtering, and persistence flows.
-- Minimum verification: `pnpm type-check`, then create a view using the touched defaults, switch to it, and refresh or reopen the document to confirm the selected layout persisted.
+- Minimum verification: run `pnpm verify --only type-check`, then create a view using the touched defaults, switch to it, and refresh or reopen the document to confirm the selected layout persisted. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.
