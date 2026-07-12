@@ -84,7 +84,7 @@ Stop before production edits when any of these are true:
 - ownership is unclear;
 - source of truth is unclear;
 - expected final state is unclear;
-- more than two architecture questions are unresolved;
+- any unresolved product or architecture question can change required behavior, ownership, boundaries, state shape, public contracts, or verification;
 - required dependencies, inputs, or agent-access boundaries are unclear or unavailable;
 - shared UI would be changed only to patch one feature without blast-radius review;
 - the task combines unrelated domains without an explicit pass order;
