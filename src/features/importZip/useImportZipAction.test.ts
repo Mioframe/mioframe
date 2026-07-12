@@ -1,36 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const {
-  requestAccessMock,
   pickZipFileMock,
   importDirectoryZipMock,
   addSnackbarMock,
-  confirmMock,
   captureDiagnosticExceptionMock,
   requestHomeDiagnosticsPromptAfterHandledErrorMock,
 } = vi.hoisted(() => ({
-  requestAccessMock: vi.fn(),
   pickZipFileMock: vi.fn(),
   importDirectoryZipMock: vi.fn(),
   addSnackbarMock: vi.fn(),
-  confirmMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
   requestHomeDiagnosticsPromptAfterHandledErrorMock: vi.fn(),
 }));
 
+// Builds a real `WebFileSystemAccessRequiredError` instance, matching what the client actually
+// receives after such an error is deserialized back across the real worker/proxy boundary (see
+// `repositoryZipImportWorkerBoundary.integration.test.ts` for the transport itself).
 const createSerializedRecoveryError = ({
   mode,
   spaceName,
 }: {
   mode: 'read' | 'readwrite';
   spaceName: string;
-}) =>
-  Object.assign(new Error('Permission required to open this remembered local space'), {
-    code: 'web-file-system-access-required',
-    mode,
-    name: 'WebFileSystemAccessRequiredError',
-    spaceName,
-  });
+}) => new WebFileSystemAccessRequiredError({ mode, spaceName });
 
 vi.mock('./useImportZip', () => ({
   useImportZip: () => ({
@@ -52,18 +46,6 @@ vi.mock('@feature/diagnosticsErrorPrompt', () => ({
   useDiagnosticsErrorPromptTrigger: () => ({
     requestHomeDiagnosticsPromptAfterHandledError:
       requestHomeDiagnosticsPromptAfterHandledErrorMock,
-  }),
-}));
-
-vi.mock('@shared/ui/Dialog', () => ({
-  useDialog: () => ({
-    confirm: confirmMock,
-  }),
-}));
-
-vi.mock('@shared/serviceClient/fileSystem', () => ({
-  useFileSystemAccessPermissionBroker: () => ({
-    requestAccess: requestAccessMock,
   }),
 }));
 
@@ -89,16 +71,14 @@ const makeFile = () => new File(['zip-bytes'], 'archive.zip', { type: 'applicati
 
 describe('useImportZipAction', () => {
   beforeEach(() => {
-    requestAccessMock.mockReset();
     pickZipFileMock.mockReset();
     importDirectoryZipMock.mockReset();
     addSnackbarMock.mockReset();
-    confirmMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
     requestHomeDiagnosticsPromptAfterHandledErrorMock.mockReset();
     importDirectoryZipMock.mockResolvedValue({
       status: 'completed',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
   });
 
@@ -190,12 +170,7 @@ describe('useImportZipAction', () => {
         });
         return Promise.resolve({
           status: 'completed',
-          summary: {
-            importedFiles: 1,
-            skippedFiles: 0,
-            createdDirectories: 0,
-            reusedDirectories: 0,
-          },
+          summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
         });
       },
     );
@@ -208,7 +183,7 @@ describe('useImportZipAction', () => {
 
     expect(state.value).toEqual({
       status: 'success',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
     expect(isRunning.value).toBe(false);
   });
@@ -217,7 +192,7 @@ describe('useImportZipAction', () => {
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockResolvedValue({
       status: 'completed',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
 
     const { useImportZipAction } = await import('./useImportZipAction');
@@ -226,7 +201,7 @@ describe('useImportZipAction', () => {
     await expect(importDirectoryZip('/repo')).resolves.toBe(true);
     expect(state.value).toEqual({
       status: 'success',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
@@ -250,78 +225,25 @@ describe('useImportZipAction', () => {
     expect(reportedError.cause).toBe(error);
   });
 
-  it('shows a safe error state and does not request permission when user cancels the grant dialog', async () => {
+  it('propagates a write-access-recovery error as a plain terminal error before mutation starts, with no automatic retry', async () => {
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValueOnce(
       createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
     );
-    confirmMock.mockResolvedValue(false);
 
     const { useImportZipAction } = await import('./useImportZipAction');
     const { importDirectoryZip, state } = useImportZipAction();
 
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(requestAccessMock).not.toHaveBeenCalled();
     expect(state.value).toEqual({
       status: 'error',
-      message: 'Grant write access to import a ZIP archive into this remembered space.',
+      message: 'Permission required to open this remembered local space',
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
-    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    // No permission grant/retry flow is offered — the user grants access through the general
+    // application recovery mechanism and starts a new import manually.
     expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('requests write access after a write-required failure and retries with the same file', async () => {
-    const file = makeFile();
-    pickZipFileMock.mockResolvedValue(file);
-    importDirectoryZipMock
-      .mockRejectedValueOnce(
-        createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
-      )
-      .mockResolvedValueOnce({
-        status: 'completed',
-        summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
-      });
-    confirmMock.mockResolvedValue(true);
-    requestAccessMock.mockResolvedValue({ status: 'granted' });
-
-    const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip, state } = useImportZipAction();
-
-    await expect(importDirectoryZip('/repo')).resolves.toBe(true);
-    expect(requestAccessMock).toHaveBeenCalledWith({
-      operation: 'write',
-      requestedMode: 'readwrite',
-      spaceName: 'Work',
-    });
-    expect(importDirectoryZipMock).toHaveBeenCalledTimes(2);
     expect(pickZipFileMock).toHaveBeenCalledTimes(1);
-    expect(state.value).toEqual({
-      status: 'success',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
-    });
-    expect(addSnackbarMock).not.toHaveBeenCalled();
-  });
-
-  it('shows a denied write-access error state when broker returns denied', async () => {
-    pickZipFileMock.mockResolvedValue(makeFile());
-    importDirectoryZipMock.mockRejectedValueOnce(
-      createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
-    );
-    confirmMock.mockResolvedValue(true);
-    requestAccessMock.mockResolvedValue({ status: 'denied' });
-
-    const { useImportZipAction } = await import('./useImportZipAction');
-    const { importDirectoryZip, state } = useImportZipAction();
-
-    await expect(importDirectoryZip('/repo')).resolves.toBe(false);
-    expect(state.value).toEqual({
-      status: 'error',
-      message:
-        'Importing a ZIP archive is not allowed in this remembered space because your browser denied write access.',
-    });
-    expect(addSnackbarMock).not.toHaveBeenCalled();
-    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('reports a terminal partial state with no continuation action when a write fails after an earlier write succeeded', async () => {
@@ -336,12 +258,7 @@ describe('useImportZipAction', () => {
           cause: new Error('storage failure'),
         }),
         {
-          importSummary: {
-            importedFiles: 1,
-            skippedFiles: 0,
-            createdDirectories: 0,
-            reusedDirectories: 0,
-          },
+          importSummary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
         },
       ),
     );
@@ -353,7 +270,7 @@ describe('useImportZipAction', () => {
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
     expect(state.value).toEqual({
       status: 'partial',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
@@ -369,12 +286,7 @@ describe('useImportZipAction', () => {
     importDirectoryZipMock.mockRejectedValueOnce(
       Object.assign(new Error(partialMessage), {
         code: 'repositories.zipImportWritePartiallyFailed',
-        importSummary: {
-          importedFiles: 1,
-          skippedFiles: 0,
-          createdDirectories: 0,
-          reusedDirectories: 0,
-        },
+        importSummary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
         cause: createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
       }),
     );
@@ -385,12 +297,10 @@ describe('useImportZipAction', () => {
     await expect(importDirectoryZip('/repo')).resolves.toBe(false);
     expect(state.value).toEqual({
       status: 'partial',
-      summary: { importedFiles: 1, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
     // A write-access failure after mutation began is a terminal partial result, not a
-    // recoverable permission prompt — the grant-access flow must not be offered here.
-    expect(confirmMock).not.toHaveBeenCalled();
-    expect(requestAccessMock).not.toHaveBeenCalled();
+    // recoverable permission prompt — no retry is attempted.
     expect(importDirectoryZipMock).toHaveBeenCalledTimes(1);
   });
 
@@ -404,12 +314,7 @@ describe('useImportZipAction', () => {
           cause: new Error('storage failure'),
         }),
         {
-          importSummary: {
-            importedFiles: 1,
-            skippedFiles: 0,
-            createdDirectories: 0,
-            reusedDirectories: 0,
-          },
+          importSummary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
         },
       ),
     );
@@ -475,12 +380,7 @@ describe('useImportZipAction', () => {
 
     resolveImport({
       status: 'completed',
-      summary: {
-        importedFiles: 1,
-        skippedFiles: 0,
-        createdDirectories: 0,
-        reusedDirectories: 0,
-      },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
     await expect(running).resolves.toBe(false);
     expect(state.value).toEqual({ status: 'idle' });

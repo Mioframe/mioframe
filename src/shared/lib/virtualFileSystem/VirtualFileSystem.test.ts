@@ -1,5 +1,5 @@
 import { firstValueFrom } from 'rxjs';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryFileSystem } from './MemoryFileSystem';
 import { VirtualFileSystem } from './VirtualFileSystem';
 import { EventEmitter, VfsEventSource, type VfsEvent, VfsEventType } from './EventEmitter';
@@ -916,40 +916,6 @@ describe('VirtualFileSystem', () => {
 
     it('should properly handle reading non-existent file', async () => {
       await expect(vfs.readText('/mnt/test/nonexistent.txt')).rejects.toThrow();
-    });
-  });
-
-  describe('checkWriteAccess method', () => {
-    it('resolves without calling any mutating provider method when the provider has no check', async () => {
-      vfs.mount('/mnt/test', memoryFS);
-
-      await expect(vfs.checkWriteAccess('/mnt/test/some/path')).resolves.toBeUndefined();
-    });
-
-    it('delegates to the resolved provider with the relative path', async () => {
-      const checkWriteAccess = vi.fn().mockResolvedValue(undefined);
-      const provider: IFileSystemProvider = {
-        ...createCapabilityProvider((_path, stat) => stat),
-        checkWriteAccess,
-      };
-
-      vfs.mount('/mnt/test', provider);
-
-      await vfs.checkWriteAccess('/mnt/test/nested/target');
-
-      expect(checkWriteAccess).toHaveBeenCalledWith('/nested/target');
-    });
-
-    it('propagates the provider access-recovery rejection without attempting any mutation', async () => {
-      const accessError = new VfsError(FileSystemError.NoPermissions, 'Permission required');
-      const provider: IFileSystemProvider = {
-        ...createCapabilityProvider((_path, stat) => stat),
-        checkWriteAccess: () => Promise.reject(accessError),
-      };
-
-      vfs.mount('/mnt/test', provider);
-
-      await expect(vfs.checkWriteAccess('/mnt/test/target')).rejects.toBe(accessError);
     });
   });
 

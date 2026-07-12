@@ -1,10 +1,6 @@
 import { FSNodeType, PathUtils, type VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import { resolveSafeArchiveEntryTarget } from '@shared/lib/zipArchive';
-import type {
-  ZipImportConflictPolicy,
-  ZipImportConflictReport,
-  ZipImportResult,
-} from './repositoryZipContracts';
+import type { ZipImportConflictReport, ZipImportResult } from './repositoryZipContracts';
 
 const CONFLICT_PATH_LIMIT = 20;
 
@@ -36,8 +32,6 @@ export type ZipImportExecutablePlan = {
   directoriesToCreate: PlannedZipEntry[];
   /** Existing directories safely reused. */
   reusedDirectories: number;
-  /** Ordinary existing files omitted by skip-existing policy. */
-  skippedFiles: number;
 };
 
 /**
@@ -102,16 +96,18 @@ const createConflictReport = (paths: string[]): ZipImportConflictReport => ({
 });
 
 /**
- * Resolves target state with one cached read per existing parent directory.
+ * Resolves target state with one cached read per existing parent directory. Any conflicting
+ * archive entry — an existing file at an archive file path, an existing file where the archive
+ * requires a directory, or an existing directory where the archive requires a file — aborts the
+ * whole import before any mutation; existing directories that match the archive's directory
+ * entries are reused rather than treated as conflicts.
  * @param vfs - Target virtual filesystem.
  * @param plan - Complete validated archive plan.
- * @param policy - Ordinary conflict behavior.
- * @returns An expected conflict or the no-overwrite execution plan.
+ * @returns The bounded conflict report if any conflict exists, otherwise the complete mutation plan.
  */
 export const resolveZipImportExecutablePlan = async (
   vfs: VirtualFileSystem,
   plan: ZipImportPlan,
-  policy: ZipImportConflictPolicy,
 ): Promise<ZipImportResult | ZipImportExecutablePlan> => {
   const snapshots = new Map<string, Map<string, FSNodeType>>();
   const existingTypes = new Map<string, FSNodeType>();
@@ -156,25 +152,20 @@ export const resolveZipImportExecutablePlan = async (
     ...plan.directories.filter((entry) => existingTypes.get(entry.targetPath) === FSNodeType.File),
     ...plan.files.filter((entry) => existingTypes.has(entry.targetPath)),
   ].map((entry) => entry.relativePath);
-  if (policy === 'abort' && conflictPaths.length > 0) {
+  if (conflictPaths.length > 0) {
     return { status: 'conflicts', report: createConflictReport(conflictPaths) };
   }
 
-  const isBlocked = (entry: PlannedZipEntry) => hasAncestorIn(blockedDirectories, entry.targetPath);
-  const files = plan.files.filter(
-    (entry) => !isBlocked(entry) && !existingTypes.has(entry.targetPath),
-  );
+  // No conflict exists at this point, so every existing type recorded above is a reusable
+  // directory: a conflicting file-vs-file, file-vs-directory, or directory-vs-file entry would
+  // already have triggered the early return above.
   const directoriesToCreate = plan.directories.filter(
-    (entry) => !isBlocked(entry) && !existingTypes.has(entry.targetPath),
+    (entry) => !existingTypes.has(entry.targetPath),
   );
-  const reusedDirectories = plan.directories.filter(
-    (entry) => !isBlocked(entry) && existingTypes.get(entry.targetPath) === FSNodeType.Directory,
-  ).length;
 
   return {
-    files,
+    files: plan.files,
     directoriesToCreate,
-    reusedDirectories,
-    skippedFiles: plan.files.length - files.length,
+    reusedDirectories: plan.directories.length - directoriesToCreate.length,
   };
 };

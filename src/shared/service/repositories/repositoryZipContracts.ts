@@ -25,9 +25,10 @@ export type OnZipExportProgress = (progress: ZipExportProgress) => void | Promis
 /**
  * Callback invoked with one packed archive chunk as a service-owned ZIP export produces it, so
  * the caller can write it out (e.g. to a save-picker writable) without the service holding the
- * full archive in memory.
+ * full archive in memory. Completion is signaled by the export promise resolving after the
+ * archive writer is finalized, not by a flag on the last chunk.
  */
-export type OnZipExportChunk = (chunk: Uint8Array, final: boolean) => void | Promise<void>;
+export type OnZipExportChunk = (chunk: Uint8Array) => void | Promise<void>;
 
 /** Progress phases reported while a service-owned ZIP import validates and writes an archive. */
 export type ZipImportPhase = 'validatingArchive' | 'checkingConflicts' | 'unpacking';
@@ -48,15 +49,6 @@ export type ZipImportProgress = {
  * cannot accumulate concurrent pending RPC requests.
  */
 export type OnZipImportProgress = (progress: ZipImportProgress) => void | Promise<void>;
-
-/** Conflict behavior selected for generic ZIP extraction. */
-export type ZipImportConflictPolicy = 'abort' | 'skipExisting';
-
-/** Explicit options for conflict handling during a generic ZIP import. */
-export type ZipImportOptions = {
-  /** Existing-target behavior; defaults to abort. */
-  conflictPolicy?: ZipImportConflictPolicy;
-};
 
 /** Centrally owned safety limits for a generic ZIP import. */
 export const ZIP_IMPORT_LIMITS = {
@@ -81,8 +73,6 @@ export type ZipImportConflictReport = {
 export type ZipImportSummary = {
   /** Files newly created from the archive. */
   importedFiles: number;
-  /** Ordinary existing files left unchanged by skip-existing policy. */
-  skippedFiles: number;
   /** Directories newly created from the archive plan. */
   createdDirectories: number;
   /** Existing directories safely reused. */
@@ -110,9 +100,10 @@ export enum RepositoryZipErrorCode {
   importConflict = 'repositories.zipImportConflict',
   importResourceLimitExceeded = 'repositories.zipImportResourceLimitExceeded',
   /**
-   * A ZIP import write failed after at least one earlier write in the same import already
-   * succeeded. Unlike `importConflict`, the target directory may now hold a partial import.
-   * This is a terminal outcome: the import is not retried or resumed automatically.
+   * A ZIP import write failed at or after the point the mutation phase began — the first
+   * `createDirectory` or `createFile` call, whether or not it or any later mutation succeeded.
+   * Unlike `importConflict`, the target directory may now hold a partial import. This is a
+   * terminal outcome: the import is not retried or resumed automatically.
    */
   importWritePartiallyFailed = 'repositories.zipImportWritePartiallyFailed',
   /**
@@ -131,7 +122,6 @@ export enum RepositoryZipErrorCode {
 const zodZipImportPartialFailureDetails = z.object({
   importSummary: z.object({
     importedFiles: z.number(),
-    skippedFiles: z.number(),
     createdDirectories: z.number(),
     reusedDirectories: z.number(),
   }),

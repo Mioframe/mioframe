@@ -16,7 +16,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: [];
-  skipExisting: [];
 }>();
 
 const PHASE_LABELS: Record<ZipImportProgress['phase'], string> = {
@@ -71,9 +70,6 @@ const formatSummaryParts = (summary: ZipImportSummary): string[] =>
     summary.createdDirectories > 0
       ? `${formatCount(summary.createdDirectories, 'folder')} created`
       : undefined,
-    summary.skippedFiles > 0
-      ? `${formatCount(summary.skippedFiles, 'existing file')} skipped`
-      : undefined,
     summary.reusedDirectories > 0
       ? `${formatCount(summary.reusedDirectories, 'existing folder')} reused`
       : undefined,
@@ -88,7 +84,7 @@ const supportingText = computed(() => {
       const entryPhrase = total === 1 ? '1 archive entry' : `${total} archive entries`;
       const verb = total === 1 ? 'conflicts' : 'conflict';
       const targetPhrase = total === 1 ? 'an existing file' : 'existing files';
-      return `${entryPhrase} ${verb} with ${targetPhrase}. No files were written.`;
+      return `${entryPhrase} ${verb} with ${targetPhrase}. No files were written. Import into an empty or different target directory.`;
     }
     case 'success': {
       const parts = formatSummaryParts(props.state.summary);
@@ -112,13 +108,9 @@ const supportingText = computed(() => {
 });
 
 const applyLabel = computed(() => {
-  if (props.state.status === 'conflicts') return 'Skip existing';
-  return props.state.status === 'error' || props.state.status === 'partial' ? 'Close' : 'Done';
+  const { status } = props.state;
+  return status === 'error' || status === 'partial' || status === 'conflicts' ? 'Close' : 'Done';
 });
-
-const cancelLabel = computed(() => (props.state.status === 'conflicts' ? 'Cancel' : undefined));
-
-const hasCancelAction = computed(() => props.state.status === 'conflicts');
 
 const isLoading = computed(() => props.state.status === 'running');
 
@@ -145,11 +137,6 @@ const onApply = () => {
     return;
   }
 
-  if (props.state.status === 'conflicts') emit('skipExisting');
-  else emit('close');
-};
-
-const onCancel = () => {
   emit('close');
 };
 </script>
@@ -158,12 +145,9 @@ const onCancel = () => {
   <MDDialog
     :headline="headline"
     :supporting-text="supportingText"
-    :cancel-label="cancelLabel"
     :apply-label="applyLabel"
-    :has-cancel-action="hasCancelAction"
     :loading="isLoading"
     @apply="onApply"
-    @cancel="onCancel"
   >
     <div v-if="state.status === 'running'" class="import-zip-dialog__body">
       <MDCircularProgressIndicator :progress="progressFraction" :size="48" />

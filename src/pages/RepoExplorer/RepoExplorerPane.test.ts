@@ -19,7 +19,6 @@ const exportDirectoryZipMock = vi.fn();
 const importDirectoryZipMock = vi.fn();
 const closeExportZipDialogMock = vi.fn();
 const closeImportZipDialogMock = vi.fn();
-const retryImportSkippingExistingMock = vi.fn();
 const invalidateImportZipContextMock = vi.fn();
 const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
 const importZipStateRef = ref<{ status: string }>({ status: 'idle' });
@@ -87,22 +86,18 @@ vi.mock('@feature/importZip', () => ({
     importDirectoryZip: importDirectoryZipMock,
     state: importZipStateRef,
     closeImportZipDialog: closeImportZipDialogMock,
-    retryImportSkippingExisting: retryImportSkippingExistingMock,
     invalidateImportZipContext: invalidateImportZipContextMock,
   }),
   ImportZipDialog: defineComponent({
     name: 'ImportZipDialogStub',
     props: { state: { type: Object, required: true } },
-    emits: ['close', 'skipExisting'],
+    emits: ['close'],
     setup(_props, { emit }) {
       return () =>
         h('div', {
           'data-testid': 'import-zip-dialog',
           onClick: () => {
             emit('close');
-          },
-          onDblclick: () => {
-            emit('skipExisting');
           },
         });
     },
@@ -726,15 +721,11 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
   });
 
-  it('wires current-directory conflict actions to the import feature', async () => {
+  it('renders the import ZIP dialog for a conflicts result, with no skip-existing action', async () => {
     importZipStateRef.value = { status: 'conflicts' };
     const wrapper = await mountPane();
-    const dialog = wrapper.findComponent({ name: 'ImportZipDialogStub' });
 
-    dialog.vm.$emit('skipExisting');
-    await wrapper.vm.$nextTick();
-
-    expect(retryImportSkippingExistingMock).toHaveBeenCalledOnce();
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(true);
   });
 
   it('keeps the export ZIP result dialog mounted after the export completes, until closed', async () => {

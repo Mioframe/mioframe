@@ -85,7 +85,7 @@ export const exportDirectoryZip = async (
 ): Promise<void> => {
   await onProgress?.({ phase: 'preparing' });
 
-  const writer = createZipArchiveWriter(onChunk);
+  const writer = createZipArchiveWriter((chunk) => onChunk(chunk));
 
   const progressState = { current: 0 };
   await onProgress?.({ phase: 'reading', current: 0 });
@@ -134,7 +134,7 @@ export const exportDocumentZip = async (
     });
   }
 
-  const writer = createZipArchiveWriter(onChunk);
+  const writer = createZipArchiveWriter((chunk) => onChunk(chunk));
   const total = documentStorageFiles.length;
   let current = 0;
   await onProgress?.({ phase: 'reading', current: 0, total });

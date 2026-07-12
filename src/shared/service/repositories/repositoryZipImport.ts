@@ -5,7 +5,6 @@ import {
   RepositoryZipErrorCode,
   ZIP_IMPORT_LIMITS,
   type OnZipImportProgress,
-  type ZipImportOptions,
   type ZipImportPartialFailureDetails,
   type ZipImportResult,
   type ZipImportSummary,
@@ -133,17 +132,13 @@ const executePlan = async (
 ): Promise<ZipImportSummary> => {
   const summary: ZipImportSummary = {
     importedFiles: 0,
-    skippedFiles: executable.skippedFiles,
     createdDirectories: 0,
     reusedDirectories: executable.reusedDirectories,
   };
-  let successfulMutations = 0;
-  let mutationInFlight = false;
+  let mutationPhaseStarted = false;
   const mutate = async (operation: () => Promise<void>) => {
-    mutationInFlight = true;
+    mutationPhaseStarted = true;
     await operation();
-    successfulMutations += 1;
-    mutationInFlight = false;
   };
   try {
     for (const directory of executable.directoriesToCreate) {
@@ -172,26 +167,23 @@ const executePlan = async (
     }
     return summary;
   } catch (error) {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- mutationInFlight is reassigned inside the mutate() closure, which type narrowing can't see across this catch boundary
-    if (mutationInFlight || successfulMutations > 0) throw partialFailure(error, summary);
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- mutationPhaseStarted is reassigned inside the mutate() closure, which type narrowing can't see across this catch boundary
+    if (mutationPhaseStarted) throw partialFailure(error, summary);
     throw error;
   }
 };
 
 /**
  * Imports arbitrary safe ZIP contents using complete validation, preflight, then writes. Never
- * overwrites an existing file or directory entry. Before the first mutation, a non-mutating
- * write-access check runs when the executable plan requires at least one directory or file
- * creation; a missing permission surfaces as the existing recoverable write-access error with no
- * write attempted, so the caller can request access and retry the whole import once. Once a
- * mutation call begins, any failure — including permission loss during that first mutation —
- * stops the import immediately and reports a terminal partial result; it is not resumed or
- * retried automatically.
+ * overwrites an existing file or directory entry; any conflicting archive entry aborts the whole
+ * import before any mutation. Before the mutation phase starts (the first `createDirectory` or
+ * `createFile` call), any failure propagates as the original error. Once the mutation phase has
+ * started, any failure — including one on the very first mutation — stops the import immediately
+ * and reports a terminal partial result; it is not resumed, retried, or rolled back automatically.
  * @param vfs - Target virtual filesystem.
  * @param targetDirectoryPath - Absolute selected target directory.
  * @param archiveFile - User-selected archive, read once per required pass.
  * @param onProgress - Optional phase and entry-count callback.
- * @param options - Explicit ordinary-conflict options.
  * @returns Expected import outcome after all required phases.
  */
 export const importDirectoryZip = async (
@@ -199,20 +191,12 @@ export const importDirectoryZip = async (
   targetDirectoryPath: string,
   archiveFile: File,
   onProgress?: OnZipImportProgress,
-  options: ZipImportOptions = {},
 ): Promise<ZipImportResult> => {
   await onProgress?.({ phase: 'validatingArchive' });
   const plan = await planZipImport(archiveFile, targetDirectoryPath);
   await onProgress?.({ phase: 'checkingConflicts' });
-  const resolved = await resolveZipImportExecutablePlan(
-    vfs,
-    plan,
-    options.conflictPolicy ?? 'abort',
-  );
+  const resolved = await resolveZipImportExecutablePlan(vfs, plan);
   if ('status' in resolved) return resolved;
-  if (resolved.files.length > 0 || resolved.directoriesToCreate.length > 0) {
-    await vfs.checkWriteAccess(targetDirectoryPath);
-  }
   await onProgress?.({ phase: 'unpacking', current: 0, total: resolved.files.length });
   return {
     status: 'completed',

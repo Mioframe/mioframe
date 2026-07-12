@@ -127,69 +127,6 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  describe('checkWriteAccess', () => {
-    it('resolves without touching any handle mutation method when readwrite is granted', async () => {
-      const { rootHandle } = createRootHandle('granted');
-      const provider = WebFileSystemProvider(rootHandle, {
-        permissionPolicy: 'userSelectedDirectory',
-      });
-
-      await expect(provider.checkWriteAccess?.('/')).resolves.toBeUndefined();
-      expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
-    });
-
-    it('throws the transfer-safe access-recovery error when readwrite permission is missing', async () => {
-      const { rootHandle } = createRootHandle('prompt');
-      const provider = WebFileSystemProvider(rootHandle, {
-        permissionPolicy: 'userSelectedDirectory',
-        onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
-      });
-
-      await expect(provider.checkWriteAccess?.('/')).rejects.toMatchObject({
-        code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
-        mode: 'readwrite',
-        name: 'WebFileSystemAccessRequiredError',
-        spaceName: 'Work',
-      });
-      expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
-    });
-
-    it('falls back to a generic VfsError when no access-recovery callback is configured', async () => {
-      const { rootHandle } = createRootHandle('denied');
-      const provider = WebFileSystemProvider(rootHandle, {
-        permissionPolicy: 'userSelectedDirectory',
-      });
-
-      await expect(provider.checkWriteAccess?.('/')).rejects.toMatchObject({
-        code: 'EACCES',
-        name: 'VfsError',
-      });
-    });
-
-    it('is a no-op for origin private storage, which does not require permission grants', async () => {
-      const { rootHandle } = createRootHandle('prompt');
-      const provider = WebFileSystemProvider(rootHandle, {
-        permissionPolicy: 'originPrivateStorage',
-      });
-
-      await expect(provider.checkWriteAccess?.('/')).resolves.toBeUndefined();
-    });
-
-    it('never creates, deletes, or writes anything on the root handle', async () => {
-      const { fileHandle, rootHandle } = createRootHandle('granted');
-      const provider = WebFileSystemProvider(rootHandle, {
-        permissionPolicy: 'userSelectedDirectory',
-      });
-
-      await provider.checkWriteAccess?.('/some/path');
-
-      expect(rootHandle.getDirectoryHandleMock).not.toHaveBeenCalled();
-      expect(rootHandle.getFileHandleMock).not.toHaveBeenCalled();
-      expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
-      expect(fileHandle.getFileMock).not.toHaveBeenCalled();
-    });
-  });
-
   it('marks denied file handles as explicitly non-writable in stat capabilities', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const provider = WebFileSystemProvider(rootHandle, {

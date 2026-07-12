@@ -377,15 +377,6 @@ export const WebFileSystemProvider = (
     return nodeStat;
   };
 
-  /**
-   * Verifies readwrite permission is currently granted for the mounted root without creating,
-   * deleting, renaming, or modifying any filesystem entry. Permission is granted at the mounted
-   * root, not per-path, so `path` does not change the check. No-op for `originPrivateStorage`.
-   * @returns Promise that resolves when write access is confirmed, or rejects with the same
-   * access-recovery error thrown by other write-side operations.
-   */
-  const checkWriteAccess = (): Promise<void> => ensureAccess('readwrite');
-
   const readFile = async (path: string): Promise<File> => {
     await ensureAccess('read');
     const handle = await getHandle(path, false, 'file');
@@ -660,6 +651,5 @@ export const WebFileSystemProvider = (
     move,
     notifyAccessChanged,
     watch,
-    checkWriteAccess,
   };
 };

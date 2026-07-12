@@ -76,7 +76,6 @@ const {
   importDirectoryZip,
   state: importZipState,
   closeImportZipDialog,
-  retryImportSkippingExisting,
   invalidateImportZipContext,
 } = useImportZipAction();
 
@@ -216,7 +215,6 @@ const onClickReturnHome = async () => {
       v-if="importZipVisibleState"
       :state="importZipVisibleState"
       @close="closeImportZipDialog"
-      @skip-existing="retryImportSkippingExisting"
     />
 
     <DirectoryCreateDialog

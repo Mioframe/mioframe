@@ -145,17 +145,6 @@ export interface IFileSystemProvider {
    * @returns Function to cancel watching
    */
   watch?(callback: (event: VfsEvent) => void): (() => void) | undefined;
-
-  /**
-   * Verifies write access is currently available for `path` without creating, deleting,
-   * renaming, or modifying any filesystem entry (optional). Providers that do not require
-   * browser permission grants can omit this; callers must treat a missing implementation as a
-   * successful, side-effect-free check.
-   * @param path - Path whose write access should be verified.
-   * @returns Promise that resolves when write access is confirmed, or rejects with a
-   * provider-specific access-recovery error.
-   */
-  checkWriteAccess?(path: string): Promise<void>;
 }
 
 /**

@@ -12,7 +12,6 @@ vi.mock('@shared/ui/Dialog', () => ({
       headline: { type: String, required: true },
       supportingText: { type: String, required: true },
       applyLabel: { type: String, required: true },
-      hasCancelAction: { type: Boolean, default: false },
       loading: { type: [Boolean, Number], default: false },
     },
     emits: ['apply'],
@@ -24,7 +23,6 @@ vi.mock('@shared/ui/Dialog', () => ({
             'data-headline': props.headline,
             'data-supporting-text': props.supportingText,
             'data-apply-label': props.applyLabel,
-            'data-has-cancel-action': props.hasCancelAction,
             'data-loading': props.loading,
             onClick: () => {
               emit('apply');
@@ -50,13 +48,12 @@ const mountDialog = (state: ImportZipVisibleDialogState) =>
   mount(ImportZipDialog, { props: { state } });
 
 describe('ImportZipDialog', () => {
-  it('renders the running state through MDDialog as a non-cancellable loading dialog', () => {
+  it('renders the running state through MDDialog as a loading dialog', () => {
     const wrapper = mountDialog({ status: 'running' });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Importing ZIP archive');
     expect(dialog.attributes('data-supporting-text')).toBe('Validating archive…');
-    expect(dialog.attributes('data-has-cancel-action')).toBe('false');
     expect(dialog.attributes('data-loading')).toBe('true');
     expect(dialog.attributes('data-apply-label')).toBe('Done');
   });
@@ -85,12 +82,7 @@ describe('ImportZipDialog', () => {
   it('renders the success state as a non-loading dialog with a Done action and no progress body', () => {
     const wrapper = mountDialog({
       status: 'success',
-      summary: {
-        importedFiles: 2,
-        skippedFiles: 0,
-        createdDirectories: 1,
-        reusedDirectories: 0,
-      },
+      summary: { importedFiles: 2, createdDirectories: 1, reusedDirectories: 0 },
     });
 
     const dialog = wrapper.find('[data-headline]');
@@ -103,7 +95,7 @@ describe('ImportZipDialog', () => {
     expect(wrapper.find('[data-progress]').exists()).toBe(false);
   });
 
-  it('renders a grammatically correct singular conflict count', () => {
+  it('renders a grammatically correct singular conflict count and recommends a different target', () => {
     const wrapper = mountDialog({
       status: 'conflicts',
       total: 1,
@@ -112,7 +104,7 @@ describe('ImportZipDialog', () => {
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
-      '1 archive entry conflicts with an existing file. No files were written.',
+      '1 archive entry conflicts with an existing file. No files were written. Import into an empty or different target directory.',
     );
   });
 
@@ -125,30 +117,43 @@ describe('ImportZipDialog', () => {
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
-      '2 archive entries conflict with existing files. No files were written.',
+      '2 archive entries conflict with existing files. No files were written. Import into an empty or different target directory.',
     );
   });
 
-  it('renders a grammatically correct singular count', () => {
+  it('renders the conflicting paths and a close-only action, with no skip-existing action', async () => {
+    const wrapper = mountDialog({
+      status: 'conflicts',
+      total: 2,
+      paths: ['existing.txt', 'nested/other.txt'],
+      truncated: false,
+    });
+
+    expect(wrapper.find('[data-headline]').attributes('data-apply-label')).toBe('Close');
+    expect(wrapper.text()).toContain('existing.txt');
+    expect(wrapper.text()).toContain('nested/other.txt');
+
+    await wrapper.find('[data-headline]').trigger('click');
+
+    expect(wrapper.emitted('close')).toHaveLength(1);
+    expect(wrapper.emitted('skipExisting')).toBeUndefined();
+  });
+
+  it('renders a grammatically correct singular reused-directory count', () => {
     const wrapper = mountDialog({
       status: 'success',
-      summary: {
-        importedFiles: 1,
-        skippedFiles: 1,
-        createdDirectories: 0,
-        reusedDirectories: 0,
-      },
+      summary: { importedFiles: 0, createdDirectories: 0, reusedDirectories: 1 },
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
-      'Import completed. 1 file imported, 1 existing file skipped.',
+      'Import completed. 1 existing folder reused.',
     );
   });
 
   it('renders valid success text for an empty archive', () => {
     const wrapper = mountDialog({
       status: 'success',
-      summary: { importedFiles: 0, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
@@ -159,7 +164,7 @@ describe('ImportZipDialog', () => {
   it('renders valid success text for a directory-only archive', () => {
     const wrapper = mountDialog({
       status: 'success',
-      summary: { importedFiles: 0, skippedFiles: 0, createdDirectories: 3, reusedDirectories: 0 },
+      summary: { importedFiles: 0, createdDirectories: 3, reusedDirectories: 0 },
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
@@ -183,12 +188,7 @@ describe('ImportZipDialog', () => {
   it('emits close when the dialog applies in a success state', async () => {
     const wrapper = mountDialog({
       status: 'success',
-      summary: {
-        importedFiles: 2,
-        skippedFiles: 0,
-        createdDirectories: 1,
-        reusedDirectories: 0,
-      },
+      summary: { importedFiles: 2, createdDirectories: 1, reusedDirectories: 0 },
     });
 
     await wrapper.find('[data-headline]').trigger('click');
@@ -204,21 +204,15 @@ describe('ImportZipDialog', () => {
     expect(wrapper.emitted('close')).toHaveLength(1);
   });
 
-  it('renders a partial import as a terminal, closeable-only result explaining the empty-target retry', async () => {
+  it('renders a partial import as a terminal, close-only result explaining the empty-target retry', async () => {
     const wrapper = mountDialog({
       status: 'partial',
-      summary: {
-        importedFiles: 1,
-        skippedFiles: 0,
-        createdDirectories: 0,
-        reusedDirectories: 0,
-      },
+      summary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
     });
 
     const dialog = wrapper.find('[data-headline]');
     expect(dialog.attributes('data-headline')).toBe('Import stopped before completion');
     expect(dialog.attributes('data-apply-label')).toBe('Close');
-    expect(dialog.attributes('data-has-cancel-action')).toBe('false');
     expect(dialog.attributes('data-supporting-text')).toContain('1 file imported');
     expect(dialog.attributes('data-supporting-text')).toContain('partially imported archive');
     expect(dialog.attributes('data-supporting-text')).toContain('empty target directory');
@@ -232,7 +226,7 @@ describe('ImportZipDialog', () => {
   it('explains a partial import where nothing was written before the stop', () => {
     const wrapper = mountDialog({
       status: 'partial',
-      summary: { importedFiles: 0, skippedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
+      summary: { importedFiles: 0, createdDirectories: 0, reusedDirectories: 0 },
     });
 
     expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toContain(

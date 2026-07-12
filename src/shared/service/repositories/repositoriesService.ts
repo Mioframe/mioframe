@@ -48,7 +48,6 @@ import {
   type OnZipExportChunk,
   type OnZipExportProgress,
   type OnZipImportProgress,
-  type ZipImportOptions,
 } from './repositoryZipContracts';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
@@ -514,7 +513,6 @@ const setupRepositoriesService = () => {
    * @param archiveFile - The user-selected ZIP archive file. Read twice: once to plan and
    * preflight conflicts, once to write, so the archive is never held in memory as a whole.
    * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
-   * @param options - Explicit ordinary-conflict options.
    * @returns Promise that resolves once every entry has been written.
    * @throws DomainError with code `RepositoryZipErrorCode.importStorageNotReady` when queued or
    * failed saves under the target cannot be settled. No write is attempted in that case.
@@ -523,7 +521,6 @@ const setupRepositoriesService = () => {
     targetDirectoryPath: string,
     archiveFile: File,
     onProgress?: OnZipImportProgress,
-    options?: ZipImportOptions,
   ) => {
     const settled = await settleCachedRepositoriesUnderPath(targetDirectoryPath);
 
@@ -534,7 +531,7 @@ const setupRepositoriesService = () => {
       );
     }
 
-    return importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress, options);
+    return importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress);
   };
 
   const documentIdList = defineObservableQuery(getDocumentIdList$);

@@ -54,22 +54,22 @@ Next action:
 
 ## ZIP import stopped because of a conflict with existing files
 
-Import ZIP reports ordinary existing-file and wrong-type conflicts before writing. This is expected: Mioframe does not overwrite, delete, or rename existing files during ZIP import.
+Import ZIP reports ordinary existing-file and wrong-type conflicts before writing anything — the whole import stops and no file or folder is created. This is expected: Mioframe does not overwrite, delete, rename, or partially apply a ZIP import. Existing folders that match the archive's folders are reused and are not reported as conflicts.
+
+The conflict dialog lists the conflicting paths and only offers **Close**.
 
 Next action:
 
-- choose **Cancel** to leave the target unchanged;
-- choose **Skip existing** to leave existing files unchanged and import only non-conflicting files; matching folders are reused;
-- import into an empty folder when provider filename rules or the target contents make conflicts unclear.
+- import into an empty or different target folder when provider filename rules or the target contents make conflicts unclear.
 
 ## A ZIP import stopped partway through with some files written
 
-If the browser loses folder access or another provider operation fails after writing starts, Import ZIP stops immediately. It does not roll back files it already wrote, and it does not resume or retry the import automatically.
+If the browser loses folder access or another provider operation fails once writing has started — even on the very first write — Import ZIP stops immediately. It does not roll back files it already wrote, and it does not resume or retry the import automatically.
 
 Next action:
 
 - check the reported summary of what completed before the import stopped;
-- import the same archive into a new, empty target folder to retry cleanly — Mioframe does not overwrite, delete, or resume into a folder that already holds a partial import.
+- import the same archive into a new, empty or different target folder to retry cleanly — Mioframe does not overwrite, delete, or resume into a folder that already holds a partial import.
 
 ZIP import works at the file level. It does not validate Mioframe document semantics. If restored storage chunks belong to the same Automerge document identity, Automerge may combine the available history when the repository opens. External providers can also apply different filename matching rules, so behavior is not globally atomic across providers.
 

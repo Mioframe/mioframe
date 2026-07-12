@@ -1,14 +1,12 @@
 import { computed, ref } from 'vue';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
-import { getFileSystemAccessRecovery, isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { ZipArchiveErrorCode } from '@shared/lib/zipArchive';
 import { useMainServiceClient } from '@shared/service';
 import { getZipImportPartialFailureDetails, RepositoryZipErrorCode } from '@shared/service';
-import type { ZipImportOptions, ZipImportProgress, ZipImportSummary } from '@shared/service';
+import type { ZipImportProgress, ZipImportSummary } from '@shared/service';
 import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPrompt';
-import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
-import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ImportZipErrorCode } from './importZipErrorCode';
 import { useImportZip } from './useImportZip';
@@ -44,10 +42,10 @@ const shouldSkipImportErrorReport = (error: unknown) =>
       error.code === RepositoryZipErrorCode.importResourceLimitExceeded));
 
 /**
- * Runs the directory ZIP import flow with shared snackbar, write-access recovery, and diagnostics
- * behavior. Stops before any write when the archive has conflicts with existing files. Surfaces a
- * distinct message when a write fails after an earlier write in the same import already
- * succeeded, since the target folder may then hold a partial import.
+ * Runs the directory ZIP import flow with shared snackbar and diagnostics behavior. Stops before
+ * any write when the archive has conflicts with existing files. Surfaces a distinct terminal
+ * state when a write fails at or after the mutation phase starts, since the target folder may
+ * then hold a partial import; the user retries by starting a new import into an empty directory.
  * @returns The import action plus reactive progress and running state.
  */
 export const useImportZipAction = () => {
@@ -56,8 +54,6 @@ export const useImportZipAction = () => {
     repositories: { importDirectoryZip },
   } = useMainServiceClient();
   const { addSnackbar } = useSnackbar();
-  const { confirm } = useDialog();
-  const { requestAccess } = useFileSystemAccessPermissionBroker();
   const { requestHomeDiagnosticsPromptAfterHandledError } = useDiagnosticsErrorPromptTrigger();
 
   const state = ref<ImportZipDialogState>({ status: 'idle' });
@@ -65,15 +61,8 @@ export const useImportZipAction = () => {
   const isRunning = computed(() => operationRunning.value);
   let contextGeneration = 0;
 
-  const resolveImportErrorMessage = (error: unknown): string => {
-    const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
-
-    return recovery
-      ? 'Grant write access to import a ZIP archive into this remembered space.'
-      : error instanceof DomainError
-        ? error.message
-        : 'Could not import the ZIP archive';
-  };
+  const resolveImportErrorMessage = (error: unknown): string =>
+    error instanceof DomainError ? error.message : 'Could not import the ZIP archive';
 
   const reportImportDiagnostics = (error: unknown, diagnosticsAction: string) => {
     if (!shouldSkipImportErrorReport(error)) {
@@ -99,80 +88,6 @@ export const useImportZipAction = () => {
     reportImportDiagnostics(error, diagnosticsAction);
   };
 
-  /**
-   * Handles write-access recovery for a failed import and retries once after granting access.
-   * Throws the original error when it is not a write-access recovery error, so the caller can
-   * propagate it through the unified error handler. Recovery decline/denial is shown as a final
-   * dialog error state rather than a snackbar, since the import dialog is already open by then.
-   * @param error - The error that triggered the recovery attempt.
-   * @param retry - Operation to retry after access is granted.
-   * @param canContinue - Whether the visible target context still owns this operation.
-   * @returns Whether the retry ran and completed successfully.
-   */
-  const withWriteAccessRecovery = async <T>(
-    error: unknown,
-    retry: () => Promise<T>,
-    canContinue: () => boolean,
-  ): Promise<T | undefined> => {
-    const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
-
-    if (!recovery) {
-      throw error;
-    }
-
-    const shouldGrantAccess = await confirm({
-      headline: 'Grant write access',
-      supportingText: `Mioframe remembers "${recovery.spaceName}", but your browser requires write access before importing a ZIP archive into it.`,
-      confirmLabel: 'Grant access',
-      cancelLabel: 'Not now',
-    });
-
-    if (!canContinue()) return undefined;
-
-    if (!shouldGrantAccess) {
-      state.value = {
-        status: 'error',
-        message: 'Grant write access to import a ZIP archive into this remembered space.',
-      };
-      return undefined;
-    }
-
-    const result = await requestAccess({
-      operation: recovery.operation,
-      requestedMode: 'readwrite',
-      spaceName: recovery.spaceName,
-    });
-
-    if (
-      result.status !== 'granted' &&
-      result.status !== 'grantedWithReplayFailures' &&
-      result.status !== 'grantedWithStorageFailures'
-    ) {
-      state.value = {
-        status: 'error',
-        message:
-          result.status === 'denied'
-            ? 'Importing a ZIP archive is not allowed in this remembered space because your browser denied write access.'
-            : 'Could not request browser permission. Try again from this action.',
-      };
-      return undefined;
-    }
-
-    return await retry();
-  };
-
-  /**
-   * Picks a ZIP archive and imports it into the target directory. Ignores repeated calls while
-   * an import is already running for this action instance. Leaves the dialog state in `success`
-   * or `error` on completion instead of hiding it immediately, so the caller can show the final
-   * result until the user closes the dialog.
-   * @param path - Absolute path to the directory to import into.
-   * @returns `true` when the import succeeds, `false` when cancelled, ignored as a duplicate
-   * call, or on a handled error.
-   */
-  let selectedFile: File | undefined;
-  let selectedPath: string | undefined;
-
   const showImportResult = (result: Awaited<ReturnType<typeof importDirectoryZip>>) => {
     if (result.status === 'conflicts') {
       state.value = { status: 'conflicts', ...result.report };
@@ -182,10 +97,15 @@ export const useImportZipAction = () => {
     return true;
   };
 
-  const runImport = async (options: ZipImportOptions): Promise<boolean> => {
-    if (!selectedFile || !selectedPath) return false;
-    const archiveFile = selectedFile;
-    const targetPath = selectedPath;
+  /**
+   * Runs one import attempt against the given target and archive. Leaves the dialog state in
+   * `success`, `conflicts`, `partial`, or `error` on completion instead of hiding it immediately,
+   * so the caller can show the final result until the user closes the dialog.
+   * @param targetPath - Absolute path to the directory to import into.
+   * @param archiveFile - The user-selected ZIP archive file.
+   * @returns Whether the import succeeded.
+   */
+  const runImport = async (targetPath: string, archiveFile: File): Promise<boolean> => {
     const generation = contextGeneration;
     operationRunning.value = true;
     state.value = { status: 'running' };
@@ -194,19 +114,8 @@ export const useImportZipAction = () => {
         state.value = { status: 'running', progress: nextProgress };
     };
     try {
-      try {
-        const result = await importDirectoryZip(targetPath, archiveFile, onProgress, options);
-        return generation === contextGeneration ? showImportResult(result) : false;
-      } catch (error) {
-        const recoveredResult = await withWriteAccessRecovery(
-          error,
-          () => importDirectoryZip(targetPath, archiveFile, onProgress, options),
-          () => generation === contextGeneration,
-        );
-        return recoveredResult && generation === contextGeneration
-          ? showImportResult(recoveredResult)
-          : false;
-      }
+      const result = await importDirectoryZip(targetPath, archiveFile, onProgress);
+      return generation === contextGeneration ? showImportResult(result) : false;
     } catch (error) {
       if (generation !== contextGeneration) return false;
       const partial = getZipImportPartialFailureDetails(error);
@@ -221,13 +130,21 @@ export const useImportZipAction = () => {
     }
   };
 
+  /**
+   * Picks a ZIP archive and imports it into the target directory. Ignores repeated calls while
+   * an import is already running for this action instance.
+   * @param path - Absolute path to the directory to import into.
+   * @returns `true` when the import succeeds, `false` when cancelled, ignored as a duplicate
+   * call, or on a handled error.
+   */
   const importDirectoryZipArchive = async (path: string): Promise<boolean> => {
     if (operationRunning.value) {
       return false;
     }
 
+    let archiveFile: File | undefined;
     try {
-      selectedFile = await pickZipFile();
+      archiveFile = await pickZipFile();
     } catch (error) {
       // No dialog is open yet at this point, so a picker error is reported through the snackbar.
       addSnackbar({ text: resolveImportErrorMessage(error) });
@@ -235,25 +152,16 @@ export const useImportZipAction = () => {
       return false;
     }
 
-    if (selectedFile === undefined) {
+    if (archiveFile === undefined) {
       return false;
     }
-    selectedPath = path;
-    return runImport({ conflictPolicy: 'abort' });
+    return runImport(path, archiveFile);
   };
 
   /**
-   * Retries the retained ordinary conflict with skip-existing policy.
-   * @returns Whether the retry completed successfully.
-   */
-  const retryImportSkippingExisting = async () => {
-    if (operationRunning.value || state.value.status !== 'conflicts') return false;
-    return runImport({ conflictPolicy: 'skipExisting' });
-  };
-
-  /**
-   * Closes the import ZIP dialog. Does nothing while the import is running. `partial` is a
-   * terminal result with no resume guarantee, so closing it is always safe.
+   * Closes the import ZIP dialog. Does nothing while the import is running. `partial` and
+   * `conflicts` are both terminal results with no resume guarantee, so closing them is always
+   * safe.
    */
   const closeImportZipDialog = () => {
     if (operationRunning.value) {
@@ -261,23 +169,18 @@ export const useImportZipAction = () => {
     }
 
     state.value = { status: 'idle' };
-    selectedFile = undefined;
-    selectedPath = undefined;
   };
 
-  /** Invalidates retained retry state when the visible target context changes. */
+  /** Invalidates in-flight progress delivery when the visible target context changes. */
   const invalidateImportZipContext = () => {
     contextGeneration += 1;
     state.value = { status: 'idle' };
-    selectedFile = undefined;
-    selectedPath = undefined;
   };
 
   return {
     importDirectoryZip: importDirectoryZipArchive,
     state,
     isRunning,
-    retryImportSkippingExisting,
     closeImportZipDialog,
     invalidateImportZipContext,
   };

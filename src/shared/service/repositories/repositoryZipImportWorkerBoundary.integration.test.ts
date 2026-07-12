@@ -2,17 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { uid } from 'uid/secure';
 import { createClient, createService, type Provider } from '@shared/lib/proxyService';
 import { transformers } from '@shared/lib/wrapWorker/workerTransformerMap';
-import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import type { IFileSystemProvider } from '@shared/lib/virtualFileSystem';
 import { VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { packZipArchive } from '@shared/lib/zipArchive';
-import type {
-  ZipImportOptions,
-  ZipImportProgress,
-  ZipImportResult,
+import {
+  getZipImportPartialFailureDetails,
+  RepositoryZipErrorCode,
 } from './repositoryZipContracts';
+import type { ZipImportProgress, ZipImportResult } from './repositoryZipContracts';
 import { importDirectoryZip } from './repositoryZipImport';
 
 /**
@@ -63,15 +61,14 @@ type ProxiedImportDirectoryZip = (
   targetPath: string,
   archiveFile: File,
   onProgress?: (progress: ZipImportProgress) => void,
-  options?: ZipImportOptions,
 ) => Promise<ZipImportResult>;
 
 /**
  * Builds a real cross-context RPC client for `importDirectoryZip`, backed by the real low-level
- * import implementation, so a preflight `WebFileSystemAccessRequiredError` travels through the
- * actual SuperJSON/proxy serialization boundary used between the app and the repositories worker,
- * instead of a hand-authored top-level permission error.
- * @param vfs - VFS whose mounted provider drives the non-mutating write-access preflight.
+ * import implementation, so a `File` argument, progress callbacks, the result, and any thrown error
+ * travel through the actual SuperJSON/proxy serialization boundary used between the app and the
+ * repositories worker, instead of a hand-authored top-level stand-in.
+ * @param vfs - Target virtual filesystem the proxied import writes through.
  * @returns The proxied `importDirectoryZip` client function.
  */
 const createProxiedImportDirectoryZip = (vfs: VirtualFileSystem): ProxiedImportDirectoryZip => {
@@ -87,8 +84,7 @@ const createProxiedImportDirectoryZip = (vfs: VirtualFileSystem): ProxiedImportD
       targetPath: string,
       archiveFile: File,
       onProgress: ((progress: ZipImportProgress) => void) | undefined,
-      options: ZipImportOptions | undefined,
-    ) => importDirectoryZip(vfs, targetPath, archiveFile, onProgress, options),
+    ) => importDirectoryZip(vfs, targetPath, archiveFile, onProgress),
   }));
 
   return createClient<{ importDirectoryZip: ProxiedImportDirectoryZip }>(
@@ -98,85 +94,81 @@ const createProxiedImportDirectoryZip = (vfs: VirtualFileSystem): ProxiedImportD
   ).importDirectoryZip;
 };
 
-const createArchiveFile = () =>
-  new File([packZipArchive({ 'a.txt': new TextEncoder().encode('a content') })], 'archive.zip', {
-    type: 'application/zip',
-  });
+const createArchiveFile = (entries: Parameters<typeof packZipArchive>[0]) =>
+  new File([packZipArchive(entries)], 'archive.zip', { type: 'application/zip' });
 
-describe('importDirectoryZip write-access preflight — real worker/proxy boundary', () => {
-  it('surfaces a real serialized preflight error that the feature permission-recovery contract still recognizes, with no mutation performed', async () => {
+describe('importDirectoryZip — real worker/proxy boundary', () => {
+  it('transports the File argument, progress callbacks, and a completed result across the real boundary', async () => {
     const memoryFS = new MemoryFileSystem();
     await memoryFS.createDirectory('/target');
-    const provider: IFileSystemProvider = {
-      stat: (path) => memoryFS.stat(path),
-      readFile: (path) => memoryFS.readFile(path),
-      writeFile: (path, content, options) => memoryFS.writeFile(path, content, options),
-      readDirectory: (path) => memoryFS.readDirectory(path),
-      createDirectory: (path) => memoryFS.createDirectory(path),
-      delete: (path, recursive) => memoryFS.delete(path, recursive),
-      move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
-      checkWriteAccess: () =>
-        Promise.reject(
-          new WebFileSystemAccessRequiredError({ mode: 'readwrite', spaceName: 'Work' }),
-        ),
-    };
     const vfs = new VirtualFileSystem();
-    vfs.mount('/', provider);
+    vfs.mount('/', memoryFS);
 
     const proxiedImportDirectoryZip = createProxiedImportDirectoryZip(vfs);
+    const archiveFile = createArchiveFile({ 'a.txt': new TextEncoder().encode('a content') });
 
-    const caught = await proxiedImportDirectoryZip('/target', createArchiveFile()).catch(
-      (error: unknown) => error,
-    );
-
-    // This is the exact call the feature's write-access recovery flow makes
-    // (useImportZipAction.withWriteAccessRecovery) to decide whether to offer a permission-grant
-    // retry. It must still recognize the error after it crossed the real proxy wire.
-    const recovery = getFileSystemAccessRecovery(caught, { operation: 'write' });
-
-    expect(recovery).toEqual({ operation: 'write', spaceName: 'Work' });
-    await expect(memoryFS.readDirectory('/target')).resolves.toEqual([]);
-  });
-
-  it('retries the same proxied call after simulated permission grant and completes the import across the real boundary', async () => {
-    const memoryFS = new MemoryFileSystem();
-    await memoryFS.createDirectory('/target');
-    let writeAllowed = false;
-    const provider: IFileSystemProvider = {
-      stat: (path) => memoryFS.stat(path),
-      readFile: (path) => memoryFS.readFile(path),
-      writeFile: (path, content, options) => memoryFS.writeFile(path, content, options),
-      readDirectory: (path) => memoryFS.readDirectory(path),
-      createDirectory: (path) => memoryFS.createDirectory(path),
-      delete: (path, recursive) => memoryFS.delete(path, recursive),
-      move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
-      checkWriteAccess: () =>
-        writeAllowed
-          ? Promise.resolve()
-          : Promise.reject(
-              new WebFileSystemAccessRequiredError({ mode: 'readwrite', spaceName: 'Work' }),
-            ),
-    };
-    const vfs = new VirtualFileSystem();
-    vfs.mount('/', provider);
-
-    const proxiedImportDirectoryZip = createProxiedImportDirectoryZip(vfs);
-    const archiveFile = createArchiveFile();
-
-    const firstAttempt = await proxiedImportDirectoryZip('/target', archiveFile).catch(
-      (error: unknown) => error,
-    );
-    expect(getFileSystemAccessRecovery(firstAttempt, { operation: 'write' })).toBeDefined();
-
-    // Simulates the browser permission grant the feature requests after showing the recovery
-    // dialog, then retries the exact same call once, as `useImportZipAction` does.
-    writeAllowed = true;
-    const retryResult = await proxiedImportDirectoryZip('/target', archiveFile);
-
-    expect(retryResult).toMatchObject({
-      status: 'completed',
-      summary: { importedFiles: 1 },
+    const progressPhases: ZipImportProgress['phase'][] = [];
+    const result = await proxiedImportDirectoryZip('/target', archiveFile, (progress) => {
+      progressPhases.push(progress.phase);
     });
+
+    expect(result).toMatchObject({ status: 'completed', summary: { importedFiles: 1 } });
+    expect(progressPhases).toEqual(
+      expect.arrayContaining(['validatingArchive', 'checkingConflicts', 'unpacking']),
+    );
     await expect(memoryFS.readFile('/target/a.txt')).resolves.toBeInstanceOf(File);
+  });
+
+  it('transports a conflicts result across the real boundary with no mutation performed', async () => {
+    const memoryFS = new MemoryFileSystem();
+    const vfs = new VirtualFileSystem();
+    vfs.mount('/', memoryFS);
+    await vfs.createDirectory('/target');
+    await vfs.createFile('/target/a.txt', 'already here');
+
+    const proxiedImportDirectoryZip = createProxiedImportDirectoryZip(vfs);
+    const archiveFile = createArchiveFile({ 'a.txt': new TextEncoder().encode('new content') });
+
+    const result = await proxiedImportDirectoryZip('/target', archiveFile);
+
+    expect(result).toMatchObject({ status: 'conflicts', report: { total: 1, paths: ['a.txt'] } });
+    await expect(memoryFS.readFile('/target/a.txt').then((file) => file.text())).resolves.toBe(
+      'already here',
+    );
+  });
+
+  it('transports a transfer-safe terminal partial-import error across the real boundary, preserving completed counts', async () => {
+    const memoryFS = new MemoryFileSystem();
+    await memoryFS.createDirectory('/target');
+    let writeCount = 0;
+    const provider: IFileSystemProvider = {
+      stat: (path) => memoryFS.stat(path),
+      readFile: (path) => memoryFS.readFile(path),
+      writeFile: (path, content, options) => {
+        writeCount += 1;
+        if (writeCount === 2) return Promise.reject(new Error('simulated storage failure'));
+        return memoryFS.writeFile(path, content, options);
+      },
+      readDirectory: (path) => memoryFS.readDirectory(path),
+      createDirectory: (path) => memoryFS.createDirectory(path),
+      delete: (path, recursive) => memoryFS.delete(path, recursive),
+      move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
+    };
+    const vfs = new VirtualFileSystem();
+    vfs.mount('/', provider);
+
+    const proxiedImportDirectoryZip = createProxiedImportDirectoryZip(vfs);
+    const archiveFile = createArchiveFile({
+      'a.txt': new TextEncoder().encode('a content'),
+      'b.txt': new TextEncoder().encode('b content'),
+    });
+
+    const caught: unknown = await proxiedImportDirectoryZip('/target', archiveFile).catch(
+      (error: unknown) => error,
+    );
+
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    const details = getZipImportPartialFailureDetails(caught);
+    expect(details?.importSummary).toMatchObject({ importedFiles: 1 });
   });
 });

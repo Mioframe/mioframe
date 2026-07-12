@@ -552,19 +552,6 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Verifies write access is currently available for the provider mounted at `path`, without
-   * creating, deleting, renaming, or modifying any entry. Providers that do not implement
-   * `checkWriteAccess` (no browser permission grant to verify) treat this as a no-op.
-   * @param path - Absolute path whose mounted provider's write access should be verified.
-   * @returns Promise that resolves when write access is confirmed, or rejects with the
-   * provider's access-recovery error.
-   */
-  public async checkWriteAccess(path: string): Promise<void> {
-    const { provider, relativePath } = this.resolve(path);
-    await provider.checkWriteAccess?.(relativePath);
-  }
-
-  /**
    * Checks if a file or directory exists.
    * @param path - Absolute path to check.
    * @returns Promise that resolves to true if item exists, false otherwise

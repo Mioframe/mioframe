@@ -87,9 +87,9 @@ Import ZIP is a folder options-menu action, not an **Add** sheet action.
 
 Then choose the ZIP file.
 
-Mioframe validates the complete archive and checks the target folder before writing. Choose **Cancel** to abort with no writes, or **Skip existing** to import non-conflicting files while leaving existing files unchanged. Existing matching folders may be reused. Import never intentionally overwrites, deletes, or renames existing files, but provider and concurrent filesystem changes cannot be globally atomic. Provider filename and matching rules can differ, so an empty folder remains the most predictable restore target.
+Mioframe validates the complete archive and checks the target folder before writing. If any archive file or folder path conflicts with an existing entry, the import stops before any file is written — Mioframe shows the conflicting paths and explains that nothing was written; the only action is **Close**. Existing matching folders may be reused without counting as a conflict. Import never intentionally overwrites, deletes, or renames existing files, but provider and concurrent filesystem changes cannot be globally atomic. Provider filename and matching rules can differ, so an empty or different target folder remains the most predictable restore target.
 
-If a provider operation fails after writing has started, Import ZIP stops immediately instead of continuing or retrying automatically. Mioframe reports a count summary of files and folders that completed before the stop, not a list of individual completed paths. The target folder may then contain a partially imported archive, so importing the same archive into that folder again is not safe — choose an empty target folder to retry the import cleanly.
+Once the import has started writing, any provider failure — even on the very first write — stops the import immediately instead of continuing, retrying, or rolling back automatically. Mioframe reports a count summary of files and folders that completed before the stop, not a list of individual completed paths. The target folder may then contain a partially imported archive, so importing the same archive into that folder again is not safe — choose an empty or different target folder to retry the import cleanly.
 
 ## Important limits
 

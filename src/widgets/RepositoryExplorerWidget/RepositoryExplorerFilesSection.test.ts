@@ -10,7 +10,6 @@ const exportDirectoryZip = vi.fn();
 const importDirectoryZip = vi.fn();
 const closeExportZipDialog = vi.fn();
 const closeImportZipDialog = vi.fn();
-const retryImportSkippingExisting = vi.fn();
 const invalidateImportZipContext = vi.fn();
 const removeEntry = vi.fn();
 const importDocument = vi.fn();
@@ -114,7 +113,6 @@ vi.mock('@feature/importZip', () => ({
     importDirectoryZip,
     state: importZipStateRef,
     closeImportZipDialog,
-    retryImportSkippingExisting,
     invalidateImportZipContext,
   }),
   ImportZipDialog: defineComponent({
@@ -122,7 +120,6 @@ vi.mock('@feature/importZip', () => ({
     props: { state: { type: Object, required: true } },
     emits: {
       close: () => true,
-      skipExisting: () => true,
     },
     setup(_props, { emit }) {
       return () =>
@@ -131,9 +128,6 @@ vi.mock('@feature/importZip', () => ({
           'data-testid': 'import-zip-dialog',
           onClick: () => {
             emit('close');
-          },
-          onDblclick: () => {
-            emit('skipExisting');
           },
         });
     },
@@ -534,19 +528,19 @@ describe('RepositoryExplorerFilesSection', () => {
     expect(closeImportZipDialog).toHaveBeenCalledOnce();
   });
 
-  it('wires nested-directory conflict actions to the import feature', async () => {
+  it('renders the import ZIP dialog for a conflicts result and closes it through the dialog action, with no skip-existing action', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');
     importZipStateRef.value = { status: 'conflicts' };
     const wrapper = mount(RepositoryExplorerFilesSection, {
       props: { directoryPath: '/repo', hideAutomergeFiles: true, regularFileEntries: [] },
     });
-    const dialog = wrapper.findComponent({ name: 'ImportZipDialogStub' });
+    const dialog = wrapper.find('[data-testid="import-zip-dialog"]');
+    expect(dialog.exists()).toBe(true);
 
-    dialog.vm.$emit('skipExisting');
-    await wrapper.vm.$nextTick();
+    await dialog.trigger('click');
 
-    expect(retryImportSkippingExisting).toHaveBeenCalledOnce();
+    expect(closeImportZipDialog).toHaveBeenCalledOnce();
   });
 
   it('removes an entry using the emitted entry path', async () => {

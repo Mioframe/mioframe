@@ -134,7 +134,7 @@ test('directory options menu exposes Import ZIP, and importing shows the ZIP dia
   await closeBottomSheet(page, /^add$/i);
 });
 
-test('current folder can skip an ordinary ZIP conflict without replacing the existing file', async ({
+test('current folder reports an ordinary ZIP conflict, writes nothing, and only offers Close', async ({
   page,
 }) => {
   await stubSequentialZipPickers(page, [
@@ -162,14 +162,14 @@ test('current folder can skip an ordinary ZIP conflict without replacing the exi
   await page.getByRole('menuitem', { name: /^import zip$/i }).click();
   const conflictDialog = page.getByRole('dialog', { name: /^files already exist$/i });
   await expect(conflictDialog).toBeVisible();
-  await conflictDialog.getByRole('button', { name: /^skip existing$/i }).click();
+  await expect(conflictDialog).toContainText('No files were written');
+  await expect(conflictDialog).toContainText('empty or different target directory');
+  await expect(conflictDialog.getByRole('button', { name: /^skip existing$/i })).toHaveCount(0);
+  await conflictDialog.getByRole('button', { name: /^close$/i }).click();
+  await expect(conflictDialog).toHaveCount(0);
 
-  const successDialog = page.getByRole('dialog', { name: /^zip archive imported$/i });
-  await expect(successDialog).toContainText('1 file imported');
-  await expect(successDialog).toContainText('1 existing file skipped');
-  await successDialog.getByRole('button', { name: /^done$/i }).click();
   await expect(page.getByText('existing.txt', { exact: true })).toBeVisible();
-  await expect(page.getByText('new.txt', { exact: true })).toBeVisible();
+  await expect(page.getByText('new.txt', { exact: true })).toHaveCount(0);
 
   await expect
     .poll(() =>

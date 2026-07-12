@@ -14,8 +14,6 @@ export type {
   ZipExportProgress,
   ZipImportPhase,
   ZipImportProgress,
-  ZipImportConflictPolicy,
-  ZipImportOptions,
   ZipImportPartialFailureDetails,
   ZipImportResult,
   ZipImportSummary,
