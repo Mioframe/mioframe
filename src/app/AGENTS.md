@@ -1,6 +1,6 @@
 # src/app
 
-Inherits the rules from `src/AGENTS.md`. Applies to `src/app` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/AGENTS.md`. Applies to `src/app` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/app` and its descendant
 ## Constraints
 
 - Any new global dependency must justify its startup cost and lifetime.
-- Minimum verification: `pnpm type-check`, then cold start into the default route, deep-link into the touched route, and refresh that route.
+- Minimum verification: run `pnpm verify --only type-check`, then exercise cold start into the default route, deep-link into the touched route, and refresh that route. Final completion still requires `pnpm verify`.

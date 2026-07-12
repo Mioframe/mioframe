@@ -1,6 +1,6 @@
 # src/entities/mountedDirectories
 
-Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/mountedDirectories` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/mountedDirectories` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -21,4 +21,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/mount
 ## Constraints
 
 - Changes here affect local directory selection, mounted-directory visibility, and disconnect flows.
-- Minimum verification: `pnpm type-check`, then mount or disconnect the touched directory source through the existing feature and confirm the visible state updates in the consuming screen.
+- Minimum verification: run `pnpm verify --only type-check`, then mount or disconnect the touched directory source through the existing feature and confirm the visible state updates in the consuming screen. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.

@@ -1,6 +1,6 @@
 # src/shared/lib/sortable
 
-Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/sortable` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/sortable` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/s
 ## Constraints
 
 - Reorder changes are user-visible on touch, mouse, and hybrid devices.
-- Minimum verification: `pnpm type-check`, then run focused sortable tests for the touched logic and verify the affected surface on both touch-style and mouse-style input.
+- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed sortable tests for the touched logic and verify the affected surface on both touch-style and mouse-style input. Final completion still requires `pnpm verify`.

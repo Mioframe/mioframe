@@ -1,6 +1,6 @@
 # src/features/databaseFilterEdit
 
-Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseFilterEdit` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseFilterEdit` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 ## Constraints
 
 - Changes here must stay compatible with persisted view filters and row matching.
-- Minimum verification: `pnpm type-check`, then add or edit the touched filter shape, save it, reopen the same view, and confirm both the rendered chips and the resulting row set still match.
+- Minimum verification: run `pnpm verify --only type-check`, then add or edit the touched filter shape, save it, reopen the same view, and confirm both the rendered chips and the resulting row set still match. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.

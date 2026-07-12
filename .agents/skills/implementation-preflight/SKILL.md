@@ -5,7 +5,7 @@ description: 'Use this skill before non-trivial implementation work to reduce co
 
 # Implementation preflight
 
-Use this skill before non-trivial code edits. Keep the preflight short and bounded; do not turn it into broad repository exploration.
+Use this skill before non-trivial code edits. Keep the preflight short and bounded; do not turn it into broad repository exploration or repeat scoped repository policy.
 
 ## Activation check
 
@@ -19,21 +19,21 @@ For non-local changes, write a short preflight artifact before the first product
 
 Required sections:
 
-0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat the full handoff. Confirm its readiness verdict is `ready`, restate only the decisions that affect the planned edits, verify the planned edits match that handoff, and do not replace it with a different architecture. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop before production edits.
+0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat it. Confirm the verdict is `ready`, restate only decisions that affect planned edits, and verify the plan matches the handoff. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop.
 1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
-2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
-3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
-4. **Minimum sufficient design**: does every planned concept map to a current requirement or owner boundary, can the same result use fewer concepts or a narrower contract, and is any unrequested flexibility or stronger guarantee being introduced?
-5. **Acceptance matrix**: what non-happy-path states must work in the first implementation?
-6. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
-7. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
-8. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
+2. **Public entry points**: name the owning FSD layer and public APIs that must be used instead of deep imports.
+3. **Reuse**: identify existing helpers, components, configs, schemas, services, tests, or dependencies that already own nearby behavior.
+4. **Minimum sufficient design**: map every planned concept to a current requirement or owner boundary; compare it with a narrower design and reject unrequested flexibility or stronger guarantees.
+5. **Acceptance matrix**: list only reachable non-happy-path states required by the current contract.
+6. **Risk matrix**: list only applicable browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks.
+7. **Breadth and passes**: identify independent domains and the order that keeps work incremental.
+8. **Verification**: name the focused verify-managed check for the riskiest behavior and the final verification required.
 
 If the upstream handoff verdict is missing or `not ready`, stop and return it for resolution. Do not infer readiness from a detailed task description.
 
-If any owner in the owner map is unclear for a cross-layer change, stop and resolve the architecture before editing.
+If any required owner is unclear for a cross-layer change, stop and resolve the architecture before editing.
 
-If the minimum sufficient design check finds an abstraction, extension point, compatibility path, recovery mechanism, optimization, or stronger guarantee without a current requirement, existing consumer, repository invariant, platform constraint, or measured need, stop and return the handoff for simplification. Do not silently redesign the contract and do not hide the same complexity by only splitting it across more files.
+If the minimum sufficient design check finds an abstraction, extension point, compatibility path, recovery mechanism, optimization, or stronger guarantee without a current requirement, existing consumer, repository invariant, platform constraint, or measured need, stop and return the handoff for simplification. Do not silently redesign the contract or hide the same complexity by splitting it across more files.
 
 For contract changes such as persisted formats, public APIs, shared UI contracts, service APIs, worker/provider boundaries, or cross-layer behavior, also record:
 
@@ -43,100 +43,64 @@ For contract changes such as persisted formats, public APIs, shared UI contracts
 - edge-case matrix;
 - verification plan per consumer.
 
-For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification. For copy-only or wiring-only changes that keep existing components and Material behavior unchanged, record `Material impact: none` instead of doing a Material lookup.
+For user-visible UI or UX changes, run `material3-guidelines` before choosing component structure, layout, interaction behavior, or visual verification. For copy-only or wiring-only changes that preserve the existing Material surface, record `Material impact: none`.
 
-For `.vue`, UI composable, shared UI, widget, pane/page, or feature UI changes, also run the `vue-component-implementation` skill before production edits and include its component contract (root/render, props, emits, slots, attrs forwarding, derived state, interaction ownership, DOM access justification, show/hidden ownership, browser/visual verification) in this preflight. If that contract is unclear, implementation is not ready.
+For `.vue`, UI composable, shared UI, widget, pane/page, or feature UI changes, run `vue-component-implementation` and include its concise component contract. If that contract is unclear, implementation is not ready.
+
+## Scoped rule application
+
+Use the applicable nested `AGENTS.md` and domain skills as the source of detailed invariants. The preflight records decisions; it does not duplicate those rules.
+
+- For storage, service, worker, provider, cache, protocol, or lifecycle work, apply `src/AGENTS.md`, the applicable `src/shared/**/AGENTS.md`, and `crdt-storage`. Record the canonical fact owner, public path to UI, error owner, recovery owner, and forbidden UI reconstruction.
+- For work across `entities`, `features`, `widgets`, or `pages`, apply their nested `AGENTS.md`. Record the model/read/action/composition split and the public API used between layers.
+- For shared UI, apply `shared-ui-implementation` and `material3-guidelines`; record consumer blast radius and the browser/visual evidence required.
+- For diagnostics, apply `diagnostic-events` and the privacy rules under `src/AGENTS.md`; record only the boundary and safe diagnostic contract affected.
+
+A scoped rule conflict is a blocker. Resolve it before editing rather than choosing whichever wording permits the implementation.
 
 ## Wide UI and refactor gate
 
-For non-trivial UI, UX, or cross-layer refactors, do not edit production code until the preflight also records:
+For non-trivial UI, UX, or cross-layer refactors, additionally record:
 
-- confirmed domain invariants from the task, existing code, and later user clarifications;
+- confirmed domain invariants and later user clarifications;
 - existing user scenarios that must remain reachable, especially menus, navigation, settings, status indicators, and shared surfaces being replaced;
-- the FSD owner layer for each changed behavior and the public API entry points that must be used instead of deep imports;
-- the service or worker that owns any storage, lifecycle, protocol, cache, or indexing fact used by the UI;
-- the boundary that owns typed errors or recovery states introduced by the change;
-- the layer that owns retry or navigation after a completed flow;
-- settings, preferences, persisted state, or feature flags that the change reads, removes, or changes semantically;
-- shared UI primitives affected by the change and their consumer blast radius;
-- browser, visual, Storybook, e2e, mutation, and focused unit verification required for the changed surface.
+- owner layer and public entry point for each changed behavior;
+- settings, preferences, persisted state, or feature flags whose semantics change;
+- affected shared UI primitives and consumer blast radius;
+- browser, visual, Storybook, e2e, mutation, and focused unit verification that applies.
 
-Before final handoff, compare the diff against this gate. If a scenario, invariant, owner layer, public API decision, or minimum-design decision changed during implementation, update the preflight and fix the implementation before claiming completion.
-
-## Service and worker source-of-truth gate
-
-For behavior that depends on storage layout, repository lifecycle, indexing, synchronization, cache state, filesystem semantics, document discovery, permissions, or protocol details, identify the owner before coding.
-
-- Service and worker code owns heavy data operations, storage/protocol interpretation, indexing, lifecycle, cache invalidation, and canonical existence/initialization facts.
-- Entity APIs expose service-owned facts to UI layers in typed, reactive, safe forms.
-- UI layers may request actions and render facts, but must not reconstruct service-owned facts from implementation details such as marker files, storage file names, cache keys, raw directory entries, or protocol artifacts.
-- If UI needs a fact that only the service can know reliably, extend the service/entity public API instead of deriving the fact in a widget, page, feature, or entity UI helper.
-- Keep expensive scans, parsing, storage inspection, repository discovery, and lifecycle decisions out of the UI thread when the existing architecture provides service or web-worker ownership for them.
-
-Treat these as architecture smells that require redesign before production edits:
-
-- UI code decides whether storage, repository, or document state exists by inspecting service implementation details;
-- a widget/page duplicates service indexing or lifecycle checks already owned by a worker/service;
-- an entity is introduced only to rename a service-owned concept and then infer its state outside the service;
-- a feature action compensates for missing service invariants with UI checks instead of enforcing the invariant at the service owner;
-- a helper in `entities`, `features`, `widgets`, or `pages` parses marker files, storage filenames, raw adapter artifacts, or cache keys to decide canonical state.
-
-The preferred flow is: service or worker determines canonical facts, entity exposes them, widget/page composes and renders them declaratively.
-
-## Declarative FSD composition gate
-
-For UI work that touches `entities`, `features`, `widgets`, or `pages`, record the model/UI/action/composition split before coding:
-
-- **Entity model** owns stable entity facts, domain read models, and small derived entity state. It must not expose screen view-state objects that combine loading, error, user-facing message, ready status, and widget/page-specific branch order.
-- **Entity UI** may render the entity and emit semantic selection events. It must not import feature actions; pass action surfaces from widgets/pages through slots when entity UI needs trailing buttons.
-- **Features** own user-triggered actions such as create, import, rename, remove, dialogs, sheets, action menus, and explicit recovery actions.
-- **Widgets/pages** compose entities, entity UI, features, and shared UI. They may choose loading/error/recovery/content branch order, but should keep those dependencies visible through named computed values and template branches.
-
-Treat these as architecture smells that require redesign before production edits:
-
-- entity exports named `ViewState`, `ReadyState`, `Presentation`, `Classification`, or another combined object for a specific screen;
-- entity model includes `status: 'loading' | 'error' | 'ready'`, screen fallback copy, or UI error messages;
-- widget/page bypasses an existing entity public API and wires shared services or observable queries directly for entity reads;
-- widget/page hides recovery, error, loading, and content precedence inside a helper when straightforward computed values and template branches would be clearer;
-- a section component is moved toward entity UI while still importing feature actions directly.
-
-Prefer small, named derived facts such as `has*`, `is*`, `get*State`, and `get*Entries` over vague combined values. If a combined state object is still necessary, document why explicit computed dependencies are insufficient and which layer owns that object.
+Before completion, compare the diff with this gate. If a scenario, invariant, owner, public API, or minimum-design decision changed during implementation, update the handoff/preflight and fix the implementation before claiming completion.
 
 ## Breadth control
 
-Before editing, count independent domains in the task. Examples of separate domains include domain read models, storage semantics, diagnostics, navigation, shared UI primitives, browser layout, e2e coverage, visual snapshots, tooling, and copy/language normalization.
+Before editing, count independent domains. Examples include domain read models, storage semantics, diagnostics, navigation, shared UI primitives, browser layout, e2e coverage, visual snapshots, tooling, and copy normalization.
 
 - If the task touches four or more independent domains, split the work into explicit passes and run focused verification after each risky pass.
 - Keep behavior-preserving cleanup separate from functional changes when practical.
-- If the user did not explicitly ask to finish one existing branch, prefer proposing a split into smaller tasks before starting a broad corrective implementation.
+- If the user did not explicitly ask to finish one existing branch, prefer proposing a split before starting a broad corrective implementation.
 - If the task must stay in one branch, make the pass order explicit and do not start the next risky pass until the previous one has a focused check.
 
 ## Feature-flow guardrails
 
 Use these rules for create/open/import/export, setup, picker, dialog, storage, permission, recovery, and other multi-step user flows.
 
-- Start with a scenario matrix that covers the happy path, user cancellation, unsupported platform/API, permission denial, invalid input, duplicate/conflict state, stale data/race, partial failure, rollback failure, and recovery action when those states can occur.
-- Separate different user intents into different feature contracts before coding. Do not begin with a generic all-in-one composable, dialog, or state machine when flows have different acceptance rules, UX copy, domain invariants, or recovery paths.
-- Define the owner map before the first production edit: source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
-- Keep domain and storage invariants below UI layers. UI may ask for an action and display the result, but uniqueness, reserved names, marker detection, persisted-record normalization, migrations, and lifecycle ordering must be enforced by the owner of the data.
-- Make allowed and disallowed target states explicit before implementation. Prefer refusing invalid targets with clear recovery over accepting broad inputs and compensating later with warning dialogs.
-- Keep flow outcomes typed and local to the boundary that needs them. Avoid broad `status` protocols, command choreography, or result objects that mix field issues, transport failures, domain conflicts, and UI navigation unless several independent callers need the protocol.
-- If a feature needs a shared UI primitive change, decide whether that primitive change is a separate prerequisite. When it remains in the feature PR, keep it minimal, Material-verified, and independently tested so the feature review does not hide shared UI regressions.
-- Delete obsolete code paths, facades, providers, and tests in the same pass that introduces their replacement unless backwards compatibility is required. Do not leave dual flows for review to reconcile.
-- When two consecutive review rounds add new concepts, abstractions, branches, protocols, configuration, recovery paths, ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Simplify the handoff, scenario matrix, owner map, and verification matrix before more edits.
-- Prefer tests for domain invariants and extracted state transitions before component wiring. Component tests should verify only contracts that the component owns; browser behavior, layout, focus, gestures, and Material visual states require browser or visual verification.
+- Start with only applicable states from: happy path, cancellation, unsupported platform/API, permission denial, invalid input, duplicate/conflict, stale data/race, partial failure, rollback failure, and recovery action.
+- Separate different user intents into different feature contracts when they have different acceptance rules, UX copy, domain invariants, or recovery paths. Do not begin with a generic all-in-one composable, dialog, or state machine.
+- Keep domain and storage invariants below UI layers. UI may request an action and display results, but the data owner enforces uniqueness, reserved names, marker detection, normalization, migrations, and lifecycle ordering.
+- Make allowed and disallowed target states explicit. Prefer refusing invalid targets with clear recovery over accepting broad inputs and compensating later.
+- Keep outcomes typed and local to the boundary that needs them. Avoid broad status protocols or result objects mixing field issues, transport failures, domain conflicts, and navigation unless several independent callers require them.
+- If a feature requires a shared UI primitive change, decide whether it is a separate prerequisite. When kept in the same PR, make it minimal, Material-verified, independently tested, and explicit in blast-radius review.
+- Delete obsolete paths, facades, providers, and tests in the same pass as their replacement unless compatibility is required.
+- When two consecutive review rounds add concepts, abstractions, branches, protocols, configuration, recovery paths, ownership mistakes, mixed responsibilities, or scenarios, stop patching and redo the handoff and preflight.
+- Prefer tests for domain invariants and extracted state transitions before component wiring. Browser behavior, layout, focus, gestures, and Material visual states require browser or visual verification.
 
 ## Bounded reuse search
 
-Before creating a new helper, component, config, dependency, or test pattern, check reuse with targeted repository search or direct imports.
-
-Use focused searches for names related to the domain, behavior, helper, config, dependency, and test pattern. Stop once the owner and reuse decision are clear.
-
-Do not start with broad repository exploration unless targeted search shows the impact is wider than expected.
+Before creating a helper, component, config, dependency, or test pattern, use targeted repository search or direct imports to identify the current owner. Stop once the owner and reuse decision are clear. Do not begin with broad repository exploration unless evidence shows wider impact.
 
 ## Acceptance and risk matrix guidance
 
-Include only states relevant to the task, but consider:
+Consider only applicable states:
 
 - unavailable or disabled integrations;
 - missing browser APIs or unsupported runtime;
@@ -144,18 +108,14 @@ Include only states relevant to the task, but consider:
 - invalid, malformed, or hostile input;
 - cache invalidation after create, update, delete, or failed lookup;
 - data-safety-sensitive values in diagnostics, URLs, names, ids, and content;
-- accessibility structure and heading hierarchy for rendered UI;
-- Material 3 component choice, placement, adaptive layout, focus, keyboard, touch, motion, and visual state guidance when UI/UX changes are involved;
-- CI, build, Storybook, Playwright, verify, fix, or verbose modes when tooling changes.
+- accessibility structure and heading hierarchy;
+- Material component choice, adaptive layout, focus, keyboard, touch, motion, and visual states;
+- CI, build, Storybook, Playwright, verify, fix, or verbose modes for tooling changes.
 
-Considering a matrix item does not automatically require implementing support for it. Include it in the first implementation only when it is reachable through the current contract and required by a user flow, existing consumer, data-safety rule, platform constraint, or repository invariant. Prefer explicit unsupported behavior over speculative mechanisms that expand the public or internal contract.
-
-The first implementation should cover the applicable matrix, not only the happy path. If a matrix item is intentionally not covered, state why.
+Considering a matrix item does not require implementing it. Include behavior only when reachable through the current contract and required by a user flow, existing consumer, data-safety rule, platform constraint, or repository invariant. State intentionally unsupported behavior instead of adding speculative mechanisms.
 
 ## Output discipline
 
-Keep the written preflight concise. A useful preflight is usually 8-15 short lines plus a brief verification note.
+Keep the written preflight concise: usually 8-15 short lines plus a verification note. Do not repeat generic repository rules. Name only decisions and risks that apply.
 
-Do not repeat generic repository rules. Name only the rules and risks that apply to the current task.
-
-Before final handoff, report whether the resulting diff still matches the architecture handoff when one exists. If it does not, fix the implementation or explicitly report the architectural divergence.
+Before final handoff, report whether the resulting diff still matches the architecture handoff. If it does not, fix the implementation or explicitly report the architectural divergence.

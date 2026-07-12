@@ -1,6 +1,6 @@
 # src/entities/databaseView
 
-Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseView` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseView` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 ## Constraints
 
 - View contract changes affect selection, layout, and persistence behavior.
-- Minimum verification: `pnpm type-check`, then switch between the touched views, confirm the active chip and layout update correctly, and refresh or reopen the document to confirm selection persistence.
+- Minimum verification: run `pnpm verify --only type-check`, then switch between the touched views, confirm the active chip and layout update correctly, and refresh or reopen the document to confirm selection persistence. Use focused verify-managed browser coverage where available. Final completion still requires `pnpm verify`.

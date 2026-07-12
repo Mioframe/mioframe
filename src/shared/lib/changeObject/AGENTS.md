@@ -1,6 +1,6 @@
 # src/shared/lib/changeObject
 
-Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/changeObject` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/changeObject` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/c
 ## Constraints
 
 - Algorithm changes here affect many callers at once.
-- Minimum verification: `pnpm type-check`, then run focused checks for nested objects, arrays, and deletion markers in the touched deep-update path.
+- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed checks for nested objects, arrays, and deletion markers in the touched deep-update path. Final completion still requires `pnpm verify`.

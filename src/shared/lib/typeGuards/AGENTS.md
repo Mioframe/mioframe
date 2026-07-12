@@ -1,6 +1,6 @@
 # src/shared/lib/typeGuards
 
-Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/typeGuards` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/typeGuards` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -22,4 +22,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/t
 ## Constraints
 
 - Guard changes affect both runtime behavior and compile-time inference.
-- Minimum verification: `pnpm type-check`, then run focused runtime and narrowing checks for the touched guard.
+- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed runtime and narrowing checks for the touched guard. Final completion still requires `pnpm verify`.

@@ -1,6 +1,6 @@
 # src/pages
 
-Inherits the rules from `src/AGENTS.md`. Applies to `src/pages` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/AGENTS.md`. Applies to `src/pages` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -26,4 +26,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/pages` and its descenda
 ## Constraints
 
 - Changes in `SplitView` affect every pane.
-- Minimum verification: `pnpm type-check`, then open the affected page or pane, refresh it, and exercise back or forward navigation for the touched route state.
+- Minimum verification: run `pnpm verify --only type-check`, then open the affected page or pane, refresh it, and exercise back or forward navigation for the touched route state. Use a focused verify-managed e2e check when the route behavior is automated. Final completion still requires `pnpm verify`.
