@@ -1,6 +1,6 @@
 # src/features/databaseItemEdit
 
-Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseItemEdit` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseItemEdit` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 ## Constraints
 
 - Changes here affect multiple property kinds at once.
-- Minimum verification: `pnpm type-check`, then add or edit an item using the touched property kinds, save and reopen to confirm persistence, and verify the cancel path leaves stored data unchanged.
+- Minimum verification: run `pnpm verify --only type-check`, then add or edit an item using the touched property kinds, save and reopen to confirm persistence, and verify the cancel path leaves stored data unchanged. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.

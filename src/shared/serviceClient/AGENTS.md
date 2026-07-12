@@ -1,6 +1,6 @@
 # src/shared/serviceClient
 
-Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/serviceClient` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/serviceClient` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -21,3 +21,4 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/serviceCl
 ## Constraints
 
 - Keep imports directed downward into `shared` infrastructure and approved service proxies only.
+- Use verify-managed browser coverage when a client adapter changes a user-activation or permission flow. Final completion still requires `pnpm verify`.

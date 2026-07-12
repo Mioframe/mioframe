@@ -1,6 +1,6 @@
 # src/entities/googleSession
 
-Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/googleSession` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/googleSession` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/googl
 ## Constraints
 
 - Changes here affect account lists and cached session presentation.
-- Minimum verification: `pnpm type-check`, run focused Google session avatar or entity tests when the contract changed, then verify the affected account list still renders cached identity and the touched avatar surface correctly.
+- Minimum verification: run `pnpm verify --only type-check`, run focused verify-managed Google session avatar or entity tests when the contract changed, then verify the affected account list still renders cached identity and the touched avatar surface correctly. Final completion still requires `pnpm verify`.

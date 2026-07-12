@@ -1,6 +1,6 @@
 # src/widgets/DocumentView/Database
 
-Inherits the rules from `src/widgets/AGENTS.md`. Applies to `src/widgets/DocumentView/Database` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/widgets/AGENTS.md`. Applies to `src/widgets/DocumentView/Database` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -24,4 +24,4 @@ Inherits the rules from `src/widgets/AGENTS.md`. Applies to `src/widgets/Documen
 ## Constraints
 
 - Changes here affect multiple property and value types at once.
-- Minimum verification: `pnpm type-check`, then open a database document, exercise the touched inline or sheet flow, and refresh or reopen the same view to confirm the rendered state still persists correctly.
+- Minimum verification: run `pnpm verify --only type-check`, then open a database document, exercise the touched inline or sheet flow, and refresh or reopen the same view to confirm the rendered state still persists correctly. Use focused verify-managed browser coverage where available. Final completion still requires `pnpm verify`.

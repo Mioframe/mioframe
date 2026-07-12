@@ -1,6 +1,6 @@
 # src/shared/service/databaseDocument
 
-Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/service/databaseDocument` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/service/databaseDocument` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -23,4 +23,4 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 ## Constraints
 
 - This directory defines contracts used by many entities and features.
-- Minimum verification: `pnpm type-check`, run focused database-document tests for the touched branch, then verify create, edit, remove, sort, or filter flows still produce correct invalidation and persisted results.
+- Minimum verification: run `pnpm verify --only type-check`, run focused verify-managed database-document tests for the touched branch, then verify create, edit, remove, sort, or filter flows still produce correct invalidation and persisted results. Final completion still requires `pnpm verify`.

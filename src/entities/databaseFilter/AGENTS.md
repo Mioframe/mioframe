@@ -1,6 +1,6 @@
 # src/entities/databaseFilter
 
-Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseFilter` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseFilter` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 ## Constraints
 
 - Filter contract changes affect both persistence and row matching.
-- Minimum verification: `pnpm type-check`, then save a touched filter, reopen the same view, and confirm the rendered filter structure still matches the resulting row set.
+- Minimum verification: run `pnpm verify --only type-check`, then save a touched filter, reopen the same view, and confirm the rendered filter structure still matches the resulting row set. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.

@@ -1,6 +1,6 @@
 # src/entities/cfrDocument
 
-Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/cfrDocument` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/cfrDocument` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/cfrDo
 ## Constraints
 
 - Changes here affect document list, selection, and other consumers of the document read contract.
-- Minimum verification: `pnpm type-check`, then exercise at least one document list and one document-selection surface that uses the touched contract.
+- Minimum verification: run `pnpm verify --only type-check`, then exercise at least one document list and one document-selection surface that uses the touched contract. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.
