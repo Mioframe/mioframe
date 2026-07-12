@@ -78,6 +78,16 @@ Use a reproducible browser smoke check when no suitable Playwright spec exists a
 
 Pointer, touch, scrolling, focus, and browser lifecycle assertions against an isolated Storybook story belong in `tests/e2e/storybook` (`playwright.storybook.config.ts`), not `tests/e2e/visual`. Storybook is a rendering harness there, not evidence that the test is visual — it must not assert screenshots.
 
+## E2E interaction fidelity
+
+- Drive browser scenarios through the same public UI surfaces and input mechanisms available to users. Prefer role, label, text, or test-id locators that identify user-visible controls, and use normal Playwright `click`, `press`, `fill`, pointer, touch, or keyboard actions.
+- Do not complete a user flow by calling component methods, dispatching synthetic DOM events from `evaluate`, mutating Vue state, invoking application internals, or writing storage directly, unless that setup is outside the behavior under test and cannot be reached through the product UI.
+- Wait for observable readiness and outcomes: visible and enabled controls, focus, rendered content, URL, persisted state, or another user-visible contract. Do not synchronize against Vue internals, implementation callbacks, arbitrary sleeps, or assumed animation durations.
+- Do not add human-reaction delays. A normal action immediately after a control becomes actionable is a valid user interaction.
+- Treat a visible or actionable target that detaches, is replaced during the action, or loses an ordinary click as potential production UI instability. Investigate render identity, overlay lifecycle, focus, and positioning before changing the test.
+- Do not hide uncertain input with `force`, fixed timeouts, broad retries, or custom loops that may repeat an action after it could already have been delivered. Playwright's built-in actionability waiting is allowed; an explicit retry must represent a product retry scenario or re-establish a known pre-action state.
+- Assert the resulting user-visible state. Avoid assertions on render counts, framework lifecycle, handler calls, DOM node identity, or other implementation details unless those details are the explicit browser contract.
+
 ## Mobile-first checks
 
 Assume mobile browsers and low-end devices are important. Avoid solutions that rely on hover, precise pointer input, desktop viewport assumptions, or unbounded main-thread work.
