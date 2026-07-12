@@ -6,6 +6,7 @@ import {
   checkAgentInstructionPolicy,
   findCanonicalInstructionFiles,
   normalizeInstructionContent,
+  readRequiredSkillNames,
   readSkillName,
 } from './agentInstructionPolicy.mjs';
 
@@ -45,13 +46,15 @@ describe('agent instruction policy', () => {
     ]);
   });
 
-  it('normalizes exact legacy inheritance and verification forms', () => {
-    expect(
-      normalizeInstructionContent(
-        'Applies until a deeper `AGENTS.md` overrides it. Run `pnpm type-check` and `pnpm lint:oxlint`.',
-      ),
-    ).toBe(
+  it('normalizes legacy inheritance and verification forms only in AGENTS files', () => {
+    const legacy =
+      'Applies until a deeper `AGENTS.md` overrides it. Run `pnpm type-check` and `pnpm lint:oxlint`.';
+
+    expect(normalizeInstructionContent(legacy, 'src/AGENTS.md')).toBe(
       'Applies until a deeper `AGENTS.md` refines it. Run `pnpm verify --only type-check` and `pnpm verify --only oxlint`.\n',
+    );
+    expect(normalizeInstructionContent(legacy, '.agents/skills/example/SKILL.md')).toBe(
+      `${legacy}\n`,
     );
   });
 
@@ -62,9 +65,21 @@ describe('agent instruction policy', () => {
     expect(readSkillName('---\nname: example-skill\n---\n')).toBe('example-skill');
   });
 
-  it('reports stale instruction forms and skill-directory mismatches in check mode', () => {
+  it('reads routed skills only from the root Required skills section', () => {
+    expect(
+      readRequiredSkillNames(
+        '# root\n\n## Required skills\n\n- `beta`: test;\n- `alpha`: test.\n\n## Other\n\n- `ignored`: no.\n',
+      ),
+    ).toEqual(['alpha', 'beta']);
+  });
+
+  it('reports stale forms, skill-directory mismatches, and missing routed skills', () => {
     const root = createRoot();
-    writeFile(root, 'AGENTS.md', 'Applies until a deeper `AGENTS.md` overrides it.');
+    writeFile(
+      root,
+      'AGENTS.md',
+      'Applies until a deeper `AGENTS.md` overrides it.\n\n## Required skills\n\n- `missing`: test.\n',
+    );
     writeFile(root, '.agents/skills/example/SKILL.md', '---\nname: other\n---\n');
 
     const result = checkAgentInstructionPolicy(root, false);
@@ -74,11 +89,12 @@ describe('agent instruction policy', () => {
       expect.arrayContaining([
         expect.stringContaining('AGENTS.md contains a legacy instruction form'),
         expect.stringContaining("declares skill name 'other' but its directory is 'example'"),
+        expect.stringContaining("routes to missing or misnamed skill 'missing'"),
       ]),
     );
   });
 
-  it('applies safe normalization in fix mode', () => {
+  it('applies safe AGENTS normalization in fix mode', () => {
     const root = createRoot();
     writeFile(root, 'AGENTS.md', 'Run `pnpm type-check`.');
     writeFile(root, '.agents/skills/example/SKILL.md', '---\nname: example\n---\n');
