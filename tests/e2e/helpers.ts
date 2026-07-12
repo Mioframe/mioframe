@@ -585,7 +585,12 @@ const findActiveMenuItem = (page: Page, itemName: RegExp) =>
 export const openEqualFilterDialog = async (page: Page, propertyName: string) => {
   const sheet = await openFilterSheet(page);
   const addFilterButton = sheet.getByRole('button', { name: /^and$/i });
-  const propertyItem = findActiveMenuItem(page, new RegExp(`^${escapeRegex(propertyName)}$`, 'i'));
+  const propertyItemName = new RegExp(`^${escapeRegex(propertyName)}$`, 'i');
+
+  // Selecting a property opens its operator submenu as a nested menu surface
+  // inside the same active menu, so the same scoped lookup resolves the `=`
+  // item without positional guessing.
+  const equalOperatorItem = findActiveMenuItem(page, /^(=|equal)$/i);
 
   // The bottom sheet positions its content with smooth scrolling and scroll
   // snapping, so on small mobile viewports the add-filter button can still be
@@ -594,23 +599,25 @@ export const openEqualFilterDialog = async (page: Page, propertyName: string) =>
   await expect(addFilterButton).toBeVisible();
   await expectStablePosition(addFilterButton);
 
-  // Only re-click when the active menu with the target property item really
-  // failed to appear; the add-filter button is in the menu's outside-ignore
-  // list, so a repeated click keeps an already-open menu open.
+  // Floating UI positioning, focus-trap activation, or nested-menu rendering
+  // can replace or detach the property menuitem between a readiness
+  // assertion and a later click, so the item is re-resolved and clicked
+  // inside one retried attempt, and the attempt only succeeds once the
+  // resulting operator submenu is visible.
   await expect(async () => {
+    const propertyItem = findActiveMenuItem(page, propertyItemName);
+
+    // Only re-click when the active menu with the target property item really
+    // failed to appear; the add-filter button is in the menu's outside-ignore
+    // list, so a repeated click keeps an already-open menu open.
     if (!(await propertyItem.isVisible())) {
       await addFilterButton.click();
     }
     await expect(propertyItem).toBeVisible({ timeout: 2_000 });
+    await propertyItem.click();
+    await expect(equalOperatorItem).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 15_000 });
 
-  await propertyItem.click();
-
-  // Selecting a property opens its operator submenu as a nested menu surface
-  // inside the same active menu, so the same scoped lookup resolves the `=`
-  // item without positional guessing.
-  const equalOperatorItem = findActiveMenuItem(page, /^(=|equal)$/i);
-  await expect(equalOperatorItem).toBeVisible();
   await equalOperatorItem.click();
 
   const dialog = page.getByRole('dialog', { name: /filter settings/i });
