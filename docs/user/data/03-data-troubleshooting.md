@@ -52,9 +52,9 @@ Next action:
 - confirm that the archive came from Mioframe **Export ZIP**;
 - if the archive was created or edited by another tool, it may not be a Mioframe-compatible archive — Mioframe cannot import arbitrary third-party ZIP files that use unsafe paths.
 
-## ZIP import stopped because of a conflict with existing files
+## ZIP import stopped because of a conflict with existing entries
 
-Import ZIP reports ordinary existing-file and wrong-type conflicts before writing anything — the whole import stops and no file or folder is created. This is expected: Mioframe does not overwrite, delete, rename, or partially apply a ZIP import. Existing folders that match the archive's folders are reused and are not reported as conflicts.
+Import ZIP reports ordinary existing-file, existing-folder, and wrong-type conflicts before writing anything — the whole import stops and no file or folder is created. This is expected: Mioframe does not overwrite, delete, rename, or partially apply a ZIP import. Existing folders that match the archive's folders are reused and are not reported as conflicts.
 
 The conflict dialog lists the conflicting paths and only offers **Close**.
 

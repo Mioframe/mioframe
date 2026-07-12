@@ -84,16 +84,25 @@ const planZipImport = async (
   const directories = new Map(
     all.filter((entry) => entry.kind === 'directory').map((entry) => [entry.targetPath, entry]),
   );
+  const assertPlannedEntryLimit = () => {
+    if (files.length + directories.size > ZIP_IMPORT_LIMITS.maximumPlannedEntries) {
+      throw resourceLimitError('maximumPlannedEntries');
+    }
+  };
+  assertPlannedEntryLimit();
   for (const file of files) {
     let current = PathUtils.dirname(file.targetPath);
     while (current !== targetDirectoryPath) {
       if (entries.get(current)?.kind === 'file') throw archiveConflictError();
-      directories.set(current, {
-        archivePath: `${relativePathFromTarget(targetDirectoryPath, current)}/`,
-        relativePath: relativePathFromTarget(targetDirectoryPath, current),
-        targetPath: current,
-        kind: 'directory',
-      });
+      if (!directories.has(current)) {
+        directories.set(current, {
+          archivePath: `${relativePathFromTarget(targetDirectoryPath, current)}/`,
+          relativePath: relativePathFromTarget(targetDirectoryPath, current),
+          targetPath: current,
+          kind: 'directory',
+        });
+        assertPlannedEntryLimit();
+      }
       current = PathUtils.dirname(current);
     }
   }

@@ -53,6 +53,7 @@ export type OnZipImportProgress = (progress: ZipImportProgress) => void | Promis
 /** Centrally owned safety limits for a generic ZIP import. */
 export const ZIP_IMPORT_LIMITS = {
   maximumEntries: 10_000,
+  maximumPlannedEntries: 10_000,
   maximumFileBytes: 128 * 1024 * 1024,
   maximumTotalBytes: 1024 * 1024 * 1024,
   maximumRelativePathLength: 1024,

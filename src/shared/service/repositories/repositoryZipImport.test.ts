@@ -163,6 +163,69 @@ describe('importDirectoryZip', () => {
     await expect(vfs.exists('/target/root/a.txt')).resolves.toBe(false);
   });
 
+  describe('planned entry limit', () => {
+    const buildDeepPath = (index: number, dirsPerFile: number) =>
+      [...Array.from({ length: dirsPerFile }, (_, depth) => `d${index}-${depth}`), 'file.txt'].join(
+        '/',
+      );
+
+    it('rejects an archive whose implied parent directories push the total planned-entry count over the limit', async () => {
+      const vfs = createVfs();
+      await vfs.createDirectory('/target');
+
+      // 200 raw entries stay far below maximumEntries (10_000), but each unique 63-segment
+      // directory path is never shared with another file, so the implied directories alone push
+      // files.length + directories.size past maximumPlannedEntries (10_000).
+      const fileCount = 200;
+      const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+      for (let index = 0; index < fileCount; index += 1) {
+        entries[buildDeepPath(index, 63)] = new TextEncoder().encode('x');
+      }
+      const archiveFile = toArchiveFile(entries);
+
+      const createFile = vi.spyOn(vfs, 'createFile');
+      const createDirectory = vi.spyOn(vfs, 'createDirectory');
+
+      let caught: unknown;
+      try {
+        await importDirectoryZip(vfs, '/target', archiveFile);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(DomainError);
+      expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importResourceLimitExceeded });
+      expect((caught as DomainError).cause).toMatchObject({
+        message: expect.stringContaining('maximumPlannedEntries') as string,
+      });
+      expect(createDirectory).not.toHaveBeenCalled();
+      expect(createFile).not.toHaveBeenCalled();
+    });
+
+    it('accepts a plan at the total planned-entry limit', async () => {
+      const vfs = createVfs();
+      vi.spyOn(vfs, 'readDirectory').mockResolvedValue([]);
+      const createDirectory = vi.spyOn(vfs, 'createDirectory').mockResolvedValue(undefined);
+      const createFile = vi.spyOn(vfs, 'createFile').mockResolvedValue(undefined);
+
+      // fileCount * (dirsPerFile + 1) == 10_000 == maximumPlannedEntries exactly: every implied
+      // directory is unique, so files.length + directories.size lands right at the boundary.
+      const fileCount = 200;
+      const dirsPerFile = 49;
+      const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+      for (let index = 0; index < fileCount; index += 1) {
+        entries[buildDeepPath(index, dirsPerFile)] = new TextEncoder().encode('x');
+      }
+      const archiveFile = toArchiveFile(entries);
+
+      const result = await importDirectoryZip(vfs, '/target', archiveFile);
+
+      expect(result).toMatchObject({ status: 'completed' });
+      expect(createDirectory).toHaveBeenCalledTimes(fileCount * dirsPerFile);
+      expect(createFile).toHaveBeenCalledTimes(fileCount);
+    });
+  });
+
   it('rejects an archive containing an unsafe entry path before any write', async () => {
     const vfs = createVfs();
     await vfs.createDirectory('/target');
