@@ -6,7 +6,6 @@ import {
   unrefElement,
   type MaybeElementRef,
 } from '@vueuse/core';
-import { throttle } from 'es-toolkit';
 import { useChildTeleportContainerStack } from './teleportContainer';
 
 type EventTypes = keyof DocumentEventMap;
@@ -14,7 +13,6 @@ type EventTypes = keyof DocumentEventMap;
 type InteractionOutsideOptions = {
   ignore?: MaybeRef<MaybeElementRef[]>;
   events?: EventTypes[]; // Типизация событий на основе WindowEventMap
-  throttleWait?: number; // Опция для троттлинга
 };
 
 const useDocumentEventListeners = createGlobalState(() => {
@@ -67,6 +65,16 @@ function defineType<T>(value: T): T {
   return value;
 }
 
+/**
+ * Synchronously classifies document-level interaction events (click,
+ * touchstart, keydown, visibilitychange, wheel by default) as inside or
+ * outside `target`, invoking `callback` for each confirmed outside event.
+ * Teleported descendants registered through {@link useChildTeleportContainerStack}
+ * and elements in `options.ignore` are treated as inside.
+ * @param target - Overlay boundary element/ref; interactions inside it are ignored.
+ * @param callback - Invoked synchronously with the triggering event for each outside interaction.
+ * @param options - Optional ignore list and event type overrides.
+ */
 export const onInteractionOutside = (
   target: MaybeElementRef,
   callback: (event: Event) => unknown,
@@ -80,11 +88,11 @@ export const onInteractionOutside = (
     'wheel',
   ]);
 
-  const { events = defaultEvents, throttleWait = 1e3 / 3, ignore = [] } = options;
+  const { events = defaultEvents, ignore = [] } = options;
 
   const { childStack: childTeleportContainers } = useChildTeleportContainerStack();
 
-  const handleInteraction = throttle((event: Event) => {
+  const handleInteraction = (event: Event) => {
     const eventTarget = event.target instanceof Node ? event.target : undefined;
     if (!eventTarget) {
       return;
@@ -107,7 +115,7 @@ export const onInteractionOutside = (
     if (!isInside) {
       callback(event);
     }
-  }, throttleWait);
+  };
 
   const hasTarget = computed(() => !!unrefElement(target));
 

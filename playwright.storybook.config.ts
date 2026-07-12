@@ -17,11 +17,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   workers: 1,
   use: {
-    ...devices['Desktop Chrome'],
-    channel: 'chromium',
     baseURL: storybookURL,
-    viewport: { width: 1280, height: 900 },
-    deviceScaleFactor: 1,
     colorScheme: 'light',
     locale: 'en-US',
     timezoneId: 'UTC',
@@ -30,6 +26,24 @@ export default defineConfig({
     video: 'retain-on-failure',
     serviceWorkers: 'block',
   },
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+      },
+    },
+    {
+      name: 'Mobile Chrome',
+      use: {
+        ...devices['Pixel 5'],
+        channel: 'chromium',
+      },
+    },
+  ],
   webServer: {
     command:
       'node scripts/storybook.mjs build && ' +
