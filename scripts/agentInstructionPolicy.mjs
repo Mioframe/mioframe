@@ -21,10 +21,7 @@ const IGNORED_DIRS = new Set([
 ]);
 
 const AGENTS_LEGACY_REPLACEMENTS = [
-  [
-    'until a deeper `AGENTS.md` overrides it.',
-    'until a deeper `AGENTS.md` refines it.',
-  ],
+  ['until a deeper `AGENTS.md` overrides it.', 'until a deeper `AGENTS.md` refines it.'],
   ['`pnpm type-check`', '`pnpm verify --only type-check`'],
   ['`pnpm lint:oxlint`', '`pnpm verify --only oxlint`'],
 ];
@@ -129,7 +126,7 @@ export function readRequiredSkillNames(content) {
 export function checkAgentInstructionPolicy(root, fix) {
   const errors = [];
   const fixes = [];
-  const availableSkillNames = new Set();
+  const skillPathByName = new Map();
 
   for (const relativePath of findCanonicalInstructionFiles(root)) {
     const absolutePath = path.join(root, relativePath);
@@ -149,21 +146,21 @@ export function checkAgentInstructionPolicy(root, fix) {
       continue;
     }
 
-    const directoryName = relativePath.split('/').at(-2);
     const skillName = readSkillName(normalized);
-
     if (skillName === null) {
       errors.push(`${relativePath} is missing a readable frontmatter name`);
       continue;
     }
 
-    availableSkillNames.add(skillName);
-
-    if (skillName !== directoryName) {
+    const existingPath = skillPathByName.get(skillName);
+    if (existingPath !== undefined) {
       errors.push(
-        `${relativePath} declares skill name '${skillName}' but its directory is '${directoryName}'`,
+        `Skill name '${skillName}' is declared by both ${existingPath} and ${relativePath}`,
       );
+      continue;
     }
+
+    skillPathByName.set(skillName, relativePath);
   }
 
   const rootAgentsPath = path.join(root, 'AGENTS.md');
@@ -171,8 +168,8 @@ export function checkAgentInstructionPolicy(root, fix) {
     const rootContent = fs.readFileSync(rootAgentsPath, 'utf8');
 
     for (const requiredSkillName of readRequiredSkillNames(rootContent)) {
-      if (!availableSkillNames.has(requiredSkillName)) {
-        errors.push(`AGENTS.md routes to missing or misnamed skill '${requiredSkillName}'`);
+      if (!skillPathByName.has(requiredSkillName)) {
+        errors.push(`AGENTS.md routes to missing skill '${requiredSkillName}'`);
       }
     }
   }
