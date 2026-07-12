@@ -1,6 +1,5 @@
 export { ZipArchiveErrorCode } from './zipArchiveErrorCode';
 export {
-  sanitizeArchiveRootName,
   validateArchiveEntryPath,
   resolveSafeArchiveEntryTarget,
   type SafeZipEntryPath,

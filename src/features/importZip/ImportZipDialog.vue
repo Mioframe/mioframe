@@ -37,7 +37,7 @@ const headline = computed(() => {
     case 'running':
       return 'Importing ZIP archive';
     case 'conflicts':
-      return 'Files already exist';
+      return 'Import conflicts found';
     case 'success':
       return 'ZIP archive imported';
     case 'partial':

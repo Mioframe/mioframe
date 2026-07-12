@@ -160,7 +160,7 @@ test('current folder reports an ordinary ZIP conflict, writes nothing, and only 
 
   await openEntryOptionsMenu(page, directoryName);
   await page.getByRole('menuitem', { name: /^import zip$/i }).click();
-  const conflictDialog = page.getByRole('dialog', { name: /^files already exist$/i });
+  const conflictDialog = page.getByRole('dialog', { name: /^import conflicts found$/i });
   await expect(conflictDialog).toBeVisible();
   await expect(conflictDialog).toContainText('No files were written');
   await expect(conflictDialog).toContainText('empty or different target directory');

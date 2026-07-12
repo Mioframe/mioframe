@@ -6,6 +6,7 @@ import { saveStreamWithPicker } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
 import { EXPORT_ZIP_FALLBACK_MAX_BYTES } from './useExportDirectoryZip';
 import { ExportZipErrorCode } from './exportZipErrorCode';
+import { shouldReportExportZipError } from './exportZipErrorReporting';
 import type { ExportZipDialogState } from './useExportDirectoryZip';
 
 /**
@@ -80,10 +81,12 @@ export const useExportDocumentZip = () => {
             });
 
       state.value = { status: 'error', message: domainError.message };
-      captureDiagnosticException(domainError, {
-        feature: 'exportZip',
-        action: 'exportDocumentZip',
-      });
+      if (shouldReportExportZipError(domainError)) {
+        captureDiagnosticException(domainError, {
+          feature: 'exportZip',
+          action: 'exportDocumentZip',
+        });
+      }
       return false;
     }
   };

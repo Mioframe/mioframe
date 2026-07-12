@@ -44,7 +44,7 @@ const shouldSkipImportErrorReport = (error: unknown) =>
 
 /**
  * Runs the directory ZIP import flow with shared snackbar and diagnostics behavior. Stops before
- * any write when the archive has conflicts with existing files. Surfaces a distinct terminal
+ * any write when the archive has conflicts with existing entries. Surfaces a distinct terminal
  * state when a write fails at or after the mutation phase starts, since the target folder may
  * then hold a partial import; the user retries by starting a new import into an empty directory.
  * @returns The import action plus reactive progress and running state.

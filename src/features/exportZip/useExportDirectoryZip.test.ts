@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '@shared/lib/error';
+import { FileSystemDomainErrorCode } from '@shared/lib/fileSystem';
 import { useExportDirectoryZip } from './useExportDirectoryZip';
 
 const { exportDirectoryZipMock, saveStreamWithPickerMock, captureDiagnosticExceptionMock } =
@@ -189,6 +190,40 @@ describe('useExportDirectoryZip', () => {
       status: 'error',
       message: 'The document has no storage files to export.',
     });
+  });
+
+  it('reports diagnostics for an unexpected DomainError from the service', async () => {
+    const cause = new DomainError('The document has no storage files to export.');
+    exportDirectoryZipMock.mockRejectedValueOnce(cause);
+
+    const { exportDirectoryZip, state } = useExportDirectoryZip();
+
+    await expect(exportDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toEqual({
+      status: 'error',
+      message: 'The document has no storage files to export.',
+    });
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(cause, {
+      feature: 'exportZip',
+      action: 'exportDirectoryZip',
+    });
+  });
+
+  it('shows the terminal error state without reporting diagnostics for the fallback-size limit', async () => {
+    const cause = new DomainError('The archive is too large to save without direct disk access.', {
+      code: FileSystemDomainErrorCode.saveStreamFallbackTooLarge,
+    });
+    saveStreamWithPickerMock.mockRejectedValueOnce(cause);
+
+    const { exportDirectoryZip, state } = useExportDirectoryZip();
+
+    await expect(exportDirectoryZip('/repo')).resolves.toBe(false);
+    expect(state.value).toEqual({
+      status: 'error',
+      message: 'The archive is too large to save without direct disk access.',
+    });
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('does not close the dialog while running, but closes it after success or error', async () => {

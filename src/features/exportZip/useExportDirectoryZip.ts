@@ -3,10 +3,11 @@ import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
 import { saveStreamWithPicker } from '@shared/lib/fileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { sanitizeArchiveRootName } from '@shared/lib/zipArchive';
 import { useMainServiceClient } from '@shared/service';
 import type { ZipExportProgress } from '@shared/service';
 import { ExportZipErrorCode } from './exportZipErrorCode';
+import { shouldReportExportZipError } from './exportZipErrorReporting';
+import { sanitizeExportFileNameStem } from './sanitizeExportFileNameStem';
 
 /** Progress phase shown by the export ZIP dialog, including the client-owned save step. */
 export type ExportZipDialogPhase = ZipExportProgress['phase'] | 'saving';
@@ -88,7 +89,7 @@ export const useExportDirectoryZip = () => {
           state.value = { status: 'running', progress: { phase: 'saving' } };
         },
         {
-          fileName: `${sanitizeArchiveRootName(PathUtils.basename(path), 'root')}.zip`,
+          fileName: `${sanitizeExportFileNameStem(PathUtils.basename(path), 'root')}.zip`,
           extensions: ['.zip'],
           mimeTypes: ['application/zip'],
           maxFallbackBytes: EXPORT_ZIP_FALLBACK_MAX_BYTES,
@@ -112,10 +113,12 @@ export const useExportDirectoryZip = () => {
             });
 
       state.value = { status: 'error', message: domainError.message };
-      captureDiagnosticException(domainError, {
-        feature: 'exportZip',
-        action: 'exportDirectoryZip',
-      });
+      if (shouldReportExportZipError(domainError)) {
+        captureDiagnosticException(domainError, {
+          feature: 'exportZip',
+          action: 'exportDirectoryZip',
+        });
+      }
       return false;
     }
   };

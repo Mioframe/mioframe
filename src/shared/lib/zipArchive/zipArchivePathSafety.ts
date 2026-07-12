@@ -101,24 +101,3 @@ export const resolveSafeArchiveEntryTarget = (
 
   return { targetPath, isDirectory };
 };
-
-const UNSAFE_ROOT_NAME_LITERAL_CHARACTERS = new Set(['/', '\\', ':', '*', '?', '"', '<', '>', '|']);
-
-const isUnsafeRootNameCharacter = (char: string) =>
-  isControlCharCode(char.codePointAt(0) ?? 0) || UNSAFE_ROOT_NAME_LITERAL_CHARACTERS.has(char);
-
-/**
- * Sanitizes a directory name into a safe ZIP archive root folder name.
- * @param rawName - The directory name to sanitize (e.g. the exported directory's basename).
- * @param fallback - Name used when `rawName` is empty or sanitizes to nothing (default `'export'`).
- * @returns A filesystem-portable archive root folder name.
- */
-export const sanitizeArchiveRootName = (rawName: string, fallback = 'export'): string => {
-  const sanitized = Array.from(rawName.trim())
-    .map((char) => (isUnsafeRootNameCharacter(char) ? '_' : char))
-    .join('')
-    .replace(/[. ]+$/, '')
-    .trim();
-
-  return sanitized || fallback;
-};

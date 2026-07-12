@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DomainError } from '@shared/lib/error';
 import { ZipArchiveErrorCode } from './zipArchiveErrorCode';
-import {
-  resolveSafeArchiveEntryTarget,
-  sanitizeArchiveRootName,
-  validateArchiveEntryPath,
-} from './zipArchivePathSafety';
+import { resolveSafeArchiveEntryTarget, validateArchiveEntryPath } from './zipArchivePathSafety';
 
 describe('validateArchiveEntryPath', () => {
   it('accepts a plain nested file path', () => {
@@ -91,31 +87,5 @@ describe('resolveSafeArchiveEntryTarget', () => {
     expect(file.targetPath).toBe(directory.targetPath);
     expect(file.isDirectory).toBe(false);
     expect(directory.isDirectory).toBe(true);
-  });
-});
-
-describe('sanitizeArchiveRootName', () => {
-  it('returns the trimmed name unchanged when already safe', () => {
-    expect(sanitizeArchiveRootName('  My Repository  ')).toBe('My Repository');
-  });
-
-  it('replaces unsafe characters with underscores', () => {
-    expect(sanitizeArchiveRootName('a/b\\c:d*e?f"g<h>i|j')).toBe('a_b_c_d_e_f_g_h_i_j');
-  });
-
-  it('strips trailing dots and spaces', () => {
-    expect(sanitizeArchiveRootName('name...  ')).toBe('name');
-  });
-
-  it('falls back to the default name when the input is empty', () => {
-    expect(sanitizeArchiveRootName('')).toBe('export');
-  });
-
-  it('falls back to a custom name when provided', () => {
-    expect(sanitizeArchiveRootName('   ', 'root')).toBe('root');
-  });
-
-  it('falls back when sanitizing leaves nothing usable', () => {
-    expect(sanitizeArchiveRootName('...')).toBe('export');
   });
 });

@@ -103,7 +103,9 @@ describe('ImportZipDialog', () => {
       truncated: false,
     });
 
-    expect(wrapper.find('[data-headline]').attributes('data-supporting-text')).toBe(
+    const dialog = wrapper.find('[data-headline]');
+    expect(dialog.attributes('data-headline')).toBe('Import conflicts found');
+    expect(dialog.attributes('data-supporting-text')).toBe(
       '1 archive entry conflicts with an existing entry. No files were written. Import into an empty or different target directory.',
     );
   });
