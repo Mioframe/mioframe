@@ -88,7 +88,17 @@ export function normalizeInstructionContent(content, relativePath) {
  * @returns {string | null} Skill name.
  */
 export function readSkillName(content) {
-  const match = content.match(/^---\n[\s\S]*?^name:\s*['"]?([^'"\n]+)['"]?\s*$[\s\S]*?^---$/m);
+  if (!content.startsWith('---\n')) {
+    return null;
+  }
+
+  const closingIndex = content.indexOf('\n---', 4);
+  if (closingIndex === -1) {
+    return null;
+  }
+
+  const frontmatter = content.slice(4, closingIndex);
+  const match = frontmatter.match(/^name:\s*['"]?([^'"\n]+)['"]?\s*$/m);
   return match?.[1]?.trim() ?? null;
 }
 
@@ -98,7 +108,20 @@ export function readSkillName(content) {
  * @returns {string[]} Routed skill names.
  */
 export function readRequiredSkillNames(content) {
-  const section = content.match(/^## Required skills\n([\s\S]*?)(?=^## |\Z)/m)?.[1] ?? '';
+  const heading = '## Required skills\n';
+  const headingIndex = content.indexOf(heading);
+
+  if (headingIndex === -1) {
+    return [];
+  }
+
+  const sectionStart = headingIndex + heading.length;
+  const nextHeadingIndex = content.indexOf('\n## ', sectionStart);
+  const section = content.slice(
+    sectionStart,
+    nextHeadingIndex === -1 ? content.length : nextHeadingIndex,
+  );
+
   return [...section.matchAll(/^- `([^`]+)`:/gm)]
     .map((match) => match[1])
     .sort((left, right) => left.localeCompare(right));
@@ -162,9 +185,7 @@ export function checkAgentInstructionPolicy(root, fix) {
 
     for (const requiredSkillName of readRequiredSkillNames(rootContent)) {
       if (!availableSkillNames.has(requiredSkillName)) {
-        errors.push(
-          `AGENTS.md routes to missing or misnamed skill '${requiredSkillName}'`,
-        );
+        errors.push(`AGENTS.md routes to missing or misnamed skill '${requiredSkillName}'`);
       }
     }
   }
