@@ -21,7 +21,7 @@ const IGNORED_DIRS = new Set([
   'tmp',
 ]);
 
-const LEGACY_REPLACEMENTS = [
+const AGENTS_LEGACY_REPLACEMENTS = [
   [
     'until a deeper `AGENTS.md` overrides it.',
     'until a deeper `AGENTS.md` refines it.',
@@ -52,7 +52,8 @@ export function findCanonicalInstructionFiles(root) {
       if (
         entry.isFile() &&
         (entry.name === 'AGENTS.md' ||
-          (entry.name === 'SKILL.md' && absolutePath.includes(`${path.sep}.agents${path.sep}skills${path.sep}`)))
+          (entry.name === 'SKILL.md' &&
+            absolutePath.includes(`${path.sep}.agents${path.sep}skills${path.sep}`)))
       ) {
         results.push(path.relative(root, absolutePath).split(path.sep).join('/'));
       }
@@ -66,13 +67,16 @@ export function findCanonicalInstructionFiles(root) {
 /**
  * Normalize exact legacy instruction forms without changing policy meaning.
  * @param {string} content Instruction file content.
+ * @param {string} relativePath Canonical instruction path.
  * @returns {string} Normalized content.
  */
-export function normalizeInstructionContent(content) {
+export function normalizeInstructionContent(content, relativePath) {
   let normalized = content;
 
-  for (const [legacy, replacement] of LEGACY_REPLACEMENTS) {
-    normalized = normalized.replaceAll(legacy, replacement);
+  if (relativePath.endsWith('AGENTS.md')) {
+    for (const [legacy, replacement] of AGENTS_LEGACY_REPLACEMENTS) {
+      normalized = normalized.replaceAll(legacy, replacement);
+    }
   }
 
   return normalized.endsWith('\n') ? normalized : `${normalized}\n`;
@@ -89,6 +93,18 @@ export function readSkillName(content) {
 }
 
 /**
+ * Read skill names routed from the root Required skills section.
+ * @param {string} content Root AGENTS.md content.
+ * @returns {string[]} Routed skill names.
+ */
+export function readRequiredSkillNames(content) {
+  const section = content.match(/^## Required skills\n([\s\S]*?)(?=^## |\Z)/m)?.[1] ?? '';
+  return [...section.matchAll(/^- `([^`]+)`:/gm)]
+    .map((match) => match[1])
+    .sort((left, right) => left.localeCompare(right));
+}
+
+/**
  * Check and optionally normalize canonical agent instructions.
  * @param {string} root Repository root.
  * @param {boolean} fix Whether to apply safe mechanical fixes.
@@ -98,11 +114,12 @@ export function checkAgentInstructionPolicy(root, fix) {
   const errors = [];
   const fixes = [];
   const files = findCanonicalInstructionFiles(root);
+  const availableSkillNames = new Set();
 
   for (const relativePath of files) {
     const absolutePath = path.join(root, relativePath);
     const content = fs.readFileSync(absolutePath, 'utf8');
-    const normalized = normalizeInstructionContent(content);
+    const normalized = normalizeInstructionContent(content, relativePath);
 
     if (content !== normalized) {
       if (fix) {
@@ -127,10 +144,28 @@ export function checkAgentInstructionPolicy(root, fix) {
       continue;
     }
 
+    availableSkillNames.add(skillName);
+
     if (skillName !== directoryName) {
       errors.push(
         `${relativePath} declares skill name '${skillName}' but its directory is '${directoryName}'`,
       );
+    }
+  }
+
+  const rootAgentsPath = path.join(root, 'AGENTS.md');
+  if (fs.existsSync(rootAgentsPath)) {
+    const rootContent = normalizeInstructionContent(
+      fs.readFileSync(rootAgentsPath, 'utf8'),
+      'AGENTS.md',
+    );
+
+    for (const requiredSkillName of readRequiredSkillNames(rootContent)) {
+      if (!availableSkillNames.has(requiredSkillName)) {
+        errors.push(
+          `AGENTS.md routes to missing or misnamed skill '${requiredSkillName}'`,
+        );
+      }
     }
   }
 
