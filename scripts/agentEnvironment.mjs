@@ -25,7 +25,7 @@ const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\*/SKILL.md instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/*/SKILL.md instead.
 `;
 
 const NESTED_CLAUDE_MD = `<!-- managed:agent-compat -->
@@ -131,7 +131,7 @@ function siblingClaudePath(agentsRelPath) {
 /**
  * Derive the sibling AGENTS.md path from a CLAUDE.md path.
  * @param claudeRelPath Relative CLAUDE.md path.
- * @returns Relative sibling AGENTS.md path.
+ * @returns Relative sibling CLAUDE.md path.
  */
 function siblingAgentsPath(claudeRelPath) {
   return claudeRelPath.replace(/CLAUDE\.md$/, 'AGENTS.md');
@@ -154,7 +154,7 @@ function isManagedClaudeMd(claudeAbsPath) {
  * Remove a file if it exists and then recursively remove now-empty parent dirs.
  * Stops before deleting the repository root.
  * @param root Absolute repository path.
- * @param fileAbsPath Absolute file path to remove.
+ * @param fileAbsPath Absolute path to the file to remove.
  */
 function removeFileAndEmptyParents(root, fileAbsPath) {
   fs.rmSync(fileAbsPath, { force: true });
