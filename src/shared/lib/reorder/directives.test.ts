@@ -136,12 +136,18 @@ describe('vReorderContainer teardown', () => {
     const vReorderContainer = getContainerDirective(registry, session);
     const staleContainerEl = document.createElement('div');
     const currentContainerEl = document.createElement('div');
+    const currentItemEl = document.createElement('div');
+    const currentIgnoreEl = document.createElement('div');
 
     registry.containerEl = currentContainerEl;
+    registerItem(registry, 'a', currentItemEl);
+    registry.ignoreEls.add(currentIgnoreEl);
 
     callHook(vReorderContainer.unmounted, staleContainerEl);
 
-    expect(session.detachContainer).toHaveBeenCalledWith(staleContainerEl);
+    expect(session.detachContainer).not.toHaveBeenCalled();
     expect(registry.containerEl).toBe(currentContainerEl);
+    expect(registry.itemElements.get('a')).toBe(currentItemEl);
+    expect(registry.ignoreEls.has(currentIgnoreEl)).toBe(true);
   });
 });

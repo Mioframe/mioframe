@@ -304,12 +304,13 @@ test.describe('autoscroll', () => {
   test('a pointer beyond the visible edge continues intuitive autoscroll and eventually causes a reorder', async ({
     page,
   }) => {
-    test.setTimeout(60000);
-
     const container = page.getByTestId('reorder-container');
     const containerBox = await boxOf(container);
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
     const orderBefore = await getOrder(page);
+
+    const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(containerExtent).toBeGreaterThan(0);
 
     const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
 
@@ -326,7 +327,9 @@ test.describe('autoscroll', () => {
 
     // Keep the pointer beyond the edge long enough for autoscroll to bring another item under it
     // and for the geometry-based hit test to actually request a reorder.
-    await expect.poll(() => getOrder(page), { timeout: 20000 }).not.toEqual(orderBefore);
+    await expect
+      .poll(() => getOrder(page), { timeout: autoscrollBudgetMs(containerExtent) })
+      .not.toEqual(orderBefore);
 
     await page.mouse.up();
   });
@@ -411,7 +414,7 @@ test.describe('autoscroll', () => {
     expect(dragEndEvent.order).toEqual(orderAfterMutation);
     expect(await getOrder(page)).toEqual(orderAfterMutation);
 
-    // 8. No later `onReorder` callback occurs.
+    // 8. No later `onReorder` callback occurs, immediately after cancellation.
     expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAtCancellation);
 
     // 9. The scroll position recorded synchronously at cancellation matches the container's
@@ -422,9 +425,14 @@ test.describe('autoscroll', () => {
     await page.waitForTimeout(300);
     expect(await container.evaluate((el) => el.scrollTop)).toBe(dragEndEvent.scrollTop);
 
-    // 10. Releasing the still-held physical pointer afterward does not fire another onDragEnd.
+    // Still no late `onReorder` callback after the 300ms observation window.
+    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAtCancellation);
+
+    // 10. Releasing the still-held physical pointer afterward does not fire another onDragEnd or
+    // a late `onReorder` callback.
     await page.mouse.up();
     expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAtCancellation);
   });
 
   test.describe('viewport fallback', () => {

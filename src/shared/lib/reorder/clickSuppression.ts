@@ -26,25 +26,11 @@
  * call — there is no longer a container left to observe a future click on, or a mounted composable
  * left to own the watcher.
  *
- * This module does not re-install any `selectstart`-prevention guard for the bounded window: an
- * earlier version did, on the theory that Chromium's native "extend a text selection near a
- * scrollable edge autoscrolls it" behavior could otherwise continue scrolling the container after
- * `activeSessionEffects.dispose()` removes `activeSessionEffects.ts`'s own active-drag guard. A
- * causal Playwright A/B investigation (see `tests/e2e/storybook/reorder.autoscroll.spec.ts`'s
- * external-order-mutation autoscroll test) disproved that theory: with the guard fully disabled, a
- * real text selection reliably formed and extended across the post-cancellation window, yet no
- * `scrollTop` movement of any kind followed cancellation, with or without a selection. An earlier
- * version of that same investigation appeared to show `scrollTop` still "settling" for a further
- * handful of frames after cancellation; a later, more precise measurement — comparing rAF-sampled
- * `scrollTop` directly against the harness's own synchronous `onDragEnd` timestamp
- * (`ReorderStoryHarness.vue`), instead of the delayed `MutationObserver`-observed DOM text used
- * previously — found zero further `scrollTop` movement in any frame after real cancellation. That
- * confirms the earlier "settling" was measurement lag in the DOM-mutation-based signal itself, not
- * real continued scrolling, and rules out CSS scroll anchoring and `scroll-behavior: smooth` as
- * causes along with it (`overflow-anchor: none` and a no-DOM-reorder control both reproduced the
- * same zero-further-`scrollBy` and zero-further-movement result). Do not reintroduce a post-cancel
- * `selectstart` guard, and do not attribute renewed post-cancellation movement to a specific
- * browser mechanism, without new causal evidence using the synchronous signal.
+ * This module does not re-install any `selectstart`-prevention guard for the bounded window:
+ * synchronous Storybook behavior coverage (`tests/e2e/storybook/reorder.autoscroll.spec.ts`'s
+ * external-order-mutation autoscroll test) proved the session produces no scroll work or movement
+ * after cancellation, so no such guard is needed. Do not add one back without a reproducible
+ * regression and causal evidence.
  */
 import { RELEASE_WATCHER_SAFETY_TIMEOUT_MS } from './constants';
 

@@ -45,7 +45,13 @@ export interface UseReorderOptions<Key extends ReorderKey = ReorderKey> {
   onReorder: (event: ReorderMoveEvent<Key>) => void;
   /** Called exactly once, only after drag activation succeeds. */
   onDragStart?: (event: ReorderDragStartEvent<Key>) => void;
-  /** Called exactly once for every fired `onDragStart`, whether the session completed or was cancelled. */
+  /**
+   * Called exactly once for every successfully activated session — whether it completed or was
+   * cancelled — as long as `keys`, `onDragStart`, and `onReorder` never throw during that
+   * session. If any of those consumer-owned reads/callbacks throws, the session is instead
+   * aborted and cleaned up, the original exception propagates to the caller, and `onDragEnd` is
+   * not called for it.
+   */
   onDragEnd?: (event: ReorderDragEndEvent<Key>) => void;
   /** Long-press delay, in milliseconds, before a touch session activates. Defaults to `400`. */
   longPressDelay?: number;
