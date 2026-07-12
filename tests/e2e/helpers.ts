@@ -546,24 +546,6 @@ export const openFilterSheet = async (page: Page) => {
 };
 
 /**
- * Wait until a locator's bounding box stops changing between polls, so the
- * following pointer interaction cannot race an ongoing scroll or transition.
- * @param target - Locator that must settle before the next pointer interaction.
- */
-const expectStablePosition = async (target: Locator) => {
-  let previousBox = '';
-
-  await expect
-    .poll(async () => {
-      const box = JSON.stringify(await target.boundingBox());
-      const isStable = box === previousBox && box !== 'null';
-      previousBox = box;
-      return isStable;
-    })
-    .toBe(true);
-};
-
-/**
  * Resolve a menuitem inside the visible menu surface that actually contains
  * it. Menus teleport to a shared overlay container, so a bare
  * `page.getByRole('menu')` could also match a stale, hidden, or unrelated
@@ -588,11 +570,8 @@ export const openEqualFilterDialog = async (page: Page, propertyName: string) =>
   const propertyItemName = new RegExp(`^${escapeRegex(propertyName)}$`, 'i');
   const propertyItem = findActiveMenuItem(page, propertyItemName);
 
-  if (!(await propertyItem.isVisible())) {
-    await addFilterButton.click();
-  }
+  await addFilterButton.click();
   await expect(propertyItem).toBeVisible();
-  await expectStablePosition(propertyItem);
   await propertyItem.click();
 
   // Selecting a property opens its operator submenu as a nested menu surface
@@ -600,7 +579,6 @@ export const openEqualFilterDialog = async (page: Page, propertyName: string) =>
   // item without positional guessing.
   const equalOperatorItem = findActiveMenuItem(page, /^(=|equal)$/i);
   await expect(equalOperatorItem).toBeVisible();
-  await expectStablePosition(equalOperatorItem);
   await equalOperatorItem.click();
 
   const dialog = page.getByRole('dialog', { name: /filter settings/i });
