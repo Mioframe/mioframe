@@ -79,7 +79,8 @@ Hard rules for provider recovery:
 - Do not unmount or hide a configured provider only because access is temporarily missing, unless the domain explicitly requires that transition.
 - Do not move user-action-only browser prompts or account prompts into background services or workers.
 - Do not trigger browser or account prompts on startup, route load, render, or background refresh when the platform requires user activation.
-- Do not place capabilities, credentials, clients, callbacks, provider objects, raw external errors, paths, ids, or document names in `DomainError.message`, `DomainError.cause`, serialized payloads, diagnostics, or ordinary UI records.
+- Preserve the original caught `Error` or `DOMException` as trusted in-app `DomainError.cause` when it is needed for stack and diagnostics. Do not put capabilities, credentials, clients, callbacks, provider/service objects, paths, ids, document names, or raw error text into `DomainError.message`, serializable metadata, user-facing payloads, breadcrumbs, tags, or extras.
+- When a `DomainError` crosses a worker/proxy boundary, use the project transfer-safe constructor or transformer; do not replace the trusted cause with feature-local synthetic safe-error classifiers.
 - Do not duplicate the same provider state read in both page and widget layers. Pick one owner for each read model.
 
 ## Testing guidance
