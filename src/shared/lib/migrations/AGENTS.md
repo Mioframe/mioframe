@@ -1,6 +1,6 @@
 # src/shared/lib/migrations
 
-Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/migrations` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/migrations` and its descendants until a deeper `AGENTS.md` refines it.
 
 ## Contains
 
@@ -20,4 +20,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/m
 ## Constraints
 
 - Changes here affect versioned loading across the codebase.
-- Minimum verification: `pnpm type-check`, then verify each touched path with old-version input, already-latest input, and once-only upgrade behavior.
+- Minimum verification: run `pnpm verify --only type-check`, then verify each touched path with old-version input, already-latest input, and once-only upgrade behavior through focused verify-managed tests. Final completion still requires `pnpm verify`.
