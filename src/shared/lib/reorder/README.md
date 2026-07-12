@@ -14,7 +14,7 @@ _where_ to fire a reorder request; the consumer decides everything else.
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useReorder } from '@shared/lib/reorder';
 
 interface Item {
@@ -27,9 +27,10 @@ const items = ref<Item[]>([
   { id: 'b', label: 'Bravo' },
   { id: 'c', label: 'Charlie' },
 ]);
+const itemKeys = computed(() => items.value.map((item) => item.id));
 
 const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReorder({
-  keys: () => items.value.map((item) => item.id),
+  keys: itemKeys,
   onReorder: ({ fromIndex, toIndex }) => {
     const next = [...items.value];
     const [moved] = next.splice(fromIndex, 1);
@@ -115,9 +116,9 @@ treatment.
 - `onReorder({ key, fromIndex, toIndex })` may fire multiple times during one live drag; at most
   once per animation frame.
 - `onDragEnd({ key, initialIndex, finalIndex, cancelled })` fires exactly once for every fired
-  `onDragStart`. `finalIndex` is the item's actual index in the consumer's controlled `keys` when
-  the session ended, or `-1` when the active key no longer exists there (for example, the consumer
-  removed it mid-drag).
+  `onDragStart` whose consumer callbacks complete without throwing. `finalIndex` is the item's
+  actual index in the consumer's controlled `keys` when the session ended, or `-1` when the active
+  key no longer exists there (for example, the consumer removed it mid-drag).
 - A pending pointer gesture that never activates (released before the threshold, or cancelled
   before the touch long-press delay) fires none of these callbacks.
 - `draggingKey` becomes the active key on activation and returns to `null` when the session ends.
@@ -187,8 +188,9 @@ consumes its own event for the rest of the page — no `stopPropagation`, `stopI
 or `preventDefault` — it only prevents that same event from also starting a brand-new session in
 this library. When rollback is still valid — the active key still exists and the consumer's live
 sequence exactly matches what the library expects — the active item is live-reordered back to its
-initial index before the session ends; otherwise it ends as cancelled without inventing or overwriting consumer state, and never
-rolls back over an incompatible external mutation. Every activated session ends with exactly one
+initial index before the session ends; otherwise it ends as cancelled without inventing or
+overwriting consumer state, and never rolls back over an incompatible external mutation. Every
+activated session whose consumer callbacks complete without throwing ends with exactly one
 `onDragEnd`, and all timers, listeners, capture, and animation-frame work are cleaned up
 deterministically.
 
