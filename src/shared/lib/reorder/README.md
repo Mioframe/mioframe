@@ -225,6 +225,14 @@ bounded release watcher is armed exactly as an ordinary early cancellation would
 `onDragEnd` itself throws, every other effect has already been cleaned up beforehand; the error
 still propagates unchanged.
 
+## Profiling
+
+Storybook provides `ReorderProfilingHarness` stories with 100, 500, and 1000 items. They use the
+public API, cached computed keys, and synchronous controlled updates for reproducible DevTools
+profiling during production-consumer migration. They are manual diagnostic surfaces, not visual
+baselines or CI performance benchmarks; do not add timing thresholds or infer device performance
+from CI runtime.
+
 ## Non-goals
 
 This library does not provide: consumer migration, cross-container transfer, nested containers,
