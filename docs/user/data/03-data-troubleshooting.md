@@ -183,9 +183,9 @@ If the document existed only in Browser Storage and that storage was cleared or 
 
 If you have an exported JSON snapshot, use Mioframe's **Import JSON** action to create a new document from that snapshot in an available location.
 
-If you have an exported ZIP archive of a folder, use **Import ZIP** on a new empty target folder to restore its file contents and directory structure. A document ZIP contains that document's physical storage files and is also imported through the target folder's **Import ZIP** action.
+If you have an exported ZIP storage archive of a folder, use **Import ZIP** on a new empty target folder to restore its file contents and directory structure. A document-level ZIP restores that document's physical storage files, not a JSON snapshot.
 
-See [Backup and restore](./02-backup-and-restore.md) for the import steps.
+See [Backup and restore](./02-backup-and-restore.md) for the import steps and limitations.
 
 ## You do not have an exported JSON or ZIP backup
 
