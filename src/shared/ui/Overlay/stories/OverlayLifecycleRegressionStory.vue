@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, useTemplateRef, watch } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
-import MDMenuBase from '../../Menu/MDMenuBase.vue';
-import MDOverlayTooltip from '../../Tooltips/MDOverlayTooltip.vue';
-import MDRichTooltip from '../../Tooltips/MDRichTooltip.vue';
+import { MDMenuBase } from '../../Menu';
+import { MDOverlayTooltip, MDRichTooltip } from '../../Tooltips';
 import { MDButton } from '../../Button';
 
 const menuTargetEl = useTemplateRef<MaybeElement>('menuTargetEl');
