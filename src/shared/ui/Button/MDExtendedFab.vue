@@ -105,7 +105,11 @@ useRipple(buttonEl);
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
     <span v-if="hasIconContent" class="md-extended-fab__icon">
-      <MDCircularProgressIndicator v-if="hasLoading" :progress="loadingProgress" />
+      <MDCircularProgressIndicator
+        v-if="hasLoading"
+        class="md-extended-fab__progress-indicator"
+        :progress="loadingProgress"
+      />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
@@ -773,6 +777,9 @@ useRipple(buttonEl);
     --md-content-color: var(--md-private-extended-fab-rendered-icon-color);
     justify-content: center;
     align-items: center;
+  }
+
+  &__progress-indicator {
     --md-circular-progress-color: var(--md-private-extended-fab-rendered-icon-color);
   }
 

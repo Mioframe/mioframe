@@ -33,6 +33,58 @@ const readButtonVisuals = async (
     },
   );
 
+const readProgressIndicatorColor = async (page: Page, testId: string) =>
+  page.getByTestId(testId).evaluate((el) => {
+    const indicator = el.querySelector('.md-circular-progress-indicator__progress');
+    const normalizeColorString = (rawColor: string) => {
+      const rgbMatch = rawColor.match(/^rgb\(([^)]+)\)$/);
+      if (rgbMatch) {
+        return rgbMatch[1].replaceAll(',', '').replace(/\s+/g, ' ').trim();
+      }
+
+      const srgbMatch = rawColor.match(/^color\(srgb ([^ ]+) ([^ ]+) ([^)]+)\)$/);
+      if (srgbMatch) {
+        return [srgbMatch[1], srgbMatch[2], srgbMatch[3]]
+          .map((channel) => Math.round(Number(channel) * 255))
+          .join(' ');
+      }
+
+      return rawColor.replaceAll(',', '').replace(/\s+/g, ' ').trim();
+    };
+
+    if (!(indicator instanceof SVGElement)) {
+      throw new Error(`Missing progress indicator in ${testId}.`);
+    }
+
+    return normalizeColorString(getComputedStyle(indicator).stroke.trim());
+  });
+
+const readElementColor = async (page: Page, testId: string, selector: string) =>
+  page.getByTestId(testId).evaluate((el, targetSelector) => {
+    const target = el.querySelector(targetSelector);
+    const normalizeColorString = (rawColor: string) => {
+      const rgbMatch = rawColor.match(/^rgb\(([^)]+)\)$/);
+      if (rgbMatch) {
+        return rgbMatch[1].replaceAll(',', '').replace(/\s+/g, ' ').trim();
+      }
+
+      const srgbMatch = rawColor.match(/^color\(srgb ([^ ]+) ([^ ]+) ([^)]+)\)$/);
+      if (srgbMatch) {
+        return [srgbMatch[1], srgbMatch[2], srgbMatch[3]]
+          .map((channel) => Math.round(Number(channel) * 255))
+          .join(' ');
+      }
+
+      return rawColor.replaceAll(',', '').replace(/\s+/g, ' ').trim();
+    };
+
+    if (!(target instanceof HTMLElement) && !(target instanceof SVGElement)) {
+      throw new Error(`Missing ${targetSelector} in ${testId}.`);
+    }
+
+    return normalizeColorString(getComputedStyle(target).color.trim());
+  }, selector);
+
 test('MDButton visual states match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
 
@@ -304,6 +356,8 @@ test('MDButton routes independent label, icon, outline, elevation, state-layer, 
   expect(selected.stateLayerBackground).not.toBe(unselected.stateLayerBackground);
   expect(selected.labelColor).not.toBe(unselected.labelColor);
   expect(selected.iconColor).not.toBe(unselected.iconColor);
+  expect(selected.hoverOpacity).toBe('0.11');
+  expect(unselected.hoverOpacity).toBe('0.11');
 });
 
 test('MDChip visual states match baseline', async ({ page }) => {
@@ -1002,6 +1056,8 @@ test('MDIconButton routes icon, outline, state-layer, and toggle tokens through 
 
   expect(hover.iconColor).not.toBe(focus.iconColor);
   expect(focus.iconColor).not.toBe(pressed.iconColor);
+  expect(outlinedHover.borderColor).toBe(outlinedFocus.borderColor);
+  expect(outlinedFocus.borderColor).toBe(outlinedPressed.borderColor);
   expect(hover.stateLayerBackground).not.toBe(focus.stateLayerBackground);
   expect(focus.stateLayerBackground).not.toBe(pressed.stateLayerBackground);
   expect(hover.hoverOpacity).toBe('0.03');
@@ -1009,9 +1065,34 @@ test('MDIconButton routes icon, outline, state-layer, and toggle tokens through 
   expect(pressed.pressedOpacity).toBe('0.29');
   expect(outlinedHover.stateLayerBackground).not.toBe(outlinedFocus.stateLayerBackground);
   expect(outlinedFocus.stateLayerBackground).not.toBe(outlinedPressed.stateLayerBackground);
+  expect(outlinedHover.iconColor).not.toBe(outlinedFocus.iconColor);
+  expect(outlinedFocus.iconColor).not.toBe(outlinedPressed.iconColor);
+  expect(outlinedSelected.background).not.toBe(outlinedUnselected.background);
   expect(outlinedSelected.borderColor).not.toBe(outlinedUnselected.borderColor);
   expect(selected.iconColor).not.toBe(unselected.iconColor);
   expect(selected.stateLayerBackground).not.toBe(unselected.stateLayerBackground);
+});
+
+test('Button-family loading indicators consume the rendered component colors', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--loading-color-routing');
+  expect(await readProgressIndicatorColor(page, 'button-loading-color')).toBe(
+    await readElementColor(page, 'button-loading-color', '.md-button__label-text'),
+  );
+
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--loading-color-routing');
+  expect(await readProgressIndicatorColor(page, 'icon-button-loading-color')).toBe(
+    await readElementColor(page, 'icon-button-loading-color', '.md-icon-button__icon'),
+  );
+
+  await openStory(page, 'material-3-components-buttons-mdfab--loading-color-routing');
+  expect(await readProgressIndicatorColor(page, 'fab-loading-color')).toBe(
+    await readElementColor(page, 'fab-loading-color', '.md-fab__icon'),
+  );
+
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--loading-color-routing');
+  expect(await readProgressIndicatorColor(page, 'extended-fab-loading-color')).toBe(
+    await readElementColor(page, 'extended-fab-loading-color', '.md-extended-fab__icon'),
+  );
 });
 
 test('MDExtendedFab routes independent label, icon, elevation, and state-layer tokens', async ({

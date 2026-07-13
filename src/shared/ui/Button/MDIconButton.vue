@@ -255,6 +255,10 @@ if (import.meta.env.DEV) {
     z-index: 2;
     width: var(--md-icon-button-icon-size, 1lh);
     height: var(--md-icon-button-icon-size, 1lh);
+    --md-circular-progress-color: rgb(
+      from var(--md-private-icon-button-rendered-icon-color) r g b /
+        var(--md-private-icon-button-icon-opacity)
+    );
   }
 
   &_color-filled {

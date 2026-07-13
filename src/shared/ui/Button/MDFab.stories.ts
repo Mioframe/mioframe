@@ -24,7 +24,7 @@ const meta = {
           '',
           '**Project extension**: `loading` (`boolean | number`, `0` is active).',
           '',
-          '**Tokens**: checked against the Material 3 MCP/cache snapshot captured 2026-06-30. Exact official `--md-comp-fab-*` properties are the public override surface. Each style routes container, icon, elevation, and state-layer values through local `--md-private-fab-*` rendered variables, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
+          '**Tokens**: checked against the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. Exact official `--md-comp-fab-*` properties are the public override surface. Each style routes container, icon, elevation, and state-layer values through local `--md-private-fab-*` rendered variables, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
           '',
           '**Required icon**: an icon source (`mdSymbol` or the `icon` slot) is required. Missing icon content logs a development warning and renders no fallback placeholder.',
           '',
@@ -192,6 +192,26 @@ export const InteractionStateTokens: Story = {
               --md-comp-fab-primary-container-pressed-state-layer-color: rgb(60 60 255);
               --md-comp-fab-primary-container-pressed-state-layer-opacity: 0.31;
             "
+          />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const LoadingColorRouting: Story = {
+  render: () => ({
+    components: { MDFab },
+    template: `
+      <div data-testid="visual-md-fab-loading-color-routing" class="visual-surface">
+        <div class="visual-row">
+          <MDFab
+            data-testid="fab-loading-color"
+            tooltip="Loading"
+            color="primary"
+            loading
+            md-symbol="add"
+            style="--md-comp-fab-primary-icon-color: rgb(12 34 56);"
           />
         </div>
       </div>

@@ -96,7 +96,11 @@ if (import.meta.env.DEV) {
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
     <span class="md-fab__icon">
-      <MDCircularProgressIndicator v-if="hasLoading" :progress="loadingProgress" />
+      <MDCircularProgressIndicator
+        v-if="hasLoading"
+        class="md-fab__progress-indicator"
+        :progress="loadingProgress"
+      />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
@@ -510,6 +514,9 @@ if (import.meta.env.DEV) {
     --md-content-color: var(--md-private-fab-rendered-icon-color);
     justify-content: center;
     align-items: center;
+  }
+
+  &__progress-indicator {
     --md-circular-progress-color: var(--md-private-fab-rendered-icon-color);
   }
 

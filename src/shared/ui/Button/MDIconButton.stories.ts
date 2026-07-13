@@ -27,7 +27,7 @@ const meta = {
           '',
           '**Project extensions**: `loading` (`boolean | number`, `0` is active), `showTooltipOnClick`, `mdSymbolName`.',
           '',
-          '**Tokens**: checked against the Material 3 MCP/cache snapshot captured 2026-06-30. Exact official `--md-comp-icon-button-*` properties are the public override surface. Each variant routes container, icon, outline, and state-layer values through component-local rendered variables, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
+          '**Tokens**: checked against the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. Exact official `--md-comp-icon-button-*` properties are the public override surface. Each variant routes container, icon, outline, and state-layer values through component-local rendered variables, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
           '',
           '**Toggle semantics**: `variant="toggle"` exposes controlled `aria-pressed` from `selected` and morphs the icon fill/shape on select, per Material outlined-to-filled toggle guidance.',
           '',
@@ -35,7 +35,7 @@ const meta = {
           '',
           '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target via a private `--md-private-icon-button-target-size` implementation variable (no official component-token path exists for it).',
           '',
-          '**Outlined outline width**: scales by size per `md.comp.icon-button.<size>.outlined.outline.width` (xsmall/small/medium 1dp, large 2dp, xlarge 3dp).',
+          '**Outlined outline width**: scales by size per `md.comp.icon-button.<size>.outlined.outline.width` (xsmall/small/medium 1dp, large 2dp, xlarge 3dp). The outlined interaction contract exposes one official outline-color token, `--md-comp-icon-button-outlined-outline-color`; hover, focus, and pressed vary icon and state-layer values, not the outline token name.',
           '',
           '**Disabled precedence**: disabled selected-toggle controls explicitly exclude the active hover/focus/pressed and selected-color selectors so a higher-specificity `.md-icon-button_selected` rule cannot outrank `:disabled`.',
         ].join('\n'),
@@ -207,7 +207,7 @@ export const TokenRoutingMatrix: Story = {
             color="outlined"
             md-symbol-name="edit"
             style="
-              --md-comp-icon-button-outlined-hovered-outline-color: rgb(120 10 10);
+              --md-comp-icon-button-outlined-outline-color: rgb(120 10 10);
               --md-comp-icon-button-outlined-hovered-state-layer-color: rgb(255 0 0);
               --md-comp-icon-button-outlined-hovered-state-layer-opacity: 0.03;
             "
@@ -219,7 +219,8 @@ export const TokenRoutingMatrix: Story = {
             color="outlined"
             md-symbol-name="edit"
             style="
-              --md-comp-icon-button-outlined-focused-outline-color: rgb(10 120 10);
+              --md-comp-icon-button-outlined-outline-color: rgb(120 10 10);
+              --md-comp-icon-button-outlined-focused-icon-color: rgb(10 120 10);
               --md-comp-icon-button-outlined-focused-state-layer-color: rgb(0 128 0);
               --md-comp-icon-button-outlined-focused-state-layer-opacity: 0.17;
             "
@@ -231,7 +232,8 @@ export const TokenRoutingMatrix: Story = {
             color="outlined"
             md-symbol-name="edit"
             style="
-              --md-comp-icon-button-outlined-pressed-outline-color: rgb(10 10 120);
+              --md-comp-icon-button-outlined-outline-color: rgb(120 10 10);
+              --md-comp-icon-button-outlined-pressed-icon-color: rgb(10 10 120);
               --md-comp-icon-button-outlined-pressed-state-layer-color: rgb(0 0 255);
               --md-comp-icon-button-outlined-pressed-state-layer-opacity: 0.29;
             "
@@ -292,5 +294,25 @@ export const DenseToolbarInteraction: Story = {
   render: () => ({
     components: { MDIconButtonToolbarInteractionStory },
     template: '<MDIconButtonToolbarInteractionStory />',
+  }),
+};
+
+export const LoadingColorRouting: Story = {
+  render: () => ({
+    components: { MDIconButton },
+    template: `
+      <div data-testid="visual-md-icon-button-loading-color-routing" class="visual-surface">
+        <div class="visual-row">
+          <MDIconButton
+            data-testid="icon-button-loading-color"
+            tooltip="Loading"
+            color="filled"
+            loading
+            md-symbol-name="favorite"
+            style="--md-comp-icon-button-filled-icon-color: rgb(12 34 56);"
+          />
+        </div>
+      </div>
+    `,
   }),
 };

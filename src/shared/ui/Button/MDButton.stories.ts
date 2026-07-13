@@ -25,7 +25,7 @@ const meta = {
           '',
           '**Emits**: `click` (native click, not synthesized).',
           '',
-          '**Tokens**: checked against the Material 3 MCP/cache snapshot captured 2026-06-30. Exact official `--md-comp-button-*` properties are the public override surface. Each state and variant routes through component-local rendered variables for container, label, icon, outline, elevation, and state-layer color, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
+          '**Tokens**: checked against the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. Exact official `--md-comp-button-*` properties are the public override surface. Each state and variant routes through component-local rendered variables for container, label, icon, outline, elevation, and state-layer color, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
           '',
           '**Typography**: the label uses the shared `MD_TYPESCALE` utility classes (no handwritten font CSS). `md.comp.button.<size>.label-text` is a composite official token with no exact decomposed `--md-comp-*` path, so it is documented here rather than split into invented font/size/line-height/weight/tracking fragments: `xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large.',
           '',
@@ -301,8 +301,9 @@ export const TokenRoutingMatrix: Story = {
             color="filled"
             selected
             style="
+              --md-comp-button-filled-hovered-state-layer-opacity: 0.11;
+              --md-comp-button-filled-selected-container-color: rgb(120 20 20);
               --md-comp-button-filled-selected-hovered-state-layer-color: rgb(180 0 0);
-              --md-comp-button-filled-selected-hovered-state-layer-opacity: 0.11;
               --md-comp-button-filled-selected-label-text-color: rgb(20 20 20);
               --md-comp-button-filled-selected-hovered-label-text-color: rgb(180 0 180);
               --md-comp-button-filled-selected-icon-color: rgb(40 40 40);
@@ -318,12 +319,37 @@ export const TokenRoutingMatrix: Story = {
             variant="toggle"
             color="filled"
             style="
+              --md-comp-button-filled-hovered-state-layer-opacity: 0.11;
+              --md-comp-button-filled-unselected-container-color: rgb(20 20 120);
               --md-comp-button-filled-unselected-hovered-state-layer-color: rgb(0 0 180);
-              --md-comp-button-filled-unselected-hovered-state-layer-opacity: 0.21;
               --md-comp-button-filled-unselected-label-text-color: rgb(50 50 50);
               --md-comp-button-filled-unselected-hovered-label-text-color: rgb(0 90 0);
               --md-comp-button-filled-unselected-icon-color: rgb(70 70 70);
               --md-comp-button-filled-unselected-hovered-icon-color: rgb(160 80 0);
+            "
+          >
+            <template #icon>+</template>
+          </MDButton>
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const LoadingColorRouting: Story = {
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-loading-color-routing" class="visual-surface">
+        <div class="visual-row">
+          <MDButton
+            data-testid="button-loading-color"
+            label="Loading"
+            color="filled"
+            loading
+            style="
+              --md-comp-button-filled-label-text-color: rgb(12 34 56);
+              --md-comp-button-filled-icon-color: rgb(90 12 180);
             "
           >
             <template #icon>+</template>

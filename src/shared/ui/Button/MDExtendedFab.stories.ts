@@ -24,7 +24,7 @@ const meta = {
           '',
           '**Project extension**: `loading` (`boolean | number`, `0` is active).',
           '',
-          '**Tokens**: checked against the Material 3 MCP/cache snapshot captured 2026-06-30. Exact official `--md-comp-extended-fab-*` properties are the public override surface; icon-label gap follows size (`small`→8dp, `medium`→12dp, `large`→16dp) via `--md-comp-extended-fab-{small,medium,large}-icon-label-space`. Each style routes container, label, icon, elevation, and state-layer values through local rendered variables, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
+          '**Tokens**: checked against the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. Exact official `--md-comp-extended-fab-*` properties are the public override surface; icon-label gap follows size (`small`→8dp, `medium`→12dp, `large`→16dp) via `--md-comp-extended-fab-{small,medium,large}-icon-label-space`. Each style routes container, label, icon, elevation, and state-layer values through local rendered variables, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
           '',
           '**Typography**: the label uses the shared `MD_TYPESCALE` utility classes (no handwritten font CSS), mapped by size: `small`→title-medium, `medium`→title-large, `large`→headline-small.',
           '',
@@ -168,6 +168,29 @@ export const InteractionStateTokens: Story = {
               --md-comp-extended-fab-primary-container-pressed-container-elevation: 0 0 0 8px rgb(67 89 101);
               --md-comp-extended-fab-primary-container-pressed-state-layer-color: rgb(80 80 255);
               --md-comp-extended-fab-primary-container-pressed-state-layer-opacity: 0.31;
+            "
+          />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const LoadingColorRouting: Story = {
+  render: () => ({
+    components: { MDExtendedFab },
+    template: `
+      <div data-testid="visual-md-extended-fab-loading-color-routing" class="visual-surface">
+        <div class="visual-row">
+          <MDExtendedFab
+            data-testid="extended-fab-loading-color"
+            label="Loading"
+            color="primary"
+            loading
+            md-symbol="add"
+            style="
+              --md-comp-extended-fab-primary-label-text-color: rgb(12 34 56);
+              --md-comp-extended-fab-primary-icon-color: rgb(90 12 180);
             "
           />
         </div>
