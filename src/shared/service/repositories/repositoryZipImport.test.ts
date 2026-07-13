@@ -1,0 +1,652 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions -- tests inspect structured partial-import error details. */
+import { describe, expect, it, vi } from 'vitest';
+import { DomainError } from '@shared/lib/error';
+import { VirtualFileSystem } from '@shared/lib/virtualFileSystem';
+import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
+import {
+  createZipArchiveWriter,
+  packZipArchive,
+  ZipArchiveErrorCode,
+} from '@shared/lib/zipArchive';
+import { RepositoryZipErrorCode } from './repositoryZipContracts';
+import { importDirectoryZip } from './repositoryZipImport';
+
+const createVfs = () => {
+  const memoryFS = new MemoryFileSystem();
+  const vfs = new VirtualFileSystem();
+  vfs.mount('/', memoryFS);
+  return vfs;
+};
+
+const toArchiveFile = (entries: Parameters<typeof packZipArchive>[0]) =>
+  new File([packZipArchive(entries)], 'archive.zip', { type: 'application/zip' });
+
+describe('importDirectoryZip', () => {
+  it('writes files and creates nested directories, including empty-directory markers', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = toArchiveFile({
+      'root/file.txt': new TextEncoder().encode('hello'),
+      'root/nested/deep.txt': new TextEncoder().encode('deep'),
+      'root/empty/': new Uint8Array(0),
+    });
+
+    const onProgress = vi.fn();
+    await importDirectoryZip(vfs, '/target', archiveFile, onProgress);
+
+    await expect(vfs.readText('/target/root/file.txt')).resolves.toBe('hello');
+    await expect(vfs.readText('/target/root/nested/deep.txt')).resolves.toBe('deep');
+    await expect(vfs.exists('/target/root/empty')).resolves.toBe(true);
+    expect(onProgress).toHaveBeenCalledWith({ phase: 'validatingArchive' });
+    expect(onProgress).toHaveBeenCalledWith({ phase: 'checkingConflicts' });
+    expect(onProgress).toHaveBeenCalledWith({ phase: 'unpacking', current: 0, total: 2 });
+  });
+
+  it('stops before writing anything when a target file already exists', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.createDirectory('/target/root');
+    await vfs.writeFile('/target/root/file.txt', 'already here');
+
+    const archiveFile = toArchiveFile({
+      'root/file.txt': new TextEncoder().encode('new content'),
+      'root/other.txt': new TextEncoder().encode('other content'),
+    });
+
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1, paths: ['root/file.txt'] },
+    });
+    await expect(vfs.readText('/target/root/file.txt')).resolves.toBe('already here');
+    await expect(vfs.exists('/target/root/other.txt')).resolves.toBe(false);
+  });
+
+  it('stops before writing anything when a root-level target file already exists (contents-only archive layout)', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.writeFile('/target/file.txt', 'already here');
+
+    const archiveFile = toArchiveFile({
+      'file.txt': new TextEncoder().encode('new content'),
+      'other.txt': new TextEncoder().encode('other content'),
+    });
+
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1, paths: ['file.txt'] },
+    });
+    await expect(vfs.readText('/target/file.txt')).resolves.toBe('already here');
+    await expect(vfs.exists('/target/other.txt')).resolves.toBe(false);
+  });
+
+  it('stops before writing anything when a target file exists where the archive expects a directory', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.writeFile('/target/root', 'this is a file, not a directory');
+
+    const archiveFile = toArchiveFile({
+      'root/nested/file.txt': new TextEncoder().encode('content'),
+    });
+
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1, paths: ['root'] },
+    });
+    await expect(vfs.exists('/target/root/nested')).resolves.toBe(false);
+  });
+
+  it('rejects an archive that uses the same path for both a file and a directory', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = toArchiveFile({
+      'root/a': new TextEncoder().encode('file content'),
+      'root/a/b.txt': new TextEncoder().encode('nested under a file'),
+    });
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
+    await expect(vfs.exists('/target/root')).resolves.toBe(false);
+  });
+
+  it('rejects an archive with duplicate entries for the same path', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    // packZipArchive can't express duplicate keys (it packs a JS object), so build this fixture
+    // with the streaming writer directly, which allows writing the same entry path twice.
+    const chunks: Uint8Array[] = [];
+    const writer = createZipArchiveWriter((chunk) => {
+      chunks.push(chunk);
+    });
+    await writer.writeFileEntry('root/a.txt', {
+      // eslint-disable-next-line @typescript-eslint/require-await -- AsyncIterable contract requires async generator syntax even though this fixture yields synchronously
+      async *[Symbol.asyncIterator]() {
+        yield new TextEncoder().encode('first');
+      },
+    });
+    await writer.writeFileEntry('root/a.txt', {
+      // eslint-disable-next-line @typescript-eslint/require-await -- AsyncIterable contract requires async generator syntax even though this fixture yields synchronously
+      async *[Symbol.asyncIterator]() {
+        yield new TextEncoder().encode('second');
+      },
+    });
+    await writer.end();
+
+    const total = chunks.reduce((sum, part) => sum + part.length, 0);
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const part of chunks) {
+      merged.set(part, offset);
+      offset += part.length;
+    }
+    const archiveFile = new File([merged], 'archive.zip', { type: 'application/zip' });
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importConflict });
+    await expect(vfs.exists('/target/root/a.txt')).resolves.toBe(false);
+  });
+
+  describe('planned entry limit', () => {
+    const buildDeepPath = (index: number, dirsPerFile: number) =>
+      [...Array.from({ length: dirsPerFile }, (_, depth) => `d${index}-${depth}`), 'file.txt'].join(
+        '/',
+      );
+
+    it('rejects an archive whose implied parent directories push the total planned-entry count over the limit', async () => {
+      const vfs = createVfs();
+      await vfs.createDirectory('/target');
+
+      // 200 raw entries stay far below maximumEntries (10_000), but each unique 63-segment
+      // directory path is never shared with another file, so the implied directories alone push
+      // files.length + directories.size past maximumPlannedEntries (10_000).
+      const fileCount = 200;
+      const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+      for (let index = 0; index < fileCount; index += 1) {
+        entries[buildDeepPath(index, 63)] = new TextEncoder().encode('x');
+      }
+      const archiveFile = toArchiveFile(entries);
+
+      const createFile = vi.spyOn(vfs, 'createFile');
+      const createDirectory = vi.spyOn(vfs, 'createDirectory');
+
+      let caught: unknown;
+      try {
+        await importDirectoryZip(vfs, '/target', archiveFile);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(DomainError);
+      expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importResourceLimitExceeded });
+      expect((caught as DomainError).cause).toMatchObject({
+        message: expect.stringContaining('maximumPlannedEntries') as string,
+      });
+      expect(createDirectory).not.toHaveBeenCalled();
+      expect(createFile).not.toHaveBeenCalled();
+    });
+
+    it('accepts a plan at the total planned-entry limit', async () => {
+      const vfs = createVfs();
+      vi.spyOn(vfs, 'readDirectory').mockResolvedValue([]);
+      const createDirectory = vi.spyOn(vfs, 'createDirectory').mockResolvedValue(undefined);
+      const createFile = vi.spyOn(vfs, 'createFile').mockResolvedValue(undefined);
+
+      // fileCount * (dirsPerFile + 1) == 10_000 == maximumPlannedEntries exactly: every implied
+      // directory is unique, so files.length + directories.size lands right at the boundary.
+      const fileCount = 200;
+      const dirsPerFile = 49;
+      const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+      for (let index = 0; index < fileCount; index += 1) {
+        entries[buildDeepPath(index, dirsPerFile)] = new TextEncoder().encode('x');
+      }
+      const archiveFile = toArchiveFile(entries);
+
+      const result = await importDirectoryZip(vfs, '/target', archiveFile);
+
+      expect(result).toMatchObject({ status: 'completed' });
+      expect(createDirectory).toHaveBeenCalledTimes(fileCount * dirsPerFile);
+      expect(createFile).toHaveBeenCalledTimes(fileCount);
+    });
+  });
+
+  it('rejects an archive containing an unsafe entry path before any write', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = toArchiveFile({
+      '../escape.txt': new TextEncoder().encode('should not be written'),
+    });
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: ZipArchiveErrorCode.unsafeEntryPath });
+  });
+
+  it('rejects a damaged archive', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = new File([new TextEncoder().encode('not a zip')], 'archive.zip', {
+      type: 'application/zip',
+    });
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: ZipArchiveErrorCode.archiveDamaged });
+  });
+
+  it('classifies a write failure after an earlier write succeeded as a partial import', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+      'root/b.txt': new TextEncoder().encode('b content'),
+    });
+
+    const originalCreateFile = vfs.createFile.bind(vfs);
+    let callCount = 0;
+    vi.spyOn(vfs, 'createFile').mockImplementation(async (path, content) => {
+      callCount += 1;
+      if (callCount === 2) {
+        throw new Error('simulated storage failure');
+      }
+      return originalCreateFile(path, content);
+    });
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+  });
+
+  it('reclassifies a write-access-recovery error as a partial import once an earlier write succeeded', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+      'root/b.txt': new TextEncoder().encode('b content'),
+    });
+
+    const accessError = new WebFileSystemAccessRequiredError({
+      mode: 'readwrite',
+      spaceName: 'Test space',
+    });
+
+    const originalCreateFile = vfs.createFile.bind(vfs);
+    let callCount = 0;
+    vi.spyOn(vfs, 'createFile').mockImplementation(async (path, content) => {
+      callCount += 1;
+      if (callCount === 2) {
+        throw accessError;
+      }
+      return originalCreateFile(path, content);
+    });
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    // The first write already succeeded, so this must not surface as a plain recoverable
+    // write-access error: retrying the whole import would then hit a conflict on the file that
+    // already exists from this attempt, instead of telling the user the import may be partial.
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    if (!(caught instanceof DomainError)) throw new Error('expected DomainError');
+    expect(caught.cause).toBe(accessError);
+    await expect(vfs.readText('/target/root/a.txt')).resolves.toBe('a content');
+  });
+
+  it('classifies a write-access failure during the first mutation as a terminal partial import', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    // A top-level entry needs no ancestor directory creation, so the file write is the very
+    // first VFS mutation attempted — nothing has been written yet when it fails. Since this
+    // failure happens at or after the mutation phase starts, it is classified as a terminal
+    // partial import rather than a plain propagated error.
+    const archiveFile = toArchiveFile({
+      'a.txt': new TextEncoder().encode('a content'),
+    });
+
+    const accessError = new WebFileSystemAccessRequiredError({
+      mode: 'readwrite',
+      spaceName: 'Test space',
+    });
+
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(accessError);
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    expect((caught as DomainError).cause).toBe(accessError);
+  });
+
+  it('surfaces a pre-write conflict, not a partial-import error, when retried after a partial write', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+      'root/b.txt': new TextEncoder().encode('b content'),
+    });
+
+    const originalCreateFile = vfs.createFile.bind(vfs);
+    let callCount = 0;
+    vi.spyOn(vfs, 'createFile').mockImplementation(async (path, content) => {
+      callCount += 1;
+      if (callCount === 2) {
+        throw new Error('simulated storage failure');
+      }
+      return originalCreateFile(path, content);
+    });
+
+    let firstAttemptError: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      firstAttemptError = error;
+    }
+
+    expect(firstAttemptError).toMatchObject({
+      code: RepositoryZipErrorCode.importWritePartiallyFailed,
+    });
+
+    // Simulates a caller retrying the same import without knowing about the partial write above
+    // (e.g. after mistaking `importWritePartiallyFailed` for a recoverable access error). The
+    // retry must stop at preflight with a conflict, not silently overwrite or continue the
+    // partial write.
+    await expect(importDirectoryZip(vfs, '/target', archiveFile)).resolves.toMatchObject({
+      status: 'conflicts',
+      report: { total: 1 },
+    });
+  });
+
+  it('classifies a write failure as partial even when it is the very first write attempted', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    // A top-level entry needs no ancestor directory creation, so the file write is the very
+    // first VFS mutation attempted. The write may have partially taken effect at the provider
+    // before rejecting, so this is still reported as a terminal partial import, not a plain error.
+    const archiveFile = toArchiveFile({
+      'a.txt': new TextEncoder().encode('a content'),
+    });
+
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(new Error('simulated storage failure'));
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+  });
+
+  it('preserves the first file mutation error as the cause after reusing an existing ancestor directory', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    // The archive's only ancestor directory already exists, so planning excludes it from
+    // `directoriesToCreate` and it must not count as a mutation before the first (and only) file
+    // write.
+    await vfs.createDirectory('/target/root');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+    });
+
+    const accessError = new WebFileSystemAccessRequiredError({
+      mode: 'readwrite',
+      spaceName: 'Test space',
+    });
+
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(accessError);
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    expect((caught as DomainError).cause).toBe(accessError);
+  });
+
+  it('preserves the first storage error as the cause after reusing an existing ancestor directory', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.createDirectory('/target/root');
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+    });
+
+    const storageError = new Error('simulated storage failure');
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(storageError);
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    expect((caught as DomainError).cause).toBe(storageError);
+  });
+
+  it('classifies a write failure as partial when only a real new-directory mutation preceded it', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    // `/target/root` does not exist yet, so creating it is a real mutation, unlike the two tests
+    // above where the ancestor directory already existed.
+
+    const archiveFile = toArchiveFile({
+      'root/a.txt': new TextEncoder().encode('a content'),
+    });
+
+    vi.spyOn(vfs, 'createFile').mockRejectedValue(new Error('simulated storage failure'));
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DomainError);
+    expect(caught).toMatchObject({ code: RepositoryZipErrorCode.importWritePartiallyFailed });
+    await expect(vfs.exists('/target/root')).resolves.toBe(true);
+  });
+
+  it('reads one directory snapshot for many sibling archive entries', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    const readDirectory = vi.spyOn(vfs, 'readDirectory');
+    const archiveFile = toArchiveFile({
+      'a.txt': new Uint8Array([1]),
+      'b.txt': new Uint8Array([2]),
+      'c.txt': new Uint8Array([3]),
+    });
+
+    await importDirectoryZip(vfs, '/target', archiveFile);
+
+    expect(readDirectory.mock.calls.filter(([path]) => path === '/target')).toHaveLength(1);
+  });
+
+  it('resolves a large flat archive with bounded, non-quadratic directory reads', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    const readDirectory = vi.spyOn(vfs, 'readDirectory');
+
+    const entryCount = 1000;
+    const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+    for (let index = 0; index < entryCount; index += 1) {
+      entries[`dir-${index}/file.txt`] = new TextEncoder().encode('x');
+    }
+    const archiveFile = toArchiveFile(entries);
+
+    const result = await importDirectoryZip(vfs, '/target', archiveFile);
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      summary: { importedFiles: entryCount, createdDirectories: entryCount },
+    });
+    // A per-entry scan over every previously-discovered directory would read the target directory
+    // once per archive entry (O(entryCount) growing calls, quadratic overall work). Indexed
+    // ancestor lookups mean every one of these 1000 top-level directories shares one cached
+    // snapshot of their common parent, so the target directory is read exactly once regardless of
+    // archive size.
+    expect(readDirectory.mock.calls.filter(([path]) => path === '/target')).toHaveLength(1);
+    expect(readDirectory).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports one conflict for an entire blocked subtree without snapshotting any of its descendants', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+    await vfs.writeFile('/target/blocked', 'this is a file, not a directory');
+
+    const fileCount = 500;
+    const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+    for (let index = 0; index < fileCount; index += 1) {
+      entries[`blocked/level-${index}/deep-${index}/file.txt`] = new TextEncoder().encode('x');
+    }
+    const archiveFile = toArchiveFile(entries);
+    const readDirectory = vi.spyOn(vfs, 'readDirectory');
+    const createFile = vi.spyOn(vfs, 'createFile');
+    const createDirectory = vi.spyOn(vfs, 'createDirectory');
+
+    const result = await importDirectoryZip(vfs, '/target', archiveFile);
+
+    expect(result).toMatchObject({ status: 'conflicts', report: { total: 1, paths: ['blocked'] } });
+    // Only the target root is ever read; nothing under the blocked "blocked" entry is snapshotted,
+    // since the whole subtree is excluded by one ancestor-set lookup instead of a directory read.
+    expect(readDirectory).toHaveBeenCalledTimes(1);
+    expect(createFile).not.toHaveBeenCalled();
+    expect(createDirectory).not.toHaveBeenCalled();
+  });
+
+  describe('progress delivery', () => {
+    it('awaits an async onProgress callback before continuing to the next entry', async () => {
+      const vfs = createVfs();
+      await vfs.createDirectory('/target');
+
+      const archiveFile = toArchiveFile({
+        'a.txt': new TextEncoder().encode('a'),
+        'b.txt': new TextEncoder().encode('b'),
+      });
+
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const onProgress = vi.fn(async () => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await Promise.resolve();
+        await Promise.resolve();
+        inFlight -= 1;
+      });
+
+      await importDirectoryZip(vfs, '/target', archiveFile, onProgress);
+
+      expect(maxInFlight).toBe(1);
+    });
+
+    it('coalesces intermediate unpacking progress and always emits a non-boundary final count', async () => {
+      const vfs = createVfs();
+      await vfs.createDirectory('/target');
+
+      const entryCount = 130;
+      const entries: Record<string, Uint8Array<ArrayBuffer>> = {};
+      for (let index = 0; index < entryCount; index += 1) {
+        entries[`file-${index}.txt`] = new TextEncoder().encode('x');
+      }
+      const archiveFile = toArchiveFile(entries);
+
+      const onProgress = vi.fn();
+      await importDirectoryZip(vfs, '/target', archiveFile, onProgress);
+
+      const unpackingCounts = onProgress.mock.calls
+        .map(([progress]) => progress as { phase: string; current?: number; total?: number })
+        .filter((progress) => progress.phase === 'unpacking')
+        .map((progress) => progress.current);
+
+      expect(unpackingCounts).toEqual([0, 50, 100, entryCount]);
+    });
+  });
+
+  it('preserves the original error and performs zero mutations when a preflight read fails before the mutation phase', async () => {
+    const vfs = createVfs();
+    await vfs.createDirectory('/target');
+
+    const readError = new WebFileSystemAccessRequiredError({
+      mode: 'read',
+      spaceName: 'Test space',
+    });
+    vi.spyOn(vfs, 'readDirectory').mockRejectedValue(readError);
+
+    const archiveFile = toArchiveFile({
+      'a.txt': new TextEncoder().encode('a content'),
+    });
+
+    const createFile = vi.spyOn(vfs, 'createFile');
+    const createDirectory = vi.spyOn(vfs, 'createDirectory');
+
+    let caught: unknown;
+    try {
+      await importDirectoryZip(vfs, '/target', archiveFile);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBe(readError);
+    expect(createFile).not.toHaveBeenCalled();
+    expect(createDirectory).not.toHaveBeenCalled();
+  });
+});
+/* eslint-enable @typescript-eslint/consistent-type-assertions -- partial-error inspection ends */

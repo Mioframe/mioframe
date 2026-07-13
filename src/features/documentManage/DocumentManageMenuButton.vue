@@ -16,12 +16,18 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
+const emit = defineEmits<{
+  /** Emitted after the user selects exporting this document as a ZIP archive. */
+  selectExportZip: [];
+}>();
+
 const { documentId, directoryPath } = toRefs(props);
 
 enum DocumentContextEvent {
   remove,
   rename,
   exportJson,
+  exportZip,
 }
 
 const documentActionButtons = defineMenuButtonList([
@@ -31,6 +37,12 @@ const documentActionButtons = defineMenuButtonList([
     label: 'Export JSON',
     symbolName: 'file_json',
     key: DocumentContextEvent.exportJson,
+  },
+
+  {
+    label: 'Export ZIP',
+    symbolName: 'folder_zip',
+    key: DocumentContextEvent.exportZip,
   },
 
   {
@@ -74,6 +86,10 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
           });
         }
       }
+      break;
+    }
+    case DocumentContextEvent.exportZip: {
+      emit('selectExportZip');
       break;
     }
 

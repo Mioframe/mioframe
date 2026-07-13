@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions -- RPC envelopes require runtime narrowing from unknown wire data. */
 /**
  * Implementation of proxy service functionality that enables remote function calls and object property access.
  *
  * This module provides utilities for creating clients and services that can communicate across different execution contexts,
  * allowing functions to be called remotely on a server-side object as if they were local.
- * @module ProxyService
  */
 
 import { isFunction, isString, isUndefined } from 'es-toolkit';
@@ -22,6 +22,7 @@ import type {
   RemoveFunctionMessage,
   ResultMessage,
   SerializeJson,
+  SerializedEnvelope,
   TransformerRegistration,
 } from './types';
 import {
@@ -56,16 +57,17 @@ const callRemotePath = async (
   await waitServiceReady(provider, serviceId);
 
   return new Promise((resolve, reject) => {
+    const serializedArgs = serialize(args);
     const requestPayload: CallPathMessage = {
       serviceId,
       callId: uid(),
-      args: serialize(args),
+      args: serializedArgs.payload,
       path,
     };
 
     pendingRequests.set(requestPayload.callId, { resolve, reject });
 
-    provider.postMessage(requestPayload);
+    provider.postMessage(requestPayload, serializedArgs.transferables);
   });
 };
 
@@ -109,7 +111,6 @@ const createProxy = <T extends Record<string, unknown>, Exceptions = never>(
 ): ClientObject<T, Exceptions> => {
   const target: object = () => ({});
 
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Proxy construction for ClientObject requires assertion
   return new Proxy(target, {
     get: (_target, prop) => {
       if (isString(prop)) {
@@ -215,7 +216,6 @@ const createFunctionDescription = <F extends AnyFunction>(
   const functionId = uid();
 
   // FunctionDescription is a branded type requiring assertion to match inferred type
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Branded type requires assertion to preserve function type
   const functionDescription: FunctionDescription<F> = {
     functionId,
   } as FunctionDescription<F>;
@@ -269,16 +269,17 @@ const createProxyFunction = (
 
     return new Promise((resolve, reject) => {
       const callId = uid();
+      const serializedArgs = serialize(args);
       const callDescription: CallFunctionMessage = {
         serviceId,
         callId,
         functionId,
-        args: serialize(args),
+        args: serializedArgs.payload,
       };
 
       pendingRequests.set(callId, { resolve, reject });
 
-      provider.postMessage(callDescription);
+      provider.postMessage(callDescription, serializedArgs.transferables);
     });
   };
 
@@ -303,13 +304,14 @@ const createProxyFunction = (
  * @param result - The actual result data to send
  */
 const sendResult = (provider: Provider, serviceId: string, resultId: string, result: unknown) => {
+  const serializedResult = serialize(result);
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
-    result: serialize(result),
+    result: serializedResult.payload,
   };
 
-  provider.postMessage(resultMessage);
+  provider.postMessage(resultMessage, serializedResult.transferables);
 };
 
 /**
@@ -323,13 +325,14 @@ const sendResult = (provider: Provider, serviceId: string, resultId: string, res
  * @param error - The error object to send
  */
 const sendError = (provider: Provider, serviceId: string, resultId: string, error: unknown) => {
+  const serializedError = serialize(error);
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
-    error: serialize(error),
+    error: serializedError.payload,
   };
 
-  provider.postMessage(resultMessage);
+  provider.postMessage(resultMessage, serializedError.transferables);
 };
 
 /**
@@ -351,17 +354,43 @@ const serviceRegister = new Set<string>();
 const superJson = new SuperJSON({ dedupe: true });
 
 /**
- * Serializes data using SuperJSON, marking it appropriately for deserialization.
- *
- * This function handles serialization of complex data structures so they can be sent
- * across execution contexts while preserving types and references.
- * @param data - Data to serialize
- * @returns Serialized representation that can be transmitted over the wire
+ * Collects unique ArrayBuffer leaves without mutating the serialized payload.
+ * @param payload - Already serialized SuperJSON payload.
+ * @returns Unique transferable buffers referenced by the payload.
  */
-export const serialize = <T>(data: T) =>
-  // SuperJSON returns generic SuperJSONResult, we need branded SerializeJson type
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required to cast to branded SerializeJson type
-  superJson.serialize(data) as SerializeJson<T>;
+const collectTransferableBuffers = (payload: unknown): ArrayBuffer[] => {
+  const buffers = new Set<ArrayBuffer>();
+  const visited = new WeakSet<object>();
+  const visit = (value: unknown): void => {
+    if (value instanceof ArrayBuffer) {
+      buffers.add(value);
+      return;
+    }
+    if (typeof value !== 'object' || value === null || visited.has(value)) return;
+    visited.add(value);
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (Object.getPrototypeOf(value) !== Object.prototype) return;
+    for (const item of Object.values(value as Record<string, unknown>)) visit(item);
+  };
+  visit(payload);
+  return [...buffers];
+};
+
+/**
+ * Serializes RPC data while preserving transferable binary buffers outside SuperJSON JSON data.
+ * @param data - Original RPC value graph.
+ * @returns SuperJSON payload and its deduplicated transfer list.
+ */
+export const serialize = <T>(data: T): SerializedEnvelope<T> => {
+  const payload = superJson.serialize(data) as SerializeJson<T>;
+  return {
+    payload,
+    transferables: collectTransferableBuffers(payload),
+  };
+};
 
 /**
  * Deserializes data back to its original types using SuperJSON.
@@ -372,10 +401,7 @@ export const serialize = <T>(data: T) =>
  * @returns The deserialized value in its proper type
  */
 export const deserialize = <T>(data: SerializeJson<T>) =>
-  superJson.deserialize<T>(
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- SuperJSON accepts the serialized shape, while our branded type widens optional meta for exactOptionalPropertyTypes
-    data as SuperJSONResult,
-  );
+  superJson.deserialize<T>(data as SuperJSONResult);
 
 /**
  * Creates and registers a service for handling remote calls from clients.
@@ -477,3 +503,4 @@ export const createService = (
 
   postReady();
 };
+/* eslint-enable @typescript-eslint/consistent-type-assertions -- RPC wire narrowing ends here */

@@ -1,18 +1,13 @@
 import type { Ref } from 'vue';
 import { ref, watch } from 'vue';
-import { useRemoveFSEntry } from '@feature/entryRemove';
-import { useImportDocumentAction } from '@feature/importDocument';
 
 /**
- * Owns open/close state for entry-manage dialogs (create directory, create document, rename)
- * and handles direct actions (remove, import). Resets all dialogs when the path changes.
- * @param path - Reactive entry path used by the owned actions and dialog-reset watcher.
- * @returns Dialog visibility refs plus action and close handlers for the entry-manage flow.
+ * Owns open/close state for entry-manage's local dialogs (create directory, create document,
+ * rename). Resets all dialogs when the path changes.
+ * @param path - Reactive entry path used by the dialog-reset watcher.
+ * @returns Dialog visibility refs and open/close handlers for entry-manage's local dialogs.
  */
 export const useEntryManageDialogState = (path: Ref<string>) => {
-  const { remove } = useRemoveFSEntry();
-  const { importDocument } = useImportDocumentAction();
-
   const showCreateDirectoryDialog = ref(false);
   const showCreateDocumentDialog = ref(false);
   const showRenameDialog = ref(false);
@@ -32,12 +27,6 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
   const onSelectRename = () => {
     showRenameDialog.value = true;
   };
-  const onSelectRemove = async () => {
-    await remove(path.value);
-  };
-  const onSelectImportJson = async () => {
-    await importDocument(path.value);
-  };
 
   const onCloseCreateDirectoryDialog = () => {
     showCreateDirectoryDialog.value = false;
@@ -56,8 +45,6 @@ export const useEntryManageDialogState = (path: Ref<string>) => {
     onSelectCreateDirectory,
     onSelectCreateDocument,
     onSelectRename,
-    onSelectRemove,
-    onSelectImportJson,
     onCloseCreateDirectoryDialog,
     onCloseCreateDocumentDialog,
     onCloseRenameDialog,

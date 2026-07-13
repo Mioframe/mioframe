@@ -15,6 +15,7 @@ import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 type MockRepoInstance = {
   create: ReturnType<typeof vi.fn<(initialValue: CFRDocumentContent) => { documentId: string }>>;
   delete: ReturnType<typeof vi.fn>;
+  flush: ReturnType<typeof vi.fn<() => Promise<void>>>;
 };
 
 const directoryContentByPath = vi.hoisted(
@@ -160,6 +161,7 @@ vi.mock('@automerge/automerge-repo', async (importOriginal) => {
     });
 
     readonly delete = vi.fn();
+    readonly flush = vi.fn().mockResolvedValue(undefined);
     lastCreatedValue?: CFRDocumentContent | undefined;
 
     constructor(readonly config: RepoConfig & { storage?: { path?: string | undefined } }) {
@@ -184,7 +186,16 @@ describe('useRepositoriesService', () => {
     repoInstances.clear();
     registerWriteAccessRecoveryHandlerMock.mockReset();
     registerWriteAccessRecoveryHandlerMock.mockReturnValue(() => undefined);
-    createRetryingStorageAdapterMock.mockClear();
+    createRetryingStorageAdapterMock.mockReset();
+    createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+      ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+      flushPendingSaves: vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 0,
+        status: 'flushed' as const,
+      }),
+      hasPendingSaves: vi.fn().mockReturnValue(false),
+    }));
     vfsReadDirectory.mockClear();
     vfsReadFile.mockClear();
     vfsDelete.mockClear();
@@ -1279,6 +1290,424 @@ describe('useRepositoriesService', () => {
       const service = useRepositoriesService();
 
       expect(service).not.toHaveProperty('importDocumentFromJsonText');
+    });
+  });
+
+  describe('importDirectoryZip', () => {
+    afterEach(() => {
+      vi.doUnmock('./repositoryZipImport');
+    });
+
+    it('settles pending repository saves before delegating to the low-level import', async () => {
+      const targetPath = '/zip-import-target';
+      const callOrder: string[] = [];
+      const flushPendingSaves = vi.fn().mockImplementation(() => {
+        callOrder.push('flushPendingSaves');
+        return Promise.resolve({ flushedCount: 1, pendingCount: 0, status: 'flushed' as const });
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelImport = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelImport');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipImport', () => ({ importDirectoryZip: lowLevelImport }));
+
+      createDirectoryContentSubject(targetPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      // Caches a repo for the target path so its `hasPendingSaves`/`flushPendingSaves` are
+      // actually consulted by the freshness step, not skipped as "nothing cached yet".
+      await service.initializeRepository(targetPath);
+
+      const archiveFile = new File([new Uint8Array()], 'archive.zip');
+      await service.importDirectoryZip(targetPath, archiveFile);
+
+      expect(callOrder).toEqual(['flushPendingSaves', 'lowLevelImport']);
+      expect(lowLevelImport).toHaveBeenCalledWith(
+        expect.anything(),
+        targetPath,
+        archiveFile,
+        undefined,
+      );
+    });
+
+    it('stops before any write when repository saves cannot be settled', async () => {
+      const targetPath = '/zip-import-blocked';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'stillBlocked' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelImport = vi.fn();
+      vi.doMock('./repositoryZipImport', () => ({ importDirectoryZip: lowLevelImport }));
+
+      createDirectoryContentSubject(targetPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(targetPath);
+
+      const archiveFile = new File([new Uint8Array()], 'archive.zip');
+      const error = await service
+        .importDirectoryZip(targetPath, archiveFile)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.importStorageNotReady });
+      expect(flushPendingSaves).toHaveBeenCalled();
+      expect(lowLevelImport).not.toHaveBeenCalled();
+    });
+
+    it('settles every nested cached repository under the import target before preflight', async () => {
+      const targetPath = '/zip-import-nested-target';
+      const nestedPath = '/zip-import-nested-target/child';
+      const callOrder: string[] = [];
+
+      const lowLevelImport = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelImport');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipImport', () => ({ importDirectoryZip: lowLevelImport }));
+
+      createDirectoryContentSubject(targetPath, []);
+      createDirectoryContentSubject(nestedPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(targetPath);
+      await service.initializeRepository(nestedPath);
+
+      const targetRepo = repoInstances.get(targetPath)?.[0];
+      const nestedRepo = repoInstances.get(nestedPath)?.[0];
+      targetRepo?.flush.mockImplementation(() => {
+        callOrder.push('flush:target');
+        return Promise.resolve();
+      });
+      nestedRepo?.flush.mockImplementation(() => {
+        callOrder.push('flush:nested');
+        return Promise.resolve();
+      });
+
+      const archiveFile = new File([new Uint8Array()], 'archive.zip');
+      await service.importDirectoryZip(targetPath, archiveFile);
+
+      expect(callOrder).toEqual(['flush:target', 'flush:nested', 'lowLevelImport']);
+    });
+  });
+
+  describe('exportDirectoryZip', () => {
+    afterEach(() => {
+      vi.doUnmock('./repositoryZipExport');
+    });
+
+    it('settles every cached repository under the exported directory before delegating to the low-level export', async () => {
+      const path = '/export-directory-target';
+      const nestedPath = '/export-directory-target/nested';
+      const callOrder: string[] = [];
+
+      const lowLevelExportDirectory = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelExportDirectory');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      createDirectoryContentSubject(nestedPath, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(path);
+      await service.initializeRepository(nestedPath);
+
+      const repo = repoInstances.get(path)?.[0];
+      const nestedRepo = repoInstances.get(nestedPath)?.[0];
+      repo?.flush.mockImplementation(() => {
+        callOrder.push('flush:root');
+        return Promise.resolve();
+      });
+      nestedRepo?.flush.mockImplementation(() => {
+        callOrder.push('flush:nested');
+        return Promise.resolve();
+      });
+
+      const onChunk = vi.fn();
+      await service.exportDirectoryZip(path, onChunk);
+
+      expect(callOrder).toEqual(['flush:root', 'flush:nested', 'lowLevelExportDirectory']);
+      expect(lowLevelExportDirectory).toHaveBeenCalledWith(
+        expect.anything(),
+        path,
+        onChunk,
+        undefined,
+      );
+    });
+
+    it('does not instantiate a repository for an on-disk-only directory', async () => {
+      const path = '/export-directory-disk-only';
+      const lowLevelExportDirectory = vi.fn().mockResolvedValue(undefined);
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.exportDirectoryZip(path, vi.fn());
+
+      expect(repoInstances.get(path)).toBeUndefined();
+      expect(lowLevelExportDirectory).toHaveBeenCalled();
+    });
+
+    it('stops before emitting any chunk when a cached repository under the directory is still blocked', async () => {
+      const path = '/export-directory-blocked';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'stillBlocked' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDirectory = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(path);
+
+      const onChunk = vi.fn();
+      const error = await service.exportDirectoryZip(path, onChunk).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDirectory).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+
+    it('stops before emitting any chunk when a cached repository under the directory fails to settle', async () => {
+      const path = '/export-directory-failed';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'failed' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDirectory = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: lowLevelExportDirectory,
+        exportDocumentZip: vi.fn(),
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(path);
+
+      const onChunk = vi.fn();
+      const error = await service.exportDirectoryZip(path, onChunk).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDirectory).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('exportDocumentZip', () => {
+    afterEach(() => {
+      vi.doUnmock('./repositoryZipExport');
+    });
+
+    it('settles the exact cached repository, even one newly cached with no storage-visible file yet, before delegating to the low-level export', async () => {
+      const path = '/export-document-target';
+      const callOrder: string[] = [];
+      const lowLevelExportDocument = vi.fn().mockImplementation(() => {
+        callOrder.push('lowLevelExportDocument');
+        return Promise.resolve();
+      });
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      // The repo is freshly cached by `createDocument` with no storage-visible file confirmed on
+      // disk yet (`vfsReadDirectory` still reports the empty directory set above).
+      const documentId = await service.createDocument(path, {
+        body: [],
+        name: 'Doc',
+        type: 'document',
+        version: 1,
+      } satisfies CFRDocumentContent);
+
+      const repo = repoInstances.get(path)?.[0];
+      repo?.flush.mockImplementation(() => {
+        callOrder.push('flush');
+        return Promise.resolve();
+      });
+
+      const onChunk = vi.fn();
+      await service.exportDocumentZip(path, documentId, onChunk);
+
+      expect(callOrder).toEqual(['flush', 'lowLevelExportDocument']);
+      expect(lowLevelExportDocument).toHaveBeenCalledWith(
+        expect.anything(),
+        path,
+        documentId,
+        onChunk,
+        undefined,
+      );
+    });
+
+    it('does not instantiate a repository for an on-disk-only document directory', async () => {
+      const path = '/export-document-disk-only';
+      const documentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+      const lowLevelExportDocument = vi.fn().mockResolvedValue(undefined);
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.exportDocumentZip(path, documentId, vi.fn());
+
+      expect(repoInstances.get(path)).toBeUndefined();
+      expect(lowLevelExportDocument).toHaveBeenCalled();
+    });
+
+    it('stops before emitting any chunk when the cached repository is still blocked', async () => {
+      const path = '/export-document-blocked';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'stillBlocked' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDocument = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      const documentId = await service.createDocument(path, {
+        body: [],
+        name: 'Doc',
+        type: 'document',
+        version: 1,
+      } satisfies CFRDocumentContent);
+
+      const onChunk = vi.fn();
+      const error = await service
+        .exportDocumentZip(path, documentId, onChunk)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDocument).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+
+    it('stops before emitting any chunk when the cached repository fails to settle', async () => {
+      const path = '/export-document-failed';
+      const flushPendingSaves = vi.fn().mockResolvedValue({
+        flushedCount: 0,
+        pendingCount: 1,
+        status: 'failed' as const,
+      });
+
+      createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn().mockReturnValue(true),
+      }));
+
+      const lowLevelExportDocument = vi.fn();
+      vi.doMock('./repositoryZipExport', () => ({
+        exportDirectoryZip: vi.fn(),
+        exportDocumentZip: lowLevelExportDocument,
+      }));
+
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const { RepositoryZipErrorCode } = await import('./repositoryZipContracts');
+      const { DomainError } = await import('@shared/lib/error');
+      const service = useRepositoriesService();
+
+      const documentId = await service.createDocument(path, {
+        body: [],
+        name: 'Doc',
+        type: 'document',
+        version: 1,
+      } satisfies CFRDocumentContent);
+
+      const onChunk = vi.fn();
+      const error = await service
+        .exportDocumentZip(path, documentId, onChunk)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toMatchObject({ code: RepositoryZipErrorCode.exportStorageNotReady });
+      expect(lowLevelExportDocument).not.toHaveBeenCalled();
+      expect(onChunk).not.toHaveBeenCalled();
     });
   });
 });

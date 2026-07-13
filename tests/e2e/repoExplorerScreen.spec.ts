@@ -79,7 +79,10 @@ test('repo explorer keeps one primary Add flow and preserves directory creation 
   await currentDirectoryMenu.click();
   await expect(page.getByRole('menuitem', { name: /^create directory$/i })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /^create document$/i })).toHaveCount(0);
-  await expect(page.getByRole('menuitem', { name: /^import json$/i })).toHaveCount(0);
+  // Document creation stays Add-sheet-only, but import actions are directory context-menu
+  // actions, not Add-sheet actions — see docs/user/data/02-backup-and-restore.md.
+  await expect(page.getByRole('menuitem', { name: /^import json$/i })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^import zip$/i })).toBeVisible();
   await page.keyboard.press('Escape');
 
   const addSheet = await openAddSheet(page);

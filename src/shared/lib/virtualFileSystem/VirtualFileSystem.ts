@@ -287,6 +287,41 @@ export class VirtualFileSystem {
   }
 
   /**
+   * Shared write path for {@link writeFile} and {@link createFile}: tracks activity, acquires the
+   * path lock, resolves the owning provider, writes through it, and emits the resulting VFS event.
+   * @param path - Absolute path to the file.
+   * @param content - Content (string, Blob, BufferSource).
+   * @param options - Whether an existing file may be overwritten, and which event type a
+   * successful write should emit.
+   * @returns Promise that resolves when the write and event emission are complete.
+   * @throws VfsError with code `FileSystemError.FileExists` when `overwrite` is `false` and a file
+   * already exists at `path`.
+   */
+  private async writeFileWithOptions(
+    path: string,
+    content: FileContent,
+    options: { overwrite: boolean; eventType: VfsEventType.WRITE | VfsEventType.CREATE },
+  ): Promise<void> {
+    return this.activityTracker.track({ type: 'writeFile', path }, () =>
+      this.locks.request(path, async () => {
+        const { provider, relativePath } = this.resolve(path);
+
+        const { stat } = await provider.writeFile(relativePath, content, {
+          create: true,
+          overwrite: options.overwrite,
+        });
+
+        this.emitVfsEvent({
+          type: options.eventType,
+          path,
+          nodeType: FSNodeType.File,
+          size: stat.size,
+        });
+      }),
+    );
+  }
+
+  /**
    * Writes content to a file. If the file doesn't exist, it creates it; if it does, it overwrites it.
    * Emits {@link VfsEventType.WRITE} after a successful write so watchers can
    * invalidate the affected path without assuming whether the file was created
@@ -296,23 +331,25 @@ export class VirtualFileSystem {
    * @returns Promise that resolves when the write and event emission are complete.
    */
   public async writeFile(path: string, content: FileContent): Promise<void> {
-    return this.activityTracker.track({ type: 'writeFile', path }, () =>
-      this.locks.request(path, async () => {
-        const { provider, relativePath } = this.resolve(path);
+    return this.writeFileWithOptions(path, content, {
+      overwrite: true,
+      eventType: VfsEventType.WRITE,
+    });
+  }
 
-        const { stat } = await provider.writeFile(relativePath, content, {
-          create: true,
-          overwrite: true,
-        });
-
-        this.emitVfsEvent({
-          type: VfsEventType.WRITE,
-          path,
-          nodeType: FSNodeType.File,
-          size: stat.size,
-        });
-      }),
-    );
+  /**
+   * Creates a new file without overwriting an existing one at the same path.
+   * Emits {@link VfsEventType.CREATE} after a successful write.
+   * @param path - Absolute path to the file.
+   * @param content - Content (string, Blob, BufferSource).
+   * @returns Promise that resolves when the write and event emission are complete.
+   * @throws VfsError with code `FileSystemError.FileExists` if a file already exists at `path`.
+   */
+  public async createFile(path: string, content: FileContent): Promise<void> {
+    return this.writeFileWithOptions(path, content, {
+      overwrite: false,
+      eventType: VfsEventType.CREATE,
+    });
   }
 
   /**
