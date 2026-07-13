@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { openStory } from './storybook';
 
-test('MDFabContainer FAB stays anchored to pane bottom after async content loads', async ({
+test('FabContainer FAB stays anchored to pane bottom after async content loads', async ({
   page,
 }) => {
-  await openStory(page, 'project-ui-buttons-mdfabcontainer--pane-anchoring-loading-transition');
+  await openStory(page, 'project-ui-buttons-fabcontainer--pane-anchoring-loading-transition');
 
   const pane = page.locator('#fab-test-pane');
-  const fabSurface = page.locator('.md-fab-container__surface');
+  const fabSurface = page.locator('.fab-container__surface');
 
   // Wait for Floating UI to position the FAB surface
   await fabSurface.waitFor({ state: 'attached' });
@@ -79,14 +79,14 @@ test('MDFabContainer FAB stays anchored to pane bottom after async content loads
   );
 });
 
-test('MDFabContainer FAB is anchored to its own pane, not the adjacent pane or viewport', async ({
+test('FabContainer FAB is anchored to its own pane, not the adjacent pane or viewport', async ({
   page,
 }) => {
-  await openStory(page, 'project-ui-buttons-mdfabcontainer--two-pane-layout');
+  await openStory(page, 'project-ui-buttons-fabcontainer--two-pane-layout');
 
   const leftPane = page.locator('#fab-pane-left');
   const rightPane = page.locator('#fab-pane-right');
-  const fabSurface = page.locator('.md-fab-container__surface');
+  const fabSurface = page.locator('.fab-container__surface');
 
   await fabSurface.waitFor({ state: 'attached' });
 

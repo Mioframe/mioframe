@@ -122,7 +122,7 @@ Scope:
 - `MDButton`;
 - `MDIconButton`;
 - `MDFab`;
-- `MDFabContainer` only as project-specific placement infrastructure;
+- `FabContainer` only as project-specific placement infrastructure;
 - related Storybook and visual tests.
 
 The pilot must introduce public `--md-comp-*` tokens, block or document invalid combinations, move stories to `Material 3/Components/...`, and keep visual/browser coverage green.

@@ -33,9 +33,11 @@ const meta = {
           '',
           '**Invalid combination**: `selected` with `variant="default"` is ignored and logs a development warning.',
           '',
-          '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target.',
+          '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target via a private `--md-private-icon-button-target-size` implementation variable (no official component-token path exists for it).',
           '',
-          '**Deviation**: toggle/selected color-role tokens are not yet exposed as a dedicated `--md-comp-icon-button-*-selected-*` public surface; current selected/unselected values are pre-existing and tracked as a follow-up token gap in the component-family audit.',
+          '**Outlined outline width**: scales by size per `md.comp.icon-button.<size>.outlined.outline.width` (xsmall/small/medium 1dp, large 2dp, xlarge 3dp).',
+          '',
+          '**Disabled precedence**: disabled selected-toggle controls explicitly exclude the active hover/focus/pressed and selected-color selectors so a higher-specificity `.md-icon-button_selected` rule cannot outrank `:disabled`.',
         ].join('\n'),
       },
     },
@@ -120,6 +122,51 @@ export const ExpandedTargetHitArea: Story = {
   render: () => ({
     components: { MDIconButtonTargetHitVisualStory },
     template: '<MDIconButtonTargetHitVisualStory />',
+  }),
+};
+
+export const DisabledHoverStates: Story = {
+  render: () => ({
+    components: { MDIconButton },
+    template: `
+      <div data-testid="visual-md-icon-button-disabled-hover" class="visual-surface">
+        <div class="visual-row">
+          <MDIconButton data-testid="disabled-filled-hover" class="md-state_hover" tooltip="Disabled filled" color="filled" disabled md-symbol-name="favorite" />
+          <MDIconButton data-testid="disabled-outlined-hover" class="md-state_hover" tooltip="Disabled outlined" color="outlined" disabled md-symbol-name="edit" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const OutlinedOutlineWidths: Story = {
+  render: () => ({
+    components: { MDIconButton },
+    template: `
+      <div data-testid="visual-md-icon-button-outline-widths" class="visual-surface">
+        <div class="visual-row">
+          <MDIconButton data-testid="outline-width-small" tooltip="Small outlined" color="outlined" size="small" md-symbol-name="edit" />
+          <MDIconButton data-testid="outline-width-large" tooltip="Large outlined" color="outlined" size="large" md-symbol-name="edit" />
+          <MDIconButton data-testid="outline-width-extra-large" tooltip="Extra large outlined" color="outlined" size="extra-large" md-symbol-name="edit" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const ToggleColorAndStateLayerTokens: Story = {
+  render: () => ({
+    components: { MDIconButton },
+    template: `
+      <div data-testid="visual-md-icon-button-toggle-tokens" class="visual-surface">
+        <div class="visual-row">
+          <MDIconButton data-testid="filled-toggle-unselected" tooltip="Filled unselected" variant="toggle" color="filled" md-symbol-name="bookmark" />
+          <MDIconButton data-testid="filled-toggle-selected" tooltip="Filled selected" variant="toggle" selected color="filled" md-symbol-name="bookmark" />
+          <MDIconButton data-testid="standard-toggle-unselected-pressed" class="md-state_pressed" tooltip="Standard unselected pressed" variant="toggle" md-symbol-name="bookmark" />
+          <MDIconButton data-testid="standard-toggle-selected-pressed" class="md-state_pressed" tooltip="Standard selected pressed" variant="toggle" selected md-symbol-name="bookmark" />
+        </div>
+      </div>
+    `,
   }),
 };
 

@@ -11,7 +11,7 @@ import type { ExportZipVisibleDialogState } from '@feature/exportZip';
 import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
 import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { useFSNodeStat } from '@entity/fsEntry';
-import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
+import { FabContainer, MDExtendedFab } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -191,9 +191,9 @@ const onClickReturnHome = async () => {
       @click-return-home="onClickReturnHome"
     >
       <template #after="{ canEditDirectoryContents }">
-        <MDFabContainer v-if="canEditDirectoryContents !== false" auto-hide>
+        <FabContainer v-if="canEditDirectoryContents !== false" auto-hide>
           <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />
-        </MDFabContainer>
+        </FabContainer>
       </template>
     </RepositoryExplorerWidget>
 

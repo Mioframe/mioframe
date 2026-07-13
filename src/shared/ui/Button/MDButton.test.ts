@@ -64,6 +64,23 @@ describe('MDButton', () => {
     expect(absentLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
   });
 
+  it('treats loading=true as an active, indeterminate loading state', () => {
+    const wrapper = mountButton({ loading: true });
+
+    expect(wrapper.classes()).toContain('md-button_loading');
+    const indicator = wrapper.get('.md-circular-progress-indicator-stub');
+    expect(indicator.attributes('data-progress')).toBeUndefined();
+  });
+
+  it('treats a positive numeric loading value as an active, determinate loading state', () => {
+    const wrapper = mountButton({ loading: 0.5 });
+
+    expect(wrapper.classes()).toContain('md-button_loading');
+    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
+      '0.5',
+    );
+  });
+
   it('defaults nativeType to "button" and reflects an explicit nativeType', () => {
     const defaultWrapper = mountButton();
     expect(defaultWrapper.get('button').attributes('type')).toBe('button');

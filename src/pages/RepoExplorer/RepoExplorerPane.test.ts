@@ -283,8 +283,8 @@ vi.mock('@shared/ui/Button', () => ({
         );
     },
   }),
-  MDFabContainer: defineComponent({
-    name: 'MDFabContainerStub',
+  FabContainer: defineComponent({
+    name: 'FabContainerStub',
     setup(_props, { slots }) {
       return () => h('div', slots.default?.());
     },

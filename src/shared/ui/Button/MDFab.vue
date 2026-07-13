@@ -7,9 +7,9 @@ import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
   defineProps<{
-    /** Material FAB size variant. */
+    /** Material FAB size variant. Defaults to `"regular"`. */
     size?: 'regular' | 'medium' | 'large' | undefined;
-    /** Material FAB color role. */
+    /** Material FAB color role. Defaults to `"primary-container"`. */
     color?:
       | 'primary'
       | 'secondary'
@@ -18,14 +18,17 @@ const props = withDefaults(
       | 'secondary-container'
       | 'tertiary-container'
       | undefined;
-    /** Accessible action label and tooltip text for the FAB. */
+    /** Accessible action label and tooltip text for the FAB. Required — the FAB has no other label source. */
     tooltip: string;
     /**
-     * Loading state for the action. `true` shows indeterminate progress; a number shows
-     * determinate progress and keeps `0` visible as an active loading state.
+     * Loading state for the action. `true` shows an indeterminate progress indicator; a
+     * number shows determinate progress. `0` still renders as an active loading state, but
+     * the underlying `MDCircularProgressIndicator` currently renders `0` through its
+     * indeterminate visual path rather than a determinate ring at zero fill. Loading replaces
+     * the icon slot.
      */
     loading?: number | boolean | undefined;
-    /** Optional Material Symbols icon name used when no custom icon slot is provided. */
+    /** Optional Material Symbols icon name used when no custom `icon` slot is provided. One of `mdSymbol` or the `icon` slot is required. */
     mdSymbol?: string | undefined;
   }>(),
   { size: 'regular', color: 'primary-container' },
@@ -37,7 +40,7 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
-  /** Optional icon content rendered when the component is not loading. */
+  /** Optional icon content rendered when the component is not loading. Takes precedence over `mdSymbol`. */
   icon(): unknown;
 }>();
 
@@ -134,17 +137,26 @@ if (import.meta.env.DEV) {
     cursor: default;
   }
 
+  /* Icon and state-layer color always equal each style's md.comp.fab.<style>.icon.color at
+     every interaction state (hovered/focused/pressed share the resting value; only
+     elevation changes). The cache also contains contradictory duplicate legacy
+     `hover.*`/`focus.*` rows for the plain (non-container) styles that alias a different
+     color role (on-<role>-container instead of on-<role>); those legacy rows are not used. */
   &_color_primary {
     --md-comp-fab-primary-container-color: var(--md-sys-color-primary);
     --md-comp-fab-primary-icon-color: var(--md-sys-color-on-primary);
     --md-comp-fab-primary-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-primary-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-fab-primary-hovered-state-layer-color: var(--md-sys-color-on-primary);
+    --md-comp-fab-primary-focused-state-layer-color: var(--md-sys-color-on-primary);
+    --md-comp-fab-primary-pressed-state-layer-color: var(--md-sys-color-on-primary);
 
     --md-fab-container-color: var(--md-comp-fab-primary-container-color);
     --md-fab-icon-color: var(--md-comp-fab-primary-icon-color);
     --md-state-box-shadow: var(--md-comp-fab-primary-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-fab-primary-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-fab-primary-hovered-container-elevation);
     }
   }
@@ -154,12 +166,16 @@ if (import.meta.env.DEV) {
     --md-comp-fab-secondary-icon-color: var(--md-sys-color-on-secondary);
     --md-comp-fab-secondary-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-secondary-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-fab-secondary-hovered-state-layer-color: var(--md-sys-color-on-secondary);
+    --md-comp-fab-secondary-focused-state-layer-color: var(--md-sys-color-on-secondary);
+    --md-comp-fab-secondary-pressed-state-layer-color: var(--md-sys-color-on-secondary);
 
     --md-fab-container-color: var(--md-comp-fab-secondary-container-color);
     --md-fab-icon-color: var(--md-comp-fab-secondary-icon-color);
     --md-state-box-shadow: var(--md-comp-fab-secondary-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-fab-secondary-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-fab-secondary-hovered-container-elevation);
     }
   }
@@ -169,12 +185,16 @@ if (import.meta.env.DEV) {
     --md-comp-fab-tertiary-icon-color: var(--md-sys-color-on-tertiary);
     --md-comp-fab-tertiary-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-tertiary-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-fab-tertiary-hovered-state-layer-color: var(--md-sys-color-on-tertiary);
+    --md-comp-fab-tertiary-focused-state-layer-color: var(--md-sys-color-on-tertiary);
+    --md-comp-fab-tertiary-pressed-state-layer-color: var(--md-sys-color-on-tertiary);
 
     --md-fab-container-color: var(--md-comp-fab-tertiary-container-color);
     --md-fab-icon-color: var(--md-comp-fab-tertiary-icon-color);
     --md-state-box-shadow: var(--md-comp-fab-tertiary-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-fab-tertiary-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-fab-tertiary-hovered-container-elevation);
     }
   }
@@ -184,12 +204,22 @@ if (import.meta.env.DEV) {
     --md-comp-fab-primary-container-icon-color: var(--md-sys-color-on-primary-container);
     --md-comp-fab-primary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-primary-container-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-fab-primary-container-hovered-state-layer-color: var(
+      --md-sys-color-on-primary-container
+    );
+    --md-comp-fab-primary-container-focused-state-layer-color: var(
+      --md-sys-color-on-primary-container
+    );
+    --md-comp-fab-primary-container-pressed-state-layer-color: var(
+      --md-sys-color-on-primary-container
+    );
 
     --md-fab-container-color: var(--md-comp-fab-primary-container-container-color);
     --md-fab-icon-color: var(--md-comp-fab-primary-container-icon-color);
     --md-state-box-shadow: var(--md-comp-fab-primary-container-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-fab-primary-container-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-fab-primary-container-hovered-container-elevation);
     }
   }
@@ -199,12 +229,24 @@ if (import.meta.env.DEV) {
     --md-comp-fab-secondary-container-icon-color: var(--md-sys-color-on-secondary-container);
     --md-comp-fab-secondary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-secondary-container-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-fab-secondary-container-hovered-state-layer-color: var(
+      --md-sys-color-on-secondary-container
+    );
+    --md-comp-fab-secondary-container-focused-state-layer-color: var(
+      --md-sys-color-on-secondary-container
+    );
+    --md-comp-fab-secondary-container-pressed-state-layer-color: var(
+      --md-sys-color-on-secondary-container
+    );
 
     --md-fab-container-color: var(--md-comp-fab-secondary-container-container-color);
     --md-fab-icon-color: var(--md-comp-fab-secondary-container-icon-color);
     --md-state-box-shadow: var(--md-comp-fab-secondary-container-container-elevation);
+    --md-private-state-layer-color: var(
+      --md-comp-fab-secondary-container-hovered-state-layer-color
+    );
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-fab-secondary-container-hovered-container-elevation);
     }
   }
@@ -214,12 +256,22 @@ if (import.meta.env.DEV) {
     --md-comp-fab-tertiary-container-icon-color: var(--md-sys-color-on-tertiary-container);
     --md-comp-fab-tertiary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-tertiary-container-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-fab-tertiary-container-hovered-state-layer-color: var(
+      --md-sys-color-on-tertiary-container
+    );
+    --md-comp-fab-tertiary-container-focused-state-layer-color: var(
+      --md-sys-color-on-tertiary-container
+    );
+    --md-comp-fab-tertiary-container-pressed-state-layer-color: var(
+      --md-sys-color-on-tertiary-container
+    );
 
     --md-fab-container-color: var(--md-comp-fab-tertiary-container-container-color);
     --md-fab-icon-color: var(--md-comp-fab-tertiary-container-icon-color);
     --md-state-box-shadow: var(--md-comp-fab-tertiary-container-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-fab-tertiary-container-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-fab-tertiary-container-hovered-container-elevation);
     }
   }

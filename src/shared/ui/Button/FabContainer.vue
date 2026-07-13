@@ -10,12 +10,19 @@ import { useMainContentAriaHidden } from '../AriaHidden';
 import { usePaneScrollContainer } from '../Layout';
 
 const props = defineProps<{
-  /** Hides the floating action while scrolling down and restores it on upward scroll or focus. */
+  /**
+   * Hides the floating action while scrolling down and restores it on upward scroll or
+   * focus-within. Defaults to `false` (always shown).
+   */
   autoHide?: boolean;
 }>();
 
 defineSlots<{
-  /** Single primary FAB or Extended FAB action rendered in the floating overlay surface. */
+  /**
+   * A single `MDFab` or `MDExtendedFab` action rendered in the floating overlay surface.
+   * `FabContainer` owns placement/visibility only; the FAB action and its color/size are
+   * consumer-owned.
+   */
   default(): unknown;
 }>();
 
@@ -80,14 +87,14 @@ const ariaHidden = useMainContentAriaHidden();
 </script>
 
 <template>
-  <div class="md-fab-container md-fab-container__placeholder" :style="placeholderStyles">
+  <div class="fab-container fab-container__placeholder" :style="placeholderStyles">
     <TeleportContainer :container="fabContainerEl" :to="overlayContainerEl">
       <div
         ref="fabContainer"
-        class="md-fab-container__surface"
+        class="fab-container__surface"
         :class="{
-          'md-fab-container__surface_auto-hide': autoHide,
-          'md-fab-container__surface_hidden': !show,
+          'fab-container__surface_auto-hide': autoHide,
+          'fab-container__surface_hidden': !show,
         }"
         :style="floatingStyles"
         :aria-hidden="ariaHidden"
@@ -99,11 +106,11 @@ const ariaHidden = useMainContentAriaHidden();
 </template>
 
 <style scoped>
-.md-fab-container {
+.fab-container {
   display: flex;
 }
 
-.md-fab-container__placeholder {
+.fab-container__placeholder {
   display: flex;
   position: sticky;
   right: 0;
@@ -113,7 +120,7 @@ const ariaHidden = useMainContentAriaHidden();
   width: 100%;
 }
 
-.md-fab-container__surface {
+.fab-container__surface {
   display: flex;
   pointer-events: none;
   background-color: transparent;
@@ -130,7 +137,7 @@ const ariaHidden = useMainContentAriaHidden();
   transition-property: transform, opacity;
 }
 
-.md-fab-container__surface_hidden {
+.fab-container__surface_hidden {
   pointer-events: none;
   transition-timing-function: var(--md-sys-motion-easing-emphasized-accelerate);
   transition-duration: var(--md-sys-motion-duration-short4);
@@ -138,7 +145,7 @@ const ariaHidden = useMainContentAriaHidden();
   transform: translateY(100%) scale(0);
 }
 
-.md-fab-container__surface :deep(*) {
+.fab-container__surface :deep(*) {
   pointer-events: auto;
 }
 </style>

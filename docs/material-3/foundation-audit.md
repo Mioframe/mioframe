@@ -211,7 +211,7 @@ Avoid generic screenshots for every component. Each visual story must prove a hi
 
 Keep the adoption-plan order:
 
-1. Buttons pilot: `MDButton`, `MDIconButton`, `MDFab`, `MDFabContainer`, and deprecated button compatibility exports.
+1. Buttons pilot: `MDButton`, `MDIconButton`, `MDFab`, `FabContainer`, and deprecated button compatibility exports.
 2. Lists: `MDList` and `MDListItem`.
 3. Dialogs and overlays needed by dialogs.
 4. Text fields and selection controls: `MDTextField`, `MDFieldContainer`, `MDSelectBase`, `MDCheckbox`, and `MDCheckboxField`.

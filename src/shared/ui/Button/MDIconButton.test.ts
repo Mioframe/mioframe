@@ -84,6 +84,24 @@ describe('MDIconButton', () => {
     expect(absentLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
   });
 
+  it('treats loading=true as an active, indeterminate loading state', () => {
+    const wrapper = mountIconButton({ loading: true });
+
+    expect(wrapper.classes()).toContain('md-icon-button_loading');
+    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
+      '0',
+    );
+  });
+
+  it('treats a positive numeric loading value as an active, determinate loading state', () => {
+    const wrapper = mountIconButton({ loading: 0.5 });
+
+    expect(wrapper.classes()).toContain('md-icon-button_loading');
+    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
+      '0.5',
+    );
+  });
+
   it('defaults nativeType to "button" and reflects an explicit nativeType', () => {
     const defaultWrapper = mountIconButton();
     expect(defaultWrapper.get('button').attributes('type')).toBe('button');

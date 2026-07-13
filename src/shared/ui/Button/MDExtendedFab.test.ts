@@ -116,6 +116,29 @@ describe('MDExtendedFab', () => {
     expect(slotWrapper.find('[data-testid="slot-icon"]').exists()).toBe(true);
   });
 
+  it('does not render an icon container for loading=false or absent loading with no icon', () => {
+    const falseLoadingWrapper = mount(MDExtendedFab, {
+      props: { label: 'Create', loading: false },
+      global: { stubs: globalStubs },
+    });
+    const absentLoadingWrapper = mount(MDExtendedFab, {
+      props: { label: 'Create' },
+      global: { stubs: globalStubs },
+    });
+
+    expect(falseLoadingWrapper.find('.md-extended-fab__icon').exists()).toBe(false);
+    expect(absentLoadingWrapper.find('.md-extended-fab__icon').exists()).toBe(false);
+  });
+
+  it('renders determinate progress for a positive numeric loading value', () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: { label: 'Create', loading: 0.5 },
+      global: { stubs: globalStubs },
+    });
+
+    expect(wrapper.get('[data-testid="progress"]').attributes('data-progress')).toBe('0.5');
+  });
+
   it('defaults to the "primary-container" color', () => {
     const wrapper = mount(MDExtendedFab, {
       props: { label: 'Create' },

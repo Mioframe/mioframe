@@ -114,10 +114,14 @@ test('MDButton label typography changes by size', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--size-typography');
 
   const readTypography = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => ({
-      fontSize: getComputedStyle(el).fontSize,
-      fontWeight: getComputedStyle(el).fontWeight,
-    }));
+    page
+      .getByTestId(testId)
+      .locator('.md-button__label-text')
+      .evaluate((el) => ({
+        className: Array.from(el.classList).join(' '),
+        fontSize: getComputedStyle(el).fontSize,
+        fontWeight: getComputedStyle(el).fontWeight,
+      }));
 
   await expect(page.getByTestId('typography-small')).toBeVisible();
 
@@ -126,16 +130,20 @@ test('MDButton label typography changes by size', async ({ page }) => {
   const large = await readTypography('typography-large');
   const extraLarge = await readTypography('typography-extra-large');
 
-  // label-large: 14px / 500
+  // label-large: 14px / 500, rendered through the md-typescale-label-large utility class
+  expect(small.className).toContain('md-typescale-label-large');
   expect(small.fontSize).toBe('14px');
   expect(small.fontWeight).toBe('500');
   // title-medium: 16px / 500
+  expect(medium.className).toContain('md-typescale-title-medium');
   expect(medium.fontSize).toBe('16px');
   expect(medium.fontWeight).toBe('500');
   // headline-small: 24px / 400
+  expect(large.className).toContain('md-typescale-headline-small');
   expect(large.fontSize).toBe('24px');
   expect(large.fontWeight).toBe('400');
   // headline-large: 32px / 400
+  expect(extraLarge.className).toContain('md-typescale-headline-large');
   expect(extraLarge.fontSize).toBe('32px');
   expect(extraLarge.fontWeight).toBe('400');
 });
@@ -164,6 +172,84 @@ test('MDButton text toggle selects without the removed color restriction', async
 
   await expect(button).toHaveAttribute('aria-pressed', 'true');
   await expect(button).toHaveClass(/md-button_selected/);
+});
+
+test('MDButton disabled controls ignore forced hover/focus visuals', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--disabled-hover-states');
+
+  const readVisual = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => {
+      const stateLayer = el.querySelector('.md-state-layer');
+      return {
+        background: getComputedStyle(el).backgroundColor,
+        boxShadow: getComputedStyle(el).boxShadow,
+        borderColor: getComputedStyle(el).borderColor,
+        stateLayerBackground: stateLayer ? getComputedStyle(stateLayer).backgroundColor : null,
+      };
+    });
+
+  const elevatedDisabled = await page.getByTestId('disabled-elevated-hover').evaluate((el) => ({
+    background: getComputedStyle(el).backgroundColor,
+    boxShadow: getComputedStyle(el).boxShadow,
+  }));
+  const elevatedHover = await readVisual('disabled-elevated-hover');
+  const outlinedHover = await readVisual('disabled-outlined-hover');
+  const outlinedFocus = await readVisual('disabled-outlined-focus');
+
+  // A disabled elevated button's hover-forced elevation must equal its resting (level0) shadow.
+  expect(elevatedHover.boxShadow).toBe(elevatedDisabled.boxShadow);
+  // Disabled state layers stay fully transparent regardless of a forced hover/focus class.
+  expect(elevatedHover.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
+  expect(outlinedHover.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
+  expect(outlinedFocus.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
+  // Disabled outlined border color does not darken on a forced hover/focus class.
+  expect(outlinedHover.borderColor).toBe(outlinedFocus.borderColor);
+});
+
+test('MDButton text-color spacing follows the active size, including the icon case', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--text-button-spacing');
+
+  const readPadding = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => ({
+      left: getComputedStyle(el).paddingLeft,
+      right: getComputedStyle(el).paddingRight,
+    }));
+
+  const small = await readPadding('text-spacing-small');
+  const medium = await readPadding('text-spacing-medium');
+  const large = await readPadding('text-spacing-large');
+  const extraLarge = await readPadding('text-spacing-extra-large');
+  const smallIcon = await readPadding('text-spacing-small-icon');
+
+  // md.comp.button.<size>.leading-space / trailing-space applied to both sides.
+  expect(small).toEqual({ left: '16px', right: '16px' });
+  expect(medium).toEqual({ left: '24px', right: '24px' });
+  expect(large).toEqual({ left: '48px', right: '48px' });
+  expect(extraLarge).toEqual({ left: '64px', right: '64px' });
+  // The icon/no-icon anatomy does not change the active size's leading/trailing space.
+  expect(smallIcon).toEqual(small);
+});
+
+test('MDButton toggle state-layer color varies by selected state for filled and outlined', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--toggle-state-layer-colors');
+
+  const readStateLayerColor = (testId: string) =>
+    page
+      .getByTestId(testId)
+      .locator('.md-state-layer')
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  const filledUnselected = await readStateLayerColor('filled-toggle-unselected-hover');
+  const filledSelected = await readStateLayerColor('filled-toggle-selected-hover');
+  const outlinedUnselected = await readStateLayerColor('outlined-toggle-unselected-focus');
+  const outlinedSelected = await readStateLayerColor('outlined-toggle-selected-focus');
+
+  expect(filledUnselected).not.toBe(filledSelected);
+  expect(outlinedUnselected).not.toBe(outlinedSelected);
 });
 
 test('MDChip visual states match baseline', async ({ page }) => {
@@ -411,6 +497,64 @@ test('MDExtendedFab icon-label gap changes by size', async ({ page }) => {
   expect(await readGap('gap-small')).toBe('8px');
   expect(await readGap('gap-medium')).toBe('12px');
   expect(await readGap('gap-large')).toBe('16px');
+});
+
+test('MDExtendedFab label uses MD_TYPESCALE classes and computed typography per size', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--size-gaps');
+
+  const readLabelTypography = (testId: string) =>
+    page
+      .getByTestId(testId)
+      .locator('.md-extended-fab__label')
+      .evaluate((el) => ({
+        className: Array.from(el.classList).join(' '),
+        fontSize: getComputedStyle(el).fontSize,
+        fontWeight: getComputedStyle(el).fontWeight,
+      }));
+
+  const small = await readLabelTypography('gap-small');
+  const medium = await readLabelTypography('gap-medium');
+  const large = await readLabelTypography('gap-large');
+
+  // title-medium: 16px / 500
+  expect(small.className).toContain('md-typescale-title-medium');
+  expect(small.fontSize).toBe('16px');
+  expect(small.fontWeight).toBe('500');
+  // title-large: 22px / 400
+  expect(medium.className).toContain('md-typescale-title-large');
+  expect(medium.fontSize).toBe('22px');
+  // headline-small: 24px / 400
+  expect(large.className).toContain('md-typescale-headline-small');
+  expect(large.fontSize).toBe('24px');
+});
+
+test('MDFab hover, focus, and pressed elevation change for one plain and one container style', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--interaction-state-tokens');
+
+  const readBoxShadow = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => getComputedStyle(el).boxShadow);
+
+  const restingPrimary = await readBoxShadow('primary-resting');
+  const restingPrimaryContainer = await readBoxShadow('primary-container-resting');
+
+  const primaryHover = await readBoxShadow('primary-hover');
+  const primaryFocus = await readBoxShadow('primary-focus');
+  const primaryPressed = await readBoxShadow('primary-pressed');
+  const primaryContainerHover = await readBoxShadow('primary-container-hover');
+  const primaryContainerFocus = await readBoxShadow('primary-container-focus');
+  const primaryContainerPressed = await readBoxShadow('primary-container-pressed');
+
+  // Hover raises elevation (level3 -> level4); focus/pressed keep the resting level3 shadow.
+  expect(primaryHover).not.toBe(restingPrimary);
+  expect(primaryFocus).toBe(restingPrimary);
+  expect(primaryPressed).toBe(restingPrimary);
+  expect(primaryContainerHover).not.toBe(restingPrimaryContainer);
+  expect(primaryContainerFocus).toBe(restingPrimaryContainer);
+  expect(primaryContainerPressed).toBe(restingPrimaryContainer);
 });
 
 test('MDFab default color resolves to the primary-container token', async ({ page }) => {
@@ -694,6 +838,65 @@ test('MDIconButton default small layout footprint remains 40dp', async ({ page }
 
   expect(box?.width).toBe(40);
   expect(box?.height).toBe(40);
+});
+
+test('MDIconButton disabled controls ignore forced hover visuals', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--disabled-hover-states');
+
+  const readStateLayerBackground = (testId: string) =>
+    page
+      .getByTestId(testId)
+      .locator('.md-state-layer')
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  const filledHover = await readStateLayerBackground('disabled-filled-hover');
+  const outlinedHover = await readStateLayerBackground('disabled-outlined-hover');
+
+  expect(filledHover).toMatch(/[,/]\s*0\)$/);
+  expect(outlinedHover).toMatch(/[,/]\s*0\)$/);
+});
+
+test('MDIconButton outlined outline width scales by size', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--outlined-outline-widths');
+
+  const readBorderWidth = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => getComputedStyle(el).borderTopWidth);
+
+  const small = await readBorderWidth('outline-width-small');
+  const large = await readBorderWidth('outline-width-large');
+  const extraLarge = await readBorderWidth('outline-width-extra-large');
+
+  expect(small).toBe('1px');
+  expect(large).toBe('2px');
+  expect(extraLarge).toBe('3px');
+});
+
+test('MDIconButton toggle colors resolve per official state tokens', async ({ page }) => {
+  await openStory(
+    page,
+    'material-3-components-buttons-mdiconbutton--toggle-color-and-state-layer-tokens',
+  );
+
+  const readBackground = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  const filledUnselected = await readBackground('filled-toggle-unselected');
+  const filledSelected = await readBackground('filled-toggle-selected');
+
+  // md.comp.icon-button.filled.unselected.container.color = surface-container, distinct from
+  // the selected/base filled container.color = primary.
+  expect(filledUnselected).not.toBe(filledSelected);
+
+  const readStateLayerColor = (testId: string) =>
+    page
+      .getByTestId(testId)
+      .locator('.md-state-layer')
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  const unselectedPressed = await readStateLayerColor('standard-toggle-unselected-pressed');
+  const selectedPressed = await readStateLayerColor('standard-toggle-selected-pressed');
+
+  expect(unselectedPressed).not.toBe(selectedPressed);
 });
 
 test('MDStateLayer visual states match baseline', async ({ page }) => {

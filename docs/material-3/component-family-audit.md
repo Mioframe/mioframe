@@ -6,64 +6,68 @@ This file records component-family findings from the current implementation and 
 
 Material cache (captured 2026-06-30) confirms `default`/`toggle` variants, elevated/filled/tonal/outlined/text color configurations, five sizes (official token path segments `xsmall`/`small`/`medium`/`large`/`xlarge`), round/square shapes, 16dp recommended small padding, 48x48dp target area for extra-small/small buttons, and per-size icon sizes (20/20/24/32/40dp). The `buttons/guidelines` page illustrates `default`/`toggle unselected`/`toggle selected` for five button styles including "Text button" — text buttons do support toggle selection. `md.comp.button.text` has no `selected`/`unselected` _color_ tokens (unlike elevated/filled/tonal/outlined, which do), but the shape-morph tokens (`md.comp.button.<size>.selected.container.shape.{round,square}`) are size-scoped, not color-style-scoped, so a selected text toggle still morphs shape and reflects `aria-pressed`; only its label/icon color stays unchanged since no token defines a different one. Per-size label typography is confirmed via `md.comp.button.<size>.label-text`: `xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large.
 
-Current state (this migration):
+Current state:
 
-- public API uses `variant` (was `type`) and `nativeType` (was `formAction`);
-- `variant="toggle"` exposes controlled `aria-pressed`; `selected` with `variant="default"` is ignored and warns in development; `variant="toggle"` with `color="text"` is supported (a prior pass incorrectly prohibited it based only on the absence of text-toggle color tokens, contradicting the guidelines' toggle illustration — the prohibition (`isTextToggle`) and its warning have been removed);
-- `--md-comp-button-*` component tokens implemented for all five color styles and five sizes, resolving to `--md-sys-*`; the public custom-property names use the official `xsmall`/`xlarge` path segments (a prior pass had left `extra-small`/`extra-large` in the token names while keeping the public size prop values unchanged);
-- label typography now varies per size (`xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large) instead of one global label-large rule for every size;
-- selected toggle shape now morphs per size via `--md-comp-button-<size>-selected-container-shape-{round,square}`: a round shape becomes the size's square corner when selected, a square shape becomes fully rounded when selected, and the pressed shape always wins over the selected shape;
-- icon size now varies per size (was a flat 18px); `extra-small` icon-label gap corrected to the official 8dp (was 4px); disabled opacities corrected to the official 0.1 container / 0.38 content split (was a uniform 0.12 approximation);
-- uses `MDStateLayer`, ripple, and progress indicator; has focused unit tests, browser assertions for typography and selected-shape, and Storybook coverage.
+- public API uses `variant` (`default` | `toggle`) and `nativeType`; `variant="toggle"` exposes controlled `aria-pressed`; `selected` with `variant="default"` is ignored and warns in development; `variant="toggle"` with `color="text"` is supported, since the guidelines illustrate text buttons among the five toggle-capable styles;
+- `--md-comp-button-*` component tokens are implemented for all five color styles and five sizes, with every retained token mechanically matching its official path segment-for-segment; sizes expose distinct `leading-space`/`trailing-space` tokens (not one token serving both sides), `icon-label-space`, `container-shape-round`/`container-shape-square`, `pressed-container-shape`, `selected-container-shape-round`/`selected-container-shape-square`, and `outlined-outline-width` (1/1/1/2/3dp for xsmall/small/medium/large/xlarge);
+- label typography renders through the shared `MD_TYPESCALE` classes (`xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large); `md.comp.button.<size>.label-text` is documented here as the composite official token this maps to, since no exact decomposed `--md-comp-*` path exists for it;
+- text buttons use the same per-size leading/trailing-space tokens as every other color style — there is no fixed small-size padding override that bypasses the active size contract;
+- icon color is not tracked as a separate custom property: every documented `md.comp.button.*.icon.color` state value equals that state's `label-text.color`, so the icon reuses `--md-content-color` directly;
+- selected toggle shape morphs per size via `--md-comp-button-<size>-selected-container-shape-{round,square}` (independently-sourced official tokens): a round shape becomes the size's square corner when selected, a square shape becomes fully rounded when selected, and the pressed shape always wins over the selected shape;
+- `outlined` hover/focus/pressed/disabled outline color is the literal official `outline-variant`; the border does not darken further on hover, consistent with the spec's reliance on the state-layer tint for hover feedback;
+- state-layer color is mapped through the generic `--md-private-state-layer-color` contract for all five color styles, base/unselected/selected; state-layer opacity is not overridden per component because `MDStateLayer`'s existing fallback to `--md-sys-state-{hover,focus,pressed}-state-layer-opacity` already equals the official values;
+- disabled selected-toggle buttons explicitly exclude the selected-color selector so a higher-specificity toggle-selected rule cannot outrank `:disabled` — confirmed via a visual-regression screenshot diff for elevated/filled/tonal/outlined;
+- uses `MDStateLayer`, ripple, and progress indicator; has focused unit tests (including `loading` `false`/`true`/`0`/positive), browser assertions for rendered typography class/computed metrics, selected-shape, text spacing, toggle state-layer color, and disabled-ignores-hover, plus Storybook coverage.
 
 Remaining gaps:
 
-- `outlined` hover/disabled border color kept as the pre-existing implementation (`--md-sys-color-outline` on hover, `on-surface` 12% when disabled) rather than the literal official `outline-variant` tokens, pending a rendered visual comparison;
-- toggle/selected per-style _color_ values (for the four styles that have them) kept as the pre-existing implementation, not freshly re-derived from the official toggle token set;
-- component-level focus-indicator tokens do not exist in the current (non-deprecated) cache namespace; the shared global focus-indicator default already matches the documented value, so no override was added;
+- not every one of the roughly 300 available button state tokens in the cache was individually re-verified line by line beyond the corrections above;
+- component-level focus-indicator tokens do not exist in the current (non-deprecated) cache namespace; the shared global focus-indicator default already matches the documented value;
 - loading remains a documented project extension.
 
-Verdict: token/API migration complete, including size typography, selected-shape morphing, and text toggle support; remains `partial` pending visual/browser verification of the two color-deviation items above.
+Verdict: `partial`. Token naming, spacing, typography, and disabled-precedence corrections above are complete and browser-verified; remains `partial` pending a fuller line-item audit of every remaining state token.
 
 ## Icon buttons: `MDIconButton`
 
 Material cache confirms `default`/`toggle` variants, filled/tonal/outlined/standard colors, size/width/shape configurations, tooltip on web, and outlined-to-filled icon treatment for toggle state.
 
-Current state (this migration):
+Current state:
 
-- public API uses `variant` (was `type`) and `nativeType` (was `formAction`); removed the public `focused`/`pressed` visual-test props in favor of the shared forced-state Storybook mechanism (`md-state_*` classes);
-- `variant="toggle"` exposes controlled `aria-pressed`; `selected` with `variant="default"` is ignored and warns in development;
-- `--md-comp-icon-button-*` component tokens implemented for all four color styles and all five sizes/widths/shapes; size/shape values were already numerically token-accurate and are now exposed as named component tokens; the public custom-property names use the official `xsmall`/`xlarge` path segments (a prior pass had left `extra-small`/`extra-large` in the token names); disabled container opacity corrected to 0.1 (was 0.12);
-- has visual, target-area, toolbar, and dense-toolbar behavior tests plus toggle/warning unit tests.
+- public API uses `variant` (`default` | `toggle`) and `nativeType`; `variant="toggle"` exposes controlled `aria-pressed`; `selected` with `variant="default"` is ignored and warns in development;
+- `--md-comp-icon-button-*` component tokens are implemented for all four color styles and all five sizes/widths/shapes, with every retained token mechanically matching its official path; sizes expose distinct `default`/`narrow`/`wide` `leading-space` and `trailing-space` tokens, `container-shape-round`/`container-shape-square`, `pressed-container-shape`, independently-sourced `selected-container-shape-round`/`selected-container-shape-square` tokens, and `outlined-outline-width` per size (1/1/1/2/3dp for xsmall/small/medium/large/xlarge);
+- the 48dp minimum touch target is a private `--md-private-icon-button-target-size` implementation variable, since no official component-token path exists for it;
+- `outlined` base/unselected/disabled outline color is the literal official `outline-variant`; `filled` toggle unselected container is the official `surface-container`; `filled` toggle unselected/selected icon color is `on-surface-variant`/`on-primary`; `tonal` toggle unselected/selected container and icon color is `secondary-container`/`on-secondary-container` (unselected) and `secondary`/`on-secondary` (selected);
+- state-layer color is mapped through the generic `--md-private-state-layer-color` contract for all four color styles, base/unselected/selected;
+- disabled selected-toggle icon buttons explicitly exclude the selected-color selector, fixing the same cascade-specificity issue as `MDButton` — confirmed via a visual-regression screenshot diff across all four color styles;
+- has visual, target-area, toolbar, and dense-toolbar behavior tests plus toggle/warning unit tests (including `loading` `false`/`true`/`0`/positive), and browser assertions for outline-width scaling, toggle container/state-layer distinctness, and disabled-ignores-hover.
 
 Remaining gaps:
 
-- per-style toggle `selected`/`unselected` color roles (hover/focus/pressed) kept as the pre-existing implementation, not freshly re-derived from the official per-state toggle token set;
+- not every one of the available icon-button state tokens in the cache was individually re-verified line by line beyond the corrections above;
 - component-level focus-indicator tokens exist only under deprecated legacy component names in the cache, not the current namespace; the shared global default is reused unchanged;
 - loading and rich tooltip content remain documented project extensions.
 
-Verdict: token/API migration complete; remains `partial` pending visual/browser verification and the toggle-token gap.
+Verdict: `partial`. Token naming, toggle color corrections, and disabled-precedence corrections above are complete and browser-verified; remains `partial` pending a fuller line-item audit of every remaining state token.
 
-## FAB: `MDFab`, `MDExtendedFab`, `MDFabContainer`
+## FAB: `MDFab`, `MDExtendedFab`, `FabContainer`
 
 Material cache confirms FAB, medium FAB, and large FAB (small FAB not recommended); Extended FAB small/medium/large (baseline not recommended); surface FABs not recommended. It confirms the M3 Expressive color model directly: the historical container-role `primary`/`secondary`/`tertiary` styles were renamed to `primary-container`/`secondary-container`/`tertiary-container`, and new plain `primary`/`secondary`/`tertiary` styles (using the non-container sys color) were added alongside them — six color styles total for both FAB and Extended FAB.
 
-Current state (this migration):
+Current state:
 
-- `MDFab` and `MDExtendedFab` `color` use the current six official names (`primary`, `secondary`, `tertiary`, `primary-container`, `secondary-container`, `tertiary-container`); `tonal-primary`/`tonal-secondary`/`tonal-tertiary` are removed with no alias; `primary-container` is the default for both — `MDFab`'s default was corrected from `primary` to `primary-container` (a prior pass left the wrong default color role in place); `MDExtendedFab` already defaulted correctly;
-- `MDFab` requires an icon via `mdSymbol` or the `icon` slot; a missing icon warns in development and no longer renders a debug checkerboard placeholder; `size` has an explicit `regular` default;
-- `--md-comp-fab-*` and `--md-comp-extended-fab-*` component tokens implemented for all six color styles (container/icon/label-text color, default and hovered elevation) and all sizes;
-- `MDExtendedFab` label typescale follows size (`small`→title-medium, `medium`→title-large, `large`→headline-small) per the official spec;
-- `MDExtendedFab`'s icon-label gap now follows size via `--md-comp-extended-fab-{small,medium,large}-icon-label-space` (8dp/12dp/16dp) instead of one fixed 12px gap for every size — a prior pass introduced the per-size token names but left the rendered `gap` unconditional;
-- `MDFabContainer` remains project-specific placement infrastructure; its Storybook title moved from `Material 3/Components/Buttons/MDFabContainer` to `Project UI/Buttons/MDFabContainer` since it is not an official Material component and owns no FAB visual tokens — a prior pass had left it under the Material hierarchy.
+- `MDFab` and `MDExtendedFab` `color` use the current six official names; `primary-container` is the default for both;
+- `MDFab` requires an icon via `mdSymbol` or the `icon` slot; a missing icon warns in development and renders no fallback placeholder; `size` defaults to `regular`;
+- `--md-comp-fab-*` and `--md-comp-extended-fab-*` component tokens are implemented for all six color styles and all sizes, using the confirmed current non-deprecated `hovered`/`focused`/`pressed` token paths for state-layer color, container elevation, and icon/label color — including the three `-container` styles, which the MCP token graph confirms have full, non-ambiguous state coverage (elevation resting at level3, hovered at level4, focused/pressed back at level3; state-layer/icon/label color constant across hover/focus/pressed, equal to the resting icon/label color);
+- the cache also contains contradictory duplicate legacy `hover`/`focus` rows for the three plain styles that alias a different, lower-emphasis color role; those legacy rows are not used;
+- `MDExtendedFab` label typography renders through the shared `MD_TYPESCALE` classes (`small`→title-medium, `medium`→title-large, `large`→headline-small) instead of handwritten font CSS; `MDExtendedFab`'s icon-label gap follows size via `--md-comp-extended-fab-{small,medium,large}-icon-label-space` (8dp/12dp/16dp);
+- `FabContainer` (renamed from `MDFabContainer`, no compatibility alias) remains project-specific placement infrastructure under `Project UI/Buttons/FabContainer`; it is not an official Material component and owns no FAB visual tokens.
 
 Remaining gaps:
 
-- the official token cache contains internally contradictory duplicate hover/focus color rows for the three plain FAB/Extended-FAB styles (`hovered.*` vs `hover.*`, aliasing different color roles); neither component currently varies icon/label color by interaction state (only elevation changes), so this ambiguity was not wired in;
 - component-level focus-indicator tokens resolve to the secondary role for the three plain styles and do not exist at all for the three `-container` styles in the cache; the shared global default is reused for all six styles without a component override;
 - loading remains a documented project extension.
 
-Verdict: color-terminology, default-color, token, and geometry fixes complete; remains `partial` pending visual/browser verification of the state-color ambiguity above.
+Verdict: `partial`. Color-terminology, token, geometry, current-vs-legacy state-token resolution, and typography corrections above are complete and browser-verified for one plain and one container style; remains `partial` pending a fuller line-item audit of every remaining state token and style.
 
 ## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, useSlots, useTemplateRef } from 'vue';
+import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
@@ -7,9 +8,9 @@ import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
   defineProps<{
-    /** Material Extended FAB size variant. */
+    /** Material Extended FAB size variant. Defaults to `"small"`. */
     size?: 'small' | 'medium' | 'large' | undefined;
-    /** Material Extended FAB color role. Primary container is the shared default for this surface. */
+    /** Material Extended FAB color role. Defaults to `"primary-container"`. */
     color?:
       | 'primary'
       | 'secondary'
@@ -20,14 +21,17 @@ const props = withDefaults(
       | undefined;
     /** Visible text label rendered inside the Extended FAB. */
     label: string;
-    /** Optional tooltip text. When present, it is also used as the accessible name. */
+    /** Optional tooltip text. When present, it is also used as the accessible name; when absent, `label` is the accessible name. */
     tooltip?: string | undefined;
     /**
-     * Loading state for the action. `true` shows indeterminate progress; a number shows
-     * determinate progress and keeps `0` visible as an active loading state.
+     * Loading state for the action. `true` shows an indeterminate progress indicator; a
+     * number shows determinate progress. `0` still renders as an active loading state, but
+     * the underlying `MDCircularProgressIndicator` currently renders `0` through its
+     * indeterminate visual path rather than a determinate ring at zero fill. Loading replaces
+     * the icon slot.
      */
     loading?: number | boolean | undefined;
-    /** Optional Material Symbols icon name used when no custom icon slot is provided. */
+    /** Optional Material Symbols icon name used when no custom `icon` slot is provided. An Extended FAB may render label-only with no icon. */
     mdSymbol?: string | undefined;
   }>(),
   {
@@ -42,7 +46,7 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
-  /** Optional icon content rendered before the label when the component is not loading. */
+  /** Optional icon content rendered before the label when the component is not loading. Takes precedence over `mdSymbol`. */
   icon(): unknown;
 }>();
 
@@ -55,6 +59,20 @@ const loadingProgress = computed(() =>
   typeof props.loading === 'number' ? props.loading : undefined,
 );
 const hasIconContent = computed(() => hasLoading.value || Boolean(props.mdSymbol || slots.icon));
+
+/** md.comp.extended-fab.<size>.label-text is rendered through the shared MD_TYPESCALE classes. */
+const labelTypescaleClass = computed(() => {
+  switch (props.size) {
+    case 'small':
+      return MD_TYPESCALE.title.medium;
+    case 'medium':
+      return MD_TYPESCALE.title.large;
+    case 'large':
+      return MD_TYPESCALE.headline.small;
+    default:
+      return MD_TYPESCALE.title.medium;
+  }
+});
 
 const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
@@ -94,7 +112,7 @@ useRipple(buttonEl);
       </slot>
     </span>
 
-    <span class="md-extended-fab__label">{{ label }}</span>
+    <span class="md-extended-fab__label" :class="labelTypescaleClass">{{ label }}</span>
 
     <MDPlainTooltip v-if="tooltip" :text="tooltip" />
   </button>
@@ -111,11 +129,6 @@ useRipple(buttonEl);
   --md-fab-horizontal-padding: 16dp;
   --md-fab-container-shape: var(--md-sys-shape-corner-large);
   --md-extended-fab-icon-label-space: 8dp;
-  --md-extended-fab-label-font: var(--md-sys-typescale-title-medium-font);
-  --md-extended-fab-label-weight: var(--md-sys-typescale-title-medium-weight);
-  --md-extended-fab-label-size: var(--md-sys-typescale-title-medium-size);
-  --md-extended-fab-label-line-height: var(--md-sys-typescale-title-medium-line-height);
-  --md-extended-fab-label-tracking: var(--md-sys-typescale-title-medium-tracking);
   --md-container-color: var(--md-fab-container-color);
   --md-content-color: var(--md-fab-icon-color);
   --md-state-box-shadow: var(--md-sys-elevation-level3);
@@ -139,19 +152,28 @@ useRipple(buttonEl);
     cursor: default;
   }
 
+  /* Icon, label, and state-layer color always equal each style's md.comp.extended-fab.<style>
+     icon.color/label-text.color at every interaction state (hovered/focused/pressed share the
+     resting value; only elevation changes). The cache also contains contradictory duplicate
+     legacy `hover.*`/`focus.*` rows for the plain (non-container) styles that alias a
+     different color role; those legacy rows are not used. */
   &_color_primary {
     --md-comp-extended-fab-primary-container-color: var(--md-sys-color-primary);
     --md-comp-extended-fab-primary-label-text-color: var(--md-sys-color-on-primary);
     --md-comp-extended-fab-primary-icon-color: var(--md-sys-color-on-primary);
     --md-comp-extended-fab-primary-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-extended-fab-primary-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-extended-fab-primary-hovered-state-layer-color: var(--md-sys-color-on-primary);
+    --md-comp-extended-fab-primary-focused-state-layer-color: var(--md-sys-color-on-primary);
+    --md-comp-extended-fab-primary-pressed-state-layer-color: var(--md-sys-color-on-primary);
 
     --md-fab-container-color: var(--md-comp-extended-fab-primary-container-color);
     --md-fab-icon-color: var(--md-comp-extended-fab-primary-icon-color);
     --md-content-color: var(--md-comp-extended-fab-primary-label-text-color);
     --md-state-box-shadow: var(--md-comp-extended-fab-primary-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-extended-fab-primary-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-extended-fab-primary-hovered-container-elevation);
     }
   }
@@ -162,13 +184,17 @@ useRipple(buttonEl);
     --md-comp-extended-fab-secondary-icon-color: var(--md-sys-color-on-secondary);
     --md-comp-extended-fab-secondary-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-extended-fab-secondary-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-extended-fab-secondary-hovered-state-layer-color: var(--md-sys-color-on-secondary);
+    --md-comp-extended-fab-secondary-focused-state-layer-color: var(--md-sys-color-on-secondary);
+    --md-comp-extended-fab-secondary-pressed-state-layer-color: var(--md-sys-color-on-secondary);
 
     --md-fab-container-color: var(--md-comp-extended-fab-secondary-container-color);
     --md-fab-icon-color: var(--md-comp-extended-fab-secondary-icon-color);
     --md-content-color: var(--md-comp-extended-fab-secondary-label-text-color);
     --md-state-box-shadow: var(--md-comp-extended-fab-secondary-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-extended-fab-secondary-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-extended-fab-secondary-hovered-container-elevation);
     }
   }
@@ -179,13 +205,17 @@ useRipple(buttonEl);
     --md-comp-extended-fab-tertiary-icon-color: var(--md-sys-color-on-tertiary);
     --md-comp-extended-fab-tertiary-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-extended-fab-tertiary-hovered-container-elevation: var(--md-sys-elevation-level4);
+    --md-comp-extended-fab-tertiary-hovered-state-layer-color: var(--md-sys-color-on-tertiary);
+    --md-comp-extended-fab-tertiary-focused-state-layer-color: var(--md-sys-color-on-tertiary);
+    --md-comp-extended-fab-tertiary-pressed-state-layer-color: var(--md-sys-color-on-tertiary);
 
     --md-fab-container-color: var(--md-comp-extended-fab-tertiary-container-color);
     --md-fab-icon-color: var(--md-comp-extended-fab-tertiary-icon-color);
     --md-content-color: var(--md-comp-extended-fab-tertiary-label-text-color);
     --md-state-box-shadow: var(--md-comp-extended-fab-tertiary-container-elevation);
+    --md-private-state-layer-color: var(--md-comp-extended-fab-tertiary-hovered-state-layer-color);
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(--md-comp-extended-fab-tertiary-hovered-container-elevation);
     }
   }
@@ -200,13 +230,25 @@ useRipple(buttonEl);
     --md-comp-extended-fab-primary-container-hovered-container-elevation: var(
       --md-sys-elevation-level4
     );
+    --md-comp-extended-fab-primary-container-hovered-state-layer-color: var(
+      --md-sys-color-on-primary-container
+    );
+    --md-comp-extended-fab-primary-container-focused-state-layer-color: var(
+      --md-sys-color-on-primary-container
+    );
+    --md-comp-extended-fab-primary-container-pressed-state-layer-color: var(
+      --md-sys-color-on-primary-container
+    );
 
     --md-fab-container-color: var(--md-comp-extended-fab-primary-container-container-color);
     --md-fab-icon-color: var(--md-comp-extended-fab-primary-container-icon-color);
     --md-content-color: var(--md-comp-extended-fab-primary-container-label-text-color);
     --md-state-box-shadow: var(--md-comp-extended-fab-primary-container-container-elevation);
+    --md-private-state-layer-color: var(
+      --md-comp-extended-fab-primary-container-hovered-state-layer-color
+    );
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(
         --md-comp-extended-fab-primary-container-hovered-container-elevation
       );
@@ -227,13 +269,25 @@ useRipple(buttonEl);
     --md-comp-extended-fab-secondary-container-hovered-container-elevation: var(
       --md-sys-elevation-level4
     );
+    --md-comp-extended-fab-secondary-container-hovered-state-layer-color: var(
+      --md-sys-color-on-secondary-container
+    );
+    --md-comp-extended-fab-secondary-container-focused-state-layer-color: var(
+      --md-sys-color-on-secondary-container
+    );
+    --md-comp-extended-fab-secondary-container-pressed-state-layer-color: var(
+      --md-sys-color-on-secondary-container
+    );
 
     --md-fab-container-color: var(--md-comp-extended-fab-secondary-container-container-color);
     --md-fab-icon-color: var(--md-comp-extended-fab-secondary-container-icon-color);
     --md-content-color: var(--md-comp-extended-fab-secondary-container-label-text-color);
     --md-state-box-shadow: var(--md-comp-extended-fab-secondary-container-container-elevation);
+    --md-private-state-layer-color: var(
+      --md-comp-extended-fab-secondary-container-hovered-state-layer-color
+    );
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(
         --md-comp-extended-fab-secondary-container-hovered-container-elevation
       );
@@ -252,13 +306,25 @@ useRipple(buttonEl);
     --md-comp-extended-fab-tertiary-container-hovered-container-elevation: var(
       --md-sys-elevation-level4
     );
+    --md-comp-extended-fab-tertiary-container-hovered-state-layer-color: var(
+      --md-sys-color-on-tertiary-container
+    );
+    --md-comp-extended-fab-tertiary-container-focused-state-layer-color: var(
+      --md-sys-color-on-tertiary-container
+    );
+    --md-comp-extended-fab-tertiary-container-pressed-state-layer-color: var(
+      --md-sys-color-on-tertiary-container
+    );
 
     --md-fab-container-color: var(--md-comp-extended-fab-tertiary-container-container-color);
     --md-fab-icon-color: var(--md-comp-extended-fab-tertiary-container-icon-color);
     --md-content-color: var(--md-comp-extended-fab-tertiary-container-label-text-color);
     --md-state-box-shadow: var(--md-comp-extended-fab-tertiary-container-container-elevation);
+    --md-private-state-layer-color: var(
+      --md-comp-extended-fab-tertiary-container-hovered-state-layer-color
+    );
 
-    &:hover {
+    &.md-state_hover {
       --md-state-box-shadow: var(
         --md-comp-extended-fab-tertiary-container-hovered-container-elevation
       );
@@ -281,11 +347,6 @@ useRipple(buttonEl);
   }
 
   &__label {
-    font-family: var(--md-extended-fab-label-font);
-    font-weight: var(--md-extended-fab-label-weight);
-    font-size: var(--md-extended-fab-label-size);
-    line-height: var(--md-extended-fab-label-line-height);
-    letter-spacing: var(--md-extended-fab-label-tracking);
     white-space: nowrap;
   }
 
@@ -302,11 +363,6 @@ useRipple(buttonEl);
     --md-fab-container-shape: var(--md-comp-extended-fab-small-container-shape);
     --md-fab-horizontal-padding: var(--md-comp-extended-fab-small-leading-space);
     --md-extended-fab-icon-label-space: var(--md-comp-extended-fab-small-icon-label-space);
-    --md-extended-fab-label-font: var(--md-sys-typescale-title-medium-font);
-    --md-extended-fab-label-weight: var(--md-sys-typescale-title-medium-weight);
-    --md-extended-fab-label-size: var(--md-sys-typescale-title-medium-size);
-    --md-extended-fab-label-line-height: var(--md-sys-typescale-title-medium-line-height);
-    --md-extended-fab-label-tracking: var(--md-sys-typescale-title-medium-tracking);
   }
 
   &_size_medium {
@@ -322,11 +378,6 @@ useRipple(buttonEl);
     --md-fab-container-shape: var(--md-comp-extended-fab-medium-container-shape);
     --md-fab-horizontal-padding: var(--md-comp-extended-fab-medium-leading-space);
     --md-extended-fab-icon-label-space: var(--md-comp-extended-fab-medium-icon-label-space);
-    --md-extended-fab-label-font: var(--md-sys-typescale-title-large-font);
-    --md-extended-fab-label-weight: var(--md-sys-typescale-title-large-weight);
-    --md-extended-fab-label-size: var(--md-sys-typescale-title-large-size);
-    --md-extended-fab-label-line-height: var(--md-sys-typescale-title-large-line-height);
-    --md-extended-fab-label-tracking: var(--md-sys-typescale-title-large-tracking);
   }
 
   &_size_large {
@@ -342,11 +393,6 @@ useRipple(buttonEl);
     --md-fab-container-shape: var(--md-comp-extended-fab-large-container-shape);
     --md-fab-horizontal-padding: var(--md-comp-extended-fab-large-leading-space);
     --md-extended-fab-icon-label-space: var(--md-comp-extended-fab-large-icon-label-space);
-    --md-extended-fab-label-font: var(--md-sys-typescale-headline-small-font);
-    --md-extended-fab-label-weight: var(--md-sys-typescale-headline-small-weight);
-    --md-extended-fab-label-size: var(--md-sys-typescale-headline-small-size);
-    --md-extended-fab-label-line-height: var(--md-sys-typescale-headline-small-line-height);
-    --md-extended-fab-label-tracking: var(--md-sys-typescale-headline-small-tracking);
   }
 }
 </style>

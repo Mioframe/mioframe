@@ -112,7 +112,7 @@ describe('MDFab', () => {
     expect(button.find('input, select, textarea, a[href], [role="button"]').exists()).toBe(false);
   });
 
-  it('renders determinate progress when loading is 0', () => {
+  it('treats loading=0 as an active loading state and forwards progress=0', () => {
     const wrapper = mount(MDFab, {
       props: {
         tooltip: 'Create item',
@@ -138,5 +138,63 @@ describe('MDFab', () => {
     expect(wrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(true);
     expect(wrapper.find('.md-circular-progress-indicator-stub').text()).toBe('0');
     expect(wrapper.find('.md-symbol-stub').exists()).toBe(false);
+  });
+
+  it('does not render the progress indicator when loading is false or absent', () => {
+    const stubs = {
+      MDCircularProgressIndicator: {
+        template: '<span class="md-circular-progress-indicator-stub" />',
+      },
+      MDPlainTooltip: { template: '<span class="md-plain-tooltip-stub" />' },
+      MDSymbol: { template: '<span class="md-symbol-stub" />' },
+    };
+
+    const falseLoadingWrapper = mount(MDFab, {
+      props: { tooltip: 'Create item', mdSymbol: 'add', loading: false },
+      global: { stubs },
+    });
+    const absentLoadingWrapper = mountFab();
+
+    expect(falseLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
+    expect(absentLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
+  });
+
+  it('renders indeterminate progress when loading is true', () => {
+    const wrapper = mount(MDFab, {
+      props: { tooltip: 'Create item', mdSymbol: 'add', loading: true },
+      global: {
+        stubs: {
+          MDCircularProgressIndicator: {
+            props: ['progress'],
+            template:
+              '<span class="md-circular-progress-indicator-stub" :data-progress="progress" />',
+          },
+          MDPlainTooltip: { template: '<span class="md-plain-tooltip-stub" />' },
+          MDSymbol: { template: '<span class="md-symbol-stub" />' },
+        },
+      },
+    });
+
+    const indicator = wrapper.get('.md-circular-progress-indicator-stub');
+    expect(indicator.attributes('data-progress')).toBeUndefined();
+    expect(wrapper.find('.md-symbol-stub').exists()).toBe(false);
+  });
+
+  it('renders determinate progress for a positive numeric loading value', () => {
+    const wrapper = mount(MDFab, {
+      props: { tooltip: 'Create item', mdSymbol: 'add', loading: 0.5 },
+      global: {
+        stubs: {
+          MDCircularProgressIndicator: {
+            props: ['progress'],
+            template: '<span class="md-circular-progress-indicator-stub">{{ progress }}</span>',
+          },
+          MDPlainTooltip: { template: '<span class="md-plain-tooltip-stub" />' },
+          MDSymbol: { template: '<span class="md-symbol-stub" />' },
+        },
+      },
+    });
+
+    expect(wrapper.find('.md-circular-progress-indicator-stub').text()).toBe('0.5');
   });
 });
