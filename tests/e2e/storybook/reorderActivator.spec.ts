@@ -30,6 +30,21 @@ test.describe('mouse activation', () => {
     await page.mouse.up();
   });
 
+  test('suppresses the release click after a completed drag from the primary action, but not a later genuine click', async ({
+    page,
+  }) => {
+    const primary = page.getByRole('button', { name: 'Alpha primary action' });
+    const from = center(await boxOf(primary));
+
+    await mouseDrag(page, from, { x: from.x + 40, y: from.y }, { steps: 8 });
+
+    expect(await getCount(page, 'Drag start count')).toBe(1);
+    expect(await getCount(page, 'Primary click count')).toBe(0);
+
+    await primary.click();
+    expect(await getCount(page, 'Primary click count')).toBe(1);
+  });
+
   test('a sub-threshold press on the primary action still clicks', async ({ page }) => {
     const primary = page.getByRole('button', { name: 'Alpha primary action' });
     const from = center(await boxOf(primary));

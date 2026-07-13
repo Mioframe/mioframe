@@ -151,6 +151,8 @@ describe('useReorder activation gating', () => {
       initialIndex: 1,
       finalIndex: 1,
       cancelled: false,
+      changed: false,
+      orderedKeys: ['a', 'b', 'c'],
     });
     expect(onReorder).not.toHaveBeenCalled();
 
@@ -313,6 +315,8 @@ describe('useReorder cancellation', () => {
       initialIndex: 1,
       finalIndex: 1,
       cancelled: true,
+      changed: false,
+      orderedKeys: ['a', 'b', 'c'],
     });
 
     // A stray pointerup after cancellation must not fire a second onDragEnd.
@@ -360,6 +364,8 @@ describe('useReorder cancellation', () => {
       initialIndex: 0,
       finalIndex: 0,
       cancelled: true,
+      changed: false,
+      orderedKeys: ['a', 'b', 'c'],
     });
 
     wrapper.unmount();
@@ -386,6 +392,8 @@ describe('useReorder cancellation', () => {
       initialIndex: 0,
       finalIndex: 0,
       cancelled: true,
+      changed: false,
+      orderedKeys: ['a', 'b', 'c'],
     });
 
     Object.defineProperty(document, 'hidden', { value: false, configurable: true });
@@ -421,6 +429,8 @@ describe('useReorder cancellation', () => {
       initialIndex: 0,
       finalIndex: 0,
       cancelled: true,
+      changed: false,
+      orderedKeys: ['a', 'b', 'c'],
     });
 
     wrapper.unmount();
@@ -473,6 +483,8 @@ describe('useReorder cancellation', () => {
       initialIndex: 0,
       finalIndex: 0,
       cancelled: true,
+      changed: false,
+      orderedKeys: ['a', 'b', 'c'],
     });
     expect(onDragStart).toHaveBeenCalledTimes(1);
 
@@ -500,6 +512,8 @@ describe('useReorder cancellation', () => {
       initialIndex: 0,
       finalIndex: 0,
       cancelled: true,
+      changed: false,
+      orderedKeys: ['a', 'b', 'c'],
     });
   });
 });

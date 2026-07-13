@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   addDatabaseItem,
   addView,
@@ -14,6 +14,32 @@ import {
   openOpfs,
   openViewsSheet,
 } from './helpers';
+
+const dragRowToRow = async (
+  page: Page,
+  fromRow: Locator,
+  toRow: Locator,
+  position: 'before' | 'after' = 'after',
+) => {
+  await fromRow.scrollIntoViewIfNeeded();
+  await toRow.scrollIntoViewIfNeeded();
+
+  const fromBox = await fromRow.boundingBox();
+  const toBox = await toRow.boundingBox();
+  if (!fromBox || !toBox) {
+    throw new Error('missing bounding box for view row');
+  }
+
+  const dragSurfaceX = fromBox.x + fromBox.width / 2;
+  const fromCenterY = fromBox.y + fromBox.height / 2;
+  const toCenterY = position === 'before' ? toBox.y + 4 : toBox.y + toBox.height - 4;
+
+  await page.mouse.move(dragSurfaceX, fromCenterY);
+  await page.mouse.down();
+  await page.mouse.move(dragSurfaceX, fromCenterY + 8, { steps: 4 });
+  await page.mouse.move(dragSurfaceX, toCenterY, { steps: 12 });
+  await page.mouse.up();
+};
 
 test('reordering database views by drag does not leak text selection', async ({ page }) => {
   await launchApp(page);
@@ -84,6 +110,68 @@ test('reordering database views by drag does not leak text selection', async ({ 
     throw new Error('missing bounding box for view row after reopening the sheet');
   }
   expect(reopenedSecondBox.y).toBeLessThan(reopenedFirstBox.y);
+
+  await closeBottomSheet(page, /database views sheet/i);
+});
+
+test('closing the views sheet immediately after a second completed reorder keeps the latest persisted order', async ({
+  page,
+}) => {
+  await launchApp(page);
+  await openOpfs(page);
+
+  const directoryName = await createDirectory(page, createUniqueName('reorder latest lab'));
+  await openDirectory(page, directoryName);
+
+  const documentName = await createDatabaseDocument(
+    page,
+    createUniqueName('reorder latest catalog'),
+  );
+  await openDocumentFromExplorer(page, documentName);
+
+  const propertyName = await createStringProperty(page, createUniqueName('title'));
+  await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+  const firstViewName = await addView(page, createUniqueName('view alpha'));
+  const secondViewName = await addView(page, createUniqueName('view bravo'));
+  const thirdViewName = await addView(page, createUniqueName('view charlie'));
+
+  const sheet = await openViewsSheet(page);
+  const firstRow = sheet.getByRole('button', { name: firstViewName });
+  const secondRow = sheet.getByRole('button', { name: secondViewName });
+  const thirdRow = sheet.getByRole('button', { name: thirdViewName });
+
+  await dragRowToRow(page, firstRow, secondRow, 'after');
+  await dragRowToRow(page, thirdRow, secondRow, 'before');
+  await closeBottomSheet(page, /database views sheet/i);
+
+  const reopenedSheet = await openViewsSheet(page);
+  await expect
+    .poll(async () => {
+      const firstBox = await reopenedSheet
+        .getByRole('button', { name: firstViewName })
+        .boundingBox();
+      const secondBox = await reopenedSheet
+        .getByRole('button', { name: secondViewName })
+        .boundingBox();
+      const thirdBox = await reopenedSheet
+        .getByRole('button', { name: thirdViewName })
+        .boundingBox();
+
+      if (!firstBox || !secondBox || !thirdBox) {
+        return '';
+      }
+
+      return [
+        { name: firstViewName, y: firstBox.y },
+        { name: secondViewName, y: secondBox.y },
+        { name: thirdViewName, y: thirdBox.y },
+      ]
+        .sort((left, right) => left.y - right.y)
+        .map(({ name }) => name)
+        .join(',');
+    })
+    .toBe([thirdViewName, secondViewName, firstViewName].join(','));
 
   await closeBottomSheet(page, /database views sheet/i);
 });

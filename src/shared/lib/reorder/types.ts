@@ -20,6 +20,11 @@ export interface ReorderMoveEvent<Key extends ReorderKey = ReorderKey> {
   fromIndex: number;
   /** The requested index for the item in `keys` after this move. */
   toIndex: number;
+  /**
+   * Complete requested controlled order after this accepted live move.
+   * Consumers must adopt it synchronously.
+   */
+  orderedKeys: readonly Key[];
 }
 
 /** Payload for {@link UseReorderOptions.onDragEnd}. */
@@ -32,6 +37,16 @@ export interface ReorderDragEndEvent<Key extends ReorderKey = ReorderKey> {
   finalIndex: number;
   /** Whether the session ended by cancellation rather than a normal pointer release. */
   cancelled: boolean;
+  /**
+   * Whether the normally completed gesture finished with an order different from the full
+   * controlled sequence captured at activation. Always false for a cancelled gesture.
+   */
+  changed: boolean;
+  /**
+   * Complete controlled order after the library's final reconciliation. Consumers should persist
+   * it only when `cancelled === false && changed === true`.
+   */
+  orderedKeys: readonly Key[];
 }
 
 /** Options for {@link useReorder}. */
@@ -44,8 +59,9 @@ export interface UseReorderOptions<Key extends ReorderKey = ReorderKey> {
    */
   keys: MaybeRefOrGetter<readonly Key[]>;
   /**
-   * Called synchronously for every live move; the consumer must update its reactive order in
-   * response. Vue may commit the corresponding DOM update asynchronously.
+   * Called synchronously for every live move with the full requested controlled order; the
+   * consumer must adopt `orderedKeys` synchronously. Vue may commit the corresponding DOM update
+   * asynchronously.
    */
   onReorder: (event: ReorderMoveEvent<Key>) => void;
   /** Called exactly once, only after drag activation succeeds. */

@@ -85,6 +85,8 @@ interface DraggingSession<Key extends ReorderKey> {
   itemEl: HTMLElement;
   containerEl: HTMLElement;
   initialIndex: number;
+  /** The full controlled sequence captured when the session activated. */
+  initialSequence: Key[];
   /** The last controlled sequence this session confirmed the consumer actually adopted. */
   confirmedSequence: Key[];
   /** A reorder request currently being synchronously validated, or `null` when none is in flight. */
@@ -119,6 +121,7 @@ interface SettlingSession<Key extends ReorderKey> {
   phase: 'settling';
   key: Key;
   initialIndex: number;
+  initialSequence: Key[];
   confirmedSequence: Key[];
   /** The single move this settling session is waiting to see committed to the DOM. */
   commitToken: CommitToken;
@@ -283,6 +286,7 @@ export const createPointerSession = <Key extends ReorderKey>(
         phase: 'settling',
         key: s.key,
         initialIndex: s.initialIndex,
+        initialSequence: s.initialSequence,
         confirmedSequence: s.confirmedSequence,
         commitToken,
       };
@@ -455,6 +459,7 @@ export const createPointerSession = <Key extends ReorderKey>(
       itemEl,
       containerEl,
       initialIndex,
+      initialSequence: [...currentKeys],
       confirmedSequence: [...currentKeys],
       pendingRequestedSequence: null,
       terminationReason: 'not-ended',
@@ -542,7 +547,12 @@ export const createPointerSession = <Key extends ReorderKey>(
 
     s.pendingRequestedSequence = requestedSequence;
     callConsumer(() => {
-      options.onReorder({ key: movedKey, fromIndex, toIndex });
+      options.onReorder({
+        key: movedKey,
+        fromIndex,
+        toIndex,
+        orderedKeys: [...requestedSequence],
+      });
     });
 
     const outcome = evaluateRequestedMove(
@@ -605,19 +615,37 @@ export const createPointerSession = <Key extends ReorderKey>(
   };
 
   const finishDraggingSession = (s: DraggingSession<Key>) => {
-    const finalIndex = callConsumer(() => options.getKeys()).indexOf(s.key);
+    const finalKeys = [...callConsumer(() => options.getKeys())];
+    const finalIndex = finalKeys.indexOf(s.key);
+    const changed = !sequencesEqual(finalKeys, s.initialSequence);
 
     session = null;
     options.draggingKey.value = null;
-    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: false });
+    options.onDragEnd?.({
+      key: s.key,
+      initialIndex: s.initialIndex,
+      finalIndex,
+      cancelled: false,
+      changed,
+      orderedKeys: finalKeys,
+    });
   };
 
   const finishSettlingSession = (s: SettlingSession<Key>) => {
-    const finalIndex = callConsumer(() => options.getKeys()).indexOf(s.key);
+    const finalKeys = [...callConsumer(() => options.getKeys())];
+    const finalIndex = finalKeys.indexOf(s.key);
+    const changed = !sequencesEqual(finalKeys, s.initialSequence);
 
     session = null;
     options.draggingKey.value = null;
-    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: false });
+    options.onDragEnd?.({
+      key: s.key,
+      initialIndex: s.initialIndex,
+      finalIndex,
+      cancelled: false,
+      changed,
+      orderedKeys: finalKeys,
+    });
   };
 
   const cancelSession = (cancelOptions: { skipRollback?: boolean } = {}) => {
@@ -653,7 +681,12 @@ export const createPointerSession = <Key extends ReorderKey>(
     if (rollbackAllowed) {
       const rollbackSequence = deriveMovedSequence(currentKeys, finalIndex, s.initialIndex);
       callConsumer(() => {
-        options.onReorder({ key: s.key, fromIndex: finalIndex, toIndex: s.initialIndex });
+        options.onReorder({
+          key: s.key,
+          fromIndex: finalIndex,
+          toIndex: s.initialIndex,
+          orderedKeys: [...rollbackSequence],
+        });
       });
 
       const keysAfterRollback = callConsumer(() => options.getKeys());
@@ -661,6 +694,10 @@ export const createPointerSession = <Key extends ReorderKey>(
         ? s.initialIndex
         : keysAfterRollback.indexOf(s.key);
     }
+
+    const finalKeys = rollbackAllowed
+      ? [...callConsumer(() => options.getKeys())]
+      : [...currentKeys];
 
     session = null;
     stopGestureRuntime(s);
@@ -675,18 +712,33 @@ export const createPointerSession = <Key extends ReorderKey>(
     }
 
     options.draggingKey.value = null;
-    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: true });
+    options.onDragEnd?.({
+      key: s.key,
+      initialIndex: s.initialIndex,
+      finalIndex,
+      cancelled: true,
+      changed: false,
+      orderedKeys: finalKeys,
+    });
   };
 
   const cancelSettlingSession = (s: SettlingSession<Key>) => {
     // No active pointer runtime to stop, and the original pointer already physically released
     // (settling only exists after a physical pointerup), so no rollback and no release watcher
     // ever apply here: just reconcile the current controlled sequence and finish as cancelled.
-    const finalIndex = callConsumer(() => options.getKeys()).indexOf(s.key);
+    const finalKeys = [...callConsumer(() => options.getKeys())];
+    const finalIndex = finalKeys.indexOf(s.key);
 
     session = null;
     options.draggingKey.value = null;
-    options.onDragEnd?.({ key: s.key, initialIndex: s.initialIndex, finalIndex, cancelled: true });
+    options.onDragEnd?.({
+      key: s.key,
+      initialIndex: s.initialIndex,
+      finalIndex,
+      cancelled: true,
+      changed: false,
+      orderedKeys: finalKeys,
+    });
   };
 
   /**

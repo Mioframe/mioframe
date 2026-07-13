@@ -33,15 +33,17 @@ watch(
 const keys = computed(() => items.value.map((item) => item.key));
 
 const reorderCount = ref(0);
+const reorderItems = (orderedKeys: readonly number[]): void => {
+  items.value = orderedKeys
+    .map((key) => items.value.find((item) => item.key === key))
+    .filter((item): item is ProfilingItem => item !== undefined);
+};
 
 const { draggingKey, vReorderContainer, vReorderItem } = useReorder({
   keys,
-  onReorder: ({ fromIndex, toIndex }) => {
+  onReorder: ({ orderedKeys }) => {
     reorderCount.value += 1;
-    const next = [...items.value];
-    const [moved] = next.splice(fromIndex, 1);
-    if (moved) next.splice(toIndex, 0, moved);
-    items.value = next;
+    reorderItems(orderedKeys);
   },
 });
 </script>

@@ -31,11 +31,10 @@ const itemKeys = computed(() => items.value.map((item) => item.id));
 
 const { draggingKey, vReorderContainer, vReorderItem } = useReorder({
   keys: itemKeys,
-  onReorder: ({ fromIndex, toIndex }) => {
-    const next = [...items.value];
-    const [moved] = next.splice(fromIndex, 1);
-    if (moved) next.splice(toIndex, 0, moved);
-    items.value = next;
+  onReorder: ({ orderedKeys }) => {
+    items.value = orderedKeys
+      .map((id) => items.value.find((item) => item.id === id))
+      .filter((item): item is Item => item !== undefined);
   },
 });
 
@@ -71,8 +70,8 @@ The consumer owns the ordered data. `useReorder` receives it as
 never keeps a second authoritative copy, and never infers identity from array indexes or DOM
 position — only from the key passed to `v-reorder-item`.
 
-For every live move, `onReorder({ key, fromIndex, toIndex })` fires and the consumer must update
-its reactive order **synchronously**. The library confirms acceptance synchronously too, by
+For every live move, `onReorder({ key, fromIndex, toIndex, orderedKeys })` fires and the consumer
+must adopt `orderedKeys` **synchronously**. The library confirms acceptance synchronously too, by
 re-reading the consumer's keys immediately after `onReorder` returns and comparing them to the
 exact sequence it requested — it never waits for Vue's `nextTick` to decide whether a move was
 accepted. `nextTick` is used only afterward, to wait for Vue's DOM commit of an already-accepted
@@ -187,12 +186,14 @@ treatment.
 ## Callback semantics
 
 - `onDragStart({ key, index })` fires exactly once, only after activation succeeds.
-- `onReorder({ key, fromIndex, toIndex })` may fire multiple times during one live drag; at most
-  once per animation frame.
-- `onDragEnd({ key, initialIndex, finalIndex, cancelled })` fires exactly once for every fired
-  `onDragStart` whose consumer callbacks complete without throwing. `finalIndex` is the item's
-  actual index in the consumer's controlled `keys` when the session ended, or `-1` when the active
-  key no longer exists there (for example, the consumer removed it mid-drag).
+- `onReorder({ key, fromIndex, toIndex, orderedKeys })` may fire multiple times during one live
+  drag; at most once per animation frame.
+- `onDragEnd({ key, initialIndex, finalIndex, cancelled, changed, orderedKeys })` fires exactly
+  once for every fired `onDragStart` whose consumer callbacks complete without throwing.
+  `finalIndex` is the item's actual index in the consumer's controlled `keys` when the session
+  ended, or `-1` when the active key no longer exists there (for example, the consumer removed it
+  mid-drag). Persist only when `cancelled === false && changed === true`; `useReorder` itself
+  never persists.
 - A pending pointer gesture that never activates (released before the threshold, or cancelled
   before the touch long-press delay) fires none of these callbacks.
 - `draggingKey` becomes the active key on activation and returns to `null` when the session ends.

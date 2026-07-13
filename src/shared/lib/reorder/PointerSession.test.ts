@@ -68,7 +68,7 @@ interface SessionFixtureOverrides {
    * throwing on others (e.g. the rollback).
    */
   onReorder?: (
-    event: { key: string; fromIndex: number; toIndex: number },
+    event: { key: string; fromIndex: number; toIndex: number; orderedKeys: readonly string[] },
     helpers: { getKeys: () => string[]; setKeys: (next: string[]) => void },
   ) => void;
   onDragStart?: () => void;
@@ -110,20 +110,29 @@ const setupSession = (overrides: SessionFixtureOverrides = {}) => {
   const getKeys = overrides.wrapGetKeys ? overrides.wrapGetKeys(baseGetKeys) : baseGetKeys;
   const draggingKey = ref<string | null>(null);
 
-  const defaultOnReorder = (event: { key: string; fromIndex: number; toIndex: number }): void => {
-    const next = [...keys];
-    const [moved] = next.splice(event.fromIndex, 1);
-    if (moved !== undefined) next.splice(event.toIndex, 0, moved);
-    keys = next;
+  const defaultOnReorder = (event: {
+    key: string;
+    fromIndex: number;
+    toIndex: number;
+    orderedKeys: readonly string[];
+  }): void => {
+    keys = [...event.orderedKeys];
   };
 
-  const onReorder = vi.fn((event: { key: string; fromIndex: number; toIndex: number }) => {
-    if (overrides.onReorder) {
-      overrides.onReorder(event, { getKeys: baseGetKeys, setKeys });
-      return;
-    }
-    defaultOnReorder(event);
-  });
+  const onReorder = vi.fn(
+    (event: {
+      key: string;
+      fromIndex: number;
+      toIndex: number;
+      orderedKeys: readonly string[];
+    }) => {
+      if (overrides.onReorder) {
+        overrides.onReorder(event, { getKeys: baseGetKeys, setKeys });
+        return;
+      }
+      defaultOnReorder(event);
+    },
+  );
   const onDragStart = vi.fn(overrides.onDragStart);
   const onDragEnd = vi.fn(overrides.onDragEnd);
 
@@ -424,6 +433,8 @@ describe('deferred pointerup settlement', () => {
       initialIndex: 0,
       finalIndex: 1,
       cancelled: false,
+      changed: true,
+      orderedKeys: ['b', 'a'],
     });
     expect(setup.draggingKey.value).toBeNull();
   });
@@ -571,10 +582,7 @@ describe('consumer exception safety', () => {
         onReorderCalls += 1;
         if (onReorderCalls === 2) throw boom;
 
-        const next = [...helpers.getKeys()];
-        const [moved] = next.splice(event.fromIndex, 1);
-        if (moved !== undefined) next.splice(event.toIndex, 0, moved);
-        helpers.setKeys(next);
+        helpers.setKeys([...event.orderedKeys]);
       },
     });
 
@@ -854,10 +862,7 @@ describe('hard cleanup exception safety', () => {
           onReorderCalls += 1;
           if (onReorderCalls === 2) throw boom;
 
-          const next = [...helpers.getKeys()];
-          const [moved] = next.splice(event.fromIndex, 1);
-          if (moved !== undefined) next.splice(event.toIndex, 0, moved);
-          helpers.setKeys(next);
+          helpers.setKeys([...event.orderedKeys]);
         },
       });
 

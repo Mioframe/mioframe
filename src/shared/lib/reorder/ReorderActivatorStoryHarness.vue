@@ -29,17 +29,18 @@ const trailingClickCount = ref(0);
 const activatorIgnoreClickCount = ref(0);
 const settingsClickCount = ref(0);
 const lastDragEndPayload = ref('');
+const reorderItems = (orderedKeys: readonly string[]): void => {
+  items.value = orderedKeys
+    .map((id) => items.value.find((item) => item.id === id))
+    .filter((item): item is HarnessItem => item !== undefined);
+};
 
 const { draggingKey, vReorderContainer, vReorderItem, vReorderActivator, vReorderIgnore } =
   useReorder({
     keys,
-    onReorder: ({ fromIndex, toIndex }) => {
+    onReorder: ({ orderedKeys }) => {
       reorderCount.value += 1;
-
-      const next = [...items.value];
-      const [moved] = next.splice(fromIndex, 1);
-      if (moved) next.splice(toIndex, 0, moved);
-      items.value = next;
+      reorderItems(orderedKeys);
     },
     onDragStart: () => {
       dragStartCount.value += 1;

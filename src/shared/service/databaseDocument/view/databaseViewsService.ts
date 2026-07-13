@@ -23,68 +23,86 @@ import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
 import type { DatabaseStateQueryResult } from '../databaseService';
 
+/** Query key for document-scoped database-view collections. */
+export interface DatabaseViewsQuery {
+  /** The document id. */
+  documentId: AMDocumentId;
+  /** The repository path containing the document. */
+  path: string;
+}
+
+/** Query key for one document-scoped database view. */
+export interface DatabaseViewQuery extends DatabaseViewsQuery {
+  /** The optional view id to fetch. */
+  viewId?: DatabaseViewId | undefined;
+}
+
+/**
+ * Builds database-view queries and mutations for one document path/document-id pair, including
+ * FIFO reorder persistence per document.
+ * @param databaseState$ - Emits the canonical database state for a document.
+ * @param changeDatabase - Applies one persisted document mutation.
+ * @returns The view query/mutation service surface.
+ */
 export const setupDatabaseViewsService = (
-  databaseState$: (q: {
-    documentId: AMDocumentId;
-    path: string;
-  }) => Observable<DatabaseStateQueryResult>,
+  databaseState$: (q: DatabaseViewsQuery) => Observable<DatabaseStateQueryResult>,
   changeDatabase: (
     path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseState) => unknown,
   ) => Promise<unknown>,
 ) => {
-  const databaseViews$ = defineCacheObservable(
-    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
-      databaseState$({ documentId, path }).pipe(
-        map((state) => {
-          if (state instanceof Error) {
-            return state;
-          }
+  const reorderTails = new Map<string, Promise<unknown>>();
 
-          return state?.views;
-        }),
-        distinctUntilChanged(),
-      ),
+  /**
+   * Keys the per-document reorder FIFO without introducing a wider queue abstraction.
+   * @param path - The document path.
+   * @param documentId - The document id.
+   * @returns The stable per-document FIFO key.
+   */
+  const getReorderQueueKey = (path: string, documentId: AMDocumentId): string =>
+    JSON.stringify([path, documentId]);
+
+  const databaseViews$ = defineCacheObservable(({ documentId, path }: DatabaseViewsQuery) =>
+    databaseState$({ documentId, path }).pipe(
+      map((state) => {
+        if (state instanceof Error) {
+          return state;
+        }
+
+        return state?.views;
+      }),
+      distinctUntilChanged(),
+    ),
   );
 
-  const viewList$ = defineCacheObservable(
-    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
-      databaseViews$({ documentId, path }).pipe(
-        map((viewsRecord) => {
-          if (viewsRecord instanceof Error) {
-            return viewsRecord;
-          }
+  const viewList$ = defineCacheObservable(({ documentId, path }: DatabaseViewsQuery) =>
+    databaseViews$({ documentId, path }).pipe(
+      map((viewsRecord) => {
+        if (viewsRecord instanceof Error) {
+          return viewsRecord;
+        }
 
-          return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
-            ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
-          );
-        }),
-      ),
+        return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
+          ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
+        );
+      }),
+    ),
   );
 
   const viewList = defineObservableQuery(viewList$);
 
-  const databaseView$ = defineCacheObservable(
-    ({
-      documentId,
-      path,
-      viewId,
-    }: {
-      documentId: AMDocumentId;
-      path: string;
-      viewId?: DatabaseViewId | undefined;
-    }) =>
-      databaseViews$({ documentId, path }).pipe(
-        map((views) => {
-          if (views instanceof Error) {
-            return views;
-          }
+  const databaseView$ = defineCacheObservable(({ documentId, path, viewId }: DatabaseViewQuery) =>
+    databaseViews$({ documentId, path }).pipe(
+      map((views) => {
+        if (views instanceof Error) {
+          return views;
+        }
 
-          return viewId ? views?.[viewId] : undefined;
-        }),
-        distinctUntilChanged((a, b) => isEqual(a, b)),
-      ),
+        return viewId ? views?.[viewId] : undefined;
+      }),
+      distinctUntilChanged((a, b) => isEqual(a, b)),
+    ),
   );
 
   const remove = (path: string, documentId: AMDocumentId, viewId: DatabaseViewId) =>
@@ -92,7 +110,18 @@ export const setupDatabaseViewsService = (
       strictRecordRemove(state['views'], viewId);
     });
 
-  const reorder = (path: string, documentId: AMDocumentId, orderedIds: DatabaseViewId[]) =>
+  /**
+   * Applies one reorder mutation while preserving existing membership normalization semantics.
+   * @param path - The document path.
+   * @param documentId - The document id.
+   * @param orderedIds - The requested ordered view ids snapshot for this mutation.
+   * @returns The concrete persisted mutation promise.
+   */
+  const applyReorder = (
+    path: string,
+    documentId: AMDocumentId,
+    orderedIds: readonly DatabaseViewId[],
+  ) =>
     changeDatabase(path, documentId, (state) => {
       const views = state.views;
       const knownIds = Array.from(strictRecordIterableEntries(views)())
@@ -118,6 +147,32 @@ export const setupDatabaseViewsService = (
         }
       });
     });
+
+  const reorder = (path: string, documentId: AMDocumentId, orderedIds: DatabaseViewId[]) => {
+    const queueKey = getReorderQueueKey(path, documentId);
+    const requestedIds = [...orderedIds];
+    const previous = reorderTails.get(queueKey) ?? Promise.resolve();
+
+    const runMutation = () => applyReorder(path, documentId, requestedIds);
+    const current = previous.then(runMutation, runMutation);
+
+    reorderTails.set(queueKey, current);
+
+    void current.then(
+      () => {
+        if (reorderTails.get(queueKey) === current) {
+          reorderTails.delete(queueKey);
+        }
+      },
+      () => {
+        if (reorderTails.get(queueKey) === current) {
+          reorderTails.delete(queueKey);
+        }
+      },
+    );
+
+    return current;
+  };
 
   const create = async (path: string, documentId: AMDocumentId, view: DatabaseView) => {
     const viewId = generateViewId();

@@ -7,11 +7,8 @@ const keys = computed(() => items.value);
 
 const { vReorderContainer, vReorderItem } = useReorder({
   keys,
-  onReorder: ({ fromIndex, toIndex }) => {
-    const next = [...items.value];
-    const [moved] = next.splice(fromIndex, 1);
-    if (moved) next.splice(toIndex, 0, moved);
-    items.value = next;
+  onReorder: ({ orderedKeys }) => {
+    items.value = [...orderedKeys];
   },
 });
 </script>
