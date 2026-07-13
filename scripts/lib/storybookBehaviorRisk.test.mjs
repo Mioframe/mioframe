@@ -355,6 +355,7 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
+      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
@@ -366,6 +367,7 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
+      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
@@ -377,6 +379,7 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
+      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
@@ -388,6 +391,7 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
+      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
@@ -399,6 +403,7 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
+      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
@@ -410,6 +415,7 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
+      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 

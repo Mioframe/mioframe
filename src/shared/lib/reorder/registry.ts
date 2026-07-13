@@ -19,9 +19,11 @@ export interface ReorderRegistry<Key extends ReorderKey> {
   /** Elements marked with `vReorderIgnore`. */
   ignoreEls: Set<Element>;
   /**
-   * Elements marked with `vReorderActivator`. Item-scoped by DOM containment (an activator
-   * belongs to whichever registered item's element contains it) rather than by a stored key, so
-   * an item never needs a second registered identity for its activators.
+   * Elements marked with `vReorderActivator`. Ownership is resolved on demand by walking up to
+   * the nearest registered item ancestor (see {@link findActivatorOwner}), never by a stored key,
+   * so an item never needs a second registered identity for its activators. This means an
+   * activator nested inside a registered *child* item belongs to that child alone, never to an
+   * enclosing registered parent.
    */
   activatorEls: Set<Element>;
 }
@@ -141,19 +143,39 @@ export const findRegisteredAncestor = <Key extends ReorderKey>(
 };
 
 /**
+ * Resolves the registered item that owns `activatorEl`: its nearest registered item ancestor.
+ * Ownership walks up from the activator itself, so an activator nested inside a registered child
+ * item resolves to that child even when an enclosing registered parent's subtree also contains it.
  * @param registry - The instance registry to search.
- * @param itemEl - A resolved registered item's element.
- * @returns Whether `itemEl` owns at least one registered `vReorderActivator` element (anywhere in
- * its subtree, including `itemEl` itself). Determined by DOM containment against the resolved
- * item only — never a global flag — so an activator registered for a different item never affects
- * this check.
+ * @param containerEl - The reorder container element bounding the search.
+ * @param activatorEl - A registered `vReorderActivator` element.
+ * @returns The activator's owning registered item, or `null` when none is found within the
+ * container.
+ */
+const findActivatorOwner = <Key extends ReorderKey>(
+  registry: ReorderRegistry<Key>,
+  containerEl: Element,
+  activatorEl: Element,
+): RegisteredTarget<Key> | null => findRegisteredAncestor(registry, containerEl, activatorEl);
+
+/**
+ * @param registry - The instance registry to search.
+ * @param containerEl - The reorder container element bounding the search.
+ * @param item - A resolved registered item.
+ * @returns Whether `item` owns at least one registered `vReorderActivator` element, i.e. an
+ * activator whose nearest registered item ancestor is `item` itself. An activator nested inside a
+ * registered child item never counts toward an enclosing registered parent, even though the
+ * child's DOM is structurally contained within the parent's subtree.
  */
 const hasRegisteredActivator = <Key extends ReorderKey>(
   registry: ReorderRegistry<Key>,
-  itemEl: Element,
+  containerEl: Element,
+  item: RegisteredTarget<Key>,
 ): boolean => {
   for (const activatorEl of registry.activatorEls) {
-    if (itemEl.contains(activatorEl)) return true;
+    if (findActivatorOwner(registry, containerEl, activatorEl)?.element === item.element) {
+      return true;
+    }
   }
 
   return false;
@@ -188,7 +210,7 @@ export const resolveActivationTarget = <Key extends ReorderKey>(
   const item = findRegisteredAncestor(registry, containerEl, startNode);
   if (!item) return null;
 
-  const requiresActivator = hasRegisteredActivator(registry, item.element);
+  const requiresActivator = hasRegisteredActivator(registry, containerEl, item);
   let matchedActivator = false;
 
   let current: Node | null = startNode;
@@ -197,7 +219,12 @@ export const resolveActivationTarget = <Key extends ReorderKey>(
     if (registry.ignoreEls.has(current)) return null;
 
     if (requiresActivator) {
-      if (registry.activatorEls.has(current)) matchedActivator = true;
+      if (
+        registry.activatorEls.has(current) &&
+        findActivatorOwner(registry, containerEl, current)?.element === item.element
+      ) {
+        matchedActivator = true;
+      }
     } else if (isInteractiveElement(current)) {
       return null;
     }

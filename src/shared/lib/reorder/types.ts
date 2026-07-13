@@ -81,6 +81,14 @@ export interface UseReorderReturn<Key extends ReorderKey = ReorderKey> {
    * second item or change item geometry; it only affects activation, never live hit-testing.
    */
   vReorderActivator: Directive<HTMLElement>;
-  /** Excludes a custom interactive descendant from starting drag activation: `v-reorder-ignore`. */
+  /**
+   * The unconditional veto for drag activation: `v-reorder-ignore`. Always wins over an
+   * activator, wherever it appears. Without an activator, native controls are already excluded
+   * from activation automatically, so this directive is mainly needed for a custom interactive
+   * descendant the library cannot recognize natively. With an explicit `v-reorder-activator`,
+   * native controls *inside* the activator are intentionally allowed to start a drag — so a
+   * native control that must stay independent (e.g. a trailing menu button inside a full-row
+   * activator) also needs `v-reorder-ignore`.
+   */
   vReorderIgnore: Directive<HTMLElement>;
 }

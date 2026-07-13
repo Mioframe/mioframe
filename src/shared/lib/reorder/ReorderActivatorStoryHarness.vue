@@ -5,11 +5,19 @@ import { useReorder, type ReorderDragEndEvent } from '@shared/lib/reorder';
 interface HarnessItem {
   id: string;
   label: string;
+  /**
+   * Full-row activation: `v-reorder-activator` sits on the item root itself (the shape
+   * `DatabaseViewListEdit` uses), rather than on a child handle region. Its native trailing
+   * control needs an explicit `v-reorder-ignore` to stay independent, since without it the
+   * control would sit inside the activator and be eligible to start a drag.
+   */
+  fullRowActivator: boolean;
 }
 
 const items = ref<HarnessItem[]>([
-  { id: 'alpha', label: 'Alpha' },
-  { id: 'bravo', label: 'Bravo' },
+  { id: 'alpha', label: 'Alpha', fullRowActivator: false },
+  { id: 'bravo', label: 'Bravo', fullRowActivator: false },
+  { id: 'charlie', label: 'Charlie', fullRowActivator: true },
 ]);
 const keys = computed(() => items.value.map((item) => item.id));
 
@@ -19,6 +27,7 @@ const dragEndCount = ref(0);
 const primaryClickCount = ref(0);
 const trailingClickCount = ref(0);
 const activatorIgnoreClickCount = ref(0);
+const settingsClickCount = ref(0);
 const lastDragEndPayload = ref('');
 
 const { draggingKey, vReorderContainer, vReorderItem, vReorderActivator, vReorderIgnore } =
@@ -51,6 +60,10 @@ const onTrailingClick = () => {
 
 const onActivatorIgnoreClick = () => {
   activatorIgnoreClickCount.value += 1;
+};
+
+const onSettingsClick = () => {
+  settingsClickCount.value += 1;
 };
 </script>
 
@@ -119,6 +132,13 @@ const onActivatorIgnoreClick = () => {
           <output aria-label="Activator ignore click count">{{ activatorIgnoreClickCount }}</output>
         </dd>
       </div>
+
+      <div>
+        <dt>Settings click count</dt>
+        <dd>
+          <output aria-label="Settings click count">{{ settingsClickCount }}</output>
+        </dd>
+      </div>
     </dl>
 
     <div
@@ -127,36 +147,73 @@ const onActivatorIgnoreClick = () => {
       aria-label="Reorder activator items"
       class="reorder-activator-story-harness__container"
     >
-      <!--
-        A compound row deliberately shaped like a real multi-action list item: the item has an
-        explicit activator, so strict handle-only semantics apply. The activator wraps a native
-        primary button (drag or click both start from there) and a nested vReorderIgnore veto; a
-        separate non-activator content area and a separate trailing native button sit outside the
-        activator and must never start a drag.
-      -->
-      <div
-        v-for="item in items"
-        :key="item.id"
-        v-reorder-item="item.id"
-        role="listitem"
-        :aria-label="item.label"
-        class="reorder-activator-story-harness__row"
-      >
-        <div v-reorder-activator class="reorder-activator-story-harness__activator">
-          <span
-            v-reorder-ignore
-            role="button"
-            tabindex="0"
-            :aria-label="`${item.label} activator ignore zone`"
-            class="reorder-activator-story-harness__activator-ignore"
-            @click="onActivatorIgnoreClick"
-            @keydown.enter.prevent="onActivatorIgnoreClick"
-            @keydown.space.prevent
-            @keyup.space.prevent="onActivatorIgnoreClick"
-          >
-            pin
-          </span>
+      <template v-for="item in items" :key="item.id">
+        <!--
+          A compound row deliberately shaped like a real multi-action list item: the item has an
+          explicit activator, so strict handle-only semantics apply. The activator wraps a native
+          primary button (drag or click both start from there) and a nested vReorderIgnore veto; a
+          separate non-activator content area and a separate trailing native button sit outside
+          the activator and must never start a drag.
+        -->
+        <div
+          v-if="!item.fullRowActivator"
+          v-reorder-item="item.id"
+          role="listitem"
+          :aria-label="item.label"
+          class="reorder-activator-story-harness__row"
+        >
+          <div v-reorder-activator class="reorder-activator-story-harness__activator">
+            <span
+              v-reorder-ignore
+              role="button"
+              tabindex="0"
+              :aria-label="`${item.label} activator ignore zone`"
+              class="reorder-activator-story-harness__activator-ignore"
+              @click="onActivatorIgnoreClick"
+              @keydown.enter.prevent="onActivatorIgnoreClick"
+              @keydown.space.prevent
+              @keyup.space.prevent="onActivatorIgnoreClick"
+            >
+              pin
+            </span>
 
+            <button
+              type="button"
+              :aria-label="`${item.label} primary action`"
+              class="reorder-activator-story-harness__primary"
+              @click="onPrimaryClick"
+            >
+              {{ item.label }}
+            </button>
+          </div>
+
+          <span class="reorder-activator-story-harness__content">non-activator content</span>
+
+          <button
+            type="button"
+            :aria-label="`${item.label} trailing action`"
+            class="reorder-activator-story-harness__trailing"
+            @click="onTrailingClick"
+          >
+            trailing
+          </button>
+        </div>
+
+        <!--
+          Full-row activation, matching DatabaseViewListEdit's real usage: v-reorder-activator
+          sits on the item root itself, so the whole row (including the native primary button)
+          is draggable. The trailing native settings control must carry its own v-reorder-ignore
+          to stay independent — without it, it would sit inside the row-level activator and be
+          eligible to start a drag.
+        -->
+        <div
+          v-else
+          v-reorder-item="item.id"
+          v-reorder-activator
+          role="listitem"
+          :aria-label="item.label"
+          class="reorder-activator-story-harness__row reorder-activator-story-harness__row_full-activator"
+        >
           <button
             type="button"
             :aria-label="`${item.label} primary action`"
@@ -165,19 +222,19 @@ const onActivatorIgnoreClick = () => {
           >
             {{ item.label }}
           </button>
+
+          <span v-reorder-ignore class="reorder-activator-story-harness__settings-wrap">
+            <button
+              type="button"
+              :aria-label="`${item.label} settings`"
+              class="reorder-activator-story-harness__trailing"
+              @click="onSettingsClick"
+            >
+              settings
+            </button>
+          </span>
         </div>
-
-        <span class="reorder-activator-story-harness__content">non-activator content</span>
-
-        <button
-          type="button"
-          :aria-label="`${item.label} trailing action`"
-          class="reorder-activator-story-harness__trailing"
-          @click="onTrailingClick"
-        >
-          trailing
-        </button>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -245,6 +302,18 @@ const onActivatorIgnoreClick = () => {
 }
 
 .reorder-activator-story-harness__activator-ignore {
+  padding: 2px 6px;
+  background: #fef3c7;
+  border: 1px dashed #d97706;
+  cursor: default;
+}
+
+.reorder-activator-story-harness__row_full-activator {
+  cursor: grab;
+}
+
+.reorder-activator-story-harness__settings-wrap {
+  display: inline-flex;
   padding: 2px 6px;
   background: #fef3c7;
   border: 1px dashed #d97706;

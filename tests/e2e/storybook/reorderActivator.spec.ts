@@ -78,6 +78,34 @@ test.describe('mouse activation', () => {
   });
 });
 
+test.describe('full-row activator', () => {
+  test('starts a drag from the primary action on the row-level activator', async ({ page }) => {
+    const primary = page.getByRole('button', { name: 'Charlie primary action' });
+    const from = center(await boxOf(primary));
+
+    await mouseDrag(page, from, { x: from.x + 40, y: from.y }, { release: false });
+
+    expect(await getCount(page, 'Drag start count')).toBe(1);
+    expect(await getDraggingKey(page)).toBe('charlie');
+
+    await page.mouse.up();
+  });
+
+  test('the ignored settings control inside the row-level activator never drags and still clicks', async ({
+    page,
+  }) => {
+    const settings = page.getByRole('button', { name: 'Charlie settings' });
+    const from = center(await boxOf(settings));
+
+    await mouseDrag(page, from, { x: from.x + 40, y: from.y });
+    expect(await getCount(page, 'Drag start count')).toBe(0);
+    expect(await getDraggingKey(page)).toBe('');
+
+    await settings.click();
+    expect(await getCount(page, 'Settings click count')).toBe(1);
+  });
+});
+
 test.describe('touch activation', () => {
   test.use({ hasTouch: true });
 

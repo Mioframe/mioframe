@@ -354,6 +354,155 @@ describe('resolveActivationTarget with vReorderActivator', () => {
     expect(resolveActivationTarget(registry, container, buttonInB)).toBeNull();
   });
 
+  it('a nested child activator belongs to the child item only, not the enclosing parent', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const parent = document.createElement('div');
+    const child = document.createElement('div');
+    const childHandle = document.createElement('button');
+
+    child.append(childHandle);
+    parent.append(child);
+    container.append(parent);
+    document.body.append(container);
+    registerItem(registry, 'parent', parent);
+    registerItem(registry, 'child', child);
+    registry.activatorEls.add(childHandle);
+
+    expect(resolveActivationTarget(registry, container, childHandle)).toEqual({
+      key: 'child',
+      element: child,
+    });
+  });
+
+  it('does not put the parent into strict activator mode because of a nested child activator', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const parent = document.createElement('div');
+    const parentContent = document.createElement('span');
+    const child = document.createElement('div');
+    const childHandle = document.createElement('button');
+
+    child.append(childHandle);
+    parent.append(parentContent, child);
+    container.append(parent);
+    document.body.append(container);
+    registerItem(registry, 'parent', parent);
+    registerItem(registry, 'child', child);
+    registry.activatorEls.add(childHandle);
+
+    // Parent non-interactive content still resolves through the default (no-activator) behavior.
+    expect(resolveActivationTarget(registry, container, parentContent)).toEqual({
+      key: 'parent',
+      element: parent,
+    });
+  });
+
+  it('keeps a parent native control blocked when the parent owns no activator of its own', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const parent = document.createElement('div');
+    const parentButton = document.createElement('button');
+    const child = document.createElement('div');
+    const childHandle = document.createElement('button');
+
+    child.append(childHandle);
+    parent.append(parentButton, child);
+    container.append(parent);
+    document.body.append(container);
+    registerItem(registry, 'parent', parent);
+    registerItem(registry, 'child', child);
+    registry.activatorEls.add(childHandle);
+
+    expect(resolveActivationTarget(registry, container, parentButton)).toBeNull();
+  });
+
+  it('lets an independent parent activator and child activator each own only their own item', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const parent = document.createElement('div');
+    const parentHandle = document.createElement('button');
+    const child = document.createElement('div');
+    const childHandle = document.createElement('button');
+
+    child.append(childHandle);
+    parent.append(parentHandle, child);
+    container.append(parent);
+    document.body.append(container);
+    registerItem(registry, 'parent', parent);
+    registerItem(registry, 'child', child);
+    registry.activatorEls.add(parentHandle);
+    registry.activatorEls.add(childHandle);
+
+    expect(resolveActivationTarget(registry, container, parentHandle)).toEqual({
+      key: 'parent',
+      element: parent,
+    });
+    expect(resolveActivationTarget(registry, container, childHandle)).toEqual({
+      key: 'child',
+      element: child,
+    });
+  });
+
+  it('resolves the nested child, never the parent, for a pointer target inside the child', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const parent = document.createElement('div');
+    const child = document.createElement('div');
+    const childContent = document.createElement('span');
+
+    child.append(childContent);
+    parent.append(child);
+    container.append(parent);
+    document.body.append(container);
+    registerItem(registry, 'parent', parent);
+    registerItem(registry, 'child', child);
+
+    expect(resolveActivationTarget(registry, container, childContent)).toEqual({
+      key: 'child',
+      element: child,
+    });
+  });
+
+  it('vReorderIgnore still wins inside a nested child item under a parent activator', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const parent = document.createElement('div');
+    const child = document.createElement('div');
+    const ignored = document.createElement('span');
+
+    child.append(ignored);
+    parent.append(child);
+    container.append(parent);
+    document.body.append(container);
+    registerItem(registry, 'parent', parent);
+    registerItem(registry, 'child', child);
+    registry.activatorEls.add(child);
+    registry.ignoreEls.add(ignored);
+
+    expect(resolveActivationTarget(registry, container, ignored)).toBeNull();
+  });
+
+  it('vReorderIgnore still wins inside a parent item alongside an unrelated child activator', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const parent = document.createElement('div');
+    const ignored = document.createElement('span');
+    const child = document.createElement('div');
+    const childHandle = document.createElement('button');
+
+    child.append(childHandle);
+    parent.append(ignored, child);
+    container.append(parent);
+    document.body.append(container);
+    registerItem(registry, 'parent', parent);
+    registerItem(registry, 'child', child);
+    registry.activatorEls.add(childHandle);
+    registry.ignoreEls.add(ignored);
+
+    expect(resolveActivationTarget(registry, container, ignored)).toBeNull();
+  });
+
   it('leaves findRegisteredAncestor unaffected by registered activators', () => {
     const registry = createReorderRegistry<string>();
     const container = document.createElement('div');
