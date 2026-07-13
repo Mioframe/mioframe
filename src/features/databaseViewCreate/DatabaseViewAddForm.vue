@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
-import { UIButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import { reactive } from 'vue';
 
@@ -66,9 +66,9 @@ const onCancel = () => {
     </div>
 
     <template #actions>
-      <UIButton type="submit" primary>Add</UIButton>
+      <MDButton label="Add" color="filled" native-type="submit" />
 
-      <UIButton @click="onCancel">Cancel</UIButton>
+      <MDButton label="Cancel" color="text" @click="onCancel" />
     </template>
   </FormLayout>
 </template>

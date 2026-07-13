@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, onMounted, useSlots, useTemplateRef, warn } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
@@ -8,15 +8,15 @@ import { MDSymbol } from '../Icon';
 const props = withDefaults(
   defineProps<{
     /** Material FAB size variant. */
-    size?: 'medium' | 'large' | undefined;
+    size?: 'regular' | 'medium' | 'large' | undefined;
     /** Material FAB color role. */
     color?:
       | 'primary'
       | 'secondary'
       | 'tertiary'
-      | 'tonal-primary'
-      | 'tonal-secondary'
-      | 'tonal-tertiary'
+      | 'primary-container'
+      | 'secondary-container'
+      | 'tertiary-container'
       | undefined;
     /** Accessible action label and tooltip text for the FAB. */
     tooltip: string;
@@ -28,7 +28,7 @@ const props = withDefaults(
     /** Optional Material Symbols icon name used when no custom icon slot is provided. */
     mdSymbol?: string | undefined;
   }>(),
-  { color: 'primary' },
+  { size: 'regular', color: 'primary' },
 );
 
 const emit = defineEmits<{
@@ -41,9 +41,9 @@ defineSlots<{
   icon(): unknown;
 }>();
 
-const sizeClass = computed(() => {
-  return props.size ? `md-fab_size_${props.size}` : undefined;
-});
+const slots = useSlots();
+
+const sizeClass = computed(() => `md-fab_size_${props.size}`);
 
 const typeClass = computed(() => {
   return `md-fab_color_${props.color}`;
@@ -63,6 +63,14 @@ const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
 const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
 
 useRipple(buttonEl);
+
+if (import.meta.env.DEV) {
+  onMounted(() => {
+    if (!props.mdSymbol && !slots.icon) {
+      warn('MDFab: provide an icon via `mdSymbol` or the `icon` slot. A FAB requires an icon.');
+    }
+  });
+}
 </script>
 
 <template>
@@ -89,8 +97,6 @@ useRipple(buttonEl);
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
-
-        <span v-else class="md-fab__empty-icon" />
       </slot>
     </span>
     <MDPlainTooltip :text="tooltip" />
@@ -99,6 +105,9 @@ useRipple(buttonEl);
 
 <style scoped>
 .md-fab {
+  /* Focus indicator: md.comp.fab.*.focus.indicator.color resolves to the
+     secondary role for every style; the global focus-indicator system already
+     defaults to --md-sys-color-secondary, so no override is required here. */
   --md-fab-icon-size: 24dp;
   --md-fab-container-size: 56dp;
   --md-fab-container-shape: var(--md-sys-shape-corner-large);
@@ -126,37 +135,93 @@ useRipple(buttonEl);
   }
 
   &_color_primary {
-    --md-fab-container-color: var(--md-sys-color-primary);
-    --md-fab-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-fab-primary-container-color: var(--md-sys-color-primary);
+    --md-comp-fab-primary-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-fab-primary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-primary-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-fab-primary-container-color);
+    --md-fab-icon-color: var(--md-comp-fab-primary-icon-color);
+    --md-state-box-shadow: var(--md-comp-fab-primary-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-fab-primary-hovered-container-elevation);
+    }
   }
 
   &_color_secondary {
-    --md-fab-container-color: var(--md-sys-color-secondary);
-    --md-fab-icon-color: var(--md-sys-color-on-secondary);
+    --md-comp-fab-secondary-container-color: var(--md-sys-color-secondary);
+    --md-comp-fab-secondary-icon-color: var(--md-sys-color-on-secondary);
+    --md-comp-fab-secondary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-secondary-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-fab-secondary-container-color);
+    --md-fab-icon-color: var(--md-comp-fab-secondary-icon-color);
+    --md-state-box-shadow: var(--md-comp-fab-secondary-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-fab-secondary-hovered-container-elevation);
+    }
   }
 
   &_color_tertiary {
-    --md-fab-container-color: var(--md-sys-color-tertiary);
-    --md-fab-icon-color: var(--md-sys-color-on-tertiary);
+    --md-comp-fab-tertiary-container-color: var(--md-sys-color-tertiary);
+    --md-comp-fab-tertiary-icon-color: var(--md-sys-color-on-tertiary);
+    --md-comp-fab-tertiary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-tertiary-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-fab-tertiary-container-color);
+    --md-fab-icon-color: var(--md-comp-fab-tertiary-icon-color);
+    --md-state-box-shadow: var(--md-comp-fab-tertiary-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-fab-tertiary-hovered-container-elevation);
+    }
   }
 
-  &_color_tonal-primary {
-    --md-fab-container-color: var(--md-sys-color-primary-container);
-    --md-fab-icon-color: var(--md-sys-color-on-primary-container);
+  &_color_primary-container {
+    --md-comp-fab-primary-container-container-color: var(--md-sys-color-primary-container);
+    --md-comp-fab-primary-container-icon-color: var(--md-sys-color-on-primary-container);
+    --md-comp-fab-primary-container-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-primary-container-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-fab-primary-container-container-color);
+    --md-fab-icon-color: var(--md-comp-fab-primary-container-icon-color);
+    --md-state-box-shadow: var(--md-comp-fab-primary-container-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-fab-primary-container-hovered-container-elevation);
+    }
   }
 
-  &_color_tonal-secondary {
-    --md-fab-container-color: var(--md-sys-color-secondary-container);
-    --md-fab-icon-color: var(--md-sys-color-on-secondary-container);
+  &_color_secondary-container {
+    --md-comp-fab-secondary-container-container-color: var(--md-sys-color-secondary-container);
+    --md-comp-fab-secondary-container-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-fab-secondary-container-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-secondary-container-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-fab-secondary-container-container-color);
+    --md-fab-icon-color: var(--md-comp-fab-secondary-container-icon-color);
+    --md-state-box-shadow: var(--md-comp-fab-secondary-container-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-fab-secondary-container-hovered-container-elevation);
+    }
   }
 
-  &_color_tonal-tertiary {
-    --md-fab-container-color: var(--md-sys-color-tertiary-container);
-    --md-fab-icon-color: var(--md-sys-color-on-tertiary-container);
-  }
+  &_color_tertiary-container {
+    --md-comp-fab-tertiary-container-container-color: var(--md-sys-color-tertiary-container);
+    --md-comp-fab-tertiary-container-icon-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-fab-tertiary-container-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-tertiary-container-hovered-container-elevation: var(--md-sys-elevation-level4);
 
-  &:hover {
-    --md-state-box-shadow: var(--md-sys-elevation-level4);
+    --md-fab-container-color: var(--md-comp-fab-tertiary-container-container-color);
+    --md-fab-icon-color: var(--md-comp-fab-tertiary-container-icon-color);
+    --md-state-box-shadow: var(--md-comp-fab-tertiary-container-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-fab-tertiary-container-hovered-container-elevation);
+    }
   }
 
   &__icon {
@@ -170,44 +235,34 @@ useRipple(buttonEl);
     align-items: center;
   }
 
+  &_size_regular {
+    --md-comp-fab-container-height: 56dp;
+    --md-comp-fab-icon-size: 24dp;
+    --md-comp-fab-container-shape: var(--md-sys-shape-corner-large);
+
+    --md-fab-container-size: var(--md-comp-fab-container-height);
+    --md-fab-icon-size: var(--md-comp-fab-icon-size);
+    --md-fab-container-shape: var(--md-comp-fab-container-shape);
+  }
+
   &_size_medium {
-    --md-fab-container-size: 80dp;
-    --md-fab-icon-size: 28dp;
-    --md-fab-container-shape: var(--md-sys-shape-corner-large-increased);
+    --md-comp-fab-medium-container-height: 80dp;
+    --md-comp-fab-medium-icon-size: 28dp;
+    --md-comp-fab-medium-container-shape: var(--md-sys-shape-corner-large-increased);
+
+    --md-fab-container-size: var(--md-comp-fab-medium-container-height);
+    --md-fab-icon-size: var(--md-comp-fab-medium-icon-size);
+    --md-fab-container-shape: var(--md-comp-fab-medium-container-shape);
   }
 
   &_size_large {
-    --md-fab-container-size: 96dp;
-    --md-fab-icon-size: 36dp;
-    --md-fab-container-shape: var(--md-sys-shape-corner-extra-large);
-  }
+    --md-comp-fab-large-container-height: 96dp;
+    --md-comp-fab-large-icon-size: 36dp;
+    --md-comp-fab-large-container-shape: var(--md-sys-shape-corner-extra-large);
 
-  &__empty-icon {
-    box-sizing: border-box;
-    border: 1px solid currentColor;
-    background:
-      linear-gradient(
-        45deg,
-        currentColor 25%,
-        transparent 25%,
-        transparent 75%,
-        currentColor 75%,
-        currentColor
-      ),
-      linear-gradient(
-        45deg,
-        currentColor 25%,
-        transparent 25%,
-        transparent 75%,
-        currentColor 75%,
-        currentColor
-      );
-    background-position:
-      0 0,
-      5px 5px;
-    background-size: 10px 10px;
-    height: 100%;
-    width: 100%;
+    --md-fab-container-size: var(--md-comp-fab-large-container-height);
+    --md-fab-icon-size: var(--md-comp-fab-large-icon-size);
+    --md-fab-container-shape: var(--md-comp-fab-large-container-shape);
   }
 }
 </style>

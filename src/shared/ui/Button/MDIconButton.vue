@@ -1,42 +1,36 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, onMounted, useTemplateRef, warn, watchEffect } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip, MDRichTooltip } from '../Tooltips';
 import { MDSymbol } from '../Icon';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
-const {
-  color = 'standard',
-  disabled,
-  focused,
-  formAction,
-  loading,
-  mdSymbolName,
-  type = 'default',
-  selected,
-  pressed,
-  shape = 'round',
-  size = 'small',
-  tooltip,
-  width = 'default',
-} = defineProps<{
-  formAction?: 'submit' | 'reset' | undefined;
-  color?: 'filled' | 'tonal' | 'outlined' | 'standard' | undefined;
-  disabled?: boolean | undefined;
-  pressed?: boolean | undefined;
-  focused?: boolean | undefined;
-  loading?: number | boolean | undefined;
-  tooltip: string;
-  showTooltipOnClick?: boolean | undefined;
-  mdSymbolName?: string | undefined;
-  type?: 'default' | 'toggle' | undefined;
-  selected?: boolean | undefined;
-  /** Defaults to `small`. */
-  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
-  width?: 'narrow' | 'default' | 'wide' | undefined;
-  /** Defaults to `round`. */
-  shape?: 'round' | 'square' | undefined;
-}>();
+const props = withDefaults(
+  defineProps<{
+    nativeType?: 'button' | 'submit' | 'reset' | undefined;
+    color?: 'filled' | 'tonal' | 'outlined' | 'standard' | undefined;
+    disabled?: boolean | undefined;
+    loading?: number | boolean | undefined;
+    tooltip: string;
+    showTooltipOnClick?: boolean | undefined;
+    mdSymbolName?: string | undefined;
+    variant?: 'default' | 'toggle' | undefined;
+    selected?: boolean | undefined;
+    /** Defaults to `small`. */
+    size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
+    width?: 'narrow' | 'default' | 'wide' | undefined;
+    /** Defaults to `round`. */
+    shape?: 'round' | 'square' | undefined;
+  }>(),
+  {
+    color: 'standard',
+    nativeType: 'button',
+    variant: 'default',
+    shape: 'round',
+    size: 'small',
+    width: 'default',
+  },
+);
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
@@ -54,35 +48,46 @@ const onClick = (e: MouseEvent) => {
 
 const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
 const { hover, focused: focusVisible, durationPressedState } = useStateLayer(buttonEl);
-const showVisualState = computed(() => !disabled);
+const showVisualState = computed(() => !props.disabled);
+const isToggle = computed(() => props.variant === 'toggle');
+const appliedSelected = computed(() => isToggle.value && !!props.selected);
 
-useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
+useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
+
+if (import.meta.env.DEV) {
+  onMounted(() => {
+    watchEffect(() => {
+      if (props.selected && !isToggle.value) {
+        warn('MDIconButton: `selected` has no effect unless `variant` is "toggle".');
+      }
+    });
+  });
+}
 </script>
 
 <template>
   <button
     ref="buttonEl"
     :disabled="disabled"
-    :type="formAction ?? 'button'"
+    :type="props.nativeType"
     class="md-icon-button"
     :class="[
-      `md-icon-button_color-${color}`,
-      `md-icon-button_type-${type}`,
-      `md-icon-button_size-${size}`,
-      `md-icon-button_width-${width}`,
-      `md-icon-button_shape-${shape}`,
+      `md-icon-button_color-${props.color}`,
+      `md-icon-button_variant-${props.variant}`,
+      `md-icon-button_size-${props.size}`,
+      `md-icon-button_width-${props.width}`,
+      `md-icon-button_shape-${props.shape}`,
       {
-        'md-icon-button_selected': selected,
-        'md-icon-button_pressed': pressed,
-        'md-icon-button_focused': focused,
-        'md-icon-button_loading': loading !== undefined && loading !== false,
+        'md-icon-button_selected': appliedSelected,
+        'md-icon-button_loading': props.loading !== undefined && props.loading !== false,
         'md-state_hover': showVisualState && hover,
         'md-state_focused': showVisualState && focusVisible,
         'md-state_pressed': showVisualState && durationPressedState,
-        'md-state_disabled': disabled,
+        'md-state_disabled': props.disabled,
       },
     ]"
-    :aria-label="tooltip"
+    :aria-label="props.tooltip"
+    :aria-pressed="isToggle ? appliedSelected : undefined"
     @click="onClick"
   >
     <span class="md-icon-button__target" aria-hidden="true" />
@@ -91,45 +96,58 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
       :hover="hover"
       :focused="focusVisible"
       :pressed="durationPressedState"
-      :disabled="disabled"
+      :disabled="props.disabled"
     />
 
     <span class="md-icon-button__icon">
       <slot name="icon">
-        <MDSymbol v-if="mdSymbolName" :name="mdSymbolName" />
+        <MDSymbol v-if="props.mdSymbolName" :name="props.mdSymbolName" />
       </slot>
     </span>
 
     <MDCircularProgressIndicator
-      v-if="loading !== undefined && loading !== false"
+      v-if="props.loading !== undefined && props.loading !== false"
       class="md-icon-button__progress-indicator"
-      :progress="loading === true ? 0 : loading"
+      :progress="props.loading === true ? 0 : props.loading"
     />
 
     <MDRichTooltip
       v-if="slots.richTooltipContent"
-      :subhead="tooltip"
+      :subhead="props.tooltip"
       use-hover
-      :use-click="showTooltipOnClick"
+      :use-click="props.showTooltipOnClick"
     >
       <template #text>
         <slot name="richTooltipContent" />
       </template>
     </MDRichTooltip>
 
-    <MDPlainTooltip v-else :text="tooltip" />
+    <MDPlainTooltip v-else :text="props.tooltip" />
   </button>
 </template>
 
 <style scoped>
 .md-icon-button {
+  /* Component tokens shared across color styles (md.comp.icon-button.*.disabled.*). */
+  --md-comp-icon-button-disabled-icon-color: var(--md-sys-color-on-surface);
+  --md-comp-icon-button-disabled-icon-opacity: 0.38;
+  --md-comp-icon-button-disabled-container-color: var(--md-sys-color-on-surface);
+  --md-comp-icon-button-disabled-container-opacity: 0.1;
+
   --md-icon-button-container-height: unset;
   --md-icon-button-container-shape: unset;
   --md-icon-button-icon-size: 24px;
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;
   --md-icon-button-target-size: var(--md-icon-button-container-height);
-  --md-icon-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-icon-button-disabled-content-color: rgb(
+    from var(--md-comp-icon-button-disabled-icon-color) r g b /
+      var(--md-comp-icon-button-disabled-icon-opacity)
+  );
+  --md-icon-button-disabled-container-tint: rgb(
+    from var(--md-comp-icon-button-disabled-container-color) r g b /
+      var(--md-comp-icon-button-disabled-container-opacity)
+  );
   --md-icon-button-disabled-container-color: transparent;
   --md-icon-button-disabled-border-color: transparent;
 
@@ -196,11 +214,14 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   }
 
   &_color-filled {
-    --md-container-color: var(--md-sys-color-primary);
-    --md-content-color: var(--md-sys-color-on-primary);
+    --md-comp-icon-button-filled-container-color: var(--md-sys-color-primary);
+    --md-comp-icon-button-filled-icon-color: var(--md-sys-color-on-primary);
+
+    --md-container-color: var(--md-comp-icon-button-filled-container-color);
+    --md-content-color: var(--md-comp-icon-button-filled-icon-color);
     --md-symbol-fill: 1;
 
-    &.md-icon-button_type-toggle {
+    &.md-icon-button_variant-toggle {
       --md-container-color: var(--md-sys-color-surface-container-highest);
       --md-content-color: var(--md-sys-color-primary);
       --md-symbol-fill: 0;
@@ -214,18 +235,21 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-container-color: var(--md-icon-button-disabled-container-tint);
       --md-content-color: var(--md-icon-button-disabled-content-color);
       --md-symbol-fill: 0;
     }
   }
 
   &_color-tonal {
-    --md-container-color: var(--md-sys-color-secondary-container);
-    --md-content-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-icon-button-tonal-container-color: var(--md-sys-color-secondary-container);
+    --md-comp-icon-button-tonal-icon-color: var(--md-sys-color-on-secondary-container);
+
+    --md-container-color: var(--md-comp-icon-button-tonal-container-color);
+    --md-content-color: var(--md-comp-icon-button-tonal-icon-color);
     --md-symbol-fill: 1;
 
-    &.md-icon-button_type-toggle {
+    &.md-icon-button_variant-toggle {
       --md-container-color: var(--md-sys-color-surface-container-highest);
       --md-content-color: var(--md-sys-color-on-surface-variant);
       --md-symbol-fill: 0;
@@ -239,21 +263,24 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-container-color: var(--md-icon-button-disabled-container-tint);
       --md-content-color: var(--md-icon-button-disabled-content-color);
       --md-symbol-fill: 0;
     }
   }
 
   &_color-outlined {
+    --md-comp-icon-button-outlined-outline-color: var(--md-sys-color-outline);
+    --md-comp-icon-button-outlined-icon-color: var(--md-sys-color-on-surface-variant);
+
     border-style: solid;
-    border-color: var(--md-sys-color-outline);
+    border-color: var(--md-comp-icon-button-outlined-outline-color);
     --md-icon-button-border-width: 1px;
     --md-container-color: transparent;
-    --md-content-color: var(--md-sys-color-on-surface-variant);
+    --md-content-color: var(--md-comp-icon-button-outlined-icon-color);
     --md-symbol-fill: 1;
 
-    &.md-icon-button_type-toggle {
+    &.md-icon-button_variant-toggle {
       border-color: var(--md-sys-color-outline);
       --md-container-color: transparent;
       --md-content-color: var(--md-sys-color-on-surface-variant);
@@ -277,11 +304,13 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   }
 
   &_color-standard {
-    --md-content-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-icon-button-standard-icon-color: var(--md-sys-color-on-surface-variant);
+
+    --md-content-color: var(--md-comp-icon-button-standard-icon-color);
     --md-container-color: transparent;
     --md-symbol-fill: 1;
 
-    &.md-icon-button_type-toggle {
+    &.md-icon-button_variant-toggle {
       --md-container-color: transparent;
       --md-content-color: var(--md-sys-color-on-surface-variant);
       --md-symbol-fill: 0;
@@ -302,166 +331,227 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   }
 
   &_size {
+    /* Sizes are named per Material's xsmall/xlarge segments (project convention:
+       extra-small/extra-large). Values already matched the official
+       md.comp.icon-button.<size>.* measurements before this token pass; this
+       adds the public --md-comp-icon-button-* override surface over them. */
     &-extra-small {
-      --md-icon-button-container-height: 32dp;
-      --md-icon-button-icon-size: 20dp;
-      --md-icon-button-target-size: 48dp;
+      --md-comp-icon-button-extra-small-container-height: 32dp;
+      --md-comp-icon-button-extra-small-icon-size: 20dp;
+      --md-comp-icon-button-extra-small-target-size: 48dp;
+      --md-comp-icon-button-extra-small-narrow-space: 4dp;
+      --md-comp-icon-button-extra-small-default-space: 6dp;
+      --md-comp-icon-button-extra-small-wide-space: 10dp;
+      --md-comp-icon-button-extra-small-shape-round: calc(
+        var(--md-comp-icon-button-extra-small-container-height) / 2
+      );
+      --md-comp-icon-button-extra-small-shape-square: var(--md-sys-shape-corner-medium);
+      --md-comp-icon-button-extra-small-pressed-shape: var(--md-sys-shape-corner-small);
+
+      --md-icon-button-container-height: var(--md-comp-icon-button-extra-small-container-height);
+      --md-icon-button-icon-size: var(--md-comp-icon-button-extra-small-icon-size);
+      --md-icon-button-target-size: var(--md-comp-icon-button-extra-small-target-size);
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-padding: 4dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-extra-small-narrow-space);
       }
       &.md-icon-button_width-default {
-        --md-icon-button-padding: 6dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-extra-small-default-space);
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-padding: 10dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-extra-small-wide-space);
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-round);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-square);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-square);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-round);
         }
       }
       &.md-state_pressed {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-small);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-pressed-shape);
       }
     }
     &-small {
-      --md-icon-button-container-height: 40dp;
-      --md-icon-button-icon-size: 24dp;
-      --md-icon-button-target-size: 48dp;
+      --md-comp-icon-button-small-container-height: 40dp;
+      --md-comp-icon-button-small-icon-size: 24dp;
+      --md-comp-icon-button-small-target-size: 48dp;
+      --md-comp-icon-button-small-narrow-space: 4dp;
+      --md-comp-icon-button-small-default-space: 8dp;
+      --md-comp-icon-button-small-wide-space: 14dp;
+      --md-comp-icon-button-small-shape-round: calc(
+        var(--md-comp-icon-button-small-container-height) / 2
+      );
+      --md-comp-icon-button-small-shape-square: var(--md-sys-shape-corner-medium);
+      --md-comp-icon-button-small-pressed-shape: var(--md-sys-shape-corner-small);
+
+      --md-icon-button-container-height: var(--md-comp-icon-button-small-container-height);
+      --md-icon-button-icon-size: var(--md-comp-icon-button-small-icon-size);
+      --md-icon-button-target-size: var(--md-comp-icon-button-small-target-size);
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-padding: 4dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-small-narrow-space);
       }
       &.md-icon-button_width-default {
-        --md-icon-button-padding: 8dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-small-default-space);
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-padding: 14dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-small-wide-space);
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-small-shape-round);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-small-shape-square);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-small-shape-square);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-small-shape-round);
         }
       }
       &.md-state_pressed {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-small);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-small-pressed-shape);
       }
     }
     &-medium {
-      --md-icon-button-container-height: 56dp;
-      --md-icon-button-icon-size: 24dp;
+      --md-comp-icon-button-medium-container-height: 56dp;
+      --md-comp-icon-button-medium-icon-size: 24dp;
+      --md-comp-icon-button-medium-narrow-space: 12dp;
+      --md-comp-icon-button-medium-default-space: 16dp;
+      --md-comp-icon-button-medium-wide-space: 24dp;
+      --md-comp-icon-button-medium-shape-round: calc(
+        var(--md-comp-icon-button-medium-container-height) / 2
+      );
+      --md-comp-icon-button-medium-shape-square: var(--md-sys-shape-corner-large);
+      --md-comp-icon-button-medium-pressed-shape: var(--md-sys-shape-corner-medium);
+
+      --md-icon-button-container-height: var(--md-comp-icon-button-medium-container-height);
+      --md-icon-button-icon-size: var(--md-comp-icon-button-medium-icon-size);
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-padding: 12dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-medium-narrow-space);
       }
       &.md-icon-button_width-default {
-        --md-icon-button-padding: 16dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-medium-default-space);
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-padding: 24dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-medium-wide-space);
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-medium-shape-round);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-sys-shape-corner-large);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-medium-shape-square);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-large);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-medium-shape-square);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-medium-shape-round);
         }
       }
       &.md-state_pressed {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-medium-pressed-shape);
       }
     }
     &-large {
-      --md-icon-button-container-height: 96dp;
-      --md-icon-button-icon-size: 32dp;
+      --md-comp-icon-button-large-container-height: 96dp;
+      --md-comp-icon-button-large-icon-size: 32dp;
+      --md-comp-icon-button-large-narrow-space: 16dp;
+      --md-comp-icon-button-large-default-space: 32dp;
+      --md-comp-icon-button-large-wide-space: 48dp;
+      --md-comp-icon-button-large-shape-round: calc(
+        var(--md-comp-icon-button-large-container-height) / 2
+      );
+      --md-comp-icon-button-large-shape-square: var(--md-sys-shape-corner-extra-large);
+      --md-comp-icon-button-large-pressed-shape: var(--md-sys-shape-corner-large);
+
+      --md-icon-button-container-height: var(--md-comp-icon-button-large-container-height);
+      --md-icon-button-icon-size: var(--md-comp-icon-button-large-icon-size);
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-padding: 16dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-large-narrow-space);
       }
       &.md-icon-button_width-default {
-        --md-icon-button-padding: 32dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-large-default-space);
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-padding: 48dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-large-wide-space);
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-large-shape-round);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-large-shape-square);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-large-shape-square);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-large-shape-round);
         }
       }
       &.md-state_pressed {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-large);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-large-pressed-shape);
       }
     }
     &-extra-large {
-      --md-icon-button-container-height: 136dp;
-      --md-icon-button-icon-size: 40dp;
+      --md-comp-icon-button-extra-large-container-height: 136dp;
+      --md-comp-icon-button-extra-large-icon-size: 40dp;
+      --md-comp-icon-button-extra-large-narrow-space: 32dp;
+      --md-comp-icon-button-extra-large-default-space: 48dp;
+      --md-comp-icon-button-extra-large-wide-space: 72dp;
+      --md-comp-icon-button-extra-large-shape-round: calc(
+        var(--md-comp-icon-button-extra-large-container-height) / 2
+      );
+      --md-comp-icon-button-extra-large-shape-square: var(--md-sys-shape-corner-extra-large);
+      --md-comp-icon-button-extra-large-pressed-shape: var(--md-sys-shape-corner-large);
+
+      --md-icon-button-container-height: var(--md-comp-icon-button-extra-large-container-height);
+      --md-icon-button-icon-size: var(--md-comp-icon-button-extra-large-icon-size);
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-padding: 32dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-extra-large-narrow-space);
       }
       &.md-icon-button_width-default {
-        --md-icon-button-padding: 48dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-extra-large-default-space);
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-padding: 72dp;
+        --md-icon-button-padding: var(--md-comp-icon-button-extra-large-wide-space);
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-round);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-square);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-square);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-round);
         }
       }
       &.md-state_pressed {
-        --md-icon-button-container-shape: var(--md-sys-shape-corner-large);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-pressed-shape);
       }
     }
   }

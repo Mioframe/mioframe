@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { openStory } from './storybook.testUtils';
 
 test('MDButton default story renders an interactive, focusable button', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdbutton--default');
+  await openStory(page, 'material-3-components-buttons-mdbutton--default');
 
   const button = page.getByRole('button', { name: 'Save' });
 

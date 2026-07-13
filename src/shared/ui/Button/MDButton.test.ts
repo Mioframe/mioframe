@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import MDButton from './MDButton.vue';
 
 const mountButton = (props: Record<string, unknown> = {}) =>
@@ -62,5 +62,55 @@ describe('MDButton', () => {
     expect(falseLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
     expect(absentLoadingWrapper.classes()).not.toContain('md-button_loading');
     expect(absentLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
+  });
+
+  it('defaults nativeType to "button" and reflects an explicit nativeType', () => {
+    const defaultWrapper = mountButton();
+    expect(defaultWrapper.get('button').attributes('type')).toBe('button');
+
+    const submitWrapper = mountButton({ nativeType: 'submit' });
+    expect(submitWrapper.get('button').attributes('type')).toBe('submit');
+  });
+
+  it('does not emit click when disabled', async () => {
+    const wrapper = mountButton({ disabled: true });
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.emitted('click')).toBeUndefined();
+  });
+
+  it('exposes aria-pressed only for variant="toggle" and reflects selected', () => {
+    const defaultWrapper = mountButton();
+    expect(defaultWrapper.get('button').attributes('aria-pressed')).toBeUndefined();
+
+    const toggleWrapper = mountButton({ variant: 'toggle', selected: false });
+    expect(toggleWrapper.get('button').attributes('aria-pressed')).toBe('false');
+
+    const toggleSelectedWrapper = mountButton({ variant: 'toggle', selected: true });
+    expect(toggleSelectedWrapper.get('button').attributes('aria-pressed')).toBe('true');
+    expect(toggleSelectedWrapper.classes()).toContain('md-button_selected');
+  });
+
+  it('ignores selected and warns when variant is "default"', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const wrapper = mountButton({ variant: 'default', selected: true });
+
+    expect(wrapper.classes()).not.toContain('md-button_selected');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('`selected` has no effect unless `variant` is "toggle"'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('emits click on native click and toggling does not introduce hidden local selection state', async () => {
+    const wrapper = mountButton({ variant: 'toggle', selected: false });
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+    expect(wrapper.get('button').attributes('aria-pressed')).toBe('false');
   });
 });

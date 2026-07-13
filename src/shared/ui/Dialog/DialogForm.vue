@@ -128,7 +128,7 @@ useOnEscapeKeyStacked(() => {
       <div class="md-dialog__actions">
         <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
 
-        <MDButton :label="applyLabel" :loading="loading" color="text" form-action="submit" />
+        <MDButton :label="applyLabel" :loading="loading" color="text" native-type="submit" />
       </div>
     </form>
   </dialog>

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { openStory } from './storybook';
 
 test('MDButton visual states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdbutton--visual-states');
+  await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
 
   const surface = page.getByTestId('visual-md-button-states');
 
@@ -10,7 +10,7 @@ test('MDButton visual states match baseline', async ({ page }) => {
 });
 
 test('MDButton interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdbutton--visual-interaction-states');
+  await openStory(page, 'material-3-components-buttons-mdbutton--visual-interaction-states');
 
   const surface = page.getByTestId('visual-md-button-interaction-states');
 
@@ -20,7 +20,7 @@ test('MDButton interaction states match baseline', async ({ page }) => {
 test('MDButton expanded target activates clicks outside the visible button box', async ({
   page,
 }) => {
-  await openStory(page, 'shared-ui-mdbutton--expanded-target-hit-area');
+  await openStory(page, 'material-3-components-buttons-mdbutton--expanded-target-hit-area');
 
   const surface = page.locator('#visual-md-button-target-hit');
   const button = surface.getByRole('button', { name: 'OK', exact: true });
@@ -53,7 +53,7 @@ test('MDButton expanded target activates clicks outside the visible button box',
 });
 
 test('MDIconButton visual states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--visual-states');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-states');
 
   const surface = page.getByTestId('visual-md-icon-button-states');
 
@@ -61,7 +61,7 @@ test('MDIconButton visual states match baseline', async ({ page }) => {
 });
 
 test('MDIconButton interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--visual-interaction-states');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-interaction-states');
 
   const surface = page.getByTestId('visual-md-icon-button-interaction-states');
 
@@ -69,7 +69,7 @@ test('MDIconButton interaction states match baseline', async ({ page }) => {
 });
 
 test('MDIconButton compact toolbar layout matches baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--compact-toolbar-layout');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--compact-toolbar-layout');
 
   const surface = page.getByTestId('visual-md-icon-button-toolbar-layout');
 
@@ -79,7 +79,7 @@ test('MDIconButton compact toolbar layout matches baseline', async ({ page }) =>
 test('MDIconButton expanded target activates clicks outside the visible button box', async ({
   page,
 }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--expanded-target-hit-area');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--expanded-target-hit-area');
 
   const surface = page.locator('#visual-md-icon-button-target-hit');
   const button = surface.getByRole('button', { name: 'Expanded target', exact: true });
@@ -321,7 +321,7 @@ test('MDSwitch focus indicator follows handle target bounding box, not switch ho
 });
 
 test('MDFab visual states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdfab--visual-states');
+  await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
 
   const surface = page.getByTestId('visual-md-fab-states');
 
@@ -329,7 +329,7 @@ test('MDFab visual states match baseline', async ({ page }) => {
 });
 
 test('MDFab interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdfab--visual-interaction-states');
+  await openStory(page, 'material-3-components-buttons-mdfab--visual-interaction-states');
 
   const surface = page.getByTestId('visual-md-fab-interaction-states');
 
@@ -337,7 +337,7 @@ test('MDFab interaction states match baseline', async ({ page }) => {
 });
 
 test('MDExtendedFab visual states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdextendedfab--visual-states');
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--visual-states');
 
   const surface = page.getByTestId('visual-md-extended-fab-states');
 
@@ -472,7 +472,7 @@ test('MDCard root establishes the Material surface context for descendants', asy
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({
   page,
 }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--compact-toolbar-layout');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--compact-toolbar-layout');
 
   const buttons = page.getByTestId('visual-md-icon-button-toolbar-layout').getByRole('button');
   const count = await buttons.count();
@@ -489,7 +489,7 @@ test('MDIconButton compact toolbar buttons keep the develop-sized layout footpri
 test('MDIconButton keeps a 48dp target layer for extra-small and small sizes without growing layout', async ({
   page,
 }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--visual-states');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-states');
 
   const targetButtons = page.getByTestId('visual-md-icon-button-targets').getByRole('button');
   const targetLayers = page
@@ -518,7 +518,7 @@ test('MDIconButton keeps a 48dp target layer for extra-small and small sizes wit
 test('MDButton keeps a 48dp target layer for extra-small and small sizes without growing layout', async ({
   page,
 }) => {
-  await openStory(page, 'shared-ui-mdbutton--target-layers');
+  await openStory(page, 'material-3-components-buttons-mdbutton--target-layers');
 
   const targetButtons = page.getByTestId('visual-md-button-targets').getByRole('button');
   const targetLayers = page.getByTestId('visual-md-button-targets').locator('.md-button__target');
@@ -543,7 +543,7 @@ test('MDButton keeps a 48dp target layer for extra-small and small sizes without
 test('MDIconButton dense toolbar buttons keep click ownership near adjacent boundaries', async ({
   page,
 }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--dense-toolbar-interaction');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--dense-toolbar-interaction');
 
   const surface = page.locator('#visual-md-icon-button-toolbar-interaction');
   const addButton = surface.getByRole('button', { name: 'add', exact: true });
@@ -580,7 +580,7 @@ test('MDIconButton dense toolbar buttons keep click ownership near adjacent boun
 test('MDIconButton dense toolbar hover handoff does not leave stale hover state', async ({
   page,
 }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--dense-toolbar-interaction');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--dense-toolbar-interaction');
 
   const surface = page.locator('#visual-md-icon-button-toolbar-interaction');
   const addButton = surface.getByRole('button', { name: 'add', exact: true });
@@ -598,7 +598,7 @@ test('MDIconButton dense toolbar hover handoff does not leave stale hover state'
 });
 
 test('MDIconButton default small layout footprint remains 40dp', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--visual-states');
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-states');
 
   const button = page.getByRole('button', { name: 'Standard', exact: true });
   const box = await button.boundingBox();
