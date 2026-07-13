@@ -41,6 +41,14 @@ import {
   getRegularDirectoryEntries,
   getDocumentStorageFiles,
 } from './repositoryStorageFiles';
+import { exportDirectoryZip, exportDocumentZip } from './repositoryZipExport';
+import { importDirectoryZip } from './repositoryZipImport';
+import {
+  RepositoryZipErrorCode,
+  type OnZipExportChunk,
+  type OnZipExportProgress,
+  type OnZipImportProgress,
+} from './repositoryZipContracts';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
 
@@ -247,26 +255,22 @@ const setupRepositoriesService = () => {
     );
   }
 
-  const flushPendingRepositoryStorageSaves = async (
-    mountPath: string,
-  ): Promise<WriteAccessRecoveryResult> => {
-    let flushedCount = 0;
+  /**
+   * Settles one already-cached repository: drains any previously queued/failed Automerge saves,
+   * then flushes current in-memory document state to storage. Never instantiates a repository —
+   * a path with nothing cached is a safe no-op, since there is no in-memory state to settle.
+   * @param path - Absolute repository path to settle, when cached.
+   * @returns Whether the repository was settled, still blocked, or failed.
+   */
+  const settleCachedRepository = async (path: string): Promise<WriteAccessRecoveryResult> => {
+    const cached = repoObservableCache.get(path);
+    if (!cached) return { status: 'flushed' };
 
-    for (const [repoPath, cachedRepoEntry$] of repoObservableCache.entries()) {
-      if (!PathUtils.isSameOrDescendantOf(repoPath, mountPath)) {
-        continue;
-      }
+    const { repo, storageRecovery } = await firstValueFrom(cached.pipe(take(1)));
 
-      // eslint-disable-next-line no-await-in-loop -- cached repo recovery must resolve before deciding whether later repos should run
-      const { storageRecovery } = await firstValueFrom(cachedRepoEntry$.pipe(take(1)));
-
-      if (!storageRecovery.hasPendingSaves()) {
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop -- preserve stable service-layer retry ordering
+    if (storageRecovery.hasPendingSaves()) {
       const result = await storageRecovery.flushPendingSaves();
-      flushedCount += result.flushedCount;
+      const flushedCount = result.flushedCount;
 
       if (result.status !== 'flushed') {
         const failureClassification =
@@ -296,11 +300,40 @@ const setupRepositoriesService = () => {
       }
     }
 
+    await repo.flush();
+    return { status: 'flushed' };
+  };
+
+  /**
+   * Settles every already-cached repository at or under `mountPath`: drains queued/failed
+   * Automerge saves and flushes current in-memory document state for each one, in cache order.
+   * Never instantiates a repository merely to settle it — directories with nothing cached yet are
+   * a safe no-op. Used to bring storage to a settled state before ZIP export and import preflight,
+   * and after write-access is regranted.
+   * @param mountPath - Absolute path whose cached repository subtree should be settled.
+   * @returns Whether every repository in the subtree was settled, or the first blocked/failed result.
+   */
+  const settleCachedRepositoriesUnderPath = async (
+    mountPath: string,
+  ): Promise<WriteAccessRecoveryResult> => {
+    for (const [repoPath] of repoObservableCache.entries()) {
+      if (!PathUtils.isSameOrDescendantOf(repoPath, mountPath)) {
+        continue;
+      }
+
+      // eslint-disable-next-line no-await-in-loop -- cached repo settling must resolve before deciding whether later repos should run
+      const result = await settleCachedRepository(repoPath);
+
+      if (result.status !== 'flushed') {
+        return result;
+      }
+    }
+
     return { status: 'flushed' };
   };
 
   registerWriteAccessRecoveryHandler(({ mountPath }) =>
-    flushPendingRepositoryStorageSaves(mountPath),
+    settleCachedRepositoriesUnderPath(mountPath),
   );
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {
@@ -415,6 +448,92 @@ const setupRepositoriesService = () => {
     await getRepo(path, true);
   };
 
+  const throwIfNotSettled = (settled: WriteAccessRecoveryResult) => {
+    if (settled.status !== 'flushed') {
+      throw new DomainError(
+        'Some earlier changes have not finished saving yet, so the export was stopped before reading any files.',
+        { code: RepositoryZipErrorCode.exportStorageNotReady, cause: settled },
+      );
+    }
+  };
+
+  /**
+   * Streams a directory's raw storage contents, including internal Mioframe storage files, as a
+   * ZIP archive. This is a storage-level export, not a document JSON snapshot. Delivers packed
+   * bytes through `onChunk` instead of returning the full archive, so it never holds the whole
+   * archive in memory. Settles every already-cached repository under `path` before reading, so
+   * the export reflects the latest in-memory document state.
+   * @param path - Absolute path to the directory to export.
+   * @param onChunk - Invoked with each packed archive chunk as it becomes available.
+   * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+   * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
+   * @throws DomainError with code `RepositoryZipErrorCode.exportStorageNotReady` when any cached
+   * repository under `path` cannot be settled. No archive bytes are emitted in that case.
+   */
+  const exportDirectoryZipArchive = async (
+    path: string,
+    onChunk: OnZipExportChunk,
+    onProgress?: OnZipExportProgress,
+  ) => {
+    throwIfNotSettled(await settleCachedRepositoriesUnderPath(path));
+    return exportDirectoryZip(vfs, path, onChunk, onProgress);
+  };
+
+  /**
+   * Streams one document's storage files, written directly at archive root, as a ZIP archive.
+   * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
+   * Delivers packed bytes through `onChunk` instead of returning the full archive, so it never
+   * holds the whole archive in memory. Settles the exact cached repository at `path` before
+   * reading, so the export reflects the latest in-memory document state.
+   * @param path - Absolute path to the directory containing the document.
+   * @param id - Target document id.
+   * @param onChunk - Invoked with each packed archive chunk as it becomes available.
+   * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+   * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
+   * @throws DomainError with code `RepositoryZipErrorCode.exportStorageNotReady` when the cached
+   * repository at `path` cannot be settled. No archive bytes are emitted in that case.
+   */
+  const exportDocumentZipArchive = async (
+    path: string,
+    id: AMDocumentId,
+    onChunk: OnZipExportChunk,
+    onProgress?: OnZipExportProgress,
+  ) => {
+    throwIfNotSettled(await settleCachedRepository(path));
+    return exportDocumentZip(vfs, path, id, onChunk, onProgress);
+  };
+
+  /**
+   * Validates and imports a ZIP archive into a directory using a bounded-memory, two-pass
+   * strategy. Stops before any write if a target file or directory conflicts with the archive;
+   * never overwrites, merges, or renames existing files. Before preflight, settles every
+   * already-cached repository under the target directory so conflict checks see the latest state
+   * and no previously queued/failed save can land after this import writes.
+   * @param targetDirectoryPath - Absolute path to the directory to import into.
+   * @param archiveFile - The user-selected ZIP archive file. Read twice: once to plan and
+   * preflight conflicts, once to write, so the archive is never held in memory as a whole.
+   * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
+   * @returns Promise that resolves once every entry has been written.
+   * @throws DomainError with code `RepositoryZipErrorCode.importStorageNotReady` when queued or
+   * failed saves under the target cannot be settled. No write is attempted in that case.
+   */
+  const importDirectoryZipArchive = async (
+    targetDirectoryPath: string,
+    archiveFile: File,
+    onProgress?: OnZipImportProgress,
+  ) => {
+    const settled = await settleCachedRepositoriesUnderPath(targetDirectoryPath);
+
+    if (settled.status !== 'flushed') {
+      throw new DomainError(
+        'Some earlier changes to this folder have not finished saving yet, so the import was stopped before making any changes.',
+        { code: RepositoryZipErrorCode.importStorageNotReady, cause: settled },
+      );
+    }
+
+    return importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress);
+  };
+
   const documentIdList = defineObservableQuery(getDocumentIdList$);
   const repositoryFacts = defineObservableQuery(getRepositoryFacts$);
   const repositoryVisibleEntries = defineObservableQuery(getRepositoryVisibleEntries$);
@@ -433,7 +552,6 @@ const setupRepositoriesService = () => {
     /** Low-level observable for repository-aware visible directory entries. */
     getRepositoryVisibleEntries$,
     getRepo$: repo$,
-    flushPendingRepositoryStorageSaves,
     /**
      * Creates a document in the repository.
      * @param path - Absolute path to the repository.
@@ -467,6 +585,37 @@ const setupRepositoriesService = () => {
      * @returns The created document identifier.
      */
     importDocumentFromJsonFile,
+    /**
+     * Streams a directory's raw storage contents, including internal Mioframe storage files, as
+     * a ZIP archive. This is a storage-level export, not a document JSON snapshot. Delivers
+     * packed bytes through `onChunk` instead of returning the full archive.
+     * @param path - Absolute path to the directory to export.
+     * @param onChunk - Invoked with each packed archive chunk as it becomes available.
+     * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+     * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
+     */
+    exportDirectoryZip: exportDirectoryZipArchive,
+    /**
+     * Streams one document's storage files, written directly at archive root, as a ZIP archive.
+     * This reads raw storage files, not the decoded document state — it is not a JSON snapshot.
+     * Delivers packed bytes through `onChunk` instead of returning the full archive.
+     * @param path - Absolute path to the directory containing the document.
+     * @param id - Target document id.
+     * @param onChunk - Invoked with each packed archive chunk as it becomes available.
+     * @param onProgress - Optional progress callback for the preparing/reading/packing phases.
+     * @returns Promise that resolves once the archive has been fully streamed to `onChunk`.
+     */
+    exportDocumentZip: exportDocumentZipArchive,
+    /**
+     * Validates and imports a ZIP archive into a directory using a bounded-memory, two-pass
+     * strategy. Stops before any write if a target file or directory conflicts with the archive;
+     * never overwrites, merges, or renames existing files.
+     * @param targetDirectoryPath - Absolute path to the directory to import into.
+     * @param archiveFile - The user-selected ZIP archive file.
+     * @param onProgress - Optional progress callback for the validate/conflict/unpack phases.
+     * @returns Promise that resolves once every entry has been written.
+     */
+    importDirectoryZip: importDirectoryZipArchive,
   };
 };
 

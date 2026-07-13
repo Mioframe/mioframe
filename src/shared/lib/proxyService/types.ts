@@ -3,7 +3,6 @@
  *
  * This module defines all TypeScript types used in the proxyService implementation
  * which enables remote function calls and object property access across different execution contexts.
- * @module ProxyServiceTypes
  */
 
 import type { Asyncify, UnknownRecord } from 'type-fest';
@@ -25,8 +24,6 @@ export type AnyFunction = (...param: any[]) => any;
  *
  * This type is used for creating proxies that route operations to a remote service.
  * The generic parameters allow for proper typing of both regular values and special exception types.
- * @template T - The type of the target record
- * @template Exceptions - Types that should not be transformed (remain as-is)
  */
 export type ClientObject<T extends Record<string, unknown>, Exceptions = never> = [T] extends [
   Exceptions,
@@ -41,8 +38,6 @@ export type ClientObject<T extends Record<string, unknown>, Exceptions = never> 
  *
  * This helper type recursively processes the types of properties in a ClientObject,
  * ensuring proper transformation of nested structures while preserving exception types.
- * @template T - The type of the value being processed
- * @template Exceptions - Types that should not be transformed (remain as-is)
  */
 type ClientValue<T, Exceptions = never> = [T] extends [Exceptions]
   ? T
@@ -67,7 +62,6 @@ export const zodFunctionDescription = z.object({
  *
  * This type describes the metadata needed to identify and route calls to functions
  * that have been exposed across execution contexts.
- * @template F - The type of the original function
  */
 export type FunctionDescription<F = unknown> = F extends AnyFunction
   ? z.output<typeof zodFunctionDescription> & {
@@ -160,7 +154,8 @@ export interface Provider {
    * @param data - Data to send over the wire
    * @returns Result from the operation
    */
-  postMessage: (data: unknown) => unknown;
+  // Worker and Window expose incompatible overloads, so this matches their shared callable shape.
+  postMessage(data: unknown, transfer?: Transferable[]): unknown;
 
   /**
    * Adds an event listener for messages.
@@ -228,11 +223,18 @@ type SERIALIZE_BRAND = typeof SERIALIZE_BRAND;
 
 /**
  * Type representing serialized data with branded typing for TypeScript inference.
- * @template T - The type of original value before serialization
  */
 export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
   meta?: SuperJSONResult['meta'] | undefined;
   [SERIALIZE_BRAND]: T;
+};
+
+/** Serialized RPC data and the transferable binary buffers referenced by its payload. */
+export type SerializedEnvelope<T = unknown> = {
+  /** SuperJSON payload sent as part of the RPC message. */
+  payload: SerializeJson<T>;
+  /** Unique transferable buffers already referenced by the payload. */
+  transferables: Transferable[];
 };
 
 /**
@@ -240,8 +242,6 @@ export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
  *
  * This interface defines how custom data types should be serialized and deserialized when transmitted
  * across execution contexts, enabling support for complex objects beyond basic JavaScript primitives.
- * @template T - The original type being transformed
- * @template J - The JSON representation for serialization
  */
 export type CustomTransformer<T = unknown, J = unknown> = {
   /**

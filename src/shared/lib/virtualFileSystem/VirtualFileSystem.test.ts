@@ -419,6 +419,34 @@ describe('VirtualFileSystem', () => {
     });
   });
 
+  describe('createFile method', () => {
+    it('creates a file that does not exist yet and emits a CREATE event', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.createFile('/mnt/test/newfile.txt', 'new content');
+
+      const content = await vfs.readText('/mnt/test/newfile.txt');
+      expect(content).toBe('new content');
+      expect(events).toEqual([{ type: VfsEventType.CREATE, path: '/mnt/test/newfile.txt' }]);
+    });
+
+    it('rejects with FileExists when a file already exists at the target path', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      await vfs.createFile('/mnt/test/file.txt', 'first');
+
+      await expect(vfs.createFile('/mnt/test/file.txt', 'second')).rejects.toMatchObject({
+        code: FileSystemError.FileExists,
+      });
+      await expect(vfs.readText('/mnt/test/file.txt')).resolves.toBe('first');
+    });
+  });
+
   describe('readDirectory method', () => {
     it('should read directory contents', async () => {
       // Create a test file and directory

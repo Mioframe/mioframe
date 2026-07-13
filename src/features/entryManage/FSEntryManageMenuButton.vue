@@ -17,6 +17,8 @@ const emit = defineEmits<{
   selectRename: [];
   selectRemove: [];
   selectImportJson: [];
+  selectExportZip: [];
+  selectImportZip: [];
 }>();
 
 const fsEntryName = computed(() => PathUtils.basename(props.path));
@@ -38,6 +40,12 @@ const onClickMenuAction = ({ key }: { key: string | number }) => {
       break;
     case 'importJson':
       emit('selectImportJson');
+      break;
+    case 'exportZip':
+      emit('selectExportZip');
+      break;
+    case 'importZip':
+      emit('selectImportZip');
       break;
   }
 };

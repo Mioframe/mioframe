@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { DocumentManageMenuButton } from '@feature/documentManage';
 import { MioframeStorageInfoSheet } from '@feature/mioframeStorageInfo';
+import { ExportZipDialog, useExportDocumentZip } from '@feature/exportZip';
+import type { ExportZipVisibleDialogState } from '@feature/exportZip';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDEmptyState } from '@shared/ui/EmptyState';
@@ -32,6 +34,16 @@ const closeStorageInfoSheet = () => {
 
 const onSelectDocument = (documentId: AMDocumentId) => {
   emit('selectDocument', documentId);
+};
+
+const { exportDocumentZip, state: exportZipState, closeExportZipDialog } = useExportDocumentZip();
+
+const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
+  exportZipState.value.status === 'idle' ? null : exportZipState.value,
+);
+
+const onSelectExportZip = async (documentId: AMDocumentId) => {
+  await exportDocumentZip(directoryPath.value, documentId);
 };
 
 const documentCountLabel = computed(() => {
@@ -67,10 +79,13 @@ const emptySupportingText = computed(() => {
   <section class="repository-explorer-documents-section" aria-labelledby="mioframe-documents-title">
     <div class="repository-explorer-documents-section__header">
       <div class="repository-explorer-documents-section__copy">
-        <h2 id="mioframe-documents-title" class="repository-explorer-documents-section__title">
+        <h2
+          id="mioframe-documents-title"
+          class="repository-explorer-documents-section__title md-typescale-title-medium"
+        >
           Documents
         </h2>
-        <p class="repository-explorer-documents-section__supporting-text">
+        <p class="repository-explorer-documents-section__supporting-text md-typescale-body-small">
           {{ documentCountLabel }}
         </p>
       </div>
@@ -92,7 +107,11 @@ const emptySupportingText = computed(() => {
         @click="onSelectDocument"
       >
         <template #trailingAction>
-          <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />
+          <DocumentManageMenuButton
+            :directory-path="directoryPath"
+            :document-id="documentId"
+            @select-export-zip="onSelectExportZip(documentId)"
+          />
         </template>
       </CFRDocumentMDListItem>
     </MDList>
@@ -109,6 +128,12 @@ const emptySupportingText = computed(() => {
     </MDEmptyState>
 
     <MioframeStorageInfoSheet v-if="showStorageInfoSheet" @close="closeStorageInfoSheet" />
+
+    <ExportZipDialog
+      v-if="exportZipVisibleState"
+      :state="exportZipVisibleState"
+      @close="closeExportZipDialog"
+    />
   </section>
 </template>
 
@@ -134,21 +159,11 @@ const emptySupportingText = computed(() => {
 
   &__title {
     margin: 0;
-    font-family: var(--md-sys-typescale-title-medium-font);
-    font-size: var(--md-sys-typescale-title-medium-size);
-    font-weight: var(--md-sys-typescale-title-medium-weight);
-    line-height: var(--md-sys-typescale-title-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
   }
 
   &__supporting-text {
     margin: 0;
     color: var(--md-sys-color-on-surface-variant);
-    font-family: var(--md-sys-typescale-body-small-font);
-    font-size: var(--md-sys-typescale-body-small-size);
-    font-weight: var(--md-sys-typescale-body-small-weight);
-    line-height: var(--md-sys-typescale-body-small-line-height);
-    letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
   &__empty-state {
     padding: 0 16px;

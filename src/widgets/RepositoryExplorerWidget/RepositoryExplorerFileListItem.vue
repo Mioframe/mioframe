@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
-import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import { FSEntryRenameDialog } from '@feature/entryRename';
-import { DocumentCreationDialog } from '@feature/documentCreate';
+import { useFSEntryManageActions } from '@feature/entryManage';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { computed, toRef } from 'vue';
 import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
@@ -20,33 +17,49 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   click: [name: string];
+  selectCreateDirectory: [entryPath: string];
+  selectCreateDocument: [entryPath: string];
+  selectRename: [entryPath: string];
+  selectRemove: [entryPath: string];
+  selectImportJson: [entryPath: string];
+  selectExportZip: [entryPath: string];
+  selectImportZip: [entryPath: string];
 }>();
 
-const showDocumentActions = computed(() => props.entryType === FSNodeType.Directory);
+const isDirectoryEntry = computed(() => props.entryType === FSNodeType.Directory);
 
 const { hasActions, nonEmptyActionButtons } = useFSEntryManageActions({
   entryType: toRef(props, 'entryType'),
   canEditChildren: toRef(props, 'canEditChildren'),
   canChangePath: toRef(props, 'canChangePath'),
   canDelete: toRef(props, 'canDelete'),
-  showDocumentActions,
+  showCreateDocumentAction: isDirectoryEntry,
+  showImportActions: isDirectoryEntry,
 });
 
 const entryPath = computed(() => PathUtils.join(props.directoryPath, props.name));
 
-const {
-  showCreateDirectoryDialog,
-  showCreateDocumentDialog,
-  showRenameDialog,
-  onSelectCreateDirectory,
-  onSelectCreateDocument,
-  onSelectRename,
-  onSelectRemove,
-  onSelectImportJson,
-  onCloseCreateDirectoryDialog,
-  onCloseCreateDocumentDialog,
-  onCloseRenameDialog,
-} = useEntryManageDialogState(entryPath);
+const onSelectCreateDirectory = () => {
+  emit('selectCreateDirectory', entryPath.value);
+};
+const onSelectCreateDocument = () => {
+  emit('selectCreateDocument', entryPath.value);
+};
+const onSelectRename = () => {
+  emit('selectRename', entryPath.value);
+};
+const onSelectRemove = () => {
+  emit('selectRemove', entryPath.value);
+};
+const onSelectImportJson = () => {
+  emit('selectImportJson', entryPath.value);
+};
+const onSelectExportZip = () => {
+  emit('selectExportZip', entryPath.value);
+};
+const onSelectImportZip = () => {
+  emit('selectImportZip', entryPath.value);
+};
 
 const onClickEntry = (name: string) => {
   emit('click', name);
@@ -75,28 +88,8 @@ const onClickEntry = (name: string) => {
         @select-rename="onSelectRename"
         @select-remove="onSelectRemove"
         @select-import-json="onSelectImportJson"
-      />
-
-      <!-- Dialogs use TeleportContainer internally; DOM output goes to the dialog container, not into the list item. -->
-      <DirectoryCreateDialog
-        v-if="showCreateDirectoryDialog"
-        :path="entryPath"
-        @cancel="onCloseCreateDirectoryDialog"
-        @created="onCloseCreateDirectoryDialog"
-      />
-
-      <DocumentCreationDialog
-        v-if="showCreateDocumentDialog"
-        :path="entryPath"
-        @cancel="onCloseCreateDocumentDialog"
-        @created="onCloseCreateDocumentDialog"
-      />
-
-      <FSEntryRenameDialog
-        v-if="showRenameDialog"
-        :path="entryPath"
-        @cancel="onCloseRenameDialog"
-        @renamed="onCloseRenameDialog"
+        @select-export-zip="onSelectExportZip"
+        @select-import-zip="onSelectImportZip"
       />
     </template>
   </FSEntryMDListItem>

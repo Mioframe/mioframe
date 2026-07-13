@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions -- structured-clone harness narrows an unknown wire payload. */
 import { describe, it, expect, vi } from 'vitest';
 import { createClient, createService } from './proxyService';
 import { defineTransformer } from './defineTransformer';
@@ -6,22 +7,24 @@ import { uid } from 'uid/secure';
 import { defineObservableQuery, useObservableQuery } from '@shared/lib/useObservableQuery';
 import { effectScope, ref, watch } from 'vue';
 import { Observable } from 'rxjs';
+import { transformers } from '../wrapWorker/workerTransformerMap';
 
 class MockProvider implements Provider {
   private listeners: Set<(p: { data: unknown }) => unknown> = new Set();
   public peer: MockProvider | null = null;
   public delay = 0;
+  public transferLists: Transferable[][] = [];
 
   constructor(
     public myId: string,
     public peerId: string,
   ) {}
 
-  postMessage(data: unknown) {
+  postMessage(data: unknown, transfer: Transferable[] = []) {
     if (!this.peer) return;
-
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Safe to assume JSON structure
-    const payload = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+    this.transferLists.push(transfer);
+    // Structured cloning is the browser worker contract, including transferred buffers.
+    const payload = structuredClone(data, { transfer }) as Record<string, unknown>;
 
     if (payload.serviceId === this.myId) {
       payload.serviceId = this.peerId;
@@ -261,4 +264,98 @@ describe('proxyService', () => {
 
     scope.stop();
   });
+
+  it('transfers ArrayBuffer values without SuperJSON byte arrays', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+    createService(serviceProvider, serviceId, [], () => ({ echo: (value: ArrayBuffer) => value }));
+    const client = createClient<{ echo: (value: ArrayBuffer) => ArrayBuffer }>(
+      clientProvider,
+      clientId,
+    );
+    const result = await client.echo(new Uint8Array([1, 2, 3]).buffer);
+
+    expect([...new Uint8Array(result)]).toEqual([1, 2, 3]);
+    expect(clientProvider.transferLists.some((list) => list.length === 1)).toBe(true);
+  });
+
+  it('transfers an exact Uint8Array view without unrelated backing-buffer bytes', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+    createService(serviceProvider, serviceId, [], () => ({ echo: (value: Uint8Array) => value }));
+    const client = createClient<{ echo: (value: Uint8Array) => Uint8Array }>(
+      clientProvider,
+      clientId,
+    );
+    const backing = new Uint8Array([9, 1, 2, 3, 8]);
+    const result = await client.echo(backing.subarray(1, 4));
+
+    expect([...result]).toEqual([1, 2, 3]);
+    expect(result.byteOffset).toBe(0);
+    expect(result.byteLength).toBe(3);
+  });
+
+  it('preserves graph identity and user marker-shaped objects while deduplicating buffers', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+    createService(serviceProvider, serviceId, transformers, () => ({
+      echo: (value: unknown) => value,
+    }));
+    const client = createClient<{ echo: (value: unknown) => unknown }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+    const buffer = new Uint8Array([1, 2, 3]).buffer;
+    const shared = { label: 'shared' };
+    const value: Record<string, unknown> = {
+      __proxyTransferable: 'arrayBuffer',
+      index: 17,
+      first: shared,
+      second: shared,
+      buffer,
+      repeatedBuffer: buffer,
+      map: new Map([['binary', buffer]]),
+      set: new Set([shared]),
+    };
+    value.self = value;
+
+    const result = (await client.echo(value)) as typeof value;
+
+    expect(result.self).toBe(result);
+    expect(result.first).toBe(result.second);
+    expect(result).toMatchObject({ __proxyTransferable: 'arrayBuffer', index: 17 });
+    const mappedBuffer = (result.map as Map<string, ArrayBuffer>).get('binary');
+    expect(mappedBuffer).toBeInstanceOf(ArrayBuffer);
+    expect(new Uint8Array(mappedBuffer ?? new ArrayBuffer(0))).toEqual(new Uint8Array([1, 2, 3]));
+    expect(new Uint8Array(result.buffer as ArrayBuffer)).toEqual(new Uint8Array([1, 2, 3]));
+    const requestTransfers = clientProvider.transferLists.find((list) => list.includes(buffer));
+    expect(requestTransfers).toEqual([buffer]);
+  });
+
+  it('transfers exact binary callback arguments through the real callback transport', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+    createService(serviceProvider, serviceId, transformers, () => ({
+      call: async (callback: (value: Uint8Array) => Promise<number>) =>
+        callback(new Uint8Array([4, 5, 6])),
+    }));
+    const client = createClient<{
+      call: (callback: (value: Uint8Array) => number) => Promise<number>;
+    }>(clientProvider, clientId, transformers);
+    const callback = vi.fn((value: Uint8Array) => value.byteLength);
+
+    await expect(client.call(callback)).resolves.toBe(3);
+    expect(callback.mock.calls[0]?.[0]).toEqual(new Uint8Array([4, 5, 6]));
+    expect(
+      [...clientProvider.transferLists, ...serviceProvider.transferLists].some(
+        (list) => list.length === 1,
+      ),
+    ).toBe(true);
+  });
 });
+/* eslint-enable @typescript-eslint/consistent-type-assertions -- structured-clone harness ends */

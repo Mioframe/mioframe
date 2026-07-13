@@ -4,7 +4,12 @@ import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
 import { useFSEntryManageActions, useEntryManageDialogState } from '@feature/entryManage';
+import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
+import { ExportZipDialog, useExportDirectoryZip } from '@feature/exportZip';
+import type { ExportZipVisibleDialogState } from '@feature/exportZip';
+import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
+import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
@@ -53,20 +58,52 @@ const { hasActions: hasDirectoryManageActions, nonEmptyActionButtons: directoryM
     canEditChildren: directoryCanEditChildren,
     canChangePath: directoryCanChangePath,
     canDelete: directoryCanDelete,
-    showDocumentActions: computed(() => false),
+    // Document creation stays in the Add sheet/FAB; import actions belong to this directory's
+    // own context menu, not to document-creation gating.
+    showCreateDocumentAction: computed(() => false),
+    showImportActions: computed(() => true),
   });
 
 const {
   showRenameDialog: showDirectoryRenameDialog,
   onSelectRename: onManageSelectRename,
-  onSelectRemove: onManageSelectRemove,
   onCloseRenameDialog: onCloseDirectoryRenameDialog,
 } = useEntryManageDialogState(directoryPath);
+
+const { remove } = useRemoveFSEntry();
+const { exportDirectoryZip, state: exportZipState, closeExportZipDialog } = useExportDirectoryZip();
+const {
+  importDirectoryZip,
+  state: importZipState,
+  closeImportZipDialog,
+  invalidateImportZipContext,
+} = useImportZipAction();
+
+const exportZipVisibleState = computed<ExportZipVisibleDialogState | null>(() =>
+  exportZipState.value.status === 'idle' ? null : exportZipState.value,
+);
+const importZipVisibleState = computed<ImportZipVisibleDialogState | null>(() =>
+  importZipState.value.status === 'idle' ? null : importZipState.value,
+);
+
+const onManageSelectRemove = async () => {
+  await remove(directoryPath.value);
+};
+const onSelectExportZip = async () => {
+  await exportDirectoryZip(directoryPath.value);
+};
+const onSelectImportZip = async () => {
+  await importDirectoryZip(directoryPath.value);
+};
+const onManageSelectImportJson = async () => {
+  await importDocument(directoryPath.value);
+};
 
 watch(directoryPath, () => {
   showEntryAddSheet.value = false;
   showCreateDirectoryDialog.value = false;
   showCreateDocumentDialog.value = false;
+  invalidateImportZipContext();
 });
 
 const onClickAdd = () => {
@@ -139,6 +176,9 @@ const onClickReturnHome = async () => {
             @select-create-directory="onSelectCreateDirectory"
             @select-rename="onManageSelectRename"
             @select-remove="onManageSelectRemove"
+            @select-export-zip="onSelectExportZip"
+            @select-import-json="onManageSelectImportJson"
+            @select-import-zip="onSelectImportZip"
           />
         </template>
       </MDAppBar>
@@ -163,6 +203,18 @@ const onClickReturnHome = async () => {
       @select-create-directory="onSelectCreateDirectory"
       @select-create-document="onSelectCreateDocument"
       @select-import-document="onSelectImportDocument"
+    />
+
+    <ExportZipDialog
+      v-if="exportZipVisibleState"
+      :state="exportZipVisibleState"
+      @close="closeExportZipDialog"
+    />
+
+    <ImportZipDialog
+      v-if="importZipVisibleState"
+      :state="importZipVisibleState"
+      @close="closeImportZipDialog"
     />
 
     <DirectoryCreateDialog

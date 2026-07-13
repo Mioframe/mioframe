@@ -14,6 +14,14 @@ const directoryManageActionsRef = ref<NonEmptyMenuButtonList | null>(
 );
 const openMock = vi.fn();
 const importDocumentMock = vi.fn();
+const removeMock = vi.fn();
+const exportDirectoryZipMock = vi.fn();
+const importDirectoryZipMock = vi.fn();
+const closeExportZipDialogMock = vi.fn();
+const closeImportZipDialogMock = vi.fn();
+const invalidateImportZipContextMock = vi.fn();
+const exportZipStateRef = ref<{ status: string }>({ status: 'idle' });
+const importZipStateRef = ref<{ status: string }>({ status: 'idle' });
 
 const directoryStatRef = ref<
   | {
@@ -29,7 +37,8 @@ type FSEntryManageActionsArgs = {
   canEditChildren: ComputedRef<boolean | undefined>;
   canChangePath: ComputedRef<boolean | undefined>;
   canDelete: ComputedRef<boolean | undefined>;
-  showDocumentActions: ComputedRef<boolean>;
+  showCreateDocumentAction: ComputedRef<boolean>;
+  showImportActions: ComputedRef<boolean>;
 };
 const useFSEntryManageActionsMock = vi.fn<(args: FSEntryManageActionsArgs) => unknown>();
 
@@ -49,8 +58,49 @@ vi.mock('@feature/entryManage', () => ({
   useEntryManageDialogState: () => ({
     showRenameDialog: ref(false),
     onSelectRename: vi.fn(),
-    onSelectRemove: vi.fn(),
     onCloseRenameDialog: vi.fn(),
+  }),
+}));
+
+vi.mock('@feature/entryRemove', () => ({
+  useRemoveFSEntry: () => ({ remove: removeMock }),
+}));
+
+vi.mock('@feature/exportZip', () => ({
+  useExportDirectoryZip: () => ({
+    exportDirectoryZip: exportDirectoryZipMock,
+    state: exportZipStateRef,
+    closeExportZipDialog: closeExportZipDialogMock,
+  }),
+  ExportZipDialog: defineComponent({
+    name: 'ExportZipDialogStub',
+    props: { state: { type: Object, required: true } },
+    setup() {
+      return () => h('div', { 'data-testid': 'export-zip-dialog' });
+    },
+  }),
+}));
+
+vi.mock('@feature/importZip', () => ({
+  useImportZipAction: () => ({
+    importDirectoryZip: importDirectoryZipMock,
+    state: importZipStateRef,
+    closeImportZipDialog: closeImportZipDialogMock,
+    invalidateImportZipContext: invalidateImportZipContextMock,
+  }),
+  ImportZipDialog: defineComponent({
+    name: 'ImportZipDialogStub',
+    props: { state: { type: Object, required: true } },
+    emits: ['close'],
+    setup(_props, { emit }) {
+      return () =>
+        h('div', {
+          'data-testid': 'import-zip-dialog',
+          onClick: () => {
+            emit('close');
+          },
+        });
+    },
   }),
 }));
 
@@ -244,8 +294,41 @@ vi.mock('@shared/ui/Button', () => ({
 vi.mock('@widget/RepositoryExplorerWidget', () => ({
   RepositoryExplorerEntryManageButton: defineComponent({
     name: 'RepositoryExplorerEntryManageButtonStub',
-    setup() {
-      return () => h('button', { type: 'button' }, 'Current directory actions: Create directory');
+    emits: ['selectExportZip', 'selectImportZip', 'selectImportJson'],
+    setup(_props, { emit }) {
+      return () =>
+        h('span', [
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectExportZip');
+              },
+            },
+            'Current directory actions: Create directory',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectImportZip');
+              },
+            },
+            'Current directory actions: Import ZIP',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectImportJson');
+              },
+            },
+            'Current directory actions: Import JSON',
+          ),
+        ]);
     },
   }),
   RepositoryExplorerWidget: defineComponent({
@@ -312,6 +395,13 @@ describe('RepoExplorerPane', () => {
     ] as const);
     openMock.mockReset();
     importDocumentMock.mockReset();
+    removeMock.mockReset();
+    exportDirectoryZipMock.mockReset();
+    importDirectoryZipMock.mockReset();
+    closeExportZipDialogMock.mockReset();
+    closeImportZipDialogMock.mockReset();
+    exportZipStateRef.value = { status: 'idle' };
+    importZipStateRef.value = { status: 'idle' };
     directoryStatRef.value = undefined;
     useFSEntryManageActionsMock.mockClear();
     document.body.innerHTML = '';
@@ -497,12 +587,13 @@ describe('RepoExplorerPane', () => {
     expect(args?.canDelete.value).toBeUndefined();
   });
 
-  it('requests directory-scoped manage actions without document actions', async () => {
+  it('requests directory-scoped manage actions with import actions but without document creation', async () => {
     await mountPane();
 
     const args = useFSEntryManageActionsMock.mock.calls.at(-1)?.[0];
     expect(args?.entryType.value).toBe(FSNodeType.Directory);
-    expect(args?.showDocumentActions.value).toBe(false);
+    expect(args?.showCreateDocumentAction.value).toBe(false);
+    expect(args?.showImportActions.value).toBe(true);
   });
 
   it('closes the add sheet when it emits close', async () => {
@@ -550,6 +641,104 @@ describe('RepoExplorerPane', () => {
       .get('[data-testid="document-create-dialog"] button:last-of-type')
       .trigger('click');
     expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
+  });
+
+  it('delegates the current-directory manage menu export ZIP selection to the export action', async () => {
+    const wrapper = await mountPane();
+    const manageButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Current directory actions: Create directory');
+
+    if (!manageButton) {
+      throw new Error('Expected the directory manage button');
+    }
+
+    await manageButton.trigger('click');
+
+    expect(exportDirectoryZipMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
+  });
+
+  it('does not expose Import ZIP as an add-sheet action', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').text()).not.toContain('Import ZIP');
+  });
+
+  it('delegates import ZIP from the current-directory manage menu to the shared import action', async () => {
+    const wrapper = await mountPane();
+    const importZipButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Current directory actions: Import ZIP');
+
+    if (!importZipButton) {
+      throw new Error('Expected the current-directory Import ZIP action');
+    }
+
+    await importZipButton.trigger('click');
+
+    expect(importDirectoryZipMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
+  });
+
+  it('delegates import JSON from the current-directory manage menu to the shared import action', async () => {
+    const wrapper = await mountPane();
+    const importJsonButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Current directory actions: Import JSON');
+
+    if (!importJsonButton) {
+      throw new Error('Expected the current-directory Import JSON action');
+    }
+
+    await importJsonButton.trigger('click');
+
+    expect(importDocumentMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
+  });
+
+  it('does not render ZIP dialogs by default', async () => {
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
+  });
+
+  it('renders the export ZIP dialog while the export is running', async () => {
+    exportZipStateRef.value = { status: 'running' };
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
+  });
+
+  it('renders the import ZIP dialog while the import is running', async () => {
+    importZipStateRef.value = { status: 'running' };
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+  });
+
+  it('renders the import ZIP dialog for a conflicts result, with no skip-existing action', async () => {
+    importZipStateRef.value = { status: 'conflicts' };
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(true);
+  });
+
+  it('keeps the export ZIP result dialog mounted after the export completes, until closed', async () => {
+    exportZipStateRef.value = { status: 'success' };
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
+
+    exportZipStateRef.value = { status: 'error' };
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(true);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

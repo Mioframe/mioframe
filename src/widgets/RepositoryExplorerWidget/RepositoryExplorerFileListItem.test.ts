@@ -9,31 +9,23 @@ const hasActionsRef = ref(false);
 const nonEmptyActionButtonsRef = ref<NonEmptyMenuButtonList | null>(
   defineMenuButtonList([{ key: 'rename', label: 'Rename', symbolName: 'edit' }] as const),
 );
-const capturedShowDocumentActions: Array<boolean | undefined> = [];
+const capturedShowCreateDocumentAction: Array<boolean | undefined> = [];
+const capturedShowImportActions: Array<boolean | undefined> = [];
 const capturedManageButtonProps: Array<{ path: string; actionsLength: number }> = [];
 
 vi.mock('@feature/entryManage', () => ({
-  useFSEntryManageActions: (options: { showDocumentActions?: { value?: boolean | undefined } }) => {
-    capturedShowDocumentActions.push(options.showDocumentActions?.value);
+  useFSEntryManageActions: (options: {
+    showCreateDocumentAction?: { value?: boolean | undefined };
+    showImportActions?: { value?: boolean | undefined };
+  }) => {
+    capturedShowCreateDocumentAction.push(options.showCreateDocumentAction?.value);
+    capturedShowImportActions.push(options.showImportActions?.value);
     return {
       hasActions: hasActionsRef,
       actionButtons: ref([]),
       nonEmptyActionButtons: nonEmptyActionButtonsRef,
     };
   },
-  useEntryManageDialogState: () => ({
-    showCreateDirectoryDialog: ref(false),
-    showCreateDocumentDialog: ref(false),
-    showRenameDialog: ref(false),
-    onSelectCreateDirectory: vi.fn(),
-    onSelectCreateDocument: vi.fn(),
-    onSelectRename: vi.fn(),
-    onSelectRemove: vi.fn(),
-    onSelectImportJson: vi.fn(),
-    onCloseCreateDirectoryDialog: vi.fn(),
-    onCloseCreateDocumentDialog: vi.fn(),
-    onCloseRenameDialog: vi.fn(),
-  }),
 }));
 
 vi.mock('@entity/fsEntry', () => ({
@@ -114,7 +106,8 @@ describe('RepositoryExplorerFileListItem', () => {
     nonEmptyActionButtonsRef.value = defineMenuButtonList([
       { key: 'rename', label: 'Rename', symbolName: 'edit' },
     ] as const);
-    capturedShowDocumentActions.length = 0;
+    capturedShowCreateDocumentAction.length = 0;
+    capturedShowImportActions.length = 0;
     capturedManageButtonProps.length = 0;
     document.body.innerHTML = '';
   });
@@ -201,16 +194,139 @@ describe('RepositoryExplorerFileListItem', () => {
     expect(wrapper.find('[data-testid="manage-button"]').exists()).toBe(false);
   });
 
-  it('passes showDocumentActions=true for directory entries', async () => {
+  it('passes showCreateDocumentAction=true and showImportActions=true for directory entries', async () => {
     await mountItem({ entryType: FSNodeType.Directory });
 
-    expect(capturedShowDocumentActions.at(-1)).toBe(true);
+    expect(capturedShowCreateDocumentAction.at(-1)).toBe(true);
+    expect(capturedShowImportActions.at(-1)).toBe(true);
   });
 
-  it('passes showDocumentActions=false for file entries', async () => {
+  it('passes showCreateDocumentAction=false and showImportActions=false for file entries', async () => {
     await mountItem({ entryType: FSNodeType.File });
 
-    expect(capturedShowDocumentActions.at(-1)).toBe(false);
+    expect(capturedShowCreateDocumentAction.at(-1)).toBe(false);
+    expect(capturedShowImportActions.at(-1)).toBe(false);
+  });
+
+  it('does not mount ZIP dialogs', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({ entryType: FSNodeType.Directory });
+
+    expect(wrapper.find('[data-testid="export-zip-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="import-zip-dialog"]').exists()).toBe(false);
+  });
+
+  it('emits selectCreateDirectory with the entry path when the manage button selects create directory', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectCreateDirectory');
+
+    expect(wrapper.emitted('selectCreateDirectory')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectCreateDocument with the entry path when the manage button selects create document', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectCreateDocument');
+
+    expect(wrapper.emitted('selectCreateDocument')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectRename with the entry path when the manage button selects rename', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectRename');
+
+    expect(wrapper.emitted('selectRename')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectRemove with the entry path when the manage button selects remove', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectRemove');
+
+    expect(wrapper.emitted('selectRemove')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectImportJson with the entry path when the manage button selects import JSON', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectImportJson');
+
+    expect(wrapper.emitted('selectImportJson')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectExportZip with the entry path when the manage button selects export ZIP', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectExportZip');
+
+    expect(wrapper.emitted('selectExportZip')).toEqual([['/repo/Nested']]);
+  });
+
+  it('emits selectImportZip with the entry path when the manage button selects import ZIP', async () => {
+    hasActionsRef.value = true;
+
+    const wrapper = await mountItem({
+      entryType: FSNodeType.Directory,
+      directoryPath: '/repo',
+      name: 'Nested',
+    });
+
+    await wrapper
+      .findComponent({ name: 'RepositoryExplorerEntryManageButtonStub' })
+      .vm.$emit('selectImportZip');
+
+    expect(wrapper.emitted('selectImportZip')).toEqual([['/repo/Nested']]);
   });
 
   it('does not create a primary click target for non-openable file entries that have manage actions', async () => {

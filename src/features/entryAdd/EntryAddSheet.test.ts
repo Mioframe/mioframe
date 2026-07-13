@@ -8,14 +8,15 @@ import EntryAddSheet from './EntryAddSheet.vue';
 vi.mock('@shared/ui/Sheets', () => ({
   MDBottomSheet: defineComponent({
     name: 'MDBottomSheetStub',
+    props: { label: { type: String, required: true } },
     setup(_props, { slots }) {
-      return () => slots.default?.();
+      return () => h('div', slots.default?.());
     },
   }),
   MDBottomSheetSection: defineComponent({
     name: 'MDBottomSheetSectionStub',
     setup(_props, { slots }) {
-      return () => slots.default?.();
+      return () => h('section', slots.default?.());
     },
   }),
 }));
@@ -88,6 +89,12 @@ describe('EntryAddSheet', () => {
     expect(wrapper.emitted('selectCreateDocument')).toHaveLength(1);
     expect(wrapper.emitted('selectImportDocument')).toHaveLength(1);
     expect(wrapper.emitted('selectCreateDirectory')).toHaveLength(1);
+  });
+
+  it('does not expose Import ZIP as an Add sheet action', () => {
+    const wrapper = mount(EntryAddSheet);
+
+    expect(wrapper.text()).not.toContain('Import ZIP');
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

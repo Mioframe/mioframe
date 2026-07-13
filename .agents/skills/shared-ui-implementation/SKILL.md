@@ -16,6 +16,8 @@ If implementation creates or materially changes a public shared `MD*` component,
 
 Do not introduce a new public shared `MD*` component as incidental support for another task. Either keep the UI local/non-public, reuse an existing shared primitive, or complete the full shared Material component-family workflow for the new component.
 
+This applies just as strongly to consumers: `features`, `widgets`, and `pages` must compose existing shared `MD*` primitives (e.g. `MDDialog`, `MDCircularProgressIndicator`) rather than reimplementing Material-like dialog/sheet/overlay/scrim/progress anatomy locally. See `material3-guidelines`'s "Documented composition only" section.
+
 ## Before the first production edit
 
 Define, in a few lines:
@@ -55,6 +57,10 @@ Define, in a few lines:
 - Prefixes and fallback transforms for properties that need them in supported browsers are the build pipeline's responsibility (PostCSS / `postcss-preset-env` / browserslist), not the component's. If the build pipeline does not generate a needed prefix, that is a tooling gap — fix or verify the pipeline, or find a standard-CSS fallback; do not hardcode the prefix in component source to route around it.
 - If a standard property does not render the required layout in the project's pinned visual-test engine, do not delete the layout/clamping behavior and do not add a hardcoded prefix. Replace it with a browser-neutral fallback built from properties every target browser already supports (e.g. `max-height` computed from `line-height * line count` plus `overflow: hidden`, instead of box-layout line-clamp). Preserving the existing line-count/overflow contract is mandatory; only the implementation technique changes.
 - The one narrow exception is a genuinely non-standardized vendor-only API with no standard CSS equivalent at all (e.g. `-webkit-tap-highlight-color`, which controls a WebKit-only tap-feedback affordance that has no standard property). That is not a prefix for a standard property and is a different case from a one-off hack around a property that does have a standard form — do not use it as precedent for handwritten clamping or layout prefixes.
+
+## Typography tokens
+
+- Use the `MD_TYPESCALE` constants / `.md-typescale-*` classes from `shared/lib/md` for typography-only Material text. Do not hand-write `font-family`, `font-size`, `font-weight`, `line-height`, or `letter-spacing` type-scale token declarations in component CSS unless the change is to the type-scale utility contract itself.
 
 ## Public API and legacy props
 
