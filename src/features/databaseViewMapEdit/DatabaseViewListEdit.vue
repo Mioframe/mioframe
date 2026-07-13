@@ -48,16 +48,17 @@ const sameIds = (a: readonly DatabaseViewId[], b: readonly DatabaseViewId[]): bo
  */
 const displayViewIdList = ref<DatabaseViewId[]>([]);
 
-/** The one in-flight local `reorder()` request, tracked until both its promise and confirm. */
+/** The one in-flight local `reorder()` request, tracked until both its promise and entity settle. */
 interface ActiveOrderWrite {
-  /** Identity used to guard against acting on a stale rejection. */
-  token: symbol;
   /** The order this request asked the entity to persist. */
   requestedIds: DatabaseViewId[];
   /** Whether the `reorder()` promise has settled successfully. */
   promiseResolved: boolean;
-  /** Whether the entity's own order has been observed to match {@link requestedIds}. */
-  confirmed: boolean;
+  /**
+   * Whether the entity stream has produced an authoritative outcome for this write, either by
+   * confirming its requested order or by publishing a competing external order that supersedes it.
+   */
+  entitySettled: boolean;
 }
 
 /** The currently active `reorder()` request, or `null` when no write is active. */
@@ -79,10 +80,9 @@ let lastEntityIds: DatabaseViewId[] = [];
  */
 const startWrite = (requestedIds: DatabaseViewId[]): void => {
   const write: ActiveOrderWrite = {
-    token: Symbol('database-view-order-write'),
     requestedIds: [...requestedIds],
     promiseResolved: false,
-    confirmed: false,
+    entitySettled: false,
   };
 
   queuedLatestIds = null;
@@ -115,12 +115,12 @@ const startWrite = (requestedIds: DatabaseViewId[]): void => {
 };
 
 /**
- * Clears {@link activeWrite} once its promise has resolved and the entity has confirmed its
- * order, then starts the next queued write if one is still needed. Promise resolution and entity
- * confirmation are independent, order-unspecified events; neither alone is sufficient.
+ * Clears {@link activeWrite} once its promise has resolved and the entity has settled its
+ * outcome, then starts the next queued write if one is still needed. Promise resolution and
+ * entity settlement are independent, order-unspecified events; neither alone is sufficient.
  */
 const completeActiveWriteIfReady = (): void => {
-  if (!activeWrite || !activeWrite.promiseResolved || !activeWrite.confirmed) return;
+  if (!activeWrite || !activeWrite.promiseResolved || !activeWrite.entitySettled) return;
 
   activeWrite = null;
 
@@ -162,7 +162,7 @@ watch(
 
     if (activeWrite && sameIds(next, activeWrite.requestedIds)) {
       // Local confirmation of the active write's own requested order.
-      activeWrite.confirmed = true;
+      activeWrite.entitySettled = true;
       // No newer queued intent: synchronize display to the now-canonical entity order. A newer
       // queued intent keeps the already-matching optimistic display as-is (see invariant below).
       if (!queuedLatestIds) displayViewIdList.value = [...next];
@@ -183,11 +183,12 @@ watch(
     queuedLatestIds = activeWrite ? [...next] : null;
 
     if (activeWrite) {
-      // The entity has now diverged from this write's own requested order, so that exact order
-      // may never be echoed back literally (a concurrent external edit can permanently supersede
-      // it). Waiting on a literal match would then block completion forever: promise settlement
-      // is already sufficient to know whether it is safe to re-assert the corrective order above.
-      activeWrite.confirmed = true;
+      // The active request has been superseded by this authoritative competing entity order, so
+      // the write's own requested order may never be echoed back literally (a concurrent external
+      // edit can permanently supersede it). Waiting on a literal match would then block completion
+      // forever: this competing order is itself a valid entity settlement, sufficient to know
+      // whether it is safe to re-assert the corrective order above.
+      activeWrite.entitySettled = true;
       completeActiveWriteIfReady();
     }
   },

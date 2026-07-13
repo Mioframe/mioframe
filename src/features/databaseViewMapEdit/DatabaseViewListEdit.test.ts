@@ -133,22 +133,6 @@ const createDeferred = <T>(): Deferred<T> => {
 };
 
 /**
- * Drains the microtask queue deep enough for a resolved/rejected `reorder()` deferred to flow
- * through the component's `.then()` handlers and, in turn, through the entity `views` watcher and
- * any Vue reactivity it schedules.
- */
-const flushAsyncWork = async (): Promise<void> => {
-  await Promise.resolve()
-    .then(() => {})
-    .then(() => {})
-    .then(() => {})
-    .then(() => {})
-    .then(() => {})
-    .then(() => {});
-  await nextTick();
-};
-
-/**
  * Simulates one completed, changed drag: activation, a single move, and a non-cancelled release.
  * The moved key is nominal — the component's `onReorder` handler mutates purely by index — so
  * callers only need to reason about `fromIndex`/`toIndex`.
@@ -169,7 +153,7 @@ const performDrag = async (
     finalIndex: toIndex,
     cancelled: false,
   });
-  await flushAsyncWork();
+  await nextTick();
 };
 
 describe('DatabaseViewListEdit', () => {
@@ -360,7 +344,8 @@ describe('DatabaseViewListEdit', () => {
       await performDrag(harness, 0, 1); // B,A -> A,B: queued, target [A,B]
 
       firstWrite.resolve(undefined);
-      await flushAsyncWork();
+      await firstWrite.promise;
+      await nextTick();
 
       expect(reorderMock).toHaveBeenCalledTimes(1);
     });
@@ -378,12 +363,12 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
       ];
-      await flushAsyncWork();
+      await nextTick();
 
       expect(reorderMock).toHaveBeenCalledTimes(1);
     });
 
-    it('starts the queued write only once both the promise has resolved and the entity has confirmed', async () => {
+    it('starts the queued write only once both the promise has resolved and the entity has settled', async () => {
       const firstWrite = createDeferred<unknown>();
       mountEdit({}, {}, views);
       const harness = getHarness();
@@ -396,13 +381,14 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
       ];
-      await flushAsyncWork();
+      await nextTick();
       expect(reorderMock).toHaveBeenCalledTimes(1);
 
       firstWrite.resolve(undefined);
-      await flushAsyncWork();
 
-      expect(reorderMock).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() => {
+        expect(reorderMock).toHaveBeenCalledTimes(2);
+      });
       expect(reorderMock).toHaveBeenNthCalledWith(2, [FAKE_VIEW_ID_A, FAKE_VIEW_ID_B]);
     });
 
@@ -442,12 +428,14 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
       ];
       firstWrite.resolve(undefined);
-      await flushAsyncWork();
+
+      await vi.waitFor(() => {
+        expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
+      });
 
       // The queued order is now [B,A], identical to the just-confirmed entity order, so no
       // redundant second write is issued.
       expect(reorderMock).toHaveBeenCalledTimes(1);
-      expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
     });
 
     it('retains only the final not-yet-started order across three rapid completed drags', async () => {
@@ -468,9 +456,10 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
       ];
       firstWrite.resolve(undefined);
-      await flushAsyncWork();
 
-      expect(reorderMock).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() => {
+        expect(reorderMock).toHaveBeenCalledTimes(2);
+      });
       expect(reorderMock).toHaveBeenNthCalledWith(2, [FAKE_VIEW_ID_A, FAKE_VIEW_ID_B]);
     });
 
@@ -488,9 +477,10 @@ describe('DatabaseViewListEdit', () => {
       // still [A,B], so a queued [A,B] would be dropped without a write, while a correctly
       // replaced queued [B,A] is started instead.
       firstWrite.reject(new Error('write failed'));
-      await flushAsyncWork();
 
-      expect(reorderMock).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() => {
+        expect(reorderMock).toHaveBeenCalledTimes(2);
+      });
       expect(reorderMock).toHaveBeenNthCalledWith(2, [FAKE_VIEW_ID_B, FAKE_VIEW_ID_A]);
       expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
     });
@@ -518,9 +508,10 @@ describe('DatabaseViewListEdit', () => {
       expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
 
       write.reject(new Error('write failed'));
-      await flushAsyncWork();
 
-      expect(labelsOf(wrapper)).toEqual(['Alpha', 'Bravo']);
+      await vi.waitFor(() => {
+        expect(labelsOf(wrapper)).toEqual(['Alpha', 'Bravo']);
+      });
     });
 
     it('rejection with a newer, differing queued intent starts that intent', async () => {
@@ -534,9 +525,10 @@ describe('DatabaseViewListEdit', () => {
       // both the active target and the entity's own [A,B,C] order.
 
       firstWrite.reject(new Error('write failed'));
-      await flushAsyncWork();
 
-      expect(reorderMock).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() => {
+        expect(reorderMock).toHaveBeenCalledTimes(2);
+      });
       expect(reorderMock).toHaveBeenNthCalledWith(2, [
         FAKE_VIEW_ID_C,
         FAKE_VIEW_ID_B,
@@ -555,24 +547,30 @@ describe('DatabaseViewListEdit', () => {
       await performDrag(harness, 0, 1); // B,A -> A,B: queued, target [A,B], equal to the entity order
 
       firstWrite.reject(new Error('write failed'));
-      await flushAsyncWork();
+      await firstWrite.promise.catch(() => {});
+      await nextTick();
 
       expect(reorderMock).toHaveBeenCalledTimes(1);
       expect(labelsOf(wrapper)).toEqual(['Alpha', 'Bravo']);
     });
 
     it('a fully confirmed earlier write does not prevent a later write from rolling back on rejection', async () => {
+      const firstWrite = createDeferred<unknown>();
       const secondWrite = createDeferred<unknown>();
       const wrapper = mountEdit({}, {}, views);
       const harness = getHarness();
+      reorderMock.mockReturnValueOnce(firstWrite.promise);
 
-      // Write #1 uses the default auto-resolving mock and is fully confirmed and cleared.
+      // Write #1 is settled by both its promise and a matching entity order, so it is fully
+      // confirmed and cleared before write #2 starts.
       await performDrag(harness, 0, 1); // A,B -> B,A
       currentViews.value = [
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
       ];
-      await flushAsyncWork();
+      firstWrite.resolve(undefined);
+      await firstWrite.promise;
+      await nextTick();
       expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
 
       reorderMock.mockReturnValueOnce(secondWrite.promise);
@@ -580,9 +578,10 @@ describe('DatabaseViewListEdit', () => {
       expect(reorderMock).toHaveBeenCalledTimes(2);
 
       secondWrite.reject(new Error('write failed'));
-      await flushAsyncWork();
 
-      expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
+      await vi.waitFor(() => {
+        expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
+      });
     });
   });
 
@@ -605,7 +604,7 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_B, fakeView('Bravo (renamed)')],
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
       ];
-      await flushAsyncWork();
+      await nextTick();
 
       expect(labelsOf(wrapper)).toEqual(['Bravo (renamed)', 'Alpha']);
     });
@@ -626,7 +625,7 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
       ];
-      await flushAsyncWork();
+      await nextTick();
 
       // The external order applies immediately, replacing the queued local order; write #1 has
       // not been asked to persist it yet.
@@ -648,7 +647,7 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
       ];
-      await flushAsyncWork(); // external order [C,A,B] applies; queued corrective target [C,A,B]
+      await nextTick(); // external order [C,A,B] applies; queued corrective target [C,A,B]
 
       // The entity later, briefly reports write #1's own (now-superseded) requested order [B,A,C];
       // the externally authoritative corrective display must not revert to it.
@@ -657,15 +656,17 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
         [FAKE_VIEW_ID_C, fakeView('Charlie')],
       ];
-      await flushAsyncWork();
+      await nextTick();
       expect(labelsOf(wrapper)).toEqual(['Charlie', 'Alpha', 'Bravo']);
 
       firstWrite.resolve(undefined);
-      await flushAsyncWork();
+
+      await vi.waitFor(() => {
+        expect(reorderMock).toHaveBeenCalledTimes(2);
+      });
 
       // The entity's last-observed order ([B,A,C]) still differs from the corrective target
       // ([C,A,B]), so the corrective write is issued once write #1 settles.
-      expect(reorderMock).toHaveBeenCalledTimes(2);
       expect(reorderMock).toHaveBeenNthCalledWith(2, [
         FAKE_VIEW_ID_C,
         FAKE_VIEW_ID_A,
@@ -686,10 +687,11 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
       ];
-      await flushAsyncWork(); // external order [C,A,B] applies and remains the last-observed order
+      await nextTick(); // external order [C,A,B] applies and remains the last-observed order
 
       firstWrite.resolve(undefined);
-      await flushAsyncWork();
+      await firstWrite.promise;
+      await nextTick();
 
       expect(reorderMock).toHaveBeenCalledTimes(1);
     });
@@ -709,7 +711,7 @@ describe('DatabaseViewListEdit', () => {
 
       // An unrelated document write re-emits the same ids in the same order as a new array.
       currentViews.value = [...views];
-      await flushAsyncWork();
+      await nextTick();
 
       expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
       expect(reorderMock).toHaveBeenCalledTimes(1);
@@ -722,14 +724,16 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_A, fakeView('Alpha (renamed)')],
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
       ];
-      await flushAsyncWork();
+      await nextTick();
 
       expect(labelsOf(wrapper)).toEqual(['Alpha (renamed)', 'Bravo']);
     });
 
     it('the latest confirmed order clears the outstanding request and optimistic state', async () => {
+      const firstWrite = createDeferred<unknown>();
       const wrapper = mountEdit({}, {}, views);
       const harness = getHarness();
+      reorderMock.mockReturnValueOnce(firstWrite.promise);
 
       await performDrag(harness, 0, 1); // A,B -> B,A: write #1
       expect(reorderMock).toHaveBeenCalledTimes(1);
@@ -738,7 +742,9 @@ describe('DatabaseViewListEdit', () => {
         [FAKE_VIEW_ID_B, fakeView('Bravo')],
         [FAKE_VIEW_ID_A, fakeView('Alpha')],
       ];
-      await flushAsyncWork();
+      firstWrite.resolve(undefined);
+      await firstWrite.promise;
+      await nextTick();
 
       expect(labelsOf(wrapper)).toEqual(['Bravo', 'Alpha']);
 
