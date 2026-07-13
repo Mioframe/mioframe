@@ -33,6 +33,22 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
   },
   {
+    name: 'reorder',
+    // Includes both reorder behavior spec paths themselves (in addition to the library source
+    // prefix): a `startsWith` match on a spec's own path means changing either spec also selects
+    // both, not just the one that changed, since general and autoscroll behavior share the same
+    // library surface.
+    sourcePrefixes: [
+      'src/shared/lib/reorder/',
+      'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+    ],
+    specs: [
+      'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+    ],
+  },
+  {
     name: 'shared overlay outside-interaction lifecycle',
     sourcePrefixes: [
       'src/shared/lib/onInteractionOutside.ts',
