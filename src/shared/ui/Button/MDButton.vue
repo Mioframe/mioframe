@@ -161,7 +161,6 @@ if (import.meta.env.DEV) {
   --md-button-icon-gap: 8px;
   --md-button-border-width: 0px;
   --md-button-border-style: solid;
-  --md-button-border-color: transparent;
   --md-button-box-sizing: border-box;
   --md-button-target-size: var(--md-button-height);
   --md-private-button-container-color: transparent;
@@ -192,35 +191,15 @@ if (import.meta.env.DEV) {
   --md-private-button-disabled-icon-opacity: 1;
   --md-private-button-disabled-outline-color: var(--md-private-button-outline-color);
   --md-private-button-disabled-elevation: var(--md-private-button-elevation);
-  --md-button-disabled-container-tint: var(--md-private-button-disabled-container-color);
-  --md-button-disabled-content-color: rgb(
-    from var(--md-private-button-disabled-label-color) r g b /
-      var(--md-private-button-disabled-label-opacity)
-  );
-  --md-private-button-rendered-container-color: var(
-    --md-container-color,
-    var(--md-private-button-container-color)
-  );
-  --md-private-button-rendered-label-color: var(
-    --md-content-color,
-    var(--md-private-button-label-color)
-  );
-  --md-private-button-rendered-icon-color: var(
-    --md-button-icon-rendered-color,
-    var(--md-content-color, var(--md-private-button-icon-color))
-  );
-  --md-private-button-rendered-outline-color: var(
-    --md-button-border-color,
-    var(--md-private-button-outline-color)
-  );
-  --md-private-button-rendered-elevation: var(
-    --md-state-box-shadow,
-    var(--md-private-button-elevation)
-  );
-  --md-private-state-layer-color: var(
-    --md-private-button-rendered-state-layer-color,
-    var(--md-content-color, var(--md-private-button-state-layer-color))
-  );
+  --md-private-button-label-opacity: 1;
+  --md-private-button-icon-opacity: 1;
+  --md-private-button-rendered-container-color: var(--md-private-button-container-color);
+  --md-private-button-rendered-label-color: var(--md-private-button-label-color);
+  --md-private-button-rendered-icon-color: var(--md-private-button-icon-color);
+  --md-private-button-rendered-outline-color: var(--md-private-button-outline-color);
+  --md-private-button-rendered-elevation: var(--md-private-button-elevation);
+  --md-private-button-rendered-state-layer-color: var(--md-private-button-state-layer-color);
+  --md-private-state-layer-color: var(--md-private-button-rendered-state-layer-color);
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -277,6 +256,10 @@ if (import.meta.env.DEV) {
     width: var(--md-button-icon-size, 1lh);
     height: var(--md-button-icon-size, 1lh);
     color: rgb(
+      from var(--md-private-button-rendered-icon-color) r g b /
+        var(--md-private-button-icon-opacity, 1)
+    );
+    --md-content-color: rgb(
       from var(--md-private-button-rendered-icon-color) r g b /
         var(--md-private-button-icon-opacity, 1)
     );
@@ -508,20 +491,96 @@ if (import.meta.env.DEV) {
   &.md-button_color-filled {
     --md-comp-button-filled-container-color: var(--md-sys-color-primary);
     --md-comp-button-filled-label-text-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-icon-color: var(--md-sys-color-on-primary);
     --md-comp-button-filled-container-elevation: var(--md-sys-elevation-level0);
     --md-comp-button-filled-hovered-container-elevation: var(--md-sys-elevation-level1);
+    --md-comp-button-filled-focused-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-filled-pressed-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-filled-hovered-label-text-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-focused-label-text-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-pressed-label-text-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-hovered-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-focused-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-pressed-icon-color: var(--md-sys-color-on-primary);
     --md-comp-button-filled-hovered-state-layer-color: var(--md-sys-color-on-primary);
     --md-comp-button-filled-focused-state-layer-color: var(--md-sys-color-on-primary);
     --md-comp-button-filled-pressed-state-layer-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-button-filled-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-button-filled-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-button-filled-disabled-container-color: var(--md-sys-color-on-surface);
+    --md-comp-button-filled-disabled-container-opacity: 0.1;
+    --md-comp-button-filled-disabled-label-text-color: var(--md-sys-color-on-surface);
+    --md-comp-button-filled-disabled-label-text-opacity: 0.38;
+    --md-comp-button-filled-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-button-filled-disabled-icon-opacity: 0.38;
 
-    --md-container-color: var(--md-comp-button-filled-container-color);
-    --md-content-color: var(--md-comp-button-filled-label-text-color);
-    --md-state-box-shadow: var(--md-comp-button-filled-container-elevation);
-    --md-private-state-layer-color: var(--md-comp-button-filled-hovered-state-layer-color);
+    --md-private-button-container-color: var(--md-comp-button-filled-container-color);
+    --md-private-button-label-color: var(--md-comp-button-filled-label-text-color);
+    --md-private-button-icon-color: var(--md-comp-button-filled-icon-color);
+    --md-private-button-elevation: var(--md-comp-button-filled-container-elevation);
+    --md-private-button-hover-label-color: var(--md-comp-button-filled-hovered-label-text-color);
+    --md-private-button-focus-label-color: var(--md-comp-button-filled-focused-label-text-color);
+    --md-private-button-pressed-label-color: var(--md-comp-button-filled-pressed-label-text-color);
+    --md-private-button-hover-icon-color: var(--md-comp-button-filled-hovered-icon-color);
+    --md-private-button-focus-icon-color: var(--md-comp-button-filled-focused-icon-color);
+    --md-private-button-pressed-icon-color: var(--md-comp-button-filled-pressed-icon-color);
+    --md-private-button-hover-elevation: var(--md-comp-button-filled-hovered-container-elevation);
+    --md-private-button-focus-elevation: var(--md-comp-button-filled-focused-container-elevation);
+    --md-private-button-pressed-elevation: var(--md-comp-button-filled-pressed-container-elevation);
+    --md-private-button-hover-state-layer-color: var(
+      --md-comp-button-filled-hovered-state-layer-color
+    );
+    --md-private-button-focus-state-layer-color: var(
+      --md-comp-button-filled-focused-state-layer-color
+    );
+    --md-private-button-pressed-state-layer-color: var(
+      --md-comp-button-filled-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-button-filled-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-button-filled-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-button-filled-pressed-state-layer-opacity
+    );
+    --md-private-button-disabled-container-color: rgb(
+      from var(--md-comp-button-filled-disabled-container-color) r g b /
+        var(--md-comp-button-filled-disabled-container-opacity)
+    );
+    --md-private-button-disabled-label-color: var(
+      --md-comp-button-filled-disabled-label-text-color
+    );
+    --md-private-button-disabled-label-opacity: var(
+      --md-comp-button-filled-disabled-label-text-opacity
+    );
+    --md-private-button-disabled-icon-color: var(--md-comp-button-filled-disabled-icon-color);
+    --md-private-button-disabled-icon-opacity: var(--md-comp-button-filled-disabled-icon-opacity);
 
     &.md-button_variant-toggle {
       --md-comp-button-filled-unselected-container-color: var(--md-sys-color-surface-container);
       --md-comp-button-filled-unselected-label-text-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-button-filled-unselected-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-button-filled-unselected-hovered-label-text-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-filled-unselected-focused-label-text-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-filled-unselected-pressed-label-text-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-filled-unselected-hovered-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-button-filled-unselected-focused-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-button-filled-unselected-pressed-icon-color: var(--md-sys-color-on-surface-variant);
       --md-comp-button-filled-unselected-hovered-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
@@ -531,58 +590,181 @@ if (import.meta.env.DEV) {
       --md-comp-button-filled-unselected-pressed-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
-
-      --md-container-color: var(--md-comp-button-filled-unselected-container-color);
-      --md-content-color: var(--md-comp-button-filled-unselected-label-text-color);
-      --md-private-state-layer-color: var(
+      --md-private-button-container-color: var(--md-comp-button-filled-unselected-container-color);
+      --md-private-button-label-color: var(--md-comp-button-filled-unselected-label-text-color);
+      --md-private-button-icon-color: var(--md-comp-button-filled-unselected-icon-color);
+      --md-private-button-hover-label-color: var(
+        --md-comp-button-filled-unselected-hovered-label-text-color
+      );
+      --md-private-button-focus-label-color: var(
+        --md-comp-button-filled-unselected-focused-label-text-color
+      );
+      --md-private-button-pressed-label-color: var(
+        --md-comp-button-filled-unselected-pressed-label-text-color
+      );
+      --md-private-button-hover-icon-color: var(
+        --md-comp-button-filled-unselected-hovered-icon-color
+      );
+      --md-private-button-focus-icon-color: var(
+        --md-comp-button-filled-unselected-focused-icon-color
+      );
+      --md-private-button-pressed-icon-color: var(
+        --md-comp-button-filled-unselected-pressed-icon-color
+      );
+      --md-private-button-hover-state-layer-color: var(
         --md-comp-button-filled-unselected-hovered-state-layer-color
+      );
+      --md-private-button-focus-state-layer-color: var(
+        --md-comp-button-filled-unselected-focused-state-layer-color
+      );
+      --md-private-button-pressed-state-layer-color: var(
+        --md-comp-button-filled-unselected-pressed-state-layer-color
       );
 
       &.md-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-button-filled-selected-container-color: var(--md-sys-color-primary);
         --md-comp-button-filled-selected-label-text-color: var(--md-sys-color-on-primary);
+        --md-comp-button-filled-selected-icon-color: var(--md-sys-color-on-primary);
+        --md-comp-button-filled-selected-hovered-label-text-color: var(--md-sys-color-on-primary);
+        --md-comp-button-filled-selected-focused-label-text-color: var(--md-sys-color-on-primary);
+        --md-comp-button-filled-selected-pressed-label-text-color: var(--md-sys-color-on-primary);
+        --md-comp-button-filled-selected-hovered-icon-color: var(--md-sys-color-on-primary);
+        --md-comp-button-filled-selected-focused-icon-color: var(--md-sys-color-on-primary);
+        --md-comp-button-filled-selected-pressed-icon-color: var(--md-sys-color-on-primary);
         --md-comp-button-filled-selected-hovered-state-layer-color: var(--md-sys-color-on-primary);
         --md-comp-button-filled-selected-focused-state-layer-color: var(--md-sys-color-on-primary);
         --md-comp-button-filled-selected-pressed-state-layer-color: var(--md-sys-color-on-primary);
-
-        --md-container-color: var(--md-comp-button-filled-selected-container-color);
-        --md-content-color: var(--md-comp-button-filled-selected-label-text-color);
-        --md-private-state-layer-color: var(
+        --md-private-button-container-color: var(--md-comp-button-filled-selected-container-color);
+        --md-private-button-label-color: var(--md-comp-button-filled-selected-label-text-color);
+        --md-private-button-icon-color: var(--md-comp-button-filled-selected-icon-color);
+        --md-private-button-hover-label-color: var(
+          --md-comp-button-filled-selected-hovered-label-text-color
+        );
+        --md-private-button-focus-label-color: var(
+          --md-comp-button-filled-selected-focused-label-text-color
+        );
+        --md-private-button-pressed-label-color: var(
+          --md-comp-button-filled-selected-pressed-label-text-color
+        );
+        --md-private-button-hover-icon-color: var(
+          --md-comp-button-filled-selected-hovered-icon-color
+        );
+        --md-private-button-focus-icon-color: var(
+          --md-comp-button-filled-selected-focused-icon-color
+        );
+        --md-private-button-pressed-icon-color: var(
+          --md-comp-button-filled-selected-pressed-icon-color
+        );
+        --md-private-button-hover-state-layer-color: var(
           --md-comp-button-filled-selected-hovered-state-layer-color
         );
+        --md-private-button-focus-state-layer-color: var(
+          --md-comp-button-filled-selected-focused-state-layer-color
+        );
+        --md-private-button-pressed-state-layer-color: var(
+          --md-comp-button-filled-selected-pressed-state-layer-color
+        );
       }
-    }
-
-    &.md-state_hover,
-    &:hover {
-      --md-state-box-shadow: var(--md-comp-button-filled-hovered-container-elevation);
-      z-index: 1;
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: var(--md-button-disabled-container-tint);
-      --md-content-color: var(--md-button-disabled-content-color);
     }
   }
 
   &.md-button_color-tonal {
     --md-comp-button-tonal-container-color: var(--md-sys-color-secondary-container);
     --md-comp-button-tonal-label-text-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-icon-color: var(--md-sys-color-on-secondary-container);
     --md-comp-button-tonal-container-elevation: var(--md-sys-elevation-level0);
     --md-comp-button-tonal-hovered-container-elevation: var(--md-sys-elevation-level1);
+    --md-comp-button-tonal-focused-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-tonal-pressed-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-tonal-hovered-label-text-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-focused-label-text-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-pressed-label-text-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-hovered-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-focused-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-pressed-icon-color: var(--md-sys-color-on-secondary-container);
     --md-comp-button-tonal-hovered-state-layer-color: var(--md-sys-color-on-secondary-container);
     --md-comp-button-tonal-focused-state-layer-color: var(--md-sys-color-on-secondary-container);
     --md-comp-button-tonal-pressed-state-layer-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-button-tonal-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-button-tonal-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-button-tonal-disabled-container-color: var(--md-sys-color-on-surface);
+    --md-comp-button-tonal-disabled-container-opacity: 0.12;
+    --md-comp-button-tonal-disabled-label-text-color: var(--md-sys-color-on-surface);
+    --md-comp-button-tonal-disabled-label-text-opacity: 0.38;
+    --md-comp-button-tonal-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-button-tonal-disabled-icon-opacity: 0.38;
 
-    --md-container-color: var(--md-comp-button-tonal-container-color);
-    --md-content-color: var(--md-comp-button-tonal-label-text-color);
-    --md-state-box-shadow: var(--md-comp-button-tonal-container-elevation);
-    --md-private-state-layer-color: var(--md-comp-button-tonal-hovered-state-layer-color);
+    --md-private-button-container-color: var(--md-comp-button-tonal-container-color);
+    --md-private-button-label-color: var(--md-comp-button-tonal-label-text-color);
+    --md-private-button-icon-color: var(--md-comp-button-tonal-icon-color);
+    --md-private-button-elevation: var(--md-comp-button-tonal-container-elevation);
+    --md-private-button-hover-label-color: var(--md-comp-button-tonal-hovered-label-text-color);
+    --md-private-button-focus-label-color: var(--md-comp-button-tonal-focused-label-text-color);
+    --md-private-button-pressed-label-color: var(--md-comp-button-tonal-pressed-label-text-color);
+    --md-private-button-hover-icon-color: var(--md-comp-button-tonal-hovered-icon-color);
+    --md-private-button-focus-icon-color: var(--md-comp-button-tonal-focused-icon-color);
+    --md-private-button-pressed-icon-color: var(--md-comp-button-tonal-pressed-icon-color);
+    --md-private-button-hover-elevation: var(--md-comp-button-tonal-hovered-container-elevation);
+    --md-private-button-focus-elevation: var(--md-comp-button-tonal-focused-container-elevation);
+    --md-private-button-pressed-elevation: var(--md-comp-button-tonal-pressed-container-elevation);
+    --md-private-button-hover-state-layer-color: var(
+      --md-comp-button-tonal-hovered-state-layer-color
+    );
+    --md-private-button-focus-state-layer-color: var(
+      --md-comp-button-tonal-focused-state-layer-color
+    );
+    --md-private-button-pressed-state-layer-color: var(
+      --md-comp-button-tonal-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-button-tonal-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-button-tonal-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-button-tonal-pressed-state-layer-opacity
+    );
+    --md-private-button-disabled-container-color: rgb(
+      from var(--md-comp-button-tonal-disabled-container-color) r g b /
+        var(--md-comp-button-tonal-disabled-container-opacity)
+    );
+    --md-private-button-disabled-label-color: var(--md-comp-button-tonal-disabled-label-text-color);
+    --md-private-button-disabled-label-opacity: var(
+      --md-comp-button-tonal-disabled-label-text-opacity
+    );
+    --md-private-button-disabled-icon-color: var(--md-comp-button-tonal-disabled-icon-color);
+    --md-private-button-disabled-icon-opacity: var(--md-comp-button-tonal-disabled-icon-opacity);
 
     &.md-button_variant-toggle {
       --md-comp-button-tonal-unselected-container-color: var(--md-sys-color-secondary-container);
       --md-comp-button-tonal-unselected-label-text-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-button-tonal-unselected-icon-color: var(--md-sys-color-on-secondary-container);
+      --md-comp-button-tonal-unselected-hovered-label-text-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-button-tonal-unselected-focused-label-text-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-button-tonal-unselected-pressed-label-text-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-button-tonal-unselected-hovered-icon-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-button-tonal-unselected-focused-icon-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-button-tonal-unselected-pressed-icon-color: var(
         --md-sys-color-on-secondary-container
       );
       --md-comp-button-tonal-unselected-hovered-state-layer-color: var(
@@ -594,44 +776,98 @@ if (import.meta.env.DEV) {
       --md-comp-button-tonal-unselected-pressed-state-layer-color: var(
         --md-sys-color-on-secondary-container
       );
-
-      --md-container-color: var(--md-comp-button-tonal-unselected-container-color);
-      --md-content-color: var(--md-comp-button-tonal-unselected-label-text-color);
-      --md-private-state-layer-color: var(
+      --md-private-button-container-color: var(--md-comp-button-tonal-unselected-container-color);
+      --md-private-button-label-color: var(--md-comp-button-tonal-unselected-label-text-color);
+      --md-private-button-icon-color: var(--md-comp-button-tonal-unselected-icon-color);
+      --md-private-button-hover-label-color: var(
+        --md-comp-button-tonal-unselected-hovered-label-text-color
+      );
+      --md-private-button-focus-label-color: var(
+        --md-comp-button-tonal-unselected-focused-label-text-color
+      );
+      --md-private-button-pressed-label-color: var(
+        --md-comp-button-tonal-unselected-pressed-label-text-color
+      );
+      --md-private-button-hover-icon-color: var(
+        --md-comp-button-tonal-unselected-hovered-icon-color
+      );
+      --md-private-button-focus-icon-color: var(
+        --md-comp-button-tonal-unselected-focused-icon-color
+      );
+      --md-private-button-pressed-icon-color: var(
+        --md-comp-button-tonal-unselected-pressed-icon-color
+      );
+      --md-private-button-hover-state-layer-color: var(
         --md-comp-button-tonal-unselected-hovered-state-layer-color
+      );
+      --md-private-button-focus-state-layer-color: var(
+        --md-comp-button-tonal-unselected-focused-state-layer-color
+      );
+      --md-private-button-pressed-state-layer-color: var(
+        --md-comp-button-tonal-unselected-pressed-state-layer-color
       );
 
       &.md-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-button-tonal-selected-container-color: var(--md-sys-color-secondary);
         --md-comp-button-tonal-selected-label-text-color: var(--md-sys-color-on-secondary);
+        --md-comp-button-tonal-selected-icon-color: var(--md-sys-color-on-secondary);
+        --md-comp-button-tonal-selected-hovered-label-text-color: var(--md-sys-color-on-secondary);
+        --md-comp-button-tonal-selected-focused-label-text-color: var(--md-sys-color-on-secondary);
+        --md-comp-button-tonal-selected-pressed-label-text-color: var(--md-sys-color-on-secondary);
+        --md-comp-button-tonal-selected-hovered-icon-color: var(--md-sys-color-on-secondary);
+        --md-comp-button-tonal-selected-focused-icon-color: var(--md-sys-color-on-secondary);
+        --md-comp-button-tonal-selected-pressed-icon-color: var(--md-sys-color-on-secondary);
         --md-comp-button-tonal-selected-hovered-state-layer-color: var(--md-sys-color-on-secondary);
         --md-comp-button-tonal-selected-focused-state-layer-color: var(--md-sys-color-on-secondary);
         --md-comp-button-tonal-selected-pressed-state-layer-color: var(--md-sys-color-on-secondary);
-
-        --md-container-color: var(--md-comp-button-tonal-selected-container-color);
-        --md-content-color: var(--md-comp-button-tonal-selected-label-text-color);
-        --md-private-state-layer-color: var(
+        --md-private-button-container-color: var(--md-comp-button-tonal-selected-container-color);
+        --md-private-button-label-color: var(--md-comp-button-tonal-selected-label-text-color);
+        --md-private-button-icon-color: var(--md-comp-button-tonal-selected-icon-color);
+        --md-private-button-hover-label-color: var(
+          --md-comp-button-tonal-selected-hovered-label-text-color
+        );
+        --md-private-button-focus-label-color: var(
+          --md-comp-button-tonal-selected-focused-label-text-color
+        );
+        --md-private-button-pressed-label-color: var(
+          --md-comp-button-tonal-selected-pressed-label-text-color
+        );
+        --md-private-button-hover-icon-color: var(
+          --md-comp-button-tonal-selected-hovered-icon-color
+        );
+        --md-private-button-focus-icon-color: var(
+          --md-comp-button-tonal-selected-focused-icon-color
+        );
+        --md-private-button-pressed-icon-color: var(
+          --md-comp-button-tonal-selected-pressed-icon-color
+        );
+        --md-private-button-hover-state-layer-color: var(
           --md-comp-button-tonal-selected-hovered-state-layer-color
         );
+        --md-private-button-focus-state-layer-color: var(
+          --md-comp-button-tonal-selected-focused-state-layer-color
+        );
+        --md-private-button-pressed-state-layer-color: var(
+          --md-comp-button-tonal-selected-pressed-state-layer-color
+        );
       }
-    }
-
-    &.md-state_hover,
-    &:hover {
-      --md-state-box-shadow: var(--md-comp-button-tonal-hovered-container-elevation);
-      z-index: 1;
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: var(--md-button-disabled-container-tint);
-      --md-content-color: var(--md-button-disabled-content-color);
     }
   }
 
   &.md-button_color-outlined {
     --md-comp-button-outlined-outline-color: var(--md-sys-color-outline-variant);
     --md-comp-button-outlined-label-text-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-outlined-hovered-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-outlined-focused-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-outlined-pressed-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-outlined-hovered-label-text-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-focused-label-text-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-pressed-label-text-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-hovered-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-focused-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-pressed-icon-color: var(--md-sys-color-on-surface-variant);
     --md-comp-button-outlined-hovered-outline-color: var(--md-sys-color-outline-variant);
     --md-comp-button-outlined-focused-outline-color: var(--md-sys-color-outline-variant);
     --md-comp-button-outlined-pressed-outline-color: var(--md-sys-color-outline-variant);
@@ -639,16 +875,94 @@ if (import.meta.env.DEV) {
     --md-comp-button-outlined-hovered-state-layer-color: var(--md-sys-color-on-surface-variant);
     --md-comp-button-outlined-focused-state-layer-color: var(--md-sys-color-on-surface-variant);
     --md-comp-button-outlined-pressed-state-layer-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-button-outlined-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-button-outlined-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-button-outlined-disabled-label-text-color: var(--md-sys-color-on-surface);
+    --md-comp-button-outlined-disabled-label-text-opacity: 0.38;
+    --md-comp-button-outlined-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-button-outlined-disabled-icon-opacity: 0.38;
 
     --md-button-border-style: solid;
-    --md-button-border-color: var(--md-comp-button-outlined-outline-color);
     --md-button-box-sizing: border-box;
-    --md-content-color: var(--md-comp-button-outlined-label-text-color);
-    --md-state-box-shadow: var(--md-sys-elevation-level0);
-    --md-private-state-layer-color: var(--md-comp-button-outlined-hovered-state-layer-color);
+    --md-private-button-label-color: var(--md-comp-button-outlined-label-text-color);
+    --md-private-button-icon-color: var(--md-comp-button-outlined-icon-color);
+    --md-private-button-outline-color: var(--md-comp-button-outlined-outline-color);
+    --md-private-button-elevation: var(--md-comp-button-outlined-container-elevation);
+    --md-private-button-hover-label-color: var(--md-comp-button-outlined-hovered-label-text-color);
+    --md-private-button-focus-label-color: var(--md-comp-button-outlined-focused-label-text-color);
+    --md-private-button-pressed-label-color: var(
+      --md-comp-button-outlined-pressed-label-text-color
+    );
+    --md-private-button-hover-icon-color: var(--md-comp-button-outlined-hovered-icon-color);
+    --md-private-button-focus-icon-color: var(--md-comp-button-outlined-focused-icon-color);
+    --md-private-button-pressed-icon-color: var(--md-comp-button-outlined-pressed-icon-color);
+    --md-private-button-hover-outline-color: var(--md-comp-button-outlined-hovered-outline-color);
+    --md-private-button-focus-outline-color: var(--md-comp-button-outlined-focused-outline-color);
+    --md-private-button-pressed-outline-color: var(--md-comp-button-outlined-pressed-outline-color);
+    --md-private-button-hover-elevation: var(--md-comp-button-outlined-hovered-container-elevation);
+    --md-private-button-focus-elevation: var(--md-comp-button-outlined-focused-container-elevation);
+    --md-private-button-pressed-elevation: var(
+      --md-comp-button-outlined-pressed-container-elevation
+    );
+    --md-private-button-hover-state-layer-color: var(
+      --md-comp-button-outlined-hovered-state-layer-color
+    );
+    --md-private-button-focus-state-layer-color: var(
+      --md-comp-button-outlined-focused-state-layer-color
+    );
+    --md-private-button-pressed-state-layer-color: var(
+      --md-comp-button-outlined-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-button-outlined-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-button-outlined-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-button-outlined-pressed-state-layer-opacity
+    );
+    --md-private-button-disabled-label-color: var(
+      --md-comp-button-outlined-disabled-label-text-color
+    );
+    --md-private-button-disabled-label-opacity: var(
+      --md-comp-button-outlined-disabled-label-text-opacity
+    );
+    --md-private-button-disabled-icon-color: var(--md-comp-button-outlined-disabled-icon-color);
+    --md-private-button-disabled-icon-opacity: var(--md-comp-button-outlined-disabled-icon-opacity);
+    --md-private-button-disabled-outline-color: var(
+      --md-comp-button-outlined-disabled-outline-color
+    );
 
     &.md-button_variant-toggle {
       --md-comp-button-outlined-unselected-label-text-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-button-outlined-unselected-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-button-outlined-unselected-outline-color: var(--md-sys-color-outline-variant);
+      --md-comp-button-outlined-unselected-hovered-label-text-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-outlined-unselected-focused-label-text-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-outlined-unselected-pressed-label-text-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-outlined-unselected-hovered-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-outlined-unselected-focused-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-button-outlined-unselected-pressed-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
       --md-comp-button-outlined-unselected-hovered-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
@@ -658,15 +972,60 @@ if (import.meta.env.DEV) {
       --md-comp-button-outlined-unselected-pressed-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
-
-      --md-content-color: var(--md-comp-button-outlined-unselected-label-text-color);
-      --md-private-state-layer-color: var(
+      --md-private-button-label-color: var(--md-comp-button-outlined-unselected-label-text-color);
+      --md-private-button-icon-color: var(--md-comp-button-outlined-unselected-icon-color);
+      --md-private-button-outline-color: var(--md-comp-button-outlined-unselected-outline-color);
+      --md-private-button-hover-label-color: var(
+        --md-comp-button-outlined-unselected-hovered-label-text-color
+      );
+      --md-private-button-focus-label-color: var(
+        --md-comp-button-outlined-unselected-focused-label-text-color
+      );
+      --md-private-button-pressed-label-color: var(
+        --md-comp-button-outlined-unselected-pressed-label-text-color
+      );
+      --md-private-button-hover-icon-color: var(
+        --md-comp-button-outlined-unselected-hovered-icon-color
+      );
+      --md-private-button-focus-icon-color: var(
+        --md-comp-button-outlined-unselected-focused-icon-color
+      );
+      --md-private-button-pressed-icon-color: var(
+        --md-comp-button-outlined-unselected-pressed-icon-color
+      );
+      --md-private-button-hover-state-layer-color: var(
         --md-comp-button-outlined-unselected-hovered-state-layer-color
+      );
+      --md-private-button-focus-state-layer-color: var(
+        --md-comp-button-outlined-unselected-focused-state-layer-color
+      );
+      --md-private-button-pressed-state-layer-color: var(
+        --md-comp-button-outlined-unselected-pressed-state-layer-color
       );
 
       &.md-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-button-outlined-selected-container-color: var(--md-sys-color-inverse-surface);
         --md-comp-button-outlined-selected-label-text-color: var(--md-sys-color-inverse-on-surface);
+        --md-comp-button-outlined-selected-icon-color: var(--md-sys-color-inverse-on-surface);
+        --md-comp-button-outlined-selected-outline-color: var(--md-sys-color-inverse-surface);
+        --md-comp-button-outlined-selected-hovered-label-text-color: var(
+          --md-sys-color-inverse-on-surface
+        );
+        --md-comp-button-outlined-selected-focused-label-text-color: var(
+          --md-sys-color-inverse-on-surface
+        );
+        --md-comp-button-outlined-selected-pressed-label-text-color: var(
+          --md-sys-color-inverse-on-surface
+        );
+        --md-comp-button-outlined-selected-hovered-icon-color: var(
+          --md-sys-color-inverse-on-surface
+        );
+        --md-comp-button-outlined-selected-focused-icon-color: var(
+          --md-sys-color-inverse-on-surface
+        );
+        --md-comp-button-outlined-selected-pressed-icon-color: var(
+          --md-sys-color-inverse-on-surface
+        );
         --md-comp-button-outlined-selected-hovered-state-layer-color: var(
           --md-sys-color-inverse-on-surface
         );
@@ -676,53 +1035,109 @@ if (import.meta.env.DEV) {
         --md-comp-button-outlined-selected-pressed-state-layer-color: var(
           --md-sys-color-inverse-on-surface
         );
-
-        --md-container-color: var(--md-comp-button-outlined-selected-container-color);
-        --md-content-color: var(--md-comp-button-outlined-selected-label-text-color);
-        --md-private-state-layer-color: var(
+        --md-private-button-container-color: var(
+          --md-comp-button-outlined-selected-container-color
+        );
+        --md-private-button-label-color: var(--md-comp-button-outlined-selected-label-text-color);
+        --md-private-button-icon-color: var(--md-comp-button-outlined-selected-icon-color);
+        --md-private-button-outline-color: var(--md-comp-button-outlined-selected-outline-color);
+        --md-private-button-hover-label-color: var(
+          --md-comp-button-outlined-selected-hovered-label-text-color
+        );
+        --md-private-button-focus-label-color: var(
+          --md-comp-button-outlined-selected-focused-label-text-color
+        );
+        --md-private-button-pressed-label-color: var(
+          --md-comp-button-outlined-selected-pressed-label-text-color
+        );
+        --md-private-button-hover-icon-color: var(
+          --md-comp-button-outlined-selected-hovered-icon-color
+        );
+        --md-private-button-focus-icon-color: var(
+          --md-comp-button-outlined-selected-focused-icon-color
+        );
+        --md-private-button-pressed-icon-color: var(
+          --md-comp-button-outlined-selected-pressed-icon-color
+        );
+        --md-private-button-hover-state-layer-color: var(
           --md-comp-button-outlined-selected-hovered-state-layer-color
         );
+        --md-private-button-focus-state-layer-color: var(
+          --md-comp-button-outlined-selected-focused-state-layer-color
+        );
+        --md-private-button-pressed-state-layer-color: var(
+          --md-comp-button-outlined-selected-pressed-state-layer-color
+        );
       }
-    }
-
-    &.md-state_hover,
-    &:hover {
-      --md-button-border-color: var(--md-comp-button-outlined-hovered-outline-color);
-    }
-
-    &:focus-visible,
-    &.md-state_focused {
-      --md-button-border-color: var(--md-comp-button-outlined-focused-outline-color);
-    }
-
-    &.md-state_pressed,
-    &:active {
-      --md-button-border-color: var(--md-comp-button-outlined-pressed-outline-color);
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: transparent;
-      --md-content-color: var(--md-button-disabled-content-color);
-      --md-button-border-color: var(--md-comp-button-outlined-disabled-outline-color);
     }
   }
 
   &.md-button_color-text {
     --md-comp-button-text-label-text-color: var(--md-sys-color-primary);
+    --md-comp-button-text-icon-color: var(--md-sys-color-primary);
+    --md-comp-button-text-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-text-hovered-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-text-focused-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-text-pressed-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-text-hovered-label-text-color: var(--md-sys-color-primary);
+    --md-comp-button-text-focused-label-text-color: var(--md-sys-color-primary);
+    --md-comp-button-text-pressed-label-text-color: var(--md-sys-color-primary);
+    --md-comp-button-text-hovered-icon-color: var(--md-sys-color-primary);
+    --md-comp-button-text-focused-icon-color: var(--md-sys-color-primary);
+    --md-comp-button-text-pressed-icon-color: var(--md-sys-color-primary);
     --md-comp-button-text-hovered-state-layer-color: var(--md-sys-color-primary);
     --md-comp-button-text-focused-state-layer-color: var(--md-sys-color-primary);
     --md-comp-button-text-pressed-state-layer-color: var(--md-sys-color-primary);
+    --md-comp-button-text-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-button-text-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-button-text-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-button-text-disabled-label-text-color: var(--md-sys-color-on-surface);
+    --md-comp-button-text-disabled-label-text-opacity: 0.38;
+    --md-comp-button-text-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-button-text-disabled-icon-opacity: 0.38;
 
-    --md-content-color: var(--md-comp-button-text-label-text-color);
-    --md-state-box-shadow: var(--md-sys-elevation-level0);
-    --md-private-state-layer-color: var(--md-comp-button-text-hovered-state-layer-color);
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: transparent;
-      --md-content-color: var(--md-button-disabled-content-color);
-    }
+    --md-private-button-label-color: var(--md-comp-button-text-label-text-color);
+    --md-private-button-icon-color: var(--md-comp-button-text-icon-color);
+    --md-private-button-elevation: var(--md-comp-button-text-container-elevation);
+    --md-private-button-hover-label-color: var(--md-comp-button-text-hovered-label-text-color);
+    --md-private-button-focus-label-color: var(--md-comp-button-text-focused-label-text-color);
+    --md-private-button-pressed-label-color: var(--md-comp-button-text-pressed-label-text-color);
+    --md-private-button-hover-icon-color: var(--md-comp-button-text-hovered-icon-color);
+    --md-private-button-focus-icon-color: var(--md-comp-button-text-focused-icon-color);
+    --md-private-button-pressed-icon-color: var(--md-comp-button-text-pressed-icon-color);
+    --md-private-button-hover-elevation: var(--md-comp-button-text-hovered-container-elevation);
+    --md-private-button-focus-elevation: var(--md-comp-button-text-focused-container-elevation);
+    --md-private-button-pressed-elevation: var(--md-comp-button-text-pressed-container-elevation);
+    --md-private-button-hover-state-layer-color: var(
+      --md-comp-button-text-hovered-state-layer-color
+    );
+    --md-private-button-focus-state-layer-color: var(
+      --md-comp-button-text-focused-state-layer-color
+    );
+    --md-private-button-pressed-state-layer-color: var(
+      --md-comp-button-text-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-button-text-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-button-text-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-button-text-pressed-state-layer-opacity
+    );
+    --md-private-button-disabled-label-color: var(--md-comp-button-text-disabled-label-text-color);
+    --md-private-button-disabled-label-opacity: var(
+      --md-comp-button-text-disabled-label-text-opacity
+    );
+    --md-private-button-disabled-icon-color: var(--md-comp-button-text-disabled-icon-color);
+    --md-private-button-disabled-icon-opacity: var(--md-comp-button-text-disabled-icon-opacity);
   }
 
   &.md-state_hover:not(.md-state_disabled):not(:disabled),
@@ -747,6 +1162,8 @@ if (import.meta.env.DEV) {
       --md-private-button-hover-state-layer-color,
       var(--md-private-button-state-layer-color)
     );
+    --md-private-button-label-opacity: 1;
+    --md-private-button-icon-opacity: 1;
     z-index: 1;
   }
 
@@ -772,6 +1189,8 @@ if (import.meta.env.DEV) {
       --md-private-button-focus-state-layer-color,
       var(--md-private-button-state-layer-color)
     );
+    --md-private-button-label-opacity: 1;
+    --md-private-button-icon-opacity: 1;
     z-index: 1;
   }
 
@@ -797,6 +1216,8 @@ if (import.meta.env.DEV) {
       --md-private-button-pressed-state-layer-color,
       var(--md-private-button-state-layer-color)
     );
+    --md-private-button-label-opacity: 1;
+    --md-private-button-icon-opacity: 1;
   }
 
   &.md-state_disabled,
@@ -858,16 +1279,20 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-xsmall-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-round.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-square.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-square);
       }
 
-      &.md-state_pressed,
-      &:active {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-xsmall-pressed-container-shape);
       }
     }
@@ -903,16 +1328,20 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-small-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-round.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-square.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-square);
       }
 
-      &.md-state_pressed,
-      &:active {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-small-pressed-container-shape);
       }
     }
@@ -947,16 +1376,20 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-medium-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-round.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-square.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-square);
       }
 
-      &.md-state_pressed,
-      &:active {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-medium-pressed-container-shape);
       }
     }
@@ -991,16 +1424,20 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-large-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-round.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-square.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-square);
       }
 
-      &.md-state_pressed,
-      &:active {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-large-pressed-container-shape);
       }
     }
@@ -1037,16 +1474,20 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-xlarge-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-round.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+      &.md-button_shape-square.md-button_selected:not(.md-state_disabled):not(:disabled):not(
+          .md-state_pressed
+        ):not(:active) {
         --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-square);
       }
 
-      &.md-state_pressed,
-      &:active {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-xlarge-pressed-container-shape);
       }
     }

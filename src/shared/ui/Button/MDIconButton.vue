@@ -146,13 +146,6 @@ if (import.meta.env.DEV) {
 
 <style scoped>
 .md-icon-button {
-  /* Component tokens shared across color styles (identical value in every
-     md.comp.icon-button.{filled,tonal,outlined,standard}.disabled.icon.* row). */
-  --md-comp-icon-button-disabled-icon-color: var(--md-sys-color-on-surface);
-  --md-comp-icon-button-disabled-icon-opacity: 0.38;
-  --md-comp-icon-button-disabled-container-color: var(--md-sys-color-on-surface);
-  --md-comp-icon-button-disabled-container-opacity: 0.1;
-
   /* No official md.comp.icon-button.*.target-size token exists; the 48dp minimum touch
      target is a project/browser accessibility implementation detail, kept private. */
   --md-private-icon-button-target-size: var(--md-icon-button-container-height);
@@ -161,18 +154,36 @@ if (import.meta.env.DEV) {
   --md-icon-button-container-shape: unset;
   --md-icon-button-icon-size: 24px;
   --md-icon-button-border-width: 0px;
+  --md-icon-button-border-style: solid;
   --md-icon-button-leading-space: 0px;
   --md-icon-button-trailing-space: 0px;
-  --md-icon-button-disabled-content-color: rgb(
-    from var(--md-comp-icon-button-disabled-icon-color) r g b /
-      var(--md-comp-icon-button-disabled-icon-opacity)
+  --md-private-icon-button-container-color: transparent;
+  --md-private-icon-button-icon-color: inherit;
+  --md-private-icon-button-outline-color: transparent;
+  --md-private-icon-button-state-layer-color: var(--md-private-icon-button-icon-color);
+  --md-private-icon-button-hover-icon-color: var(--md-private-icon-button-icon-color);
+  --md-private-icon-button-focus-icon-color: var(--md-private-icon-button-icon-color);
+  --md-private-icon-button-pressed-icon-color: var(--md-private-icon-button-icon-color);
+  --md-private-icon-button-hover-outline-color: var(--md-private-icon-button-outline-color);
+  --md-private-icon-button-focus-outline-color: var(--md-private-icon-button-outline-color);
+  --md-private-icon-button-pressed-outline-color: var(--md-private-icon-button-outline-color);
+  --md-private-icon-button-hover-state-layer-color: var(--md-private-icon-button-state-layer-color);
+  --md-private-icon-button-focus-state-layer-color: var(--md-private-icon-button-state-layer-color);
+  --md-private-icon-button-pressed-state-layer-color: var(
+    --md-private-icon-button-state-layer-color
   );
-  --md-icon-button-disabled-container-tint: rgb(
-    from var(--md-comp-icon-button-disabled-container-color) r g b /
-      var(--md-comp-icon-button-disabled-container-opacity)
+  --md-private-icon-button-disabled-container-color: transparent;
+  --md-private-icon-button-disabled-icon-color: var(--md-private-icon-button-icon-color);
+  --md-private-icon-button-disabled-icon-opacity: 1;
+  --md-private-icon-button-disabled-outline-color: var(--md-private-icon-button-outline-color);
+  --md-private-icon-button-rendered-container-color: var(--md-private-icon-button-container-color);
+  --md-private-icon-button-rendered-icon-color: var(--md-private-icon-button-icon-color);
+  --md-private-icon-button-rendered-outline-color: var(--md-private-icon-button-outline-color);
+  --md-private-icon-button-rendered-state-layer-color: var(
+    --md-private-icon-button-state-layer-color
   );
-  --md-icon-button-disabled-container-color: transparent;
-  --md-icon-button-disabled-border-color: transparent;
+  --md-private-icon-button-icon-opacity: 1;
+  --md-private-state-layer-color: var(--md-private-icon-button-rendered-state-layer-color);
 
   position: relative;
   display: inline-flex;
@@ -183,10 +194,11 @@ if (import.meta.env.DEV) {
   padding-inline: calc(var(--md-icon-button-leading-space) - var(--md-icon-button-border-width))
     calc(var(--md-icon-button-trailing-space) - var(--md-icon-button-border-width));
   border-radius: var(--md-icon-button-container-shape);
-  border: var(--md-icon-button-border-width) solid transparent;
+  border: var(--md-icon-button-border-width) var(--md-icon-button-border-style)
+    var(--md-private-icon-button-rendered-outline-color);
   box-sizing: content-box;
-  background: var(--md-container-color, transparent);
-  color: var(--md-content-color, inherit);
+  background: var(--md-private-icon-button-rendered-container-color);
+  color: var(--md-private-icon-button-rendered-icon-color);
   vertical-align: middle;
   cursor: pointer;
   user-select: none;
@@ -220,7 +232,14 @@ if (import.meta.env.DEV) {
     align-items: center;
     width: var(--md-icon-button-icon-size, 1lh);
     height: var(--md-icon-button-icon-size, 1lh);
-    color: var(--md-content-color, inherit);
+    color: rgb(
+      from var(--md-private-icon-button-rendered-icon-color) r g b /
+        var(--md-private-icon-button-icon-opacity)
+    );
+    --md-content-color: rgb(
+      from var(--md-private-icon-button-rendered-icon-color) r g b /
+        var(--md-private-icon-button-icon-opacity)
+    );
     background: transparent;
     transition-property: opacity;
     transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
@@ -241,13 +260,61 @@ if (import.meta.env.DEV) {
   &_color-filled {
     --md-comp-icon-button-filled-container-color: var(--md-sys-color-primary);
     --md-comp-icon-button-filled-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-icon-button-filled-hovered-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-icon-button-filled-focused-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-icon-button-filled-pressed-icon-color: var(--md-sys-color-on-primary);
     --md-comp-icon-button-filled-hovered-state-layer-color: var(--md-sys-color-on-primary);
     --md-comp-icon-button-filled-focused-state-layer-color: var(--md-sys-color-on-primary);
     --md-comp-icon-button-filled-pressed-state-layer-color: var(--md-sys-color-on-primary);
+    --md-comp-icon-button-filled-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-icon-button-filled-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-icon-button-filled-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-icon-button-filled-disabled-container-color: var(--md-sys-color-on-surface);
+    --md-comp-icon-button-filled-disabled-container-opacity: 0.1;
+    --md-comp-icon-button-filled-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-icon-button-filled-disabled-icon-opacity: 0.38;
 
-    --md-container-color: var(--md-comp-icon-button-filled-container-color);
-    --md-content-color: var(--md-comp-icon-button-filled-icon-color);
-    --md-private-state-layer-color: var(--md-comp-icon-button-filled-hovered-state-layer-color);
+    --md-private-icon-button-container-color: var(--md-comp-icon-button-filled-container-color);
+    --md-private-icon-button-icon-color: var(--md-comp-icon-button-filled-icon-color);
+    --md-private-icon-button-hover-icon-color: var(--md-comp-icon-button-filled-hovered-icon-color);
+    --md-private-icon-button-focus-icon-color: var(--md-comp-icon-button-filled-focused-icon-color);
+    --md-private-icon-button-pressed-icon-color: var(
+      --md-comp-icon-button-filled-pressed-icon-color
+    );
+    --md-private-icon-button-hover-state-layer-color: var(
+      --md-comp-icon-button-filled-hovered-state-layer-color
+    );
+    --md-private-icon-button-focus-state-layer-color: var(
+      --md-comp-icon-button-filled-focused-state-layer-color
+    );
+    --md-private-icon-button-pressed-state-layer-color: var(
+      --md-comp-icon-button-filled-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-icon-button-filled-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-icon-button-filled-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-icon-button-filled-pressed-state-layer-opacity
+    );
+    --md-private-icon-button-disabled-container-color: rgb(
+      from var(--md-comp-icon-button-filled-disabled-container-color) r g b /
+        var(--md-comp-icon-button-filled-disabled-container-opacity)
+    );
+    --md-private-icon-button-disabled-icon-color: var(
+      --md-comp-icon-button-filled-disabled-icon-color
+    );
+    --md-private-icon-button-disabled-icon-opacity: var(
+      --md-comp-icon-button-filled-disabled-icon-opacity
+    );
     --md-symbol-fill: 1;
 
     &.md-icon-button_variant-toggle {
@@ -255,6 +322,15 @@ if (import.meta.env.DEV) {
         --md-sys-color-surface-container
       );
       --md-comp-icon-button-filled-unselected-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-icon-button-filled-unselected-hovered-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-icon-button-filled-unselected-focused-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-icon-button-filled-unselected-pressed-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
       --md-comp-icon-button-filled-unselected-hovered-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
@@ -264,17 +340,36 @@ if (import.meta.env.DEV) {
       --md-comp-icon-button-filled-unselected-pressed-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
-
-      --md-container-color: var(--md-comp-icon-button-filled-unselected-container-color);
-      --md-content-color: var(--md-comp-icon-button-filled-unselected-icon-color);
-      --md-private-state-layer-color: var(
+      --md-private-icon-button-container-color: var(
+        --md-comp-icon-button-filled-unselected-container-color
+      );
+      --md-private-icon-button-icon-color: var(--md-comp-icon-button-filled-unselected-icon-color);
+      --md-private-icon-button-hover-icon-color: var(
+        --md-comp-icon-button-filled-unselected-hovered-icon-color
+      );
+      --md-private-icon-button-focus-icon-color: var(
+        --md-comp-icon-button-filled-unselected-focused-icon-color
+      );
+      --md-private-icon-button-pressed-icon-color: var(
+        --md-comp-icon-button-filled-unselected-pressed-icon-color
+      );
+      --md-private-icon-button-hover-state-layer-color: var(
         --md-comp-icon-button-filled-unselected-hovered-state-layer-color
+      );
+      --md-private-icon-button-focus-state-layer-color: var(
+        --md-comp-icon-button-filled-unselected-focused-state-layer-color
+      );
+      --md-private-icon-button-pressed-state-layer-color: var(
+        --md-comp-icon-button-filled-unselected-pressed-state-layer-color
       );
       --md-symbol-fill: 0;
 
       &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-icon-button-filled-selected-container-color: var(--md-sys-color-primary);
         --md-comp-icon-button-filled-selected-icon-color: var(--md-sys-color-on-primary);
+        --md-comp-icon-button-filled-selected-hovered-icon-color: var(--md-sys-color-on-primary);
+        --md-comp-icon-button-filled-selected-focused-icon-color: var(--md-sys-color-on-primary);
+        --md-comp-icon-button-filled-selected-pressed-icon-color: var(--md-sys-color-on-primary);
         --md-comp-icon-button-filled-selected-hovered-state-layer-color: var(
           --md-sys-color-on-primary
         );
@@ -284,27 +379,39 @@ if (import.meta.env.DEV) {
         --md-comp-icon-button-filled-selected-pressed-state-layer-color: var(
           --md-sys-color-on-primary
         );
-
-        --md-container-color: var(--md-comp-icon-button-filled-selected-container-color);
-        --md-content-color: var(--md-comp-icon-button-filled-selected-icon-color);
-        --md-private-state-layer-color: var(
+        --md-private-icon-button-container-color: var(
+          --md-comp-icon-button-filled-selected-container-color
+        );
+        --md-private-icon-button-icon-color: var(--md-comp-icon-button-filled-selected-icon-color);
+        --md-private-icon-button-hover-icon-color: var(
+          --md-comp-icon-button-filled-selected-hovered-icon-color
+        );
+        --md-private-icon-button-focus-icon-color: var(
+          --md-comp-icon-button-filled-selected-focused-icon-color
+        );
+        --md-private-icon-button-pressed-icon-color: var(
+          --md-comp-icon-button-filled-selected-pressed-icon-color
+        );
+        --md-private-icon-button-hover-state-layer-color: var(
           --md-comp-icon-button-filled-selected-hovered-state-layer-color
+        );
+        --md-private-icon-button-focus-state-layer-color: var(
+          --md-comp-icon-button-filled-selected-focused-state-layer-color
+        );
+        --md-private-icon-button-pressed-state-layer-color: var(
+          --md-comp-icon-button-filled-selected-pressed-state-layer-color
         );
         --md-symbol-fill: 1;
       }
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: var(--md-icon-button-disabled-container-tint);
-      --md-content-color: var(--md-icon-button-disabled-content-color);
-      --md-symbol-fill: 0;
     }
   }
 
   &_color-tonal {
     --md-comp-icon-button-tonal-container-color: var(--md-sys-color-secondary-container);
     --md-comp-icon-button-tonal-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-icon-button-tonal-hovered-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-icon-button-tonal-focused-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-icon-button-tonal-pressed-icon-color: var(--md-sys-color-on-secondary-container);
     --md-comp-icon-button-tonal-hovered-state-layer-color: var(
       --md-sys-color-on-secondary-container
     );
@@ -314,10 +421,55 @@ if (import.meta.env.DEV) {
     --md-comp-icon-button-tonal-pressed-state-layer-color: var(
       --md-sys-color-on-secondary-container
     );
+    --md-comp-icon-button-tonal-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-icon-button-tonal-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-icon-button-tonal-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-icon-button-tonal-disabled-container-color: var(--md-sys-color-on-surface);
+    --md-comp-icon-button-tonal-disabled-container-opacity: 0.12;
+    --md-comp-icon-button-tonal-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-icon-button-tonal-disabled-icon-opacity: 0.38;
 
-    --md-container-color: var(--md-comp-icon-button-tonal-container-color);
-    --md-content-color: var(--md-comp-icon-button-tonal-icon-color);
-    --md-private-state-layer-color: var(--md-comp-icon-button-tonal-hovered-state-layer-color);
+    --md-private-icon-button-container-color: var(--md-comp-icon-button-tonal-container-color);
+    --md-private-icon-button-icon-color: var(--md-comp-icon-button-tonal-icon-color);
+    --md-private-icon-button-hover-icon-color: var(--md-comp-icon-button-tonal-hovered-icon-color);
+    --md-private-icon-button-focus-icon-color: var(--md-comp-icon-button-tonal-focused-icon-color);
+    --md-private-icon-button-pressed-icon-color: var(
+      --md-comp-icon-button-tonal-pressed-icon-color
+    );
+    --md-private-icon-button-hover-state-layer-color: var(
+      --md-comp-icon-button-tonal-hovered-state-layer-color
+    );
+    --md-private-icon-button-focus-state-layer-color: var(
+      --md-comp-icon-button-tonal-focused-state-layer-color
+    );
+    --md-private-icon-button-pressed-state-layer-color: var(
+      --md-comp-icon-button-tonal-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-icon-button-tonal-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-icon-button-tonal-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-icon-button-tonal-pressed-state-layer-opacity
+    );
+    --md-private-icon-button-disabled-container-color: rgb(
+      from var(--md-comp-icon-button-tonal-disabled-container-color) r g b /
+        var(--md-comp-icon-button-tonal-disabled-container-opacity)
+    );
+    --md-private-icon-button-disabled-icon-color: var(
+      --md-comp-icon-button-tonal-disabled-icon-color
+    );
+    --md-private-icon-button-disabled-icon-opacity: var(
+      --md-comp-icon-button-tonal-disabled-icon-opacity
+    );
     --md-symbol-fill: 1;
 
     &.md-icon-button_variant-toggle {
@@ -325,6 +477,15 @@ if (import.meta.env.DEV) {
         --md-sys-color-secondary-container
       );
       --md-comp-icon-button-tonal-unselected-icon-color: var(--md-sys-color-on-secondary-container);
+      --md-comp-icon-button-tonal-unselected-hovered-icon-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-icon-button-tonal-unselected-focused-icon-color: var(
+        --md-sys-color-on-secondary-container
+      );
+      --md-comp-icon-button-tonal-unselected-pressed-icon-color: var(
+        --md-sys-color-on-secondary-container
+      );
       --md-comp-icon-button-tonal-unselected-hovered-state-layer-color: var(
         --md-sys-color-on-secondary-container
       );
@@ -334,17 +495,36 @@ if (import.meta.env.DEV) {
       --md-comp-icon-button-tonal-unselected-pressed-state-layer-color: var(
         --md-sys-color-on-secondary-container
       );
-
-      --md-container-color: var(--md-comp-icon-button-tonal-unselected-container-color);
-      --md-content-color: var(--md-comp-icon-button-tonal-unselected-icon-color);
-      --md-private-state-layer-color: var(
+      --md-private-icon-button-container-color: var(
+        --md-comp-icon-button-tonal-unselected-container-color
+      );
+      --md-private-icon-button-icon-color: var(--md-comp-icon-button-tonal-unselected-icon-color);
+      --md-private-icon-button-hover-icon-color: var(
+        --md-comp-icon-button-tonal-unselected-hovered-icon-color
+      );
+      --md-private-icon-button-focus-icon-color: var(
+        --md-comp-icon-button-tonal-unselected-focused-icon-color
+      );
+      --md-private-icon-button-pressed-icon-color: var(
+        --md-comp-icon-button-tonal-unselected-pressed-icon-color
+      );
+      --md-private-icon-button-hover-state-layer-color: var(
         --md-comp-icon-button-tonal-unselected-hovered-state-layer-color
+      );
+      --md-private-icon-button-focus-state-layer-color: var(
+        --md-comp-icon-button-tonal-unselected-focused-state-layer-color
+      );
+      --md-private-icon-button-pressed-state-layer-color: var(
+        --md-comp-icon-button-tonal-unselected-pressed-state-layer-color
       );
       --md-symbol-fill: 0;
 
       &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-icon-button-tonal-selected-container-color: var(--md-sys-color-secondary);
         --md-comp-icon-button-tonal-selected-icon-color: var(--md-sys-color-on-secondary);
+        --md-comp-icon-button-tonal-selected-hovered-icon-color: var(--md-sys-color-on-secondary);
+        --md-comp-icon-button-tonal-selected-focused-icon-color: var(--md-sys-color-on-secondary);
+        --md-comp-icon-button-tonal-selected-pressed-icon-color: var(--md-sys-color-on-secondary);
         --md-comp-icon-button-tonal-selected-hovered-state-layer-color: var(
           --md-sys-color-on-secondary
         );
@@ -354,27 +534,39 @@ if (import.meta.env.DEV) {
         --md-comp-icon-button-tonal-selected-pressed-state-layer-color: var(
           --md-sys-color-on-secondary
         );
-
-        --md-container-color: var(--md-comp-icon-button-tonal-selected-container-color);
-        --md-content-color: var(--md-comp-icon-button-tonal-selected-icon-color);
-        --md-private-state-layer-color: var(
+        --md-private-icon-button-container-color: var(
+          --md-comp-icon-button-tonal-selected-container-color
+        );
+        --md-private-icon-button-icon-color: var(--md-comp-icon-button-tonal-selected-icon-color);
+        --md-private-icon-button-hover-icon-color: var(
+          --md-comp-icon-button-tonal-selected-hovered-icon-color
+        );
+        --md-private-icon-button-focus-icon-color: var(
+          --md-comp-icon-button-tonal-selected-focused-icon-color
+        );
+        --md-private-icon-button-pressed-icon-color: var(
+          --md-comp-icon-button-tonal-selected-pressed-icon-color
+        );
+        --md-private-icon-button-hover-state-layer-color: var(
           --md-comp-icon-button-tonal-selected-hovered-state-layer-color
+        );
+        --md-private-icon-button-focus-state-layer-color: var(
+          --md-comp-icon-button-tonal-selected-focused-state-layer-color
+        );
+        --md-private-icon-button-pressed-state-layer-color: var(
+          --md-comp-icon-button-tonal-selected-pressed-state-layer-color
         );
         --md-symbol-fill: 1;
       }
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: var(--md-icon-button-disabled-container-tint);
-      --md-content-color: var(--md-icon-button-disabled-content-color);
-      --md-symbol-fill: 0;
     }
   }
 
   &_color-outlined {
     --md-comp-icon-button-outlined-outline-color: var(--md-sys-color-outline-variant);
     --md-comp-icon-button-outlined-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-icon-button-outlined-hovered-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-icon-button-outlined-focused-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-icon-button-outlined-pressed-icon-color: var(--md-sys-color-on-surface-variant);
     --md-comp-icon-button-outlined-hovered-state-layer-color: var(
       --md-sys-color-on-surface-variant
     );
@@ -385,17 +577,75 @@ if (import.meta.env.DEV) {
       --md-sys-color-on-surface-variant
     );
     --md-comp-icon-button-outlined-disabled-outline-color: var(--md-sys-color-outline-variant);
+    --md-comp-icon-button-outlined-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-icon-button-outlined-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-icon-button-outlined-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-icon-button-outlined-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-icon-button-outlined-disabled-icon-opacity: 0.38;
 
-    border-style: solid;
-    border-color: var(--md-comp-icon-button-outlined-outline-color);
-    --md-container-color: transparent;
-    --md-content-color: var(--md-comp-icon-button-outlined-icon-color);
-    --md-private-state-layer-color: var(--md-comp-icon-button-outlined-hovered-state-layer-color);
+    --md-private-icon-button-icon-color: var(--md-comp-icon-button-outlined-icon-color);
+    --md-private-icon-button-outline-color: var(--md-comp-icon-button-outlined-outline-color);
+    --md-private-icon-button-hover-icon-color: var(
+      --md-comp-icon-button-outlined-hovered-icon-color
+    );
+    --md-private-icon-button-focus-icon-color: var(
+      --md-comp-icon-button-outlined-focused-icon-color
+    );
+    --md-private-icon-button-pressed-icon-color: var(
+      --md-comp-icon-button-outlined-pressed-icon-color
+    );
+    --md-private-icon-button-hover-outline-color: var(--md-comp-icon-button-outlined-outline-color);
+    --md-private-icon-button-focus-outline-color: var(--md-comp-icon-button-outlined-outline-color);
+    --md-private-icon-button-pressed-outline-color: var(
+      --md-comp-icon-button-outlined-outline-color
+    );
+    --md-private-icon-button-hover-state-layer-color: var(
+      --md-comp-icon-button-outlined-hovered-state-layer-color
+    );
+    --md-private-icon-button-focus-state-layer-color: var(
+      --md-comp-icon-button-outlined-focused-state-layer-color
+    );
+    --md-private-icon-button-pressed-state-layer-color: var(
+      --md-comp-icon-button-outlined-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-icon-button-outlined-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-icon-button-outlined-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-icon-button-outlined-pressed-state-layer-opacity
+    );
+    --md-private-icon-button-disabled-icon-color: var(
+      --md-comp-icon-button-outlined-disabled-icon-color
+    );
+    --md-private-icon-button-disabled-icon-opacity: var(
+      --md-comp-icon-button-outlined-disabled-icon-opacity
+    );
+    --md-private-icon-button-disabled-outline-color: var(
+      --md-comp-icon-button-outlined-disabled-outline-color
+    );
     --md-symbol-fill: 1;
 
     &.md-icon-button_variant-toggle {
       --md-comp-icon-button-outlined-unselected-outline-color: var(--md-sys-color-outline-variant);
       --md-comp-icon-button-outlined-unselected-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-icon-button-outlined-unselected-hovered-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-icon-button-outlined-unselected-focused-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-icon-button-outlined-unselected-pressed-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
       --md-comp-icon-button-outlined-unselected-hovered-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
@@ -405,12 +655,29 @@ if (import.meta.env.DEV) {
       --md-comp-icon-button-outlined-unselected-pressed-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
-
-      border-color: var(--md-comp-icon-button-outlined-unselected-outline-color);
-      --md-container-color: transparent;
-      --md-content-color: var(--md-comp-icon-button-outlined-unselected-icon-color);
-      --md-private-state-layer-color: var(
+      --md-private-icon-button-icon-color: var(
+        --md-comp-icon-button-outlined-unselected-icon-color
+      );
+      --md-private-icon-button-outline-color: var(
+        --md-comp-icon-button-outlined-unselected-outline-color
+      );
+      --md-private-icon-button-hover-icon-color: var(
+        --md-comp-icon-button-outlined-unselected-hovered-icon-color
+      );
+      --md-private-icon-button-focus-icon-color: var(
+        --md-comp-icon-button-outlined-unselected-focused-icon-color
+      );
+      --md-private-icon-button-pressed-icon-color: var(
+        --md-comp-icon-button-outlined-unselected-pressed-icon-color
+      );
+      --md-private-icon-button-hover-state-layer-color: var(
         --md-comp-icon-button-outlined-unselected-hovered-state-layer-color
+      );
+      --md-private-icon-button-focus-state-layer-color: var(
+        --md-comp-icon-button-outlined-unselected-focused-state-layer-color
+      );
+      --md-private-icon-button-pressed-state-layer-color: var(
+        --md-comp-icon-button-outlined-unselected-pressed-state-layer-color
       );
       --md-symbol-fill: 0;
 
@@ -428,32 +695,43 @@ if (import.meta.env.DEV) {
         --md-comp-icon-button-outlined-selected-pressed-state-layer-color: var(
           --md-sys-color-inverse-on-surface
         );
-
-        /* The selected outlined toggle uses an inverse-surface filled container per
-           md.comp.icon-button.outlined.selected.container.color; the outline is set to
-           match the container so no separate ring is visible, consistent with the
-           filled-looking selected treatment shown in the official spec. */
-        border-color: var(--md-comp-icon-button-outlined-selected-container-color);
-        --md-container-color: var(--md-comp-icon-button-outlined-selected-container-color);
-        --md-content-color: var(--md-comp-icon-button-outlined-selected-icon-color);
-        --md-private-state-layer-color: var(
+        --md-private-icon-button-container-color: var(
+          --md-comp-icon-button-outlined-selected-container-color
+        );
+        --md-private-icon-button-icon-color: var(
+          --md-comp-icon-button-outlined-selected-icon-color
+        );
+        --md-private-icon-button-outline-color: var(
+          --md-comp-icon-button-outlined-selected-container-color
+        );
+        --md-private-icon-button-hover-icon-color: var(
+          --md-comp-icon-button-outlined-selected-icon-color
+        );
+        --md-private-icon-button-focus-icon-color: var(
+          --md-comp-icon-button-outlined-selected-icon-color
+        );
+        --md-private-icon-button-pressed-icon-color: var(
+          --md-comp-icon-button-outlined-selected-icon-color
+        );
+        --md-private-icon-button-hover-state-layer-color: var(
           --md-comp-icon-button-outlined-selected-hovered-state-layer-color
+        );
+        --md-private-icon-button-focus-state-layer-color: var(
+          --md-comp-icon-button-outlined-selected-focused-state-layer-color
+        );
+        --md-private-icon-button-pressed-state-layer-color: var(
+          --md-comp-icon-button-outlined-selected-pressed-state-layer-color
         );
         --md-symbol-fill: 1;
       }
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      border-color: var(--md-comp-icon-button-outlined-disabled-outline-color);
-      --md-container-color: transparent;
-      --md-content-color: var(--md-icon-button-disabled-content-color);
-      --md-symbol-fill: 0;
     }
   }
 
   &_color-standard {
     --md-comp-icon-button-standard-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-icon-button-standard-hovered-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-icon-button-standard-focused-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-icon-button-standard-pressed-icon-color: var(--md-sys-color-on-surface-variant);
     --md-comp-icon-button-standard-hovered-state-layer-color: var(
       --md-sys-color-on-surface-variant
     );
@@ -463,14 +741,65 @@ if (import.meta.env.DEV) {
     --md-comp-icon-button-standard-pressed-state-layer-color: var(
       --md-sys-color-on-surface-variant
     );
+    --md-comp-icon-button-standard-hovered-state-layer-opacity: var(
+      --md-sys-state-hover-state-layer-opacity
+    );
+    --md-comp-icon-button-standard-focused-state-layer-opacity: var(
+      --md-sys-state-focus-state-layer-opacity
+    );
+    --md-comp-icon-button-standard-pressed-state-layer-opacity: var(
+      --md-sys-state-pressed-state-layer-opacity
+    );
+    --md-comp-icon-button-standard-disabled-icon-color: var(--md-sys-color-on-surface);
+    --md-comp-icon-button-standard-disabled-icon-opacity: 0.38;
 
-    --md-content-color: var(--md-comp-icon-button-standard-icon-color);
-    --md-container-color: transparent;
-    --md-private-state-layer-color: var(--md-comp-icon-button-standard-hovered-state-layer-color);
+    --md-private-icon-button-icon-color: var(--md-comp-icon-button-standard-icon-color);
+    --md-private-icon-button-hover-icon-color: var(
+      --md-comp-icon-button-standard-hovered-icon-color
+    );
+    --md-private-icon-button-focus-icon-color: var(
+      --md-comp-icon-button-standard-focused-icon-color
+    );
+    --md-private-icon-button-pressed-icon-color: var(
+      --md-comp-icon-button-standard-pressed-icon-color
+    );
+    --md-private-icon-button-hover-state-layer-color: var(
+      --md-comp-icon-button-standard-hovered-state-layer-color
+    );
+    --md-private-icon-button-focus-state-layer-color: var(
+      --md-comp-icon-button-standard-focused-state-layer-color
+    );
+    --md-private-icon-button-pressed-state-layer-color: var(
+      --md-comp-icon-button-standard-pressed-state-layer-color
+    );
+    --md-private-state-hover-state-layer-opacity: var(
+      --md-comp-icon-button-standard-hovered-state-layer-opacity
+    );
+    --md-private-state-focus-state-layer-opacity: var(
+      --md-comp-icon-button-standard-focused-state-layer-opacity
+    );
+    --md-private-state-pressed-state-layer-opacity: var(
+      --md-comp-icon-button-standard-pressed-state-layer-opacity
+    );
+    --md-private-icon-button-disabled-icon-color: var(
+      --md-comp-icon-button-standard-disabled-icon-color
+    );
+    --md-private-icon-button-disabled-icon-opacity: var(
+      --md-comp-icon-button-standard-disabled-icon-opacity
+    );
     --md-symbol-fill: 1;
 
     &.md-icon-button_variant-toggle {
       --md-comp-icon-button-standard-unselected-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-comp-icon-button-standard-unselected-hovered-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-icon-button-standard-unselected-focused-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
+      --md-comp-icon-button-standard-unselected-pressed-icon-color: var(
+        --md-sys-color-on-surface-variant
+      );
       --md-comp-icon-button-standard-unselected-hovered-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
@@ -480,16 +809,34 @@ if (import.meta.env.DEV) {
       --md-comp-icon-button-standard-unselected-pressed-state-layer-color: var(
         --md-sys-color-on-surface-variant
       );
-
-      --md-container-color: transparent;
-      --md-content-color: var(--md-comp-icon-button-standard-unselected-icon-color);
-      --md-private-state-layer-color: var(
+      --md-private-icon-button-icon-color: var(
+        --md-comp-icon-button-standard-unselected-icon-color
+      );
+      --md-private-icon-button-hover-icon-color: var(
+        --md-comp-icon-button-standard-unselected-hovered-icon-color
+      );
+      --md-private-icon-button-focus-icon-color: var(
+        --md-comp-icon-button-standard-unselected-focused-icon-color
+      );
+      --md-private-icon-button-pressed-icon-color: var(
+        --md-comp-icon-button-standard-unselected-pressed-icon-color
+      );
+      --md-private-icon-button-hover-state-layer-color: var(
         --md-comp-icon-button-standard-unselected-hovered-state-layer-color
+      );
+      --md-private-icon-button-focus-state-layer-color: var(
+        --md-comp-icon-button-standard-unselected-focused-state-layer-color
+      );
+      --md-private-icon-button-pressed-state-layer-color: var(
+        --md-comp-icon-button-standard-unselected-pressed-state-layer-color
       );
       --md-symbol-fill: 0;
 
       &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-icon-button-standard-selected-icon-color: var(--md-sys-color-primary);
+        --md-comp-icon-button-standard-selected-hovered-icon-color: var(--md-sys-color-primary);
+        --md-comp-icon-button-standard-selected-focused-icon-color: var(--md-sys-color-primary);
+        --md-comp-icon-button-standard-selected-pressed-icon-color: var(--md-sys-color-primary);
         --md-comp-icon-button-standard-selected-hovered-state-layer-color: var(
           --md-sys-color-primary
         );
@@ -499,21 +846,29 @@ if (import.meta.env.DEV) {
         --md-comp-icon-button-standard-selected-pressed-state-layer-color: var(
           --md-sys-color-primary
         );
-
-        --md-container-color: transparent;
-        --md-content-color: var(--md-comp-icon-button-standard-selected-icon-color);
-        --md-private-state-layer-color: var(
+        --md-private-icon-button-icon-color: var(
+          --md-comp-icon-button-standard-selected-icon-color
+        );
+        --md-private-icon-button-hover-icon-color: var(
+          --md-comp-icon-button-standard-selected-hovered-icon-color
+        );
+        --md-private-icon-button-focus-icon-color: var(
+          --md-comp-icon-button-standard-selected-focused-icon-color
+        );
+        --md-private-icon-button-pressed-icon-color: var(
+          --md-comp-icon-button-standard-selected-pressed-icon-color
+        );
+        --md-private-icon-button-hover-state-layer-color: var(
           --md-comp-icon-button-standard-selected-hovered-state-layer-color
+        );
+        --md-private-icon-button-focus-state-layer-color: var(
+          --md-comp-icon-button-standard-selected-focused-state-layer-color
+        );
+        --md-private-icon-button-pressed-state-layer-color: var(
+          --md-comp-icon-button-standard-selected-pressed-state-layer-color
         );
         --md-symbol-fill: 1;
       }
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: transparent;
-      --md-content-color: var(--md-icon-button-disabled-content-color);
-      --md-symbol-fill: 0;
     }
   }
 
@@ -563,7 +918,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-container-shape-round);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xsmall-selected-container-shape-round
           );
@@ -572,13 +927,13 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-container-shape-square);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xsmall-selected-container-shape-square
           );
         }
       }
-      &.md-state_pressed {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled) {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-pressed-container-shape);
       }
     }
@@ -622,7 +977,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-small-container-shape-round);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-small-selected-container-shape-round
           );
@@ -631,13 +986,13 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-small-container-shape-square);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-small-selected-container-shape-square
           );
         }
       }
-      &.md-state_pressed {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled) {
         --md-icon-button-container-shape: var(--md-comp-icon-button-small-pressed-container-shape);
       }
     }
@@ -680,7 +1035,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-medium-container-shape-round);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-medium-selected-container-shape-round
           );
@@ -689,13 +1044,13 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-medium-container-shape-square);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-medium-selected-container-shape-square
           );
         }
       }
-      &.md-state_pressed {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled) {
         --md-icon-button-container-shape: var(--md-comp-icon-button-medium-pressed-container-shape);
       }
     }
@@ -740,7 +1095,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-large-container-shape-round);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-large-selected-container-shape-round
           );
@@ -749,13 +1104,13 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-large-container-shape-square);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-large-selected-container-shape-square
           );
         }
       }
-      &.md-state_pressed {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled) {
         --md-icon-button-container-shape: var(--md-comp-icon-button-large-pressed-container-shape);
       }
     }
@@ -800,7 +1155,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-container-shape-round);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xlarge-selected-container-shape-round
           );
@@ -809,16 +1164,86 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-container-shape-square);
 
-        &.md-icon-button_selected {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xlarge-selected-container-shape-square
           );
         }
       }
-      &.md-state_pressed {
+      &.md-state_pressed:not(.md-state_disabled):not(:disabled) {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-pressed-container-shape);
       }
     }
+  }
+
+  &.md-state_hover:not(.md-state_disabled):not(:disabled),
+  &:hover:not(:disabled) {
+    --md-private-icon-button-rendered-icon-color: var(
+      --md-private-icon-button-hover-icon-color,
+      var(--md-private-icon-button-icon-color)
+    );
+    --md-private-icon-button-rendered-outline-color: var(
+      --md-private-icon-button-hover-outline-color,
+      var(--md-private-icon-button-outline-color)
+    );
+    --md-private-icon-button-rendered-state-layer-color: var(
+      --md-private-icon-button-hover-state-layer-color,
+      var(--md-private-icon-button-state-layer-color)
+    );
+    --md-private-icon-button-icon-opacity: 1;
+  }
+
+  &.md-state_focused:not(.md-state_disabled):not(:disabled),
+  &:focus-visible:not(:disabled) {
+    --md-private-icon-button-rendered-icon-color: var(
+      --md-private-icon-button-focus-icon-color,
+      var(--md-private-icon-button-icon-color)
+    );
+    --md-private-icon-button-rendered-outline-color: var(
+      --md-private-icon-button-focus-outline-color,
+      var(--md-private-icon-button-outline-color)
+    );
+    --md-private-icon-button-rendered-state-layer-color: var(
+      --md-private-icon-button-focus-state-layer-color,
+      var(--md-private-icon-button-state-layer-color)
+    );
+    --md-private-icon-button-icon-opacity: 1;
+  }
+
+  &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+  &:active:not(:disabled) {
+    --md-private-icon-button-rendered-icon-color: var(
+      --md-private-icon-button-pressed-icon-color,
+      var(--md-private-icon-button-icon-color)
+    );
+    --md-private-icon-button-rendered-outline-color: var(
+      --md-private-icon-button-pressed-outline-color,
+      var(--md-private-icon-button-outline-color)
+    );
+    --md-private-icon-button-rendered-state-layer-color: var(
+      --md-private-icon-button-pressed-state-layer-color,
+      var(--md-private-icon-button-state-layer-color)
+    );
+    --md-private-icon-button-icon-opacity: 1;
+  }
+
+  &.md-state_disabled,
+  &:disabled {
+    --md-private-icon-button-rendered-container-color: var(
+      --md-private-icon-button-disabled-container-color,
+      var(--md-private-icon-button-container-color)
+    );
+    --md-private-icon-button-rendered-icon-color: var(
+      --md-private-icon-button-disabled-icon-color,
+      var(--md-private-icon-button-icon-color)
+    );
+    --md-private-icon-button-rendered-outline-color: var(
+      --md-private-icon-button-disabled-outline-color,
+      var(--md-private-icon-button-outline-color)
+    );
+    --md-private-icon-button-rendered-state-layer-color: transparent;
+    --md-private-icon-button-icon-opacity: var(--md-private-icon-button-disabled-icon-opacity, 1);
+    --md-symbol-fill: 0;
   }
 }
 </style>

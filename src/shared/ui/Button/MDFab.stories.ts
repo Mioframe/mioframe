@@ -24,7 +24,7 @@ const meta = {
           '',
           '**Project extension**: `loading` (`boolean | number`, `0` is active).',
           '',
-          '**Tokens**: `--md-comp-fab-*` component tokens resolve to `--md-sys-*`. State tokens use the current non-deprecated `hovered`/`focused`/`pressed` paths for all six color styles, including the `-container` styles (which have full confirmed state-layer, icon, and elevation token coverage). The cache also contains contradictory duplicate legacy `hover`/`focus` rows for the three plain styles that alias a different color role; those legacy rows are not used.',
+          '**Tokens**: checked against the Material 3 MCP/cache snapshot captured 2026-06-30. Exact official `--md-comp-fab-*` properties are the public override surface. Each style routes container, icon, elevation, and state-layer values through local `--md-private-fab-*` rendered variables, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
           '',
           '**Required icon**: an icon source (`mdSymbol` or the `icon` slot) is required. Missing icon content logs a development warning and renders no fallback placeholder.',
           '',
@@ -112,15 +112,87 @@ export const InteractionStateTokens: Story = {
       <div data-testid="visual-md-fab-interaction-state-tokens" class="visual-surface">
         <div class="visual-row">
           <MDFab data-testid="primary-resting" tooltip="Primary resting" color="primary" md-symbol="add" />
-          <MDFab data-testid="primary-hover" class="md-state_hover" tooltip="Primary hover" color="primary" md-symbol="add" />
-          <MDFab data-testid="primary-focus" class="md-state_focused" tooltip="Primary focus" color="primary" md-symbol="add" />
-          <MDFab data-testid="primary-pressed" class="md-state_pressed" tooltip="Primary pressed" color="primary" md-symbol="add" />
+          <MDFab
+            data-testid="primary-hover"
+            class="md-state_hover"
+            tooltip="Primary hover"
+            color="primary"
+            md-symbol="add"
+            style="
+              --md-comp-fab-primary-hovered-icon-color: rgb(255 0 0);
+              --md-comp-fab-primary-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
+              --md-comp-fab-primary-hovered-state-layer-color: rgb(255 0 0);
+              --md-comp-fab-primary-hovered-state-layer-opacity: 0.03;
+            "
+          />
+          <MDFab
+            data-testid="primary-focus"
+            class="md-state_focused"
+            tooltip="Primary focus"
+            color="primary"
+            md-symbol="add"
+            style="
+              --md-comp-fab-primary-focused-icon-color: rgb(0 128 0);
+              --md-comp-fab-primary-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
+              --md-comp-fab-primary-focused-state-layer-color: rgb(0 128 0);
+              --md-comp-fab-primary-focused-state-layer-opacity: 0.17;
+            "
+          />
+          <MDFab
+            data-testid="primary-pressed"
+            class="md-state_pressed"
+            tooltip="Primary pressed"
+            color="primary"
+            md-symbol="add"
+            style="
+              --md-comp-fab-primary-pressed-icon-color: rgb(0 0 255);
+              --md-comp-fab-primary-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
+              --md-comp-fab-primary-pressed-state-layer-color: rgb(0 0 255);
+              --md-comp-fab-primary-pressed-state-layer-opacity: 0.29;
+            "
+          />
         </div>
         <div class="visual-row">
           <MDFab data-testid="primary-container-resting" tooltip="Primary container resting" color="primary-container" md-symbol="add" />
-          <MDFab data-testid="primary-container-hover" class="md-state_hover" tooltip="Primary container hover" color="primary-container" md-symbol="add" />
-          <MDFab data-testid="primary-container-focus" class="md-state_focused" tooltip="Primary container focus" color="primary-container" md-symbol="add" />
-          <MDFab data-testid="primary-container-pressed" class="md-state_pressed" tooltip="Primary container pressed" color="primary-container" md-symbol="add" />
+          <MDFab
+            data-testid="primary-container-hover"
+            class="md-state_hover"
+            tooltip="Primary container hover"
+            color="primary-container"
+            md-symbol="add"
+            style="
+              --md-comp-fab-primary-container-hovered-icon-color: rgb(255 80 0);
+              --md-comp-fab-primary-container-hovered-container-elevation: 0 0 0 6px rgb(45 67 89);
+              --md-comp-fab-primary-container-hovered-state-layer-color: rgb(255 80 0);
+              --md-comp-fab-primary-container-hovered-state-layer-opacity: 0.05;
+            "
+          />
+          <MDFab
+            data-testid="primary-container-focus"
+            class="md-state_focused"
+            tooltip="Primary container focus"
+            color="primary-container"
+            md-symbol="add"
+            style="
+              --md-comp-fab-primary-container-focused-icon-color: rgb(0 180 120);
+              --md-comp-fab-primary-container-focused-container-elevation: 0 0 0 7px rgb(56 78 90);
+              --md-comp-fab-primary-container-focused-state-layer-color: rgb(0 180 120);
+              --md-comp-fab-primary-container-focused-state-layer-opacity: 0.19;
+            "
+          />
+          <MDFab
+            data-testid="primary-container-pressed"
+            class="md-state_pressed"
+            tooltip="Primary container pressed"
+            color="primary-container"
+            md-symbol="add"
+            style="
+              --md-comp-fab-primary-container-pressed-icon-color: rgb(60 60 255);
+              --md-comp-fab-primary-container-pressed-container-elevation: 0 0 0 8px rgb(67 89 101);
+              --md-comp-fab-primary-container-pressed-state-layer-color: rgb(60 60 255);
+              --md-comp-fab-primary-container-pressed-state-layer-opacity: 0.31;
+            "
+          />
         </div>
       </div>
     `,

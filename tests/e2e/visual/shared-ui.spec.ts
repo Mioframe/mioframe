@@ -1,5 +1,37 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { openStory } from './storybook';
+
+const readButtonVisuals = async (
+  page: Page,
+  testId: string,
+  options?: { labelSelector?: string; iconSelector?: string },
+) =>
+  page.getByTestId(testId).evaluate(
+    (el, selectors) => {
+      const stateLayer = el.querySelector('.md-state-layer');
+      const label = selectors.labelSelector ? el.querySelector(selectors.labelSelector) : null;
+      const icon = selectors.iconSelector ? el.querySelector(selectors.iconSelector) : null;
+      const style = getComputedStyle(el);
+      return {
+        background: style.backgroundColor,
+        boxShadow: style.boxShadow,
+        borderColor: style.borderColor,
+        hoverOpacity: style.getPropertyValue('--md-private-state-hover-state-layer-opacity').trim(),
+        focusOpacity: style.getPropertyValue('--md-private-state-focus-state-layer-opacity').trim(),
+        pressedOpacity: style
+          .getPropertyValue('--md-private-state-pressed-state-layer-opacity')
+          .trim(),
+        labelColor: label ? getComputedStyle(label).color : null,
+        iconColor: icon ? getComputedStyle(icon).color : null,
+        stateLayerBackground: stateLayer ? getComputedStyle(stateLayer).backgroundColor : null,
+      };
+    },
+    {
+      labelSelector: options?.labelSelector ?? null,
+      iconSelector: options?.iconSelector ?? null,
+    },
+  );
 
 test('MDButton visual states match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
@@ -174,36 +206,32 @@ test('MDButton text toggle selects without the removed color restriction', async
   await expect(button).toHaveClass(/md-button_selected/);
 });
 
-test('MDButton disabled controls ignore forced hover/focus visuals', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdbutton--disabled-hover-states');
+test('MDButton disabled state wins over forced hover, focus, and pressed visuals', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--disabled-state-precedence');
 
-  const readVisual = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => {
-      const stateLayer = el.querySelector('.md-state-layer');
-      return {
-        background: getComputedStyle(el).backgroundColor,
-        boxShadow: getComputedStyle(el).boxShadow,
-        borderColor: getComputedStyle(el).borderColor,
-        stateLayerBackground: stateLayer ? getComputedStyle(stateLayer).backgroundColor : null,
-      };
-    });
+  const resting = await readButtonVisuals(page, 'disabled-resting', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  const hover = await readButtonVisuals(page, 'disabled-hover', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  const focus = await readButtonVisuals(page, 'disabled-focus', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  const pressed = await readButtonVisuals(page, 'disabled-pressed', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
 
-  const elevatedDisabled = await page.getByTestId('disabled-elevated-hover').evaluate((el) => ({
-    background: getComputedStyle(el).backgroundColor,
-    boxShadow: getComputedStyle(el).boxShadow,
-  }));
-  const elevatedHover = await readVisual('disabled-elevated-hover');
-  const outlinedHover = await readVisual('disabled-outlined-hover');
-  const outlinedFocus = await readVisual('disabled-outlined-focus');
-
-  // A disabled elevated button's hover-forced elevation must equal its resting (level0) shadow.
-  expect(elevatedHover.boxShadow).toBe(elevatedDisabled.boxShadow);
-  // Disabled state layers stay fully transparent regardless of a forced hover/focus class.
-  expect(elevatedHover.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
-  expect(outlinedHover.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
-  expect(outlinedFocus.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
-  // Disabled outlined border color does not darken on a forced hover/focus class.
-  expect(outlinedHover.borderColor).toBe(outlinedFocus.borderColor);
+  expect(hover).toEqual(resting);
+  expect(focus).toEqual(resting);
+  expect(pressed).toEqual(resting);
+  expect(resting.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
 });
 
 test('MDButton text-color spacing follows the active size, including the icon case', async ({
@@ -232,24 +260,50 @@ test('MDButton text-color spacing follows the active size, including the icon ca
   expect(smallIcon).toEqual(small);
 });
 
-test('MDButton toggle state-layer color varies by selected state for filled and outlined', async ({
+test('MDButton routes independent label, icon, outline, elevation, state-layer, and toggle state tokens', async ({
   page,
 }) => {
-  await openStory(page, 'material-3-components-buttons-mdbutton--toggle-state-layer-colors');
+  await openStory(page, 'material-3-components-buttons-mdbutton--token-routing-matrix');
 
-  const readStateLayerColor = (testId: string) =>
-    page
-      .getByTestId(testId)
-      .locator('.md-state-layer')
-      .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const hover = await readButtonVisuals(page, 'button-hover', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  const focus = await readButtonVisuals(page, 'button-focus', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  const pressed = await readButtonVisuals(page, 'button-pressed', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  const outlinedHover = await readButtonVisuals(page, 'button-outlined-hover');
+  const outlinedFocus = await readButtonVisuals(page, 'button-outlined-focus');
+  const outlinedPressed = await readButtonVisuals(page, 'button-outlined-pressed');
+  const selected = await readButtonVisuals(page, 'button-selected-hover', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  const unselected = await readButtonVisuals(page, 'button-unselected-hover', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
 
-  const filledUnselected = await readStateLayerColor('filled-toggle-unselected-hover');
-  const filledSelected = await readStateLayerColor('filled-toggle-selected-hover');
-  const outlinedUnselected = await readStateLayerColor('outlined-toggle-unselected-focus');
-  const outlinedSelected = await readStateLayerColor('outlined-toggle-selected-focus');
-
-  expect(filledUnselected).not.toBe(filledSelected);
-  expect(outlinedUnselected).not.toBe(outlinedSelected);
+  expect(hover.labelColor).not.toBe(hover.iconColor);
+  expect(focus.labelColor).not.toBe(focus.iconColor);
+  expect(pressed.labelColor).not.toBe(pressed.iconColor);
+  expect(hover.boxShadow).not.toBe(focus.boxShadow);
+  expect(focus.boxShadow).not.toBe(pressed.boxShadow);
+  expect(hover.stateLayerBackground).not.toBe(focus.stateLayerBackground);
+  expect(focus.stateLayerBackground).not.toBe(pressed.stateLayerBackground);
+  expect(hover.hoverOpacity).toBe('0.03');
+  expect(focus.focusOpacity).toBe('0.17');
+  expect(pressed.pressedOpacity).toBe('0.29');
+  expect(outlinedHover.borderColor).not.toBe(outlinedFocus.borderColor);
+  expect(outlinedFocus.borderColor).not.toBe(outlinedPressed.borderColor);
+  expect(selected.stateLayerBackground).not.toBe(unselected.stateLayerBackground);
+  expect(selected.labelColor).not.toBe(unselected.labelColor);
+  expect(selected.iconColor).not.toBe(unselected.iconColor);
 });
 
 test('MDChip visual states match baseline', async ({ page }) => {
@@ -535,26 +589,57 @@ test('MDFab hover, focus, and pressed elevation change for one plain and one con
 }) => {
   await openStory(page, 'material-3-components-buttons-mdfab--interaction-state-tokens');
 
-  const readBoxShadow = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => getComputedStyle(el).boxShadow);
+  const restingPrimary = await readButtonVisuals(page, 'primary-resting', {
+    iconSelector: '.md-fab__icon',
+  });
+  const restingPrimaryContainer = await readButtonVisuals(page, 'primary-container-resting', {
+    iconSelector: '.md-fab__icon',
+  });
+  const primaryHover = await readButtonVisuals(page, 'primary-hover', {
+    iconSelector: '.md-fab__icon',
+  });
+  const primaryFocus = await readButtonVisuals(page, 'primary-focus', {
+    iconSelector: '.md-fab__icon',
+  });
+  const primaryPressed = await readButtonVisuals(page, 'primary-pressed', {
+    iconSelector: '.md-fab__icon',
+  });
+  const primaryContainerHover = await readButtonVisuals(page, 'primary-container-hover', {
+    iconSelector: '.md-fab__icon',
+  });
+  const primaryContainerFocus = await readButtonVisuals(page, 'primary-container-focus', {
+    iconSelector: '.md-fab__icon',
+  });
+  const primaryContainerPressed = await readButtonVisuals(page, 'primary-container-pressed', {
+    iconSelector: '.md-fab__icon',
+  });
 
-  const restingPrimary = await readBoxShadow('primary-resting');
-  const restingPrimaryContainer = await readBoxShadow('primary-container-resting');
-
-  const primaryHover = await readBoxShadow('primary-hover');
-  const primaryFocus = await readBoxShadow('primary-focus');
-  const primaryPressed = await readBoxShadow('primary-pressed');
-  const primaryContainerHover = await readBoxShadow('primary-container-hover');
-  const primaryContainerFocus = await readBoxShadow('primary-container-focus');
-  const primaryContainerPressed = await readBoxShadow('primary-container-pressed');
-
-  // Hover raises elevation (level3 -> level4); focus/pressed keep the resting level3 shadow.
-  expect(primaryHover).not.toBe(restingPrimary);
-  expect(primaryFocus).toBe(restingPrimary);
-  expect(primaryPressed).toBe(restingPrimary);
-  expect(primaryContainerHover).not.toBe(restingPrimaryContainer);
-  expect(primaryContainerFocus).toBe(restingPrimaryContainer);
-  expect(primaryContainerPressed).toBe(restingPrimaryContainer);
+  expect(primaryHover.iconColor).not.toBe(restingPrimary.iconColor);
+  expect(primaryFocus.iconColor).not.toBe(primaryHover.iconColor);
+  expect(primaryPressed.iconColor).not.toBe(primaryFocus.iconColor);
+  expect(primaryHover.boxShadow).not.toBe(restingPrimary.boxShadow);
+  expect(primaryFocus.boxShadow).not.toBe(restingPrimary.boxShadow);
+  expect(primaryPressed.boxShadow).not.toBe(restingPrimary.boxShadow);
+  expect(primaryHover.stateLayerBackground).not.toBe(primaryFocus.stateLayerBackground);
+  expect(primaryFocus.stateLayerBackground).not.toBe(primaryPressed.stateLayerBackground);
+  expect(primaryHover.hoverOpacity).toBe('0.03');
+  expect(primaryFocus.focusOpacity).toBe('0.17');
+  expect(primaryPressed.pressedOpacity).toBe('0.29');
+  expect(primaryContainerHover.iconColor).not.toBe(restingPrimaryContainer.iconColor);
+  expect(primaryContainerFocus.iconColor).not.toBe(primaryContainerHover.iconColor);
+  expect(primaryContainerPressed.iconColor).not.toBe(primaryContainerFocus.iconColor);
+  expect(primaryContainerHover.boxShadow).not.toBe(restingPrimaryContainer.boxShadow);
+  expect(primaryContainerFocus.boxShadow).not.toBe(restingPrimaryContainer.boxShadow);
+  expect(primaryContainerPressed.boxShadow).not.toBe(restingPrimaryContainer.boxShadow);
+  expect(primaryContainerHover.stateLayerBackground).not.toBe(
+    primaryContainerFocus.stateLayerBackground,
+  );
+  expect(primaryContainerFocus.stateLayerBackground).not.toBe(
+    primaryContainerPressed.stateLayerBackground,
+  );
+  expect(primaryContainerHover.hoverOpacity).toBe('0.05');
+  expect(primaryContainerFocus.focusOpacity).toBe('0.19');
+  expect(primaryContainerPressed.pressedOpacity).toBe('0.31');
 });
 
 test('MDFab default color resolves to the primary-container token', async ({ page }) => {
@@ -840,20 +925,28 @@ test('MDIconButton default small layout footprint remains 40dp', async ({ page }
   expect(box?.height).toBe(40);
 });
 
-test('MDIconButton disabled controls ignore forced hover visuals', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--disabled-hover-states');
+test('MDIconButton disabled state wins over forced hover, focus, and pressed visuals', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--disabled-state-precedence');
 
-  const readStateLayerBackground = (testId: string) =>
-    page
-      .getByTestId(testId)
-      .locator('.md-state-layer')
-      .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const resting = await readButtonVisuals(page, 'disabled-resting', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const hover = await readButtonVisuals(page, 'disabled-hover', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const focus = await readButtonVisuals(page, 'disabled-focus', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const pressed = await readButtonVisuals(page, 'disabled-pressed', {
+    iconSelector: '.md-icon-button__icon',
+  });
 
-  const filledHover = await readStateLayerBackground('disabled-filled-hover');
-  const outlinedHover = await readStateLayerBackground('disabled-outlined-hover');
-
-  expect(filledHover).toMatch(/[,/]\s*0\)$/);
-  expect(outlinedHover).toMatch(/[,/]\s*0\)$/);
+  expect(hover).toEqual(resting);
+  expect(focus).toEqual(resting);
+  expect(pressed).toEqual(resting);
+  expect(resting.stateLayerBackground).toMatch(/[,/]\s*0\)$/);
 });
 
 test('MDIconButton outlined outline width scales by size', async ({ page }) => {
@@ -871,32 +964,106 @@ test('MDIconButton outlined outline width scales by size', async ({ page }) => {
   expect(extraLarge).toBe('3px');
 });
 
-test('MDIconButton toggle colors resolve per official state tokens', async ({ page }) => {
-  await openStory(
-    page,
-    'material-3-components-buttons-mdiconbutton--toggle-color-and-state-layer-tokens',
-  );
+test('MDIconButton routes icon, outline, state-layer, and toggle tokens through the rendered contract', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--token-routing-matrix');
 
-  const readBackground = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => getComputedStyle(el).backgroundColor);
+  const hover = await readButtonVisuals(page, 'icon-button-hover', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const focus = await readButtonVisuals(page, 'icon-button-focus', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const pressed = await readButtonVisuals(page, 'icon-button-pressed', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const outlinedHover = await readButtonVisuals(page, 'icon-button-outlined-hover', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const outlinedFocus = await readButtonVisuals(page, 'icon-button-outlined-focus', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const outlinedPressed = await readButtonVisuals(page, 'icon-button-outlined-pressed', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const outlinedUnselected = await readButtonVisuals(page, 'icon-button-outlined-unselected', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const outlinedSelected = await readButtonVisuals(page, 'icon-button-outlined-selected', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const selected = await readButtonVisuals(page, 'icon-button-selected-pressed', {
+    iconSelector: '.md-icon-button__icon',
+  });
+  const unselected = await readButtonVisuals(page, 'icon-button-unselected-pressed', {
+    iconSelector: '.md-icon-button__icon',
+  });
 
-  const filledUnselected = await readBackground('filled-toggle-unselected');
-  const filledSelected = await readBackground('filled-toggle-selected');
+  expect(hover.iconColor).not.toBe(focus.iconColor);
+  expect(focus.iconColor).not.toBe(pressed.iconColor);
+  expect(hover.stateLayerBackground).not.toBe(focus.stateLayerBackground);
+  expect(focus.stateLayerBackground).not.toBe(pressed.stateLayerBackground);
+  expect(hover.hoverOpacity).toBe('0.03');
+  expect(focus.focusOpacity).toBe('0.17');
+  expect(pressed.pressedOpacity).toBe('0.29');
+  expect(outlinedHover.stateLayerBackground).not.toBe(outlinedFocus.stateLayerBackground);
+  expect(outlinedFocus.stateLayerBackground).not.toBe(outlinedPressed.stateLayerBackground);
+  expect(outlinedSelected.borderColor).not.toBe(outlinedUnselected.borderColor);
+  expect(selected.iconColor).not.toBe(unselected.iconColor);
+  expect(selected.stateLayerBackground).not.toBe(unselected.stateLayerBackground);
+});
 
-  // md.comp.icon-button.filled.unselected.container.color = surface-container, distinct from
-  // the selected/base filled container.color = primary.
-  expect(filledUnselected).not.toBe(filledSelected);
+test('MDExtendedFab routes independent label, icon, elevation, and state-layer tokens', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--interaction-state-tokens');
 
-  const readStateLayerColor = (testId: string) =>
-    page
-      .getByTestId(testId)
-      .locator('.md-state-layer')
-      .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const primaryHover = await readButtonVisuals(page, 'extended-primary-hover', {
+    labelSelector: '.md-extended-fab__label',
+    iconSelector: '.md-extended-fab__icon',
+  });
+  const primaryFocus = await readButtonVisuals(page, 'extended-primary-focus', {
+    labelSelector: '.md-extended-fab__label',
+    iconSelector: '.md-extended-fab__icon',
+  });
+  const primaryPressed = await readButtonVisuals(page, 'extended-primary-pressed', {
+    labelSelector: '.md-extended-fab__label',
+    iconSelector: '.md-extended-fab__icon',
+  });
+  const containerHover = await readButtonVisuals(page, 'extended-container-hover', {
+    labelSelector: '.md-extended-fab__label',
+    iconSelector: '.md-extended-fab__icon',
+  });
+  const containerFocus = await readButtonVisuals(page, 'extended-container-focus', {
+    labelSelector: '.md-extended-fab__label',
+    iconSelector: '.md-extended-fab__icon',
+  });
+  const containerPressed = await readButtonVisuals(page, 'extended-container-pressed', {
+    labelSelector: '.md-extended-fab__label',
+    iconSelector: '.md-extended-fab__icon',
+  });
 
-  const unselectedPressed = await readStateLayerColor('standard-toggle-unselected-pressed');
-  const selectedPressed = await readStateLayerColor('standard-toggle-selected-pressed');
-
-  expect(unselectedPressed).not.toBe(selectedPressed);
+  expect(primaryHover.labelColor).not.toBe(primaryHover.iconColor);
+  expect(primaryFocus.labelColor).not.toBe(primaryFocus.iconColor);
+  expect(primaryPressed.labelColor).not.toBe(primaryPressed.iconColor);
+  expect(primaryHover.boxShadow).not.toBe(primaryFocus.boxShadow);
+  expect(primaryFocus.boxShadow).not.toBe(primaryPressed.boxShadow);
+  expect(primaryHover.stateLayerBackground).not.toBe(primaryFocus.stateLayerBackground);
+  expect(primaryFocus.stateLayerBackground).not.toBe(primaryPressed.stateLayerBackground);
+  expect(primaryHover.hoverOpacity).toBe('0.03');
+  expect(primaryFocus.focusOpacity).toBe('0.17');
+  expect(primaryPressed.pressedOpacity).toBe('0.29');
+  expect(containerHover.labelColor).not.toBe(containerHover.iconColor);
+  expect(containerFocus.labelColor).not.toBe(containerFocus.iconColor);
+  expect(containerPressed.labelColor).not.toBe(containerPressed.iconColor);
+  expect(containerHover.boxShadow).not.toBe(containerFocus.boxShadow);
+  expect(containerFocus.boxShadow).not.toBe(containerPressed.boxShadow);
+  expect(containerHover.stateLayerBackground).not.toBe(containerFocus.stateLayerBackground);
+  expect(containerFocus.stateLayerBackground).not.toBe(containerPressed.stateLayerBackground);
+  expect(containerHover.hoverOpacity).toBe('0.05');
+  expect(containerFocus.focusOpacity).toBe('0.19');
+  expect(containerPressed.pressedOpacity).toBe('0.31');
 });
 
 test('MDStateLayer visual states match baseline', async ({ page }) => {
