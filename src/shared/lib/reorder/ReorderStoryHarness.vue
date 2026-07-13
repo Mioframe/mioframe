@@ -118,19 +118,84 @@ const resetScrollAndOrder = () => {
 
 <template>
   <div class="reorder-story-harness">
-    <div class="reorder-story-harness__meta">
-      <output aria-label="Current order">{{ keys.join(',') }}</output>
-      <output aria-label="Initial order">{{ initialOrder }}</output>
-      <output aria-label="Dragging key">{{ draggingKey ?? '' }}</output>
-      <output aria-label="Drag start count">{{ dragStartCount }}</output>
-      <output aria-label="Reorder count">{{ reorderCount }}</output>
-      <output aria-label="Drag end count">{{ dragEndCount }}</output>
-      <output aria-label="Last drag end">{{ lastDragEndPayload }}</output>
-      <output aria-label="Interactive click count">{{ interactiveClickCount }}</output>
-      <output aria-label="Ignored click count">{{ ignoreClickCount }}</output>
-      <output aria-label="Container click count">{{ containerClickCount }}</output>
-      <output aria-label="Click control click count">{{ clickControlClickCount }}</output>
-    </div>
+    <dl class="reorder-story-harness__meta">
+      <div>
+        <dt>Current order</dt>
+        <dd>
+          <output aria-label="Current order">{{ keys.join(',') }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Initial order</dt>
+        <dd>
+          <output aria-label="Initial order">{{ initialOrder }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Dragging key</dt>
+        <dd>
+          <output aria-label="Dragging key">{{ draggingKey ?? '' }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Drag start count</dt>
+        <dd>
+          <output aria-label="Drag start count">{{ dragStartCount }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Reorder count</dt>
+        <dd>
+          <output aria-label="Reorder count">{{ reorderCount }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Drag end count</dt>
+        <dd>
+          <output aria-label="Drag end count">{{ dragEndCount }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Last drag end</dt>
+        <dd>
+          <output aria-label="Last drag end">{{ lastDragEndPayload }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Interactive click count</dt>
+        <dd>
+          <output aria-label="Interactive click count">{{ interactiveClickCount }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Ignored click count</dt>
+        <dd>
+          <output aria-label="Ignored click count">{{ ignoreClickCount }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Container click count</dt>
+        <dd>
+          <output aria-label="Container click count">{{ containerClickCount }}</output>
+        </dd>
+      </div>
+
+      <div>
+        <dt>Click control click count</dt>
+        <dd>
+          <output aria-label="Click control click count">{{ clickControlClickCount }}</output>
+        </dd>
+      </div>
+    </dl>
 
     <div class="reorder-story-harness__controls">
       <button type="button" @click="reverseOrderExternally">reverse order externally</button>
@@ -149,6 +214,9 @@ const resetScrollAndOrder = () => {
         aria-label="Click control"
         class="reorder-story-harness__click-control"
         @click="onClickControlClick"
+        @keydown.enter.prevent="onClickControlClick"
+        @keydown.space.prevent
+        @keyup.space.prevent="onClickControlClick"
       >
         click control (not reorderable)
       </div>
@@ -195,6 +263,9 @@ const resetScrollAndOrder = () => {
             :aria-label="`${item.label} ignore zone`"
             class="reorder-story-harness__ignore"
             @click="onIgnoreClick"
+            @keydown.enter.prevent="onIgnoreClick"
+            @keydown.space.prevent
+            @keyup.space.prevent="onIgnoreClick"
           >
             ignore
           </div>
@@ -242,14 +313,23 @@ const resetScrollAndOrder = () => {
 }
 
 .reorder-story-harness__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px;
   margin: 0;
-  font-family: monospace;
 }
 
-.reorder-story-harness__meta output {
+.reorder-story-harness__meta > div {
+  min-width: 0;
+}
+
+.reorder-story-harness__meta dt {
+  font-weight: 600;
+}
+
+.reorder-story-harness__meta dd {
+  margin: 2px 0 0;
+  font-family: monospace;
   word-break: break-all;
 }
 

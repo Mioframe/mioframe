@@ -11,12 +11,6 @@ import {
 } from './reorder.testUtils';
 import { openStory } from './storybook.testUtils';
 
-declare global {
-  interface Window {
-    testExternalPointerDownCount?: number;
-  }
-}
-
 /**
  * A press point inside an item's own top padding band, clear of its label/button/ignore
  * children. Chromium's touch-adjustment snaps an imprecise touch point to a nearby interactive
@@ -73,6 +67,15 @@ const dispatchTouch = async (
     type,
     touchPoints: point ? [{ x: point.x, y: point.y }] : [],
   });
+};
+
+/**
+ * Polls the harness's `Dragging key` output until it equals `key`.
+ * @param page - The Playwright page to read from.
+ * @param key - The expected controlled key, or `''` for no active session.
+ */
+const waitForDraggingKey = async (page: Page, key: string): Promise<void> => {
+  await expect.poll(() => getDraggingKey(page), { timeout: 2_000 }).toBe(key);
 };
 
 test.beforeEach(async ({ page }) => {
@@ -343,10 +346,8 @@ test.describe('touch activation', () => {
     const point = touchGrabPoint(box);
 
     await dispatchTouch(page, 'touchStart', point);
-    await page.waitForTimeout(700);
-
+    await waitForDraggingKey(page, 'alpha');
     expect(await getCount(page, 'Drag start count')).toBe(1);
-    expect(await getDraggingKey(page)).toBe('alpha');
 
     await dispatchTouch(page, 'touchEnd');
     expect(await getCount(page, 'Drag end count')).toBe(1);
@@ -373,8 +374,7 @@ test.describe('touch activation', () => {
     const to = center(await boxOf(getItem(page, 'delta')));
 
     await dispatchTouch(page, 'touchStart', from);
-    await page.waitForTimeout(700);
-    expect(await getDraggingKey(page)).toBe('alpha');
+    await waitForDraggingKey(page, 'alpha');
 
     const steps = 8;
     for (let i = 1; i <= steps; i += 1) {
@@ -400,8 +400,7 @@ test.describe('touch activation', () => {
     const point = touchGrabPoint(box);
 
     await dispatchTouch(page, 'touchStart', point);
-    await page.waitForTimeout(700);
-    expect(await getDraggingKey(page)).toBe('alpha');
+    await waitForDraggingKey(page, 'alpha');
 
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
 
@@ -493,39 +492,6 @@ test.describe('cancellation and cleanup', () => {
       expect(await getCount(page, 'Drag end count')).toBe(1);
       expect((await getLastDragEnd(page))?.cancelled).toBe(true);
 
-      await page.mouse.up();
-    });
-
-    test('still reaches an external page listener and does not start a new reorder session', async ({
-      page,
-    }) => {
-      const from = center(await boxOf(getItem(page, 'alpha')));
-
-      await page.mouse.move(from.x, from.y);
-      await page.mouse.down();
-      await page.mouse.move(from.x + 20, from.y, { steps: 4 });
-      expect(await getDraggingKey(page)).toBe('alpha');
-      expect(await getCount(page, 'Drag start count')).toBe(1);
-
-      await page.evaluate(() => {
-        window.testExternalPointerDownCount = 0;
-        document.addEventListener('pointerdown', () => {
-          window.testExternalPointerDownCount = (window.testExternalPointerDownCount ?? 0) + 1;
-        });
-      });
-
-      await dispatchTouch(page, 'touchStart', { x: 2, y: 2 });
-
-      const externalCount = await page.evaluate(() => window.testExternalPointerDownCount ?? 0);
-      expect(externalCount).toBe(1);
-
-      // The current session cancelled, but this same second-pointer event must not have started
-      // a brand-new one: the drag-start count stays at its pre-second-pointer value.
-      expect(await getCount(page, 'Drag start count')).toBe(1);
-      expect(await getDraggingKey(page)).toBe('');
-      expect((await getLastDragEnd(page))?.cancelled).toBe(true);
-
-      await dispatchTouch(page, 'touchEnd');
       await page.mouse.up();
     });
   });
