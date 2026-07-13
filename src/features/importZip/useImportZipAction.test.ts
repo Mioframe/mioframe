@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DomainError } from '@shared/lib/error';
 import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
+import { RepositoryZipErrorCode } from '@shared/service';
+import type { ZipImportSummary } from '@shared/service';
 
 const {
   pickZipFileMock,
@@ -25,6 +28,27 @@ const createSerializedRecoveryError = ({
   mode: 'read' | 'readwrite';
   spaceName: string;
 }) => new WebFileSystemAccessRequiredError({ mode, spaceName });
+
+// Mirrors the shape of the private `ZipImportPartialFailureError` constructed in
+// `repositoryZipImport.ts`: a `DomainError` carrying `importWritePartiallyFailed` and an
+// `importSummary` set at construction time, without post-construction mutation.
+class PartialImportFailureFixture extends DomainError {
+  readonly importSummary: ZipImportSummary;
+
+  constructor(importSummary: ZipImportSummary, cause: unknown = new Error('storage failure')) {
+    super(
+      'The import stopped before completion. The target directory may contain a partial import.',
+      {
+        cause,
+        code: RepositoryZipErrorCode.importWritePartiallyFailed,
+      },
+    );
+    this.importSummary = importSummary;
+  }
+}
+
+const createPartialImportFailure = (importSummary: ZipImportSummary, cause?: unknown) =>
+  new PartialImportFailureFixture(importSummary, cause);
 
 vi.mock('./useImportZip', () => ({
   useImportZip: () => ({
@@ -59,6 +83,7 @@ vi.mock('@shared/service', () => ({
     importConflict: 'repositories.zipImportConflict',
     importResourceLimitExceeded: 'repositories.zipImportResourceLimitExceeded',
     documentStorageFilesNotFound: 'repositories.zipDocumentStorageFilesNotFound',
+    importWritePartiallyFailed: 'repositories.zipImportWritePartiallyFailed',
   },
   useMainServiceClient: () => ({
     repositories: {
@@ -95,7 +120,6 @@ describe('useImportZipAction', () => {
   });
 
   it('shows a file open error through the snackbar since no dialog is open yet', async () => {
-    const { DomainError } = await import('@shared/lib/error');
     const { ImportZipErrorCode } = await import('./importZipErrorCode');
     pickZipFileMock.mockRejectedValue(
       new DomainError('Could not open the selected file', {
@@ -135,7 +159,6 @@ describe('useImportZipAction', () => {
   });
 
   it('shows a damaged archive error in the dialog without reporting it to diagnostics', async () => {
-    const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValue(
       new DomainError('The archive is damaged or not a supported ZIP file.', {
@@ -220,7 +243,6 @@ describe('useImportZipAction', () => {
     expect(addSnackbarMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
     const [reportedError] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
-    const { DomainError } = await import('@shared/lib/error');
     expect(reportedError).toBeInstanceOf(DomainError);
     expect(reportedError.cause).toBe(error);
   });
@@ -272,20 +294,9 @@ describe('useImportZipAction', () => {
   });
 
   it('reports a terminal partial state with no continuation action when a write fails after an earlier write succeeded', async () => {
-    const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
-    const partialMessage =
-      'The import stopped before completion. The target directory may contain a partial import.';
     importDirectoryZipMock.mockRejectedValueOnce(
-      Object.assign(
-        new DomainError(partialMessage, {
-          code: 'repositories.zipImportWritePartiallyFailed',
-          cause: new Error('storage failure'),
-        }),
-        {
-          importSummary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
-        },
-      ),
+      createPartialImportFailure({ importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 }),
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
@@ -305,15 +316,12 @@ describe('useImportZipAction', () => {
   });
 
   it('reports a terminal partial state when write access is lost after an earlier write succeeded, without retrying', async () => {
-    const partialMessage =
-      'The import stopped before completion. The target directory may contain a partial import.';
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValueOnce(
-      Object.assign(new Error(partialMessage), {
-        code: 'repositories.zipImportWritePartiallyFailed',
-        importSummary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
-        cause: createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
-      }),
+      createPartialImportFailure(
+        { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
+        createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
+      ),
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');
@@ -330,18 +338,9 @@ describe('useImportZipAction', () => {
   });
 
   it('closes the partial dialog back to idle, clearing feature state', async () => {
-    const { DomainError } = await import('@shared/lib/error');
     pickZipFileMock.mockResolvedValue(makeFile());
     importDirectoryZipMock.mockRejectedValueOnce(
-      Object.assign(
-        new DomainError('The import stopped before completion.', {
-          code: 'repositories.zipImportWritePartiallyFailed',
-          cause: new Error('storage failure'),
-        }),
-        {
-          importSummary: { importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 },
-        },
-      ),
+      createPartialImportFailure({ importedFiles: 1, createdDirectories: 0, reusedDirectories: 0 }),
     );
 
     const { useImportZipAction } = await import('./useImportZipAction');

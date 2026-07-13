@@ -114,15 +114,29 @@ const planZipImport = async (
   };
 };
 
-const partialFailure = (error: unknown, summary: ZipImportSummary) =>
-  Object.assign(
-    new DomainError(
+/**
+ * Terminal partial-import failure raised once the mutation phase has started. Consumers must not
+ * depend on this concrete class across the worker boundary — a deserialized error is a base
+ * `DomainError` — and should instead identify it via `getZipImportPartialFailureDetails`.
+ */
+class ZipImportPartialFailureError
+  extends DomainError<RepositoryZipErrorCode>
+  implements ZipImportPartialFailureDetails
+{
+  readonly importSummary: ZipImportSummary;
+
+  constructor(cause: unknown, importSummary: ZipImportSummary) {
+    super(
       'The import stopped before completion. The target directory may contain a partial import; ' +
         'import into an empty directory to retry cleanly.',
-      { cause: error, code: RepositoryZipErrorCode.importWritePartiallyFailed },
-    ),
-    { importSummary: summary } satisfies ZipImportPartialFailureDetails,
-  );
+      { cause, code: RepositoryZipErrorCode.importWritePartiallyFailed },
+    );
+    this.importSummary = importSummary;
+  }
+}
+
+const partialFailure = (error: unknown, summary: ZipImportSummary): ZipImportPartialFailureError =>
+  new ZipImportPartialFailureError(error, summary);
 
 const blobPart = (chunk: Uint8Array): BlobPart => {
   if (chunk.buffer instanceof ArrayBuffer) {
