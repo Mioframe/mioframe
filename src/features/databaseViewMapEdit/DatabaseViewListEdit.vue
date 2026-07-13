@@ -48,108 +48,106 @@ const sameIds = (a: readonly DatabaseViewId[], b: readonly DatabaseViewId[]): bo
  */
 const displayViewIdList = ref<DatabaseViewId[]>([]);
 
-/** One in-flight or awaiting-confirmation local `reorder()` request. */
-interface PendingOrderWrite {
-  /** Identity used to tell this exact request apart from a later request with equal content. */
+/** The one in-flight local `reorder()` request, tracked until both its promise and confirm. */
+interface ActiveOrderWrite {
+  /** Identity used to guard against acting on a stale rejection. */
   token: symbol;
   /** The order this request asked the entity to persist. */
   requestedIds: DatabaseViewId[];
+  /** Whether the `reorder()` promise has settled successfully. */
+  promiseResolved: boolean;
+  /** Whether the entity's own order has been observed to match {@link requestedIds}. */
+  confirmed: boolean;
 }
 
-/** The currently in-flight `reorder()` request, or `null` when no write is active. */
-let activeWrite: PendingOrderWrite | null = null;
-/** The latest not-yet-started requested order; a newer one replaces it rather than queuing both. */
-let queuedLatestIds: DatabaseViewId[] | null = null;
+/** The currently active `reorder()` request, or `null` when no write is active. */
+let activeWrite: ActiveOrderWrite | null = null;
 /**
- * Local write requests submitted but not yet observed as confirmed (or rejected) via the entity's
- * own order sequence, oldest first. A request leaves this list only on its own confirmation or
- * rejection.
+ * The latest not-yet-started requested order. A newer completed drag or corrective external order
+ * always replaces this, even when it is content-equal to {@link activeWrite}'s requested order,
+ * since an older, different queued order may still exist.
  */
-const pendingConfirmations: PendingOrderWrite[] = [];
+let queuedLatestIds: DatabaseViewId[] | null = null;
 /** The controlled order captured at drag activation; the baseline for the unchanged-drag check. */
 let dragStartIds: DatabaseViewId[] | null = null;
 /** The last entity order this component has observed, used to ignore content-equal re-emissions. */
 let lastEntityIds: DatabaseViewId[] = [];
 
 /**
- * @param requestedIds - A candidate order about to be scheduled for persistence.
- * @returns Whether `requestedIds` already represents the current local intent (the active write,
- * the queued next write, or the most recently submitted request with no newer intent queued),
- * so scheduling it again would be redundant.
+ * Starts persisting `requestedIds` as the one active write. Only called when no write is active.
+ * @param requestedIds - The order to persist.
  */
-const isSameAsLatestIntent = (requestedIds: DatabaseViewId[]): boolean => {
-  if (activeWrite && sameIds(requestedIds, activeWrite.requestedIds)) return true;
-  if (queuedLatestIds) return sameIds(requestedIds, queuedLatestIds);
-
-  const latestConfirmation = pendingConfirmations.at(-1);
-  return latestConfirmation !== undefined && sameIds(requestedIds, latestConfirmation.requestedIds);
-};
-
-/**
- * @param requestedIds - The order to search for among outstanding local requests.
- * @returns The index of the most recently submitted {@link pendingConfirmations} entry whose
- * requested order matches `requestedIds`, or `-1` when none matches. Searching from the newest
- * entry lets a later matching confirmation safely subsume earlier, now-stale expected
- * confirmations once it is found.
- */
-const findLatestPendingConfirmationIndex = (requestedIds: DatabaseViewId[]): number => {
-  for (let index = pendingConfirmations.length - 1; index >= 0; index -= 1) {
-    const entry = pendingConfirmations[index];
-    if (entry && sameIds(entry.requestedIds, requestedIds)) return index;
-  }
-
-  return -1;
-};
-
-/**
- * Starts the next queued write once no write is active. Only one `reorder()` promise is ever
- * in flight; the request stays in {@link pendingConfirmations} until the entity's own order
- * sequence confirms it or the request rejects, since promise resolution alone is not confirmation.
- */
-const flushPersist = (): void => {
-  if (activeWrite || !queuedLatestIds) return;
-
-  const request: PendingOrderWrite = {
+const startWrite = (requestedIds: DatabaseViewId[]): void => {
+  const write: ActiveOrderWrite = {
     token: Symbol('database-view-order-write'),
-    requestedIds: queuedLatestIds,
+    requestedIds: [...requestedIds],
+    promiseResolved: false,
+    confirmed: false,
   };
 
   queuedLatestIds = null;
-  activeWrite = request;
-  pendingConfirmations.push(request);
+  activeWrite = write;
 
-  void reorder(request.requestedIds)
-    .catch(() => {
-      const index = pendingConfirmations.findIndex((entry) => entry.token === request.token);
-      if (index !== -1) pendingConfirmations.splice(index, 1);
+  void reorder(write.requestedIds).then(
+    () => {
+      write.promiseResolved = true;
+      completeActiveWriteIfReady();
+    },
+    () => {
+      // A newer write already replaced this one; this rejection no longer applies.
+      if (activeWrite !== write) return;
 
-      // A newer active/queued/pending local intent must never be overwritten by an older
-      // request's rejection; only restore the entity order when this was still the latest intent.
-      const hasNewerLocalIntent =
-        (activeWrite !== null && activeWrite.token !== request.token) ||
-        queuedLatestIds !== null ||
-        pendingConfirmations.length > 0;
+      activeWrite = null;
 
-      if (!hasNewerLocalIntent) {
-        displayViewIdList.value = [...baseViewIdList.value];
+      if (!queuedLatestIds) {
+        displayViewIdList.value = [...lastEntityIds];
+        return;
       }
-    })
-    .finally(() => {
-      if (activeWrite === request) activeWrite = null;
-      flushPersist();
-    });
+
+      if (sameIds(queuedLatestIds, lastEntityIds)) {
+        queuedLatestIds = null;
+        return;
+      }
+
+      startWrite(queuedLatestIds);
+    },
+  );
 };
 
 /**
- * Schedules `requestedIds` as the latest persistence intent, coalescing it with any not-yet-
- * started queued order and skipping it entirely when it is already the current local intent.
+ * Clears {@link activeWrite} once its promise has resolved and the entity has confirmed its
+ * order, then starts the next queued write if one is still needed. Promise resolution and entity
+ * confirmation are independent, order-unspecified events; neither alone is sufficient.
+ */
+const completeActiveWriteIfReady = (): void => {
+  if (!activeWrite || !activeWrite.promiseResolved || !activeWrite.confirmed) return;
+
+  activeWrite = null;
+
+  if (!queuedLatestIds) return;
+
+  if (sameIds(queuedLatestIds, lastEntityIds)) {
+    queuedLatestIds = null;
+    return;
+  }
+
+  startWrite(queuedLatestIds);
+};
+
+/**
+ * Schedules `requestedIds` as the latest persistence intent: starts it immediately when no write
+ * is active (unless it already matches the latest entity order), otherwise always replaces the
+ * queued order, even when `requestedIds` matches the active write's own requested order.
  * @param requestedIds - The order to persist.
  */
 const schedulePersist = (requestedIds: DatabaseViewId[]): void => {
-  if (isSameAsLatestIntent(requestedIds)) return;
+  if (!activeWrite) {
+    if (sameIds(requestedIds, lastEntityIds)) return;
+    startWrite(requestedIds);
+    return;
+  }
 
   queuedLatestIds = [...requestedIds];
-  flushPersist();
 };
 
 watch(
@@ -162,34 +160,36 @@ watch(
     if (sameIds(next, lastEntityIds)) return;
     lastEntityIds = [...next];
 
-    const matchIndex = findLatestPendingConfirmationIndex(next);
-
-    if (matchIndex !== -1) {
-      // Local confirmation: this and every earlier, now-subsumed request are settled.
-      const confirmed = pendingConfirmations[matchIndex];
-      pendingConfirmations.splice(0, matchIndex + 1);
-
-      const hasNewerLocalIntent =
-        (activeWrite !== null && activeWrite.token !== confirmed?.token) ||
-        queuedLatestIds !== null ||
-        pendingConfirmations.length > 0;
-
-      if (!hasNewerLocalIntent) {
-        displayViewIdList.value = [...next];
-      }
-
+    if (activeWrite && sameIds(next, activeWrite.requestedIds)) {
+      // Local confirmation of the active write's own requested order.
+      activeWrite.confirmed = true;
+      // No newer queued intent: synchronize display to the now-canonical entity order. A newer
+      // queued intent keeps the already-matching optimistic display as-is (see invariant below).
+      if (!queuedLatestIds) displayViewIdList.value = [...next];
+      completeActiveWriteIfReady();
       return;
     }
 
-    // A competing external order matches no pending local request: it is authoritative and
-    // applies immediately, including mid-drag (`useReorder` safely self-cancels an active session
-    // once it detects the mismatch, per the library's documented external-mutation contract). Any
-    // not-yet-started queued local order is discarded; a local write that is already active or
-    // awaiting confirmation could still land afterward and clobber this order in storage, so it is
-    // re-queued as the corrective target to be re-asserted once that write settles.
+    // A competing external order matches no active local request: it is authoritative and applies
+    // immediately, including mid-drag (`useReorder` safely self-cancels an active session once it
+    // detects the mismatch, per the library's documented external-mutation contract).
     displayViewIdList.value = [...next];
-    queuedLatestIds = activeWrite !== null || pendingConfirmations.length > 0 ? [...next] : null;
-    flushPersist();
+
+    // Whenever `queuedLatestIds` is set, `displayViewIdList` already equals it (every assignment
+    // above keeps this invariant), so no separate confirmation is needed once it later matches.
+    // An active write could still land afterward and clobber this order in storage, so it is
+    // queued as the corrective target to be re-asserted once that write settles; with no active
+    // write, any stale queued order is impossible and is cleared instead.
+    queuedLatestIds = activeWrite ? [...next] : null;
+
+    if (activeWrite) {
+      // The entity has now diverged from this write's own requested order, so that exact order
+      // may never be echoed back literally (a concurrent external edit can permanently supersede
+      // it). Waiting on a literal match would then block completion forever: promise settlement
+      // is already sufficient to know whether it is safe to re-assert the corrective order above.
+      activeWrite.confirmed = true;
+      completeActiveWriteIfReady();
+    }
   },
   { immediate: true },
 );

@@ -347,7 +347,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('none');
   });
 
-  it('focuses both reorder specs for a reorder library source change', () => {
+  it('focuses all three reorder specs for a reorder library source change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/scrollChain.ts']);
 
     expect(plan.mode).toBe('focused');
@@ -355,11 +355,10 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
-  it('focuses both reorder specs for a reorder story change', () => {
+  it('focuses all three reorder specs for a reorder story change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/Reorder.stories.ts']);
 
     expect(plan.mode).toBe('focused');
@@ -367,11 +366,10 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
-  it('focuses both reorder specs for a reorder story harness change', () => {
+  it('focuses all three reorder specs for a reorder story harness change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/ReorderStoryHarness.vue']);
 
     expect(plan.mode).toBe('focused');
@@ -379,7 +377,6 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
@@ -391,11 +388,10 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
-  it('runs both reorder specs when only the autoscroll spec changed', () => {
+  it('runs all three reorder specs when only the autoscroll spec changed', () => {
     const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/reorder.autoscroll.spec.ts']);
 
     expect(plan.mode).toBe('focused');
@@ -403,11 +399,10 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 
-  it('runs all reorder specs when only the activator spec changed', () => {
+  it('runs all three reorder specs when only the activator spec changed', () => {
     const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/reorderActivator.spec.ts']);
 
     expect(plan.mode).toBe('focused');
@@ -415,7 +410,6 @@ describe('resolveStorybookBehaviorPlan', () => {
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ]);
   });
 

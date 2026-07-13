@@ -43,13 +43,11 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ],
     specs: [
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorderActivator.spec.ts',
-      'tests/e2e/storybook/reorderNestedItems.spec.ts',
     ],
   },
   {
