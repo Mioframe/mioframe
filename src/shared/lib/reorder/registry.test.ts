@@ -210,3 +210,170 @@ describe('resolveActivationTarget', () => {
     expect(resolveActivationTarget(registry, container, loose)).toBeNull();
   });
 });
+
+describe('resolveActivationTarget with vReorderActivator', () => {
+  it('resolves a native button inside a matching activator', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const item = document.createElement('div');
+    const activator = document.createElement('div');
+    const button = document.createElement('button');
+
+    activator.append(button);
+    item.append(activator);
+    container.append(item);
+    document.body.append(container);
+    registerItem(registry, 'a', item);
+    registry.activatorEls.add(activator);
+
+    expect(resolveActivationTarget(registry, container, button)).toEqual({
+      key: 'a',
+      element: item,
+    });
+  });
+
+  it('does not resolve a non-activator part of an item that has an activator', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const item = document.createElement('div');
+    const activator = document.createElement('div');
+    const otherContent = document.createElement('span');
+
+    item.append(activator, otherContent);
+    container.append(item);
+    document.body.append(container);
+    registerItem(registry, 'a', item);
+    registry.activatorEls.add(activator);
+
+    expect(resolveActivationTarget(registry, container, otherContent)).toBeNull();
+  });
+
+  it('resolves full-row activation when the item root is itself the activator', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const item = document.createElement('div');
+    const label = document.createElement('span');
+
+    item.append(label);
+    container.append(item);
+    document.body.append(container);
+    registerItem(registry, 'a', item);
+    registry.activatorEls.add(item);
+
+    expect(resolveActivationTarget(registry, container, label)).toEqual({
+      key: 'a',
+      element: item,
+    });
+  });
+
+  it('blocks activation on vReorderIgnore inside an activator', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const item = document.createElement('div');
+    const activator = document.createElement('div');
+    const ignored = document.createElement('div');
+    const nested = document.createElement('span');
+
+    ignored.append(nested);
+    activator.append(ignored);
+    item.append(activator);
+    container.append(item);
+    document.body.append(container);
+    registerItem(registry, 'a', item);
+    registry.activatorEls.add(activator);
+    registry.ignoreEls.add(ignored);
+
+    expect(resolveActivationTarget(registry, container, nested)).toBeNull();
+  });
+
+  it('keeps an unmarked trailing sibling button blocked when the item has an activator elsewhere', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const item = document.createElement('div');
+    const activator = document.createElement('div');
+    const trailingButton = document.createElement('button');
+
+    item.append(activator, trailingButton);
+    container.append(item);
+    document.body.append(container);
+    registerItem(registry, 'a', item);
+    registry.activatorEls.add(activator);
+
+    expect(resolveActivationTarget(registry, container, trailingButton)).toBeNull();
+  });
+
+  it('supports multiple activators registered on the same item', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const item = document.createElement('div');
+    const firstActivator = document.createElement('div');
+    const secondActivator = document.createElement('div');
+
+    item.append(firstActivator, secondActivator);
+    container.append(item);
+    document.body.append(container);
+    registerItem(registry, 'a', item);
+    registry.activatorEls.add(firstActivator);
+    registry.activatorEls.add(secondActivator);
+
+    expect(resolveActivationTarget(registry, container, firstActivator)).toEqual({
+      key: 'a',
+      element: item,
+    });
+    expect(resolveActivationTarget(registry, container, secondActivator)).toEqual({
+      key: 'a',
+      element: item,
+    });
+  });
+
+  it('does not let an activator belonging to a different item authorize this item', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const itemA = document.createElement('div');
+    const activatorA = document.createElement('div');
+    const itemB = document.createElement('div');
+    const contentB = document.createElement('span');
+
+    itemA.append(activatorA);
+    itemB.append(contentB);
+    container.append(itemA, itemB);
+    document.body.append(container);
+    registerItem(registry, 'a', itemA);
+    registerItem(registry, 'b', itemB);
+    registry.activatorEls.add(activatorA);
+
+    // itemB owns no activator of its own, but registry-wide activatorEls contains one that
+    // belongs to itemA. itemB must still use its own default (no-activator) activation rule.
+    expect(resolveActivationTarget(registry, container, contentB)).toEqual({
+      key: 'b',
+      element: itemB,
+    });
+
+    const buttonInB = document.createElement('button');
+    contentB.append(buttonInB);
+    expect(resolveActivationTarget(registry, container, buttonInB)).toBeNull();
+  });
+
+  it('leaves findRegisteredAncestor unaffected by registered activators', () => {
+    const registry = createReorderRegistry<string>();
+    const container = document.createElement('div');
+    const item = document.createElement('div');
+    const activator = document.createElement('div');
+    const button = document.createElement('button');
+
+    activator.append(button);
+    item.append(activator);
+    container.append(item);
+    document.body.append(container);
+    registerItem(registry, 'a', item);
+    registry.activatorEls.add(activator);
+
+    // findRegisteredAncestor is used for live hit-test retargeting and must ignore activator
+    // membership entirely, resolving through a native interactive element the same way it
+    // already does for vReorderIgnore.
+    expect(findRegisteredAncestor(registry, container, button)).toEqual({
+      key: 'a',
+      element: item,
+    });
+  });
+});

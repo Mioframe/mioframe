@@ -5,7 +5,7 @@ import { createReorderRegistry, registerItem, type ReorderRegistry } from './reg
 import type { PointerSession } from './PointerSession';
 
 /**
- * Focused, isolated tests for the three directives' own registration/teardown ownership —
+ * Focused, isolated tests for the four directives' own registration/teardown ownership —
  * decoupled from `PointerSession`'s real cancellation logic (covered by `PointerSession.test.ts`)
  * via a minimal fake session that can be told to throw. `vReorderContainer`'s `mounted`/
  * `unmounted` hooks are invoked directly (not through a full Vue mount/unmount) since they never
@@ -69,6 +69,7 @@ describe('vReorderContainer teardown', () => {
     callHook(vReorderContainer.mounted, containerEl);
     registerItem(registry, 'a', document.createElement('div'));
     registry.ignoreEls.add(document.createElement('div'));
+    registry.activatorEls.add(document.createElement('div'));
 
     callHook(vReorderContainer.unmounted, containerEl);
 
@@ -77,6 +78,7 @@ describe('vReorderContainer teardown', () => {
     expect(registry.itemElements.size).toBe(0);
     expect(registry.itemKeys.size).toBe(0);
     expect(registry.ignoreEls.size).toBe(0);
+    expect(registry.activatorEls.size).toBe(0);
   });
 
   it('still clears the complete registry when detachContainer throws, and propagates the exact original error', () => {
@@ -93,6 +95,7 @@ describe('vReorderContainer teardown', () => {
     callHook(vReorderContainer.mounted, containerEl);
     registerItem(registry, 'a', document.createElement('div'));
     registry.ignoreEls.add(document.createElement('div'));
+    registry.activatorEls.add(document.createElement('div'));
 
     let thrown: unknown;
     try {
@@ -106,6 +109,7 @@ describe('vReorderContainer teardown', () => {
     expect(registry.itemElements.size).toBe(0);
     expect(registry.itemKeys.size).toBe(0);
     expect(registry.ignoreEls.size).toBe(0);
+    expect(registry.activatorEls.size).toBe(0);
   });
 
   it('allows a new container to mount after an exceptional unmount without triggering the duplicate-container invariant', () => {
@@ -138,10 +142,12 @@ describe('vReorderContainer teardown', () => {
     const currentContainerEl = document.createElement('div');
     const currentItemEl = document.createElement('div');
     const currentIgnoreEl = document.createElement('div');
+    const currentActivatorEl = document.createElement('div');
 
     registry.containerEl = currentContainerEl;
     registerItem(registry, 'a', currentItemEl);
     registry.ignoreEls.add(currentIgnoreEl);
+    registry.activatorEls.add(currentActivatorEl);
 
     callHook(vReorderContainer.unmounted, staleContainerEl);
 
@@ -149,5 +155,67 @@ describe('vReorderContainer teardown', () => {
     expect(registry.containerEl).toBe(currentContainerEl);
     expect(registry.itemElements.get('a')).toBe(currentItemEl);
     expect(registry.ignoreEls.has(currentIgnoreEl)).toBe(true);
+    expect(registry.activatorEls.has(currentActivatorEl)).toBe(true);
+  });
+});
+
+describe('vReorderActivator lifecycle', () => {
+  const getActivatorDirective = (
+    registry: ReorderRegistry<string>,
+    session: PointerSession<string>,
+  ): ObjectDirective<HTMLElement> => {
+    const { vReorderActivator } = createReorderDirectives(registry, session);
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- narrows the broader `Directive` union back to the object form this module always returns.
+    return vReorderActivator as ObjectDirective<HTMLElement>;
+  };
+
+  it('registers the element into activatorEls on mount', () => {
+    const registry = createReorderRegistry<string>();
+    const session = createFakeSession();
+    const vReorderActivator = getActivatorDirective(registry, session);
+    const el = document.createElement('div');
+
+    callHook(vReorderActivator.mounted, el);
+
+    expect(registry.activatorEls.has(el)).toBe(true);
+  });
+
+  it('removes the element from activatorEls on unmount', () => {
+    const registry = createReorderRegistry<string>();
+    const session = createFakeSession();
+    const vReorderActivator = getActivatorDirective(registry, session);
+    const el = document.createElement('div');
+
+    callHook(vReorderActivator.mounted, el);
+    callHook(vReorderActivator.unmounted, el);
+
+    expect(registry.activatorEls.has(el)).toBe(false);
+  });
+
+  it('a stale unmount for an element never mounted is a safe no-op', () => {
+    const registry = createReorderRegistry<string>();
+    const session = createFakeSession();
+    const vReorderActivator = getActivatorDirective(registry, session);
+    const el = document.createElement('div');
+
+    expect(() => {
+      callHook(vReorderActivator.unmounted, el);
+    }).not.toThrow();
+    expect(registry.activatorEls.has(el)).toBe(false);
+  });
+
+  it('composes with vReorderItem on the same root element for full-row activation', () => {
+    const registry = createReorderRegistry<string>();
+    const session = createFakeSession();
+    const { vReorderItem, vReorderActivator } = createReorderDirectives(registry, session);
+    const el = document.createElement('div');
+
+    registerItem(registry, 'a', el);
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see getActivatorDirective above.
+    callHook((vReorderActivator as ObjectDirective<HTMLElement>).mounted, el);
+
+    expect(registry.itemKeys.get(el)).toBe('a');
+    expect(registry.activatorEls.has(el)).toBe(true);
+    expect(vReorderItem).toBeDefined();
   });
 });

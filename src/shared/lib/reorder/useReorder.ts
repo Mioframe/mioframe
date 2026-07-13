@@ -18,7 +18,7 @@ import type { ReorderKey, UseReorderOptions, UseReorderReturn } from './types';
  * `vReorderContainer` directive once on the list container and `vReorderItem="item.key"` on each
  * reorderable item's root element; see the module README for the full contract.
  * @param options - The controlled keys, required `onReorder` callback, and optional callbacks.
- * @returns The reactive `draggingKey` and the three local reorder directives.
+ * @returns The reactive `draggingKey` and the four local reorder directives.
  */
 export const useReorder = <Key extends ReorderKey = ReorderKey>(
   options: UseReorderOptions<Key>,
@@ -36,10 +36,8 @@ export const useReorder = <Key extends ReorderKey = ReorderKey>(
     onDragEnd: options.onDragEnd,
   });
 
-  const { vReorderContainer, vReorderItem, vReorderIgnore } = createReorderDirectives(
-    registry,
-    session,
-  );
+  const { vReorderContainer, vReorderItem, vReorderActivator, vReorderIgnore } =
+    createReorderDirectives(registry, session);
 
   tryOnScopeDispose(() => {
     session.dispose();
@@ -49,6 +47,7 @@ export const useReorder = <Key extends ReorderKey = ReorderKey>(
     draggingKey,
     vReorderContainer,
     vReorderItem,
+    vReorderActivator,
     vReorderIgnore,
   };
 };

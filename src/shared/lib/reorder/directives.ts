@@ -1,8 +1,8 @@
 /**
- * The three local Vue directives returned by `useReorder`: container and item
- * registration, plus interactive-descendant exclusion. Registration writes
- * into the shared per-instance registry; activation stays owned by the
- * pointer session.
+ * The four local Vue directives returned by `useReorder`: container and item
+ * registration, activator-area marking, and interactive-descendant exclusion.
+ * Registration writes into the shared per-instance registry; activation stays
+ * owned by the pointer session.
  */
 import type { Directive } from 'vue';
 import { reorderInvariant } from './invariant';
@@ -10,12 +10,14 @@ import type { PointerSession } from './PointerSession';
 import { registerItem, unregisterItem, type ReorderRegistry } from './registry';
 import type { ReorderKey } from './types';
 
-/** The three local directives for one `useReorder` instance. */
+/** The four local directives for one `useReorder` instance. */
 export interface ReorderDirectives<Key extends ReorderKey> {
   /** Registers the reorder container element. */
   vReorderContainer: Directive<HTMLElement>;
   /** Registers a reorderable item element under its consumer-supplied key. */
   vReorderItem: Directive<HTMLElement, Key>;
+  /** Marks the DOM area an item may start a pending reorder gesture from. */
+  vReorderActivator: Directive<HTMLElement>;
   /** Excludes a custom interactive descendant from starting drag activation. */
   vReorderIgnore: Directive<HTMLElement>;
 }
@@ -55,6 +57,7 @@ export const createReorderDirectives = <Key extends ReorderKey>(
         registry.itemElements.clear();
         registry.itemKeys.clear();
         registry.ignoreEls.clear();
+        registry.activatorEls.clear();
       }
     },
   };
@@ -76,6 +79,15 @@ export const createReorderDirectives = <Key extends ReorderKey>(
     },
   };
 
+  const vReorderActivator: Directive<HTMLElement> = {
+    mounted(el) {
+      registry.activatorEls.add(el);
+    },
+    unmounted(el) {
+      registry.activatorEls.delete(el);
+    },
+  };
+
   const vReorderIgnore: Directive<HTMLElement> = {
     mounted(el) {
       registry.ignoreEls.add(el);
@@ -85,5 +97,5 @@ export const createReorderDirectives = <Key extends ReorderKey>(
     },
   };
 
-  return { vReorderContainer, vReorderItem, vReorderIgnore };
+  return { vReorderContainer, vReorderItem, vReorderActivator, vReorderIgnore };
 };

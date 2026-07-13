@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { useDatabaseViews } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import {
-  zodDatabaseViewId,
-  type DatabaseView,
-  type DatabaseViewId,
-} from '@shared/lib/databaseDocument';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import { useReorderSurface, vReorderItem } from '@shared/lib/sortable';
+import type { DatabaseView, DatabaseViewId } from '@shared/lib/databaseDocument';
+import { useReorder, type ReorderDragEndEvent } from '@shared/lib/reorder';
 import { MDList, MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs, useTemplateRef } from 'vue';
+import { computed, ref, toRefs, watch } from 'vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -33,35 +28,76 @@ const { directoryPath: path, documentId } = toRefs(props);
 
 const { reorder, views: viewList } = useDatabaseViews(path, documentId);
 
-const viewListEl = useTemplateRef<InstanceType<typeof MDList>>('viewListEl');
-const viewListContainerEl = computed(() => viewListEl.value?.$el ?? null);
-
 const viewMap = computed(() => new Map(viewList.value ?? []));
 
-const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(
-  viewListContainerEl,
-  {
-    itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
-    onCommit: ({ orderedIds }) => {
-      const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
+/** The entity-owned canonical view order; the only authoritative source. */
+const baseViewIdList = computed(() => (viewList.value ?? []).map(([id]) => id));
 
-      if (nextOrderedIds.length !== orderedIds.length) {
-        return;
-      }
+/**
+ * @param a - The first id sequence.
+ * @param b - The second id sequence.
+ * @returns Whether `a` and `b` contain the same ids in the same order.
+ */
+const sameIds = (a: readonly DatabaseViewId[], b: readonly DatabaseViewId[]): boolean =>
+  a.length === b.length && a.every((id, index) => id === b[index]);
 
-      return reorder(nextOrderedIds);
-    },
+/**
+ * The controlled order passed to `useReorder`. Synchronously mirrors `baseViewIdList` except
+ * while it intentionally diverges during a live, not-yet-persisted drag.
+ */
+const displayViewIdList = ref<DatabaseViewId[]>([]);
+
+// Plain (non-reactive) bookkeeping of the last base order this watcher itself applied, kept
+// outside `displayViewIdList` so a content-equal re-emission can be told apart from a genuine
+// external change without depending on it — nothing renders from this value.
+let lastKnownBaseOrder: DatabaseViewId[] = [];
+
+watch(
+  baseViewIdList,
+  (next) => {
+    const changed = !sameIds(next, lastKnownBaseOrder);
+    lastKnownBaseOrder = [...next];
+
+    // A content-equal re-emission (an unrelated document write that leaves view ids/order
+    // unchanged) is a no-op: overwriting here would otherwise clobber an in-progress local drag
+    // with a freshly-allocated but identical array on every unrelated reactive tick.
+    if (!changed) return;
+
+    // A genuine external order change always applies, including mid-drag: `useReorder` re-reads
+    // `keys` on its own and safely self-cancels the active session once it detects the mismatch
+    // against its own confirmed sequence, per the library's documented external-mutation contract.
+    displayViewIdList.value = [...next];
   },
+  { immediate: true },
 );
 
-const displayViewIdList = computed(() =>
-  displayItemIdList.value.filter((id) => zodIs(id, zodDatabaseViewId)),
-);
-const draggedViewId = computed(() => {
-  const itemId = draggedId.value;
+let persistToken = 0;
 
-  return itemId && zodIs(itemId, zodDatabaseViewId) ? itemId : undefined;
-});
+const { draggingKey, vReorderContainer, vReorderItem, vReorderActivator, vReorderIgnore } =
+  useReorder<DatabaseViewId>({
+    keys: displayViewIdList,
+    onReorder: ({ fromIndex, toIndex }) => {
+      const next = [...displayViewIdList.value];
+      const [moved] = next.splice(fromIndex, 1);
+      if (moved !== undefined) next.splice(toIndex, 0, moved);
+      displayViewIdList.value = next;
+    },
+    onDragEnd: (event: ReorderDragEndEvent<DatabaseViewId>) => {
+      if (event.cancelled) return;
+
+      const requestedOrder = [...displayViewIdList.value];
+      if (sameIds(requestedOrder, baseViewIdList.value)) return;
+
+      persistToken += 1;
+      const token = persistToken;
+
+      reorder(requestedOrder).catch(() => {
+        // A stale rejection from a superseded drag must not clobber newer state.
+        if (token !== persistToken) return;
+        displayViewIdList.value = [...baseViewIdList.value];
+      });
+    },
+  });
 
 const orderedViewList = computed(() =>
   displayViewIdList.value.reduce<Array<readonly [DatabaseViewId, DatabaseView]>>((result, id) => {
@@ -82,19 +118,17 @@ const onClickView = (id: DatabaseViewId) => {
 </script>
 
 <template>
-  <MDList ref="viewListEl" list-style="segmented" class="db-view-map-edit">
+  <MDList v-reorder-container list-style="segmented" class="db-view-map-edit">
     <MDListItem
       v-for="[id, view] in orderedViewList"
       :key="id"
       v-reorder-item="id"
+      v-reorder-activator
       :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
       :label-text="view.name"
-      :dragged="draggedViewId === id"
+      :dragged="draggingKey === id"
       :aria-current="id === currentViewId ? 'true' : undefined"
       class="db-view-map-edit__view-item"
-      :class="{
-        'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
-      }"
       @action="onClickView(id)"
     >
       <template v-if="!!slots.leading" #leading>
@@ -102,8 +136,18 @@ const onClickView = (id: DatabaseViewId) => {
       </template>
 
       <template v-if="!!slots.trailingAction" #trailingAction>
-        <slot name="trailingAction" :view-id="id" />
+        <span v-reorder-ignore class="db-view-map-edit__trailing-action">
+          <slot name="trailingAction" :view-id="id" />
+        </span>
       </template>
     </MDListItem>
   </MDList>
 </template>
+
+<style scoped>
+.db-view-map-edit {
+  &__trailing-action {
+    display: inline-flex;
+  }
+}
+</style>

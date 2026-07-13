@@ -101,6 +101,8 @@ never rolled back or overwritten by the library.
   reordering.
 - `v-reorder-item="item.key"`: apply on each reorderable item's root element. Registered items may
   be arbitrary descendants of the container, not only direct children.
+- `v-reorder-activator`: apply on the DOM area an item may start a pending reorder gesture from.
+  Optional; see "Activation surface" below.
 - `v-reorder-ignore`: apply on a custom interactive descendant (anything that isn't a native
   `button`/`a`/`input`/`textarea`/`select`/editable element) that must not start drag activation.
 
@@ -112,6 +114,46 @@ deterministically (a thrown `Error`) rather than resolved by "last mounted wins"
 `v-reorder-container` mounted for the same `useReorder` instance, two different elements
 registered under the same key, one element registered under two different keys, and duplicate
 values in the controlled `keys` sequence.
+
+## Activation surface
+
+By default (no `v-reorder-activator` anywhere in an item), an item uses the behavior described
+above: non-interactive content activates a drag; native interactive elements and
+`v-reorder-ignore` block it.
+
+Adding one or more `v-reorder-activator` elements to an item switches that item, and only that
+item, to strict handle semantics: a drag may only start from inside one of its activators —
+including from a native interactive element inside it — and every other part of that item becomes
+inert to activation. `v-reorder-ignore` still wins over an activator wherever it appears.
+
+```vue
+<!-- Default: non-interactive row areas activate; native controls and vReorderIgnore never do. -->
+<div v-reorder-item="item.id">
+  <span>{{ item.label }}</span>
+  <button type="button">Delete</button>
+</div>
+```
+
+```vue
+<!-- Full-row activation: the item root is also its own activator. -->
+<div v-reorder-item="item.id" v-reorder-activator>
+  <span>{{ item.label }}</span>
+</div>
+```
+
+```vue
+<!-- Handle-only activation: a native button acts as the drag handle; the label area does not
+     activate, even though it has no vReorderIgnore of its own. -->
+<div v-reorder-item="item.id">
+  <button v-reorder-activator type="button" aria-label="Reorder item">Drag</button>
+  <span>{{ item.label }}</span>
+</div>
+```
+
+An activator carries no key, never registers a second item, and never changes the item's
+geometry — it is scoped to the resolved item purely by DOM containment, and more than one may be
+present on the same item. It only affects activation gating at `pointerdown`; it has no effect on
+`findRegisteredAncestor` or the live per-frame hit-testing used to retarget an already-active drag.
 
 The registered active element must keep its normal flow layout box while dragging — this library
 renders nothing extra and does not remove or collapse it. If your visual treatment (e.g. a

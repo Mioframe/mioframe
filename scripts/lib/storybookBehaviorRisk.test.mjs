@@ -83,6 +83,7 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     expect(coveredSpecs.has('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/storybook/reorder.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/storybook/reorder.autoscroll.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/reorderActivator.spec.ts')).toBe(true);
   });
 
   it('fails when a scenario references a spec missing from disk', () => {
@@ -353,6 +354,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
     ]);
   });
 
@@ -363,6 +365,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
     ]);
   });
 
@@ -373,6 +376,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
     ]);
   });
 
@@ -383,6 +387,7 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
     ]);
   });
 
@@ -393,6 +398,18 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
       'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
+    ]);
+  });
+
+  it('runs all reorder specs when only the activator spec changed', () => {
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/reorderActivator.spec.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorder.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
     ]);
   });
 

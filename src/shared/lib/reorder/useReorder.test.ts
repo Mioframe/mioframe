@@ -504,6 +504,37 @@ describe('useReorder cancellation', () => {
   });
 });
 
+describe('useReorder return contract', () => {
+  it('exposes vReorderActivator alongside the other three directives', () => {
+    const keys = ref(['a', 'b']);
+    let returned!: ReturnType<typeof useReorder<string>>;
+
+    const wrapper = mount(
+      {
+        setup() {
+          returned = useReorder({ keys, onReorder: vi.fn() });
+          return () =>
+            withDirectives(
+              h('div', {}, [
+                withDirectives(h('div', { 'data-key': 'a' }), [
+                  [returned.vReorderItem, 'a'],
+                  [returned.vReorderActivator],
+                ]),
+              ]),
+              [[returned.vReorderContainer]],
+            );
+        },
+      },
+      { attachTo: document.body },
+    );
+
+    expect(returned.vReorderActivator).toBeDefined();
+    expect(typeof returned.vReorderActivator).toBe('object');
+
+    wrapper.unmount();
+  });
+});
+
 describe('useReorder draggingKey', () => {
   const mountHarnessWithDraggingKey = (
     keys: Ref<string[]>,

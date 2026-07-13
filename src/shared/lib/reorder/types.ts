@@ -70,6 +70,17 @@ export interface UseReorderReturn<Key extends ReorderKey = ReorderKey> {
   vReorderContainer: Directive<HTMLElement>;
   /** Registers a reorderable item. Apply as `v-reorder-item="item.key"` on each item's root element. */
   vReorderItem: Directive<HTMLElement, Key>;
+  /**
+   * Marks the DOM area an item may start a pending reorder gesture from: `v-reorder-activator`.
+   * Optional per item. An item with no activator preserves the default behavior (non-interactive
+   * content activates; native interactive elements and `v-reorder-ignore` block activation). An
+   * item with one or more activators may only start a drag from inside one of them — including
+   * from a native interactive element inside it — and everywhere else in that item is inert to
+   * activation. May be applied on the same element as `v-reorder-item` (full-row activation), on a
+   * descendant (a handle), or more than once per item. Carries no key and does not register a
+   * second item or change item geometry; it only affects activation, never live hit-testing.
+   */
+  vReorderActivator: Directive<HTMLElement>;
   /** Excludes a custom interactive descendant from starting drag activation: `v-reorder-ignore`. */
   vReorderIgnore: Directive<HTMLElement>;
 }

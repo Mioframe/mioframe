@@ -18,6 +18,12 @@ export interface ReorderRegistry<Key extends ReorderKey> {
   itemKeys: Map<Element, Key>;
   /** Elements marked with `vReorderIgnore`. */
   ignoreEls: Set<Element>;
+  /**
+   * Elements marked with `vReorderActivator`. Item-scoped by DOM containment (an activator
+   * belongs to whichever registered item's element contains it) rather than by a stored key, so
+   * an item never needs a second registered identity for its activators.
+   */
+  activatorEls: Set<Element>;
 }
 
 /**
@@ -29,6 +35,7 @@ export const createReorderRegistry = <Key extends ReorderKey>(): ReorderRegistry
   itemElements: new Map(),
   itemKeys: new Map(),
   ignoreEls: new Set(),
+  activatorEls: new Set(),
 });
 
 /**
@@ -134,10 +141,40 @@ export const findRegisteredAncestor = <Key extends ReorderKey>(
 };
 
 /**
+ * @param registry - The instance registry to search.
+ * @param itemEl - A resolved registered item's element.
+ * @returns Whether `itemEl` owns at least one registered `vReorderActivator` element (anywhere in
+ * its subtree, including `itemEl` itself). Determined by DOM containment against the resolved
+ * item only — never a global flag — so an activator registered for a different item never affects
+ * this check.
+ */
+const hasRegisteredActivator = <Key extends ReorderKey>(
+  registry: ReorderRegistry<Key>,
+  itemEl: Element,
+): boolean => {
+  for (const activatorEl of registry.activatorEls) {
+    if (itemEl.contains(activatorEl)) return true;
+  }
+
+  return false;
+};
+
+/**
  * Walks from `startNode` up to and including `containerEl`, resolving the registered item that
- * would own a would-be drag activation. Returns `null` when a `vReorderIgnore` marker or a
- * standard interactive element is encountered before reaching a registered item, or when no
- * registered item is found.
+ * would own a would-be drag activation.
+ *
+ * Once a registered item ancestor is found, the walk continues only up to that item's own root
+ * (not further toward `containerEl`) to decide activation for it:
+ * - A `vReorderIgnore` marker anywhere on that bounded path always blocks activation, whether or
+ *   not the item has an activator.
+ * - When the item owns no `vReorderActivator` (the default), a standard native interactive
+ *   element anywhere on the path blocks activation, exactly as before.
+ * - When the item owns one or more `vReorderActivator` elements, activation requires the path to
+ *   pass through one of them; native interactive elements are permitted inside a matching
+ *   activator.
+ *
+ * Returns `null` when no registered item is found within `containerEl`, or when the item's
+ * activation rule above is not satisfied.
  * @param registry - The instance registry to search.
  * @param containerEl - The reorder container element bounding the search.
  * @param startNode - The original pointerdown event target to start walking up from.
@@ -148,22 +185,29 @@ export const resolveActivationTarget = <Key extends ReorderKey>(
   containerEl: Element,
   startNode: Node | null,
 ): RegisteredTarget<Key> | null => {
+  const item = findRegisteredAncestor(registry, containerEl, startNode);
+  if (!item) return null;
+
+  const requiresActivator = hasRegisteredActivator(registry, item.element);
+  let matchedActivator = false;
+
   let current: Node | null = startNode;
 
   while (current instanceof Element) {
-    if (registry.ignoreEls.has(current) || isInteractiveElement(current)) return null;
+    if (registry.ignoreEls.has(current)) return null;
 
-    const key = registry.itemKeys.get(current);
-
-    if (key !== undefined) {
-      const element = registry.itemElements.get(key);
-      if (element) return { key, element };
+    if (requiresActivator) {
+      if (registry.activatorEls.has(current)) matchedActivator = true;
+    } else if (isInteractiveElement(current)) {
+      return null;
     }
 
-    if (current === containerEl) return null;
+    if (current === item.element) break;
 
     current = current.parentElement;
   }
 
-  return null;
+  if (requiresActivator && !matchedActivator) return null;
+
+  return item;
 };

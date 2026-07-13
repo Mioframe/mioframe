@@ -1,4 +1,5 @@
-import type { Locator, Page } from '@playwright/test';
+import type { CDPSession, Locator, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 /** The default reorder story, shared by both the general and autoscroll behavior specs. */
 export const STORY_ID = 'shared-lib-reorder-reorderstoryharness--default';
@@ -106,4 +107,66 @@ export const boxOf = async (locator: Locator) => {
   const box = await locator.boundingBox();
   if (!box) throw new Error('missing bounding box');
   return box;
+};
+
+/**
+ * Mouse-drags from `from` to `to`, releasing the button unless `options.release` is `false`.
+ * Shared by both the general/autoscroll specs and the activator spec.
+ * @param page - The Playwright page to drive.
+ * @param from - The starting pointer position.
+ * @param to - The ending pointer position.
+ * @param options - `steps` controls movement granularity; `release` defaults to `true`.
+ */
+export const mouseDrag = async (
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  options: { steps?: number; release?: boolean } = {},
+) => {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: options.steps ?? 8 });
+  if (options.release ?? true) await page.mouse.up();
+};
+
+// Chromium tracks in-flight touch sequence state per CDP client: opening a fresh session for
+// each dispatch call breaks a multi-event gesture ("Must send a TouchStart first"). Reuse one
+// session per page for the whole gesture instead.
+const cdpSessions = new WeakMap<Page, CDPSession>();
+
+const getCdpSession = async (page: Page): Promise<CDPSession> => {
+  const existing = cdpSessions.get(page);
+  if (existing) return existing;
+
+  const session = await page.context().newCDPSession(page);
+  cdpSessions.set(page, session);
+  return session;
+};
+
+/**
+ * Dispatches one touch event via CDP (`Input.dispatchTouchEvent`), reusing one CDP session per
+ * page across a whole multi-event gesture.
+ * @param page - The Playwright page to drive.
+ * @param type - The touch event type.
+ * @param point - The touch point; omitted for `touchEnd`.
+ */
+export const dispatchTouch = async (
+  page: Page,
+  type: 'touchStart' | 'touchMove' | 'touchEnd',
+  point?: { x: number; y: number },
+) => {
+  const cdp = await getCdpSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type,
+    touchPoints: point ? [{ x: point.x, y: point.y }] : [],
+  });
+};
+
+/**
+ * Polls the harness's `Dragging key` output until it equals `key`.
+ * @param page - The Playwright page to read from.
+ * @param key - The expected controlled key, or `''` for no active session.
+ */
+export const waitForDraggingKey = async (page: Page, key: string): Promise<void> => {
+  await expect.poll(() => getDraggingKey(page), { timeout: 2_000 }).toBe(key);
 };

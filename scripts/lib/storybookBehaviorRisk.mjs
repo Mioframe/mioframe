@@ -34,18 +34,20 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   },
   {
     name: 'reorder',
-    // Includes both reorder behavior spec paths themselves (in addition to the library source
-    // prefix): a `startsWith` match on a spec's own path means changing either spec also selects
-    // both, not just the one that changed, since general and autoscroll behavior share the same
-    // library surface.
+    // Includes all reorder behavior spec paths themselves (in addition to the library source
+    // prefix): a `startsWith` match on a spec's own path means changing any one of them also
+    // selects all three, not just the one that changed, since general, autoscroll, and activator
+    // behavior share the same library surface.
     sourcePrefixes: [
       'src/shared/lib/reorder/',
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
     ],
     specs: [
       'tests/e2e/storybook/reorder.spec.ts',
       'tests/e2e/storybook/reorder.autoscroll.spec.ts',
+      'tests/e2e/storybook/reorderActivator.spec.ts',
     ],
   },
   {
