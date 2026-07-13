@@ -116,6 +116,15 @@ describe('MDExtendedFab', () => {
     expect(slotWrapper.find('[data-testid="slot-icon"]').exists()).toBe(true);
   });
 
+  it('defaults to the "primary-container" color', () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: { label: 'Create' },
+      global: { stubs: globalStubs },
+    });
+
+    expect(wrapper.classes()).toContain('md-extended-fab_color_primary-container');
+  });
+
   it('uses BEM modifiers and emits click events', async () => {
     const wrapper = mount(MDExtendedFab, {
       props: {

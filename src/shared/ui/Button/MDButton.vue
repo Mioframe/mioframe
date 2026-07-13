@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import { isNumber } from 'es-toolkit/compat';
-import { computed, useTemplateRef } from 'vue';
+import { computed, onMounted, useTemplateRef, warn, watchEffect } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 const props = withDefaults(
   defineProps<{
-    formAction?: 'submit' | 'reset' | 'button' | undefined;
+    nativeType?: 'button' | 'submit' | 'reset' | undefined;
     color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text' | undefined;
     label: string;
     disabled?: boolean | undefined;
     loading?: number | boolean | undefined;
-    type?: 'default' | 'toggle' | undefined;
+    variant?: 'default' | 'toggle' | undefined;
     size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
     shape?: 'round' | 'square' | undefined;
     selected?: boolean | undefined;
   }>(),
   {
     color: 'filled',
-    formAction: 'button',
-    type: 'default',
+    nativeType: 'button',
+    variant: 'default',
     size: 'small',
     shape: 'round',
   },
@@ -40,26 +40,44 @@ const onButtonClick = (event: MouseEvent) => {
 const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
 const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
 const showVisualState = computed(() => !props.disabled);
+const isToggle = computed(() => props.variant === 'toggle');
+const isTextToggle = computed(() => isToggle.value && props.color === 'text');
+const appliedSelected = computed(() => isToggle.value && !isTextToggle.value && !!props.selected);
 
 useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
+
+if (import.meta.env.DEV) {
+  onMounted(() => {
+    watchEffect(() => {
+      if (props.selected && !isToggle.value) {
+        warn('MDButton: `selected` has no effect unless `variant` is "toggle".');
+      }
+
+      if (isTextToggle.value) {
+        warn('MDButton: Material 3 does not define a toggle variant for `color="text"`.');
+      }
+    });
+  });
+}
 </script>
 
 <template>
   <button
     ref="buttonEl"
     :aria-label="props.label"
+    :aria-pressed="isToggle ? appliedSelected : undefined"
     :disabled="props.disabled"
-    :type="props.formAction"
+    :type="props.nativeType"
     class="md-button"
     :class="[
       `md-button_color-${props.color}`,
-      `md-button_type-${props.type}`,
+      `md-button_variant-${props.variant}`,
       `md-button_size-${props.size}`,
       `md-button_shape-${props.shape}`,
       {
         'md-button_icon': !!$slots.icon,
         'md-button_loading': props.loading !== undefined && props.loading !== false,
-        'md-button_selected': props.selected,
+        'md-button_selected': appliedSelected,
         'md-state_hover': showVisualState && hover,
         'md-state_focused': showVisualState && focused,
         'md-state_pressed': showVisualState && durationPressedState,
@@ -95,8 +113,16 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
 <style scoped>
 .md-button {
+  /* Component tokens shared across color styles (md.comp.button.*.disabled.*). */
+  --md-comp-button-disabled-label-text-color: var(--md-sys-color-on-surface);
+  --md-comp-button-disabled-label-text-opacity: 0.38;
+  --md-comp-button-disabled-icon-color: var(--md-sys-color-on-surface);
+  --md-comp-button-disabled-icon-opacity: 0.38;
+  --md-comp-button-disabled-container-color: var(--md-sys-color-on-surface);
+  --md-comp-button-disabled-container-opacity: 0.1;
+
   --md-button-border-radius: 20px;
-  --md-button-icon-size: 18px;
+  --md-button-icon-size: 20dp;
   --md-button-height: 40px;
   --md-button-padding: 16px;
   --md-button-padding-left: var(--md-button-padding);
@@ -108,7 +134,18 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   --md-button-box-sizing: border-box;
   --md-button-target-size: var(--md-button-height);
   --md-button-disabled-container-color: transparent;
-  --md-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-button-disabled-container-tint: rgb(
+    from var(--md-comp-button-disabled-container-color) r g b /
+      var(--md-comp-button-disabled-container-opacity)
+  );
+  --md-button-disabled-content-color: rgb(
+    from var(--md-comp-button-disabled-label-text-color) r g b /
+      var(--md-comp-button-disabled-label-text-opacity)
+  );
+  --md-button-disabled-icon-tint: rgb(
+    from var(--md-comp-button-disabled-icon-color) r g b /
+      var(--md-comp-button-disabled-icon-opacity)
+  );
   --md-button-disabled-border-color: transparent;
   position: relative;
   display: inline-flex;
@@ -203,11 +240,21 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   }
 
   &.md-button_color-elevated {
-    --md-container-color: var(--md-sys-color-surface-container-low);
-    --md-content-color: var(--md-sys-color-primary);
-    --md-state-box-shadow: var(--md-sys-elevation-level1);
+    --md-comp-button-elevated-container-color: var(--md-sys-color-surface-container-low);
+    --md-comp-button-elevated-label-text-color: var(--md-sys-color-primary);
+    --md-comp-button-elevated-icon-color: var(--md-sys-color-primary);
+    --md-comp-button-elevated-container-elevation: var(--md-sys-elevation-level1);
+    --md-comp-button-elevated-hovered-container-elevation: var(--md-sys-elevation-level2);
+    --md-comp-button-elevated-focused-container-elevation: var(--md-sys-elevation-level1);
+    --md-comp-button-elevated-pressed-container-elevation: var(--md-sys-elevation-level1);
+    --md-comp-button-elevated-disabled-container-elevation: var(--md-sys-elevation-level0);
 
-    &.md-button_type-toggle {
+    --md-container-color: var(--md-comp-button-elevated-container-color);
+    --md-content-color: var(--md-comp-button-elevated-label-text-color);
+    --md-button-icon-color: var(--md-comp-button-elevated-icon-color);
+    --md-state-box-shadow: var(--md-comp-button-elevated-container-elevation);
+
+    &.md-button_variant-toggle {
       --md-container-color: var(--md-sys-color-surface-container-low);
       --md-content-color: var(--md-sys-color-primary);
 
@@ -219,16 +266,16 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-container-color: var(--md-button-disabled-container-tint);
       --md-content-color: var(--md-button-disabled-content-color);
-      --md-button-icon-color: var(--md-button-disabled-content-color);
-      --md-state-box-shadow: var(--md-sys-elevation-level0);
+      --md-button-icon-color: var(--md-button-disabled-icon-tint);
+      --md-state-box-shadow: var(--md-comp-button-elevated-disabled-container-elevation);
     }
 
     &.md-state_hover,
     &:hover {
-      --md-content-color: var(--md-sys-color-primary);
-      --md-state-box-shadow: var(--md-sys-elevation-level2);
+      --md-content-color: var(--md-comp-button-elevated-label-text-color);
+      --md-state-box-shadow: var(--md-comp-button-elevated-hovered-container-elevation);
 
       &.md-button_selected {
         --md-content-color: var(--md-sys-color-on-primary);
@@ -237,8 +284,8 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &.md-state_focused,
     &:focus-visible {
-      --md-content-color: var(--md-sys-color-primary);
-      --md-state-box-shadow: var(--md-sys-elevation-level1);
+      --md-content-color: var(--md-comp-button-elevated-label-text-color);
+      --md-state-box-shadow: var(--md-comp-button-elevated-focused-container-elevation);
       z-index: 1;
 
       &.md-button_selected {
@@ -248,12 +295,18 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   }
 
   &.md-button_color-filled {
-    --md-container-color: var(--md-sys-color-primary);
-    --md-content-color: var(--md-sys-color-on-primary);
-    --md-button-icon-color: var(--md-sys-color-on-primary);
-    --md-state-box-shadow: var(--md-sys-elevation-level0);
+    --md-comp-button-filled-container-color: var(--md-sys-color-primary);
+    --md-comp-button-filled-label-text-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-button-filled-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-filled-hovered-container-elevation: var(--md-sys-elevation-level1);
 
-    &.md-button_type-toggle {
+    --md-container-color: var(--md-comp-button-filled-container-color);
+    --md-content-color: var(--md-comp-button-filled-label-text-color);
+    --md-button-icon-color: var(--md-comp-button-filled-icon-color);
+    --md-state-box-shadow: var(--md-comp-button-filled-container-elevation);
+
+    &.md-button_variant-toggle {
       --md-container-color: var(--md-sys-color-surface-container);
       --md-content-color: var(--md-sys-color-on-surface-variant);
 
@@ -265,25 +318,31 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &.md-state_hover,
     &:hover {
-      --md-state-box-shadow: var(--md-sys-elevation-level1);
+      --md-state-box-shadow: var(--md-comp-button-filled-hovered-container-elevation);
       z-index: 1;
     }
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-container-color: var(--md-button-disabled-container-tint);
       --md-content-color: var(--md-button-disabled-content-color);
-      --md-button-icon-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-icon-tint);
     }
   }
 
   &.md-button_color-tonal {
-    --md-container-color: var(--md-sys-color-secondary-container);
-    --md-content-color: var(--md-sys-color-on-secondary-container);
-    --md-button-icon-color: var(--md-sys-color-on-secondary-container);
-    --md-state-box-shadow: var(--md-sys-elevation-level0);
+    --md-comp-button-tonal-container-color: var(--md-sys-color-secondary-container);
+    --md-comp-button-tonal-label-text-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-button-tonal-container-elevation: var(--md-sys-elevation-level0);
+    --md-comp-button-tonal-hovered-container-elevation: var(--md-sys-elevation-level1);
 
-    &.md-button_type-toggle {
+    --md-container-color: var(--md-comp-button-tonal-container-color);
+    --md-content-color: var(--md-comp-button-tonal-label-text-color);
+    --md-button-icon-color: var(--md-comp-button-tonal-icon-color);
+    --md-state-box-shadow: var(--md-comp-button-tonal-container-elevation);
+
+    &.md-button_variant-toggle {
       &.md-button_selected {
         --md-container-color: var(--md-sys-color-secondary);
         --md-content-color: var(--md-sys-color-on-secondary);
@@ -292,36 +351,41 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &.md-state_hover,
     &:hover {
-      --md-content-color: var(--md-sys-color-on-secondary-container);
-      --md-button-icon-color: var(--md-sys-color-on-secondary-container);
-      --md-state-box-shadow: var(--md-sys-elevation-level1);
+      --md-content-color: var(--md-comp-button-tonal-label-text-color);
+      --md-button-icon-color: var(--md-comp-button-tonal-icon-color);
+      --md-state-box-shadow: var(--md-comp-button-tonal-hovered-container-elevation);
       z-index: 1;
     }
 
     &:focus-visible,
     &.md-state_focused {
-      --md-state-box-shadow: var(--md-sys-elevation-level0);
-      --md-content-color: var(--md-sys-color-on-secondary-container);
-      --md-button-icon-color: var(--md-sys-color-on-secondary-container);
+      --md-state-box-shadow: var(--md-comp-button-tonal-container-elevation);
+      --md-content-color: var(--md-comp-button-tonal-label-text-color);
+      --md-button-icon-color: var(--md-comp-button-tonal-icon-color);
     }
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-container-color: var(--md-button-disabled-container-tint);
       --md-content-color: var(--md-button-disabled-content-color);
-      --md-button-icon-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-icon-tint);
     }
   }
 
   &.md-button_color-outlined {
+    --md-comp-button-outlined-outline-color: var(--md-sys-color-outline-variant);
+    --md-comp-button-outlined-label-text-color: var(--md-sys-color-on-surface-variant);
+    --md-comp-button-outlined-icon-color: var(--md-sys-color-on-surface-variant);
+
     --md-button-border-style: solid;
-    --md-button-border-color: var(--md-sys-color-outline-variant);
+    --md-button-border-color: var(--md-comp-button-outlined-outline-color);
     --md-button-border-width: 1px;
     --md-button-box-sizing: border-box;
-    --md-content-color: var(--md-sys-color-on-surface-variant);
+    --md-content-color: var(--md-comp-button-outlined-label-text-color);
+    --md-button-icon-color: var(--md-comp-button-outlined-icon-color);
     --md-state-box-shadow: var(--md-sys-elevation-level0);
 
-    &.md-button_type-toggle {
+    &.md-button_variant-toggle {
       &.md-button_selected {
         --md-container-color: var(--md-sys-color-inverse-surface);
         --md-content-color: var(--md-sys-color-inverse-on-surface);
@@ -332,12 +396,18 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
     &:disabled {
       --md-container-color: transparent;
       --md-content-color: var(--md-button-disabled-content-color);
-      --md-button-icon-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-icon-tint);
+      /* Kept as the existing on-surface/12% treatment (not the literal
+         md.comp.button.outlined.disabled.outline.color = outline-variant) pending a
+         fresh visual comparison; see docs/material-3/component-family-audit.md. */
       --md-button-border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     }
 
     &.md-state_hover,
     &:hover {
+      /* Kept as the existing outline-darkening treatment (not the literal
+         md.comp.button.outlined.hovered.outline.color = outline-variant, unchanged from
+         default) pending a fresh visual comparison; see component-family-audit.md. */
       --md-content-color: var(--md-sys-color-primary);
       --md-button-icon-color: var(--md-sys-color-primary);
       --md-button-border-color: var(--md-sys-color-outline);
@@ -345,13 +415,17 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &:focus-visible,
     &.md-state_focused {
-      --md-content-color: var(--md-sys-color-on-surface-variant);
-      --md-button-icon-color: var(--md-sys-color-on-surface-variant);
+      --md-content-color: var(--md-comp-button-outlined-label-text-color);
+      --md-button-icon-color: var(--md-comp-button-outlined-icon-color);
     }
   }
 
   &.md-button_color-text {
-    --md-content-color: var(--md-sys-color-primary);
+    --md-comp-button-text-label-text-color: var(--md-sys-color-primary);
+    --md-comp-button-text-icon-color: var(--md-sys-color-primary);
+
+    --md-content-color: var(--md-comp-button-text-label-text-color);
+    --md-button-icon-color: var(--md-comp-button-text-icon-color);
     --md-button-padding-left: 12px;
     --md-button-padding-right: 12px;
     --md-state-box-shadow: var(--md-sys-elevation-level0);
@@ -362,99 +436,164 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &.md-state_hover,
     &:hover {
-      --md-content-color: var(--md-sys-color-primary);
-      --md-button-icon-color: var(--md-sys-color-primary);
+      --md-content-color: var(--md-comp-button-text-label-text-color);
+      --md-button-icon-color: var(--md-comp-button-text-icon-color);
     }
 
     &:focus-visible,
     &.md-state_focused {
-      --md-content-color: var(--md-sys-color-primary);
-      --md-button-icon-color: var(--md-sys-color-primary);
+      --md-content-color: var(--md-comp-button-text-label-text-color);
+      --md-button-icon-color: var(--md-comp-button-text-icon-color);
     }
 
     &.md-state_disabled,
     &:disabled {
       --md-container-color: transparent;
       --md-content-color: var(--md-button-disabled-content-color);
-      --md-button-icon-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-icon-tint);
     }
   }
 
   &.md-button_size {
     &-extra-small {
-      --md-button-height: 32px;
-      --md-button-padding: 12px;
-      --md-button-icon-gap: 4px;
+      --md-comp-button-extra-small-container-height: 32dp;
+      --md-comp-button-extra-small-icon-size: 20dp;
+      --md-comp-button-extra-small-leading-space: 12dp;
+      --md-comp-button-extra-small-icon-label-space: 8dp;
+      --md-comp-button-extra-small-outlined-outline-width: 1dp;
+      --md-comp-button-extra-small-container-shape-square: var(--md-sys-shape-corner-medium);
+      --md-comp-button-extra-small-pressed-container-shape: var(--md-sys-shape-corner-small);
+
+      --md-button-height: var(--md-comp-button-extra-small-container-height);
+      --md-button-icon-size: var(--md-comp-button-extra-small-icon-size);
+      --md-button-padding: var(--md-comp-button-extra-small-leading-space);
+      --md-button-icon-gap: var(--md-comp-button-extra-small-icon-label-space);
       --md-button-target-size: 48dp;
 
+      &.md-button_color-outlined {
+        --md-button-border-width: var(--md-comp-button-extra-small-outlined-outline-width);
+      }
+
       &.md-button_shape-square {
-        --md-button-border-radius: 12px;
+        --md-button-border-radius: var(--md-comp-button-extra-small-container-shape-square);
       }
 
       &.md-state_pressed,
       &:active {
-        --md-button-border-radius: 8px;
+        --md-button-border-radius: var(--md-comp-button-extra-small-pressed-container-shape);
       }
     }
 
     &-small {
-      --md-button-height: 40px;
-      --md-button-padding: 16px;
-      --md-button-icon-gap: 8px;
+      --md-comp-button-small-container-height: 40dp;
+      --md-comp-button-small-icon-size: 20dp;
+      --md-comp-button-small-leading-space: 16dp;
+      --md-comp-button-small-icon-label-space: 8dp;
+      --md-comp-button-small-outlined-outline-width: 1dp;
+      --md-comp-button-small-container-shape-square: var(--md-sys-shape-corner-medium);
+      --md-comp-button-small-pressed-container-shape: var(--md-sys-shape-corner-small);
+
+      --md-button-height: var(--md-comp-button-small-container-height);
+      --md-button-icon-size: var(--md-comp-button-small-icon-size);
+      --md-button-padding: var(--md-comp-button-small-leading-space);
+      --md-button-icon-gap: var(--md-comp-button-small-icon-label-space);
       --md-button-target-size: 48dp;
 
+      &.md-button_color-outlined {
+        --md-button-border-width: var(--md-comp-button-small-outlined-outline-width);
+      }
+
       &.md-button_shape-square {
-        --md-button-border-radius: 12px;
+        --md-button-border-radius: var(--md-comp-button-small-container-shape-square);
       }
 
       &.md-state_pressed,
       &:active {
-        --md-button-border-radius: 8px;
+        --md-button-border-radius: var(--md-comp-button-small-pressed-container-shape);
       }
     }
 
     &-medium {
-      --md-button-height: 56px;
-      --md-button-padding: 24px;
-      --md-button-icon-gap: 8px;
+      --md-comp-button-medium-container-height: 56dp;
+      --md-comp-button-medium-icon-size: 24dp;
+      --md-comp-button-medium-leading-space: 24dp;
+      --md-comp-button-medium-icon-label-space: 8dp;
+      --md-comp-button-medium-outlined-outline-width: 1dp;
+      --md-comp-button-medium-container-shape-square: var(--md-sys-shape-corner-large);
+      --md-comp-button-medium-pressed-container-shape: var(--md-sys-shape-corner-medium);
+
+      --md-button-height: var(--md-comp-button-medium-container-height);
+      --md-button-icon-size: var(--md-comp-button-medium-icon-size);
+      --md-button-padding: var(--md-comp-button-medium-leading-space);
+      --md-button-icon-gap: var(--md-comp-button-medium-icon-label-space);
+
+      &.md-button_color-outlined {
+        --md-button-border-width: var(--md-comp-button-medium-outlined-outline-width);
+      }
 
       &.md-button_shape-square {
-        --md-button-border-radius: 16px;
+        --md-button-border-radius: var(--md-comp-button-medium-container-shape-square);
       }
 
       &.md-state_pressed,
       &:active {
-        --md-button-border-radius: 12px;
+        --md-button-border-radius: var(--md-comp-button-medium-pressed-container-shape);
       }
     }
 
     &-large {
-      --md-button-height: 96px;
-      --md-button-padding: 48px;
-      --md-button-icon-gap: 12px;
+      --md-comp-button-large-container-height: 96dp;
+      --md-comp-button-large-icon-size: 32dp;
+      --md-comp-button-large-leading-space: 48dp;
+      --md-comp-button-large-icon-label-space: 12dp;
+      --md-comp-button-large-outlined-outline-width: 2dp;
+      --md-comp-button-large-container-shape-square: var(--md-sys-shape-corner-extra-large);
+      --md-comp-button-large-pressed-container-shape: var(--md-sys-shape-corner-large);
+
+      --md-button-height: var(--md-comp-button-large-container-height);
+      --md-button-icon-size: var(--md-comp-button-large-icon-size);
+      --md-button-padding: var(--md-comp-button-large-leading-space);
+      --md-button-icon-gap: var(--md-comp-button-large-icon-label-space);
+
+      &.md-button_color-outlined {
+        --md-button-border-width: var(--md-comp-button-large-outlined-outline-width);
+      }
 
       &.md-button_shape-square {
-        --md-button-border-radius: 28px;
+        --md-button-border-radius: var(--md-comp-button-large-container-shape-square);
       }
 
       &.md-state_pressed,
       &:active {
-        --md-button-border-radius: 16px;
+        --md-button-border-radius: var(--md-comp-button-large-pressed-container-shape);
       }
     }
 
     &-extra-large {
-      --md-button-height: 136px;
-      --md-button-padding: 64px;
-      --md-button-icon-gap: 16px;
+      --md-comp-button-extra-large-container-height: 136dp;
+      --md-comp-button-extra-large-icon-size: 40dp;
+      --md-comp-button-extra-large-leading-space: 64dp;
+      --md-comp-button-extra-large-icon-label-space: 16dp;
+      --md-comp-button-extra-large-outlined-outline-width: 3dp;
+      --md-comp-button-extra-large-container-shape-square: var(--md-sys-shape-corner-extra-large);
+      --md-comp-button-extra-large-pressed-container-shape: var(--md-sys-shape-corner-large);
+
+      --md-button-height: var(--md-comp-button-extra-large-container-height);
+      --md-button-icon-size: var(--md-comp-button-extra-large-icon-size);
+      --md-button-padding: var(--md-comp-button-extra-large-leading-space);
+      --md-button-icon-gap: var(--md-comp-button-extra-large-icon-label-space);
+
+      &.md-button_color-outlined {
+        --md-button-border-width: var(--md-comp-button-extra-large-outlined-outline-width);
+      }
 
       &.md-button_shape-square {
-        --md-button-border-radius: 28px;
+        --md-button-border-radius: var(--md-comp-button-extra-large-container-shape-square);
       }
 
       &.md-state_pressed,
       &:active {
-        --md-button-border-radius: 16px;
+        --md-button-border-radius: var(--md-comp-button-extra-large-pressed-container-shape);
       }
     }
   }

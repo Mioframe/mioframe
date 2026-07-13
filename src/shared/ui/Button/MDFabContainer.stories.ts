@@ -42,10 +42,25 @@ const StoryPaneHost = defineComponent({
 });
 
 const meta = {
-  title: 'shared/ui/MDFabContainer',
+  title: 'Material 3/Components/Buttons/MDFabContainer',
   component: MDFabContainer,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component: [
+          '**Project-specific placement infrastructure.** `MDFabContainer` is not an official Material 3 component; it does not appear under any `components/*` Material 3 page and owns no FAB visual tokens or colors.',
+          '',
+          'It composes existing Material foundations (`shared/ui/Overlay` teleport/positioning, `shared/ui/Layout` pane-scroll context) to anchor a single `MDFab` or `MDExtendedFab` action to the bottom of the nearest scrollable pane, matching the Material floating-action-button placement guidance without reimplementing FAB anatomy.',
+          '',
+          '**Props**: `autoHide` (hides the floating action while scrolling down, restores on scroll up or focus-within).',
+          '',
+          '**Slots**: `default` (a single `MDFab` or `MDExtendedFab`).',
+          '',
+          'Consumers own placement decisions (whether to use it at all) and the FAB action itself; `MDFabContainer` only owns the floating/overlay geometry.',
+        ].join('\n'),
+      },
+    },
   },
 } satisfies Meta<typeof MDFabContainer>;
 

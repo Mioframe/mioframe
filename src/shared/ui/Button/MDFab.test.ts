@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import MDFab from './MDFab.vue';
 
 const mountFab = () =>
@@ -30,7 +30,7 @@ describe('MDFab', () => {
         tooltip: 'Create item',
         mdSymbol: 'add',
         size: 'large',
-        color: 'tonal-primary',
+        color: 'primary-container',
       },
       global: {
         stubs: {
@@ -49,15 +49,24 @@ describe('MDFab', () => {
 
     expect(wrapper.classes()).toContain('md-fab');
     expect(wrapper.classes()).toContain('md-fab_size_large');
-    expect(wrapper.classes()).toContain('md-fab_color_tonal-primary');
+    expect(wrapper.classes()).toContain('md-fab_color_primary-container');
 
     await wrapper.get('button').trigger('click');
 
     expect(wrapper.emitted('click')).toHaveLength(1);
   });
 
-  it('renders the BEM empty icon element when no icon source is provided', () => {
-    const wrapper = mount(MDFab, {
+  it('defaults to the "regular" size and renders no debug placeholder icon', () => {
+    const wrapper = mountFab();
+
+    expect(wrapper.classes()).toContain('md-fab_size_regular');
+    expect(wrapper.find('.md-fab__empty-icon').exists()).toBe(false);
+  });
+
+  it('warns in development when no icon source is provided', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    mount(MDFab, {
       props: {
         tooltip: 'Create item',
       },
@@ -76,7 +85,21 @@ describe('MDFab', () => {
       },
     });
 
-    expect(wrapper.find('.md-fab__empty-icon').exists()).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('provide an icon via `mdSymbol` or the `icon` slot'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not warn when an icon source is provided', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    mountFab();
+
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
   });
 
   it('keeps native button content free of nested interactive descendants and divs', () => {

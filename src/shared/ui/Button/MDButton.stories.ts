@@ -3,7 +3,7 @@ import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
 
 const meta = {
-  title: 'shared/ui/MDButton',
+  title: 'Material 3/Components/Buttons/MDButton',
   component: MDButton,
   args: {
     label: 'Save',
@@ -14,6 +14,29 @@ const meta = {
   },
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component: [
+          'Checked against Material 3 `components/buttons/{overview,guidelines,specs,accessibility}`.',
+          '',
+          '**Props**: `variant` (`default` | `toggle`, default `default`), `color` (`elevated` | `filled` | `tonal` | `outlined` | `text`, default `filled`), `size` (`extra-small` | `small` | `medium` | `large` | `extra-large`, default `small`), `shape` (`round` | `square`, default `round`), `nativeType` (`button` | `submit` | `reset`, default `button`), `label` (required), `selected`, `disabled`, `loading` (project extension: `boolean | number`, `0` is an active loading state).',
+          '',
+          '**Slots**: `icon` (leading icon).',
+          '',
+          '**Emits**: `click` (native click, not synthesized).',
+          '',
+          '**Tokens**: `--md-comp-button-*` component tokens resolve to `--md-sys-*`; see the component styles for the full surface.',
+          '',
+          '**Toggle semantics**: `variant="toggle"` exposes controlled `aria-pressed` from `selected`. The consumer owns `selected` state; clicking only emits `click`.',
+          '',
+          '**Invalid combination**: `selected` with `variant="default"` is ignored (not rendered as selected) and logs a development warning.',
+          '',
+          '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target via `.md-button__target`.',
+          '',
+          '**Deviation**: current Material 3 cache does not explicitly restrict `color="text"` from `variant="toggle"`, so this project does not add that restriction beyond what the docs require.',
+        ].join('\n'),
+      },
+    },
   },
 } satisfies Meta<typeof MDButton>;
 
@@ -22,6 +45,15 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const Toggle: Story = {
+  args: {
+    variant: 'toggle',
+    selected: true,
+    color: 'tonal',
+    label: 'Bookmark',
+  },
+};
 
 export const VisualStates: Story = {
   tags: ['visual'],

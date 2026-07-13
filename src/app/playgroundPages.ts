@@ -26,10 +26,6 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () => import('@shared/ui/Tooltips/MDPlainTooltipPlayground.vue'),
   },
   {
-    name: 'IconButton',
-    component: () => import('@shared/ui/Button/MDIconButtonPlayground.vue'),
-  },
-  {
     name: 'Menu',
     component: () => import('@shared/ui/Menu/MDMenuPlayground.vue'),
   },
@@ -40,10 +36,6 @@ export const playgroundPages: PlaygroundPage[] = [
   {
     name: 'Checkbox',
     component: () => import('@shared/ui/Checkbox/MDCheckboxPlayground.vue'),
-  },
-  {
-    name: 'FAB',
-    component: () => import('@shared/ui/Button/MDFabPlayground.vue'),
   },
   {
     name: 'Toolbar',

@@ -9,14 +9,14 @@ const props = withDefaults(
   defineProps<{
     /** Material Extended FAB size variant. */
     size?: 'small' | 'medium' | 'large' | undefined;
-    /** Material Extended FAB color role. Tonal primary is the shared default for this surface. */
+    /** Material Extended FAB color role. Primary container is the shared default for this surface. */
     color?:
       | 'primary'
       | 'secondary'
       | 'tertiary'
-      | 'tonal-primary'
-      | 'tonal-secondary'
-      | 'tonal-tertiary'
+      | 'primary-container'
+      | 'secondary-container'
+      | 'tertiary-container'
       | undefined;
     /** Visible text label rendered inside the Extended FAB. */
     label: string;
@@ -31,7 +31,7 @@ const props = withDefaults(
     mdSymbol?: string | undefined;
   }>(),
   {
-    color: 'tonal-primary',
+    color: 'primary-container',
     size: 'small',
   },
 );
@@ -102,10 +102,19 @@ useRipple(buttonEl);
 
 <style scoped>
 .md-extended-fab {
+  /* Focus indicator: md.comp.extended-fab.{primary,secondary,tertiary}.focus.indicator.color
+     resolves to the secondary role; no distinct tokens exist for the *-container styles
+     (documented gap), so the global focus-indicator default (--md-sys-color-secondary) is
+     reused for all six styles without a component override. */
   --md-fab-icon-size: 24dp;
   --md-fab-container-size: 56dp;
   --md-fab-horizontal-padding: 16dp;
   --md-fab-container-shape: var(--md-sys-shape-corner-large);
+  --md-extended-fab-label-font: var(--md-sys-typescale-title-medium-font);
+  --md-extended-fab-label-weight: var(--md-sys-typescale-title-medium-weight);
+  --md-extended-fab-label-size: var(--md-sys-typescale-title-medium-size);
+  --md-extended-fab-label-line-height: var(--md-sys-typescale-title-medium-line-height);
+  --md-extended-fab-label-tracking: var(--md-sys-typescale-title-medium-tracking);
   --md-container-color: var(--md-fab-container-color);
   --md-content-color: var(--md-fab-icon-color);
   --md-state-box-shadow: var(--md-sys-elevation-level3);
@@ -130,37 +139,129 @@ useRipple(buttonEl);
   }
 
   &_color_primary {
-    --md-fab-container-color: var(--md-sys-color-primary);
-    --md-fab-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-extended-fab-primary-container-color: var(--md-sys-color-primary);
+    --md-comp-extended-fab-primary-label-text-color: var(--md-sys-color-on-primary);
+    --md-comp-extended-fab-primary-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-extended-fab-primary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-primary-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-extended-fab-primary-container-color);
+    --md-fab-icon-color: var(--md-comp-extended-fab-primary-icon-color);
+    --md-content-color: var(--md-comp-extended-fab-primary-label-text-color);
+    --md-state-box-shadow: var(--md-comp-extended-fab-primary-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-extended-fab-primary-hovered-container-elevation);
+    }
   }
 
   &_color_secondary {
-    --md-fab-container-color: var(--md-sys-color-secondary);
-    --md-fab-icon-color: var(--md-sys-color-on-secondary);
+    --md-comp-extended-fab-secondary-container-color: var(--md-sys-color-secondary);
+    --md-comp-extended-fab-secondary-label-text-color: var(--md-sys-color-on-secondary);
+    --md-comp-extended-fab-secondary-icon-color: var(--md-sys-color-on-secondary);
+    --md-comp-extended-fab-secondary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-secondary-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-extended-fab-secondary-container-color);
+    --md-fab-icon-color: var(--md-comp-extended-fab-secondary-icon-color);
+    --md-content-color: var(--md-comp-extended-fab-secondary-label-text-color);
+    --md-state-box-shadow: var(--md-comp-extended-fab-secondary-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-extended-fab-secondary-hovered-container-elevation);
+    }
   }
 
   &_color_tertiary {
-    --md-fab-container-color: var(--md-sys-color-tertiary);
-    --md-fab-icon-color: var(--md-sys-color-on-tertiary);
+    --md-comp-extended-fab-tertiary-container-color: var(--md-sys-color-tertiary);
+    --md-comp-extended-fab-tertiary-label-text-color: var(--md-sys-color-on-tertiary);
+    --md-comp-extended-fab-tertiary-icon-color: var(--md-sys-color-on-tertiary);
+    --md-comp-extended-fab-tertiary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-tertiary-hovered-container-elevation: var(--md-sys-elevation-level4);
+
+    --md-fab-container-color: var(--md-comp-extended-fab-tertiary-container-color);
+    --md-fab-icon-color: var(--md-comp-extended-fab-tertiary-icon-color);
+    --md-content-color: var(--md-comp-extended-fab-tertiary-label-text-color);
+    --md-state-box-shadow: var(--md-comp-extended-fab-tertiary-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(--md-comp-extended-fab-tertiary-hovered-container-elevation);
+    }
   }
 
-  &_color_tonal-primary {
-    --md-fab-container-color: var(--md-sys-color-primary-container);
-    --md-fab-icon-color: var(--md-sys-color-on-primary-container);
+  &_color_primary-container {
+    --md-comp-extended-fab-primary-container-container-color: var(--md-sys-color-primary-container);
+    --md-comp-extended-fab-primary-container-label-text-color: var(
+      --md-sys-color-on-primary-container
+    );
+    --md-comp-extended-fab-primary-container-icon-color: var(--md-sys-color-on-primary-container);
+    --md-comp-extended-fab-primary-container-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-primary-container-hovered-container-elevation: var(
+      --md-sys-elevation-level4
+    );
+
+    --md-fab-container-color: var(--md-comp-extended-fab-primary-container-container-color);
+    --md-fab-icon-color: var(--md-comp-extended-fab-primary-container-icon-color);
+    --md-content-color: var(--md-comp-extended-fab-primary-container-label-text-color);
+    --md-state-box-shadow: var(--md-comp-extended-fab-primary-container-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(
+        --md-comp-extended-fab-primary-container-hovered-container-elevation
+      );
+    }
   }
 
-  &_color_tonal-secondary {
-    --md-fab-container-color: var(--md-sys-color-secondary-container);
-    --md-fab-icon-color: var(--md-sys-color-on-secondary-container);
+  &_color_secondary-container {
+    --md-comp-extended-fab-secondary-container-container-color: var(
+      --md-sys-color-secondary-container
+    );
+    --md-comp-extended-fab-secondary-container-label-text-color: var(
+      --md-sys-color-on-secondary-container
+    );
+    --md-comp-extended-fab-secondary-container-icon-color: var(
+      --md-sys-color-on-secondary-container
+    );
+    --md-comp-extended-fab-secondary-container-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-secondary-container-hovered-container-elevation: var(
+      --md-sys-elevation-level4
+    );
+
+    --md-fab-container-color: var(--md-comp-extended-fab-secondary-container-container-color);
+    --md-fab-icon-color: var(--md-comp-extended-fab-secondary-container-icon-color);
+    --md-content-color: var(--md-comp-extended-fab-secondary-container-label-text-color);
+    --md-state-box-shadow: var(--md-comp-extended-fab-secondary-container-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(
+        --md-comp-extended-fab-secondary-container-hovered-container-elevation
+      );
+    }
   }
 
-  &_color_tonal-tertiary {
-    --md-fab-container-color: var(--md-sys-color-tertiary-container);
-    --md-fab-icon-color: var(--md-sys-color-on-tertiary-container);
-  }
+  &_color_tertiary-container {
+    --md-comp-extended-fab-tertiary-container-container-color: var(
+      --md-sys-color-tertiary-container
+    );
+    --md-comp-extended-fab-tertiary-container-label-text-color: var(
+      --md-sys-color-on-tertiary-container
+    );
+    --md-comp-extended-fab-tertiary-container-icon-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-extended-fab-tertiary-container-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-tertiary-container-hovered-container-elevation: var(
+      --md-sys-elevation-level4
+    );
 
-  &:hover {
-    --md-state-box-shadow: var(--md-sys-elevation-level4);
+    --md-fab-container-color: var(--md-comp-extended-fab-tertiary-container-container-color);
+    --md-fab-icon-color: var(--md-comp-extended-fab-tertiary-container-icon-color);
+    --md-content-color: var(--md-comp-extended-fab-tertiary-container-label-text-color);
+    --md-state-box-shadow: var(--md-comp-extended-fab-tertiary-container-container-elevation);
+
+    &:hover {
+      --md-state-box-shadow: var(
+        --md-comp-extended-fab-tertiary-container-hovered-container-elevation
+      );
+    }
   }
 
   &__icon,
@@ -179,24 +280,66 @@ useRipple(buttonEl);
   }
 
   &__label {
-    font-family: var(--md-sys-typescale-title-medium-font);
-    font-weight: var(--md-sys-typescale-title-medium-weight);
-    font-size: var(--md-sys-typescale-title-medium-size);
-    line-height: var(--md-sys-typescale-title-medium-line-height);
-    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
+    font-family: var(--md-extended-fab-label-font);
+    font-weight: var(--md-extended-fab-label-weight);
+    font-size: var(--md-extended-fab-label-size);
+    line-height: var(--md-extended-fab-label-line-height);
+    letter-spacing: var(--md-extended-fab-label-tracking);
     white-space: nowrap;
   }
 
+  &_size_small {
+    --md-comp-extended-fab-small-container-height: 56dp;
+    --md-comp-extended-fab-small-icon-size: 24dp;
+    --md-comp-extended-fab-small-container-shape: var(--md-sys-shape-corner-large);
+    --md-comp-extended-fab-small-leading-space: 16dp;
+    --md-comp-extended-fab-small-trailing-space: 16dp;
+
+    --md-fab-container-size: var(--md-comp-extended-fab-small-container-height);
+    --md-fab-icon-size: var(--md-comp-extended-fab-small-icon-size);
+    --md-fab-container-shape: var(--md-comp-extended-fab-small-container-shape);
+    --md-fab-horizontal-padding: var(--md-comp-extended-fab-small-leading-space);
+    --md-extended-fab-label-font: var(--md-sys-typescale-title-medium-font);
+    --md-extended-fab-label-weight: var(--md-sys-typescale-title-medium-weight);
+    --md-extended-fab-label-size: var(--md-sys-typescale-title-medium-size);
+    --md-extended-fab-label-line-height: var(--md-sys-typescale-title-medium-line-height);
+    --md-extended-fab-label-tracking: var(--md-sys-typescale-title-medium-tracking);
+  }
+
   &_size_medium {
-    --md-fab-container-size: 80dp;
-    --md-fab-icon-size: 28dp;
-    --md-fab-container-shape: var(--md-sys-shape-corner-large-increased);
+    --md-comp-extended-fab-medium-container-height: 80dp;
+    --md-comp-extended-fab-medium-icon-size: 28dp;
+    --md-comp-extended-fab-medium-container-shape: var(--md-sys-shape-corner-large-increased);
+    --md-comp-extended-fab-medium-leading-space: 26dp;
+    --md-comp-extended-fab-medium-trailing-space: 26dp;
+
+    --md-fab-container-size: var(--md-comp-extended-fab-medium-container-height);
+    --md-fab-icon-size: var(--md-comp-extended-fab-medium-icon-size);
+    --md-fab-container-shape: var(--md-comp-extended-fab-medium-container-shape);
+    --md-fab-horizontal-padding: var(--md-comp-extended-fab-medium-leading-space);
+    --md-extended-fab-label-font: var(--md-sys-typescale-title-large-font);
+    --md-extended-fab-label-weight: var(--md-sys-typescale-title-large-weight);
+    --md-extended-fab-label-size: var(--md-sys-typescale-title-large-size);
+    --md-extended-fab-label-line-height: var(--md-sys-typescale-title-large-line-height);
+    --md-extended-fab-label-tracking: var(--md-sys-typescale-title-large-tracking);
   }
 
   &_size_large {
-    --md-fab-container-size: 96dp;
-    --md-fab-icon-size: 36dp;
-    --md-fab-container-shape: var(--md-sys-shape-corner-extra-large);
+    --md-comp-extended-fab-large-container-height: 96dp;
+    --md-comp-extended-fab-large-icon-size: 36dp;
+    --md-comp-extended-fab-large-container-shape: var(--md-sys-shape-corner-extra-large);
+    --md-comp-extended-fab-large-leading-space: 28dp;
+    --md-comp-extended-fab-large-trailing-space: 28dp;
+
+    --md-fab-container-size: var(--md-comp-extended-fab-large-container-height);
+    --md-fab-icon-size: var(--md-comp-extended-fab-large-icon-size);
+    --md-fab-container-shape: var(--md-comp-extended-fab-large-container-shape);
+    --md-fab-horizontal-padding: var(--md-comp-extended-fab-large-leading-space);
+    --md-extended-fab-label-font: var(--md-sys-typescale-headline-small-font);
+    --md-extended-fab-label-weight: var(--md-sys-typescale-headline-small-weight);
+    --md-extended-fab-label-size: var(--md-sys-typescale-headline-small-size);
+    --md-extended-fab-label-line-height: var(--md-sys-typescale-headline-small-line-height);
+    --md-extended-fab-label-tracking: var(--md-sys-typescale-headline-small-tracking);
   }
 }
 </style>
