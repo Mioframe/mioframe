@@ -6,7 +6,6 @@ const meta = {
   component: MDFab,
   args: {
     tooltip: 'Create item',
-    color: 'primary',
     mdSymbol: 'add',
   },
   argTypes: {
@@ -19,7 +18,7 @@ const meta = {
         component: [
           'Checked against Material 3 `components/floating-action-button/{overview,guidelines,specs,accessibility}`.',
           '',
-          '**Props**: `size` (`regular` | `medium` | `large`, default `regular`), `color` (`primary` | `secondary` | `tertiary` | `primary-container` | `secondary-container` | `tertiary-container`, default `primary`), required `tooltip`.',
+          '**Props**: `size` (`regular` | `medium` | `large`, default `regular`), `color` (`primary` | `secondary` | `tertiary` | `primary-container` | `secondary-container` | `tertiary-container`, default `primary-container`), required `tooltip`.',
           '',
           '**Slots**: `icon`.',
           '',

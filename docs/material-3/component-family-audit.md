@@ -4,24 +4,26 @@ This file records component-family findings from the current implementation and 
 
 ## Buttons: `MDButton`
 
-Material cache (captured 2026-06-30) confirms `default`/`toggle` variants, elevated/filled/tonal/outlined/text color configurations, five sizes (`xsmall`-`xlarge`), round/square shapes, 16dp recommended small padding, 48x48dp target area for extra-small/small buttons, and per-size icon sizes (20/20/24/32/40dp). It also confirms text buttons have no toggle color variant: `md.comp.button.text` has no `selected`/`unselected` tokens, and the overview/specs prose states "Toggle buttons don't use the text style" directly.
+Material cache (captured 2026-06-30) confirms `default`/`toggle` variants, elevated/filled/tonal/outlined/text color configurations, five sizes (official token path segments `xsmall`/`small`/`medium`/`large`/`xlarge`), round/square shapes, 16dp recommended small padding, 48x48dp target area for extra-small/small buttons, and per-size icon sizes (20/20/24/32/40dp). The `buttons/guidelines` page illustrates `default`/`toggle unselected`/`toggle selected` for five button styles including "Text button" — text buttons do support toggle selection. `md.comp.button.text` has no `selected`/`unselected` _color_ tokens (unlike elevated/filled/tonal/outlined, which do), but the shape-morph tokens (`md.comp.button.<size>.selected.container.shape.{round,square}`) are size-scoped, not color-style-scoped, so a selected text toggle still morphs shape and reflects `aria-pressed`; only its label/icon color stays unchanged since no token defines a different one. Per-size label typography is confirmed via `md.comp.button.<size>.label-text`: `xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large.
 
 Current state (this migration):
 
 - public API uses `variant` (was `type`) and `nativeType` (was `formAction`);
-- `variant="toggle"` exposes controlled `aria-pressed`; `selected` with `variant="default"`, and `variant="toggle"` with `color="text"`, are both ignored and warn in development;
-- `--md-comp-button-*` component tokens implemented for all five color styles and five sizes, resolving to `--md-sys-*`;
+- `variant="toggle"` exposes controlled `aria-pressed`; `selected` with `variant="default"` is ignored and warns in development; `variant="toggle"` with `color="text"` is supported (a prior pass incorrectly prohibited it based only on the absence of text-toggle color tokens, contradicting the guidelines' toggle illustration — the prohibition (`isTextToggle`) and its warning have been removed);
+- `--md-comp-button-*` component tokens implemented for all five color styles and five sizes, resolving to `--md-sys-*`; the public custom-property names use the official `xsmall`/`xlarge` path segments (a prior pass had left `extra-small`/`extra-large` in the token names while keeping the public size prop values unchanged);
+- label typography now varies per size (`xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large) instead of one global label-large rule for every size;
+- selected toggle shape now morphs per size via `--md-comp-button-<size>-selected-container-shape-{round,square}`: a round shape becomes the size's square corner when selected, a square shape becomes fully rounded when selected, and the pressed shape always wins over the selected shape;
 - icon size now varies per size (was a flat 18px); `extra-small` icon-label gap corrected to the official 8dp (was 4px); disabled opacities corrected to the official 0.1 container / 0.38 content split (was a uniform 0.12 approximation);
-- uses `MDStateLayer`, ripple, and progress indicator; has focused unit tests and Storybook coverage.
+- uses `MDStateLayer`, ripple, and progress indicator; has focused unit tests, browser assertions for typography and selected-shape, and Storybook coverage.
 
 Remaining gaps:
 
 - `outlined` hover/disabled border color kept as the pre-existing implementation (`--md-sys-color-outline` on hover, `on-surface` 12% when disabled) rather than the literal official `outline-variant` tokens, pending a rendered visual comparison;
-- toggle/selected per-style color-role values kept as the pre-existing implementation, not freshly re-derived from the official toggle token set;
+- toggle/selected per-style _color_ values (for the four styles that have them) kept as the pre-existing implementation, not freshly re-derived from the official toggle token set;
 - component-level focus-indicator tokens do not exist in the current (non-deprecated) cache namespace; the shared global focus-indicator default already matches the documented value, so no override was added;
 - loading remains a documented project extension.
 
-Verdict: token/API migration complete; remains `partial` pending visual/browser verification of the two documented deviations.
+Verdict: token/API migration complete, including size typography, selected-shape morphing, and text toggle support; remains `partial` pending visual/browser verification of the two color-deviation items above.
 
 ## Icon buttons: `MDIconButton`
 
@@ -31,7 +33,7 @@ Current state (this migration):
 
 - public API uses `variant` (was `type`) and `nativeType` (was `formAction`); removed the public `focused`/`pressed` visual-test props in favor of the shared forced-state Storybook mechanism (`md-state_*` classes);
 - `variant="toggle"` exposes controlled `aria-pressed`; `selected` with `variant="default"` is ignored and warns in development;
-- `--md-comp-icon-button-*` component tokens implemented for all four color styles and all five sizes/widths/shapes; size/shape values were already numerically token-accurate and are now exposed as named component tokens; disabled container opacity corrected to 0.1 (was 0.12);
+- `--md-comp-icon-button-*` component tokens implemented for all four color styles and all five sizes/widths/shapes; size/shape values were already numerically token-accurate and are now exposed as named component tokens; the public custom-property names use the official `xsmall`/`xlarge` path segments (a prior pass had left `extra-small`/`extra-large` in the token names); disabled container opacity corrected to 0.1 (was 0.12);
 - has visual, target-area, toolbar, and dense-toolbar behavior tests plus toggle/warning unit tests.
 
 Remaining gaps:
@@ -48,11 +50,12 @@ Material cache confirms FAB, medium FAB, and large FAB (small FAB not recommende
 
 Current state (this migration):
 
-- `MDFab` and `MDExtendedFab` `color` use the current six official names (`primary`, `secondary`, `tertiary`, `primary-container`, `secondary-container`, `tertiary-container`); `tonal-primary`/`tonal-secondary`/`tonal-tertiary` are removed with no alias; `primary-container` is the default for both, preserving the previous `tonal-primary` visual default (same resolved sys-color-container values);
+- `MDFab` and `MDExtendedFab` `color` use the current six official names (`primary`, `secondary`, `tertiary`, `primary-container`, `secondary-container`, `tertiary-container`); `tonal-primary`/`tonal-secondary`/`tonal-tertiary` are removed with no alias; `primary-container` is the default for both — `MDFab`'s default was corrected from `primary` to `primary-container` (a prior pass left the wrong default color role in place); `MDExtendedFab` already defaulted correctly;
 - `MDFab` requires an icon via `mdSymbol` or the `icon` slot; a missing icon warns in development and no longer renders a debug checkerboard placeholder; `size` has an explicit `regular` default;
 - `--md-comp-fab-*` and `--md-comp-extended-fab-*` component tokens implemented for all six color styles (container/icon/label-text color, default and hovered elevation) and all sizes;
-- `MDExtendedFab` label typescale now follows size (`small`→title-medium, `medium`→title-large, `large`→headline-small) per the official spec, instead of a fixed title-medium label regardless of size — a visual change for `medium`/`large` pending rendered comparison;
-- `MDFabContainer` remains project-specific placement infrastructure and is documented as such in Storybook; it owns no FAB visual tokens.
+- `MDExtendedFab` label typescale follows size (`small`→title-medium, `medium`→title-large, `large`→headline-small) per the official spec;
+- `MDExtendedFab`'s icon-label gap now follows size via `--md-comp-extended-fab-{small,medium,large}-icon-label-space` (8dp/12dp/16dp) instead of one fixed 12px gap for every size — a prior pass introduced the per-size token names but left the rendered `gap` unconditional;
+- `MDFabContainer` remains project-specific placement infrastructure; its Storybook title moved from `Material 3/Components/Buttons/MDFabContainer` to `Project UI/Buttons/MDFabContainer` since it is not an official Material component and owns no FAB visual tokens — a prior pass had left it under the Material hierarchy.
 
 Remaining gaps:
 
@@ -60,7 +63,7 @@ Remaining gaps:
 - component-level focus-indicator tokens resolve to the secondary role for the three plain styles and do not exist at all for the three `-container` styles in the cache; the shared global default is reused for all six styles without a component override;
 - loading remains a documented project extension.
 
-Verdict: color-terminology and token migration complete; remains `partial` pending visual/browser verification of the label-typescale and state-color items above.
+Verdict: color-terminology, default-color, token, and geometry fixes complete; remains `partial` pending visual/browser verification of the state-color ambiguity above.
 
 ## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`
 

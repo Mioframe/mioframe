@@ -28,7 +28,7 @@ const props = withDefaults(
     /** Optional Material Symbols icon name used when no custom icon slot is provided. */
     mdSymbol?: string | undefined;
   }>(),
-  { size: 'regular', color: 'primary' },
+  { size: 'regular', color: 'primary-container' },
 );
 
 const emit = defineEmits<{

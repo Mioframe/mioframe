@@ -331,53 +331,52 @@ if (import.meta.env.DEV) {
   }
 
   &_size {
-    /* Sizes are named per Material's xsmall/xlarge segments (project convention:
-       extra-small/extra-large). Values already matched the official
-       md.comp.icon-button.<size>.* measurements before this token pass; this
-       adds the public --md-comp-icon-button-* override surface over them. */
+    /* Public size prop values keep the project's extra-small/extra-large naming;
+       the official token path segments (md.comp.icon-button.xsmall/xlarge.*) are
+       used for the --md-comp-icon-button-* custom property names below. */
     &-extra-small {
-      --md-comp-icon-button-extra-small-container-height: 32dp;
-      --md-comp-icon-button-extra-small-icon-size: 20dp;
-      --md-comp-icon-button-extra-small-target-size: 48dp;
-      --md-comp-icon-button-extra-small-narrow-space: 4dp;
-      --md-comp-icon-button-extra-small-default-space: 6dp;
-      --md-comp-icon-button-extra-small-wide-space: 10dp;
-      --md-comp-icon-button-extra-small-shape-round: calc(
-        var(--md-comp-icon-button-extra-small-container-height) / 2
+      --md-comp-icon-button-xsmall-container-height: 32dp;
+      --md-comp-icon-button-xsmall-icon-size: 20dp;
+      --md-comp-icon-button-xsmall-target-size: 48dp;
+      --md-comp-icon-button-xsmall-narrow-space: 4dp;
+      --md-comp-icon-button-xsmall-default-space: 6dp;
+      --md-comp-icon-button-xsmall-wide-space: 10dp;
+      --md-comp-icon-button-xsmall-shape-round: calc(
+        var(--md-comp-icon-button-xsmall-container-height) / 2
       );
-      --md-comp-icon-button-extra-small-shape-square: var(--md-sys-shape-corner-medium);
-      --md-comp-icon-button-extra-small-pressed-shape: var(--md-sys-shape-corner-small);
+      --md-comp-icon-button-xsmall-shape-square: var(--md-sys-shape-corner-medium);
+      --md-comp-icon-button-xsmall-pressed-shape: var(--md-sys-shape-corner-small);
 
-      --md-icon-button-container-height: var(--md-comp-icon-button-extra-small-container-height);
-      --md-icon-button-icon-size: var(--md-comp-icon-button-extra-small-icon-size);
-      --md-icon-button-target-size: var(--md-comp-icon-button-extra-small-target-size);
+      --md-icon-button-container-height: var(--md-comp-icon-button-xsmall-container-height);
+      --md-icon-button-icon-size: var(--md-comp-icon-button-xsmall-icon-size);
+      --md-icon-button-target-size: var(--md-comp-icon-button-xsmall-target-size);
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-padding: var(--md-comp-icon-button-extra-small-narrow-space);
+        --md-icon-button-padding: var(--md-comp-icon-button-xsmall-narrow-space);
       }
       &.md-icon-button_width-default {
-        --md-icon-button-padding: var(--md-comp-icon-button-extra-small-default-space);
+        --md-icon-button-padding: var(--md-comp-icon-button-xsmall-default-space);
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-padding: var(--md-comp-icon-button-extra-small-wide-space);
+        --md-icon-button-padding: var(--md-comp-icon-button-xsmall-wide-space);
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-round);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-shape-round);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-square);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-shape-square);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-square);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-shape-square);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-shape-round);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-shape-round);
         }
       }
       &.md-state_pressed {
-        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-small-pressed-shape);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-pressed-shape);
       }
     }
     &-small {
@@ -512,46 +511,46 @@ if (import.meta.env.DEV) {
       }
     }
     &-extra-large {
-      --md-comp-icon-button-extra-large-container-height: 136dp;
-      --md-comp-icon-button-extra-large-icon-size: 40dp;
-      --md-comp-icon-button-extra-large-narrow-space: 32dp;
-      --md-comp-icon-button-extra-large-default-space: 48dp;
-      --md-comp-icon-button-extra-large-wide-space: 72dp;
-      --md-comp-icon-button-extra-large-shape-round: calc(
-        var(--md-comp-icon-button-extra-large-container-height) / 2
+      --md-comp-icon-button-xlarge-container-height: 136dp;
+      --md-comp-icon-button-xlarge-icon-size: 40dp;
+      --md-comp-icon-button-xlarge-narrow-space: 32dp;
+      --md-comp-icon-button-xlarge-default-space: 48dp;
+      --md-comp-icon-button-xlarge-wide-space: 72dp;
+      --md-comp-icon-button-xlarge-shape-round: calc(
+        var(--md-comp-icon-button-xlarge-container-height) / 2
       );
-      --md-comp-icon-button-extra-large-shape-square: var(--md-sys-shape-corner-extra-large);
-      --md-comp-icon-button-extra-large-pressed-shape: var(--md-sys-shape-corner-large);
+      --md-comp-icon-button-xlarge-shape-square: var(--md-sys-shape-corner-extra-large);
+      --md-comp-icon-button-xlarge-pressed-shape: var(--md-sys-shape-corner-large);
 
-      --md-icon-button-container-height: var(--md-comp-icon-button-extra-large-container-height);
-      --md-icon-button-icon-size: var(--md-comp-icon-button-extra-large-icon-size);
+      --md-icon-button-container-height: var(--md-comp-icon-button-xlarge-container-height);
+      --md-icon-button-icon-size: var(--md-comp-icon-button-xlarge-icon-size);
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-padding: var(--md-comp-icon-button-extra-large-narrow-space);
+        --md-icon-button-padding: var(--md-comp-icon-button-xlarge-narrow-space);
       }
       &.md-icon-button_width-default {
-        --md-icon-button-padding: var(--md-comp-icon-button-extra-large-default-space);
+        --md-icon-button-padding: var(--md-comp-icon-button-xlarge-default-space);
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-padding: var(--md-comp-icon-button-extra-large-wide-space);
+        --md-icon-button-padding: var(--md-comp-icon-button-xlarge-wide-space);
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-round);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-shape-round);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-square);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-shape-square);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-square);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-shape-square);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-shape-round);
+          --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-shape-round);
         }
       }
       &.md-state_pressed {
-        --md-icon-button-container-shape: var(--md-comp-icon-button-extra-large-pressed-shape);
+        --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-pressed-shape);
       }
     }
   }

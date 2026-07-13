@@ -41,8 +41,7 @@ const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
 const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
 const showVisualState = computed(() => !props.disabled);
 const isToggle = computed(() => props.variant === 'toggle');
-const isTextToggle = computed(() => isToggle.value && props.color === 'text');
-const appliedSelected = computed(() => isToggle.value && !isTextToggle.value && !!props.selected);
+const appliedSelected = computed(() => isToggle.value && !!props.selected);
 
 useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
@@ -51,10 +50,6 @@ if (import.meta.env.DEV) {
     watchEffect(() => {
       if (props.selected && !isToggle.value) {
         warn('MDButton: `selected` has no effect unless `variant` is "toggle".');
-      }
-
-      if (isTextToggle.value) {
-        warn('MDButton: Material 3 does not define a toggle variant for `color="text"`.');
       }
     });
   });
@@ -163,11 +158,11 @@ if (import.meta.env.DEV) {
   outline-color: var(--md-state-outline-color);
   vertical-align: middle;
   cursor: pointer;
-  font-family: var(--md-sys-typescale-label-large-font);
-  line-height: var(--md-sys-typescale-label-large-line-height);
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: var(--md-sys-typescale-label-large-weight);
-  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  font-family: var(--md-button-label-font);
+  line-height: var(--md-button-label-line-height);
+  font-size: var(--md-button-label-size);
+  font-weight: var(--md-button-label-weight);
+  letter-spacing: var(--md-button-label-tracking);
   user-select: none;
   transition-property: box-shadow, color, background-color, border-color, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
@@ -456,31 +451,53 @@ if (import.meta.env.DEV) {
 
   &.md-button_size {
     &-extra-small {
-      --md-comp-button-extra-small-container-height: 32dp;
-      --md-comp-button-extra-small-icon-size: 20dp;
-      --md-comp-button-extra-small-leading-space: 12dp;
-      --md-comp-button-extra-small-icon-label-space: 8dp;
-      --md-comp-button-extra-small-outlined-outline-width: 1dp;
-      --md-comp-button-extra-small-container-shape-square: var(--md-sys-shape-corner-medium);
-      --md-comp-button-extra-small-pressed-container-shape: var(--md-sys-shape-corner-small);
+      --md-comp-button-xsmall-container-height: 32dp;
+      --md-comp-button-xsmall-icon-size: 20dp;
+      --md-comp-button-xsmall-leading-space: 12dp;
+      --md-comp-button-xsmall-icon-label-space: 8dp;
+      --md-comp-button-xsmall-outlined-outline-width: 1dp;
+      --md-comp-button-xsmall-container-shape-square: var(--md-sys-shape-corner-medium);
+      --md-comp-button-xsmall-pressed-container-shape: var(--md-sys-shape-corner-small);
+      --md-comp-button-xsmall-selected-container-shape-round: var(--md-sys-shape-corner-medium);
+      --md-comp-button-xsmall-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-button-xsmall-label-text-font: var(--md-sys-typescale-label-large-font);
+      --md-comp-button-xsmall-label-text-size: var(--md-sys-typescale-label-large-size);
+      --md-comp-button-xsmall-label-text-line-height: var(
+        --md-sys-typescale-label-large-line-height
+      );
+      --md-comp-button-xsmall-label-text-weight: var(--md-sys-typescale-label-large-weight);
+      --md-comp-button-xsmall-label-text-tracking: var(--md-sys-typescale-label-large-tracking);
 
-      --md-button-height: var(--md-comp-button-extra-small-container-height);
-      --md-button-icon-size: var(--md-comp-button-extra-small-icon-size);
-      --md-button-padding: var(--md-comp-button-extra-small-leading-space);
-      --md-button-icon-gap: var(--md-comp-button-extra-small-icon-label-space);
+      --md-button-height: var(--md-comp-button-xsmall-container-height);
+      --md-button-icon-size: var(--md-comp-button-xsmall-icon-size);
+      --md-button-padding: var(--md-comp-button-xsmall-leading-space);
+      --md-button-icon-gap: var(--md-comp-button-xsmall-icon-label-space);
       --md-button-target-size: 48dp;
+      --md-button-label-font: var(--md-comp-button-xsmall-label-text-font);
+      --md-button-label-size: var(--md-comp-button-xsmall-label-text-size);
+      --md-button-label-line-height: var(--md-comp-button-xsmall-label-text-line-height);
+      --md-button-label-weight: var(--md-comp-button-xsmall-label-text-weight);
+      --md-button-label-tracking: var(--md-comp-button-xsmall-label-text-tracking);
 
       &.md-button_color-outlined {
-        --md-button-border-width: var(--md-comp-button-extra-small-outlined-outline-width);
+        --md-button-border-width: var(--md-comp-button-xsmall-outlined-outline-width);
       }
 
       &.md-button_shape-square {
-        --md-button-border-radius: var(--md-comp-button-extra-small-container-shape-square);
+        --md-button-border-radius: var(--md-comp-button-xsmall-container-shape-square);
+      }
+
+      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-round);
+      }
+
+      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-square);
       }
 
       &.md-state_pressed,
       &:active {
-        --md-button-border-radius: var(--md-comp-button-extra-small-pressed-container-shape);
+        --md-button-border-radius: var(--md-comp-button-xsmall-pressed-container-shape);
       }
     }
 
@@ -492,12 +509,26 @@ if (import.meta.env.DEV) {
       --md-comp-button-small-outlined-outline-width: 1dp;
       --md-comp-button-small-container-shape-square: var(--md-sys-shape-corner-medium);
       --md-comp-button-small-pressed-container-shape: var(--md-sys-shape-corner-small);
+      --md-comp-button-small-selected-container-shape-round: var(--md-sys-shape-corner-medium);
+      --md-comp-button-small-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-button-small-label-text-font: var(--md-sys-typescale-label-large-font);
+      --md-comp-button-small-label-text-size: var(--md-sys-typescale-label-large-size);
+      --md-comp-button-small-label-text-line-height: var(
+        --md-sys-typescale-label-large-line-height
+      );
+      --md-comp-button-small-label-text-weight: var(--md-sys-typescale-label-large-weight);
+      --md-comp-button-small-label-text-tracking: var(--md-sys-typescale-label-large-tracking);
 
       --md-button-height: var(--md-comp-button-small-container-height);
       --md-button-icon-size: var(--md-comp-button-small-icon-size);
       --md-button-padding: var(--md-comp-button-small-leading-space);
       --md-button-icon-gap: var(--md-comp-button-small-icon-label-space);
       --md-button-target-size: 48dp;
+      --md-button-label-font: var(--md-comp-button-small-label-text-font);
+      --md-button-label-size: var(--md-comp-button-small-label-text-size);
+      --md-button-label-line-height: var(--md-comp-button-small-label-text-line-height);
+      --md-button-label-weight: var(--md-comp-button-small-label-text-weight);
+      --md-button-label-tracking: var(--md-comp-button-small-label-text-tracking);
 
       &.md-button_color-outlined {
         --md-button-border-width: var(--md-comp-button-small-outlined-outline-width);
@@ -505,6 +536,14 @@ if (import.meta.env.DEV) {
 
       &.md-button_shape-square {
         --md-button-border-radius: var(--md-comp-button-small-container-shape-square);
+      }
+
+      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-round);
+      }
+
+      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-square);
       }
 
       &.md-state_pressed,
@@ -521,11 +560,25 @@ if (import.meta.env.DEV) {
       --md-comp-button-medium-outlined-outline-width: 1dp;
       --md-comp-button-medium-container-shape-square: var(--md-sys-shape-corner-large);
       --md-comp-button-medium-pressed-container-shape: var(--md-sys-shape-corner-medium);
+      --md-comp-button-medium-selected-container-shape-round: var(--md-sys-shape-corner-large);
+      --md-comp-button-medium-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-button-medium-label-text-font: var(--md-sys-typescale-title-medium-font);
+      --md-comp-button-medium-label-text-size: var(--md-sys-typescale-title-medium-size);
+      --md-comp-button-medium-label-text-line-height: var(
+        --md-sys-typescale-title-medium-line-height
+      );
+      --md-comp-button-medium-label-text-weight: var(--md-sys-typescale-title-medium-weight);
+      --md-comp-button-medium-label-text-tracking: var(--md-sys-typescale-title-medium-tracking);
 
       --md-button-height: var(--md-comp-button-medium-container-height);
       --md-button-icon-size: var(--md-comp-button-medium-icon-size);
       --md-button-padding: var(--md-comp-button-medium-leading-space);
       --md-button-icon-gap: var(--md-comp-button-medium-icon-label-space);
+      --md-button-label-font: var(--md-comp-button-medium-label-text-font);
+      --md-button-label-size: var(--md-comp-button-medium-label-text-size);
+      --md-button-label-line-height: var(--md-comp-button-medium-label-text-line-height);
+      --md-button-label-weight: var(--md-comp-button-medium-label-text-weight);
+      --md-button-label-tracking: var(--md-comp-button-medium-label-text-tracking);
 
       &.md-button_color-outlined {
         --md-button-border-width: var(--md-comp-button-medium-outlined-outline-width);
@@ -533,6 +586,14 @@ if (import.meta.env.DEV) {
 
       &.md-button_shape-square {
         --md-button-border-radius: var(--md-comp-button-medium-container-shape-square);
+      }
+
+      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-round);
+      }
+
+      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-square);
       }
 
       &.md-state_pressed,
@@ -549,11 +610,25 @@ if (import.meta.env.DEV) {
       --md-comp-button-large-outlined-outline-width: 2dp;
       --md-comp-button-large-container-shape-square: var(--md-sys-shape-corner-extra-large);
       --md-comp-button-large-pressed-container-shape: var(--md-sys-shape-corner-large);
+      --md-comp-button-large-selected-container-shape-round: var(--md-sys-shape-corner-extra-large);
+      --md-comp-button-large-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-button-large-label-text-font: var(--md-sys-typescale-headline-small-font);
+      --md-comp-button-large-label-text-size: var(--md-sys-typescale-headline-small-size);
+      --md-comp-button-large-label-text-line-height: var(
+        --md-sys-typescale-headline-small-line-height
+      );
+      --md-comp-button-large-label-text-weight: var(--md-sys-typescale-headline-small-weight);
+      --md-comp-button-large-label-text-tracking: var(--md-sys-typescale-headline-small-tracking);
 
       --md-button-height: var(--md-comp-button-large-container-height);
       --md-button-icon-size: var(--md-comp-button-large-icon-size);
       --md-button-padding: var(--md-comp-button-large-leading-space);
       --md-button-icon-gap: var(--md-comp-button-large-icon-label-space);
+      --md-button-label-font: var(--md-comp-button-large-label-text-font);
+      --md-button-label-size: var(--md-comp-button-large-label-text-size);
+      --md-button-label-line-height: var(--md-comp-button-large-label-text-line-height);
+      --md-button-label-weight: var(--md-comp-button-large-label-text-weight);
+      --md-button-label-tracking: var(--md-comp-button-large-label-text-tracking);
 
       &.md-button_color-outlined {
         --md-button-border-width: var(--md-comp-button-large-outlined-outline-width);
@@ -563,6 +638,14 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-large-container-shape-square);
       }
 
+      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-round);
+      }
+
+      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-square);
+      }
+
       &.md-state_pressed,
       &:active {
         --md-button-border-radius: var(--md-comp-button-large-pressed-container-shape);
@@ -570,30 +653,54 @@ if (import.meta.env.DEV) {
     }
 
     &-extra-large {
-      --md-comp-button-extra-large-container-height: 136dp;
-      --md-comp-button-extra-large-icon-size: 40dp;
-      --md-comp-button-extra-large-leading-space: 64dp;
-      --md-comp-button-extra-large-icon-label-space: 16dp;
-      --md-comp-button-extra-large-outlined-outline-width: 3dp;
-      --md-comp-button-extra-large-container-shape-square: var(--md-sys-shape-corner-extra-large);
-      --md-comp-button-extra-large-pressed-container-shape: var(--md-sys-shape-corner-large);
+      --md-comp-button-xlarge-container-height: 136dp;
+      --md-comp-button-xlarge-icon-size: 40dp;
+      --md-comp-button-xlarge-leading-space: 64dp;
+      --md-comp-button-xlarge-icon-label-space: 16dp;
+      --md-comp-button-xlarge-outlined-outline-width: 3dp;
+      --md-comp-button-xlarge-container-shape-square: var(--md-sys-shape-corner-extra-large);
+      --md-comp-button-xlarge-pressed-container-shape: var(--md-sys-shape-corner-large);
+      --md-comp-button-xlarge-selected-container-shape-round: var(
+        --md-sys-shape-corner-extra-large
+      );
+      --md-comp-button-xlarge-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-button-xlarge-label-text-font: var(--md-sys-typescale-headline-large-font);
+      --md-comp-button-xlarge-label-text-size: var(--md-sys-typescale-headline-large-size);
+      --md-comp-button-xlarge-label-text-line-height: var(
+        --md-sys-typescale-headline-large-line-height
+      );
+      --md-comp-button-xlarge-label-text-weight: var(--md-sys-typescale-headline-large-weight);
+      --md-comp-button-xlarge-label-text-tracking: var(--md-sys-typescale-headline-large-tracking);
 
-      --md-button-height: var(--md-comp-button-extra-large-container-height);
-      --md-button-icon-size: var(--md-comp-button-extra-large-icon-size);
-      --md-button-padding: var(--md-comp-button-extra-large-leading-space);
-      --md-button-icon-gap: var(--md-comp-button-extra-large-icon-label-space);
+      --md-button-height: var(--md-comp-button-xlarge-container-height);
+      --md-button-icon-size: var(--md-comp-button-xlarge-icon-size);
+      --md-button-padding: var(--md-comp-button-xlarge-leading-space);
+      --md-button-icon-gap: var(--md-comp-button-xlarge-icon-label-space);
+      --md-button-label-font: var(--md-comp-button-xlarge-label-text-font);
+      --md-button-label-size: var(--md-comp-button-xlarge-label-text-size);
+      --md-button-label-line-height: var(--md-comp-button-xlarge-label-text-line-height);
+      --md-button-label-weight: var(--md-comp-button-xlarge-label-text-weight);
+      --md-button-label-tracking: var(--md-comp-button-xlarge-label-text-tracking);
 
       &.md-button_color-outlined {
-        --md-button-border-width: var(--md-comp-button-extra-large-outlined-outline-width);
+        --md-button-border-width: var(--md-comp-button-xlarge-outlined-outline-width);
       }
 
       &.md-button_shape-square {
-        --md-button-border-radius: var(--md-comp-button-extra-large-container-shape-square);
+        --md-button-border-radius: var(--md-comp-button-xlarge-container-shape-square);
+      }
+
+      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-round);
+      }
+
+      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active) {
+        --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-square);
       }
 
       &.md-state_pressed,
       &:active {
-        --md-button-border-radius: var(--md-comp-button-extra-large-pressed-container-shape);
+        --md-button-border-radius: var(--md-comp-button-xlarge-pressed-container-shape);
       }
     }
   }

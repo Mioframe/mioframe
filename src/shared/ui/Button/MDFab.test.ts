@@ -56,10 +56,11 @@ describe('MDFab', () => {
     expect(wrapper.emitted('click')).toHaveLength(1);
   });
 
-  it('defaults to the "regular" size and renders no debug placeholder icon', () => {
+  it('defaults to the "regular" size and "primary-container" color, with no debug placeholder icon', () => {
     const wrapper = mountFab();
 
     expect(wrapper.classes()).toContain('md-fab_size_regular');
+    expect(wrapper.classes()).toContain('md-fab_color_primary-container');
     expect(wrapper.find('.md-fab__empty-icon').exists()).toBe(false);
   });
 

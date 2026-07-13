@@ -4,10 +4,7 @@ import { openStory } from './storybook';
 test('MDFabContainer FAB stays anchored to pane bottom after async content loads', async ({
   page,
 }) => {
-  await openStory(
-    page,
-    'material-3-components-buttons-mdfabcontainer--pane-anchoring-loading-transition',
-  );
+  await openStory(page, 'project-ui-buttons-mdfabcontainer--pane-anchoring-loading-transition');
 
   const pane = page.locator('#fab-test-pane');
   const fabSurface = page.locator('.md-fab-container__surface');
@@ -85,7 +82,7 @@ test('MDFabContainer FAB stays anchored to pane bottom after async content loads
 test('MDFabContainer FAB is anchored to its own pane, not the adjacent pane or viewport', async ({
   page,
 }) => {
-  await openStory(page, 'material-3-components-buttons-mdfabcontainer--two-pane-layout');
+  await openStory(page, 'project-ui-buttons-mdfabcontainer--two-pane-layout');
 
   const leftPane = page.locator('#fab-pane-left');
   const rightPane = page.locator('#fab-pane-right');

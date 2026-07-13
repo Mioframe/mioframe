@@ -105,6 +105,22 @@ describe('MDButton', () => {
     warnSpy.mockRestore();
   });
 
+  it('supports variant="toggle" with color="text" without warning or restriction', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const unselectedWrapper = mountButton({ variant: 'toggle', color: 'text', selected: false });
+    expect(unselectedWrapper.get('button').attributes('aria-pressed')).toBe('false');
+    expect(unselectedWrapper.classes()).not.toContain('md-button_selected');
+
+    const selectedWrapper = mountButton({ variant: 'toggle', color: 'text', selected: true });
+    expect(selectedWrapper.get('button').attributes('aria-pressed')).toBe('true');
+    expect(selectedWrapper.classes()).toContain('md-button_selected');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
   it('emits click on native click and toggling does not introduce hidden local selection state', async () => {
     const wrapper = mountButton({ variant: 'toggle', selected: false });
 

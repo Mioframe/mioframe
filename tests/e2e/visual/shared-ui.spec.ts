@@ -110,6 +110,62 @@ test('MDIconButton expanded target activates clicks outside the visible button b
   await expect(count).toHaveText('1');
 });
 
+test('MDButton label typography changes by size', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--size-typography');
+
+  const readTypography = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => ({
+      fontSize: getComputedStyle(el).fontSize,
+      fontWeight: getComputedStyle(el).fontWeight,
+    }));
+
+  await expect(page.getByTestId('typography-small')).toBeVisible();
+
+  const small = await readTypography('typography-small');
+  const medium = await readTypography('typography-medium');
+  const large = await readTypography('typography-large');
+  const extraLarge = await readTypography('typography-extra-large');
+
+  // label-large: 14px / 500
+  expect(small.fontSize).toBe('14px');
+  expect(small.fontWeight).toBe('500');
+  // title-medium: 16px / 500
+  expect(medium.fontSize).toBe('16px');
+  expect(medium.fontWeight).toBe('500');
+  // headline-small: 24px / 400
+  expect(large.fontSize).toBe('24px');
+  expect(large.fontWeight).toBe('400');
+  // headline-large: 32px / 400
+  expect(extraLarge.fontSize).toBe('32px');
+  expect(extraLarge.fontWeight).toBe('400');
+});
+
+test('MDButton selected toggle shape morphs round and square input shapes', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--toggle-shapes');
+
+  const readRadius = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+
+  const roundSelected = await readRadius('toggle-round-selected');
+  const roundUnselected = await readRadius('toggle-round-unselected');
+  const squareSelected = await readRadius('toggle-square-selected');
+  const squareUnselected = await readRadius('toggle-square-unselected');
+
+  // A round input shape morphs from a full pill to the size's square corner token (smaller).
+  expect(roundSelected).toBeLessThan(roundUnselected);
+  // A square input shape morphs from its corner token to a fully-rounded shape (larger).
+  expect(squareSelected).toBeGreaterThan(squareUnselected);
+});
+
+test('MDButton text toggle selects without the removed color restriction', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--toggle-text');
+
+  const button = page.getByRole('button', { name: 'Bookmark' });
+
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  await expect(button).toHaveClass(/md-button_selected/);
+});
+
 test('MDChip visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdchip--visual-states');
 
@@ -342,6 +398,39 @@ test('MDExtendedFab visual states match baseline', async ({ page }) => {
   const surface = page.getByTestId('visual-md-extended-fab-states');
 
   await expect(surface).toHaveScreenshot('md-extended-fab-states.png');
+});
+
+test('MDExtendedFab icon-label gap changes by size', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--size-gaps');
+
+  const readGap = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => getComputedStyle(el).columnGap);
+
+  await expect(page.getByTestId('gap-small')).toBeVisible();
+
+  expect(await readGap('gap-small')).toBe('8px');
+  expect(await readGap('gap-medium')).toBe('12px');
+  expect(await readGap('gap-large')).toBe('16px');
+});
+
+test('MDFab default color resolves to the primary-container token', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--default');
+
+  const button = page.getByRole('button');
+
+  await expect(button).toHaveClass(/md-fab_color_primary-container/);
+
+  const backgroundColor = await button.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const primaryContainerColor = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--md-sys-color-primary-container)';
+    document.body.appendChild(probe);
+    const value = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  });
+
+  expect(backgroundColor).toBe(primaryContainerColor);
 });
 
 test('MDCard visual states match baseline', async ({ page }) => {

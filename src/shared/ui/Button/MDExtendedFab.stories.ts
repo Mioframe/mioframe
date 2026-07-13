@@ -24,7 +24,7 @@ const meta = {
           '',
           '**Project extension**: `loading` (`boolean | number`, `0` is active).',
           '',
-          '**Tokens**: `--md-comp-extended-fab-*` component tokens resolve to `--md-sys-*`; label typescale now follows size (`small`→title-medium, `medium`→title-large, `large`→headline-small) per the official spec, replacing the previous fixed title-medium label.',
+          '**Tokens**: `--md-comp-extended-fab-*` component tokens resolve to `--md-sys-*`; label typescale follows size (`small`→title-medium, `medium`→title-large, `large`→headline-small); icon-label gap follows size (`small`→8dp, `medium`→12dp, `large`→16dp) via `--md-comp-extended-fab-{small,medium,large}-icon-label-space`.',
           '',
           '**Color terminology**: `*-container` replaces the legacy `tonal-*` naming; `primary-container` preserves the previous `tonal-primary` visual default.',
         ].join('\n'),
@@ -38,6 +38,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const SizeGaps: Story = {
+  render: () => ({
+    components: { MDExtendedFab },
+    template: `
+      <div data-testid="visual-md-extended-fab-size-gaps" class="visual-surface">
+        <div class="visual-row">
+          <MDExtendedFab data-testid="gap-small" label="Small" size="small" md-symbol="add" />
+          <MDExtendedFab data-testid="gap-medium" label="Medium" size="medium" md-symbol="add" />
+          <MDExtendedFab data-testid="gap-large" label="Large" size="large" md-symbol="add" />
+        </div>
+      </div>
+    `,
+  }),
+};
 
 export const VisualStates: Story = {
   tags: ['visual'],

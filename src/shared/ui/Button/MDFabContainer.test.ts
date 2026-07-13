@@ -10,6 +10,10 @@ vi.mock('@shared/ui/Overlay', () => ({
 vi.mock('@shared/lib/teleportContainer', () => ({
   TeleportContainer: defineComponent({
     name: 'TeleportContainerStub',
+    props: {
+      container: { type: Object, default: undefined },
+      to: { type: Object, default: undefined },
+    },
     setup(_props, { slots }) {
       return () => slots.default?.();
     },

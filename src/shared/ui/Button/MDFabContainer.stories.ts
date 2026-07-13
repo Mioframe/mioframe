@@ -42,7 +42,7 @@ const StoryPaneHost = defineComponent({
 });
 
 const meta = {
-  title: 'Material 3/Components/Buttons/MDFabContainer',
+  title: 'Project UI/Buttons/MDFabContainer',
   component: MDFabContainer,
   parameters: {
     layout: 'centered',

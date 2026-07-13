@@ -33,7 +33,9 @@ const meta = {
           '',
           '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target via `.md-button__target`.',
           '',
-          '**Deviation**: current Material 3 cache does not explicitly restrict `color="text"` from `variant="toggle"`, so this project does not add that restriction beyond what the docs require.',
+          "**Toggle shape**: selected toggle buttons morph container shape per size (round input shape morphs to the size's square corner token, square input shape morphs to a fully-rounded corner token); the pressed shape always takes precedence over the selected shape.",
+          '',
+          '**Text toggle**: `variant="toggle"` with `color="text"` is supported (Material 3 guidelines list text buttons among the five toggle-capable styles). `md.comp.button.text` has no dedicated `selected`/`unselected` color tokens, so a selected text toggle keeps its default label/icon color and only the shape and `aria-pressed` change.',
         ].join('\n'),
       },
     },
@@ -53,6 +55,34 @@ export const Toggle: Story = {
     color: 'tonal',
     label: 'Bookmark',
   },
+};
+
+export const ToggleText: Story = {
+  args: {
+    variant: 'toggle',
+    selected: true,
+    color: 'text',
+    label: 'Bookmark',
+  },
+};
+
+export const ToggleShapes: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-toggle-shapes" class="visual-surface">
+        <div class="visual-row">
+          <MDButton data-testid="toggle-round-selected" label="Round selected" variant="toggle" shape="round" selected color="tonal" />
+          <MDButton data-testid="toggle-round-unselected" label="Round unselected" variant="toggle" shape="round" color="tonal" />
+        </div>
+        <div class="visual-row">
+          <MDButton data-testid="toggle-square-selected" label="Square selected" variant="toggle" shape="square" selected color="tonal" />
+          <MDButton data-testid="toggle-square-unselected" label="Square unselected" variant="toggle" shape="square" color="tonal" />
+        </div>
+      </div>
+    `,
+  }),
 };
 
 export const VisualStates: Story = {
@@ -107,6 +137,22 @@ export const ExpandedTargetHitArea: Story = {
   render: () => ({
     components: { MDButtonTargetHitVisualStory },
     template: '<MDButtonTargetHitVisualStory />',
+  }),
+};
+
+export const SizeTypography: Story = {
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-size-typography" class="visual-surface">
+        <div class="visual-row">
+          <MDButton data-testid="typography-small" label="Small" size="small" />
+          <MDButton data-testid="typography-medium" label="Medium" size="medium" />
+          <MDButton data-testid="typography-large" label="Large" size="large" />
+          <MDButton data-testid="typography-extra-large" label="Extra large" size="extra-large" />
+        </div>
+      </div>
+    `,
   }),
 };
 
