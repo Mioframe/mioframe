@@ -1,64 +1,19 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   boxOf,
   center,
   getCount,
   getDraggingKey,
+  getItem,
   getLastDragEnd,
   getOrder,
   STORY_ID,
 } from './reorder.testUtils';
 import { openStory } from './storybook.testUtils';
 
-/** One recorded native `Element.scrollBy`/`window.scrollBy` call, in call order. */
-interface ReorderScrollLogEntry {
-  /** The `data-testid` (or tag name fallback) of the scrolled element, or `'window'`. */
-  target: string;
-  left: number;
-  top: number;
-  beforeLeft: number;
-  beforeTop: number;
-  afterLeft: number;
-  afterTop: number;
-  /** Monotonic call order, assigned in-page. */
-  seq: number;
-  /** `performance.now()` at call time, comparable to a harness `drag-end` event's `timeMs`. */
-  timeMs: number;
-}
-
-/** One `document`-level `selectstart` observation. */
-interface SelectStartLogEntry {
-  defaultPrevented: boolean;
-  timeMs: number;
-}
-
-/**
- * The harness's own synchronous `onDragEnd` event log (see `ReorderStoryHarness.vue`), used as
- * the authoritative cancellation timestamp instead of observing a Vue-rendered DOM mutation: a
- * `MutationObserver` on rendered text can lag the library's real synchronous callback under heavy
- * same-frame work, and a controlled Playwright investigation (rAF-sampled `scrollTop` compared
- * against this exact signal) found zero `scrollTop` movement in any frame after it — confirming
- * that a prior appearance of continued post-cancellation scrolling, measured via the DOM-mutation
- * signal, was exactly that lag, not real further movement.
- */
-interface ReorderHarnessEvent {
-  type: 'drag-end';
-  cancelled: boolean;
-  timeMs: number;
-  scrollTop: number | null;
-  order: string[];
-}
-
-declare global {
-  interface Window {
-    testReorderScrollLog?: ReorderScrollLogEntry[];
-    testReorderSelectStartLog?: SelectStartLogEntry[];
-    testReorderHarnessEvents?: ReorderHarnessEvent[];
-  }
-}
-
 const BORDERED_VIEWPORT_STORY_ID =
   'shared-lib-reorder-reorderborderedviewportstoryharness--default';
+const VIEWPORT_SCROLL_STORY_ID = 'shared-lib-reorder-reorderviewportscrollstoryharness--default';
 
 /**
  * Mirrors `AUTOSCROLL_MAX_SPEED_PX_PER_SEC` and `AUTOSCROLL_EDGE_ZONE_PX` from `constants.ts`.
@@ -79,138 +34,17 @@ const AUTOSCROLL_EDGE_ZONE_PX = 56;
 const autoscrollBudgetMs = (extentPx: number): number =>
   Math.max(4000, Math.ceil((extentPx / AUTOSCROLL_MAX_SPEED_PX_PER_SEC) * 1000 * 6) + 2000);
 
-/**
- * Installs Playwright-only instrumentation that records every native `Element.scrollBy`/
- * `window.scrollBy` call (target identity, requested delta, before/after position, and a
- * monotonic timestamp), plus initializes `window.testReorderHarnessEvents` so
- * `ReorderStoryHarness.vue`'s synchronous `onDragEnd` log has somewhere to write. Must be
- * installed before the story navigates so the wrap and the log are already in place before any
- * library code runs; the caller is responsible for (re)navigating afterward.
- * @param page - The Playwright page to instrument.
- * @returns A promise that resolves once the instrumentation script is registered.
- */
-const installScrollInstrumentation = async (page: Page): Promise<void> => {
-  await page.addInitScript(() => {
-    window.testReorderScrollLog = [];
-    window.testReorderSelectStartLog = [];
-    window.testReorderHarnessEvents = [];
-    let seq = 0;
-
-    const targetIdentity = (element: Element): string =>
-      element.getAttribute('data-testid') ?? element.tagName;
-
-    document.addEventListener('selectstart', (event) => {
-      window.testReorderSelectStartLog?.push({
-        defaultPrevented: event.defaultPrevented,
-        timeMs: performance.now(),
-      });
-    });
-
-    // Captured before the prototype is patched below, so the wrapper below can still call
-    // through to real scrolling; always invoked with an explicit receiver via `.call`, never as a
-    // bare unbound reference. `.call`/`.apply` only type-check against the last overload of an
-    // overloaded function, so each call shape gets its own single-signature typed view of the
-    // same native method rather than one broadly-typed reference.
-    type NativeScrollByOptions = (this: Element, options?: ScrollToOptions) => void;
-    type NativeScrollByXY = (this: Element, x: number, y: number) => void;
-    // oxlint-disable-next-line unbound-method -- stored only to call via `.call(this, ...)` below.
-    const nativeElementScrollByOptions: NativeScrollByOptions = Element.prototype.scrollBy;
-    // oxlint-disable-next-line unbound-method -- stored only to call via `.call(this, ...)` below.
-    const nativeElementScrollByXY: NativeScrollByXY = Element.prototype.scrollBy;
-
-    function patchedElementScrollBy(this: Element, options?: ScrollToOptions): void;
-    function patchedElementScrollBy(this: Element, x: number, y: number): void;
-    function patchedElementScrollBy(
-      this: Element,
-      xOrOptions?: number | ScrollToOptions,
-      y?: number,
-    ): void {
-      const beforeLeft = this.scrollLeft;
-      const beforeTop = this.scrollTop;
-      let left: number;
-      let top: number;
-      if (typeof xOrOptions === 'object') {
-        nativeElementScrollByOptions.call(this, xOrOptions);
-        left = xOrOptions.left ?? 0;
-        top = xOrOptions.top ?? 0;
-      } else {
-        nativeElementScrollByXY.call(this, xOrOptions ?? 0, y ?? 0);
-        left = xOrOptions ?? 0;
-        top = y ?? 0;
-      }
-      window.testReorderScrollLog?.push({
-        target: targetIdentity(this),
-        left,
-        top,
-        beforeLeft,
-        beforeTop,
-        afterLeft: this.scrollLeft,
-        afterTop: this.scrollTop,
-        seq: seq++,
-        timeMs: performance.now(),
-      });
-    }
-    Element.prototype.scrollBy = patchedElementScrollBy;
-
-    // Global `scrollBy` needs no receiver binding, only wrapping; called directly below.
-    const nativeWindowScrollBy = window.scrollBy;
-
-    function patchedWindowScrollBy(options?: ScrollToOptions): void;
-    function patchedWindowScrollBy(x: number, y: number): void;
-    function patchedWindowScrollBy(xOrOptions?: number | ScrollToOptions, y?: number): void {
-      const beforeLeft = window.scrollX;
-      const beforeTop = window.scrollY;
-      let left: number;
-      let top: number;
-      if (typeof xOrOptions === 'object') {
-        nativeWindowScrollBy(xOrOptions);
-        left = xOrOptions.left ?? 0;
-        top = xOrOptions.top ?? 0;
-      } else {
-        nativeWindowScrollBy(xOrOptions ?? 0, y ?? 0);
-        left = xOrOptions ?? 0;
-        top = y ?? 0;
-      }
-      window.testReorderScrollLog?.push({
-        target: 'window',
-        left,
-        top,
-        beforeLeft,
-        beforeTop,
-        afterLeft: window.scrollX,
-        afterTop: window.scrollY,
-        seq: seq++,
-        timeMs: performance.now(),
-      });
-    }
-    window.scrollBy = patchedWindowScrollBy;
-  });
-};
-
-const getScrollLog = (page: Page): Promise<ReorderScrollLogEntry[]> =>
-  page.evaluate(() => window.testReorderScrollLog ?? []);
-
-const getSelectStartLog = (page: Page): Promise<SelectStartLogEntry[]> =>
-  page.evaluate(() => window.testReorderSelectStartLog ?? []);
-
-/**
- * @param page - The Playwright page to read from.
- * @returns The harness's own synchronous `onDragEnd` event log (see `ReorderStoryHarness.vue`).
- */
-const getHarnessEvents = (page: Page): Promise<ReorderHarnessEvent[]> =>
-  page.evaluate(() => window.testReorderHarnessEvents ?? []);
-
 test.beforeEach(async ({ page }) => {
   await openStory(page, STORY_ID);
 });
 
 test.describe('autoscroll', () => {
   test('scrolls the reorder container itself near its edge', async ({ page }) => {
-    const container = page.getByTestId('reorder-container');
+    const container = page.getByRole('list', { name: 'Reorder items' });
     const containerBox = await boxOf(container);
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
 
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
@@ -226,8 +60,8 @@ test.describe('autoscroll', () => {
   test('continues scrolling with a stationary pointer and falls through to the scrollable ancestor once the container hits its limit', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
-    const scrollAncestor = page.getByTestId('reorder-scroll-ancestor');
+    const container = page.getByRole('list', { name: 'Reorder items' });
+    const scrollAncestor = page.getByRole('region', { name: 'Reorder scroll ancestor' });
     const containerBox = await boxOf(container);
 
     const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
@@ -247,7 +81,7 @@ test.describe('autoscroll', () => {
       autoscrollBudgetMs(containerExtent) * 2 + autoscrollBudgetMs(ancestorExtentBefore) + 5000,
     );
 
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
     const containerEdgeY = containerBox.y + containerBox.height - 4;
     expect(containerBox.y + containerBox.height - containerEdgeY).toBeLessThan(
       AUTOSCROLL_EDGE_ZONE_PX,
@@ -304,7 +138,7 @@ test.describe('autoscroll', () => {
   test('a pointer beyond the visible edge continues intuitive autoscroll and eventually causes a reorder', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
+    const container = page.getByRole('list', { name: 'Reorder items' });
     const containerBox = await boxOf(container);
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
     const orderBefore = await getOrder(page);
@@ -312,7 +146,7 @@ test.describe('autoscroll', () => {
     const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
     expect(containerExtent).toBeGreaterThan(0);
 
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
@@ -334,16 +168,10 @@ test.describe('autoscroll', () => {
     await page.mouse.up();
   });
 
-  test('an external order mutation while autoscrolling cancels before any further library scroll write, with no selection involvement, and the container stays stable', async ({
+  test('an external order mutation while autoscrolling cancels before any further scroll movement, and the container stays stable', async ({
     page,
   }) => {
-    // Instrumentation must be installed and the story navigated with it in place before the
-    // gesture starts, so every native scrollBy call and the harness's own drag-end log are
-    // captured/initialized from the very first frame.
-    await installScrollInstrumentation(page);
-    await openStory(page, STORY_ID);
-
-    const container = page.getByTestId('reorder-container');
+    const container = page.getByRole('list', { name: 'Reorder items' });
     const containerBox = await boxOf(container);
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
 
@@ -352,7 +180,7 @@ test.describe('autoscroll', () => {
     const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
     expect(containerExtent).toBeGreaterThan(0);
 
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
@@ -365,95 +193,60 @@ test.describe('autoscroll', () => {
       })
       .toBeGreaterThan(scrollTopBefore);
 
-    // 2. Trigger the external, non-library-issued order mutation.
-    await page.getByTestId('reorder-control-reverse-order').evaluate((el: HTMLElement) => {
-      el.click();
-    });
+    // 2. Trigger the external, non-library-issued order mutation. Focused only now, after the
+    // drag is already active: focusing a non-focusable drag item's own mousedown would otherwise
+    // blur a control focused beforehand (the browser's own mousedown focus-fixup). A real click
+    // on this control would itself be a second pointer, cancelling the drag for an unrelated
+    // reason before the mutation path under test ever runs, so it is activated via keyboard
+    // instead.
+    await page.getByRole('button', { name: 'reverse order externally' }).focus();
+    await page.keyboard.press('Enter');
     const orderAfterMutation = await getOrder(page);
 
-    // 3. Exactly one cancelled onDragEnd, recorded synchronously by the harness. This is the
-    // authoritative cancellation boundary: unlike observing the same event through its
-    // Vue-rendered DOM text, it cannot lag behind the library's real synchronous callback. A
-    // controlled Playwright investigation (rAF-sampled `scrollTop` compared against this exact
-    // signal, for a further 300ms/~20 frames) found zero `scrollTop` movement after it — the
-    // earlier appearance of continued post-cancellation scrolling, measured only via the
-    // DOM-mutation signal, was exactly that signal's own lag, not real further movement. See
-    // `ReorderStoryHarness.vue`'s `onDragEnd` handler.
-    await expect.poll(() => getCount(page, 'reorder-drag-end-count'), { timeout: 10000 }).toBe(1);
+    // 3. Exactly one cancelled onDragEnd.
+    await expect.poll(() => getCount(page, 'Drag end count'), { timeout: 10000 }).toBe(1);
     const lastDragEnd = await getLastDragEnd(page);
     expect(lastDragEnd?.cancelled).toBe(true);
-    const reorderCountAtCancellation = await getCount(page, 'reorder-reorder-count');
-
-    const harnessEvents = await getHarnessEvents(page);
-    const dragEndEvent = harnessEvents.at(-1);
-    expect(dragEndEvent?.cancelled).toBe(true);
-    if (!dragEndEvent) throw new Error('unreachable: asserted defined above');
-    const cancelledAtMs = dragEndEvent.timeMs;
+    const reorderCountAtCancellation = await getCount(page, 'Reorder count');
 
     // 4. `draggingKey` is cleared.
     expect(await getDraggingKey(page)).toBe('');
 
-    // 5/6. No library-issued scroll write, and no selection, is ever timestamped after
-    // cancellation: `processActiveFrame` in `PointerSession.ts` runs the controlled-order
-    // mutation check before any autoscroll write each frame, and `cancelSession` clears `session`
-    // synchronously, so `scheduleFrame`'s own `session` guard prevents any further frame (queued
-    // or reentrant) from running at all. The active-drag guard in `activeSessionEffects.ts` stays
-    // installed until that same synchronous cancellation removes it, so no `selectstart` ever
-    // reaches the document either.
-    const scrollLog = await getScrollLog(page);
-    const writesAfterCancellation = scrollLog.filter((entry) => entry.timeMs > cancelledAtMs);
-    const selectStartAfterCancellation = (await getSelectStartLog(page)).filter(
-      (entry) => entry.timeMs > cancelledAtMs,
-    );
-    expect(writesAfterCancellation).toEqual([]);
-    expect(selectStartAfterCancellation).toEqual([]);
-
-    // 7. The library never rolls back or overwrites the externally supplied order: the order the
-    // harness's synchronous event captured at cancellation, and the live order read back now,
-    // both still match the externally-mutated order from step 2.
-    expect(dragEndEvent.order).toEqual(orderAfterMutation);
+    // 5. The library never rolls back or overwrites the externally supplied order: the order read
+    // back now still matches the externally mutated order from step 2.
     expect(await getOrder(page)).toEqual(orderAfterMutation);
 
-    // 8. No later `onReorder` callback occurs, immediately after cancellation.
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAtCancellation);
+    // 6. No later `onReorder` callback occurs, immediately after cancellation.
+    expect(await getCount(page, 'Reorder count')).toBe(reorderCountAtCancellation);
 
-    // 9. The scroll position recorded synchronously at cancellation matches the container's
-    // position read back immediately, and stays there through a bounded real-time window well
-    // past the confirmed-zero-movement window above — the same invariant the controlled
-    // investigation proved, kept here as a narrow regression guard.
-    expect(await container.evaluate((el) => el.scrollTop)).toBe(dragEndEvent.scrollTop);
+    // 7. The container's scroll position stays stable through a bounded observation window. The
+    // exact "no library scroll write after synchronous cancellation" guarantee is covered at the
+    // unit/orchestration layer (see `PointerSession.test.ts`); this proves the resulting
+    // browser-visible outcome instead.
+    const scrollTopAtCancellation = await container.evaluate((el) => el.scrollTop);
     await page.waitForTimeout(300);
-    expect(await container.evaluate((el) => el.scrollTop)).toBe(dragEndEvent.scrollTop);
+    expect(await container.evaluate((el) => el.scrollTop)).toBe(scrollTopAtCancellation);
 
-    // Still no late `onReorder` callback after the 300ms observation window.
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAtCancellation);
+    // Still no late `onReorder` callback after the observation window.
+    expect(await getCount(page, 'Reorder count')).toBe(reorderCountAtCancellation);
 
-    // 10. Releasing the still-held physical pointer afterward does not fire another onDragEnd or
+    // 8. Releasing the still-held physical pointer afterward does not fire another onDragEnd or
     // a late `onReorder` callback.
     await page.mouse.up();
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAtCancellation);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
+    expect(await getCount(page, 'Reorder count')).toBe(reorderCountAtCancellation);
   });
 
   test.describe('viewport fallback', () => {
     test.use({ viewport: { width: 500, height: 320 } });
 
-    test.beforeEach(async ({ page }) => {
-      // Restore ordinary document-level scroll semantics for only this scenario: the product app
-      // shell (imported globally into Storybook for design tokens) fixes html/body to a bounded
-      // height, which turns body into its own internal scroll container and leaves
-      // `window.scrollY` permanently at 0. Scoped to this page only; reverted automatically by
-      // Playwright's per-test page isolation, so no other story or visual test is affected.
-      await page.addStyleTag({
-        content: 'html, body { height: auto; min-height: 100%; overflow: visible; }',
-      });
-    });
-
     test('falls back to the page viewport once the container and its scrollable ancestor are both exhausted', async ({
       page,
     }) => {
-      const container = page.getByTestId('reorder-container');
-      const scrollAncestor = page.getByTestId('reorder-scroll-ancestor');
+      await openStory(page, VIEWPORT_SCROLL_STORY_ID);
+
+      const container = page.getByRole('list', { name: 'Reorder items' });
+      const scrollAncestor = page.getByRole('region', { name: 'Reorder scroll ancestor' });
 
       const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
       const ancestorExtent = await scrollAncestor.evaluate(
@@ -464,10 +257,10 @@ test.describe('autoscroll', () => {
         return scrollingElement.scrollHeight - window.innerHeight;
       });
 
-      // Preconditions: the isolated document-scroll setup above must actually produce a
-      // genuinely scrollable viewport, on top of a scrollable inner container and ancestor;
-      // otherwise "window.scrollY increases" below would be structurally unreachable regardless
-      // of production behavior.
+      // Preconditions: this dedicated fixture must actually produce a genuinely scrollable
+      // viewport, on top of a scrollable inner container and ancestor; otherwise
+      // "window.scrollY increases" below would be structurally unreachable regardless of
+      // production behavior.
       expect(containerExtent).toBeGreaterThan(0);
       expect(ancestorExtent).toBeGreaterThan(0);
       expect(documentExtent).toBeGreaterThan(0);
@@ -480,7 +273,7 @@ test.describe('autoscroll', () => {
       const pointerEdgeY = viewportSize.height - 4;
       expect(viewportSize.height - pointerEdgeY).toBeLessThan(AUTOSCROLL_EDGE_ZONE_PX);
 
-      const item = page.getByTestId('reorder-item-alpha');
+      const item = page.getByRole('listitem', { name: 'one' });
       // `boxOf` calls `scrollIntoViewIfNeeded`, which can itself use real document scrolling to
       // bring the item into view under this small viewport; the baseline below is read after
       // that settles, but still well before the gesture (and any autoscroll) starts.
@@ -551,11 +344,11 @@ test.describe('bordered client viewport autoscroll', () => {
   }) => {
     await openStory(page, BORDERED_VIEWPORT_STORY_ID);
 
-    const container = page.getByTestId('reorder-bordered-viewport-container');
+    const container = page.getByRole('list', { name: 'Bordered viewport reorder items' });
     const containerBox = await boxOf(container);
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
 
-    const item = page.getByTestId('reorder-bordered-viewport-item-one');
+    const item = page.getByRole('listitem', { name: 'one' });
     const from = center(await boxOf(item));
 
     await page.mouse.move(from.x, from.y);

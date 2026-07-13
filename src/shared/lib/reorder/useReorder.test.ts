@@ -365,6 +365,39 @@ describe('useReorder cancellation', () => {
     wrapper.unmount();
   });
 
+  it('cancels on the document becoming hidden while active', () => {
+    const keys = ref(['a', 'b', 'c']);
+    const onReorder = vi.fn();
+    const onDragStart = vi.fn();
+    const onDragEnd = vi.fn();
+    const wrapper = mountHarness(keys, { onReorder, onDragStart, onDragEnd });
+
+    getItemEl(wrapper, 'a').dispatchEvent(createPointerEvent('pointerdown', { clientX: 0 }));
+    window.dispatchEvent(createPointerEvent('pointermove', { clientX: 10 }));
+
+    expect(onDragStart).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+    expect(onDragEnd).toHaveBeenCalledWith({
+      key: 'a',
+      initialIndex: 0,
+      finalIndex: 0,
+      cancelled: true,
+    });
+
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    // A stray pointerup after cancellation must not fire a second onDragEnd.
+    window.dispatchEvent(createPointerEvent('pointerup', { clientX: 10 }));
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+
+    wrapper.unmount();
+  });
+
   it('cancels an active session when a second pointer starts anywhere, including outside the container', () => {
     const keys = ref(['a', 'b', 'c']);
     const onReorder = vi.fn();

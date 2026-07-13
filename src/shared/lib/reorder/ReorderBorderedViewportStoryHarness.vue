@@ -19,15 +19,17 @@ const { vReorderContainer, vReorderItem } = useReorder({
 <template>
   <div
     v-reorder-container
+    role="list"
+    aria-label="Bordered viewport reorder items"
     class="reorder-bordered-viewport-harness__container"
-    data-testid="reorder-bordered-viewport-container"
   >
     <div
       v-for="item in items"
       :key="item"
       v-reorder-item="item"
+      role="listitem"
+      :aria-label="item"
       class="reorder-bordered-viewport-harness__item"
-      :data-testid="`reorder-bordered-viewport-item-${item}`"
     >
       {{ item }}
     </div>

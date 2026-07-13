@@ -8,17 +8,17 @@ export const STORY_ID = 'shared-lib-reorder-reorderstoryharness--default';
  * @returns The harness's current controlled key order.
  */
 export const getOrder = async (page: Page): Promise<string[]> => {
-  const text = await page.getByTestId('reorder-order').textContent();
+  const text = await page.getByLabel('Current order').textContent();
   return text ? text.split(',') : [];
 };
 
 /**
  * @param page - The Playwright page to read from.
- * @param testId - The harness counter's `data-testid`.
+ * @param label - The harness counter's accessible label, e.g. `'Reorder count'`.
  * @returns The counter's current value.
  */
-export const getCount = async (page: Page, testId: string): Promise<number> => {
-  const text = await page.getByTestId(testId).textContent();
+export const getCount = async (page: Page, label: string): Promise<number> => {
+  const text = await page.getByLabel(label).textContent();
   return Number(text ?? '0');
 };
 
@@ -27,9 +27,9 @@ export const getCount = async (page: Page, testId: string): Promise<number> => {
  * @returns The harness's current `draggingKey`, or `''` when no session is active.
  */
 export const getDraggingKey = async (page: Page): Promise<string> =>
-  (await page.getByTestId('reorder-dragging-key').textContent()) ?? '';
+  (await page.getByLabel('Dragging key').textContent()) ?? '';
 
-/** The `reorder-last-drag-end` harness payload, parsed and validated. */
+/** The `Last drag end` harness payload, parsed and validated. */
 export interface DragEndPayload {
   /** The key of the item that was dragging. */
   key: string;
@@ -65,12 +65,26 @@ const isDragEndPayload = (value: unknown): value is DragEndPayload => {
  * @returns The harness's last recorded `onDragEnd` payload, or `null` before any drag has ended.
  */
 export const getLastDragEnd = async (page: Page): Promise<DragEndPayload | null> => {
-  const text = await page.getByTestId('reorder-last-drag-end').textContent();
+  const text = await page.getByLabel('Last drag end').textContent();
   if (!text) return null;
 
   const parsed: unknown = JSON.parse(text);
   return isDragEndPayload(parsed) ? parsed : null;
 };
+
+/**
+ * @param key - An item's controlled key, e.g. `'alpha'`.
+ * @returns The item's accessible name, e.g. `'Alpha'` (the harness capitalizes its item labels).
+ */
+export const itemLabel = (key: string): string => key.charAt(0).toUpperCase() + key.slice(1);
+
+/**
+ * @param page - The Playwright page to read from.
+ * @param key - The item's controlled key.
+ * @returns A locator for the item's `listitem` role.
+ */
+export const getItem = (page: Page, key: string): Locator =>
+  page.getByRole('listitem', { name: itemLabel(key) });
 
 /**
  * @param box - A rectangle with `x`/`y`/`width`/`height`.

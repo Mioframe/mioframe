@@ -240,6 +240,36 @@ describe('direct pointercancel', () => {
   });
 });
 
+describe('autoscroll cancellation', () => {
+  it('cancelling mid-autoscroll cancels the pending frame and issues no further scroll write', () => {
+    const setup = setupSession();
+    setup.containerEl.style.overflowY = 'auto';
+    Object.defineProperty(setup.containerEl, 'scrollHeight', { value: 1000, configurable: true });
+    const scrollBySpy = vi.fn();
+    setup.containerEl.scrollBy = scrollBySpy;
+
+    activateOnItem(setup.itemA);
+    // Move the pointer into the container's bottom edge zone (rect: top 0, height 400; edge
+    // zone 56px), so the queued frame below actually autoscrolls.
+    window.dispatchEvent(
+      createPointerEvent('pointermove', { pointerId: 1, clientX: 20, clientY: 390 }),
+    );
+
+    runFrame();
+    expect(scrollBySpy).toHaveBeenCalledTimes(1);
+    // A scroll write must never be followed by a hit-test in the same frame, but `tick()`
+    // unconditionally reschedules the next frame afterward.
+    expect(rafCallbacks.size).toBe(1);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    // The still-queued frame was cancelled synchronously by cancellation, so it can never run
+    // and issue another scroll write.
+    expect(rafCallbacks.size).toBe(0);
+    expect(scrollBySpy).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('validation cleanup during pending activation', () => {
   it('cleans up a pending mouse session when controlled keys become duplicated before activation', () => {
     const { itemA, setKeys } = setupSession();

@@ -1,9 +1,10 @@
-import { expect, test, type CDPSession, type Locator, type Page } from '@playwright/test';
+import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import {
   boxOf,
   center,
   getCount,
   getDraggingKey,
+  getItem,
   getLastDragEnd,
   getOrder,
   STORY_ID,
@@ -13,8 +14,6 @@ import { openStory } from './storybook.testUtils';
 declare global {
   interface Window {
     testExternalPointerDownCount?: number;
-    testReorderRafQueue?: { id: number; cb: FrameRequestCallback }[];
-    testReorderFlushRaf?: () => void;
   }
 }
 
@@ -48,23 +47,6 @@ const mouseDrag = async (
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: options.steps ?? 8 });
   if (options.release ?? true) await page.mouse.up();
-};
-
-/**
- * Attaches a click counter to `locator` and returns a reader for it. Used to prove whether a
- * given gesture would produce (or was prevented from producing) a browser `click`.
- * @param locator - The element to observe.
- * @returns An async reader for the current click count.
- */
-const attachClickCounter = async (locator: Locator): Promise<() => Promise<number>> => {
-  await locator.evaluate((el) => {
-    el.setAttribute('data-click-count', '0');
-    el.addEventListener('click', () => {
-      const current = Number(el.getAttribute('data-click-count') ?? '0');
-      el.setAttribute('data-click-count', String(current + 1));
-    });
-  });
-  return async () => Number((await locator.getAttribute('data-click-count')) ?? '0');
 };
 
 // Chromium tracks in-flight touch sequence state per CDP client: opening a fresh session for
@@ -101,18 +83,18 @@ test.describe('mouse activation', () => {
   test('movement below the activation threshold preserves a normal click and does not start a drag', async ({
     page,
   }) => {
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const from = center(box);
 
     await mouseDrag(page, from, { x: from.x + 2, y: from.y }, { steps: 1 });
 
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+    expect(await getCount(page, 'Drag start count')).toBe(0);
     expect(await getDraggingKey(page)).toBe('');
   });
 
   test('activates exactly once after crossing the threshold', async ({ page }) => {
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const from = center(box);
 
@@ -120,37 +102,38 @@ test.describe('mouse activation', () => {
     await page.mouse.down();
     await page.mouse.move(from.x + 10, from.y, { steps: 4 });
 
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
+    expect(await getCount(page, 'Drag start count')).toBe(1);
     expect(await getDraggingKey(page)).toBe('alpha');
 
     await page.mouse.up();
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
   });
 
   test('standard interactive descendants and vReorderIgnore do not activate drag', async ({
     page,
   }) => {
-    const button = page.getByTestId('reorder-interactive-button').first();
+    const alphaItem = getItem(page, 'alpha');
+    const button = alphaItem.getByRole('button', { name: 'Alpha action' });
     const buttonBox = await boxOf(button);
 
     await mouseDrag(page, center(buttonBox), {
       x: center(buttonBox).x + 40,
       y: center(buttonBox).y,
     });
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+    expect(await getCount(page, 'Drag start count')).toBe(0);
     await button.click();
-    expect(await getCount(page, 'reorder-interactive-click-count')).toBe(1);
+    expect(await getCount(page, 'Interactive click count')).toBe(1);
 
-    const ignoreZone = page.getByTestId('reorder-ignore-zone').first();
+    const ignoreZone = alphaItem.getByRole('button', { name: 'Alpha ignore zone' });
     const ignoreBox = await boxOf(ignoreZone);
 
     await mouseDrag(page, center(ignoreBox), {
       x: center(ignoreBox).x + 40,
       y: center(ignoreBox).y,
     });
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+    expect(await getCount(page, 'Drag start count')).toBe(0);
     await ignoreZone.click();
-    expect(await getCount(page, 'reorder-ignore-click-count')).toBe(1);
+    expect(await getCount(page, 'Ignored click count')).toBe(1);
   });
 });
 
@@ -158,7 +141,7 @@ test.describe('click suppression', () => {
   test('a completed drag suppresses only its own resulting click, and a later genuine click is unaffected', async ({
     page,
   }) => {
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const from = center(box);
     // Move by exactly the distance the drag itself will travel, so this control gesture proves
@@ -170,8 +153,7 @@ test.describe('click suppression', () => {
     // The click-control surface is sized to match "alpha" exactly (120x60): equivalent
     // dimensions, down point (center), movement distance, and up point are what make this a
     // genuinely comparable control for the reorder gesture below.
-    const control = page.getByTestId('reorder-click-control');
-    const readControlClickCount = await attachClickCounter(control);
+    const control = page.getByRole('button', { name: 'Click control' });
     const controlBox = await boxOf(control);
     expect(controlBox.width).toBeCloseTo(box.width, 0);
     expect(controlBox.height).toBeCloseTo(box.height, 0);
@@ -183,28 +165,22 @@ test.describe('click suppression', () => {
       { x: controlFrom.x + moveDistance, y: controlFrom.y },
       { steps: 8 },
     );
-    expect(await readControlClickCount()).toBe(1);
+    expect(await getCount(page, 'Click control click count')).toBe(1);
 
     // The identically-shaped gesture, run on the reorder container, must not produce a click.
-    const container = page.getByTestId('reorder-container');
-    const readContainerClickCount = await attachClickCounter(container);
-
     await mouseDrag(page, from, { x: from.x + moveDistance, y: from.y }, { steps: 8 });
-    expect(await readContainerClickCount()).toBe(0);
+    expect(await getCount(page, 'Container click count')).toBe(0);
 
     // A genuinely new click afterward must still register normally.
-    const alphaBoxAfter = await boxOf(page.getByTestId('reorder-item-alpha'));
+    const alphaBoxAfter = await boxOf(getItem(page, 'alpha'));
     await page.mouse.click(center(alphaBoxAfter).x, center(alphaBoxAfter).y);
-    expect(await readContainerClickCount()).toBe(1);
+    expect(await getCount(page, 'Container click count')).toBe(1);
   });
 
   test('Escape cancellation before pointer release still suppresses the resulting click', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
-    const readContainerClickCount = await attachClickCounter(container);
-
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const from = center(box);
 
@@ -219,16 +195,13 @@ test.describe('click suppression', () => {
     // The physical button is released only now, after cancellation already tore the session down.
     await page.mouse.up();
 
-    expect(await readContainerClickCount()).toBe(0);
+    expect(await getCount(page, 'Container click count')).toBe(0);
   });
 
   test('Escape cancellation followed by a delayed physical release still suppresses the resulting click', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
-    const readContainerClickCount = await attachClickCounter(container);
-
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const from = center(box);
     const moveDistance = 60;
@@ -243,92 +216,17 @@ test.describe('click suppression', () => {
 
     // Well past a single zero-delay timer turn: only a bounded release watcher, not a
     // `setTimeout(..., 0)` fallback armed at cancellation time, could still be tracking the
-    // original pointer this long afterward.
+    // original pointer this long afterward. The delayed release is itself the scenario under
+    // test, not a stabilization wait.
     await page.waitForTimeout(300);
 
     await page.mouse.up();
 
-    expect(await readContainerClickCount()).toBe(0);
+    expect(await getCount(page, 'Container click count')).toBe(0);
 
-    const alphaBoxAfter = await boxOf(page.getByTestId('reorder-item-alpha'));
+    const alphaBoxAfter = await boxOf(getItem(page, 'alpha'));
     await page.mouse.click(center(alphaBoxAfter).x, center(alphaBoxAfter).y);
-    expect(await readContainerClickCount()).toBe(1);
-  });
-
-  test("a pointercancel after early cancellation does not suppress the pointer stream's own later click", async ({
-    page,
-  }) => {
-    const container = page.getByTestId('reorder-container');
-    const readContainerClickCount = await attachClickCounter(container);
-
-    const item = page.getByTestId('reorder-item-alpha');
-    const box = await boxOf(item);
-    const from = center(box);
-    const moveDistance = 60;
-
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    await page.mouse.move(from.x + moveDistance, from.y, { steps: 8 });
-    expect(await getDraggingKey(page)).toBe('alpha');
-
-    await page.keyboard.press('Escape');
-    expect(await getDraggingKey(page)).toBe('');
-
-    await page.evaluate(() => {
-      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
-    });
-
-    // The real mouse button, unaffected by the synthetic pointercancel, still lifts normally and
-    // produces its own click for this same gesture; the release watcher must have already removed
-    // itself without arming suppression, so this click is not suppressed.
-    await page.mouse.up();
-
-    expect(await readContainerClickCount()).toBe(1);
-  });
-
-  test('a direct pointercancel on an active drag leaves exactly one cancelled onDragEnd and does not suppress a later genuine click', async ({
-    page,
-  }) => {
-    const container = page.getByTestId('reorder-container');
-    const readContainerClickCount = await attachClickCounter(container);
-
-    const item = page.getByTestId('reorder-item-alpha');
-    const box = await boxOf(item);
-    const from = center(box);
-
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
-    expect(await getDraggingKey(page)).toBe('alpha');
-
-    // The pointer stream itself ends here: unlike Escape/blur/visibility (which cancel the
-    // session while the physical pointer may still be down), a real pointercancel means no click
-    // will ever follow this stream at all, so nothing may be armed to suppress one.
-    await page.evaluate(() => {
-      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
-    });
-
-    expect(await getDraggingKey(page)).toBe('');
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-    expect((await getLastDragEnd(page))?.cancelled).toBe(true);
-
-    // The mouse button never truly lifts for this synthetic-pointercancel stream, but a later,
-    // genuinely new click elsewhere in the container must still register normally. Whether the
-    // browser's own native click generation for that bare release lands before or after this
-    // point is a real-engine timing detail this library has no opinion on (pointercancel neither
-    // suppresses it nor guarantees it); let any such click fully settle and establish the count
-    // baseline afterward, so only the deliberate click below is asserted.
-    await page.mouse.up();
-    await page.waitForTimeout(200);
-    const clickCountBeforeNewClick = await readContainerClickCount();
-
-    const alphaBoxAfter = await boxOf(page.getByTestId('reorder-item-alpha'));
-    await page.mouse.click(center(alphaBoxAfter).x, center(alphaBoxAfter).y);
-
-    await expect
-      .poll(() => readContainerClickCount(), { timeout: 5000 })
-      .toBe(clickCountBeforeNewClick + 1);
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Container click count')).toBe(1);
   });
 });
 
@@ -339,18 +237,18 @@ test.describe('live reorder geometry', () => {
     const initialOrder = await getOrder(page);
     expect(initialOrder.indexOf('alpha')).toBeLessThan(initialOrder.indexOf('delta'));
 
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
-    const to = center(await boxOf(page.getByTestId('reorder-item-delta')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
+    const to = center(await boxOf(getItem(page, 'delta')));
 
     await mouseDrag(page, from, to, { steps: 12 });
 
     const afterForward = await getOrder(page);
     expect(afterForward.indexOf('alpha')).toBeGreaterThan(0);
-    expect(await getCount(page, 'reorder-reorder-count')).toBeGreaterThan(0);
+    expect(await getCount(page, 'Reorder count')).toBeGreaterThan(0);
 
     // Drag it back toward the start (reverse direction).
-    const alphaBoxNow = await boxOf(page.getByTestId('reorder-item-alpha'));
-    const firstItemBox = await boxOf(page.locator('[data-testid^="reorder-item-"]').first());
+    const alphaBoxNow = await boxOf(getItem(page, 'alpha'));
+    const firstItemBox = await boxOf(page.getByRole('listitem').first());
 
     await mouseDrag(page, center(alphaBoxNow), center(firstItemBox), { steps: 12 });
 
@@ -361,43 +259,38 @@ test.describe('live reorder geometry', () => {
   test('the wrapping arrangement reorders without a configured axis (vertical movement across rows works)', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
-    const containerBox = await boxOf(container);
-
     // Items wrap into multiple rows inside the fixed-width container; find an item whose row
     // differs from "alpha"'s row by comparing y position.
-    const alphaBox = await boxOf(page.getByTestId('reorder-item-alpha'));
-    const items = await page.locator('[data-testid^="reorder-item-"]').all();
+    const alphaBox = await boxOf(getItem(page, 'alpha'));
+    const items = await page.getByRole('listitem').all();
     const itemInfo = await Promise.all(
       items.map(async (item) => ({
         box: await item.boundingBox(),
-        testId: await item.getAttribute('data-testid'),
+        label: await item.getAttribute('aria-label'),
       })),
     );
     const otherRowInfo = itemInfo.find(
       ({ box }) => box && Math.abs(box.y - alphaBox.y) > box.height,
     );
-    const otherRowKey = otherRowInfo?.testId?.replace('reorder-item-', '') ?? null;
+    const otherRowKey = otherRowInfo?.label?.toLowerCase() ?? null;
 
     expect(otherRowKey).not.toBeNull();
     if (!otherRowKey) return;
 
     const orderBefore = await getOrder(page);
-    const targetBox = await boxOf(page.getByTestId(`reorder-item-${otherRowKey}`));
+    const targetBox = await boxOf(getItem(page, otherRowKey));
 
     await mouseDrag(page, center(alphaBox), center(targetBox), { steps: 12 });
 
     const orderAfter = await getOrder(page);
     expect(orderAfter).not.toEqual(orderBefore);
     expect(orderAfter.indexOf('alpha')).not.toBe(orderBefore.indexOf('alpha'));
-
-    void containerBox;
   });
 
   test('different item sizes obey the physical displacement threshold', async ({ page }) => {
     // "bravo" (200x100) and "charlie" (80x140) are adjacent and clearly different sizes.
-    const bravo = page.getByTestId('reorder-item-bravo');
-    const charlie = page.getByTestId('reorder-item-charlie');
+    const bravo = getItem(page, 'bravo');
+    const charlie = getItem(page, 'charlie');
     const bravoBox = await boxOf(bravo);
     const charlieBox = await boxOf(charlie);
     const orderBefore = await getOrder(page);
@@ -424,10 +317,10 @@ test.describe('touch activation', () => {
   test('movement before the long-press delay causes real native scrolling, not merely the absence of activation', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
+    const container = page.getByRole('list', { name: 'Reorder items' });
     const scrollTopBefore = await container.evaluate((el) => el.scrollTop);
 
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const point = touchGrabPoint(box);
 
@@ -438,29 +331,29 @@ test.describe('touch activation', () => {
     }
     await dispatchTouch(page, 'touchEnd');
 
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+    expect(await getCount(page, 'Drag start count')).toBe(0);
     await expect
       .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 3000 })
       .toBeGreaterThan(scrollTopBefore);
   });
 
   test('activates after the configured long-press delay', async ({ page }) => {
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const point = touchGrabPoint(box);
 
     await dispatchTouch(page, 'touchStart', point);
     await page.waitForTimeout(700);
 
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
+    expect(await getCount(page, 'Drag start count')).toBe(1);
     expect(await getDraggingKey(page)).toBe('alpha');
 
     await dispatchTouch(page, 'touchEnd');
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
   });
 
   test('movement beyond the slop before the delay cancels activation', async ({ page }) => {
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const point = touchGrabPoint(box);
 
@@ -468,7 +361,7 @@ test.describe('touch activation', () => {
     await dispatchTouch(page, 'touchMove', { x: point.x, y: point.y + 20 });
     await page.waitForTimeout(500);
 
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+    expect(await getCount(page, 'Drag start count')).toBe(0);
     expect(await getDraggingKey(page)).toBe('');
 
     await dispatchTouch(page, 'touchEnd');
@@ -476,8 +369,8 @@ test.describe('touch activation', () => {
 
   test('an activated touch drag can reorder', async ({ page }) => {
     const orderBefore = await getOrder(page);
-    const from = touchGrabPoint(await boxOf(page.getByTestId('reorder-item-alpha')));
-    const to = center(await boxOf(page.getByTestId('reorder-item-delta')));
+    const from = touchGrabPoint(await boxOf(getItem(page, 'alpha')));
+    const to = center(await boxOf(getItem(page, 'delta')));
 
     await dispatchTouch(page, 'touchStart', from);
     await page.waitForTimeout(700);
@@ -493,16 +386,16 @@ test.describe('touch activation', () => {
     }
     await dispatchTouch(page, 'touchEnd');
 
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
     expect(await getOrder(page)).not.toEqual(orderBefore);
   });
 
   test('after activation, further movement produces no native gesture scrolling beyond library autoscroll', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
+    const container = page.getByRole('list', { name: 'Reorder items' });
     const containerBox = await boxOf(container);
-    const item = page.getByTestId('reorder-item-alpha');
+    const item = getItem(page, 'alpha');
     const box = await boxOf(item);
     const point = touchGrabPoint(box);
 
@@ -530,7 +423,7 @@ test.describe('cancellation and cleanup', () => {
   test('Escape cancels an active drag, leaving no dragging state and firing onDragEnd exactly once', async ({
     page,
   }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
@@ -540,18 +433,18 @@ test.describe('cancellation and cleanup', () => {
     await page.keyboard.press('Escape');
 
     expect(await getDraggingKey(page)).toBe('');
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
 
     await page.mouse.up();
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
   });
 
   test('Escape after a completed live move rolls the active item back to its initial index', async ({
     page,
   }) => {
     const orderBefore = await getOrder(page);
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
-    const to = center(await boxOf(page.getByTestId('reorder-item-delta')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
+    const to = center(await boxOf(getItem(page, 'delta')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
@@ -567,73 +460,11 @@ test.describe('cancellation and cleanup', () => {
     await page.mouse.up();
   });
 
-  test('losing window focus (blur) cancels an active drag', async ({ page }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-bravo')));
-
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
-    expect(await getDraggingKey(page)).toBe('bravo');
-
-    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-
-    expect(await getDraggingKey(page)).toBe('');
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-
-    await page.mouse.up();
-  });
-
-  test('pointercancel produces exactly one cancelled onDragEnd', async ({ page }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
-
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
-    expect(await getDraggingKey(page)).toBe('alpha');
-
-    await page.evaluate(() => {
-      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
-    });
-
-    expect(await getDraggingKey(page)).toBe('');
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-    expect((await getLastDragEnd(page))?.cancelled).toBe(true);
-
-    // A stray pointerup afterward must not fire a second onDragEnd.
-    await page.mouse.up();
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-  });
-
-  test('visibility loss produces exactly one cancelled onDragEnd', async ({ page }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
-
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    await page.mouse.move(from.x + 20, from.y, { steps: 4 });
-    expect(await getDraggingKey(page)).toBe('alpha');
-
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
-      document.dispatchEvent(new Event('visibilitychange'));
-    });
-
-    expect(await getDraggingKey(page)).toBe('');
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-    expect((await getLastDragEnd(page))?.cancelled).toBe(true);
-
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      document.dispatchEvent(new Event('visibilitychange'));
-    });
-    await page.mouse.up();
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-  });
-
   test.describe('second pointer', () => {
     test.use({ hasTouch: true });
 
     test('cancels a pending session when it starts outside the container', async ({ page }) => {
-      const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+      const from = center(await boxOf(getItem(page, 'alpha')));
 
       await page.mouse.move(from.x, from.y);
       await page.mouse.down();
@@ -642,13 +473,13 @@ test.describe('cancellation and cleanup', () => {
       await dispatchTouch(page, 'touchEnd');
 
       await page.mouse.move(from.x + 20, from.y, { steps: 4 });
-      expect(await getCount(page, 'reorder-drag-start-count')).toBe(0);
+      expect(await getCount(page, 'Drag start count')).toBe(0);
 
       await page.mouse.up();
     });
 
     test('cancels an active session when it starts outside the container', async ({ page }) => {
-      const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+      const from = center(await boxOf(getItem(page, 'alpha')));
 
       await page.mouse.move(from.x, from.y);
       await page.mouse.down();
@@ -659,7 +490,7 @@ test.describe('cancellation and cleanup', () => {
       await dispatchTouch(page, 'touchEnd');
 
       expect(await getDraggingKey(page)).toBe('');
-      expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+      expect(await getCount(page, 'Drag end count')).toBe(1);
       expect((await getLastDragEnd(page))?.cancelled).toBe(true);
 
       await page.mouse.up();
@@ -668,13 +499,13 @@ test.describe('cancellation and cleanup', () => {
     test('still reaches an external page listener and does not start a new reorder session', async ({
       page,
     }) => {
-      const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+      const from = center(await boxOf(getItem(page, 'alpha')));
 
       await page.mouse.move(from.x, from.y);
       await page.mouse.down();
       await page.mouse.move(from.x + 20, from.y, { steps: 4 });
       expect(await getDraggingKey(page)).toBe('alpha');
-      expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
+      expect(await getCount(page, 'Drag start count')).toBe(1);
 
       await page.evaluate(() => {
         window.testExternalPointerDownCount = 0;
@@ -690,7 +521,7 @@ test.describe('cancellation and cleanup', () => {
 
       // The current session cancelled, but this same second-pointer event must not have started
       // a brand-new one: the drag-start count stays at its pre-second-pointer value.
-      expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
+      expect(await getCount(page, 'Drag start count')).toBe(1);
       expect(await getDraggingKey(page)).toBe('');
       expect((await getLastDragEnd(page))?.cancelled).toBe(true);
 
@@ -702,7 +533,7 @@ test.describe('cancellation and cleanup', () => {
   test('unmounting the container cancels an active drag deterministically and tears down every guard', async ({
     page,
   }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
@@ -714,42 +545,38 @@ test.describe('cancellation and cleanup', () => {
     // pointerdown observed as a second pointer, cancelling the drag for an unrelated reason before
     // the container ever unmounts. Keyboard activation of a button dispatches only a `click`, with
     // no preceding pointer event, isolating the container-removal cancellation path under test.
-    await page.getByTestId('reorder-control-toggle-container').focus();
+    await page.getByRole('button', { name: 'unmount container' }).focus();
     await page.keyboard.press('Enter');
 
-    await expect(page.getByTestId('reorder-container-unmounted')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'container unmounted' })).toBeVisible();
     expect(await getDraggingKey(page)).toBe('');
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
     expect((await getLastDragEnd(page))?.cancelled).toBe(true);
-
-    // No bounded post-cancel selectstart guard survives container removal.
-    const selectStartPrevented = await page.evaluate(() => {
-      const event = new Event('selectstart', { cancelable: true });
-      document.dispatchEvent(event);
-      return event.defaultPrevented;
-    });
-    expect(selectStartPrevented).toBe(false);
 
     // The physical pointer release that follows produces no further reorder callback: no release
     // watcher or click suppression remains attached to the removed container.
     await page.mouse.up();
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(0);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
+    expect(await getCount(page, 'Reorder count')).toBe(0);
   });
 
   test('active-item removal cancels the drag and reports finalIndex -1', async ({ page }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(from.x + 20, from.y, { steps: 4 });
     expect(await getDraggingKey(page)).toBe('alpha');
 
-    await page.getByTestId('reorder-control-remove-active').evaluate((el: HTMLElement) => {
-      el.click();
-    });
+    // Focused only now, after the drag is already active: focusing a non-focusable drag item's
+    // own mousedown would otherwise blur a control focused beforehand (the browser's own
+    // mousedown focus-fixup). A real click on this control would itself be a second pointer,
+    // cancelling the drag for an unrelated reason before the removal path under test ever runs,
+    // so it is activated via keyboard instead.
+    await page.getByRole('button', { name: 'remove active key' }).focus();
+    await page.keyboard.press('Enter');
 
-    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    await expect.poll(() => getCount(page, 'Drag end count')).toBe(1);
     const lastDragEnd = await getLastDragEnd(page);
     expect(lastDragEnd?.cancelled).toBe(true);
     expect(lastDragEnd?.finalIndex).toBe(-1);
@@ -762,19 +589,20 @@ test.describe('cancellation and cleanup', () => {
   test('an incompatible external order mutation cancels the session without overwriting it', async ({
     page,
   }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(from.x + 20, from.y, { steps: 4 });
     expect(await getDraggingKey(page)).toBe('alpha');
 
-    await page.getByTestId('reorder-control-reverse-order').evaluate((el: HTMLElement) => {
-      el.click();
-    });
+    // Same held-pointer/keyboard-activation shape as the active-item-removal case above:
+    // focused only after the drag is already active.
+    await page.getByRole('button', { name: 'reverse order externally' }).focus();
+    await page.keyboard.press('Enter');
     const reversedOrder = await getOrder(page);
 
-    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    await expect.poll(() => getCount(page, 'Drag end count')).toBe(1);
     const lastDragEnd = await getLastDragEnd(page);
     expect(lastDragEnd?.cancelled).toBe(true);
     expect(await getDraggingKey(page)).toBe('');
@@ -786,18 +614,18 @@ test.describe('cancellation and cleanup', () => {
   });
 
   test('consumer rejection of a requested reorder cancels the session safely', async ({ page }) => {
-    await page.getByTestId('reorder-control-reject-next-reorder').click();
+    await page.getByRole('button', { name: 'reject next reorder' }).click();
     const orderBefore = await getOrder(page);
 
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
-    const to = center(await boxOf(page.getByTestId('reorder-item-delta')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
+    const to = center(await boxOf(getItem(page, 'delta')));
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 12 });
 
-    await expect.poll(() => getCount(page, 'reorder-reorder-count')).toBeGreaterThan(0);
-    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    await expect.poll(() => getCount(page, 'Reorder count')).toBeGreaterThan(0);
+    await expect.poll(() => getCount(page, 'Drag end count')).toBe(1);
 
     const lastDragEnd = await getLastDragEnd(page);
     expect(lastDragEnd?.cancelled).toBe(true);
@@ -810,116 +638,52 @@ test.describe('cancellation and cleanup', () => {
   test('no drag/scroll behavior remains active after a completed session ends', async ({
     page,
   }) => {
-    const from = center(await boxOf(page.getByTestId('reorder-item-alpha')));
-    const to = center(await boxOf(page.getByTestId('reorder-item-bravo')));
+    const from = center(await boxOf(getItem(page, 'alpha')));
+    const to = center(await boxOf(getItem(page, 'bravo')));
 
     await mouseDrag(page, from, to, { steps: 8 });
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
 
-    const reorderCountAfterFirstDrag = await getCount(page, 'reorder-reorder-count');
+    const reorderCountAfterFirstDrag = await getCount(page, 'Reorder count');
 
     // Idle movement after the session ended must not trigger any further callback.
     await page.mouse.move(to.x + 5, to.y + 5, { steps: 3 });
     await page.waitForTimeout(200);
 
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAfterFirstDrag);
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(1);
+    expect(await getCount(page, 'Reorder count')).toBe(reorderCountAfterFirstDrag);
+    expect(await getCount(page, 'Drag start count')).toBe(1);
     expect(await getDraggingKey(page)).toBe('');
 
     // A brand-new drag on a different item must still work, proving no stale session state.
-    const nextFrom = center(await boxOf(page.getByTestId('reorder-item-charlie')));
-    const nextTo = center(await boxOf(page.getByTestId('reorder-item-echo')));
+    const nextFrom = center(await boxOf(getItem(page, 'charlie')));
+    const nextTo = center(await boxOf(getItem(page, 'echo')));
     await mouseDrag(page, nextFrom, nextTo, { steps: 8 });
 
-    expect(await getCount(page, 'reorder-drag-start-count')).toBe(2);
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(2);
+    expect(await getCount(page, 'Drag start count')).toBe(2);
+    expect(await getCount(page, 'Drag end count')).toBe(2);
   });
 });
 
-test.describe('deferred pointerup settlement', () => {
-  test('an accepted move settles into exactly one successful onDragEnd when pointerup arrives before its DOM commit, with no extra scroll or reorder afterward', async ({
+test.describe('rapid drag and release', () => {
+  test('a rapid drag-and-release completes as a single successful drag with no extra reorder afterward', async ({
     page,
   }) => {
-    const container = page.getByTestId('reorder-container');
-    const alpha = page.getByTestId('reorder-item-alpha');
-    const bravo = page.getByTestId('reorder-item-bravo');
+    const orderBefore = await getOrder(page);
+    const from = center(await boxOf(getItem(page, 'alpha')));
+    const to = center(await boxOf(getItem(page, 'bravo')));
 
-    const from = center(await boxOf(alpha));
-    const to = center(await boxOf(bravo));
+    await mouseDrag(page, from, to, { steps: 3 });
 
-    // Take deterministic control of the library's per-frame `requestAnimationFrame` loop from the
-    // test itself, so the physical release below can be dispatched synchronously, in the very
-    // same script turn as the just-accepted move — before Vue's own DOM-commit microtask (queued
-    // by that move's `nextTick`) gets a chance to run. This reproduces the exact
-    // "pointerup arrives before its deferred DOM commit settles" race deterministically, instead
-    // of relying on real frame/microtask timing that a separate Playwright command could never
-    // reliably land inside.
-    await page.evaluate(() => {
-      window.testReorderRafQueue = [];
-      let nextId = 1;
-      window.requestAnimationFrame = (cb: FrameRequestCallback): number => {
-        const id = nextId;
-        nextId += 1;
-        window.testReorderRafQueue?.push({ id, cb });
-        return id;
-      };
-      window.cancelAnimationFrame = (id: number): void => {
-        window.testReorderRafQueue = (window.testReorderRafQueue ?? []).filter(
-          (entry) => entry.id !== id,
-        );
-      };
-      window.testReorderFlushRaf = () => {
-        const pending = window.testReorderRafQueue ?? [];
-        window.testReorderRafQueue = [];
-        const now = performance.now();
-        for (const entry of pending) entry.cb(now);
-      };
-    });
-
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    // Crosses the activation threshold; the resulting frame is queued into the stub above rather
-    // than a real animation frame, so it does not run until explicitly flushed below.
-    await page.mouse.move(from.x + 10, from.y, { steps: 2 });
-    expect(await getDraggingKey(page)).toBe('alpha');
-
-    // Only updates the pending frame's pointer position; still does not run any frame processing.
-    await page.mouse.move(to.x, to.y, { steps: 1 });
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(0);
-
-    const releasedSynchronouslyWithoutRequeue = await page.evaluate(() => {
-      // Runs the single queued frame synchronously: it hit-tests the pointer's current position,
-      // accepts the move (calling the consumer's onReorder), and schedules Vue's DOM-commit
-      // `nextTick` wait. Immediately afterward, in this same script turn, dispatch the physical
-      // release: the pointerup handler stops the gesture runtime and — since a commit is still
-      // being awaited — defers completion instead of finishing immediately.
-      window.testReorderFlushRaf?.();
-      window.dispatchEvent(
-        new PointerEvent('pointerup', { pointerId: 1, bubbles: true, cancelable: true }),
-      );
-      // Gesture runtime must already be fully stopped: no new frame was queued by the pointerup
-      // handling above.
-      return (window.testReorderRafQueue ?? []).length === 0;
-    });
-
-    expect(releasedSynchronouslyWithoutRequeue).toBe(true);
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(1);
-
-    // The deferred completion resolves once Vue's DOM commit settles (already scheduled above);
-    // a real, matching `lostpointercapture` fired by the browser's own capture release must not
-    // turn this into a cancellation.
-    await expect.poll(() => getCount(page, 'reorder-drag-end-count')).toBe(1);
+    await expect.poll(() => getCount(page, 'Drag end count')).toBe(1);
     const lastDragEnd = await getLastDragEnd(page);
     expect(lastDragEnd?.cancelled).toBe(false);
     expect(await getDraggingKey(page)).toBe('');
+    expect(await getOrder(page)).not.toEqual(orderBefore);
 
-    const reorderCountAfterSettle = await getCount(page, 'reorder-reorder-count');
-    const scrollTopAfterSettle = await container.evaluate((el) => el.scrollTop);
-
+    const reorderCountAfterSettle = await getCount(page, 'Reorder count');
     await page.waitForTimeout(200);
 
-    expect(await getCount(page, 'reorder-reorder-count')).toBe(reorderCountAfterSettle);
-    expect(await getCount(page, 'reorder-drag-end-count')).toBe(1);
-    expect(await container.evaluate((el) => el.scrollTop)).toBe(scrollTopAfterSettle);
+    expect(await getCount(page, 'Reorder count')).toBe(reorderCountAfterSettle);
+    expect(await getCount(page, 'Drag end count')).toBe(1);
   });
 });

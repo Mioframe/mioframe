@@ -2,29 +2,6 @@
 import { computed, ref, useTemplateRef } from 'vue';
 import { useReorder, type ReorderDragEndEvent } from '@shared/lib/reorder';
 
-/**
- * Test-fixture-only synchronous observability, read by Playwright: production `useReorder`
- * consumers never see this. It exists because the Vue-rendered `reorder-last-drag-end` text used
- * previously is observed by a `MutationObserver`, whose own scheduling can lag the library's real
- * synchronous `onDragEnd` call under heavy same-frame work — this log is written from directly
- * inside that synchronous callback instead, so a Playwright spec can use it as the authoritative
- * cancellation timestamp. Playwright initializes `window.testReorderHarnessEvents` before the
- * story loads; the harness only ever pushes to it when present.
- */
-interface ReorderHarnessEvent {
-  type: 'drag-end';
-  cancelled: boolean;
-  timeMs: number;
-  scrollTop: number | null;
-  order: string[];
-}
-
-declare global {
-  interface Window {
-    testReorderHarnessEvents?: ReorderHarnessEvent[];
-  }
-}
-
 interface HarnessItem {
   id: string;
   label: string;
@@ -56,6 +33,8 @@ const reorderCount = ref(0);
 const dragEndCount = ref(0);
 const interactiveClickCount = ref(0);
 const ignoreClickCount = ref(0);
+const containerClickCount = ref(0);
+const clickControlClickCount = ref(0);
 const lastDragEndPayload = ref('');
 const rejectNextReorder = ref(false);
 
@@ -80,18 +59,18 @@ const { draggingKey, vReorderContainer, vReorderItem, vReorderIgnore } = useReor
     dragStartCount.value += 1;
   },
   onDragEnd: (event: ReorderDragEndEvent<string>) => {
-    // Recorded synchronously, before the counters below, so it reflects the real callback timing.
-    window.testReorderHarnessEvents?.push({
-      type: 'drag-end',
-      cancelled: event.cancelled,
-      timeMs: performance.now(),
-      scrollTop: containerEl.value?.scrollTop ?? null,
-      order: [...keys.value],
-    });
     dragEndCount.value += 1;
     lastDragEndPayload.value = JSON.stringify(event);
   },
 });
+
+const onContainerClick = () => {
+  containerClickCount.value += 1;
+};
+
+const onClickControlClick = () => {
+  clickControlClickCount.value += 1;
+};
 
 const onInteractiveClick = () => {
   interactiveClickCount.value += 1;
@@ -139,109 +118,91 @@ const resetScrollAndOrder = () => {
 
 <template>
   <div class="reorder-story-harness">
-    <dl class="reorder-story-harness__meta">
-      <dt>order</dt>
-      <dd data-testid="reorder-order">{{ keys.join(',') }}</dd>
-      <dt>initialOrder</dt>
-      <dd data-testid="reorder-initial-order">{{ initialOrder }}</dd>
-      <dt>draggingKey</dt>
-      <dd data-testid="reorder-dragging-key">{{ draggingKey ?? '' }}</dd>
-      <dt>onDragStart</dt>
-      <dd data-testid="reorder-drag-start-count">{{ dragStartCount }}</dd>
-      <dt>onReorder</dt>
-      <dd data-testid="reorder-reorder-count">{{ reorderCount }}</dd>
-      <dt>onDragEnd</dt>
-      <dd data-testid="reorder-drag-end-count">{{ dragEndCount }}</dd>
-      <dt>lastDragEnd</dt>
-      <dd data-testid="reorder-last-drag-end">{{ lastDragEndPayload }}</dd>
-      <dt>interactive clicks</dt>
-      <dd data-testid="reorder-interactive-click-count">{{ interactiveClickCount }}</dd>
-      <dt>ignored clicks</dt>
-      <dd data-testid="reorder-ignore-click-count">{{ ignoreClickCount }}</dd>
-    </dl>
+    <div class="reorder-story-harness__meta">
+      <output aria-label="Current order">{{ keys.join(',') }}</output>
+      <output aria-label="Initial order">{{ initialOrder }}</output>
+      <output aria-label="Dragging key">{{ draggingKey ?? '' }}</output>
+      <output aria-label="Drag start count">{{ dragStartCount }}</output>
+      <output aria-label="Reorder count">{{ reorderCount }}</output>
+      <output aria-label="Drag end count">{{ dragEndCount }}</output>
+      <output aria-label="Last drag end">{{ lastDragEndPayload }}</output>
+      <output aria-label="Interactive click count">{{ interactiveClickCount }}</output>
+      <output aria-label="Ignored click count">{{ ignoreClickCount }}</output>
+      <output aria-label="Container click count">{{ containerClickCount }}</output>
+      <output aria-label="Click control click count">{{ clickControlClickCount }}</output>
+    </div>
 
     <div class="reorder-story-harness__controls">
-      <button
-        type="button"
-        data-testid="reorder-control-reverse-order"
-        @click="reverseOrderExternally"
-      >
-        reverse order externally
-      </button>
-      <button
-        type="button"
-        data-testid="reorder-control-rotate-order"
-        @click="rotateOrderExternally"
-      >
-        rotate order externally
-      </button>
-      <button type="button" data-testid="reorder-control-remove-active" @click="removeActiveKey">
-        remove active key
-      </button>
-      <button
-        type="button"
-        data-testid="reorder-control-toggle-container"
-        @click="toggleContainerMounted"
-      >
+      <button type="button" @click="reverseOrderExternally">reverse order externally</button>
+      <button type="button" @click="rotateOrderExternally">rotate order externally</button>
+      <button type="button" @click="removeActiveKey">remove active key</button>
+      <button type="button" @click="toggleContainerMounted">
         {{ containerMounted ? 'unmount' : 'remount' }} container
       </button>
-      <button
-        type="button"
-        data-testid="reorder-control-reject-next-reorder"
-        @click="toggleRejectNextReorder"
-      >
+      <button type="button" @click="toggleRejectNextReorder">
         {{ rejectNextReorder ? 'accepting' : 'reject' }} next reorder
       </button>
-      <button type="button" data-testid="reorder-control-reset" @click="resetScrollAndOrder">
-        reset scroll and order
-      </button>
-      <div class="reorder-story-harness__click-control" data-testid="reorder-click-control">
+      <button type="button" @click="resetScrollAndOrder">reset scroll and order</button>
+      <div
+        role="button"
+        tabindex="0"
+        aria-label="Click control"
+        class="reorder-story-harness__click-control"
+        @click="onClickControlClick"
+      >
         click control (not reorderable)
       </div>
     </div>
 
     <div
       ref="scrollAncestorEl"
+      role="region"
+      aria-label="Reorder scroll ancestor"
       class="reorder-story-harness__scroll-ancestor"
-      data-testid="reorder-scroll-ancestor"
     >
       <div class="reorder-story-harness__scroll-ancestor-spacer" aria-hidden="true" />
       <div
         v-if="containerMounted"
         ref="containerEl"
         v-reorder-container
+        role="list"
+        aria-label="Reorder items"
         class="reorder-story-harness__container"
-        data-testid="reorder-container"
+        @click="onContainerClick"
       >
         <div
           v-for="item in items"
           :key="item.id"
           v-reorder-item="item.id"
+          role="listitem"
+          :aria-label="item.label"
           class="reorder-story-harness__item"
-          :data-testid="`reorder-item-${item.id}`"
           :style="{ width: `${item.width}px`, height: `${item.height}px` }"
         >
           <span class="reorder-story-harness__item-label">{{ item.label }}</span>
           <button
             type="button"
             class="reorder-story-harness__interactive"
-            data-testid="reorder-interactive-button"
+            :aria-label="`${item.label} action`"
             @click="onInteractiveClick"
           >
             action
           </button>
           <div
             v-reorder-ignore
+            role="button"
+            tabindex="0"
+            :aria-label="`${item.label} ignore zone`"
             class="reorder-story-harness__ignore"
-            data-testid="reorder-ignore-zone"
             @click="onIgnoreClick"
           >
             ignore
           </div>
           <div
             v-if="item.id === 'scrollable'"
+            role="region"
+            aria-label="Reorder nested scroll"
             class="reorder-story-harness__nested-scroll"
-            data-testid="reorder-nested-scroll"
           >
             <div class="reorder-story-harness__nested-scroll-content">
               nested scroll content line 1<br />
@@ -254,7 +215,12 @@ const resetScrollAndOrder = () => {
         </div>
         <div class="reorder-story-harness__spacer" aria-hidden="true" />
       </div>
-      <p v-else data-testid="reorder-container-unmounted" class="reorder-story-harness__unmounted">
+      <p
+        v-else
+        role="status"
+        aria-label="container unmounted"
+        class="reorder-story-harness__unmounted"
+      >
         container unmounted
       </p>
       <div class="reorder-story-harness__scroll-ancestor-spacer-bottom" aria-hidden="true" />
@@ -276,20 +242,14 @@ const resetScrollAndOrder = () => {
 }
 
 .reorder-story-harness__meta {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 2px 8px;
-  margin: 0;
-}
-
-.reorder-story-harness__meta dt {
-  font-weight: 600;
-  color: #666;
-}
-
-.reorder-story-harness__meta dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   margin: 0;
   font-family: monospace;
+}
+
+.reorder-story-harness__meta output {
   word-break: break-all;
 }
 
@@ -315,6 +275,7 @@ const resetScrollAndOrder = () => {
   border: 1px solid #9ca3af;
   border-radius: 4px;
   text-align: center;
+  cursor: pointer;
 }
 
 /*
