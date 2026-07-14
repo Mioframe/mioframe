@@ -29,6 +29,22 @@ Required boundaries:
 
 Storybook is intended for stable component surfaces and visual states. It should stay a rendering harness, not an alternate product application or an e2e runner.
 
+## Material component backdrop
+
+Every Storybook demonstration or visual fixture for a shared Material `MD*` component must expose the rendered component against the canonical neutral checkerboard backdrop.
+
+Required contract:
+
+- Reuse `.visual-checker-backdrop` from `.storybook/visual.css` on the fixture root, or the shared Storybook decorator/wrapper that applies the same canonical class.
+- Do not add new uses of the legacy `.visual-list-backdrop` alias.
+- Do not duplicate the checkerboard gradient inline, create component-family-specific checkerboards, or derive the checker colors from `--md-sys-color-*` tokens.
+- Apply the checkerboard only to Storybook fixture wrappers, never to production components or product pages.
+- Keep the component's own background, transparency, shape, elevation, and state-layer ownership unchanged; the fixture must not add a solid Material surface merely to make the component look correct.
+- Surface-context, inheritance, and contrast scenarios must keep the checkerboard as the outer fixture and place the explicit semantic Material surfaces being tested inside it.
+- When touching an existing Material visual story, migrate its fixture root to the canonical checkerboard in the same change and intentionally review any resulting baseline update.
+
+Reject a new or changed Material component demonstration or visual snapshot when its fixture hides the component on a flat implicit background instead of the canonical checkerboard.
+
 ## Story identity contract
 
 When a visual spec opens a Storybook story by id, the story `title` and story export name are part of the visual test contract.
@@ -144,3 +160,4 @@ Reject or rewrite a visual test when:
 5. It inherits product app behavior that can affect screenshots.
 6. It updates snapshots without explaining the intended visual change.
 7. It duplicates an e2e behavior assertion instead of checking appearance.
+8. A shared Material `MD*` component fixture does not use the canonical checkerboard outer backdrop or duplicates that backdrop locally.
