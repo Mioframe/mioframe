@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
+import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDButton',
@@ -79,11 +80,60 @@ export const ToggleShapes: Story = {
         <div class="visual-row">
           <MDButton data-testid="toggle-round-selected" label="Round selected" variant="toggle" shape="round" selected color="tonal" />
           <MDButton data-testid="toggle-round-unselected" label="Round unselected" variant="toggle" shape="round" color="tonal" />
+          <MDButton data-testid="toggle-round-pressed" class="md-state_pressed" label="Round pressed" shape="round" color="tonal" />
+          <MDButton data-testid="toggle-round-selected-pressed" class="md-state_pressed" label="Round selected pressed" variant="toggle" shape="round" selected color="tonal" />
         </div>
         <div class="visual-row">
           <MDButton data-testid="toggle-square-selected" label="Square selected" variant="toggle" shape="square" selected color="tonal" />
           <MDButton data-testid="toggle-square-unselected" label="Square unselected" variant="toggle" shape="square" color="tonal" />
         </div>
+      </div>
+    `,
+  }),
+};
+
+export const ToggleInteractionStates: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-toggle-interaction-states" class="visual-surface">
+        <div class="visual-row">
+          <MDButton label="Unselected" variant="toggle" color="tonal">
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton label="Selected" variant="toggle" selected color="tonal">
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton class="md-state_hover" label="Selected hover" variant="toggle" selected color="tonal">
+            <template #icon>+</template>
+          </MDButton>
+        </div>
+        <div class="visual-row">
+          <MDButton class="md-state_focused" label="Selected focus" variant="toggle" selected color="tonal">
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton class="md-state_pressed" label="Selected pressed" variant="toggle" selected color="tonal">
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton label="Disabled selected" variant="toggle" selected disabled color="tonal">
+            <template #icon>+</template>
+          </MDButton>
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const FocusIndicatorTarget: Story = {
+  render: () => ({
+    components: { MDButton },
+    setup() {
+      useFocusIndicator();
+    },
+    template: `
+      <div id="visual-md-button-focus-indicator">
+        <MDButton id="storybook-md-button-focus" label="Focus target" color="filled" />
       </div>
     `,
   }),

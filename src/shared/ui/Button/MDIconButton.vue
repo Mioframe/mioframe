@@ -922,7 +922,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xsmall-selected-container-shape-round
           );
@@ -931,7 +931,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xsmall-selected-container-shape-square
           );
@@ -981,7 +981,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-small-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-small-selected-container-shape-round
           );
@@ -990,7 +990,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-small-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-small-selected-container-shape-square
           );
@@ -1039,7 +1039,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-medium-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-medium-selected-container-shape-round
           );
@@ -1048,7 +1048,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-medium-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-medium-selected-container-shape-square
           );
@@ -1099,7 +1099,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-large-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-large-selected-container-shape-round
           );
@@ -1108,7 +1108,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-large-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-large-selected-container-shape-square
           );
@@ -1159,7 +1159,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xlarge-selected-container-shape-round
           );
@@ -1168,7 +1168,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
+        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xlarge-selected-container-shape-square
           );

@@ -3,6 +3,7 @@ import MDIconButton from './MDIconButton.vue';
 import MDIconButtonTargetHitVisualStory from './MDIconButtonTargetHitVisualStory.vue';
 import MDIconButtonToolbarInteractionStory from './MDIconButtonToolbarInteractionStory.vue';
 import MDIconButtonToolbarVisualStory from './MDIconButtonToolbarVisualStory.vue';
+import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDIconButton',
@@ -122,6 +123,66 @@ export const ExpandedTargetHitArea: Story = {
   render: () => ({
     components: { MDIconButtonTargetHitVisualStory },
     template: '<MDIconButtonTargetHitVisualStory />',
+  }),
+};
+
+export const Geometry: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDIconButton },
+    template: `
+      <div data-testid="visual-md-icon-button-geometry" class="visual-surface">
+        <div class="visual-row">
+          <MDIconButton data-testid="geometry-width-narrow" tooltip="Narrow" width="narrow" md-symbol-name="edit" />
+          <MDIconButton data-testid="geometry-width-default" tooltip="Default width" width="default" md-symbol-name="edit" />
+          <MDIconButton data-testid="geometry-width-wide" tooltip="Wide" width="wide" md-symbol-name="edit" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton data-testid="geometry-shape-round" tooltip="Round" shape="round" color="tonal" md-symbol-name="edit" />
+          <MDIconButton data-testid="geometry-shape-square" tooltip="Square" shape="square" color="tonal" md-symbol-name="edit" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton data-testid="geometry-round-selected" tooltip="Round selected" variant="toggle" shape="round" selected color="tonal" md-symbol-name="check" />
+          <MDIconButton data-testid="geometry-round-pressed" class="md-state_pressed" tooltip="Round pressed" shape="round" color="tonal" md-symbol-name="check" />
+          <MDIconButton data-testid="geometry-round-selected-pressed" class="md-state_pressed" tooltip="Round selected pressed" variant="toggle" shape="round" selected color="tonal" md-symbol-name="check" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const ToggleInteractionStates: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDIconButton },
+    template: `
+      <div data-testid="visual-md-icon-button-toggle-interaction-states" class="visual-surface">
+        <div class="visual-row">
+          <MDIconButton tooltip="Unselected" variant="toggle" color="tonal" md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Selected" variant="toggle" selected color="tonal" md-symbol-name="bookmark" />
+          <MDIconButton class="md-state_hover" tooltip="Selected hover" variant="toggle" selected color="tonal" md-symbol-name="bookmark" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton class="md-state_focused" tooltip="Selected focus" variant="toggle" selected color="tonal" md-symbol-name="bookmark" />
+          <MDIconButton class="md-state_pressed" tooltip="Selected pressed" variant="toggle" selected color="tonal" md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Disabled selected" variant="toggle" selected disabled color="tonal" md-symbol-name="bookmark" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const FocusIndicatorTarget: Story = {
+  render: () => ({
+    components: { MDIconButton },
+    setup() {
+      useFocusIndicator();
+    },
+    template: `
+      <div id="visual-md-icon-button-focus-indicator">
+        <MDIconButton id="storybook-md-icon-button-focus" tooltip="Focus target" color="filled" md-symbol-name="favorite" />
+      </div>
+    `,
   }),
 };
 

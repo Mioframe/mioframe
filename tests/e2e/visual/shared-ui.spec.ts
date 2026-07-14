@@ -1,6 +1,49 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { openStory } from './storybook';
+
+// Shared by each button family's real-focus-visible test: waits for the global focus indicator
+// to reposition, then asserts it covers the focused host and stays within the viewport.
+const assertFocusIndicatorFollowsHost = async (page: Page, indicator: Locator, host: Locator) => {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            resolve();
+          }),
+        ),
+      ),
+  );
+
+  const indicatorBox = await indicator.boundingBox();
+  const hostBox = await host.boundingBox();
+  const viewport = page.viewportSize();
+
+  if (!indicatorBox || !hostBox || !viewport) {
+    throw new Error('Missing bounding boxes for focus indicator test.');
+  }
+
+  expect(indicatorBox.width).toBeGreaterThan(0);
+  expect(indicatorBox.height).toBeGreaterThan(0);
+
+  // Geometry follows the rendered host container (allowing for the indicator's outer offset).
+  const TOLERANCE = 1;
+  expect(indicatorBox.x).toBeLessThanOrEqual(hostBox.x + TOLERANCE);
+  expect(indicatorBox.y).toBeLessThanOrEqual(hostBox.y + TOLERANCE);
+  expect(indicatorBox.x + indicatorBox.width).toBeGreaterThanOrEqual(
+    hostBox.x + hostBox.width - TOLERANCE,
+  );
+  expect(indicatorBox.y + indicatorBox.height).toBeGreaterThanOrEqual(
+    hostBox.y + hostBox.height - TOLERANCE,
+  );
+
+  // Not clipped: fully within the viewport.
+  expect(indicatorBox.x).toBeGreaterThanOrEqual(0);
+  expect(indicatorBox.y).toBeGreaterThanOrEqual(0);
+  expect(indicatorBox.x + indicatorBox.width).toBeLessThanOrEqual(viewport.width);
+  expect(indicatorBox.y + indicatorBox.height).toBeLessThanOrEqual(viewport.height);
+};
 
 const readButtonVisuals = async (
   page: Page,
@@ -247,6 +290,39 @@ test('MDButton selected toggle shape morphs round and square input shapes', asyn
   expect(roundSelected).toBeLessThan(roundUnselected);
   // A square input shape morphs from its corner token to a fully-rounded shape (larger).
   expect(squareSelected).toBeGreaterThan(squareUnselected);
+});
+
+test('MDButton pressed shape takes precedence over selected shape', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--toggle-shapes');
+
+  const readRadius = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+
+  const selectedOnly = await readRadius('toggle-round-selected');
+  const pressedOnly = await readRadius('toggle-round-pressed');
+  const selectedPressed = await readRadius('toggle-round-selected-pressed');
+
+  // Selected + pressed renders the pressed shape, matching a plain pressed button and diverging
+  // from the selected-only shape.
+  expect(selectedPressed).toBeCloseTo(pressedOnly, 5);
+  expect(selectedPressed).not.toBeCloseTo(selectedOnly, 5);
+});
+
+test('MDButton focus indicator follows real keyboard focus and is not clipped', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--focus-indicator-target');
+
+  const host = page.getByRole('button', { name: 'Focus target', exact: true });
+  const indicator = page.locator('.md-focus-indicator');
+
+  // Tab from a page with no focused element: the browser focuses the first focusable element.
+  await page.keyboard.press('Tab');
+  await expect(host).toBeFocused();
+  expect(await host.evaluate((el) => el.matches(':focus-visible'))).toBe(true);
+  await expect(indicator).toHaveCSS('opacity', '1');
+
+  await assertFocusIndicatorFollowsHost(page, indicator, host);
 });
 
 test('MDButton text toggle selects without the removed color restriction', async ({ page }) => {
@@ -716,6 +792,34 @@ test('MDFab default color resolves to the primary-container token', async ({ pag
   expect(backgroundColor).toBe(primaryContainerColor);
 });
 
+test('MDFab container height increases from regular to medium to large', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--size-comparison');
+
+  const readHeight = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => el.getBoundingClientRect().height);
+
+  const regular = await readHeight('fab-size-regular');
+  const medium = await readHeight('fab-size-medium');
+  const large = await readHeight('fab-size-large');
+
+  expect(regular).toBeLessThan(medium);
+  expect(medium).toBeLessThan(large);
+});
+
+test('MDFab focus indicator follows real keyboard focus and is not clipped', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--focus-indicator-target');
+
+  const host = page.getByRole('button', { name: 'Focus target', exact: true });
+  const indicator = page.locator('.md-focus-indicator');
+
+  await page.keyboard.press('Tab');
+  await expect(host).toBeFocused();
+  expect(await host.evaluate((el) => el.matches(':focus-visible'))).toBe(true);
+  await expect(indicator).toHaveCSS('opacity', '1');
+
+  await assertFocusIndicatorFollowsHost(page, indicator, host);
+});
+
 test('MDCard visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdcard--visual-states');
 
@@ -1073,6 +1177,60 @@ test('MDIconButton routes icon, outline, state-layer, and toggle tokens through 
   expect(selected.stateLayerBackground).not.toBe(unselected.stateLayerBackground);
 });
 
+test('MDIconButton width and shape geometry differ by prop', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--geometry');
+
+  const readPaddingInline = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => {
+      const style = getComputedStyle(el);
+      return parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd);
+    });
+  const readRadius = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+
+  const narrow = await readPaddingInline('geometry-width-narrow');
+  const defaultWidth = await readPaddingInline('geometry-width-default');
+  const wide = await readPaddingInline('geometry-width-wide');
+
+  expect(narrow).toBeLessThan(defaultWidth);
+  expect(defaultWidth).toBeLessThan(wide);
+
+  const round = await readRadius('geometry-shape-round');
+  const square = await readRadius('geometry-shape-square');
+
+  expect(round).toBeGreaterThan(square);
+});
+
+test('MDIconButton pressed shape takes precedence over selected shape', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--geometry');
+
+  const readRadius = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+
+  const selectedOnly = await readRadius('geometry-round-selected');
+  const pressedOnly = await readRadius('geometry-round-pressed');
+  const selectedPressed = await readRadius('geometry-round-selected-pressed');
+
+  expect(selectedPressed).toBeCloseTo(pressedOnly, 5);
+  expect(selectedPressed).not.toBeCloseTo(selectedOnly, 5);
+});
+
+test('MDIconButton focus indicator follows real keyboard focus and is not clipped', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--focus-indicator-target');
+
+  const host = page.getByRole('button', { name: 'Focus target', exact: true });
+  const indicator = page.locator('.md-focus-indicator');
+
+  await page.keyboard.press('Tab');
+  await expect(host).toBeFocused();
+  expect(await host.evaluate((el) => el.matches(':focus-visible'))).toBe(true);
+  await expect(indicator).toHaveCSS('opacity', '1');
+
+  await assertFocusIndicatorFollowsHost(page, indicator, host);
+});
+
 test('Button-family loading indicators consume the rendered component colors', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--loading-color-routing');
   expect(await readProgressIndicatorColor(page, 'button-loading-color')).toBe(
@@ -1145,6 +1303,33 @@ test('MDExtendedFab routes independent label, icon, elevation, and state-layer t
   expect(containerHover.hoverOpacity).toBe('0.05');
   expect(containerFocus.focusOpacity).toBe('0.19');
   expect(containerPressed.pressedOpacity).toBe('0.31');
+});
+
+test('MDExtendedFab renders without an icon container when only a label is given', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--interaction-states');
+
+  const noIcon = page.getByRole('button', { name: 'No icon', exact: true });
+
+  await expect(noIcon.locator('.md-extended-fab__icon')).toHaveCount(0);
+  await expect(noIcon.locator('.md-extended-fab__label')).toHaveText('No icon');
+});
+
+test('MDExtendedFab focus indicator follows real keyboard focus and is not clipped', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--focus-indicator-target');
+
+  const host = page.getByRole('button', { name: 'Focus target', exact: true });
+  const indicator = page.locator('.md-focus-indicator');
+
+  await page.keyboard.press('Tab');
+  await expect(host).toBeFocused();
+  expect(await host.evaluate((el) => el.matches(':focus-visible'))).toBe(true);
+  await expect(indicator).toHaveCSS('opacity', '1');
+
+  await assertFocusIndicatorFollowsHost(page, indicator, host);
 });
 
 test('MDStateLayer visual states match baseline', async ({ page }) => {

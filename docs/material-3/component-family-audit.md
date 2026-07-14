@@ -18,15 +18,18 @@ Current state:
 - `outlined` hover/focus/pressed/disabled outline color is the literal official `outline-variant`; the border does not darken further on hover, consistent with the spec's reliance on the state-layer tint for hover feedback;
 - state-layer color is routed per component state through the generic `MDStateLayer` contract, while hover/focus/pressed opacity uses the shared style-level `--md-comp-button-<style>-{hovered,focused,pressed}-state-layer-opacity` tokens bridged into `--md-private-state-{hover,focus,pressed}-state-layer-opacity`; `MDStateLayer` itself remains generic and component-agnostic;
 - disabled selected-toggle buttons explicitly exclude the selected-color selector so a higher-specificity toggle-selected rule cannot outrank `:disabled` — confirmed via a visual-regression screenshot diff for elevated/filled/tonal/outlined;
-- uses `MDStateLayer`, ripple, and progress indicator; has focused unit tests (including `loading` `false`/`true`/`0`/positive), browser assertions for rendered typography class/computed metrics, selected-shape, text spacing, independent label/icon routing, per-state state-layer color and opacity routing, outline routing, toggle selected/unselected routing, and disabled-precedence, plus Storybook coverage.
+- uses `MDStateLayer`, ripple, and progress indicator; has focused unit tests (including `loading` `false`/`true`/`0`/positive), browser assertions for rendered typography class/computed metrics, selected-shape, text spacing, independent label/icon routing, per-state state-layer color and opacity routing, outline routing, toggle selected/unselected routing, and disabled-precedence, plus Storybook coverage;
+- pressed shape precedence over selected shape is browser-verified: a selected + pressed toggle button renders the plain pressed-shape radius, not the selected-shape radius;
+- a compact `ToggleInteractionStates` visual story and screenshot cover the toggle interaction matrix (unselected, selected, selected hover, selected focus, selected pressed, disabled selected) for one representative color;
+- real keyboard focus is browser-verified: a `FocusIndicatorTarget` story reached via `Tab` confirms actual `:focus-visible`, that the shared global focus indicator becomes visible, that its geometry follows the rendered button container, and that it is not clipped by the viewport.
 
-Remaining gaps:
+Remaining gaps and unsupported scope:
 
-- not every one of the roughly 300 available button state tokens in the cache was individually re-verified line by line beyond the corrections above;
-- component-level focus-indicator tokens do not exist in the current (non-deprecated) cache namespace; the shared global focus-indicator default already matches the documented value;
-- loading remains a documented project extension.
+- loading remains a documented project extension, not an official Material token or state;
+- component-level focus-indicator tokens do not exist in the current (non-deprecated) cache namespace; the shared global focus-indicator default is reused unchanged and is now browser-verified against real keyboard focus rather than only visual similarity;
+- Split Button, Standard Button Group, and Connected Button Group are official Material button-family surfaces with no confirmed Mioframe usage and are not implemented.
 
-Verdict: `partial`. Token naming, spacing, typography, and disabled-precedence corrections above are complete and browser-verified; remains `partial` pending a fuller line-item audit of every remaining state token.
+Verdict: `aligned` for the supported public subset (five color styles, five sizes, `round`/`square` shapes, `default`/`toggle` variants, resting/hover/focus/pressed/disabled states, toggle selected/unselected states including combined states, shape precedence, and disabled precedence). Alignment is verified against every token and state reachable through the public API, not against every token present in the Material cache; unsupported official configurations are listed above.
 
 ## Icon buttons: `MDIconButton`
 
@@ -41,15 +44,18 @@ Current state:
 - all rendered icon-button properties now resolve through component-local private variables for container, icon, outline, and state-layer; the previous invented generic disabled `--md-comp-*` aliases were removed in favor of exact style-specific official token paths;
 - state-layer color and opacity are mapped through the generic `--md-private-state-layer-color` plus `--md-private-state-{hover,focus,pressed}-state-layer-opacity` contract for all four color styles, base/unselected/selected, while outlined buttons keep one official `--md-comp-icon-button-outlined-outline-color` token across hover, focus, and pressed;
 - disabled selected-toggle icon buttons explicitly exclude the selected-color selector, fixing the same cascade-specificity issue as `MDButton` — confirmed via a visual-regression screenshot diff across all four color styles;
-- has visual, target-area, toolbar, and dense-toolbar behavior tests plus toggle/warning unit tests (including `loading` `false`/`true`/`0`/positive), and browser assertions for outline-width scaling, hover/focus/pressed icon and state-layer routing, toggle selected/unselected routing, outline routing, and disabled-precedence.
+- has visual, target-area, toolbar, and dense-toolbar behavior tests plus toggle/warning unit tests (including `loading` `false`/`true`/`0`/positive), and browser assertions for outline-width scaling, hover/focus/pressed icon and state-layer routing, toggle selected/unselected routing, outline routing, and disabled-precedence;
+- a `Geometry` visual story and browser assertions cover `width` (`narrow`/`default`/`wide`) padding differences, `shape` (`round`/`square`) corner differences, and pressed-shape precedence over selected shape (a selected + pressed toggle icon button renders the plain pressed-shape radius, not the selected-shape radius); this closed a confirmed cascade-specificity bug across all five sizes where the selected-shape selector (`.md-icon-button_shape-{round,square}.md-icon-button_selected`, specificity 0,4,0) outranked the pressed-shape selector (`.md-state_pressed`, specificity 0,3,0), so a selected + pressed icon button always rendered the selected shape instead of the pressed shape; the fix adds `:not(.md-state_pressed)` to the selected-shape selector, mirroring the pattern `MDButton` already used;
+- a compact `ToggleInteractionStates` visual story and screenshot cover the toggle interaction matrix (unselected, selected, selected hover, selected focus, selected pressed, disabled selected) for one representative color;
+- real keyboard focus is browser-verified: a `FocusIndicatorTarget` story reached via `Tab` confirms actual `:focus-visible`, that the shared global focus indicator becomes visible, that its geometry follows the rendered button container, and that it is not clipped by the viewport.
 
-Remaining gaps:
+Remaining gaps and unsupported scope:
 
-- not every one of the available icon-button state tokens in the cache was individually re-verified line by line beyond the corrections above;
-- component-level focus-indicator tokens exist only under deprecated legacy component names in the cache, not the current namespace; the shared global default is reused unchanged;
-- loading and rich tooltip content remain documented project extensions.
+- loading and rich tooltip content remain documented project extensions, not official Material tokens or states;
+- component-level focus-indicator tokens exist only under deprecated legacy component names in the cache, not the current namespace; the shared global default is reused unchanged and is now browser-verified against real keyboard focus rather than only visual similarity;
+- Split Button and Standard/Connected Button Group compositions that use icon buttons as constituent parts have no confirmed Mioframe usage and are not implemented.
 
-Verdict: `partial`. Token naming, toggle color corrections, and disabled-precedence corrections above are complete and browser-verified; remains `partial` pending a fuller line-item audit of every remaining state token.
+Verdict: `aligned` for the supported public subset (four color styles, five sizes, `narrow`/`default`/`wide` widths, `round`/`square` shapes, `default`/`toggle` variants, resting/hover/focus/pressed/disabled states, toggle selected/unselected states including combined states, shape precedence, outline routing, disabled precedence, and expanded target geometry). Alignment is verified against every token and state reachable through the public API, not against every token present in the Material cache; unsupported official configurations are listed above.
 
 ## FAB: `MDFab`, `MDExtendedFab`, `FabContainer`
 
@@ -63,14 +69,18 @@ Current state:
 - the cache also contains contradictory duplicate legacy `hover`/`focus` rows for the three plain styles that alias a different, lower-emphasis color role; those legacy rows are not used;
 - all rendered FAB properties now resolve through component-local private variables: `MDFab` uses local container/icon/elevation/state-layer routes, and `MDExtendedFab` uses local container/label/icon/elevation/state-layer routes with independent label and icon override points;
 - `MDExtendedFab` label typography renders through the shared `MD_TYPESCALE` classes (`small`→title-medium, `medium`→title-large, `large`→headline-small) instead of handwritten font CSS; `MDExtendedFab`'s icon-label gap follows size via `--md-comp-extended-fab-{small,medium,large}-icon-label-space` (8dp/12dp/16dp);
-- `FabContainer` (renamed from `MDFabContainer`, no compatibility alias) remains project-specific placement infrastructure under `Project UI/Buttons/FabContainer`; it is not an official Material component and owns no FAB visual tokens.
+- `FabContainer` (renamed from `MDFabContainer`, no compatibility alias) remains project-specific placement infrastructure under `Project UI/Buttons/FabContainer`; it is not an official Material component and owns no FAB visual tokens;
+- `MDFab` has a compact `SizeComparison` visual story and a browser assertion that container height increases from `regular` to `medium` to `large`;
+- `MDExtendedFab` has a dedicated `InteractionStates` visual story covering all six colors, hover/focus/pressed on a representative color, all three sizes, an icon and no-icon case, and loading, plus a browser assertion that the no-icon case renders no icon container;
+- real keyboard focus is browser-verified for both `MDFab` and `MDExtendedFab`: a `FocusIndicatorTarget` story reached via `Tab` confirms actual `:focus-visible`, that the shared global focus indicator becomes visible, that its geometry follows the rendered button container, and that it is not clipped by the viewport.
 
-Remaining gaps:
+Remaining gaps and unsupported scope:
 
-- component-level focus-indicator tokens resolve to the secondary role for the three plain styles and do not exist at all for the three `-container` styles in the cache; the shared global default is reused for all six styles without a component override;
-- loading remains a documented project extension.
+- component-level focus-indicator tokens resolve to the secondary role for the three plain styles and do not exist at all for the three `-container` styles in the cache; the shared global default is reused for all six styles without a component override, and is now browser-verified against real keyboard focus rather than only visual similarity;
+- loading remains a documented project extension, not an official Material token or state;
+- FAB disabled state, FAB Menu, legacy Small FAB, and lowered/surface FAB variants are official or previously-documented Material configurations with no confirmed Mioframe usage and are not implemented; `MDFab`/`MDExtendedFab` intentionally expose no `disabled` prop.
 
-Verdict: `partial`. Color terminology, local rendered-token routing, per-state opacity/elevation/icon-label routing, and typography corrections above are complete and browser-verified for one plain and one container style; remains `partial` pending a fuller line-item audit of every remaining state token and style.
+Verdict: `aligned` for the supported public subset (`MDFab`: six colors, `regular`/`medium`/`large` sizes, required-icon contract, resting/hover/focus/pressed states; `MDExtendedFab`: the same six colors, `small`/`medium`/`large` sizes, resting/hover/focus/pressed states, independent label/icon routing, size-specific typography and icon-label spacing). `FabContainer` remains `project-specific`. Alignment is verified against every token and state reachable through the public API, not against every token present in the Material cache; unsupported official configurations are listed above.
 
 ## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`
 

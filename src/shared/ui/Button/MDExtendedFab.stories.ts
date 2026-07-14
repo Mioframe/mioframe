@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDExtendedFab from './MDExtendedFab.vue';
+import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDExtendedFab',
@@ -71,6 +72,56 @@ export const VisualStates: Story = {
           <MDExtendedFab label="Medium" size="medium" color="tertiary-container" md-symbol="star" />
           <MDExtendedFab label="Large" size="large" color="secondary" md-symbol="menu" />
         </div>
+      </div>
+    `,
+  }),
+};
+
+export const InteractionStates: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDExtendedFab },
+    template: `
+      <div data-testid="visual-md-extended-fab-interaction-states" class="visual-surface">
+        <div class="visual-row">
+          <MDExtendedFab label="Primary" color="primary" md-symbol="add" />
+          <MDExtendedFab label="Secondary" color="secondary" md-symbol="edit" />
+          <MDExtendedFab label="Tertiary" color="tertiary" md-symbol="star" />
+        </div>
+        <div class="visual-row">
+          <MDExtendedFab label="Primary container" color="primary-container" md-symbol="add" />
+          <MDExtendedFab label="Secondary container" color="secondary-container" md-symbol="edit" />
+          <MDExtendedFab label="Tertiary container" color="tertiary-container" md-symbol="star" />
+        </div>
+        <div class="visual-row">
+          <MDExtendedFab class="md-state_hover" label="Hover" color="primary-container" md-symbol="add" />
+          <MDExtendedFab class="md-state_focused" label="Focus" color="primary-container" md-symbol="add" />
+          <MDExtendedFab class="md-state_pressed" label="Pressed" color="primary-container" md-symbol="add" />
+        </div>
+        <div class="visual-row">
+          <MDExtendedFab label="Small" size="small" color="primary-container" md-symbol="add" />
+          <MDExtendedFab label="Medium" size="medium" color="primary-container" md-symbol="add" />
+          <MDExtendedFab label="Large" size="large" color="primary-container" md-symbol="add" />
+        </div>
+        <div class="visual-row">
+          <MDExtendedFab label="With icon" color="primary-container" md-symbol="add" />
+          <MDExtendedFab label="No icon" color="primary-container" />
+          <MDExtendedFab label="Loading" color="primary-container" md-symbol="add" loading />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const FocusIndicatorTarget: Story = {
+  render: () => ({
+    components: { MDExtendedFab },
+    setup() {
+      useFocusIndicator();
+    },
+    template: `
+      <div id="visual-md-extended-fab-focus-indicator">
+        <MDExtendedFab id="storybook-md-extended-fab-focus" label="Focus target" color="primary-container" md-symbol="add" />
       </div>
     `,
   }),

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDFab from './MDFab.vue';
+import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDFab',
@@ -102,6 +103,34 @@ export const VisualInteractionStates: Story = {
   render: () => ({
     components: { MDFab },
     template: fabInteractionStatesTemplate,
+  }),
+};
+
+export const SizeComparison: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDFab },
+    template: `
+      <div data-testid="visual-md-fab-size-comparison" class="visual-row">
+        <MDFab data-testid="fab-size-regular" tooltip="Regular" size="regular" color="primary-container" md-symbol="add" />
+        <MDFab data-testid="fab-size-medium" tooltip="Medium" size="medium" color="primary-container" md-symbol="add" />
+        <MDFab data-testid="fab-size-large" tooltip="Large" size="large" color="primary-container" md-symbol="add" />
+      </div>
+    `,
+  }),
+};
+
+export const FocusIndicatorTarget: Story = {
+  render: () => ({
+    components: { MDFab },
+    setup() {
+      useFocusIndicator();
+    },
+    template: `
+      <div id="visual-md-fab-focus-indicator">
+        <MDFab id="storybook-md-fab-focus" tooltip="Focus target" color="primary-container" md-symbol="add" />
+      </div>
+    `,
   }),
 };
 
