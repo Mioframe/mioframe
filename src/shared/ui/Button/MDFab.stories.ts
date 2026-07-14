@@ -41,7 +41,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const fabStatesTemplate = `
-  <div data-testid="visual-md-fab-states" class="visual-surface">
+  <div data-testid="visual-md-fab-states" class="visual-checker-backdrop">
     <div class="visual-row">
       <MDFab tooltip="Primary" color="primary" md-symbol="add" />
       <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
@@ -61,7 +61,7 @@ const fabStatesTemplate = `
 `;
 
 const fabInteractionStatesTemplate = `
-  <div data-testid="visual-md-fab-interaction-states" class="visual-surface">
+  <div data-testid="visual-md-fab-interaction-states" class="visual-checker-backdrop">
     <div class="visual-row">
       <MDFab class="md-state_hover" tooltip="Primary hover" color="primary" md-symbol="add" />
       <MDFab class="md-state_focused" tooltip="Primary focus" color="primary" md-symbol="add" />
@@ -95,24 +95,36 @@ const fabInteractionStatesTemplate = `
   </div>
 `;
 
-export const Default: Story = {};
+// Wraps args-only demonstrations in the canonical checkerboard backdrop without duplicating
+// wrapper markup in every bare story; stories that already build a custom multi-row template
+// carry their own `.visual-checker-backdrop` root instead of this decorator.
+const withCheckerboard = () => ({
+  template: '<div class="visual-checker-backdrop"><story /></div>',
+});
+
+export const Default: Story = {
+  decorators: [withCheckerboard],
+};
 
 export const Secondary: Story = {
   args: {
     color: 'secondary',
   },
+  decorators: [withCheckerboard],
 };
 
 export const Large: Story = {
   args: {
     size: 'large',
   },
+  decorators: [withCheckerboard],
 };
 
 export const Loading: Story = {
   args: {
     loading: true,
   },
+  decorators: [withCheckerboard],
 };
 
 export const VisualStates: Story = {
@@ -136,16 +148,19 @@ export const SizeComparison: Story = {
   render: () => ({
     components: { MDFab },
     template: `
-      <div data-testid="visual-md-fab-size-comparison" class="visual-row">
-        <MDFab data-testid="fab-size-regular" tooltip="Regular" size="regular" color="primary-container" md-symbol="add" />
-        <MDFab data-testid="fab-size-medium" tooltip="Medium" size="medium" color="primary-container" md-symbol="add" />
-        <MDFab data-testid="fab-size-large" tooltip="Large" size="large" color="primary-container" md-symbol="add" />
+      <div data-testid="visual-md-fab-size-comparison" class="visual-checker-backdrop">
+        <div class="visual-row">
+          <MDFab data-testid="fab-size-regular" tooltip="Regular" size="regular" color="primary-container" md-symbol="add" />
+          <MDFab data-testid="fab-size-medium" tooltip="Medium" size="medium" color="primary-container" md-symbol="add" />
+          <MDFab data-testid="fab-size-large" tooltip="Large" size="large" color="primary-container" md-symbol="add" />
+        </div>
       </div>
     `,
   }),
 };
 
 export const FocusIndicatorTarget: Story = {
+  decorators: [withCheckerboard],
   render: () => ({
     components: { MDFab },
     setup() {
@@ -181,66 +196,78 @@ type FabTokenState = 'hovered' | 'focused' | 'pressed';
  */
 const FAB_TOKEN_MATRIX: Record<
   FabColor,
-  Record<FabTokenState, { color: string; elevation: string; opacity: string }>
+  Record<FabTokenState, { icon: string; elevation: string; opacity: string }>
 > = {
   primary: {
-    hovered: { color: 'rgb(255 0 0)', elevation: '0 0 0 3px rgb(12 34 56)', opacity: '0.03' },
-    focused: { color: 'rgb(0 128 0)', elevation: '0 0 0 4px rgb(23 45 67)', opacity: '0.17' },
-    pressed: { color: 'rgb(0 0 255)', elevation: '0 0 0 5px rgb(34 56 78)', opacity: '0.29' },
+    hovered: { icon: 'rgb(255 0 0)', elevation: '0 0 0 3px rgb(12 34 56)', opacity: '0.03' },
+    focused: { icon: 'rgb(0 128 0)', elevation: '0 0 0 4px rgb(23 45 67)', opacity: '0.17' },
+    pressed: { icon: 'rgb(0 0 255)', elevation: '0 0 0 5px rgb(34 56 78)', opacity: '0.29' },
   },
   secondary: {
-    hovered: { color: 'rgb(255 90 0)', elevation: '0 0 0 9px rgb(78 90 112)', opacity: '0.03' },
-    focused: { color: 'rgb(0 150 40)', elevation: '0 0 0 10px rgb(89 101 123)', opacity: '0.17' },
-    pressed: { color: 'rgb(20 20 255)', elevation: '0 0 0 11px rgb(101 112 134)', opacity: '0.29' },
+    hovered: { icon: 'rgb(255 90 0)', elevation: '0 0 0 9px rgb(78 90 112)', opacity: '0.03' },
+    focused: { icon: 'rgb(0 150 40)', elevation: '0 0 0 10px rgb(89 101 123)', opacity: '0.17' },
+    pressed: { icon: 'rgb(20 20 255)', elevation: '0 0 0 11px rgb(101 112 134)', opacity: '0.29' },
   },
   tertiary: {
-    hovered: { color: 'rgb(255 140 0)', elevation: '0 0 0 12px rgb(112 123 145)', opacity: '0.03' },
-    focused: { color: 'rgb(0 170 90)', elevation: '0 0 0 13px rgb(123 134 156)', opacity: '0.17' },
-    pressed: { color: 'rgb(60 20 255)', elevation: '0 0 0 14px rgb(134 145 167)', opacity: '0.29' },
+    hovered: { icon: 'rgb(255 140 0)', elevation: '0 0 0 12px rgb(112 123 145)', opacity: '0.03' },
+    focused: { icon: 'rgb(0 170 90)', elevation: '0 0 0 13px rgb(123 134 156)', opacity: '0.17' },
+    pressed: { icon: 'rgb(60 20 255)', elevation: '0 0 0 14px rgb(134 145 167)', opacity: '0.29' },
   },
   'primary-container': {
-    hovered: { color: 'rgb(255 80 0)', elevation: '0 0 0 6px rgb(45 67 89)', opacity: '0.05' },
-    focused: { color: 'rgb(0 180 120)', elevation: '0 0 0 7px rgb(56 78 90)', opacity: '0.19' },
-    pressed: { color: 'rgb(60 60 255)', elevation: '0 0 0 8px rgb(67 89 101)', opacity: '0.31' },
+    hovered: { icon: 'rgb(255 80 0)', elevation: '0 0 0 6px rgb(45 67 89)', opacity: '0.05' },
+    focused: { icon: 'rgb(0 180 120)', elevation: '0 0 0 7px rgb(56 78 90)', opacity: '0.19' },
+    pressed: { icon: 'rgb(60 60 255)', elevation: '0 0 0 8px rgb(67 89 101)', opacity: '0.31' },
   },
   'secondary-container': {
     hovered: {
-      color: 'rgb(255 100 20)',
+      icon: 'rgb(255 100 20)',
       elevation: '0 0 0 15px rgb(145 156 178)',
       opacity: '0.05',
     },
     focused: {
-      color: 'rgb(20 190 140)',
+      icon: 'rgb(20 190 140)',
       elevation: '0 0 0 16px rgb(156 167 189)',
       opacity: '0.19',
     },
-    pressed: { color: 'rgb(80 80 255)', elevation: '0 0 0 17px rgb(167 178 200)', opacity: '0.31' },
+    pressed: { icon: 'rgb(80 80 255)', elevation: '0 0 0 17px rgb(167 178 200)', opacity: '0.31' },
   },
   'tertiary-container': {
     hovered: {
-      color: 'rgb(255 120 40)',
+      icon: 'rgb(255 120 40)',
       elevation: '0 0 0 18px rgb(178 189 211)',
       opacity: '0.05',
     },
     focused: {
-      color: 'rgb(40 200 160)',
+      icon: 'rgb(40 200 160)',
       elevation: '0 0 0 19px rgb(189 200 222)',
       opacity: '0.19',
     },
     pressed: {
-      color: 'rgb(100 100 255)',
+      icon: 'rgb(100 100 255)',
       elevation: '0 0 0 20px rgb(200 211 233)',
       opacity: '0.31',
     },
   },
 };
 
+/**
+ * Rotates an `rgb(r g b)` literal's channels (r,g,b) -\> (b,r,g) so a derived state-layer color
+ * is guaranteed independent from the icon color it's derived from, without hand-authoring a
+ * second literal per cell.
+ * @param rgb - An `rgb(r g b)` color literal.
+ * @returns The same color with its channels rotated.
+ */
+const rotateRgbChannels = (rgb: string) => {
+  const [r, g, b] = rgb.replace(/^rgb\(|\)$/g, '').split(' ');
+  return `rgb(${b} ${r} ${g})`;
+};
+
 const fabTokenStyle = (color: FabColor, state: FabTokenState) => {
   const override = FAB_TOKEN_MATRIX[color][state];
   return {
-    [`--md-comp-fab-${color}-${state}-icon-color`]: override.color,
+    [`--md-comp-fab-${color}-${state}-icon-color`]: override.icon,
     [`--md-comp-fab-${color}-${state}-container-elevation`]: override.elevation,
-    [`--md-comp-fab-${color}-${state}-state-layer-color`]: override.color,
+    [`--md-comp-fab-${color}-${state}-state-layer-color`]: rotateRgbChannels(override.icon),
     [`--md-comp-fab-${color}-${state}-state-layer-opacity`]: override.opacity,
   };
 };
@@ -252,7 +279,7 @@ export const InteractionStateTokens: Story = {
       return { FAB_COLORS, fabTokenStyle };
     },
     template: `
-      <div data-testid="visual-md-fab-interaction-state-tokens" class="visual-surface">
+      <div data-testid="visual-md-fab-interaction-state-tokens" class="visual-checker-backdrop">
         <div v-for="color in FAB_COLORS" :key="color" class="visual-row">
           <MDFab :data-testid="\`\${color}-resting\`" :tooltip="\`\${color} resting\`" :color="color" md-symbol="add" />
           <MDFab
@@ -289,7 +316,7 @@ export const LoadingColorRouting: Story = {
   render: () => ({
     components: { MDFab },
     template: `
-      <div data-testid="visual-md-fab-loading-color-routing" class="visual-surface">
+      <div data-testid="visual-md-fab-loading-color-routing" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDFab
             data-testid="fab-resting-color"

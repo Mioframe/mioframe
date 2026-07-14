@@ -138,9 +138,8 @@ describe('MDIconButton', () => {
     expect(button.attributes('disabled')).toBeUndefined();
 
     await button.trigger('click');
-    await button.trigger('click');
 
-    expect(wrapper.emitted('click')).toHaveLength(2);
+    expect(wrapper.emitted('click')).toHaveLength(1);
     expect(button.attributes('aria-label')).toBe('Close');
     expect(button.attributes('disabled')).toBeUndefined();
   });

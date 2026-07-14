@@ -10,7 +10,10 @@ const onClick = () => {
 </script>
 
 <template>
-  <div id="visual-md-icon-button-target-hit" class="visual-surface md-icon-button-target-hit">
+  <div
+    id="visual-md-icon-button-target-hit"
+    class="visual-checker-backdrop md-icon-button-target-hit"
+  >
     <div class="md-icon-button-target-hit__stage">
       <MDIconButton tooltip="Expanded target" size="small" md-symbol-name="add" @click="onClick" />
     </div>

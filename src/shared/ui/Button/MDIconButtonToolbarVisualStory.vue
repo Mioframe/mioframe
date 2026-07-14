@@ -7,7 +7,7 @@ const rootAttrs = {
 </script>
 
 <template>
-  <div v-bind="rootAttrs" class="visual-surface md-icon-button-toolbar">
+  <div v-bind="rootAttrs" class="visual-checker-backdrop md-icon-button-toolbar">
     <div class="md-icon-button-toolbar__row" role="toolbar" aria-label="Database toolbar">
       <MDIconButton tooltip="Add row" md-symbol-name="add" />
       <MDIconButton tooltip="Filter" md-symbol-name="filter_list" />

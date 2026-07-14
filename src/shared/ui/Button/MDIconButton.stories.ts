@@ -49,14 +49,23 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+// Wraps args-only demonstrations in the canonical checkerboard backdrop without duplicating
+// wrapper markup in every bare story; stories that already build a custom multi-row template
+// carry their own `.visual-checker-backdrop` root instead of this decorator.
+const withCheckerboard = () => ({
+  template: '<div class="visual-checker-backdrop"><story /></div>',
+});
+
+export const Default: Story = {
+  decorators: [withCheckerboard],
+};
 
 export const VisualStates: Story = {
   tags: ['visual'],
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-states" class="visual-surface">
+      <div data-testid="visual-md-icon-button-states" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton tooltip="Standard" md-symbol-name="more_vert" />
           <MDIconButton tooltip="Filled" color="filled" md-symbol-name="favorite" />
@@ -95,7 +104,7 @@ export const VisualInteractionStates: Story = {
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-interaction-states" class="visual-surface">
+      <div data-testid="visual-md-icon-button-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton class="md-state_hover" tooltip="Standard hover" md-symbol-name="add" />
           <MDIconButton class="md-state_focused" tooltip="Standard focus" md-symbol-name="add" />
@@ -141,7 +150,7 @@ export const Geometry: Story = {
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-geometry" class="visual-surface">
+      <div data-testid="visual-md-icon-button-geometry" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton data-testid="geometry-width-narrow" tooltip="Narrow" width="narrow" md-symbol-name="edit" />
           <MDIconButton data-testid="geometry-width-default" tooltip="Default width" width="default" md-symbol-name="edit" />
@@ -161,12 +170,38 @@ export const Geometry: Story = {
   }),
 };
 
+/** Every documented `MDIconButton` size, in ascending order, for table-driven geometry coverage. */
+const ICON_BUTTON_SIZES = ['extra-small', 'small', 'medium', 'large', 'extra-large'] as const;
+
+export const SizeGeometryMatrix: Story = {
+  render: () => ({
+    components: { MDIconButton },
+    setup() {
+      return { ICON_BUTTON_SIZES };
+    },
+    template: `
+      <div data-testid="visual-md-icon-button-size-geometry" class="visual-checker-backdrop">
+        <div v-for="size in ICON_BUTTON_SIZES" :key="size" class="visual-row">
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-default\`" :tooltip="size" :size="size" width="default" md-symbol-name="edit" />
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-narrow\`" :tooltip="size" :size="size" width="narrow" md-symbol-name="edit" />
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-wide\`" :tooltip="size" :size="size" width="wide" md-symbol-name="edit" />
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-square\`" :tooltip="size" :size="size" shape="square" md-symbol-name="edit" />
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-pressed\`" class="md-state_pressed" :tooltip="size" :size="size" shape="round" md-symbol-name="edit" />
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-selected-round\`" :tooltip="size" :size="size" shape="round" variant="toggle" selected color="tonal" md-symbol-name="check" />
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-selected-square\`" :tooltip="size" :size="size" shape="square" variant="toggle" selected color="tonal" md-symbol-name="check" />
+          <MDIconButton :data-testid="\`icon-geometry-\${size}-outlined\`" :tooltip="size" :size="size" color="outlined" md-symbol-name="edit" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
 export const ToggleInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-toggle-interaction-states" class="visual-surface">
+      <div data-testid="visual-md-icon-button-toggle-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton tooltip="Unselected" variant="toggle" color="tonal" md-symbol-name="bookmark" />
           <MDIconButton tooltip="Selected" variant="toggle" selected color="tonal" md-symbol-name="bookmark" />
@@ -183,6 +218,7 @@ export const ToggleInteractionStates: Story = {
 };
 
 export const FocusIndicatorTarget: Story = {
+  decorators: [withCheckerboard],
   render: () => ({
     components: { MDIconButton },
     setup() {
@@ -200,7 +236,7 @@ export const DisabledStatePrecedence: Story = {
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-disabled-state-precedence" class="visual-surface">
+      <div data-testid="visual-md-icon-button-disabled-state-precedence" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton data-testid="disabled-resting" tooltip="Disabled outlined" color="outlined" disabled md-symbol-name="edit" />
           <MDIconButton data-testid="disabled-hover" class="md-state_hover" tooltip="Disabled outlined hover" color="outlined" disabled md-symbol-name="edit" />
@@ -216,7 +252,7 @@ export const OutlinedOutlineWidths: Story = {
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-outline-widths" class="visual-surface">
+      <div data-testid="visual-md-icon-button-outline-widths" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton data-testid="outline-width-small" tooltip="Small outlined" color="outlined" size="small" md-symbol-name="edit" />
           <MDIconButton data-testid="outline-width-large" tooltip="Large outlined" color="outlined" size="large" md-symbol-name="edit" />
@@ -231,7 +267,7 @@ export const TokenRoutingMatrix: Story = {
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-token-routing" class="visual-surface">
+      <div data-testid="visual-md-icon-button-token-routing" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton
             data-testid="icon-button-hover"
@@ -410,7 +446,7 @@ export const LoadingColorRouting: Story = {
   render: () => ({
     components: { MDIconButton },
     template: `
-      <div data-testid="visual-md-icon-button-loading-color-routing" class="visual-surface">
+      <div data-testid="visual-md-icon-button-loading-color-routing" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDIconButton
             data-testid="icon-button-resting-color"

@@ -40,13 +40,22 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+// Wraps args-only demonstrations in the canonical checkerboard backdrop without duplicating
+// wrapper markup in every bare story; stories that already build a custom multi-row template
+// carry their own `.visual-checker-backdrop` root instead of this decorator.
+const withCheckerboard = () => ({
+  template: '<div class="visual-checker-backdrop"><story /></div>',
+});
+
+export const Default: Story = {
+  decorators: [withCheckerboard],
+};
 
 export const SizeGaps: Story = {
   render: () => ({
     components: { MDExtendedFab },
     template: `
-      <div data-testid="visual-md-extended-fab-size-gaps" class="visual-surface">
+      <div data-testid="visual-md-extended-fab-size-gaps" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDExtendedFab data-testid="gap-small" label="Small" size="small" md-symbol="add" />
           <MDExtendedFab data-testid="gap-medium" label="Medium" size="medium" md-symbol="add" />
@@ -62,7 +71,7 @@ export const VisualStates: Story = {
   render: () => ({
     components: { MDExtendedFab },
     template: `
-        <div data-testid="visual-md-extended-fab-states" class="visual-surface">
+        <div data-testid="visual-md-extended-fab-states" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDExtendedFab label="Add" md-symbol="add" />
           <MDExtendedFab label="Share" color="secondary-container" md-symbol="share" />
@@ -82,7 +91,7 @@ export const InteractionStates: Story = {
   render: () => ({
     components: { MDExtendedFab },
     template: `
-      <div data-testid="visual-md-extended-fab-interaction-states" class="visual-surface">
+      <div data-testid="visual-md-extended-fab-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDExtendedFab label="Primary" color="primary" md-symbol="add" />
           <MDExtendedFab label="Secondary" color="secondary" md-symbol="edit" />
@@ -114,6 +123,7 @@ export const InteractionStates: Story = {
 };
 
 export const FocusIndicatorTarget: Story = {
+  decorators: [withCheckerboard],
   render: () => ({
     components: { MDExtendedFab },
     setup() {
@@ -272,13 +282,27 @@ const EXTENDED_FAB_TOKEN_MATRIX: Record<
   },
 };
 
+/**
+ * Rotates an `rgb(r g b)` literal's channels (r,g,b) -\> (b,r,g) so a derived state-layer color
+ * is guaranteed independent from the label color it's derived from, without hand-authoring a
+ * third literal per cell.
+ * @param rgb - An `rgb(r g b)` color literal.
+ * @returns The same color with its channels rotated.
+ */
+const rotateRgbChannels = (rgb: string) => {
+  const [r, g, b] = rgb.replace(/^rgb\(|\)$/g, '').split(' ');
+  return `rgb(${b} ${r} ${g})`;
+};
+
 const extendedFabTokenStyle = (color: ExtendedFabColor, state: ExtendedFabTokenState) => {
   const override = EXTENDED_FAB_TOKEN_MATRIX[color][state];
   return {
     [`--md-comp-extended-fab-${color}-${state}-label-text-color`]: override.label,
     [`--md-comp-extended-fab-${color}-${state}-icon-color`]: override.icon,
     [`--md-comp-extended-fab-${color}-${state}-container-elevation`]: override.elevation,
-    [`--md-comp-extended-fab-${color}-${state}-state-layer-color`]: override.label,
+    [`--md-comp-extended-fab-${color}-${state}-state-layer-color`]: rotateRgbChannels(
+      override.label,
+    ),
     [`--md-comp-extended-fab-${color}-${state}-state-layer-opacity`]: override.opacity,
   };
 };
@@ -290,7 +314,7 @@ export const InteractionStateTokens: Story = {
       return { EXTENDED_FAB_COLORS, extendedFabTokenStyle };
     },
     template: `
-      <div data-testid="visual-md-extended-fab-interaction-state-tokens" class="visual-surface">
+      <div data-testid="visual-md-extended-fab-interaction-state-tokens" class="visual-checker-backdrop">
         <div v-for="color in EXTENDED_FAB_COLORS" :key="color" class="visual-row">
           <MDExtendedFab :data-testid="\`extended-\${color}-resting\`" :label="\`\${color} resting\`" :color="color" md-symbol="add" />
           <MDExtendedFab
@@ -327,7 +351,7 @@ export const LoadingColorRouting: Story = {
   render: () => ({
     components: { MDExtendedFab },
     template: `
-      <div data-testid="visual-md-extended-fab-loading-color-routing" class="visual-surface">
+      <div data-testid="visual-md-extended-fab-loading-color-routing" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDExtendedFab
             data-testid="extended-fab-resting-color"

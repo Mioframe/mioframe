@@ -51,7 +51,16 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+// Wraps args-only demonstrations in the canonical checkerboard backdrop without duplicating
+// wrapper markup in every bare story; stories that already build a custom multi-row template
+// carry their own `.visual-checker-backdrop` root instead of this decorator.
+const withCheckerboard = () => ({
+  template: '<div class="visual-checker-backdrop"><story /></div>',
+});
+
+export const Default: Story = {
+  decorators: [withCheckerboard],
+};
 
 export const Toggle: Story = {
   args: {
@@ -60,6 +69,7 @@ export const Toggle: Story = {
     color: 'tonal',
     label: 'Bookmark',
   },
+  decorators: [withCheckerboard],
 };
 
 export const ToggleText: Story = {
@@ -69,6 +79,7 @@ export const ToggleText: Story = {
     color: 'text',
     label: 'Bookmark',
   },
+  decorators: [withCheckerboard],
 };
 
 export const ToggleShapes: Story = {
@@ -76,7 +87,7 @@ export const ToggleShapes: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-toggle-shapes" class="visual-surface">
+      <div data-testid="visual-md-button-toggle-shapes" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton data-testid="toggle-round-selected" label="Round selected" variant="toggle" shape="round" selected color="tonal" />
           <MDButton data-testid="toggle-round-unselected" label="Round unselected" variant="toggle" shape="round" color="tonal" />
@@ -97,7 +108,7 @@ export const ToggleInteractionStates: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-toggle-interaction-states" class="visual-surface">
+      <div data-testid="visual-md-button-toggle-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton label="Unselected" variant="toggle" color="tonal">
             <template #icon>+</template>
@@ -126,6 +137,7 @@ export const ToggleInteractionStates: Story = {
 };
 
 export const FocusIndicatorTarget: Story = {
+  decorators: [withCheckerboard],
   render: () => ({
     components: { MDButton },
     setup() {
@@ -144,15 +156,15 @@ export const VisualStates: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-states" class="visual-surface">
+      <div data-testid="visual-md-button-states" class="visual-checker-backdrop">
         <div class="visual-row">
-          <MDButton label="Filled" color="filled" />
-          <MDButton label="Outlined" color="outlined" />
-          <MDButton label="Text" color="text" />
+          <MDButton label="Filled" color="filled"><template #icon>+</template></MDButton>
+          <MDButton label="Outlined" color="outlined"><template #icon>+</template></MDButton>
+          <MDButton label="Text" color="text"><template #icon>+</template></MDButton>
         </div>
         <div class="visual-row">
-          <MDButton label="Tonal" color="tonal" />
-          <MDButton label="Elevated" color="elevated" />
+          <MDButton label="Tonal" color="tonal"><template #icon>+</template></MDButton>
+          <MDButton label="Elevated" color="elevated"><template #icon>+</template></MDButton>
           <MDButton label="Disabled elevated" color="elevated" disabled />
         </div>
         <div class="visual-row">
@@ -171,7 +183,7 @@ export const VisualInteractionStates: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-interaction-states" class="visual-surface">
+      <div data-testid="visual-md-button-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton class="md-state_hover" label="Elevated hover" color="elevated" />
           <MDButton class="md-state_focused" label="Elevated focus" color="elevated" />
@@ -213,8 +225,9 @@ export const SizeTypography: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-size-typography" class="visual-surface">
+      <div data-testid="visual-md-button-size-typography" class="visual-checker-backdrop">
         <div class="visual-row">
+          <MDButton data-testid="typography-extra-small" label="Extra small" size="extra-small" />
           <MDButton data-testid="typography-small" label="Small" size="small" />
           <MDButton data-testid="typography-medium" label="Medium" size="medium" />
           <MDButton data-testid="typography-large" label="Large" size="large" />
@@ -225,11 +238,67 @@ export const SizeTypography: Story = {
   }),
 };
 
+/** Every documented `MDButton` size, in ascending order, for table-driven geometry coverage. */
+const BUTTON_SIZES = ['extra-small', 'small', 'medium', 'large', 'extra-large'] as const;
+
+export const SizeGeometryMatrix: Story = {
+  render: () => ({
+    components: { MDButton },
+    setup() {
+      return { BUTTON_SIZES };
+    },
+    template: `
+      <div data-testid="visual-md-button-size-geometry" class="visual-checker-backdrop">
+        <div v-for="size in BUTTON_SIZES" :key="size" class="visual-row">
+          <MDButton :data-testid="\`geometry-\${size}-round\`" :label="size" :size="size" shape="round">
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton :data-testid="\`geometry-\${size}-square\`" :label="size" :size="size" shape="square">
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton
+            :data-testid="\`geometry-\${size}-pressed\`"
+            class="md-state_pressed"
+            :label="size"
+            :size="size"
+            shape="round"
+          >
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton
+            :data-testid="\`geometry-\${size}-selected-round\`"
+            :label="size"
+            :size="size"
+            shape="round"
+            variant="toggle"
+            selected
+            color="tonal"
+          >
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton
+            :data-testid="\`geometry-\${size}-selected-square\`"
+            :label="size"
+            :size="size"
+            shape="square"
+            variant="toggle"
+            selected
+            color="tonal"
+          >
+            <template #icon>+</template>
+          </MDButton>
+          <MDButton :data-testid="\`geometry-\${size}-outlined\`" :label="size" :size="size" color="outlined" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
 export const DisabledStatePrecedence: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-disabled-state-precedence" class="visual-surface">
+      <div data-testid="visual-md-button-disabled-state-precedence" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton data-testid="disabled-resting" label="Disabled outlined" color="outlined" disabled>
             <template #icon>+</template>
@@ -253,7 +322,7 @@ export const TextButtonSpacing: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-text-spacing" class="visual-surface">
+      <div data-testid="visual-md-button-text-spacing" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton data-testid="text-spacing-small" label="Small" color="text" size="small" />
           <MDButton data-testid="text-spacing-medium" label="Medium" color="text" size="medium" />
@@ -272,7 +341,7 @@ export const TokenRoutingMatrix: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-token-routing" class="visual-surface">
+      <div data-testid="visual-md-button-token-routing" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton
             data-testid="button-hover"
@@ -549,7 +618,7 @@ export const LoadingColorRouting: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-loading-color-routing" class="visual-surface">
+      <div data-testid="visual-md-button-loading-color-routing" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton
             data-testid="button-resting-color"
@@ -584,7 +653,7 @@ export const TargetLayers: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-targets" class="visual-surface">
+      <div data-testid="visual-md-button-targets" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton label="XS target" size="extra-small" />
           <MDButton label="S target" size="small" />
