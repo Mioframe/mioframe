@@ -21,16 +21,19 @@
 }
 
 /*
- * Neutral checkerboard backdrop for component visual fixtures that need contrast
- * against a transparent surface. Uses fixed neutral colors (never --md-sys-color-*
- * tokens) so transparent fills are unambiguous in screenshots instead of blending
- * into a flat theme-dependent color. Scoped to a dedicated class (not
- * `.visual-surface`) so it never changes the shared backdrop other fixtures rely on.
- * This class must not be applied to runtime components — only to Storybook
- * wrapper/surface elements.
+ * Canonical neutral checkerboard backdrop for Material component Storybook
+ * demonstrations and visual fixtures. Every shared `MD*` component fixture must
+ * expose its rendered surface against this backdrop so transparency, container
+ * ownership, shape, elevation, and state layers remain visible and reviewable.
+ * Uses fixed neutral colors (never --md-sys-color-* tokens) so the fixture does
+ * not silently inherit or simulate a Material surface.
  *
- * `visual-checker-backdrop` is the canonical alias; `visual-list-backdrop` is an
- * older name kept for existing MDList stories whose baselines target that class name.
+ * Apply this class only to Storybook fixture wrappers, never to runtime
+ * components. Surface-context scenarios keep the checkerboard as their outer
+ * wrapper and place explicit semantic Material surfaces inside it.
+ *
+ * `visual-checker-backdrop` is the canonical name. `visual-list-backdrop` is a
+ * legacy alias retained for existing MDList baselines; do not add new uses.
  */
 .visual-checker-backdrop,
 .visual-list-backdrop {
