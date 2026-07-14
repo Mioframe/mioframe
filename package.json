@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -50,6 +50,8 @@
   "dependencies": {
     "@automerge/automerge": "^3.2.6",
     "@automerge/automerge-repo": "^2.5.6",
+    "@dnd-kit/dom": "0.5.0",
+    "@dnd-kit/vue": "0.5.0",
     "@floating-ui/vue": "^2.0.0",
     "@fontsource/roboto": "5.2.10",
     "@sentry/vue": "^10.63.0",
@@ -152,7 +154,7 @@
     "vue-component-type-helpers": "^3.3.6",
     "vue-tsc": "^3.3.6"
   },
-  "packageManager": "pnpm@11.0.9+sha512.34ce82e6780233cf9cad8685029a8f81d2e06196c5a9bad98879f7424940c6817c4e4524fb7d38b8553ceed48b9758b8ebaf1abd3600c232c4c8cf7366086f38",
+  "packageManager": "pnpm@11.13.0+sha512.88d94724d8f2e6c186744a5584c6e59ecac869ec7ba15e9cb4cd628e8dc7066820b2481d8ee3b51ea8da323a7378068aa58c556a3720d32b7c20a051d088363a",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",

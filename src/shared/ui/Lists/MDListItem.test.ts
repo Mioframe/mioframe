@@ -621,4 +621,62 @@ describe('MDListItem', () => {
       expect(onAction).not.toHaveBeenCalled();
     });
   });
+
+  // Narrow structural type for the exposed instance this suite actually needs, instead of the
+  // full `InstanceType<typeof MDListItem>` component type.
+  interface ExposedMDListItem {
+    getPrimaryActionElement: () => HTMLElement | null;
+  }
+
+  describe('getPrimaryActionElement', () => {
+    // Mirrors the real consumer mechanism (a ref resolving the exposed instance via
+    // Vue's own expose proxy) instead of @vue/test-utils' `wrapper.vm`, which cannot
+    // resolve `defineExpose` members with this project's Vue build. A function ref
+    // captured in a plain closure sidesteps that entirely.
+    const mountWithItemRef = (itemProps: Record<string, unknown>) => {
+      let itemRef: ExposedMDListItem | null = null;
+      const wrapper = mount(
+        {
+          components: { MDList, MDListItem },
+          template: `<MDList><MDListItem :ref="setItemRef" v-bind="itemProps" /></MDList>`,
+          setup: () => ({
+            itemProps,
+            setItemRef: (el: ExposedMDListItem | null) => {
+              itemRef = el;
+            },
+          }),
+        },
+        { attachTo: document.body },
+      );
+
+      return { wrapper, getItemRef: () => itemRef };
+    };
+
+    it('returns the primary action element for an in-list single-action row', () => {
+      const { wrapper, getItemRef } = mountWithItemRef({
+        labelText: 'Settings',
+        mode: 'single-action',
+        onAction: vi.fn(),
+      });
+      const button = wrapper.get('.md-list-item__primary-action').element;
+      const itemRef = getItemRef();
+
+      if (!itemRef) {
+        throw new Error('itemRef did not resolve');
+      }
+
+      expect(itemRef.getPrimaryActionElement()).toBe(button);
+    });
+
+    it('returns null for a static row with no primary action surface', () => {
+      const { getItemRef } = mountWithItemRef({ labelText: 'Settings' });
+      const itemRef = getItemRef();
+
+      if (!itemRef) {
+        throw new Error('itemRef did not resolve');
+      }
+
+      expect(itemRef.getPrimaryActionElement()).toBeNull();
+    });
+  });
 });
