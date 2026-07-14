@@ -106,7 +106,7 @@ export const InteractionStates: Story = {
         <div class="visual-row">
           <MDExtendedFab label="With icon" color="primary-container" md-symbol="add" />
           <MDExtendedFab label="No icon" color="primary-container" />
-          <MDExtendedFab label="Loading" color="primary-container" md-symbol="add" loading />
+          <MDExtendedFab label="Loading" color="primary-container" md-symbol="add" :loading="65" />
         </div>
       </div>
     `,
@@ -120,7 +120,7 @@ export const FocusIndicatorTarget: Story = {
       useFocusIndicator();
     },
     template: `
-      <div id="visual-md-extended-fab-focus-indicator">
+      <div id="visual-md-extended-fab-focus-indicator" style="position: fixed; inset: auto 12px 12px auto;">
         <MDExtendedFab id="storybook-md-extended-fab-focus" label="Focus target" color="primary-container" md-symbol="add" />
       </div>
     `,
@@ -233,6 +233,16 @@ export const LoadingColorRouting: Story = {
     template: `
       <div data-testid="visual-md-extended-fab-loading-color-routing" class="visual-surface">
         <div class="visual-row">
+          <MDExtendedFab
+            data-testid="extended-fab-resting-color"
+            label="Loading"
+            color="primary"
+            md-symbol="add"
+            style="
+              --md-comp-extended-fab-primary-label-text-color: rgb(12 34 56);
+              --md-comp-extended-fab-primary-icon-color: rgb(90 12 180);
+            "
+          />
           <MDExtendedFab
             data-testid="extended-fab-loading-color"
             label="Loading"

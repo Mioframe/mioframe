@@ -60,6 +60,23 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     ],
     specs: ['tests/e2e/storybook/overlayLifecycle.spec.ts'],
   },
+  {
+    name: 'button family behavior',
+    // Includes the spec's own path (see the `reorder` scenario comment above) so editing it
+    // re-selects itself.
+    sourcePrefixes: [
+      'src/shared/ui/Button/MDButton.vue',
+      'src/shared/ui/Button/MDButton.stories.ts',
+      'src/shared/ui/Button/MDIconButton.vue',
+      'src/shared/ui/Button/MDIconButton.stories.ts',
+      'src/shared/ui/Button/MDFab.vue',
+      'src/shared/ui/Button/MDFab.stories.ts',
+      'src/shared/ui/Button/MDExtendedFab.vue',
+      'src/shared/ui/Button/MDExtendedFab.stories.ts',
+      'tests/e2e/storybook/md-button-family.spec.ts',
+    ],
+    specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
+  },
 ];
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior

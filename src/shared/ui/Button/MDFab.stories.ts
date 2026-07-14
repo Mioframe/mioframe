@@ -45,12 +45,17 @@ const fabStatesTemplate = `
     <div class="visual-row">
       <MDFab tooltip="Primary" color="primary" md-symbol="add" />
       <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
+      <MDFab tooltip="Tertiary" color="tertiary" md-symbol="share" />
+    </div>
+    <div class="visual-row">
       <MDFab tooltip="Primary container" color="primary-container" md-symbol="check" />
+      <MDFab tooltip="Secondary container" color="secondary-container" md-symbol="star" />
+      <MDFab tooltip="Tertiary container" color="tertiary-container" md-symbol="menu" />
     </div>
     <div class="visual-row">
       <MDFab tooltip="Medium" size="medium" md-symbol="star" />
       <MDFab tooltip="Large" size="large" md-symbol="menu" />
-      <MDFab tooltip="Tertiary" color="tertiary" md-symbol="share" />
+      <MDFab tooltip="Loading" :loading="65" md-symbol="add" />
     </div>
   </div>
 `;
@@ -59,13 +64,33 @@ const fabInteractionStatesTemplate = `
   <div data-testid="visual-md-fab-interaction-states" class="visual-surface">
     <div class="visual-row">
       <MDFab class="md-state_hover" tooltip="Primary hover" color="primary" md-symbol="add" />
-      <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
-      <MDFab tooltip="Primary container" color="primary-container" md-symbol="check" />
+      <MDFab class="md-state_focused" tooltip="Primary focus" color="primary" md-symbol="add" />
+      <MDFab class="md-state_pressed" tooltip="Primary pressed" color="primary" md-symbol="add" />
     </div>
     <div class="visual-row">
-      <MDFab tooltip="Medium" size="medium" md-symbol="star" />
-      <MDFab class="md-state_focused" tooltip="Focus" size="large" color="tertiary" md-symbol="share" />
-      <MDFab class="md-state_pressed" tooltip="Pressed" color="secondary-container" md-symbol="menu" />
+      <MDFab class="md-state_hover" tooltip="Secondary hover" color="secondary" md-symbol="edit" />
+      <MDFab class="md-state_focused" tooltip="Secondary focus" color="secondary" md-symbol="edit" />
+      <MDFab class="md-state_pressed" tooltip="Secondary pressed" color="secondary" md-symbol="edit" />
+    </div>
+    <div class="visual-row">
+      <MDFab class="md-state_hover" tooltip="Tertiary hover" color="tertiary" md-symbol="share" />
+      <MDFab class="md-state_focused" tooltip="Tertiary focus" color="tertiary" md-symbol="share" />
+      <MDFab class="md-state_pressed" tooltip="Tertiary pressed" color="tertiary" md-symbol="share" />
+    </div>
+    <div class="visual-row">
+      <MDFab class="md-state_hover" tooltip="Primary container hover" color="primary-container" md-symbol="check" />
+      <MDFab class="md-state_focused" tooltip="Primary container focus" color="primary-container" md-symbol="check" />
+      <MDFab class="md-state_pressed" tooltip="Primary container pressed" color="primary-container" md-symbol="check" />
+    </div>
+    <div class="visual-row">
+      <MDFab class="md-state_hover" tooltip="Secondary container hover" color="secondary-container" md-symbol="star" />
+      <MDFab class="md-state_focused" tooltip="Secondary container focus" color="secondary-container" md-symbol="star" />
+      <MDFab class="md-state_pressed" tooltip="Secondary container pressed" color="secondary-container" md-symbol="star" />
+    </div>
+    <div class="visual-row">
+      <MDFab class="md-state_hover" tooltip="Tertiary container hover" color="tertiary-container" md-symbol="menu" />
+      <MDFab class="md-state_focused" tooltip="Tertiary container focus" color="tertiary-container" md-symbol="menu" />
+      <MDFab class="md-state_pressed" tooltip="Tertiary container pressed" color="tertiary-container" md-symbol="menu" />
     </div>
   </div>
 `;
@@ -127,7 +152,7 @@ export const FocusIndicatorTarget: Story = {
       useFocusIndicator();
     },
     template: `
-      <div id="visual-md-fab-focus-indicator">
+      <div id="visual-md-fab-focus-indicator" style="position: fixed; inset: auto 12px 12px auto;">
         <MDFab id="storybook-md-fab-focus" tooltip="Focus target" color="primary-container" md-symbol="add" />
       </div>
     `,
@@ -234,6 +259,13 @@ export const LoadingColorRouting: Story = {
     template: `
       <div data-testid="visual-md-fab-loading-color-routing" class="visual-surface">
         <div class="visual-row">
+          <MDFab
+            data-testid="fab-resting-color"
+            tooltip="Loading"
+            color="primary"
+            md-symbol="add"
+            style="--md-comp-fab-primary-icon-color: rgb(12 34 56);"
+          />
           <MDFab
             data-testid="fab-loading-color"
             tooltip="Loading"

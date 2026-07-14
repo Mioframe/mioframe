@@ -97,14 +97,24 @@ export const VisualInteractionStates: Story = {
     template: `
       <div data-testid="visual-md-icon-button-interaction-states" class="visual-surface">
         <div class="visual-row">
-          <MDIconButton class="md-state_hover" tooltip="Hover" md-symbol-name="add" />
-          <MDIconButton class="md-state_focused" tooltip="Focus" color="filled" md-symbol-name="search" />
-          <MDIconButton class="md-state_pressed" tooltip="Pressed" color="outlined" md-symbol-name="share" />
+          <MDIconButton class="md-state_hover" tooltip="Standard hover" md-symbol-name="add" />
+          <MDIconButton class="md-state_focused" tooltip="Standard focus" md-symbol-name="add" />
+          <MDIconButton class="md-state_pressed" tooltip="Standard pressed" md-symbol-name="add" />
         </div>
         <div class="visual-row">
-          <MDIconButton class="md-state_hover" tooltip="Toggle hover" variant="toggle" md-symbol-name="bookmark" />
-          <MDIconButton class="md-state_focused" tooltip="Toggle focus selected" variant="toggle" selected md-symbol-name="bookmark" />
-          <MDIconButton class="md-state_pressed" tooltip="Toggle pressed selected" variant="toggle" selected color="tonal" md-symbol-name="bookmark" />
+          <MDIconButton class="md-state_hover" tooltip="Filled hover" color="filled" md-symbol-name="favorite" />
+          <MDIconButton class="md-state_focused" tooltip="Filled focus" color="filled" md-symbol-name="favorite" />
+          <MDIconButton class="md-state_pressed" tooltip="Filled pressed" color="filled" md-symbol-name="favorite" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton class="md-state_hover" tooltip="Tonal hover" color="tonal" md-symbol-name="bookmark" />
+          <MDIconButton class="md-state_focused" tooltip="Tonal focus" color="tonal" md-symbol-name="bookmark" />
+          <MDIconButton class="md-state_pressed" tooltip="Tonal pressed" color="tonal" md-symbol-name="bookmark" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton class="md-state_hover" tooltip="Outlined hover" color="outlined" md-symbol-name="edit" />
+          <MDIconButton class="md-state_focused" tooltip="Outlined focus" color="outlined" md-symbol-name="edit" />
+          <MDIconButton class="md-state_pressed" tooltip="Outlined pressed" color="outlined" md-symbol-name="edit" />
         </div>
       </div>
     `,
@@ -179,7 +189,7 @@ export const FocusIndicatorTarget: Story = {
       useFocusIndicator();
     },
     template: `
-      <div id="visual-md-icon-button-focus-indicator">
+      <div id="visual-md-icon-button-focus-indicator" style="position: fixed; inset: auto 12px 12px auto;">
         <MDIconButton id="storybook-md-icon-button-focus" tooltip="Focus target" color="filled" md-symbol-name="favorite" />
       </div>
     `,
@@ -257,6 +267,44 @@ export const TokenRoutingMatrix: Story = {
               --md-comp-icon-button-filled-pressed-icon-color: rgb(0 0 255);
               --md-comp-icon-button-filled-pressed-state-layer-color: rgb(0 0 255);
               --md-comp-icon-button-filled-pressed-state-layer-opacity: 0.29;
+            "
+          />
+        </div>
+        <div class="visual-row">
+          <MDIconButton
+            data-testid="icon-button-tonal-hover"
+            class="md-state_hover"
+            tooltip="Tonal hover"
+            color="tonal"
+            md-symbol-name="bookmark"
+            style="
+              --md-comp-icon-button-tonal-hovered-icon-color: rgb(255 0 0);
+              --md-comp-icon-button-tonal-hovered-state-layer-color: rgb(255 0 0);
+              --md-comp-icon-button-tonal-hovered-state-layer-opacity: 0.03;
+            "
+          />
+          <MDIconButton
+            data-testid="icon-button-tonal-focus"
+            class="md-state_focused"
+            tooltip="Tonal focus"
+            color="tonal"
+            md-symbol-name="bookmark"
+            style="
+              --md-comp-icon-button-tonal-focused-icon-color: rgb(0 128 0);
+              --md-comp-icon-button-tonal-focused-state-layer-color: rgb(0 128 0);
+              --md-comp-icon-button-tonal-focused-state-layer-opacity: 0.17;
+            "
+          />
+          <MDIconButton
+            data-testid="icon-button-tonal-pressed"
+            class="md-state_pressed"
+            tooltip="Tonal pressed"
+            color="tonal"
+            md-symbol-name="bookmark"
+            style="
+              --md-comp-icon-button-tonal-pressed-icon-color: rgb(0 0 255);
+              --md-comp-icon-button-tonal-pressed-state-layer-color: rgb(0 0 255);
+              --md-comp-icon-button-tonal-pressed-state-layer-opacity: 0.29;
             "
           />
         </div>
@@ -364,6 +412,13 @@ export const LoadingColorRouting: Story = {
     template: `
       <div data-testid="visual-md-icon-button-loading-color-routing" class="visual-surface">
         <div class="visual-row">
+          <MDIconButton
+            data-testid="icon-button-resting-color"
+            tooltip="Loading"
+            color="filled"
+            md-symbol-name="favorite"
+            style="--md-comp-icon-button-filled-icon-color: rgb(12 34 56);"
+          />
           <MDIconButton
             data-testid="icon-button-loading-color"
             tooltip="Loading"
