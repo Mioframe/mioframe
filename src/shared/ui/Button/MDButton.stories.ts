@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
+import { MDStateLayerForcedStateProvider } from '../State/testing';
 import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
@@ -85,14 +86,18 @@ export const ToggleText: Story = {
 export const ToggleShapes: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDButton },
+    components: { MDButton, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-button-toggle-shapes" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton data-testid="toggle-round-selected" label="Round selected" variant="toggle" shape="round" selected color="tonal" />
           <MDButton data-testid="toggle-round-unselected" label="Round unselected" variant="toggle" shape="round" color="tonal" />
-          <MDButton data-testid="toggle-round-pressed" class="md-state_pressed" label="Round pressed" shape="round" color="tonal" />
-          <MDButton data-testid="toggle-round-selected-pressed" class="md-state_pressed" label="Round selected pressed" variant="toggle" shape="round" selected color="tonal" />
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton data-testid="toggle-round-pressed" class="md-state_pressed" label="Round pressed" shape="round" color="tonal" />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton data-testid="toggle-round-selected-pressed" class="md-state_pressed" label="Round selected pressed" variant="toggle" shape="round" selected color="tonal" />
+          </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
           <MDButton data-testid="toggle-square-selected" label="Square selected" variant="toggle" shape="square" selected color="tonal" />
@@ -106,7 +111,7 @@ export const ToggleShapes: Story = {
 export const ToggleInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDButton },
+    components: { MDButton, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-button-toggle-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
@@ -116,17 +121,23 @@ export const ToggleInteractionStates: Story = {
           <MDButton label="Selected" variant="toggle" selected color="tonal">
             <template #icon>+</template>
           </MDButton>
-          <MDButton class="md-state_hover" label="Selected hover" variant="toggle" selected color="tonal">
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton class="md-state_hover" label="Selected hover" variant="toggle" selected color="tonal">
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton class="md-state_focused" label="Selected focus" variant="toggle" selected color="tonal">
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton class="md-state_pressed" label="Selected pressed" variant="toggle" selected color="tonal">
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider focused>
+            <MDButton class="md-state_focused" label="Selected focus" variant="toggle" selected color="tonal">
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton class="md-state_pressed" label="Selected pressed" variant="toggle" selected color="tonal">
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
           <MDButton label="Disabled selected" variant="toggle" selected disabled color="tonal">
             <template #icon>+</template>
           </MDButton>
@@ -181,33 +192,33 @@ export const VisualStates: Story = {
 export const VisualInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDButton },
+    components: { MDButton, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-button-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
-          <MDButton class="md-state_hover" label="Elevated hover" color="elevated" />
-          <MDButton class="md-state_focused" label="Elevated focus" color="elevated" />
-          <MDButton class="md-state_pressed" label="Elevated pressed" color="elevated" />
+          <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Elevated hover" color="elevated" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Elevated focus" color="elevated" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Elevated pressed" color="elevated" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton class="md-state_hover" label="Filled hover" color="filled" />
-          <MDButton class="md-state_focused" label="Filled focus" color="filled" />
-          <MDButton class="md-state_pressed" label="Filled pressed" color="filled" />
+          <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Filled hover" color="filled" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Filled focus" color="filled" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Filled pressed" color="filled" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton class="md-state_hover" label="Tonal hover" color="tonal" />
-          <MDButton class="md-state_focused" label="Tonal focus" color="tonal" />
-          <MDButton class="md-state_pressed" label="Tonal pressed" color="tonal" />
+          <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Tonal hover" color="tonal" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Tonal focus" color="tonal" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Tonal pressed" color="tonal" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton class="md-state_hover" label="Outlined hover" color="outlined" />
-          <MDButton class="md-state_focused" label="Outlined focus" color="outlined" />
-          <MDButton class="md-state_pressed" label="Outlined pressed" color="outlined" />
+          <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Outlined hover" color="outlined" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Outlined focus" color="outlined" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Outlined pressed" color="outlined" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton class="md-state_hover" label="Text hover" color="text" />
-          <MDButton class="md-state_focused" label="Text focus" color="text" />
-          <MDButton class="md-state_pressed" label="Text pressed" color="text" />
+          <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Text hover" color="text" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Text focus" color="text" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Text pressed" color="text" /></MDStateLayerForcedStateProvider>
         </div>
       </div>
     `,
@@ -243,7 +254,7 @@ const BUTTON_SIZES = ['extra-small', 'small', 'medium', 'large', 'extra-large'] 
 
 export const SizeGeometryMatrix: Story = {
   render: () => ({
-    components: { MDButton },
+    components: { MDButton, MDStateLayerForcedStateProvider },
     setup() {
       return { BUTTON_SIZES };
     },
@@ -256,15 +267,17 @@ export const SizeGeometryMatrix: Story = {
           <MDButton :data-testid="\`geometry-\${size}-square\`" :label="size" :size="size" shape="square">
             <template #icon>+</template>
           </MDButton>
-          <MDButton
-            :data-testid="\`geometry-\${size}-pressed\`"
-            class="md-state_pressed"
-            :label="size"
-            :size="size"
-            shape="round"
-          >
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton
+              :data-testid="\`geometry-\${size}-pressed\`"
+              class="md-state_pressed"
+              :label="size"
+              :size="size"
+              shape="round"
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
           <MDButton
             :data-testid="\`geometry-\${size}-selected-round\`"
             :label="size"
@@ -296,22 +309,28 @@ export const SizeGeometryMatrix: Story = {
 
 export const DisabledStatePrecedence: Story = {
   render: () => ({
-    components: { MDButton },
+    components: { MDButton, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-button-disabled-state-precedence" class="visual-checker-backdrop">
         <div class="visual-row">
           <MDButton data-testid="disabled-resting" label="Disabled outlined" color="outlined" disabled>
             <template #icon>+</template>
           </MDButton>
-          <MDButton data-testid="disabled-hover" class="md-state_hover" label="Disabled outlined hover" color="outlined" disabled>
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton data-testid="disabled-focus" class="md-state_focused" label="Disabled outlined focus" color="outlined" disabled>
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton data-testid="disabled-pressed" class="md-state_pressed" label="Disabled outlined pressed" color="outlined" disabled>
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton data-testid="disabled-hover" class="md-state_hover" label="Disabled outlined hover" color="outlined" disabled>
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDButton data-testid="disabled-focus" class="md-state_focused" label="Disabled outlined focus" color="outlined" disabled>
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton data-testid="disabled-pressed" class="md-state_pressed" label="Disabled outlined pressed" color="outlined" disabled>
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
         </div>
       </div>
     `,
@@ -339,275 +358,445 @@ export const TextButtonSpacing: Story = {
 
 export const TokenRoutingMatrix: Story = {
   render: () => ({
-    components: { MDButton },
+    components: { MDButton, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-button-token-routing" class="visual-checker-backdrop">
         <div class="visual-row">
-          <MDButton
-            data-testid="button-hover"
-            class="md-state_hover"
-            label="Hover"
-            color="filled"
-            style="
-              --md-comp-button-filled-label-text-color: rgb(30 30 30);
-              --md-comp-button-filled-hovered-label-text-color: rgb(0 128 0);
-              --md-comp-button-filled-icon-color: rgb(90 20 150);
-              --md-comp-button-filled-hovered-icon-color: rgb(255 0 0);
-              --md-comp-button-filled-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
-              --md-comp-button-filled-hovered-state-layer-color: rgb(255 0 0);
-              --md-comp-button-filled-hovered-state-layer-opacity: 0.03;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-focus"
-            class="md-state_focused"
-            label="Focus"
-            color="filled"
-            style="
-              --md-comp-button-filled-focused-label-text-color: rgb(0 0 255);
-              --md-comp-button-filled-focused-icon-color: rgb(255 165 0);
-              --md-comp-button-filled-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
-              --md-comp-button-filled-focused-state-layer-color: rgb(0 128 0);
-              --md-comp-button-filled-focused-state-layer-opacity: 0.17;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-pressed"
-            class="md-state_pressed"
-            label="Pressed"
-            color="filled"
-            style="
-              --md-comp-button-filled-pressed-label-text-color: rgb(255 0 255);
-              --md-comp-button-filled-pressed-icon-color: rgb(0 255 255);
-              --md-comp-button-filled-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
-              --md-comp-button-filled-pressed-state-layer-color: rgb(0 0 255);
-              --md-comp-button-filled-pressed-state-layer-opacity: 0.29;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="button-hover"
+              class="md-state_hover"
+              label="Hover"
+              color="filled"
+              style="
+                --md-comp-button-filled-label-text-color: rgb(30 30 30);
+                --md-comp-button-filled-hovered-label-text-color: rgb(0 128 0);
+                --md-comp-button-filled-icon-color: rgb(90 20 150);
+                --md-comp-button-filled-hovered-icon-color: rgb(255 0 0);
+                --md-comp-button-filled-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
+                --md-comp-button-filled-hovered-state-layer-color: rgb(255 0 200);
+                --md-comp-button-filled-hovered-state-layer-opacity: 0.03;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDButton
+              data-testid="button-focus"
+              class="md-state_focused"
+              label="Focus"
+              color="filled"
+              style="
+                --md-comp-button-filled-focused-label-text-color: rgb(0 0 255);
+                --md-comp-button-filled-focused-icon-color: rgb(255 165 0);
+                --md-comp-button-filled-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
+                --md-comp-button-filled-focused-state-layer-color: rgb(0 128 0);
+                --md-comp-button-filled-focused-state-layer-opacity: 0.17;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton
+              data-testid="button-pressed"
+              class="md-state_pressed"
+              label="Pressed"
+              color="filled"
+              style="
+                --md-comp-button-filled-pressed-label-text-color: rgb(255 0 255);
+                --md-comp-button-filled-pressed-icon-color: rgb(0 255 255);
+                --md-comp-button-filled-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
+                --md-comp-button-filled-pressed-state-layer-color: rgb(0 0 255);
+                --md-comp-button-filled-pressed-state-layer-opacity: 0.29;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton
-            data-testid="button-outlined-hover"
-            class="md-state_hover"
-            label="Outlined hover"
-            color="outlined"
-            style="
-              --md-comp-button-outlined-hovered-outline-color: rgb(120 10 10);
-              --md-comp-button-outlined-hovered-state-layer-color: rgb(255 0 0);
-              --md-comp-button-outlined-hovered-state-layer-opacity: 0.03;
-            "
-          />
-          <MDButton
-            data-testid="button-outlined-focus"
-            class="md-state_focused"
-            label="Outlined focus"
-            color="outlined"
-            style="
-              --md-comp-button-outlined-focused-outline-color: rgb(10 120 10);
-              --md-comp-button-outlined-focused-state-layer-color: rgb(0 128 0);
-              --md-comp-button-outlined-focused-state-layer-opacity: 0.17;
-            "
-          />
-          <MDButton
-            data-testid="button-outlined-pressed"
-            class="md-state_pressed"
-            label="Outlined pressed"
-            color="outlined"
-            style="
-              --md-comp-button-outlined-pressed-outline-color: rgb(10 10 120);
-              --md-comp-button-outlined-pressed-state-layer-color: rgb(0 0 255);
-              --md-comp-button-outlined-pressed-state-layer-opacity: 0.29;
-            "
-          />
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="button-outlined-hover"
+              class="md-state_hover"
+              label="Outlined hover"
+              color="outlined"
+              style="
+                --md-comp-button-outlined-hovered-outline-color: rgb(120 10 10);
+                --md-comp-button-outlined-hovered-state-layer-color: rgb(255 0 200);
+                --md-comp-button-outlined-hovered-state-layer-opacity: 0.03;
+              "
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDButton
+              data-testid="button-outlined-focus"
+              class="md-state_focused"
+              label="Outlined focus"
+              color="outlined"
+              style="
+                --md-comp-button-outlined-focused-outline-color: rgb(10 120 10);
+                --md-comp-button-outlined-focused-state-layer-color: rgb(0 128 0);
+                --md-comp-button-outlined-focused-state-layer-opacity: 0.17;
+              "
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton
+              data-testid="button-outlined-pressed"
+              class="md-state_pressed"
+              label="Outlined pressed"
+              color="outlined"
+              style="
+                --md-comp-button-outlined-pressed-outline-color: rgb(10 10 120);
+                --md-comp-button-outlined-pressed-state-layer-color: rgb(0 0 255);
+                --md-comp-button-outlined-pressed-state-layer-opacity: 0.29;
+              "
+            />
+          </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton
-            data-testid="button-tonal-hover"
-            class="md-state_hover"
-            label="Tonal hover"
-            color="tonal"
-            style="
-              --md-comp-button-tonal-label-text-color: rgb(30 30 30);
-              --md-comp-button-tonal-hovered-label-text-color: rgb(0 128 0);
-              --md-comp-button-tonal-icon-color: rgb(90 20 150);
-              --md-comp-button-tonal-hovered-icon-color: rgb(255 0 0);
-              --md-comp-button-tonal-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
-              --md-comp-button-tonal-hovered-state-layer-color: rgb(255 0 0);
-              --md-comp-button-tonal-hovered-state-layer-opacity: 0.03;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-tonal-focus"
-            class="md-state_focused"
-            label="Tonal focus"
-            color="tonal"
-            style="
-              --md-comp-button-tonal-focused-label-text-color: rgb(0 0 255);
-              --md-comp-button-tonal-focused-icon-color: rgb(255 165 0);
-              --md-comp-button-tonal-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
-              --md-comp-button-tonal-focused-state-layer-color: rgb(0 128 0);
-              --md-comp-button-tonal-focused-state-layer-opacity: 0.17;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-tonal-pressed"
-            class="md-state_pressed"
-            label="Tonal pressed"
-            color="tonal"
-            style="
-              --md-comp-button-tonal-pressed-label-text-color: rgb(255 0 255);
-              --md-comp-button-tonal-pressed-icon-color: rgb(0 255 255);
-              --md-comp-button-tonal-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
-              --md-comp-button-tonal-pressed-state-layer-color: rgb(0 0 255);
-              --md-comp-button-tonal-pressed-state-layer-opacity: 0.29;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="button-tonal-hover"
+              class="md-state_hover"
+              label="Tonal hover"
+              color="tonal"
+              style="
+                --md-comp-button-tonal-label-text-color: rgb(30 30 30);
+                --md-comp-button-tonal-hovered-label-text-color: rgb(0 128 0);
+                --md-comp-button-tonal-icon-color: rgb(90 20 150);
+                --md-comp-button-tonal-hovered-icon-color: rgb(255 0 0);
+                --md-comp-button-tonal-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
+                --md-comp-button-tonal-hovered-state-layer-color: rgb(255 0 200);
+                --md-comp-button-tonal-hovered-state-layer-opacity: 0.03;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDButton
+              data-testid="button-tonal-focus"
+              class="md-state_focused"
+              label="Tonal focus"
+              color="tonal"
+              style="
+                --md-comp-button-tonal-focused-label-text-color: rgb(0 0 255);
+                --md-comp-button-tonal-focused-icon-color: rgb(255 165 0);
+                --md-comp-button-tonal-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
+                --md-comp-button-tonal-focused-state-layer-color: rgb(0 128 0);
+                --md-comp-button-tonal-focused-state-layer-opacity: 0.17;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton
+              data-testid="button-tonal-pressed"
+              class="md-state_pressed"
+              label="Tonal pressed"
+              color="tonal"
+              style="
+                --md-comp-button-tonal-pressed-label-text-color: rgb(255 0 255);
+                --md-comp-button-tonal-pressed-icon-color: rgb(0 255 255);
+                --md-comp-button-tonal-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
+                --md-comp-button-tonal-pressed-state-layer-color: rgb(0 0 255);
+                --md-comp-button-tonal-pressed-state-layer-opacity: 0.29;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton
-            data-testid="button-elevated-hover"
-            class="md-state_hover"
-            label="Elevated hover"
-            color="elevated"
-            style="
-              --md-comp-button-elevated-label-text-color: rgb(30 30 30);
-              --md-comp-button-elevated-hovered-label-text-color: rgb(0 128 0);
-              --md-comp-button-elevated-icon-color: rgb(90 20 150);
-              --md-comp-button-elevated-hovered-icon-color: rgb(255 0 0);
-              --md-comp-button-elevated-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
-              --md-comp-button-elevated-hovered-state-layer-color: rgb(255 0 0);
-              --md-comp-button-elevated-hovered-state-layer-opacity: 0.03;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-elevated-focus"
-            class="md-state_focused"
-            label="Elevated focus"
-            color="elevated"
-            style="
-              --md-comp-button-elevated-focused-label-text-color: rgb(0 0 255);
-              --md-comp-button-elevated-focused-icon-color: rgb(255 165 0);
-              --md-comp-button-elevated-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
-              --md-comp-button-elevated-focused-state-layer-color: rgb(0 128 0);
-              --md-comp-button-elevated-focused-state-layer-opacity: 0.17;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-elevated-pressed"
-            class="md-state_pressed"
-            label="Elevated pressed"
-            color="elevated"
-            style="
-              --md-comp-button-elevated-pressed-label-text-color: rgb(255 0 255);
-              --md-comp-button-elevated-pressed-icon-color: rgb(0 255 255);
-              --md-comp-button-elevated-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
-              --md-comp-button-elevated-pressed-state-layer-color: rgb(0 0 255);
-              --md-comp-button-elevated-pressed-state-layer-opacity: 0.29;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="button-elevated-hover"
+              class="md-state_hover"
+              label="Elevated hover"
+              color="elevated"
+              style="
+                --md-comp-button-elevated-label-text-color: rgb(30 30 30);
+                --md-comp-button-elevated-hovered-label-text-color: rgb(0 128 0);
+                --md-comp-button-elevated-icon-color: rgb(90 20 150);
+                --md-comp-button-elevated-hovered-icon-color: rgb(255 0 0);
+                --md-comp-button-elevated-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
+                --md-comp-button-elevated-hovered-state-layer-color: rgb(255 0 200);
+                --md-comp-button-elevated-hovered-state-layer-opacity: 0.03;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDButton
+              data-testid="button-elevated-focus"
+              class="md-state_focused"
+              label="Elevated focus"
+              color="elevated"
+              style="
+                --md-comp-button-elevated-focused-label-text-color: rgb(0 0 255);
+                --md-comp-button-elevated-focused-icon-color: rgb(255 165 0);
+                --md-comp-button-elevated-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
+                --md-comp-button-elevated-focused-state-layer-color: rgb(0 128 0);
+                --md-comp-button-elevated-focused-state-layer-opacity: 0.17;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton
+              data-testid="button-elevated-pressed"
+              class="md-state_pressed"
+              label="Elevated pressed"
+              color="elevated"
+              style="
+                --md-comp-button-elevated-pressed-label-text-color: rgb(255 0 255);
+                --md-comp-button-elevated-pressed-icon-color: rgb(0 255 255);
+                --md-comp-button-elevated-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
+                --md-comp-button-elevated-pressed-state-layer-color: rgb(0 0 255);
+                --md-comp-button-elevated-pressed-state-layer-opacity: 0.29;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
-          <MDButton
-            data-testid="button-text-hover"
-            class="md-state_hover"
-            label="Text hover"
-            color="text"
-            style="
-              --md-comp-button-text-label-text-color: rgb(30 30 30);
-              --md-comp-button-text-hovered-label-text-color: rgb(0 128 0);
-              --md-comp-button-text-icon-color: rgb(90 20 150);
-              --md-comp-button-text-hovered-icon-color: rgb(255 0 0);
-              --md-comp-button-text-hovered-state-layer-color: rgb(255 0 0);
-              --md-comp-button-text-hovered-state-layer-opacity: 0.03;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-text-focus"
-            class="md-state_focused"
-            label="Text focus"
-            color="text"
-            style="
-              --md-comp-button-text-focused-label-text-color: rgb(0 0 255);
-              --md-comp-button-text-focused-icon-color: rgb(255 165 0);
-              --md-comp-button-text-focused-state-layer-color: rgb(0 128 0);
-              --md-comp-button-text-focused-state-layer-opacity: 0.17;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
-          <MDButton
-            data-testid="button-text-pressed"
-            class="md-state_pressed"
-            label="Text pressed"
-            color="text"
-            style="
-              --md-comp-button-text-pressed-label-text-color: rgb(255 0 255);
-              --md-comp-button-text-pressed-icon-color: rgb(0 255 255);
-              --md-comp-button-text-pressed-state-layer-color: rgb(0 0 255);
-              --md-comp-button-text-pressed-state-layer-opacity: 0.29;
-            "
-          >
-            <template #icon>+</template>
-          </MDButton>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="button-text-hover"
+              class="md-state_hover"
+              label="Text hover"
+              color="text"
+              style="
+                --md-comp-button-text-label-text-color: rgb(30 30 30);
+                --md-comp-button-text-hovered-label-text-color: rgb(0 128 0);
+                --md-comp-button-text-icon-color: rgb(90 20 150);
+                --md-comp-button-text-hovered-icon-color: rgb(255 0 0);
+                --md-comp-button-text-hovered-state-layer-color: rgb(255 0 200);
+                --md-comp-button-text-hovered-state-layer-opacity: 0.03;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDButton
+              data-testid="button-text-focus"
+              class="md-state_focused"
+              label="Text focus"
+              color="text"
+              style="
+                --md-comp-button-text-focused-label-text-color: rgb(0 0 255);
+                --md-comp-button-text-focused-icon-color: rgb(255 165 0);
+                --md-comp-button-text-focused-state-layer-color: rgb(0 128 0);
+                --md-comp-button-text-focused-state-layer-opacity: 0.17;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDButton
+              data-testid="button-text-pressed"
+              class="md-state_pressed"
+              label="Text pressed"
+              color="text"
+              style="
+                --md-comp-button-text-pressed-label-text-color: rgb(255 0 255);
+                --md-comp-button-text-pressed-icon-color: rgb(0 255 255);
+                --md-comp-button-text-pressed-state-layer-color: rgb(0 0 255);
+                --md-comp-button-text-pressed-state-layer-opacity: 0.29;
+              "
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
         </div>
-        <div class="visual-row">
+      </div>
+    `,
+  }),
+};
+
+/** The four Button styles publishing distinct selected/unselected Material color tokens. */
+const BUTTON_TOGGLE_STYLES = ['elevated', 'filled', 'tonal', 'outlined'] as const;
+type ButtonToggleStyle = (typeof BUTTON_TOGGLE_STYLES)[number];
+
+interface ButtonToggleBranchTokens {
+  /** Resting container color. Omitted where the style publishes none (outlined unselected). */
+  container?: string;
+  /** Hover-forced label color. */
+  label: string;
+  /** Hover-forced icon color. */
+  icon: string;
+  /** Hover-forced state-layer color. */
+  stateLayerColor: string;
+  /** Resting outline color. Only `outlined` publishes a per-branch outline token. */
+  outline?: string;
+}
+
+/**
+ * Deterministic, hand-written override values proving that selected and unselected container,
+ * label, icon, and (hover-forced) state-layer color route independently per Button style, plus
+ * outline for `outlined` (its only style with a selected/unselected outline token; the outline
+ * itself does not have a distinct hovered variant in `MDButton.vue`, so it is read at rest, not
+ * under the forced-hover provider). Every literal is unique within its own branch so a routing bug
+ * that swapped two properties would be caught. Test-local fixture data, not a production token
+ * table.
+ */
+const BUTTON_TOGGLE_MATRIX: Record<
+  ButtonToggleStyle,
+  { selected: ButtonToggleBranchTokens; unselected: ButtonToggleBranchTokens; hoverOpacity: string }
+> = {
+  elevated: {
+    selected: {
+      container: 'rgb(10 60 10)',
+      label: 'rgb(200 255 200)',
+      icon: 'rgb(255 210 0)',
+      stateLayerColor: 'rgb(0 200 160)',
+    },
+    unselected: {
+      container: 'rgb(10 10 90)',
+      label: 'rgb(190 210 255)',
+      icon: 'rgb(255 120 180)',
+      stateLayerColor: 'rgb(150 80 0)',
+    },
+    hoverOpacity: '0.09',
+  },
+  filled: {
+    selected: {
+      container: 'rgb(120 20 20)',
+      label: 'rgb(20 20 20)',
+      icon: 'rgb(40 40 40)',
+      stateLayerColor: 'rgb(180 0 0)',
+    },
+    unselected: {
+      container: 'rgb(20 20 120)',
+      label: 'rgb(50 50 50)',
+      icon: 'rgb(70 70 70)',
+      stateLayerColor: 'rgb(0 0 180)',
+    },
+    hoverOpacity: '0.11',
+  },
+  tonal: {
+    selected: {
+      container: 'rgb(90 60 10)',
+      label: 'rgb(255 240 200)',
+      icon: 'rgb(255 255 0)',
+      stateLayerColor: 'rgb(200 100 0)',
+    },
+    unselected: {
+      container: 'rgb(10 90 60)',
+      label: 'rgb(200 255 240)',
+      icon: 'rgb(0 255 255)',
+      stateLayerColor: 'rgb(0 120 200)',
+    },
+    hoverOpacity: '0.13',
+  },
+  outlined: {
+    selected: {
+      container: 'rgb(60 10 90)',
+      label: 'rgb(240 200 255)',
+      icon: 'rgb(255 0 150)',
+      stateLayerColor: 'rgb(150 0 255)',
+      outline: 'rgb(200 0 120)',
+    },
+    unselected: {
+      label: 'rgb(210 210 210)',
+      icon: 'rgb(0 255 120)',
+      stateLayerColor: 'rgb(0 90 255)',
+      outline: 'rgb(90 60 0)',
+    },
+    hoverOpacity: '0.15',
+  },
+};
+
+const buttonToggleRestingStyle = (style: ButtonToggleStyle, branch: 'selected' | 'unselected') => {
+  const tokens = BUTTON_TOGGLE_MATRIX[style][branch];
+  const restingStyle: Record<string, string> = {};
+  if (tokens.container !== undefined) {
+    restingStyle[`--md-comp-button-${style}-${branch}-container-color`] = tokens.container;
+  }
+  if (tokens.outline !== undefined) {
+    restingStyle[`--md-comp-button-${style}-${branch}-outline-color`] = tokens.outline;
+  }
+  return restingStyle;
+};
+
+const buttonToggleHoverStyle = (style: ButtonToggleStyle, branch: 'selected' | 'unselected') => {
+  const entry = BUTTON_TOGGLE_MATRIX[style];
+  const tokens = entry[branch];
+  return {
+    [`--md-comp-button-${style}-hovered-state-layer-opacity`]: entry.hoverOpacity,
+    [`--md-comp-button-${style}-${branch}-hovered-label-text-color`]: tokens.label,
+    [`--md-comp-button-${style}-${branch}-hovered-icon-color`]: tokens.icon,
+    [`--md-comp-button-${style}-${branch}-hovered-state-layer-color`]: tokens.stateLayerColor,
+  };
+};
+
+export const ToggleTokenRoutingMatrix: Story = {
+  render: () => ({
+    components: { MDButton, MDStateLayerForcedStateProvider },
+    setup() {
+      return {
+        BUTTON_TOGGLE_STYLES,
+        buttonToggleRestingStyle,
+        buttonToggleHoverStyle,
+      };
+    },
+    template: `
+      <div data-testid="visual-md-button-toggle-token-routing" class="visual-checker-backdrop">
+        <div v-for="style in BUTTON_TOGGLE_STYLES" :key="style" class="visual-row">
           <MDButton
-            data-testid="button-selected-hover"
-            class="md-state_hover"
-            label="Selected"
+            :data-testid="\`toggle-token-\${style}-selected-resting\`"
+            :label="\`\${style} selected\`"
             variant="toggle"
-            color="filled"
             selected
-            style="
-              --md-comp-button-filled-hovered-state-layer-opacity: 0.11;
-              --md-comp-button-filled-selected-container-color: rgb(120 20 20);
-              --md-comp-button-filled-selected-hovered-state-layer-color: rgb(180 0 0);
-              --md-comp-button-filled-selected-label-text-color: rgb(20 20 20);
-              --md-comp-button-filled-selected-hovered-label-text-color: rgb(180 0 180);
-              --md-comp-button-filled-selected-icon-color: rgb(40 40 40);
-              --md-comp-button-filled-selected-hovered-icon-color: rgb(0 120 120);
-            "
+            :color="style"
+            :style="buttonToggleRestingStyle(style, 'selected')"
           >
             <template #icon>+</template>
           </MDButton>
           <MDButton
-            data-testid="button-unselected-hover"
-            class="md-state_hover"
-            label="Unselected"
+            :data-testid="\`toggle-token-\${style}-unselected-resting\`"
+            :label="\`\${style} unselected\`"
             variant="toggle"
-            color="filled"
-            style="
-              --md-comp-button-filled-hovered-state-layer-opacity: 0.11;
-              --md-comp-button-filled-unselected-container-color: rgb(20 20 120);
-              --md-comp-button-filled-unselected-hovered-state-layer-color: rgb(0 0 180);
-              --md-comp-button-filled-unselected-label-text-color: rgb(50 50 50);
-              --md-comp-button-filled-unselected-hovered-label-text-color: rgb(0 90 0);
-              --md-comp-button-filled-unselected-icon-color: rgb(70 70 70);
-              --md-comp-button-filled-unselected-hovered-icon-color: rgb(160 80 0);
-            "
+            :color="style"
+            :style="buttonToggleRestingStyle(style, 'unselected')"
           >
             <template #icon>+</template>
           </MDButton>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              :data-testid="\`toggle-token-\${style}-selected-hover\`"
+              class="md-state_hover"
+              :label="\`\${style} selected hover\`"
+              variant="toggle"
+              selected
+              :color="style"
+              :style="buttonToggleHoverStyle(style, 'selected')"
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              :data-testid="\`toggle-token-\${style}-unselected-hover\`"
+              class="md-state_hover"
+              :label="\`\${style} unselected hover\`"
+              variant="toggle"
+              :color="style"
+              :style="buttonToggleHoverStyle(style, 'unselected')"
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
         </div>
       </div>
     `,

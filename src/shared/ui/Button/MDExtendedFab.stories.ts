@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDExtendedFab from './MDExtendedFab.vue';
+import { MDStateLayerForcedStateProvider } from '../State/testing';
 import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
@@ -89,7 +90,7 @@ export const VisualStates: Story = {
 export const InteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDExtendedFab },
+    components: { MDExtendedFab, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-extended-fab-interaction-states" class="visual-checker-backdrop">
         <div class="visual-row">
@@ -103,9 +104,9 @@ export const InteractionStates: Story = {
           <MDExtendedFab label="Tertiary container" color="tertiary-container" md-symbol="star" />
         </div>
         <div class="visual-row">
-          <MDExtendedFab class="md-state_hover" label="Hover" color="primary-container" md-symbol="add" />
-          <MDExtendedFab class="md-state_focused" label="Focus" color="primary-container" md-symbol="add" />
-          <MDExtendedFab class="md-state_pressed" label="Pressed" color="primary-container" md-symbol="add" />
+          <MDStateLayerForcedStateProvider hovered><MDExtendedFab class="md-state_hover" label="Hover" color="primary-container" md-symbol="add" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDExtendedFab class="md-state_focused" label="Focus" color="primary-container" md-symbol="add" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDExtendedFab class="md-state_pressed" label="Pressed" color="primary-container" md-symbol="add" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
           <MDExtendedFab label="Small" size="small" color="primary-container" md-symbol="add" />
@@ -309,7 +310,7 @@ const extendedFabTokenStyle = (color: ExtendedFabColor, state: ExtendedFabTokenS
 
 export const InteractionStateTokens: Story = {
   render: () => ({
-    components: { MDExtendedFab },
+    components: { MDExtendedFab, MDStateLayerForcedStateProvider },
     setup() {
       return { EXTENDED_FAB_COLORS, extendedFabTokenStyle };
     },
@@ -317,30 +318,36 @@ export const InteractionStateTokens: Story = {
       <div data-testid="visual-md-extended-fab-interaction-state-tokens" class="visual-checker-backdrop">
         <div v-for="color in EXTENDED_FAB_COLORS" :key="color" class="visual-row">
           <MDExtendedFab :data-testid="\`extended-\${color}-resting\`" :label="\`\${color} resting\`" :color="color" md-symbol="add" />
-          <MDExtendedFab
-            :data-testid="\`extended-\${color}-hover\`"
-            class="md-state_hover"
-            :label="\`\${color} hover\`"
-            :color="color"
-            md-symbol="add"
-            :style="extendedFabTokenStyle(color, 'hovered')"
-          />
-          <MDExtendedFab
-            :data-testid="\`extended-\${color}-focus\`"
-            class="md-state_focused"
-            :label="\`\${color} focus\`"
-            :color="color"
-            md-symbol="add"
-            :style="extendedFabTokenStyle(color, 'focused')"
-          />
-          <MDExtendedFab
-            :data-testid="\`extended-\${color}-pressed\`"
-            class="md-state_pressed"
-            :label="\`\${color} pressed\`"
-            :color="color"
-            md-symbol="add"
-            :style="extendedFabTokenStyle(color, 'pressed')"
-          />
+          <MDStateLayerForcedStateProvider hovered>
+            <MDExtendedFab
+              :data-testid="\`extended-\${color}-hover\`"
+              class="md-state_hover"
+              :label="\`\${color} hover\`"
+              :color="color"
+              md-symbol="add"
+              :style="extendedFabTokenStyle(color, 'hovered')"
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDExtendedFab
+              :data-testid="\`extended-\${color}-focus\`"
+              class="md-state_focused"
+              :label="\`\${color} focus\`"
+              :color="color"
+              md-symbol="add"
+              :style="extendedFabTokenStyle(color, 'focused')"
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDExtendedFab
+              :data-testid="\`extended-\${color}-pressed\`"
+              class="md-state_pressed"
+              :label="\`\${color} pressed\`"
+              :color="color"
+              md-symbol="add"
+              :style="extendedFabTokenStyle(color, 'pressed')"
+            />
+          </MDStateLayerForcedStateProvider>
         </div>
       </div>
     `,

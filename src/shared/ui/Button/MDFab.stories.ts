@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDFab from './MDFab.vue';
+import { MDStateLayerForcedStateProvider } from '../State/testing';
 import { useFocusIndicator } from '../State/useFocusIndicator';
 
 const meta = {
@@ -63,34 +64,34 @@ const fabStatesTemplate = `
 const fabInteractionStatesTemplate = `
   <div data-testid="visual-md-fab-interaction-states" class="visual-checker-backdrop">
     <div class="visual-row">
-      <MDFab class="md-state_hover" tooltip="Primary hover" color="primary" md-symbol="add" />
-      <MDFab class="md-state_focused" tooltip="Primary focus" color="primary" md-symbol="add" />
-      <MDFab class="md-state_pressed" tooltip="Primary pressed" color="primary" md-symbol="add" />
+      <MDStateLayerForcedStateProvider hovered><MDFab class="md-state_hover" tooltip="Primary hover" color="primary" md-symbol="add" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider focused><MDFab class="md-state_focused" tooltip="Primary focus" color="primary" md-symbol="add" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider pressed><MDFab class="md-state_pressed" tooltip="Primary pressed" color="primary" md-symbol="add" /></MDStateLayerForcedStateProvider>
     </div>
     <div class="visual-row">
-      <MDFab class="md-state_hover" tooltip="Secondary hover" color="secondary" md-symbol="edit" />
-      <MDFab class="md-state_focused" tooltip="Secondary focus" color="secondary" md-symbol="edit" />
-      <MDFab class="md-state_pressed" tooltip="Secondary pressed" color="secondary" md-symbol="edit" />
+      <MDStateLayerForcedStateProvider hovered><MDFab class="md-state_hover" tooltip="Secondary hover" color="secondary" md-symbol="edit" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider focused><MDFab class="md-state_focused" tooltip="Secondary focus" color="secondary" md-symbol="edit" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider pressed><MDFab class="md-state_pressed" tooltip="Secondary pressed" color="secondary" md-symbol="edit" /></MDStateLayerForcedStateProvider>
     </div>
     <div class="visual-row">
-      <MDFab class="md-state_hover" tooltip="Tertiary hover" color="tertiary" md-symbol="share" />
-      <MDFab class="md-state_focused" tooltip="Tertiary focus" color="tertiary" md-symbol="share" />
-      <MDFab class="md-state_pressed" tooltip="Tertiary pressed" color="tertiary" md-symbol="share" />
+      <MDStateLayerForcedStateProvider hovered><MDFab class="md-state_hover" tooltip="Tertiary hover" color="tertiary" md-symbol="share" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider focused><MDFab class="md-state_focused" tooltip="Tertiary focus" color="tertiary" md-symbol="share" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider pressed><MDFab class="md-state_pressed" tooltip="Tertiary pressed" color="tertiary" md-symbol="share" /></MDStateLayerForcedStateProvider>
     </div>
     <div class="visual-row">
-      <MDFab class="md-state_hover" tooltip="Primary container hover" color="primary-container" md-symbol="check" />
-      <MDFab class="md-state_focused" tooltip="Primary container focus" color="primary-container" md-symbol="check" />
-      <MDFab class="md-state_pressed" tooltip="Primary container pressed" color="primary-container" md-symbol="check" />
+      <MDStateLayerForcedStateProvider hovered><MDFab class="md-state_hover" tooltip="Primary container hover" color="primary-container" md-symbol="check" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider focused><MDFab class="md-state_focused" tooltip="Primary container focus" color="primary-container" md-symbol="check" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider pressed><MDFab class="md-state_pressed" tooltip="Primary container pressed" color="primary-container" md-symbol="check" /></MDStateLayerForcedStateProvider>
     </div>
     <div class="visual-row">
-      <MDFab class="md-state_hover" tooltip="Secondary container hover" color="secondary-container" md-symbol="star" />
-      <MDFab class="md-state_focused" tooltip="Secondary container focus" color="secondary-container" md-symbol="star" />
-      <MDFab class="md-state_pressed" tooltip="Secondary container pressed" color="secondary-container" md-symbol="star" />
+      <MDStateLayerForcedStateProvider hovered><MDFab class="md-state_hover" tooltip="Secondary container hover" color="secondary-container" md-symbol="star" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider focused><MDFab class="md-state_focused" tooltip="Secondary container focus" color="secondary-container" md-symbol="star" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider pressed><MDFab class="md-state_pressed" tooltip="Secondary container pressed" color="secondary-container" md-symbol="star" /></MDStateLayerForcedStateProvider>
     </div>
     <div class="visual-row">
-      <MDFab class="md-state_hover" tooltip="Tertiary container hover" color="tertiary-container" md-symbol="menu" />
-      <MDFab class="md-state_focused" tooltip="Tertiary container focus" color="tertiary-container" md-symbol="menu" />
-      <MDFab class="md-state_pressed" tooltip="Tertiary container pressed" color="tertiary-container" md-symbol="menu" />
+      <MDStateLayerForcedStateProvider hovered><MDFab class="md-state_hover" tooltip="Tertiary container hover" color="tertiary-container" md-symbol="menu" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider focused><MDFab class="md-state_focused" tooltip="Tertiary container focus" color="tertiary-container" md-symbol="menu" /></MDStateLayerForcedStateProvider>
+      <MDStateLayerForcedStateProvider pressed><MDFab class="md-state_pressed" tooltip="Tertiary container pressed" color="tertiary-container" md-symbol="menu" /></MDStateLayerForcedStateProvider>
     </div>
   </div>
 `;
@@ -138,7 +139,7 @@ export const VisualStates: Story = {
 export const VisualInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDFab },
+    components: { MDFab, MDStateLayerForcedStateProvider },
     template: fabInteractionStatesTemplate,
   }),
 };
@@ -274,7 +275,7 @@ const fabTokenStyle = (color: FabColor, state: FabTokenState) => {
 
 export const InteractionStateTokens: Story = {
   render: () => ({
-    components: { MDFab },
+    components: { MDFab, MDStateLayerForcedStateProvider },
     setup() {
       return { FAB_COLORS, fabTokenStyle };
     },
@@ -282,30 +283,36 @@ export const InteractionStateTokens: Story = {
       <div data-testid="visual-md-fab-interaction-state-tokens" class="visual-checker-backdrop">
         <div v-for="color in FAB_COLORS" :key="color" class="visual-row">
           <MDFab :data-testid="\`\${color}-resting\`" :tooltip="\`\${color} resting\`" :color="color" md-symbol="add" />
-          <MDFab
-            :data-testid="\`\${color}-hover\`"
-            class="md-state_hover"
-            :tooltip="\`\${color} hover\`"
-            :color="color"
-            md-symbol="add"
-            :style="fabTokenStyle(color, 'hovered')"
-          />
-          <MDFab
-            :data-testid="\`\${color}-focus\`"
-            class="md-state_focused"
-            :tooltip="\`\${color} focus\`"
-            :color="color"
-            md-symbol="add"
-            :style="fabTokenStyle(color, 'focused')"
-          />
-          <MDFab
-            :data-testid="\`\${color}-pressed\`"
-            class="md-state_pressed"
-            :tooltip="\`\${color} pressed\`"
-            :color="color"
-            md-symbol="add"
-            :style="fabTokenStyle(color, 'pressed')"
-          />
+          <MDStateLayerForcedStateProvider hovered>
+            <MDFab
+              :data-testid="\`\${color}-hover\`"
+              class="md-state_hover"
+              :tooltip="\`\${color} hover\`"
+              :color="color"
+              md-symbol="add"
+              :style="fabTokenStyle(color, 'hovered')"
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused>
+            <MDFab
+              :data-testid="\`\${color}-focus\`"
+              class="md-state_focused"
+              :tooltip="\`\${color} focus\`"
+              :color="color"
+              md-symbol="add"
+              :style="fabTokenStyle(color, 'focused')"
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed>
+            <MDFab
+              :data-testid="\`\${color}-pressed\`"
+              class="md-state_pressed"
+              :tooltip="\`\${color} pressed\`"
+              :color="color"
+              md-symbol="add"
+              :style="fabTokenStyle(color, 'pressed')"
+            />
+          </MDStateLayerForcedStateProvider>
         </div>
       </div>
     `,
