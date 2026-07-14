@@ -41,6 +41,33 @@ const dragRowToRow = async (
   await page.mouse.up();
 };
 
+const readVisualOrder = async (
+  rows: ReadonlyArray<{
+    name: string;
+    locator: Locator;
+  }>,
+): Promise<string[]> => {
+  const positionedRows = await Promise.all(
+    rows.map(async ({ name, locator }) => {
+      const box = await locator.boundingBox();
+
+      return box ? { name, y: box.y } : null;
+    }),
+  );
+
+  if (positionedRows.some((row) => row === null)) {
+    return [];
+  }
+
+  return positionedRows
+    .filter((row): row is { name: string; y: number } => row !== null)
+    .sort((left, right) => left.y - right.y)
+    .map(({ name }) => name);
+};
+
+const arraysEqual = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
 const expectRowsInVisualOrder = async (
   rows: ReadonlyArray<{
     name: string;
@@ -48,24 +75,48 @@ const expectRowsInVisualOrder = async (
   }>,
   expectedNames: readonly string[],
 ): Promise<void> => {
+  await expect.poll(() => readVisualOrder(rows)).toEqual(expectedNames);
+};
+
+// Confirms the rows have both reached the expected visual order and stayed there across
+// several consecutive polls, instead of trusting a single sample that could land during a
+// transient overshoot of the move animation.
+const expectRowsToRemainInVisualOrder = async (
+  rows: ReadonlyArray<{
+    name: string;
+    locator: Locator;
+  }>,
+  expectedNames: readonly string[],
+): Promise<void> => {
+  let consecutiveMatches = 0;
+
   await expect
     .poll(async () => {
-      const positionedRows = await Promise.all(
-        rows.map(async ({ name, locator }) => {
-          const box = await locator.boundingBox();
+      const order = await readVisualOrder(rows);
+      consecutiveMatches = arraysEqual(order, expectedNames) ? consecutiveMatches + 1 : 0;
 
-          return box ? { name, y: box.y } : null;
-        }),
-      );
+      return consecutiveMatches;
+    })
+    .toBeGreaterThanOrEqual(3);
+};
 
-      if (positionedRows.some((row) => row === null)) {
-        return [];
-      }
+// Reads the committed DOM sequence of the database-view rows (not their transform-animated
+// visual position), scoped to the reorderable list. The list also renders a pre-existing
+// "default view" row plus any other row outside the current scenario, so the read names are
+// filtered down to only the rows this assertion cares about before comparing order.
+const expectRowsInDomOrder = async (
+  list: Locator,
+  expectedNames: readonly string[],
+): Promise<void> => {
+  const expectedSet = new Set(expectedNames);
 
-      return positionedRows
-        .filter((row): row is { name: string; y: number } => row !== null)
-        .sort((left, right) => left.y - right.y)
-        .map(({ name }) => name);
+  await expect
+    .poll(async () => {
+      const names = await list
+        .locator('.md-list-item__label-text')
+        .evaluateAll((nodes) => nodes.map((node) => node.textContent.trim()));
+
+      return names.filter((name) => expectedSet.has(name));
     })
     .toEqual(expectedNames);
 };
@@ -273,7 +324,7 @@ test('a trailing context-menu control opens its menu and never starts a reorder'
   await closeBottomSheet(page, /database views sheet/i);
 });
 
-test('reordering stays stable when a second drag retargets a different row before the prior move animation settles', async ({
+test('a second immediate reorder involving previously moved rows settles to the latest order', async ({
   page,
 }) => {
   await launchApp(page);
@@ -297,7 +348,10 @@ test('reordering stays stable when a second drag retargets a different row befor
   const fourthViewName = await addView(page, createUniqueName('view india'));
 
   const sheet = await openViewsSheet(page);
+  const list = sheet.locator('.db-view-map-edit');
   const rowLocator = (name: string) => sheet.getByRole('button', { name });
+  const rowRootLocator = (name: string) =>
+    list.locator('.db-view-map-edit__view-item').filter({ hasText: name });
   const rows = [firstViewName, secondViewName, thirdViewName, fourthViewName].map((name) => ({
     name,
     locator: rowLocator(name),
@@ -308,33 +362,40 @@ test('reordering stays stable when a second drag retargets a different row befor
   await expect(rows[2]?.locator).toBeVisible();
   await expect(rows[3]?.locator).toBeVisible();
 
-  // The rows now animate their move (MDList animateMoves). The first drag swaps the top pair
-  // (foxtrot/golf); the second drag, started immediately without waiting for that move
-  // transition (350ms) or even the first drag's visible reorder to settle, swaps the bottom
-  // pair (hotel/india) instead — rows the first drag never touches, so their geometry is not
-  // itself mid-transition when the second drag reads it. This is the required
-  // interrupted/retargeted scenario: a second drag overlapping the first drag's still-running
-  // move animation.
+  // First drag: move foxtrot after golf. [foxtrot, golf, hotel, india] -> [golf, foxtrot,
+  // hotel, india]. Wait only for the DOM sequence to commit — not for the move animation
+  // (MDList animateMoves) to visually settle — before starting the next gesture.
   await dragRowToRow(page, rowLocator(firstViewName), rowLocator(secondViewName), 'after');
-  await dragRowToRow(page, rowLocator(fourthViewName), rowLocator(thirdViewName), 'before');
+  await expectRowsInDomOrder(list, [secondViewName, firstViewName, thirdViewName, fourthViewName]);
 
-  // [foxtrot, golf, hotel, india] -> swap top pair -> [golf, foxtrot, hotel, india]
-  // -> swap bottom pair -> [golf, foxtrot, india, hotel]
-  await expectRowsInVisualOrder(rows, [
-    secondViewName,
-    firstViewName,
-    fourthViewName,
-    thirdViewName,
-  ]);
+  // Second drag starts immediately, without waiting for the first drag's move transition
+  // (350ms) to finish. It retargets foxtrot — the row the first drag just moved — moving it
+  // after hotel this time: [golf, foxtrot, hotel, india] -> [golf, hotel, foxtrot, india].
+  await dragRowToRow(page, rowLocator(firstViewName), rowLocator(thirdViewName), 'after');
 
+  const finalOrder = [secondViewName, thirdViewName, firstViewName, fourthViewName];
+  await expectRowsInVisualOrder(rows, finalOrder);
   // No oscillation once the pointer stops and any in-flight move transitions finish settling.
-  await page.waitForTimeout(500);
-  await expectRowsInVisualOrder(rows, [
-    secondViewName,
-    firstViewName,
-    fourthViewName,
-    thirdViewName,
-  ]);
+  await expectRowsToRemainInVisualOrder(rows, finalOrder);
+
+  await Promise.all(
+    [firstViewName, secondViewName, thirdViewName, fourthViewName].map((name) =>
+      expect(rowRootLocator(name)).not.toHaveClass(/md-state_dragged/),
+    ),
+  );
+
+  await closeBottomSheet(page, /database views sheet/i);
+
+  // Reopening confirms the second gesture's result — not an intermediate state — was
+  // persisted.
+  const reopenedSheet = await openViewsSheet(page);
+  const reopenedRows = [firstViewName, secondViewName, thirdViewName, fourthViewName].map(
+    (name) => ({
+      name,
+      locator: reopenedSheet.getByRole('button', { name }),
+    }),
+  );
+  await expectRowsInVisualOrder(reopenedRows, finalOrder);
 
   await closeBottomSheet(page, /database views sheet/i);
 });
