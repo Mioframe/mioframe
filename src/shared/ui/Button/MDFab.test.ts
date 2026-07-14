@@ -197,4 +197,30 @@ describe('MDFab', () => {
 
     expect(wrapper.find('.md-circular-progress-indicator-stub').text()).toBe('0.5');
   });
+
+  it('activates via click while loading, exactly once, keeping the accessible name and enabled state', async () => {
+    const wrapper = mount(MDFab, {
+      props: { tooltip: 'Create item', mdSymbol: 'add', loading: true },
+      global: {
+        stubs: {
+          MDCircularProgressIndicator: {
+            template: '<span class="md-circular-progress-indicator-stub" />',
+          },
+          MDPlainTooltip: { template: '<span class="md-plain-tooltip-stub" />' },
+          MDSymbol: { template: '<span class="md-symbol-stub" />' },
+        },
+      },
+    });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-label')).toBe('Create item');
+    expect(button.attributes('disabled')).toBeUndefined();
+
+    await button.trigger('click');
+    await button.trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(2);
+    expect(button.attributes('aria-label')).toBe('Create item');
+    expect(button.attributes('disabled')).toBeUndefined();
+  });
 });

@@ -2,28 +2,45 @@ import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { openStory } from './storybook.testUtils';
 
+// Small rendering tolerance for direct geometry comparisons below: the indicator's box is set
+// from the host's `getBoundingClientRect()` via a reactive watcher, so it can differ from the
+// host by a sub-pixel rounding amount even once settled.
+const GEOMETRY_TOLERANCE_PX = 1;
+
 /**
  * Shared by each button family's real-focus-visible test: waits for the global focus indicator
- * to reposition, then asserts it matches the focused host's geometry and corner radius, and that
- * its visible outline extent (outline-width + outline-offset) stays within the viewport.
+ * to finish animating into position (it CSS-transitions top/left/width/height on focus change),
+ * then asserts its x/y/width/height directly match the focused host's geometry (not just
+ * contain it), plus corner radius, and that its visible outline extent
+ * (outline-width + outline-offset) stays within the viewport.
  * @param page - The Playwright page used by the behavior test.
  * @param indicator - The shared `.md-focus-indicator` element.
  * @param host - The focused component host.
  */
 const assertFocusIndicatorFollowsHost = async (page: Page, indicator: Locator, host: Locator) => {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            resolve();
-          }),
-        ),
-      ),
-  );
+  const readBoxes = async () => Promise.all([indicator.boundingBox(), host.boundingBox()] as const);
 
-  const indicatorBox = await indicator.boundingBox();
-  const hostBox = await host.boundingBox();
+  // The indicator animates toward the host via a CSS transition, so poll for settlement instead
+  // of trusting a fixed frame count or an arbitrary sleep.
+  await expect
+    .poll(
+      async () => {
+        const [indicatorBox, hostBox] = await readBoxes();
+        if (!indicatorBox || !hostBox) {
+          return Number.POSITIVE_INFINITY;
+        }
+        return Math.max(
+          Math.abs(indicatorBox.x - hostBox.x),
+          Math.abs(indicatorBox.y - hostBox.y),
+          Math.abs(indicatorBox.width - hostBox.width),
+          Math.abs(indicatorBox.height - hostBox.height),
+        );
+      },
+      { timeout: 2_000 },
+    )
+    .toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+
+  const [indicatorBox, hostBox] = await readBoxes();
   const viewport = page.viewportSize();
 
   if (!indicatorBox || !hostBox || !viewport) {
@@ -33,16 +50,11 @@ const assertFocusIndicatorFollowsHost = async (page: Page, indicator: Locator, h
   expect(indicatorBox.width).toBeGreaterThan(0);
   expect(indicatorBox.height).toBeGreaterThan(0);
 
-  // Geometry follows the rendered host container (allowing for the indicator's outer offset).
-  const TOLERANCE = 1;
-  expect(indicatorBox.x).toBeLessThanOrEqual(hostBox.x + TOLERANCE);
-  expect(indicatorBox.y).toBeLessThanOrEqual(hostBox.y + TOLERANCE);
-  expect(indicatorBox.x + indicatorBox.width).toBeGreaterThanOrEqual(
-    hostBox.x + hostBox.width - TOLERANCE,
-  );
-  expect(indicatorBox.y + indicatorBox.height).toBeGreaterThanOrEqual(
-    hostBox.y + hostBox.height - TOLERANCE,
-  );
+  // Geometry directly matches the rendered host container, not merely contains it.
+  expect(Math.abs(indicatorBox.x - hostBox.x)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+  expect(Math.abs(indicatorBox.y - hostBox.y)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+  expect(Math.abs(indicatorBox.width - hostBox.width)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+  expect(Math.abs(indicatorBox.height - hostBox.height)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
 
   // The indicator's border-radius tracks the focused host's own rendered corner radius.
   const indicatorRadius = await indicator.evaluate((el) =>

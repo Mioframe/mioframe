@@ -169,4 +169,22 @@ describe('MDExtendedFab', () => {
 
     expect(wrapper.emitted('click')).toHaveLength(1);
   });
+
+  it('activates via click while loading, exactly once, keeping the accessible name and enabled state', async () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: { label: 'Create', mdSymbol: 'add', loading: true },
+      global: { stubs: globalStubs },
+    });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-label')).toBe('Create');
+    expect(button.attributes('disabled')).toBeUndefined();
+
+    await button.trigger('click');
+    await button.trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(2);
+    expect(button.attributes('aria-label')).toBe('Create');
+    expect(button.attributes('disabled')).toBeUndefined();
+  });
 });

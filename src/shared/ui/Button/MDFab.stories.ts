@@ -159,93 +159,125 @@ export const FocusIndicatorTarget: Story = {
   }),
 };
 
+/** The six Material-documented FAB color styles, in the order rendered by every matrix below. */
+const FAB_COLORS = [
+  'primary',
+  'secondary',
+  'tertiary',
+  'primary-container',
+  'secondary-container',
+  'tertiary-container',
+] as const;
+
+type FabColor = (typeof FAB_COLORS)[number];
+type FabTokenState = 'hovered' | 'focused' | 'pressed';
+
+/**
+ * Deterministic, hand-written override values used only to prove that hover/focus/pressed icon
+ * color, state-layer color/opacity, and container elevation route independently through each
+ * color's own `--md-comp-fab-<color>-*` custom properties. Test-local fixture data, not a
+ * production token table: every color routes through the same `MDFab.vue` CSS, just with a
+ * distinct override value per cell so cross-state/cross-color assertions are meaningful.
+ */
+const FAB_TOKEN_MATRIX: Record<
+  FabColor,
+  Record<FabTokenState, { color: string; elevation: string; opacity: string }>
+> = {
+  primary: {
+    hovered: { color: 'rgb(255 0 0)', elevation: '0 0 0 3px rgb(12 34 56)', opacity: '0.03' },
+    focused: { color: 'rgb(0 128 0)', elevation: '0 0 0 4px rgb(23 45 67)', opacity: '0.17' },
+    pressed: { color: 'rgb(0 0 255)', elevation: '0 0 0 5px rgb(34 56 78)', opacity: '0.29' },
+  },
+  secondary: {
+    hovered: { color: 'rgb(255 90 0)', elevation: '0 0 0 9px rgb(78 90 112)', opacity: '0.03' },
+    focused: { color: 'rgb(0 150 40)', elevation: '0 0 0 10px rgb(89 101 123)', opacity: '0.17' },
+    pressed: { color: 'rgb(20 20 255)', elevation: '0 0 0 11px rgb(101 112 134)', opacity: '0.29' },
+  },
+  tertiary: {
+    hovered: { color: 'rgb(255 140 0)', elevation: '0 0 0 12px rgb(112 123 145)', opacity: '0.03' },
+    focused: { color: 'rgb(0 170 90)', elevation: '0 0 0 13px rgb(123 134 156)', opacity: '0.17' },
+    pressed: { color: 'rgb(60 20 255)', elevation: '0 0 0 14px rgb(134 145 167)', opacity: '0.29' },
+  },
+  'primary-container': {
+    hovered: { color: 'rgb(255 80 0)', elevation: '0 0 0 6px rgb(45 67 89)', opacity: '0.05' },
+    focused: { color: 'rgb(0 180 120)', elevation: '0 0 0 7px rgb(56 78 90)', opacity: '0.19' },
+    pressed: { color: 'rgb(60 60 255)', elevation: '0 0 0 8px rgb(67 89 101)', opacity: '0.31' },
+  },
+  'secondary-container': {
+    hovered: {
+      color: 'rgb(255 100 20)',
+      elevation: '0 0 0 15px rgb(145 156 178)',
+      opacity: '0.05',
+    },
+    focused: {
+      color: 'rgb(20 190 140)',
+      elevation: '0 0 0 16px rgb(156 167 189)',
+      opacity: '0.19',
+    },
+    pressed: { color: 'rgb(80 80 255)', elevation: '0 0 0 17px rgb(167 178 200)', opacity: '0.31' },
+  },
+  'tertiary-container': {
+    hovered: {
+      color: 'rgb(255 120 40)',
+      elevation: '0 0 0 18px rgb(178 189 211)',
+      opacity: '0.05',
+    },
+    focused: {
+      color: 'rgb(40 200 160)',
+      elevation: '0 0 0 19px rgb(189 200 222)',
+      opacity: '0.19',
+    },
+    pressed: {
+      color: 'rgb(100 100 255)',
+      elevation: '0 0 0 20px rgb(200 211 233)',
+      opacity: '0.31',
+    },
+  },
+};
+
+const fabTokenStyle = (color: FabColor, state: FabTokenState) => {
+  const override = FAB_TOKEN_MATRIX[color][state];
+  return {
+    [`--md-comp-fab-${color}-${state}-icon-color`]: override.color,
+    [`--md-comp-fab-${color}-${state}-container-elevation`]: override.elevation,
+    [`--md-comp-fab-${color}-${state}-state-layer-color`]: override.color,
+    [`--md-comp-fab-${color}-${state}-state-layer-opacity`]: override.opacity,
+  };
+};
+
 export const InteractionStateTokens: Story = {
   render: () => ({
     components: { MDFab },
+    setup() {
+      return { FAB_COLORS, fabTokenStyle };
+    },
     template: `
       <div data-testid="visual-md-fab-interaction-state-tokens" class="visual-surface">
-        <div class="visual-row">
-          <MDFab data-testid="primary-resting" tooltip="Primary resting" color="primary" md-symbol="add" />
+        <div v-for="color in FAB_COLORS" :key="color" class="visual-row">
+          <MDFab :data-testid="\`\${color}-resting\`" :tooltip="\`\${color} resting\`" :color="color" md-symbol="add" />
           <MDFab
-            data-testid="primary-hover"
+            :data-testid="\`\${color}-hover\`"
             class="md-state_hover"
-            tooltip="Primary hover"
-            color="primary"
+            :tooltip="\`\${color} hover\`"
+            :color="color"
             md-symbol="add"
-            style="
-              --md-comp-fab-primary-hovered-icon-color: rgb(255 0 0);
-              --md-comp-fab-primary-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
-              --md-comp-fab-primary-hovered-state-layer-color: rgb(255 0 0);
-              --md-comp-fab-primary-hovered-state-layer-opacity: 0.03;
-            "
+            :style="fabTokenStyle(color, 'hovered')"
           />
           <MDFab
-            data-testid="primary-focus"
+            :data-testid="\`\${color}-focus\`"
             class="md-state_focused"
-            tooltip="Primary focus"
-            color="primary"
+            :tooltip="\`\${color} focus\`"
+            :color="color"
             md-symbol="add"
-            style="
-              --md-comp-fab-primary-focused-icon-color: rgb(0 128 0);
-              --md-comp-fab-primary-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
-              --md-comp-fab-primary-focused-state-layer-color: rgb(0 128 0);
-              --md-comp-fab-primary-focused-state-layer-opacity: 0.17;
-            "
+            :style="fabTokenStyle(color, 'focused')"
           />
           <MDFab
-            data-testid="primary-pressed"
+            :data-testid="\`\${color}-pressed\`"
             class="md-state_pressed"
-            tooltip="Primary pressed"
-            color="primary"
+            :tooltip="\`\${color} pressed\`"
+            :color="color"
             md-symbol="add"
-            style="
-              --md-comp-fab-primary-pressed-icon-color: rgb(0 0 255);
-              --md-comp-fab-primary-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
-              --md-comp-fab-primary-pressed-state-layer-color: rgb(0 0 255);
-              --md-comp-fab-primary-pressed-state-layer-opacity: 0.29;
-            "
-          />
-        </div>
-        <div class="visual-row">
-          <MDFab data-testid="primary-container-resting" tooltip="Primary container resting" color="primary-container" md-symbol="add" />
-          <MDFab
-            data-testid="primary-container-hover"
-            class="md-state_hover"
-            tooltip="Primary container hover"
-            color="primary-container"
-            md-symbol="add"
-            style="
-              --md-comp-fab-primary-container-hovered-icon-color: rgb(255 80 0);
-              --md-comp-fab-primary-container-hovered-container-elevation: 0 0 0 6px rgb(45 67 89);
-              --md-comp-fab-primary-container-hovered-state-layer-color: rgb(255 80 0);
-              --md-comp-fab-primary-container-hovered-state-layer-opacity: 0.05;
-            "
-          />
-          <MDFab
-            data-testid="primary-container-focus"
-            class="md-state_focused"
-            tooltip="Primary container focus"
-            color="primary-container"
-            md-symbol="add"
-            style="
-              --md-comp-fab-primary-container-focused-icon-color: rgb(0 180 120);
-              --md-comp-fab-primary-container-focused-container-elevation: 0 0 0 7px rgb(56 78 90);
-              --md-comp-fab-primary-container-focused-state-layer-color: rgb(0 180 120);
-              --md-comp-fab-primary-container-focused-state-layer-opacity: 0.19;
-            "
-          />
-          <MDFab
-            data-testid="primary-container-pressed"
-            class="md-state_pressed"
-            tooltip="Primary container pressed"
-            color="primary-container"
-            md-symbol="add"
-            style="
-              --md-comp-fab-primary-container-pressed-icon-color: rgb(60 60 255);
-              --md-comp-fab-primary-container-pressed-container-elevation: 0 0 0 8px rgb(67 89 101);
-              --md-comp-fab-primary-container-pressed-state-layer-color: rgb(60 60 255);
-              --md-comp-fab-primary-container-pressed-state-layer-opacity: 0.31;
-            "
+            :style="fabTokenStyle(color, 'pressed')"
           />
         </div>
       </div>

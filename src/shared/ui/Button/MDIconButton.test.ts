@@ -130,6 +130,21 @@ describe('MDIconButton', () => {
     expect(toggleSelectedWrapper.classes()).toContain('md-icon-button_selected');
   });
 
+  it('activates via click while loading, exactly once, keeping the accessible name and enabled state', async () => {
+    const wrapper = mountIconButton({ loading: true });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-label')).toBe('Close');
+    expect(button.attributes('disabled')).toBeUndefined();
+
+    await button.trigger('click');
+    await button.trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(2);
+    expect(button.attributes('aria-label')).toBe('Close');
+    expect(button.attributes('disabled')).toBeUndefined();
+  });
+
   it('ignores selected and warns when variant is "default"', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 

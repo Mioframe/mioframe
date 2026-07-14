@@ -375,6 +375,29 @@ describe('resolveStorybookBehaviorPlan', () => {
     ).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
   });
 
+  it('focuses the button family spec for a colocated Button story fixture change', () => {
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/ui/Button/MDButtonTargetHitVisualStory.vue',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
+  it('focuses the button family spec for a useFocusIndicator change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/useFocusIndicator.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
+  it('focuses the button family spec for a focus-indicator component/style change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/md-focus-indicator.css']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
   it('runs the changed button family behavior spec directly', () => {
     const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/md-button-family.spec.ts']);
 
@@ -384,6 +407,12 @@ describe('resolveStorybookBehaviorPlan', () => {
 
   it('does not run the full lane for an unrelated src/shared/ui change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Chips/MDChipBase.vue']);
+
+    expect(plan.mode).toBe('none');
+  });
+
+  it('does not select the button family spec for an unrelated shared State module', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/MDStateLayer.vue']);
 
     expect(plan.mode).toBe('none');
   });

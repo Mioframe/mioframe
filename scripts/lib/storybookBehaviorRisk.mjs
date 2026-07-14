@@ -62,17 +62,18 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   },
   {
     name: 'button family behavior',
-    // Includes the spec's own path (see the `reorder` scenario comment above) so editing it
-    // re-selects itself.
+    // A directory-wide prefix so every Button-family component, story, and colocated behavior
+    // fixture (for example the target-hit and toolbar story helpers) selects this scenario,
+    // instead of an explicit per-file list that silently misses new colocated fixtures. This is
+    // intentionally broader than `md-button-family.spec.ts` alone exercises (it also covers
+    // `FabContainer`/`MDSegmentedButtons`), trading a wider full-lane trigger for not missing a
+    // real Button-family behavior source. Also includes the shared focus-indicator sources that
+    // directly affect this spec's real-keyboard-focus assertions, and the spec's own path (see
+    // the `reorder` scenario comment above) so editing it re-selects itself.
     sourcePrefixes: [
-      'src/shared/ui/Button/MDButton.vue',
-      'src/shared/ui/Button/MDButton.stories.ts',
-      'src/shared/ui/Button/MDIconButton.vue',
-      'src/shared/ui/Button/MDIconButton.stories.ts',
-      'src/shared/ui/Button/MDFab.vue',
-      'src/shared/ui/Button/MDFab.stories.ts',
-      'src/shared/ui/Button/MDExtendedFab.vue',
-      'src/shared/ui/Button/MDExtendedFab.stories.ts',
+      'src/shared/ui/Button/',
+      'src/shared/ui/State/useFocusIndicator.ts',
+      'src/shared/ui/State/md-focus-indicator.css',
       'tests/e2e/storybook/md-button-family.spec.ts',
     ],
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],

@@ -127,99 +127,195 @@ export const FocusIndicatorTarget: Story = {
   }),
 };
 
+/** The six Material-documented Extended FAB color styles, in the order rendered by the matrix below. */
+const EXTENDED_FAB_COLORS = [
+  'primary',
+  'secondary',
+  'tertiary',
+  'primary-container',
+  'secondary-container',
+  'tertiary-container',
+] as const;
+
+type ExtendedFabColor = (typeof EXTENDED_FAB_COLORS)[number];
+type ExtendedFabTokenState = 'hovered' | 'focused' | 'pressed';
+
+/**
+ * Deterministic, hand-written override values used only to prove that hover/focus/pressed label
+ * color, icon color, state-layer color/opacity, and container elevation route independently
+ * through each color's own `--md-comp-extended-fab-<color>-*` custom properties. Test-local
+ * fixture data, not a production token table.
+ */
+const EXTENDED_FAB_TOKEN_MATRIX: Record<
+  ExtendedFabColor,
+  Record<ExtendedFabTokenState, { label: string; icon: string; elevation: string; opacity: string }>
+> = {
+  primary: {
+    hovered: {
+      label: 'rgb(255 0 0)',
+      icon: 'rgb(255 120 0)',
+      elevation: '0 0 0 3px rgb(12 34 56)',
+      opacity: '0.03',
+    },
+    focused: {
+      label: 'rgb(0 128 0)',
+      icon: 'rgb(0 180 120)',
+      elevation: '0 0 0 4px rgb(23 45 67)',
+      opacity: '0.17',
+    },
+    pressed: {
+      label: 'rgb(0 0 255)',
+      icon: 'rgb(120 0 255)',
+      elevation: '0 0 0 5px rgb(34 56 78)',
+      opacity: '0.29',
+    },
+  },
+  secondary: {
+    hovered: {
+      label: 'rgb(255 60 0)',
+      icon: 'rgb(255 150 0)',
+      elevation: '0 0 0 9px rgb(78 90 112)',
+      opacity: '0.03',
+    },
+    focused: {
+      label: 'rgb(0 150 60)',
+      icon: 'rgb(0 200 150)',
+      elevation: '0 0 0 10px rgb(89 101 123)',
+      opacity: '0.17',
+    },
+    pressed: {
+      label: 'rgb(20 20 255)',
+      icon: 'rgb(150 20 255)',
+      elevation: '0 0 0 11px rgb(101 112 134)',
+      opacity: '0.29',
+    },
+  },
+  tertiary: {
+    hovered: {
+      label: 'rgb(255 100 0)',
+      icon: 'rgb(255 180 0)',
+      elevation: '0 0 0 12px rgb(112 123 145)',
+      opacity: '0.03',
+    },
+    focused: {
+      label: 'rgb(0 170 90)',
+      icon: 'rgb(0 220 180)',
+      elevation: '0 0 0 13px rgb(123 134 156)',
+      opacity: '0.17',
+    },
+    pressed: {
+      label: 'rgb(60 20 255)',
+      icon: 'rgb(180 20 255)',
+      elevation: '0 0 0 14px rgb(134 145 167)',
+      opacity: '0.29',
+    },
+  },
+  'primary-container': {
+    hovered: {
+      label: 'rgb(255 80 0)',
+      icon: 'rgb(255 180 0)',
+      elevation: '0 0 0 6px rgb(45 67 89)',
+      opacity: '0.05',
+    },
+    focused: {
+      label: 'rgb(0 160 120)',
+      icon: 'rgb(0 220 180)',
+      elevation: '0 0 0 7px rgb(56 78 90)',
+      opacity: '0.19',
+    },
+    pressed: {
+      label: 'rgb(80 80 255)',
+      icon: 'rgb(140 80 255)',
+      elevation: '0 0 0 8px rgb(67 89 101)',
+      opacity: '0.31',
+    },
+  },
+  'secondary-container': {
+    hovered: {
+      label: 'rgb(255 110 20)',
+      icon: 'rgb(255 200 20)',
+      elevation: '0 0 0 15px rgb(145 156 178)',
+      opacity: '0.05',
+    },
+    focused: {
+      label: 'rgb(20 190 140)',
+      icon: 'rgb(20 230 200)',
+      elevation: '0 0 0 16px rgb(156 167 189)',
+      opacity: '0.19',
+    },
+    pressed: {
+      label: 'rgb(100 100 255)',
+      icon: 'rgb(160 100 255)',
+      elevation: '0 0 0 17px rgb(167 178 200)',
+      opacity: '0.31',
+    },
+  },
+  'tertiary-container': {
+    hovered: {
+      label: 'rgb(255 130 40)',
+      icon: 'rgb(255 210 40)',
+      elevation: '0 0 0 18px rgb(178 189 211)',
+      opacity: '0.05',
+    },
+    focused: {
+      label: 'rgb(40 200 160)',
+      icon: 'rgb(40 240 210)',
+      elevation: '0 0 0 19px rgb(189 200 222)',
+      opacity: '0.19',
+    },
+    pressed: {
+      label: 'rgb(120 120 255)',
+      icon: 'rgb(180 120 255)',
+      elevation: '0 0 0 20px rgb(200 211 233)',
+      opacity: '0.31',
+    },
+  },
+};
+
+const extendedFabTokenStyle = (color: ExtendedFabColor, state: ExtendedFabTokenState) => {
+  const override = EXTENDED_FAB_TOKEN_MATRIX[color][state];
+  return {
+    [`--md-comp-extended-fab-${color}-${state}-label-text-color`]: override.label,
+    [`--md-comp-extended-fab-${color}-${state}-icon-color`]: override.icon,
+    [`--md-comp-extended-fab-${color}-${state}-container-elevation`]: override.elevation,
+    [`--md-comp-extended-fab-${color}-${state}-state-layer-color`]: override.label,
+    [`--md-comp-extended-fab-${color}-${state}-state-layer-opacity`]: override.opacity,
+  };
+};
+
 export const InteractionStateTokens: Story = {
   render: () => ({
     components: { MDExtendedFab },
+    setup() {
+      return { EXTENDED_FAB_COLORS, extendedFabTokenStyle };
+    },
     template: `
       <div data-testid="visual-md-extended-fab-interaction-state-tokens" class="visual-surface">
-        <div class="visual-row">
-          <MDExtendedFab data-testid="extended-primary-resting" label="Primary resting" color="primary" md-symbol="add" />
+        <div v-for="color in EXTENDED_FAB_COLORS" :key="color" class="visual-row">
+          <MDExtendedFab :data-testid="\`extended-\${color}-resting\`" :label="\`\${color} resting\`" :color="color" md-symbol="add" />
           <MDExtendedFab
-            data-testid="extended-primary-hover"
+            :data-testid="\`extended-\${color}-hover\`"
             class="md-state_hover"
-            label="Primary hover"
-            color="primary"
+            :label="\`\${color} hover\`"
+            :color="color"
             md-symbol="add"
-            style="
-              --md-comp-extended-fab-primary-hovered-label-text-color: rgb(255 0 0);
-              --md-comp-extended-fab-primary-hovered-icon-color: rgb(255 120 0);
-              --md-comp-extended-fab-primary-hovered-container-elevation: 0 0 0 3px rgb(12 34 56);
-              --md-comp-extended-fab-primary-hovered-state-layer-color: rgb(255 0 0);
-              --md-comp-extended-fab-primary-hovered-state-layer-opacity: 0.03;
-            "
+            :style="extendedFabTokenStyle(color, 'hovered')"
           />
           <MDExtendedFab
-            data-testid="extended-primary-focus"
+            :data-testid="\`extended-\${color}-focus\`"
             class="md-state_focused"
-            label="Primary focus"
-            color="primary"
+            :label="\`\${color} focus\`"
+            :color="color"
             md-symbol="add"
-            style="
-              --md-comp-extended-fab-primary-focused-label-text-color: rgb(0 128 0);
-              --md-comp-extended-fab-primary-focused-icon-color: rgb(0 180 120);
-              --md-comp-extended-fab-primary-focused-container-elevation: 0 0 0 4px rgb(23 45 67);
-              --md-comp-extended-fab-primary-focused-state-layer-color: rgb(0 128 0);
-              --md-comp-extended-fab-primary-focused-state-layer-opacity: 0.17;
-            "
+            :style="extendedFabTokenStyle(color, 'focused')"
           />
           <MDExtendedFab
-            data-testid="extended-primary-pressed"
+            :data-testid="\`extended-\${color}-pressed\`"
             class="md-state_pressed"
-            label="Primary pressed"
-            color="primary"
+            :label="\`\${color} pressed\`"
+            :color="color"
             md-symbol="add"
-            style="
-              --md-comp-extended-fab-primary-pressed-label-text-color: rgb(0 0 255);
-              --md-comp-extended-fab-primary-pressed-icon-color: rgb(120 0 255);
-              --md-comp-extended-fab-primary-pressed-container-elevation: 0 0 0 5px rgb(34 56 78);
-              --md-comp-extended-fab-primary-pressed-state-layer-color: rgb(0 0 255);
-              --md-comp-extended-fab-primary-pressed-state-layer-opacity: 0.29;
-            "
-          />
-        </div>
-        <div class="visual-row">
-          <MDExtendedFab data-testid="extended-container-resting" label="Container resting" color="primary-container" md-symbol="add" />
-          <MDExtendedFab
-            data-testid="extended-container-hover"
-            class="md-state_hover"
-            label="Container hover"
-            color="primary-container"
-            md-symbol="add"
-            style="
-              --md-comp-extended-fab-primary-container-hovered-label-text-color: rgb(255 80 0);
-              --md-comp-extended-fab-primary-container-hovered-icon-color: rgb(255 180 0);
-              --md-comp-extended-fab-primary-container-hovered-container-elevation: 0 0 0 6px rgb(45 67 89);
-              --md-comp-extended-fab-primary-container-hovered-state-layer-color: rgb(255 80 0);
-              --md-comp-extended-fab-primary-container-hovered-state-layer-opacity: 0.05;
-            "
-          />
-          <MDExtendedFab
-            data-testid="extended-container-focus"
-            class="md-state_focused"
-            label="Container focus"
-            color="primary-container"
-            md-symbol="add"
-            style="
-              --md-comp-extended-fab-primary-container-focused-label-text-color: rgb(0 160 120);
-              --md-comp-extended-fab-primary-container-focused-icon-color: rgb(0 220 180);
-              --md-comp-extended-fab-primary-container-focused-container-elevation: 0 0 0 7px rgb(56 78 90);
-              --md-comp-extended-fab-primary-container-focused-state-layer-color: rgb(0 160 120);
-              --md-comp-extended-fab-primary-container-focused-state-layer-opacity: 0.19;
-            "
-          />
-          <MDExtendedFab
-            data-testid="extended-container-pressed"
-            class="md-state_pressed"
-            label="Container pressed"
-            color="primary-container"
-            md-symbol="add"
-            style="
-              --md-comp-extended-fab-primary-container-pressed-label-text-color: rgb(80 80 255);
-              --md-comp-extended-fab-primary-container-pressed-icon-color: rgb(140 80 255);
-              --md-comp-extended-fab-primary-container-pressed-container-elevation: 0 0 0 8px rgb(67 89 101);
-              --md-comp-extended-fab-primary-container-pressed-state-layer-color: rgb(80 80 255);
-              --md-comp-extended-fab-primary-container-pressed-state-layer-opacity: 0.31;
-            "
+            :style="extendedFabTokenStyle(color, 'pressed')"
           />
         </div>
       </div>

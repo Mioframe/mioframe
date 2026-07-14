@@ -521,62 +521,51 @@ test('MDExtendedFab label uses MD_TYPESCALE classes and computed typography per 
   expect(large.fontSize).toBe('24px');
 });
 
-test('MDFab hover, focus, and pressed elevation change for one plain and one container style', async ({
+test('MDFab routes independent icon, elevation, and state-layer tokens for all six colors', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdfab--interaction-state-tokens');
 
-  const restingPrimary = await readButtonVisuals(page, 'primary-resting', {
-    iconSelector: '.md-fab__icon',
-  });
-  const restingPrimaryContainer = await readButtonVisuals(page, 'primary-container-resting', {
-    iconSelector: '.md-fab__icon',
-  });
-  const primaryHover = await readButtonVisuals(page, 'primary-hover', {
-    iconSelector: '.md-fab__icon',
-  });
-  const primaryFocus = await readButtonVisuals(page, 'primary-focus', {
-    iconSelector: '.md-fab__icon',
-  });
-  const primaryPressed = await readButtonVisuals(page, 'primary-pressed', {
-    iconSelector: '.md-fab__icon',
-  });
-  const primaryContainerHover = await readButtonVisuals(page, 'primary-container-hover', {
-    iconSelector: '.md-fab__icon',
-  });
-  const primaryContainerFocus = await readButtonVisuals(page, 'primary-container-focus', {
-    iconSelector: '.md-fab__icon',
-  });
-  const primaryContainerPressed = await readButtonVisuals(page, 'primary-container-pressed', {
-    iconSelector: '.md-fab__icon',
-  });
+  const colors = [
+    'primary',
+    'secondary',
+    'tertiary',
+    'primary-container',
+    'secondary-container',
+    'tertiary-container',
+  ] as const;
 
-  expect(primaryHover.iconColor).not.toBe(restingPrimary.iconColor);
-  expect(primaryFocus.iconColor).not.toBe(primaryHover.iconColor);
-  expect(primaryPressed.iconColor).not.toBe(primaryFocus.iconColor);
-  expect(primaryHover.boxShadow).not.toBe(restingPrimary.boxShadow);
-  expect(primaryFocus.boxShadow).not.toBe(restingPrimary.boxShadow);
-  expect(primaryPressed.boxShadow).not.toBe(restingPrimary.boxShadow);
-  expect(primaryHover.stateLayerBackground).not.toBe(primaryFocus.stateLayerBackground);
-  expect(primaryFocus.stateLayerBackground).not.toBe(primaryPressed.stateLayerBackground);
-  expect(primaryHover.hoverOpacity).toBe('0.03');
-  expect(primaryFocus.focusOpacity).toBe('0.17');
-  expect(primaryPressed.pressedOpacity).toBe('0.29');
-  expect(primaryContainerHover.iconColor).not.toBe(restingPrimaryContainer.iconColor);
-  expect(primaryContainerFocus.iconColor).not.toBe(primaryContainerHover.iconColor);
-  expect(primaryContainerPressed.iconColor).not.toBe(primaryContainerFocus.iconColor);
-  expect(primaryContainerHover.boxShadow).not.toBe(restingPrimaryContainer.boxShadow);
-  expect(primaryContainerFocus.boxShadow).not.toBe(restingPrimaryContainer.boxShadow);
-  expect(primaryContainerPressed.boxShadow).not.toBe(restingPrimaryContainer.boxShadow);
-  expect(primaryContainerHover.stateLayerBackground).not.toBe(
-    primaryContainerFocus.stateLayerBackground,
+  await Promise.all(
+    colors.map(async (color) => {
+      const [resting, hover, focus, pressed] = await Promise.all([
+        readButtonVisuals(page, `${color}-resting`, { iconSelector: '.md-fab__icon' }),
+        readButtonVisuals(page, `${color}-hover`, { iconSelector: '.md-fab__icon' }),
+        readButtonVisuals(page, `${color}-focus`, { iconSelector: '.md-fab__icon' }),
+        readButtonVisuals(page, `${color}-pressed`, { iconSelector: '.md-fab__icon' }),
+      ]);
+      // `*-container` styles use a distinct override opacity set from the story fixture; see
+      // FAB_TOKEN_MATRIX in MDFab.stories.ts.
+      const isContainer = color.endsWith('-container');
+
+      expect(hover.iconColor, `${color} hover icon`).not.toBe(resting.iconColor);
+      expect(focus.iconColor, `${color} focus icon`).not.toBe(hover.iconColor);
+      expect(pressed.iconColor, `${color} pressed icon`).not.toBe(focus.iconColor);
+      expect(hover.boxShadow, `${color} hover elevation`).not.toBe(resting.boxShadow);
+      expect(focus.boxShadow, `${color} focus elevation`).not.toBe(resting.boxShadow);
+      expect(pressed.boxShadow, `${color} pressed elevation`).not.toBe(resting.boxShadow);
+      expect(hover.stateLayerBackground, `${color} hover state layer`).not.toBe(
+        focus.stateLayerBackground,
+      );
+      expect(focus.stateLayerBackground, `${color} focus state layer`).not.toBe(
+        pressed.stateLayerBackground,
+      );
+      expect(hover.hoverOpacity, `${color} hover opacity`).toBe(isContainer ? '0.05' : '0.03');
+      expect(focus.focusOpacity, `${color} focus opacity`).toBe(isContainer ? '0.19' : '0.17');
+      expect(pressed.pressedOpacity, `${color} pressed opacity`).toBe(
+        isContainer ? '0.31' : '0.29',
+      );
+    }),
   );
-  expect(primaryContainerFocus.stateLayerBackground).not.toBe(
-    primaryContainerPressed.stateLayerBackground,
-  );
-  expect(primaryContainerHover.hoverOpacity).toBe('0.05');
-  expect(primaryContainerFocus.focusOpacity).toBe('0.19');
-  expect(primaryContainerPressed.pressedOpacity).toBe('0.31');
 });
 
 test('MDFab default color resolves to the primary-container token', async ({ page }) => {
@@ -1046,56 +1035,58 @@ test('Button-family loading keeps the accessible name, outer size, and enabled a
   await assertLoadingContract('extended-fab-resting-color', 'extended-fab-loading-color');
 });
 
-test('MDExtendedFab routes independent label, icon, elevation, and state-layer tokens', async ({
+test('MDExtendedFab routes independent label, icon, elevation, and state-layer tokens for all six colors', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdextendedfab--interaction-state-tokens');
 
-  const primaryHover = await readButtonVisuals(page, 'extended-primary-hover', {
-    labelSelector: '.md-extended-fab__label',
-    iconSelector: '.md-extended-fab__icon',
-  });
-  const primaryFocus = await readButtonVisuals(page, 'extended-primary-focus', {
-    labelSelector: '.md-extended-fab__label',
-    iconSelector: '.md-extended-fab__icon',
-  });
-  const primaryPressed = await readButtonVisuals(page, 'extended-primary-pressed', {
-    labelSelector: '.md-extended-fab__label',
-    iconSelector: '.md-extended-fab__icon',
-  });
-  const containerHover = await readButtonVisuals(page, 'extended-container-hover', {
-    labelSelector: '.md-extended-fab__label',
-    iconSelector: '.md-extended-fab__icon',
-  });
-  const containerFocus = await readButtonVisuals(page, 'extended-container-focus', {
-    labelSelector: '.md-extended-fab__label',
-    iconSelector: '.md-extended-fab__icon',
-  });
-  const containerPressed = await readButtonVisuals(page, 'extended-container-pressed', {
-    labelSelector: '.md-extended-fab__label',
-    iconSelector: '.md-extended-fab__icon',
-  });
+  const colors = [
+    'primary',
+    'secondary',
+    'tertiary',
+    'primary-container',
+    'secondary-container',
+    'tertiary-container',
+  ] as const;
 
-  expect(primaryHover.labelColor).not.toBe(primaryHover.iconColor);
-  expect(primaryFocus.labelColor).not.toBe(primaryFocus.iconColor);
-  expect(primaryPressed.labelColor).not.toBe(primaryPressed.iconColor);
-  expect(primaryHover.boxShadow).not.toBe(primaryFocus.boxShadow);
-  expect(primaryFocus.boxShadow).not.toBe(primaryPressed.boxShadow);
-  expect(primaryHover.stateLayerBackground).not.toBe(primaryFocus.stateLayerBackground);
-  expect(primaryFocus.stateLayerBackground).not.toBe(primaryPressed.stateLayerBackground);
-  expect(primaryHover.hoverOpacity).toBe('0.03');
-  expect(primaryFocus.focusOpacity).toBe('0.17');
-  expect(primaryPressed.pressedOpacity).toBe('0.29');
-  expect(containerHover.labelColor).not.toBe(containerHover.iconColor);
-  expect(containerFocus.labelColor).not.toBe(containerFocus.iconColor);
-  expect(containerPressed.labelColor).not.toBe(containerPressed.iconColor);
-  expect(containerHover.boxShadow).not.toBe(containerFocus.boxShadow);
-  expect(containerFocus.boxShadow).not.toBe(containerPressed.boxShadow);
-  expect(containerHover.stateLayerBackground).not.toBe(containerFocus.stateLayerBackground);
-  expect(containerFocus.stateLayerBackground).not.toBe(containerPressed.stateLayerBackground);
-  expect(containerHover.hoverOpacity).toBe('0.05');
-  expect(containerFocus.focusOpacity).toBe('0.19');
-  expect(containerPressed.pressedOpacity).toBe('0.31');
+  await Promise.all(
+    colors.map(async (color) => {
+      const [hover, focus, pressed] = await Promise.all([
+        readButtonVisuals(page, `extended-${color}-hover`, {
+          labelSelector: '.md-extended-fab__label',
+          iconSelector: '.md-extended-fab__icon',
+        }),
+        readButtonVisuals(page, `extended-${color}-focus`, {
+          labelSelector: '.md-extended-fab__label',
+          iconSelector: '.md-extended-fab__icon',
+        }),
+        readButtonVisuals(page, `extended-${color}-pressed`, {
+          labelSelector: '.md-extended-fab__label',
+          iconSelector: '.md-extended-fab__icon',
+        }),
+      ]);
+      // `*-container` styles use a distinct override opacity set from the story fixture; see
+      // EXTENDED_FAB_TOKEN_MATRIX in MDExtendedFab.stories.ts.
+      const isContainer = color.endsWith('-container');
+
+      expect(hover.labelColor, `${color} hover label vs icon`).not.toBe(hover.iconColor);
+      expect(focus.labelColor, `${color} focus label vs icon`).not.toBe(focus.iconColor);
+      expect(pressed.labelColor, `${color} pressed label vs icon`).not.toBe(pressed.iconColor);
+      expect(hover.boxShadow, `${color} hover vs focus elevation`).not.toBe(focus.boxShadow);
+      expect(focus.boxShadow, `${color} focus vs pressed elevation`).not.toBe(pressed.boxShadow);
+      expect(hover.stateLayerBackground, `${color} hover vs focus state layer`).not.toBe(
+        focus.stateLayerBackground,
+      );
+      expect(focus.stateLayerBackground, `${color} focus vs pressed state layer`).not.toBe(
+        pressed.stateLayerBackground,
+      );
+      expect(hover.hoverOpacity, `${color} hover opacity`).toBe(isContainer ? '0.05' : '0.03');
+      expect(focus.focusOpacity, `${color} focus opacity`).toBe(isContainer ? '0.19' : '0.17');
+      expect(pressed.pressedOpacity, `${color} pressed opacity`).toBe(
+        isContainer ? '0.31' : '0.29',
+      );
+    }),
+  );
 });
 
 test('MDExtendedFab renders without an icon container when only a label is given', async ({
