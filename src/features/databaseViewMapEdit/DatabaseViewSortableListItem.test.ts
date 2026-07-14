@@ -1,7 +1,7 @@
-import { DragDropProvider } from '@dnd-kit/vue';
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { generateViewId } from '@shared/lib/databaseDocument';
+import { ReorderSurface } from '@shared/lib/reorder';
 import { MDList } from '@shared/ui/Lists';
 import { h } from 'vue';
 import DatabaseViewSortableListItem from './DatabaseViewSortableListItem.vue';
@@ -11,16 +11,16 @@ const FAKE_VIEW_ID = generateViewId();
 const mountRow = (props: Record<string, unknown> = {}, slots: Record<string, () => unknown> = {}) =>
   mount(
     {
-      components: { DragDropProvider, MDList, DatabaseViewSortableListItem },
+      components: { ReorderSurface, MDList, DatabaseViewSortableListItem },
       template: `
-        <DragDropProvider>
+        <ReorderSurface :item-ids="[rowProps.viewId]" :commit="commit">
           <MDList>
             <DatabaseViewSortableListItem v-bind="rowProps" @action="onAction">
               <template v-if="$slots.leading" #leading><slot name="leading" /></template>
               <template v-if="$slots.trailingAction" #trailingAction><slot name="trailingAction" /></template>
             </DatabaseViewSortableListItem>
           </MDList>
-        </DragDropProvider>
+        </ReorderSurface>
       `,
       setup: () => ({
         rowProps: {
@@ -31,6 +31,7 @@ const mountRow = (props: Record<string, unknown> = {}, slots: Record<string, () 
           ...props,
         },
         onAction: props.onAction ?? vi.fn(),
+        commit: vi.fn().mockResolvedValue('applied'),
       }),
     },
     { attachTo: document.body, slots },

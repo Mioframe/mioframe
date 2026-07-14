@@ -19,9 +19,8 @@ export const STORYBOOK_BEHAVIOR_STANDALONE_SPECS = [];
 
 /**
  * Explicit registry mapping source paths to the Storybook behavior specs
- * that exercise them. This infrastructure PR only registers the smoke spec;
- * later PRs add real scenario mappings (for example reorder behavior)
- * without changing this resolver's shape.
+ * that exercise them. Later PRs add further scenario mappings without
+ * changing this resolver's shape.
  */
 export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   {
@@ -31,22 +30,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/ui/Button/MDButton.vue',
     ],
     specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
-  },
-  {
-    name: 'reorder',
-    // Includes both reorder behavior spec paths themselves (in addition to the library source
-    // prefix): a `startsWith` match on a spec's own path means changing either spec also selects
-    // both, not just the one that changed, since general and autoscroll behavior share the same
-    // library surface.
-    sourcePrefixes: [
-      'src/shared/lib/reorder/',
-      'tests/e2e/storybook/reorder.spec.ts',
-      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
-    ],
-    specs: [
-      'tests/e2e/storybook/reorder.spec.ts',
-      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
-    ],
   },
   {
     name: 'shared overlay outside-interaction lifecycle',

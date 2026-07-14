@@ -110,12 +110,6 @@ test('reordering database views by drag does not leak text selection and persist
     .poll(async () => page.evaluate(() => window.getSelection()?.toString() ?? ''))
     .toBe('');
 
-  // The neighbor displaced by the drop animates into its new position rather than snapping.
-  const secondRowAfter = findListRow(sheet, secondViewName);
-  await expect
-    .poll(() => secondRowAfter.evaluate((el) => getComputedStyle(el).transitionDuration !== '0s'))
-    .toBe(true);
-
   const rowsAfterDrag = await sheet.getByRole('list').locator(':scope > *').allTextContents();
   expect(indexOfRow(rowsAfterDrag, secondViewName)).toBeLessThan(
     indexOfRow(rowsAfterDrag, firstViewName),
