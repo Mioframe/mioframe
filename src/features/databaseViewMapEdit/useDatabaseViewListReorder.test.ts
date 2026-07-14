@@ -5,8 +5,8 @@ import {
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { ReorderDragEndEvent, ReorderMoveEvent, UseReorderOptions } from '@shared/lib/reorder';
-import { describe, expect, it, vi } from 'vitest';
-import { effectScope, nextTick, ref, type Ref } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { effectScope, nextTick, ref, type EffectScope, type Ref } from 'vue';
 import { useDatabaseViewListReorder } from './useDatabaseViewListReorder';
 
 const FAKE_VIEW_ID_A = generateViewId();
@@ -22,6 +22,16 @@ interface ReorderHarness {
 }
 
 let lastReorderHarness: ReorderHarness | undefined;
+
+const activeScopes: EffectScope[] = [];
+
+afterEach(() => {
+  for (const scope of activeScopes.splice(0)) {
+    scope.stop();
+  }
+
+  lastReorderHarness = undefined;
+});
 
 vi.mock('@shared/lib/reorder', () => ({
   useReorder: (options: UseReorderOptions<DatabaseViewId>) => {
@@ -61,6 +71,7 @@ const createDeferred = <T>(): Deferred<T> => {
 
 const mountReorder = (views: ReadonlyArray<readonly [DatabaseViewId, DatabaseView]>) => {
   const scope = effectScope();
+  activeScopes.push(scope);
   const viewsRef = ref(views);
   const persistOrderMock = vi
     .fn<(orderedIds: DatabaseViewId[]) => Promise<unknown>>()

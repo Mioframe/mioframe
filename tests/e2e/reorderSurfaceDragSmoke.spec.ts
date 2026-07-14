@@ -41,6 +41,35 @@ const dragRowToRow = async (
   await page.mouse.up();
 };
 
+const expectRowsInVisualOrder = async (
+  rows: ReadonlyArray<{
+    name: string;
+    locator: Locator;
+  }>,
+  expectedNames: readonly string[],
+): Promise<void> => {
+  await expect
+    .poll(async () => {
+      const positionedRows = await Promise.all(
+        rows.map(async ({ name, locator }) => {
+          const box = await locator.boundingBox();
+
+          return box ? { name, y: box.y } : null;
+        }),
+      );
+
+      if (positionedRows.some((row) => row === null)) {
+        return [];
+      }
+
+      return positionedRows
+        .filter((row): row is { name: string; y: number } => row !== null)
+        .sort((left, right) => left.y - right.y)
+        .map(({ name }) => name);
+    })
+    .toEqual(expectedNames);
+};
+
 test('reordering database views by drag does not leak text selection', async ({ page }) => {
   await launchApp(page);
   await openOpfs(page);
@@ -140,38 +169,34 @@ test('closing the views sheet immediately after a second completed reorder keeps
   const firstRow = sheet.getByRole('button', { name: firstViewName });
   const secondRow = sheet.getByRole('button', { name: secondViewName });
   const thirdRow = sheet.getByRole('button', { name: thirdViewName });
+  const rows = [
+    { name: firstViewName, locator: firstRow },
+    { name: secondViewName, locator: secondRow },
+    { name: thirdViewName, locator: thirdRow },
+  ];
 
+  // Wait for each drag's visible result before starting the next user action: a physical
+  // pointer release does not guarantee the reorder session has finished settling, and starting
+  // a new drag while the prior one is still settling can cause the next pointerdown to be
+  // ignored.
   await dragRowToRow(page, firstRow, secondRow, 'after');
+  await expectRowsInVisualOrder(rows, [secondViewName, firstViewName, thirdViewName]);
+
   await dragRowToRow(page, thirdRow, secondRow, 'before');
+  await expectRowsInVisualOrder(rows, [thirdViewName, secondViewName, firstViewName]);
+
   await closeBottomSheet(page, /database views sheet/i);
 
   const reopenedSheet = await openViewsSheet(page);
-  await expect
-    .poll(async () => {
-      const firstBox = await reopenedSheet
-        .getByRole('button', { name: firstViewName })
-        .boundingBox();
-      const secondBox = await reopenedSheet
-        .getByRole('button', { name: secondViewName })
-        .boundingBox();
-      const thirdBox = await reopenedSheet
-        .getByRole('button', { name: thirdViewName })
-        .boundingBox();
-
-      if (!firstBox || !secondBox || !thirdBox) {
-        return '';
-      }
-
-      return [
-        { name: firstViewName, y: firstBox.y },
-        { name: secondViewName, y: secondBox.y },
-        { name: thirdViewName, y: thirdBox.y },
-      ]
-        .sort((left, right) => left.y - right.y)
-        .map(({ name }) => name)
-        .join(',');
-    })
-    .toBe([thirdViewName, secondViewName, firstViewName].join(','));
+  const reopenedRows = [
+    { name: firstViewName, locator: reopenedSheet.getByRole('button', { name: firstViewName }) },
+    {
+      name: secondViewName,
+      locator: reopenedSheet.getByRole('button', { name: secondViewName }),
+    },
+    { name: thirdViewName, locator: reopenedSheet.getByRole('button', { name: thirdViewName }) },
+  ];
+  await expectRowsInVisualOrder(reopenedRows, [thirdViewName, secondViewName, firstViewName]);
 
   await closeBottomSheet(page, /database views sheet/i);
 });
