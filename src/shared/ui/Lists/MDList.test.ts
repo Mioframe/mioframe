@@ -950,6 +950,103 @@ describe('MDList', () => {
     document.body.innerHTML = '';
   });
 
+  it('defaults animateMoves to false and renders the plain slot with no extra wrapper', () => {
+    const wrapper = mount(MDList, {
+      slots: {
+        default: '<div class="row" key="a">A</div><div class="row" key="b">B</div>',
+      },
+    });
+
+    const root = wrapper.get('.md-list').element;
+    expect(root.children).toHaveLength(2);
+    expect(wrapper.find('transition-group').exists()).toBe(false);
+  });
+
+  it('renders keyed slot children as direct DOM children of the list root when animateMoves is true, with no extra wrapper', () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListItem },
+        template: `
+          <MDList animate-moves>
+            <MDListItem label-text="One" mode="static" />
+            <MDListItem label-text="Two" mode="static" />
+          </MDList>
+        `,
+      },
+      {
+        attachTo: document.body,
+        // Vue Test Utils auto-stubs TransitionGroup as a wrapping `<transition-group-stub>`
+        // element by default, which would falsely fail this no-extra-wrapper assertion. Disable
+        // the stub so the real TransitionGroup renders (no `tag` prop -> no wrapper), matching
+        // actual runtime output.
+        global: { stubs: { TransitionGroup: false } },
+      },
+    );
+
+    const root = wrapper.get('.md-list').element;
+    const rows = wrapper.findAll('[role="listitem"]');
+    expect(rows).toHaveLength(2);
+    // Every rendered row is a direct child of the list root: no MDList-owned wrapper element
+    // (e.g. a TransitionGroup tag) sits between the root and the slotted rows.
+    for (const row of rows) {
+      expect(row.element.parentElement).toBe(root);
+    }
+
+    document.body.innerHTML = '';
+  });
+
+  it('preserves the root tag, role, and attributes when animateMoves is true', () => {
+    const wrapper = mount(MDList, {
+      props: {
+        animateMoves: true,
+        tag: 'ul',
+      },
+      attrs: {
+        'aria-label': 'Rows',
+      },
+      slots: {
+        default: '<li key="a">A</li>',
+      },
+    });
+
+    const root = wrapper.get('.md-list');
+    expect(root.element.tagName).toBe('UL');
+    expect(root.attributes('role')).toBeUndefined();
+    expect(root.attributes('aria-label')).toBe('Rows');
+  });
+
+  it('keeps selection-list roles and behavior unchanged when animateMoves is true', async () => {
+    const onUpdateModelValue = vi.fn();
+    const wrapper = mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList
+            animate-moves
+            selection-mode="single"
+            model-value="one"
+            @update:model-value="onUpdateModelValue"
+          >
+            <MDListSelectionItem label-text="One" value="one" />
+            <MDListSelectionItem label-text="Two" value="two" />
+          </MDList>
+        `,
+        setup: () => ({ onUpdateModelValue }),
+      },
+      { attachTo: document.body },
+    );
+
+    const list = wrapper.get('.md-list');
+    const options = wrapper.findAll('[role="option"]');
+    expect(list.attributes('role')).toBe('listbox');
+    expect(options).toHaveLength(2);
+
+    await options[1]?.trigger('click');
+    expect(onUpdateModelValue).toHaveBeenCalledWith('two');
+
+    document.body.innerHTML = '';
+  });
+
   it('warns in development when tag="ul" is requested for a selection list', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

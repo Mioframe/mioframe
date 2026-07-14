@@ -423,6 +423,7 @@ defineExpose({
      (M3 Elevation 4); the content/state-layer color remaps are wired in
      listItemAnatomy.css. */
   &.md-state_dragged {
+    z-index: 1;
     box-shadow: var(--md-private-list-item-dragged-elevation);
   }
 

@@ -46,7 +46,7 @@ const onClickView = (id: DatabaseViewId) => {
 </script>
 
 <template>
-  <MDList v-reorder-container list-style="segmented" class="db-view-map-edit">
+  <MDList v-reorder-container list-style="segmented" animate-moves class="db-view-map-edit">
     <MDListItem
       v-for="[id, view] in orderedViewList"
       :key="id"

@@ -248,6 +248,32 @@
   );
 }
 
+/* ─── Root shape/elevation motion (dragged) ──────────────────────────────── */
+
+/*
+ * The root element's border-radius (shape) and box-shadow (elevation) both change when a row
+ * enters/leaves the dragged state. Per the M3 Expressive motion physics system (verified via
+ * the material3 MCP, styles/motion/overview/how-it-works and /specs, captured 2026-06-30):
+ * spatial spring tokens cover movement/rotation/size/rounded-corners, effects spring tokens
+ * cover non-spatial properties like this box-shadow elevation change. There is no dedicated
+ * list-reorder duration token — these are the documented "fast" (small component) Web
+ * conversions for each spring category. This overrides the shared legacy transition above for
+ * .md-list-item only; .md-list-selection-item never enters the dragged state and keeps the
+ * legacy border-radius-only transition.
+ */
+.md-list-item {
+  --md-private-list-fast-spatial-duration: 350ms;
+  --md-private-list-fast-spatial-easing: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --md-private-list-fast-effects-duration: 150ms;
+  --md-private-list-fast-effects-easing: cubic-bezier(0.31, 0.94, 0.34, 1);
+
+  transition-property: border-radius, box-shadow;
+  transition-duration:
+    var(--md-private-list-fast-spatial-duration), var(--md-private-list-fast-effects-duration);
+  transition-timing-function:
+    var(--md-private-list-fast-spatial-easing), var(--md-private-list-fast-effects-easing);
+}
+
 /*
  * Dragged state (md.comp.list.list-item.dragged.* — List Common spec, verified through the
  * material3 MCP cache of m3.material.io): an elevated row, not a filled drag-preview chip.

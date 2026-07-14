@@ -57,9 +57,10 @@ topology and is mutually exclusive with selection semantics (see "Unsupported co
 - Private `--md-private-list-item-*` CSS variables are internal implementation details. They are not public
   styling API; consumers outside `src/shared/ui/Lists` must not set or read them (see
   [Private implementation variables](#private-implementation-variables)).
-- `MDList` and `MDMenuBase` do not support row/item enter-leave transitions. Transitions are intentionally out
-  of scope for the current Material List contract and may be reintroduced later with an explicit animation
-  contract, tests, and visual verification.
+- `MDList` and `MDMenuBase` do not support row/item enter-leave transitions. Only keyed-child **move**
+  animation is supported, and only when a consumer opts in via `animateMoves` (see
+  [Move animation](#move-animation-animatemoves) below). Enter/leave transitions remain intentionally out of
+  scope and may be reintroduced later with an explicit animation contract, tests, and visual verification.
 
 ## Components
 
@@ -69,7 +70,7 @@ The public runtime exports of this family are exactly `MDList`, `MDListItem`, an
 
 Owns list-level style, semantics, and selection context.
 
-- Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`)
+- Props: `listStyle` (`standard` | `segmented`), `selectionMode` (`none` | `single` | `multiple`), `modelValue`, `tag` (`div` | `ul`), `animateMoves` (opt-in move animation; see [Move animation](#move-animation-animatemoves))
 - Emits: `update:modelValue`
 - Provides: list context to descendant items via `provideMDListContext`
 - Owns: `listbox` / `list` container role, roving keyboard focus for selection lists, and keyboard navigation for single-action/multi-action rows
@@ -171,6 +172,39 @@ Owns selectable list item semantics and selection indicator. Must be used inside
 - Shape belongs to the item's action surface (and root element), not to parent `overflow` clipping.
 
 This matches M3 documentation: _"Use gaps for contained lists. Gaps leverage expressive shape and containment tactics."_
+
+## Move animation (`animateMoves`)
+
+`MDList` exposes an opt-in `animateMoves?: boolean` prop (default `false`) that animates keyed direct slot
+children moving to a new position — for example after a reorder. It is a pure FLIP move animation, not a
+generic transition system:
+
+- Opt-in and non-default: an `MDList` that does not set `animate-moves` renders exactly as before (plain
+  `<slot />`, no `TransitionGroup`, no extra DOM node).
+- Animates only child **movement** (Vue's `TransitionGroup` `move-class`), never enter/leave. Adding or
+  removing rows is not animated.
+- Requires the direct slot children to have stable, unique Vue `:key`s. Without them, Vue cannot track which
+  child moved where; use Vue's own dev-mode warning to catch a missing/duplicate key, not a custom validator.
+- Independent of `v-reorder-container`/`v-reorder-item` (`src/shared/lib/reorder`): it animates whatever order
+  the slot children render in, whether that order changed through drag-and-drop or a plain programmatic
+  `v-for` re-render.
+- Introduces no extra DOM wrapper: when enabled, the slot renders through `<TransitionGroup>` with no `tag`
+  prop, which does not add a wrapper element in Vue 3; `MDList`'s own root element and template-ref contract
+  are unchanged.
+- Uses the M3 Expressive **fast spatial** Web-conversion spring value for the move `transform`: `350ms`,
+  `cubic-bezier(0.42, 1.67, 0.21, 0.90)` (see [Material verification status](#material-verification-status)).
+- Respects `prefers-reduced-motion: reduce` — the move transition is disabled entirely (`transition: none`);
+  the reorder/order-change operation itself remains fully functional without the animation.
+- The move-class rule lives in a dedicated non-scoped `<style>` block in `MDList.vue`, strictly
+  BEM-namespaced to `.md-list__item_move` — the same narrow non-scoped-CSS pattern already used by
+  `listItemAnatomy.css` for List-family anatomy that must reach slotted content. `:slotted()` was tried
+  first but does not reliably match here: slot content rendered through the nested `<TransitionGroup>`
+  does not carry `MDList`'s slotted scope marker in the compiled output, so the scoped selector never
+  matched a real row (confirmed against the built CSS and a row's computed style). `:deep()` remains
+  forbidden regardless.
+
+`DatabaseViewListEdit` (`src/features/databaseViewMapEdit`) is the first consumer, composing
+`<MDList v-reorder-container list-style="segmented" animate-moves>`.
 
 ## Token contract
 
@@ -443,7 +477,23 @@ If a future change needs anatomy that diverges between `MDListItem` and `MDListS
 
 ## Material verification status
 
-Material sources checked: `components/lists/specs`, `components/lists/guidelines`, `components/lists/accessibility`.
+Material sources checked: `components/lists/specs`, `components/lists/guidelines`, `components/lists/accessibility`,
+`styles/motion/overview/how-it-works`, `styles/motion/overview/specs` (captured 2026-06-30, via the `material3` MCP
+server's cached `m3.material.io` snapshot).
+
+Motion physics system findings used for `animateMoves` and dragged-state motion:
+
+- Reorder is spatial movement of a small component (row), so the move transform and the dragged row's
+  border-radius/shape use the **Expressive fast spatial** Web conversion: `cubic-bezier(0.42, 1.67, 0.21, 0.90)`,
+  duration `350ms`.
+- The dragged row's box-shadow (elevation) is a non-spatial visual effect, so it uses the **Expressive fast
+  effects** Web conversion: `cubic-bezier(0.31, 0.94, 0.34, 1.00)`, duration `150ms`.
+- There is no dedicated Material list-reorder duration/easing token. These values are derived from the general
+  spring-token guidance (reorder = spatial movement of a small component) documented on the motion physics
+  pages above, not from a List-specific motion token.
+- Segmented `MDList` no longer clips (`overflow: clip` removed) so a dragged row's elevation can render outside
+  the row bounds, matching the documented Elevation-4 dragged treatment (see [Dragged state](#dragged-state)).
+  A dragged `MDListItem` root additionally gets `z-index: 1` so it stacks above sibling rows during the move.
 
 Confirmed from specs:
 

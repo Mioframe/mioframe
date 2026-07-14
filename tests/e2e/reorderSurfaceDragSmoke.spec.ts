@@ -273,6 +273,72 @@ test('a trailing context-menu control opens its menu and never starts a reorder'
   await closeBottomSheet(page, /database views sheet/i);
 });
 
+test('reordering stays stable when a second drag retargets a different row before the prior move animation settles', async ({
+  page,
+}) => {
+  await launchApp(page);
+  await openOpfs(page);
+
+  const directoryName = await createDirectory(page, createUniqueName('reorder motion lab'));
+  await openDirectory(page, directoryName);
+
+  const documentName = await createDatabaseDocument(
+    page,
+    createUniqueName('reorder motion catalog'),
+  );
+  await openDocumentFromExplorer(page, documentName);
+
+  const propertyName = await createStringProperty(page, createUniqueName('title'));
+  await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+  const firstViewName = await addView(page, createUniqueName('view foxtrot'));
+  const secondViewName = await addView(page, createUniqueName('view golf'));
+  const thirdViewName = await addView(page, createUniqueName('view hotel'));
+  const fourthViewName = await addView(page, createUniqueName('view india'));
+
+  const sheet = await openViewsSheet(page);
+  const rowLocator = (name: string) => sheet.getByRole('button', { name });
+  const rows = [firstViewName, secondViewName, thirdViewName, fourthViewName].map((name) => ({
+    name,
+    locator: rowLocator(name),
+  }));
+
+  await expect(rows[0]?.locator).toBeVisible();
+  await expect(rows[1]?.locator).toBeVisible();
+  await expect(rows[2]?.locator).toBeVisible();
+  await expect(rows[3]?.locator).toBeVisible();
+
+  // The rows now animate their move (MDList animateMoves). The first drag swaps the top pair
+  // (foxtrot/golf); the second drag, started immediately without waiting for that move
+  // transition (350ms) or even the first drag's visible reorder to settle, swaps the bottom
+  // pair (hotel/india) instead — rows the first drag never touches, so their geometry is not
+  // itself mid-transition when the second drag reads it. This is the required
+  // interrupted/retargeted scenario: a second drag overlapping the first drag's still-running
+  // move animation.
+  await dragRowToRow(page, rowLocator(firstViewName), rowLocator(secondViewName), 'after');
+  await dragRowToRow(page, rowLocator(fourthViewName), rowLocator(thirdViewName), 'before');
+
+  // [foxtrot, golf, hotel, india] -> swap top pair -> [golf, foxtrot, hotel, india]
+  // -> swap bottom pair -> [golf, foxtrot, india, hotel]
+  await expectRowsInVisualOrder(rows, [
+    secondViewName,
+    firstViewName,
+    fourthViewName,
+    thirdViewName,
+  ]);
+
+  // No oscillation once the pointer stops and any in-flight move transitions finish settling.
+  await page.waitForTimeout(500);
+  await expectRowsInVisualOrder(rows, [
+    secondViewName,
+    firstViewName,
+    fourthViewName,
+    thirdViewName,
+  ]);
+
+  await closeBottomSheet(page, /database views sheet/i);
+});
+
 test('clicking a database view row selects it without starting a drag', async ({ page }) => {
   await launchApp(page);
   await openOpfs(page);

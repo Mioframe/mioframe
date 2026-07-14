@@ -1532,7 +1532,7 @@ test.describe('MDList / Material Expressive contract', () => {
     ).toBe('16px');
   });
 
-  test('MDList segmented container does not use overflow hidden to clip item corners', async ({
+  test('MDList segmented container does not clip item corners or a dragged row elevation', async ({
     page,
   }) => {
     await openStory(page, 'material-3-components-lists-mdlistitem--surface-context-segmented');
@@ -1543,10 +1543,11 @@ test.describe('MDList / Material Expressive contract', () => {
       .first();
     const overflow = await segmentedList.evaluate((node) => getComputedStyle(node).overflow);
 
-    expect(
-      overflow,
-      'segmented container must use overflow:clip for visual containment, not overflow:hidden which clips state layers via container instead of action-surface shape',
-    ).toBe('clip');
+    // The segmented list no longer clips at all (overflow stays at its initial value): item
+    // corners are shaped by the action-surface border-radius, not container clipping, and a
+    // dragged row's elevation (box-shadow) must be able to render outside the row bounds.
+    expect(overflow, 'segmented container must not clip with overflow:clip').not.toBe('clip');
+    expect(overflow, 'segmented container must not clip with overflow:hidden').not.toBe('hidden');
   });
 
   test('MDList standard list does not add background to Repository Explorer document section', async ({
@@ -2825,4 +2826,85 @@ test.describe('MDList / row overflow containment', () => {
       ).toBeLessThanOrEqual(surfaceOverflow.clientWidth + tolerancePx);
     });
   }
+});
+
+// Reads the computed transition this authored CSS rule (`.md-list__item_move`) produces on a
+// real row, by applying the class directly rather than waiting to catch Vue's own transient
+// application of it mid-FLIP-animation (which runs and clears within a single animation frame
+// and is not a reliable thing to race against). `openStory` calls `stabilizeVisualPage`, which
+// deliberately forces every `transition-duration` to `0s` project-wide for screenshot stability
+// (see `tests/e2e/visual/storybook.ts`) — so the applied `transition-duration` itself is not a
+// meaningful signal here. `durationVar`/`easingVar` read the raw custom properties that feed the
+// rule instead, which the stabilization override does not touch, to verify the authored values.
+const getMoveClassTransitionStyle = async (row: import('@playwright/test').Locator) =>
+  row.evaluate((node) => {
+    node.classList.add('md-list__item_move');
+    const computed = getComputedStyle(node);
+    const style = {
+      property: computed.transitionProperty,
+      timing: computed.transitionTimingFunction,
+      durationVar: computed.getPropertyValue('--md-private-list-move-duration'),
+      easingVar: computed.getPropertyValue('--md-private-list-move-easing'),
+    };
+    node.classList.remove('md-list__item_move');
+    return style;
+  });
+
+test.describe('MDList / animateMoves motion contract', () => {
+  test('a keyed row transitions transform using the M3 Expressive fast-spatial Web conversion while moving', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--animate-moves');
+
+    const row = page.getByTestId('animate-moves-list').locator('.md-list-item').first();
+    const style = await getMoveClassTransitionStyle(row);
+
+    expect(style.property).toBe('transform');
+    expect(style.durationVar).toBe('.35s');
+    expect(style.easingVar).toBe('cubic-bezier(.42, 1.67, .21, .9)');
+    expect(style.timing).toBe('cubic-bezier(0.42, 1.67, 0.21, 0.9)');
+  });
+
+  test('reduced motion disables the move transform transition entirely, without breaking the reorder', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openStory(page, 'material-3-components-lists-mdlistitem--animate-moves');
+
+    const list = page.getByTestId('animate-moves-list');
+    const row = list.locator('.md-list-item').first();
+    const style = await getMoveClassTransitionStyle(row);
+
+    // `transition: none` resets `transition-property` to `none` itself — a signal independent
+    // of `transition-duration`, which `stabilizeVisualPage` always forces to `0s` regardless of
+    // reduced motion (see the helper comment above), so it cannot distinguish the two cases.
+    expect(style.property).toBe('none');
+
+    // The order-change operation itself must still complete under reduced motion; only the
+    // spatial move transform transition is disabled.
+    const rowsBefore = await list.locator('.md-list-item').allTextContents();
+    await page.getByTestId('animate-moves-rotate').click();
+    await expect
+      .poll(async () => list.locator('.md-list-item').allTextContents())
+      .not.toEqual(rowsBefore);
+  });
+
+  test('segmented MDList no longer clips a dragged row, which stacks above sibling rows with its elevation intact', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-lists-mdlistitem--animate-moves');
+
+    const list = page.locator('.md-list_style_segmented').last();
+    const overflow = await list.evaluate((node) => getComputedStyle(node).overflow);
+    expect(overflow).not.toBe('clip');
+    expect(overflow).not.toBe('hidden');
+
+    const draggedRow = page.getByTestId('animate-moves-dragged-row');
+    const [zIndex, boxShadow] = await Promise.all([
+      draggedRow.evaluate((node) => getComputedStyle(node).zIndex),
+      draggedRow.evaluate((node) => getComputedStyle(node).boxShadow),
+    ]);
+    expect(zIndex).toBe('1');
+    expect(boxShadow).not.toBe('none');
+  });
 });

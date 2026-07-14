@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import MDListAnimateMovesStory from './stories/MDListAnimateMovesStory.vue';
 import MDListItemConfigurationsStory from './stories/MDListItemConfigurationsStory.vue';
 import MDListItemConsumerPatternsStory from './stories/MDListItemConsumerPatternsStory.vue';
 import MDListItemDomContractStory from './stories/MDListItemDomContractStory.vue';
@@ -146,5 +147,22 @@ export const StandalonePublicApi: Story = {
   render: () => ({
     components: { MDListItemStandaloneStory },
     template: '<MDListItemStandaloneStory />',
+  }),
+};
+
+export const AnimateMoves: Story = {
+  name: 'MDList animateMoves',
+  tags: ['visual'],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'MDList opt-in animateMoves: a deterministic control rotates row order to prove the FLIP move transform, and a segmented dragged row proves elevation now renders outside the list bounds (no overflow: clip) and above sibling rows (z-index: 1).',
+      },
+    },
+  },
+  render: () => ({
+    components: { MDListAnimateMovesStory },
+    template: '<MDListAnimateMovesStory />',
   }),
 };
