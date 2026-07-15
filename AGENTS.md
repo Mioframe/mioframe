@@ -12,11 +12,11 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 
 ## Architecture and implementation workflow
 
-- For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, use `architect-handoff` before implementation.
-- Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while the handoff is missing, contradicted, or `not ready`.
+- For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, use `architect-handoff` unless an applicable repository skill or policy defines a deterministic standard-authoring path that resolves every required decision from authoritative sources.
+- Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or `not ready`, or while a deterministic standard-authoring preflight remains unresolved or `blocked`.
 - Prefer the minimum complete design for confirmed requirements. Every added abstraction, state, layer, compatibility path, recovery mechanism, guarantee, or optimization must map to a current requirement, existing consumer, repository invariant, platform constraint, or measured need.
 - Compare the proposed design with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
-- Treat the handoff as the contract for tasking, implementation, PR description, and review. If new facts invalidate it, stop and update it explicitly.
+- Treat the ready handoff or repository-backed standard-authoring blueprint as the contract for implementation, PR description, and review. If new facts invalidate it, stop and update it explicitly.
 - Preserve existing user scenarios unless the task explicitly changes them. Reachability alone is not preservation when discoverability, interaction tier, steps, or context regress.
 - If two correction rounds still add concepts, workarounds, ownership drift, mixed responsibilities, or missing scenarios, stop patching and redo the architecture decision.
 
