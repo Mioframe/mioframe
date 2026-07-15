@@ -1,6 +1,33 @@
 # Material 3 component family audit
 
-This file records component-family findings from the current implementation plus verified Material 3 sources. Unless a section says otherwise, the component-family findings below come from the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. When fallback cache evidence is referenced, treat `Vyachean/m3-docs-cache` as a separate snapshot captured from `https://m3.material.io` at `2026-05-19T05:56:22.642Z`; do not mix that fallback date with MCP-backed findings. It complements [Material 3 foundation audit](./foundation-audit.md) and [Foundation audit details](./foundation-audit-details.md).
+This file records component-family findings from the current implementation plus verified Material 3 sources. Unless a section says otherwise, the component-family findings below come from the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. It complements [Material 3 foundation audit](./foundation-audit.md) and [Foundation audit details](./foundation-audit-details.md).
+
+## Button-family Material source (latest review)
+
+The Button family sections below (`MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab`) reflect the latest review, which used the following fallback snapshot. Do not read the `2026-06-30` MCP snapshot date above, or the older `2026-05-19` fallback snapshot date, as the source of the Button family's current conclusions — both predate this pass.
+
+- repository: `Vyachean/m3-docs-cache`
+- commit: `49ffae58a61f86c28b23720696dc9d07b6945483`
+- capturedAt: `2026-07-13T12:48:04.850Z`
+- failedPageCount: `0`
+- suspiciousPageCount: `0`
+- coverageHealth: `verified`
+
+Checked paths:
+
+- `pages/components/buttons/overview.md`
+- `pages/components/buttons/specs.md`
+- `pages/components/buttons/accessibility.md`
+- `pages/components/icon-buttons/overview.md`
+- `pages/components/icon-buttons/specs.md`
+- `pages/components/floating-action-button/overview.md`
+- `pages/components/floating-action-button/specs.md`
+- `pages/components/extended-fab/overview.md`
+- `pages/components/extended-fab/specs.md`
+- `pages/styles/motion/overview/how-it-works.md`
+- `pages/styles/motion/overview/specs.md`
+
+Findings for the other component families in this file (Lists, Dialogs, Text fields, Chips, Menus) still reference the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z` from an earlier historical audit pass, unless a section says otherwise.
 
 ## Buttons: `MDButton`
 
@@ -36,7 +63,7 @@ Remaining gaps and unsupported scope:
 - component-level focus-indicator tokens do not exist in the current (non-deprecated) cache namespace; the shared global focus-indicator default is reused unchanged and is now browser-verified against real keyboard focus rather than only visual similarity;
 - Split Button, Standard Button Group, and Connected Button Group are official Material button-family surfaces with no confirmed Mioframe usage and are not implemented.
 
-Verdict: `aligned` for the supported public subset (five color styles, five sizes, `round`/`square` shapes, `default`/`toggle` variants, resting/hover/focus/pressed/disabled states, toggle selected/unselected states including combined states, shape precedence, disabled precedence, and exact per-size geometry). Every supported color style and state route is verified through exact expected-value browser assertions (override routing verified separately from default-role resolution), not representative styles only and not distinctness-only comparisons; unsupported official configurations are listed above.
+Verdict: `partial`. The supported public API, geometry, state colors, disabled routing, `--md-comp-button-*` component-token layer, accessibility, Storybook coverage, and core browser verification described above (five color styles, five sizes, `round`/`square` shapes, `default`/`toggle` variants, resting/hover/focus/pressed/disabled states, toggle selected/unselected states including combined states, shape precedence, disabled precedence, and exact per-size geometry) are implemented, with every supported color style and state route verified through exact expected-value browser assertions. No known user-flow or architecture blocker remains in the current implementation. Remaining work is Expressive motion ownership and verification completeness — see [Remaining Button-family alignment work](#remaining-button-family-alignment-work). `partial` means the component is safe to use but must not yet be claimed as fully verified Material 3 Expressive alignment; unsupported official configurations are listed above.
 
 ## Icon buttons: `MDIconButton`
 
@@ -69,7 +96,7 @@ Remaining gaps and unsupported scope:
 - component-level focus-indicator tokens exist only under deprecated legacy component names in the cache, not the current namespace; the shared global default is reused unchanged and is now browser-verified against real keyboard focus rather than only visual similarity;
 - Split Button and Standard/Connected Button Group compositions that use icon buttons as constituent parts have no confirmed Mioframe usage and are not implemented.
 
-Verdict: `aligned` for the supported public subset (four color styles, five sizes, `narrow`/`default`/`wide` widths, `round`/`square` shapes, `default`/`toggle` variants, resting/hover/focus/pressed/disabled states, toggle selected/unselected states including combined states, shape precedence, outline routing, disabled precedence, expanded target geometry, and exact per-size/per-width geometry). Every supported color style and state route is verified through exact expected-value browser assertions (override routing verified separately from default-role resolution), not representative styles only and not distinctness-only comparisons; unsupported official configurations are listed above.
+Verdict: `partial`. The supported public API, geometry, state colors, disabled routing, `--md-comp-icon-button-*` component-token layer, accessibility, Storybook coverage, and core browser verification described above (four color styles, five sizes, `narrow`/`default`/`wide` widths, `round`/`square` shapes, `default`/`toggle` variants, resting/hover/focus/pressed/disabled states, toggle selected/unselected states including combined states, shape precedence, outline routing, disabled precedence, expanded target geometry, and exact per-size/per-width geometry) are implemented, with every supported color style and state route verified through exact expected-value browser assertions. No known user-flow or architecture blocker remains in the current implementation. Remaining work is Expressive motion ownership and verification completeness — see [Remaining Button-family alignment work](#remaining-button-family-alignment-work). `partial` means the component is safe to use but must not yet be claimed as fully verified Material 3 Expressive alignment; unsupported official configurations are listed above.
 
 ## FAB: `MDFab`, `MDExtendedFab`, `FabContainer`
 
@@ -99,7 +126,54 @@ Remaining gaps and unsupported scope:
 - loading remains a documented project extension, not an official Material token or state;
 - FAB disabled state, FAB Menu, legacy Small FAB, and lowered/surface FAB variants are official or previously-documented Material configurations with no confirmed Mioframe usage and are not implemented; `MDFab`/`MDExtendedFab` intentionally expose no `disabled` prop.
 
-Verdict: `aligned` for the supported public subset (`MDFab`: six colors, `regular`/`medium`/`large` sizes, required-icon contract, resting/hover/focus/pressed states; `MDExtendedFab`: the same six colors, `small`/`medium`/`large` sizes, resting/hover/focus/pressed states, independent label/icon routing, size-specific typography and icon-label spacing). `FabContainer` remains `project-specific`. Every supported color is verified through exact expected-value browser assertions (override routing verified separately from default-role resolution) rather than a plain-plus-container-style sample and not distinctness-only comparisons; unsupported official configurations are listed above.
+Verdict: `partial` for `MDFab` and `MDExtendedFab`. The supported public API, geometry, state colors, disabled routing (no `disabled` prop, by design), `--md-comp-fab-*`/`--md-comp-extended-fab-*` component-token layer, accessibility, Storybook coverage, and core browser verification described above (`MDFab`: six colors, `regular`/`medium`/`large` sizes, required-icon contract, resting/hover/focus/pressed states; `MDExtendedFab`: the same six colors, `small`/`medium`/`large` sizes, resting/hover/focus/pressed states, independent label/icon routing, size-specific typography and icon-label spacing) are implemented, with every supported color verified through exact expected-value browser assertions. No known user-flow or architecture blocker remains in the current implementation. Remaining work is Expressive motion ownership and verification completeness — see [Remaining Button-family alignment work](#remaining-button-family-alignment-work). `partial` means both components are safe to use but must not yet be claimed as fully verified Material 3 Expressive alignment. `FabContainer` remains `project-specific` and is unaffected by this verdict; unsupported official configurations are listed above.
+
+## Remaining Button-family alignment work
+
+This section tracks the follow-up work that keeps `MDButton`, `MDIconButton`, `MDFab`, and `MDExtendedFab` at `partial` rather than `aligned`. Each stage is independently implementable and none blocks the others.
+
+### Stage 1 — Content motion ownership
+
+Scope: `MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab`; focused motion verification only.
+
+Current gap: root controls expose Expressive color transitions, but rendered label/icon colors are owned by child elements, and those child elements do not yet consistently consume the fast-effects color transition. Current motion assertions inspect root controls rather than every actual property owner.
+
+Expected future result: the `color` transition is applied to the real label/icon elements; root transitions remain only for properties the root owns; duration and easing are asserted on the owning elements. No public API, token routing, state routing, or screenshot matrix redesign is required.
+
+Classification: user-visible polish; not a current functional blocker.
+
+### Stage 2 — Disabled selected forced-state shape precedence
+
+Scope: `MDButton`, `MDIconButton`; selected/pressed/disabled shape selectors and focused browser checks only.
+
+Current gap: in an artificial fixture combining selected, disabled, and forced pressed state, the selected shape may fall back to the base shape. Native disabled controls cannot enter a real pressed interaction, so this is not a reachable user-flow failure — it remains an incomplete state-composition contract.
+
+Expected future result: selected enabled → selected shape; selected enabled + pressed → pressed shape; selected disabled → selected shape; selected disabled + forced pressed → selected shape.
+
+Classification: contract edge case; not a current production interaction blocker.
+
+### Stage 3 — Override verification completion
+
+Scope: browser tests only, unless a test exposes a concrete production defect.
+
+Current gaps: shadow-color tests verify the private elevation bridge but do not consistently assert the final computed shadow; FAB focus-indicator verification does not yet cover both FAB components, all published properties, and all three plain color styles; some motion tests verify transition declarations on root elements rather than actual property owners.
+
+Expected future result: the official shadow token override reaches both the private bridge and the rendered `box-shadow`; `MDFab` and `MDExtendedFab` verify focus-indicator color, thickness, and offset for `primary`, `secondary`, and `tertiary`; motion assertions inspect the real owning elements. Production code changes only when an exact test proves a routing defect.
+
+Classification: verification completeness; no known current rendered-token defect.
+
+### Future alignment gate
+
+The family can return from `partial` to `aligned` only after:
+
+1. Stage 1 is implemented and verified.
+2. Stage 2 is implemented and verified.
+3. Stage 3 is complete.
+4. Full `pnpm verify` passes.
+5. Documentation is rechecked against the same Material snapshot or a newer verified snapshot.
+6. Unsupported surfaces and project extensions remain explicitly documented.
+
+Implementing Split Button, Standard Button Group, Connected Button Group, FAB Menu, lowered/surface FAB, legacy Small FAB, JavaScript spring physics, or automatic selected treatment for arbitrary custom icon slot content is not required for this gate. These remain unsupported or outside the current public subset and do not block eventual alignment of the documented subset.
 
 ## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`
 
