@@ -12,7 +12,8 @@ Detailed architecture is defined by:
 
 - `docs/material-3/library-architecture.md`;
 - `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/component-architecture.md`.
+- `docs/material-3/component-architecture.md`;
+- `docs/material-3/component-testing.md`.
 
 Canonical policy and source-evidence documents remain under `docs/material-3`; this directory owns runtime/library artifacts and their local contracts.
 
@@ -20,10 +21,10 @@ Canonical policy and source-evidence documents remain under `docs/material-3`; t
 
 ```text
 material/foundation
-  Cross-family Material tokens, roles, primitives, and adapters.
+  Cross-family Material tokens, roles, primitives, adapters, and verification-only state helpers.
 
 material/components
-  Official public component families and their implementation contracts.
+  Official public component families, their implementation contracts, stories, and focused tests.
 
 material/patterns
   Reusable official Material compositions only when a current scenario requires them.
@@ -70,13 +71,24 @@ After this boundary is accepted:
 - new Material patterns are created in `patterns/<pattern>` only when the documented pattern gate passes;
 - legacy Material directories may receive strict local repairs, but no new public Material surface.
 
+Every new public component is created together with:
+
+- a family README blueprint;
+- a colocated contract test;
+- exactly one canonical Storybook `StateMatrix`;
+- a Playwright visual regression for that matrix;
+- real Storybook browser-behavior tests when applicable;
+- pure helper/composable tests when applicable.
+
+The state matrix shows every supported visual state and every distinct state-rendering route, with visible row and column labels. It does not duplicate equivalent sizes, labels, icons, or content combinations.
+
 Empty placeholder directories and files are forbidden. A directory appears only with an accepted production artifact.
 
 Using a generic utility from outside the library does not transfer its ownership into Material.
 
 ## Physical migration map
 
-This table tracks source location, not Material alignment. Alignment status remains in the foundation and component registries.
+This table tracks source location, not Material alignment or test-profile completeness. Alignment status remains in the foundation and component registries; each family README owns its current testing contract.
 
 | Area                              | Current production owner                                                       | Canonical owner                                                                     | Migration status              |
 | --------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ----------------------------- |
@@ -93,9 +105,9 @@ Do not split the monolithic token owner merely to match this table. Source reloc
 
 ## Migration status meanings
 
-- `legacy`: current code remains accepted for existing consumers, but it is not a location template for new Material work;
-- `migrating`: one focused PR owns relocation and must update all consumers, exports, contracts, stories, tests, and this map;
-- `migrated`: the canonical owner is active, legacy paths are removed, and architecture validation is blocking.
+- `legacy`: current code remains accepted for existing consumers, but it is not a location or testing template for new Material work;
+- `migrating`: one focused PR owns relocation and must update all consumers, exports, contracts, stories, tests, snapshots, risk registration, and this map;
+- `migrated`: the canonical owner is active, legacy paths are removed, the standard test profile exists, and architecture validation is blocking.
 
 ## Migration rules
 
@@ -105,7 +117,8 @@ Each migration handles one cohesive family or foundation domain and must:
 2. update all in-repository consumers in the same PR;
 3. expose the accepted public API through the Material library entry point;
 4. remove old files and exports;
-5. update family/domain contracts, registries, Storybook, and verification;
-6. avoid permanent compatibility re-exports.
+5. update family/domain contracts, registries, Storybook, tests, snapshots, risk registration, and verification;
+6. add or consolidate the canonical state matrix for each migrated component;
+7. avoid permanent compatibility re-exports.
 
-A mass move of all Material code is forbidden. Migration is demand-driven and begins with the foundation domains required by the Button pilot, followed by `MDButton`, `MDSwitch`, and one genuinely new component authored directly in the library.
+A mass move of all Material code is forbidden. Migration is demand-driven and begins with the foundation domains required by the Button pilot, followed by `MDButton`, `MDSwitch`, and one genuinely new component authored and tested directly in the library.
