@@ -33,12 +33,14 @@ Use for every new, migrated, or materially changed public shared Material compon
 ## 4. Minimum architecture profile
 
 - [ ] Selected the smallest profile whose objective conditions apply.
-- [ ] `simple` has Vue, token, and rendering files only.
+- [ ] `simple` has Vue and rendering layers only.
 - [ ] `configured` adds routes only when configuration selects different values.
 - [ ] `stateful` adds state resolution only when semantic, interaction, disabled, gesture, or foundation-bridge state changes a property.
-- [ ] No empty route or state file exists merely for symmetry.
+- [ ] Added `<Component>.tokens.css` only when the component owns at least one exact official token.
+- [ ] Added `<Family>.tokens.css` only for exact shared official paths consumed by at least two public family components.
+- [ ] No empty token, route, or state file exists for symmetry.
 - [ ] No required layer was collapsed into another file.
-- [ ] Optional family token, family anatomy, behavior, composable, or context files satisfy the exact extraction conditions.
+- [ ] Optional family anatomy, behavior, composable, or context files satisfy exact extraction conditions.
 
 ## 5. Public contract and anatomy
 
@@ -55,11 +57,11 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 - [ ] Every public `--md-comp-*` maps mechanically to an exact verified official path.
 - [ ] Every canonical token has one component or family owner file.
-- [ ] Family token ownership is used only for the same exact official path consumed by at least two public family components.
+- [ ] Components with no owned official tokens have no empty component token file.
 - [ ] Token files declare the complete supported override surface independently of active configuration and state.
 - [ ] Token files contain no configuration modifiers, state selectors, pseudo-classes, private/app declarations, or rendering properties.
 - [ ] Routes select configuration values only.
-- [ ] Missing official paths use documented private or app-owned routes rather than invented component tokens.
+- [ ] Missing official paths use documented private, system, or app-owned routes rather than invented component tokens.
 - [ ] Available component tokens are not bypassed by direct system-token values.
 - [ ] Family-private variables do not escape the family.
 - [ ] Generic foundations read only generic private contracts.
@@ -86,7 +88,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 ## 9. Verification
 
 - [ ] Contract tests cover supported API, native semantics, ARIA, invalid combinations, states, and extensions.
-- [ ] Static validation covers the selected profile, layer ownership, token names/owners, selectors, private boundaries, and README consistency.
+- [ ] Static validation covers the selected profile, exact applicable layers, token names/owners, selectors, private boundaries, and README consistency.
 - [ ] Browser tests cover focus, keyboard, pointer, gestures, computed CSS, public overrides, and actual property owners as applicable.
 - [ ] Every reachable property-matrix route and simultaneous-output case is verified.
 - [ ] Storybook documents supported and unsupported surface, extensions, and deviations.
@@ -101,6 +103,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Unsupported features and deviations are explicit.
 - [ ] No escalation condition was hidden as a local workaround.
 - [ ] No unrequested abstraction or flexibility remains.
+- [ ] No empty architecture layer remains.
 - [ ] The supported surface is complete even if optional Material capabilities remain unsupported.
 
 Do not mark a component `aligned` or architecture-complete until every applicable item passes or the missing item is explicitly recorded as unsupported, deviated, blocked, or follow-up verification.
