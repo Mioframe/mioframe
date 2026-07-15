@@ -13,7 +13,8 @@ Maintain:
 - official Material source-of-truth workflow;
 - units and token namespaces;
 - baseline theme;
-- deterministic component architecture profiles;
+- four deterministic profiles separating configuration routing from state resolution;
+- conditional token layers and shortest property pipelines;
 - public API and anatomy rules;
 - property-specific state resolution;
 - accessibility and native semantics;
@@ -29,7 +30,7 @@ Implement verify-managed checks for:
 - layer declaration and selector ownership;
 - exact official component-token names;
 - canonical token ownership and root selectors;
-- private-variable boundaries;
+- private-variable boundaries and alias necessity;
 - family README blueprint consistency;
 - rendered-property matrix coverage;
 - obsolete parallel routes.
@@ -48,7 +49,7 @@ The architecture-only migration must:
 - preserve token names and values;
 - preserve rendered output;
 - create the family README blueprint;
-- select the smallest applicable profile;
+- select the smallest applicable profile and shortest property pipelines;
 - separate token, route, state, and rendering ownership;
 - enable blocking validation;
 - preserve named consumers and existing verification.
@@ -76,7 +77,8 @@ Validate the same authoring and validator rules on `MDSwitch`, which exercises:
 - pointer drag behavior;
 - presentation mode;
 - multiple anatomy owners;
-- independent property outputs.
+- independent property outputs;
+- stateful behavior that may not require configuration routing.
 
 If the architecture needs repeated exceptions or Button-specific validator logic, revise it before migrating further families.
 
@@ -87,12 +89,13 @@ Before declaring the workflow complete, use it for one genuinely new or previous
 The coding agent must be able to:
 
 1. perform bounded Material source lookup;
-2. derive the minimum complete supported surface;
-3. create a ready family blueprint;
-4. select the smallest architecture profile;
-5. implement API, semantics, tokens, states, Storybook, and tests;
-6. pass blocking validation;
-7. complete the component without architecture correction rounds.
+2. derive the minimum complete supported surface, including canonical-default fallback for a concise request;
+3. create a ready compact family blueprint;
+4. select the correct smallest profile without empty layers;
+5. implement shortest property pipelines without convenience aliases;
+6. implement API, semantics, tokens, states, Storybook, and tests;
+7. pass blocking validation;
+8. complete the component without architecture correction rounds.
 
 A successful legacy migration alone does not prove autonomous authoring.
 
@@ -113,13 +116,13 @@ Suggested order may follow active product need and dependency risk. Similar CSS 
 
 ## Success criteria
 
-The adoption workflow is successful when:
+The workflow is successful when:
 
 - an agent can create a standard Material component from a concise request without a bespoke architecture task;
 - unsupported optional features remain explicit instead of becoming speculative API;
-- simple components use simple profiles and complex components use only required layers;
+- simple components stay simple and complex components use only required layers;
 - validator failures catch structural drift before review;
-- architecture review finds no hidden ownership or state decisions;
+- architecture review finds no hidden ownership, scope, state, or alias decisions;
 - one implementation round plus focused correction is normally sufficient;
-- family contracts remain readable and current;
+- family contracts remain compact and current;
 - implementation and review token usage stays bounded to the relevant component surface.
