@@ -1,6 +1,6 @@
 # Material 3 policies
 
-This directory defines the project contract for aligning the shared UI kit, Storybook documentation, and visual verification with the official Material 3 documentation.
+This directory defines the project contract for aligning the shared UI kit, Storybook documentation, component architecture, and visual verification with the official Material 3 documentation.
 
 The policies apply before changing shared UI primitives, Material-style wrappers, user-visible component APIs, design tokens, Storybook documentation, Material interaction states, layout behavior, or visual verification surfaces.
 
@@ -23,6 +23,7 @@ Foundation policies:
 
 Implementation policies:
 
+- [Component architecture](./component-architecture.md)
 - [Component registry](./component-registry.md)
 - [Token validation](./token-validation.md)
 - [Iconography](./icons.md)
@@ -37,16 +38,18 @@ Implementation policies:
 2. Reading the project Storybook should feel like reading the relevant Material 3 component documentation for the components used by the app.
 3. Material-compatible names must be used for public `--md-*` tokens and public `MD*` component APIs.
 4. Project-specific UI must be documented as project-specific and must not masquerade as an official Material 3 component.
-5. Visual similarity alone is not enough. Tokens, units, API names, accessibility, interaction states, and adaptive behavior are part of Material 3 alignment.
+5. Visual similarity alone is not enough. Tokens, units, API names, accessibility, interaction states, architecture, ownership, and adaptive behavior are part of Material 3 alignment.
+6. Implementation agents must follow a ready component contract rather than design public Material components during implementation.
 
 ## Scope
 
-These policies are foundation documents. They do not require all existing code to be immediately compliant. New Material UI work and refactors that touch affected surfaces must move the touched area toward this contract and document any deliberate deviation.
+These policies do not require all existing code to be immediately compliant. New public Material components and components explicitly migrated to `layered-v1` must follow the architecture contract. A local legacy-component repair may remain unmigrated only under the strict `Architecture impact: none` conditions in [Component architecture](./component-architecture.md).
 
 ## Implementation order
 
-1. Keep these policies small and reviewable.
-2. Audit existing tokens and shared UI APIs against the policies.
-3. Use [Component registry](./component-registry.md), [Token validation](./token-validation.md), and [Component conversion checklist](./component-conversion-checklist.md) for every component-family migration.
-4. Use Buttons as the first pilot component family after the foundation contract is accepted.
-5. Apply the same pattern to Lists, Dialogs, Text fields, selection controls, Navigation, App bars, Toolbars, and Sheets.
+1. Keep foundation policies, the component registry, and official-source workflow current.
+2. Establish the strict `layered-v1` architecture and add verify-managed static enforcement.
+3. Migrate `MDButton` in a behavior-preserving architecture-only PR.
+4. Complete `MDButton` Material alignment in a separate focused PR.
+5. Validate the same architecture on `MDSwitch` as an independent stateful and gesture-owning pilot.
+6. After both pilots, migrate further component families one at a time using the registry and conversion checklist.
