@@ -13,7 +13,7 @@ const mountRow = (props: Record<string, unknown> = {}, slots: Record<string, () 
     {
       components: { ReorderSurface, MDList, DatabaseViewSortableListItem },
       template: `
-        <ReorderSurface :item-ids="[rowProps.viewId]" :commit="commit">
+        <ReorderSurface :item-ids="[rowProps.viewId]">
           <MDList>
             <DatabaseViewSortableListItem v-bind="rowProps" @action="onAction">
               <template v-if="$slots.leading" #leading><slot name="leading" /></template>
@@ -31,7 +31,6 @@ const mountRow = (props: Record<string, unknown> = {}, slots: Record<string, () 
           ...props,
         },
         onAction: props.onAction ?? vi.fn(),
-        commit: vi.fn().mockResolvedValue('applied'),
       }),
     },
     { attachTo: document.body, slots },

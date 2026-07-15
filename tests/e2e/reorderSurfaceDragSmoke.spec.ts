@@ -344,3 +344,87 @@ test.describe('touch activation', () => {
     await closeBottomSheet(page, /database views sheet/i);
   });
 });
+
+test.describe('container bounds', () => {
+  test('the dragged row stays inside the list bounds when the pointer moves beyond each edge', async ({
+    page,
+  }) => {
+    await launchApp(page);
+    await openOpfs(page);
+
+    const directoryName = await createDirectory(page, createUniqueName('reorder bounds lab'));
+    await openDirectory(page, directoryName);
+
+    const documentName = await createDatabaseDocument(
+      page,
+      createUniqueName('reorder bounds catalog'),
+    );
+    await openDocumentFromExplorer(page, documentName);
+
+    const propertyName = await createStringProperty(page, createUniqueName('title'));
+    await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+    const firstViewName = await addView(page, createUniqueName('view hotel'));
+    await addView(page, createUniqueName('view india'));
+
+    const sheet = await openViewsSheet(page);
+    const list = sheet.getByRole('list');
+    const draggedRow = findListRow(sheet, firstViewName);
+    await draggedRow.scrollIntoViewIfNeeded();
+
+    const listBox = await list.boundingBox();
+    const rowBox = await draggedRow.boundingBox();
+    if (!listBox || !rowBox) {
+      throw new Error('missing bounding box for list or view row');
+    }
+
+    const rowCenterX = rowBox.x + rowBox.width / 2;
+    const rowCenterY = rowBox.y + rowBox.height / 2;
+
+    // The list's own scroll container can auto-scroll while the pointer is held beyond an edge,
+    // so both boxes must be re-measured live rather than compared against the pre-drag snapshot.
+    // The Material spatial transition (see REORDER_TRANSITION) intentionally overshoots before
+    // settling, so poll briefly instead of asserting a single mid-transition snapshot.
+    const isDraggedRowWithinListBounds = async () => {
+      const [draggedBox, liveListBox] = await Promise.all([
+        draggedRow.boundingBox(),
+        list.boundingBox(),
+      ]);
+      if (!draggedBox || !liveListBox) {
+        return false;
+      }
+
+      return (
+        draggedBox.x >= liveListBox.x - 1 &&
+        draggedBox.y >= liveListBox.y - 1 &&
+        draggedBox.x + draggedBox.width <= liveListBox.x + liveListBox.width + 1 &&
+        draggedBox.y + draggedBox.height <= liveListBox.y + liveListBox.height + 1
+      );
+    };
+
+    const assertDraggedRowWithinListBounds = async () => {
+      await expect.poll(isDraggedRowWithinListBounds, { timeout: 1000 }).toBe(true);
+    };
+
+    await page.mouse.move(rowCenterX, rowCenterY);
+    await page.mouse.down();
+    // Cross the mouse activation distance before probing bounds.
+    await page.mouse.move(rowCenterX, rowCenterY + 8, { steps: 4 });
+
+    await page.mouse.move(rowCenterX, listBox.y - 200, { steps: 8 });
+    await assertDraggedRowWithinListBounds();
+
+    await page.mouse.move(rowCenterX, listBox.y + listBox.height + 200, { steps: 8 });
+    await assertDraggedRowWithinListBounds();
+
+    await page.mouse.move(listBox.x - 200, rowCenterY, { steps: 8 });
+    await assertDraggedRowWithinListBounds();
+
+    await page.mouse.move(listBox.x + listBox.width + 200, rowCenterY, { steps: 8 });
+    await assertDraggedRowWithinListBounds();
+
+    await page.mouse.up();
+
+    await closeBottomSheet(page, /database views sheet/i);
+  });
+});

@@ -4,6 +4,7 @@ import {
   PointerActivationConstraints,
   PointerSensor,
 } from '@dnd-kit/dom';
+import { RestrictToElement } from '@dnd-kit/dom/modifiers';
 
 /**
  * Resolves pointer activation thresholds for a reorder drag: touch and pen require a long
@@ -46,3 +47,14 @@ export const REORDER_TRANSITION = {
   easing: 'cubic-bezier(0.42, 1.67, 0.21, 0.90)',
   idle: false,
 } as const;
+
+/**
+ * Restricts every reorder drag to the direct DOM parent of the active sortable item, i.e. the
+ * list container that renders the sortable rows. Sortable item roots must be direct DOM children
+ * of the container that defines their movement bounds.
+ */
+export const REORDER_MODIFIERS: typeof defaultPreset.modifiers = [
+  RestrictToElement.configure({
+    element: (operation) => operation.source?.element?.parentElement ?? null,
+  }),
+];

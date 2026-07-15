@@ -24,9 +24,18 @@ import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
 import type { DatabaseStateQueryResult } from '../databaseService';
 
+/**
+ * Wires the database view read model and mutations on top of the shared database state query
+ * and change helpers.
+ * @param databaseState$ - Cached observable query for one document's raw database state.
+ * @param changeDatabase - Applies a change callback atomically to one document's database state.
+ * @returns The view read model and view-level mutations.
+ */
 export const setupDatabaseViewsService = (
   databaseState$: (q: {
+    /** The database document id. */
     documentId: AMDocumentId;
+    /** Directory path containing the document. */
     path: string;
   }) => Observable<DatabaseStateQueryResult>,
   changeDatabase: (
@@ -36,7 +45,15 @@ export const setupDatabaseViewsService = (
   ) => Promise<unknown>,
 ) => {
   const databaseViews$ = defineCacheObservable(
-    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
+    ({
+      documentId,
+      path,
+    }: {
+      /** The database document id. */
+      documentId: AMDocumentId;
+      /** Directory path containing the document. */
+      path: string;
+    }) =>
       databaseState$({ documentId, path }).pipe(
         map((state) => {
           if (state instanceof Error) {
@@ -50,7 +67,15 @@ export const setupDatabaseViewsService = (
   );
 
   const viewList$ = defineCacheObservable(
-    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
+    ({
+      documentId,
+      path,
+    }: {
+      /** The database document id. */
+      documentId: AMDocumentId;
+      /** Directory path containing the document. */
+      path: string;
+    }) =>
       databaseViews$({ documentId, path }).pipe(
         map((viewsRecord) => {
           if (viewsRecord instanceof Error) {
@@ -72,8 +97,11 @@ export const setupDatabaseViewsService = (
       path,
       viewId,
     }: {
+      /** The database document id. */
       documentId: AMDocumentId;
+      /** Directory path containing the document. */
       path: string;
+      /** The specific view id to read, or `undefined` when no view is selected. */
       viewId?: DatabaseViewId | undefined;
     }) =>
       databaseViews$({ documentId, path }).pipe(
