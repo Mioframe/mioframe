@@ -16,15 +16,19 @@ The normal owner is:
 <Component>.tokens.css
 ```
 
+Create that file only when the component owns at least one exact official token used by the supported surface. Do not create an empty token file.
+
 A family may own:
 
 ```text
 <Family>.tokens.css
 ```
 
-only when the same exact official token path belongs to the family contract and is consumed by at least two public components in that family. The family blueprint names the official paths, public CSS names, applicable roots, and loading components.
+only when the same exact official token path is consumed by at least two public components in that family. The blueprint names official paths, CSS names, applicable roots, and loading components.
 
-Equal values, similar usage, line count, or possible future reuse do not justify family ownership.
+When all applicable official tokens are family-owned, a component does not also need its own token file. When no exact official component token exists, record token ownership as `none` and use documented private/system/app sources according to ownership.
+
+Equal values, similar usage, line count, or possible reuse do not justify family ownership.
 
 Reference and system tokens remain in the foundation. Do not create a global runtime catalog for component-family tokens.
 
@@ -86,11 +90,11 @@ When an official component path is missing:
 
 ## Directed pipeline
 
-Each property uses only the stages that apply to the selected architecture profile and blueprint row:
+Each property uses only applicable stages:
 
 ```text
 official md.comp token
-→ canonical --md-comp-* declaration
+→ optional canonical --md-comp-* declaration
 → optional configuration route
 → optional semantic bank
 → optional property-specific interaction resolver
@@ -99,7 +103,7 @@ official md.comp token
 → actual DOM property owner
 ```
 
-An available official component token must not be bypassed by a direct system-token value.
+The canonical stage is omitted only when no exact official component token exists for the property. An available official component token must not be bypassed by a direct system-token value.
 
 ## Private variables
 
@@ -151,12 +155,13 @@ A shared state-layer, ripple, focus, elevation, or motion primitive exposes only
 
 During standard component authoring, the implementation agent independently:
 
-1. inventories exact official token paths required by the supported scenarios;
+1. inventories exact official token paths required by supported scenarios;
 2. assigns each path to one component or qualifying family owner file;
-3. records ownership in the family blueprint;
-4. selects the smallest applicable architecture profile;
-5. implements only required routes and state resolvers;
-6. validates public overrides and actual DOM property owners.
+3. omits token files with no owned official paths;
+4. records ownership in the family blueprint;
+5. selects the smallest applicable architecture profile;
+6. implements only required routes and state resolvers;
+7. validates public overrides and actual DOM property owners.
 
 Use architecture escalation only when official paths, ownership, or required project extension semantics are genuinely unresolved.
 
