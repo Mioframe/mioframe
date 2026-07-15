@@ -26,6 +26,9 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 - [ ] Read [Library architecture](./library-architecture.md) and `src/shared/ui/material/README.md`.
 - [ ] New official public components are created under `src/shared/ui/material/components/<family>`.
+- [ ] The family blueprint records `Family ownership basis`.
+- [ ] A multi-component family is backed by an official Material relationship and at least one current shared production contract.
+- [ ] Legacy directory proximity, similar names, repeated CSS, fewer files, or hypothetical reuse were not used as family-ownership evidence.
 - [ ] A migrated component records its current legacy path, canonical path, migration mode, and migration status.
 - [ ] The family blueprint names the public `@shared/ui/material` export and complete consumer import scope.
 - [ ] Internal library modules do not import the root library barrel.
@@ -61,7 +64,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 - [ ] Created or updated the family `README.md` before production code.
 - [ ] Kept the blueprint compact and source-backed.
-- [ ] Recorded library ownership, scenarios, non-goals, usage contract, supported and unsupported surface, API, native semantics, invalid combinations, anatomy, states, foundation dependencies, token ownership, rendered-property matrix, test profile, state-matrix coverage, files, verification, consumers, and deviations.
+- [ ] Recorded library ownership, family ownership basis, scenarios, non-goals, usage contract, supported and unsupported surface, API, native semantics, invalid combinations, anatomy/DOM ownership, semantic and interaction states, state ownership, foundation dependencies, token ownership, rendered-property matrix, test profile, state-matrix coverage, files, verification, consumers, and deviations.
 - [ ] Set `Unresolved: none` and `Readiness: ready` only after every required decision was resolved.
 - [ ] For an existing family, changed only required README sections.
 - [ ] The implementation introduced no decision absent from the blueprint or ready handoff.
@@ -88,6 +91,11 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Emits represent component-owned state changes or actions.
 - [ ] Invalid combinations follow official guidance or are blocked for resolution.
 - [ ] Each anatomy part and CSS property has one owner.
+- [ ] Every interactive or semantic anatomy part records the actual DOM/native owner and native semantics or explicit role.
+- [ ] Focus owner, accessible-name source, semantic `aria-*` owner, and disabled/readonly owner are explicit where applicable.
+- [ ] Target-area, state-layer, ripple, focus-indicator target, and final rendered-property owners are explicit where applicable.
+- [ ] Consumer-provided interactive content is explicitly allowed, prohibited, or isolated for each relevant anatomy part.
+- [ ] Parent and child components do not implicitly split native action, focus, accessibility, interaction-surface, or rendering ownership.
 - [ ] Parent components do not style child internals through `:deep()`.
 
 ## 9. Tokens and routing
@@ -105,6 +113,11 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 ## 10. State and rendering
 
+- [ ] Every supported state has one explicit source of truth and change path.
+- [ ] Consumer-controlled semantic state has no hidden parallel component-owned copy.
+- [ ] Browser/foundation interaction facts are acquired by the browser/foundation and mapped by the component rather than reimplemented as product state.
+- [ ] Component-owned transient state exists only for owned gesture, overlay, animation, or native coordination lifecycle.
+- [ ] Applicable transient state defines acquire, release, cancellation, disabled behavior, and unmount cleanup.
 - [ ] Created rendered-property matrix rows only for properties that vary.
 - [ ] Each row names DOM owner, applied/final value, route source, state inputs, winner rule, simultaneous outputs, and bridge.
 - [ ] Grouped rows only when all routing and ownership columns are identical, while listing every property and applied/final value.
@@ -153,7 +166,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 ## 13. Verification
 
-- [ ] Static validation covers canonical library location, dependency direction, public exports, no deep imports, foundation dependencies, selected profile, exact applicable layers, token names/owners, selectors, private boundaries, alias necessity, README consistency, and test-profile completeness.
+- [ ] Static validation covers canonical library location, family ownership basis, dependency direction, public exports, no deep imports, state/anatomy ownership, foundation dependencies, selected profile, exact applicable layers, token names/owners, selectors, private boundaries, alias necessity, README consistency, and test-profile completeness.
 - [ ] Product integration verifies component choice and composition when applicable.
 - [ ] Contract tests cover the supported public contract without asserting browser appearance or behavior.
 - [ ] Browser tests cover component-owned real focus, keyboard, pointer, gestures, overlays, adaptivity, computed CSS, public overrides, and actual property owners as applicable.
@@ -170,12 +183,13 @@ Use for every new, migrated, or materially changed public shared Material compon
 ## 14. Completion
 
 - [ ] Family README, library migration map, foundation/component registries, owner contracts, production code, public exports, Storybook, contract/browser/visual tests, risk registration, and snapshots agree.
+- [ ] Family boundary, state sources of truth, and anatomy/DOM owners are explicit.
 - [ ] Unsupported features and deviations are explicit.
 - [ ] No supported visual state route is missing from the state matrix.
 - [ ] Human Material visual review is passed or remains an explicit merge blocker.
 - [ ] No escalation condition was hidden as a local workaround.
 - [ ] No unrequested abstraction or flexibility remains.
-- [ ] No empty layer, unnecessary private alias, local foundation substitute, cross-family private import, permanent legacy export, family-local forced-state system, or test-only production API remains.
+- [ ] No hidden controlled-state copy, empty layer, unnecessary private alias, local foundation substitute, cross-family private import, permanent legacy export, family-local forced-state system, or test-only production API remains.
 - [ ] The supported surface is complete even if optional Material capabilities remain unsupported.
 
 Do not mark a component `aligned`, migrated, or architecture-complete until every applicable item passes or the missing item is explicitly recorded as unsupported, deviated, blocked, or follow-up verification. Human visual review cannot be replaced by an automated pass.
