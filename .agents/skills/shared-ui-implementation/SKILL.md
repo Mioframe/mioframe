@@ -1,6 +1,6 @@
 ---
 name: shared-ui-implementation
-description: 'Use before implementing or reviewing src/shared/ui primitives. For public MD* components, follows deterministic layered-v1 authoring, verified Material usage, accepted foundation dependencies, the smallest applicable file profile, source-backed API and anatomy, property-specific state resolution, explicit DOM ownership, and focused verification without speculative abstractions.'
+description: 'Use before implementing or reviewing src/shared/ui primitives. Enforces source-backed Material usage, accepted foundation dependencies, minimum component profiles, explicit DOM ownership, native semantics, and focused verification.'
 paths:
   - 'src/shared/ui/**'
   - 'src/shared/lib/md/**'
@@ -9,148 +9,94 @@ paths:
 
 # Shared UI implementation
 
-Use this skill for `src/shared/ui` work. Pair public Material component work with `material3-guidelines`, `docs/material-3/component-architecture.md`, and `docs/material-3/foundation-architecture.md`.
+Use for `src/shared/ui` work. Public Material components also follow `material3-guidelines`, `component-architecture.md`, and `foundation-architecture.md`.
 
-## Public Material authoring gate
+## Before production edits
 
-Before production edits, record one mode:
+Record `standard-authoring`, `handoff-authoring`, or `blocked`.
 
-- `standard-authoring`: derive the component blueprint from required scenarios, official Material documentation, repository rules, accepted foundation contracts, native semantics, and deterministic architecture rules;
-- `handoff-authoring`: follow a ready exact family-contract delta;
-- `blocked`: an escalation condition is present.
+For `standard-authoring`:
 
-A separate architect handoff is not required for normal source-backed component creation. Create or update the compact family README blueprint before production code and proceed only with `Unresolved: none` and `Readiness: ready`.
+1. read scoped rules, current family README, and applicable foundation-registry records;
+2. inspect named consumers and the nearest relevant shared component;
+3. read only relevant official component/foundation pages;
+4. derive the minimum supported surface and Material usage contract;
+5. declare foundation dependencies and any foundation delta;
+6. write the ready family blueprint;
+7. select the smallest component profile.
 
-Use `blocked` rather than inventing behavior when sources conflict, ownership crosses boundaries, a new public project extension is required, a required foundation domain is blocked, or new generic infrastructure appears necessary.
+Use `blocked` rather than inventing behavior, ownership, public extensions, generic infrastructure, or local foundation substitutes.
 
-## Bounded preparation
+## Component structure
 
-1. Read scoped rules, the current family README, and applicable foundation registry records.
-2. Inspect named consumers and the nearest relevant shared component.
-3. Read only relevant official Material component and foundation pages.
-4. Derive the minimum complete supported surface and Material usage contract.
-5. Record foundation dependencies and classify any foundation delta.
-6. Write the compact blueprint.
-7. Implement the smallest applicable profile.
+Use exactly one profile from `component-architecture.md`:
 
-Do not begin with broad repository exploration or unrelated component comparisons.
+- `simple`;
+- `configured`;
+- `stateful`;
+- `configured-stateful`.
 
-## Architecture profile
+Add token, route, state, family anatomy, behavior, composable, or context files only under their documented objective conditions. Empty or convenience-only layers are forbidden.
 
-Configuration routing and state resolution are independent. Apply the exact profile rules from `component-architecture.md`:
+## Usage and ownership
 
-- `simple`: neither routes nor state resolution;
-- `configured`: routes only;
-- `stateful`: state resolution only;
-- `configured-stateful`: routes and state resolution;
-- add a component token file only when the component owns at least one exact official token;
-- add a family token file only under the documented multi-component ownership condition.
+The family blueprint records intended/prohibited usage, composition, placement, adaptivity, and product integration.
 
-Do not create empty token, route, or state layers for symmetry. Do not merge a required layer into another file.
+Components own public API, native semantics, anatomy, component behavior, tokens, property routing, and rendering. Product layers own information architecture, component choice, placement, workflow, and adaptive composition.
 
-Optional family anatomy, behavior, composable, or context files are allowed only under objective architecture conditions. Similar code or possible reuse is insufficient.
-
-## Material usage and composition
-
-A component README blueprint must state intended usage, prohibited usage, content/action hierarchy, allowed Material compositions, placement constraints, adaptive owner, and whether product integration is part of the PR.
-
-The component owns its public surface and anatomy. Product layers own information architecture, selection of the component, placement, and adaptive composition.
-
-Do not add product-specific placement or workflow behavior to a shared component to satisfy one consumer.
+Do not add product-specific behavior to a shared primitive for one consumer.
 
 ## Foundation dependencies
 
-Use `foundation-registry.md` as the current status source.
+Consume the owners named by `foundation-registry.md`.
 
-- Consume the named foundation owner when its accepted contract is sufficient.
-- Keep generic foundation bridges free of component-family knowledge.
-- Map family values into generic bridges from the component state layer.
-- Do not copy theme, typography, motion, focus, ripple, state, icon, overlay, unit, density, accessibility, or adaptive behavior into a component-local substitute.
-- Keep a foundation delta in the component PR only when it is source-backed, additive, backward-compatible, has one clear existing owner, introduces no new lifecycle/context/dependency, and fits focused verification.
-- Treat foundation corrections and replacements as focused architecture work with full consumer impact unless an explicit handoff approves a small inseparable combined change.
-- Update the foundation registry, owner contract, code, tests, and component blueprint atomically when a foundation contract changes.
+Do not recreate theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, density, accessibility, overlay, or adaptive behavior locally.
 
-A partial foundation domain is usable only when the exact required capability is already accepted and the relevant gap does not affect the supported component surface.
+Generic foundation bridges remain component-agnostic. Component families map final values into those bridges.
 
-## Vue and DOM ownership
+A foundation additive delta may share the component PR only under the strict conditions in `foundation-architecture.md`. Corrections and replacements require consumer-impact review and normally a focused PR.
+
+## Vue and DOM
 
 - Keep typed props, emits, slots, small named computeds, runtime fact acquisition, native bindings, events, and anatomy in Vue.
 - Keep `href`, `type`, `disabled`, `tabindex`, `role`, and `aria-*` explicit on the native owner.
-- Prefer native button, link, input, and form behavior. Do not synthesize activation to repair unsuitable DOM.
-- Use controlled fallthrough attrs only when necessary; component-owned DOM-critical attrs remain explicit.
-- Use small named computeds rather than inline boolean algebra, topology objects, render plans, or broad options objects.
+- Prefer native activation and form behavior.
+- Use controlled fallthrough attrs only when necessary.
+- Avoid inline boolean algebra, topology objects, render plans, and broad options objects.
 - Vue acquires runtime facts; CSS resolves visual values.
 
-## Public API
+## Styling
 
-Derive the smallest coherent public API:
+- Token files own exact official component-token defaults only.
+- Route files own configuration selection only.
+- State files own property-specific semantic/interaction resolution and state-varying foundation bridges.
+- Rendering files apply final values to actual DOM owners.
+- Static values use canonical sources directly; configured non-stateful values may use routes directly.
+- Rendered private variables exist only for state-resolved output or stable generic bridge input.
+- Do not use one state precedence for all properties, `:deep()` into another component, or family-private contracts outside the family.
 
-- add props only for requested Material configuration, semantic state, required native behavior, or explicit project extensions;
-- use official Material vocabulary and values;
-- add slots only for supported consumer-provided anatomy;
-- emit only component-owned state changes or actions;
-- do not expose private anatomy, token routes, foundation bridges, test controls, or speculative flexibility;
-- update in-repository consumers instead of keeping compatibility aliases by default.
+## Public API and extraction
 
-If Material guidance does not determine invalid-combination behavior, use `blocked` rather than inventing normalization.
+Expose only supported Material configuration, semantic state, required native behavior, consumer anatomy, and explicit extensions. Update in-repository consumers instead of retaining aliases by default.
 
-Wrapper components call the current shared UI API directly or expose a wrapper-owned domain-intent prop. Do not preserve removed shared-component props as wrapper compatibility aliases unless an existing consumer contract explicitly requires it.
+Extract behavior only when current ownership requires it. Similar syntax, line count, or possible reuse is insufficient.
 
-## Styling ownership
+Do not create a universal Material base, runtime token registry, generic resolver, CSS DSL, cross-family state machine, or second theme/overlay system.
 
-- Token files contain only exact official `--md-comp-*` defaults on approved roots and never depend on active configuration or state.
-- Route files select configuration values only.
-- State files resolve semantic and interaction state independently per property and map state-varying generic foundation bridges.
-- Rendering files apply final values to actual DOM owners and own layout, geometry, transitions, and presentation.
-- Static properties apply canonical or documented sources directly; configured non-stateful properties may apply route variables directly.
-- Create a rendered private value only for state-resolved output or when a generic bridge needs a stable final input.
-- Do not apply one state precedence to every property.
-- Do not rely on inheritance when the blueprint names a more specific owner.
-- Do not use `:deep()` to style another component's internal anatomy.
-- Consumers outside a family must not read family-private variables or target internal classes.
-
-## Generic foundations
-
-Generic state-layer, ripple, focus-indicator, elevation, motion, icon, overlay, and layout primitives expose only their accepted generic contracts. The consuming family maps final values or composes the capability without moving family routes into the foundation.
-
-Do not create a generic Material base, runtime token registry, token resolver, CSS DSL, cross-family state machine, or second overlay/theme system.
-
-## Behavior extraction
-
-Keep behavior local unless an objective extraction condition applies:
-
-- `<Component>Behavior.ts` only for non-trivial keyboard, pointer, gesture, timing, or cleanup transitions requiring focused unit tests;
-- a composable only when the same production behavior is required by at least two public components now;
-- family context only for real public parent/child composition state that cannot use the existing contract cleanly;
-- a new foundation primitive only under the objective expansion rules in `foundation-architecture.md`.
-
-Line count or duplicated syntax alone does not justify extraction.
-
-## Browser-specific CSS
-
-- Author standard CSS properties when a standard form exists. Do not hand-write vendor prefixes for standard properties.
-- Prefixing and compatibility transforms belong to the build pipeline. Fix or verify the pipeline rather than routing around it in component source.
-- When a standard property does not produce the required result in a pinned browser, use a browser-neutral supported fallback that preserves the contract.
-- A genuinely vendor-only API with no standard equivalent is a separate narrow case and must not become precedent for compatibility hacks.
-
-## Typography
-
-Use `MD_TYPESCALE` constants and `.md-typescale-*` classes from `shared/lib/md` for Material typography. Do not hand-author type-scale declarations in component CSS unless changing the typography foundation contract itself.
+Use shared typography utilities. Author standard CSS; compatibility transforms belong to the build pipeline.
 
 ## Verification
 
-Use the smallest proof set covering the supported surface:
+Use the smallest applicable proof set:
 
-- component-choice and composition evidence for integrated consumers;
-- component contract tests for API, native semantics, ARIA, invalid combinations, and component-owned behavior;
-- foundation dependency and registry consistency checks;
-- architecture validation for profile, exact applicable layers, token ownership, private boundaries, and alias necessity;
-- browser checks for focus, keyboard, pointer, gestures, overlays, adaptivity, computed CSS, public overrides, and actual property owners;
-- matrix checks for reachable property resolvers and simultaneous outputs;
-- representative Storybook and visual coverage for materially different geometry or appearance;
-- one preservation check per changed existing consumer;
-- representative consumer checks for every foundation correction or replacement path.
+- component-choice/composition evidence for integrated consumers;
+- contract tests for API, semantics, ARIA, and component-owned behavior;
+- foundation dependency/registry consistency;
+- architecture and token ownership validation;
+- browser checks for focus, keyboard, pointer/touch, overlays, adaptivity, computed CSS, and actual owners;
+- property-matrix checks;
+- representative Storybook/visual coverage;
+- changed-consumer preservation;
+- representative consumer checks for foundation corrections/replacements.
 
-Do not test Vue, browser, or generic foundation internals the component does not own.
-
-Before completion, verify that family README, foundation/component registries, owner contracts, production code, Storybook, and tests agree. Do not report completion with empty layers, unnecessary aliases, known violations, unsupported claims, local foundation substitutes, parallel obsolete logic, or unrequested abstractions.
+Before completion, family README, foundation/component registries, owner contracts, code, Storybook, and tests must agree. No empty layers, unnecessary aliases, local foundation substitutes, parallel obsolete paths, or speculative abstractions may remain.
