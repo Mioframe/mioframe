@@ -1,104 +1,124 @@
 # Material component testing architecture
 
-This document defines the mandatory testing contract for new, migrated, and materially changed public components in the Mioframe Material library.
+This document defines the mandatory testing contract for public components in the Mioframe Material library.
 
-It complements `component-architecture.md`: component architecture owns production structure and rendered-property resolution; this document owns test-layer separation, canonical Storybook state coverage, visual regression, and manual visual review.
+It complements `component-architecture.md`: component architecture owns production structure and the complete family blueprint; this document owns test-layer separation, canonical Storybook visual-state coverage, visual regression, and human visual review.
 
-The goal is consistent proof across component families without duplicating browser, Vue, or foundation internals. Every component follows the same test layers, while each layer covers only behavior owned by that component.
+## Applicability
+
+### New component
+
+Create the complete standard test profile.
+
+### First library migration
+
+Create or consolidate the complete standard test profile and canonical `StateMatrix`.
+
+### Later material change to a migrated component
+
+Update every affected contract, browser, visual, pure-behavior, consumer, and review artifact. Do not recreate unaffected coverage.
+
+### Strict local repair to an unmigrated component
+
+The full profile is not required only when `Architecture impact: none` is valid and the existing testing surface is preserved. A public contract, state-model, foundation, or visual-contract change requires migration or an explicit architecture handoff.
 
 ## Required test profile
 
-Every new or migrated public Material component records this profile in its family README:
+Every new or migrated public Material component records these layers in the canonical family blueprint:
 
-| Layer                   | Required artifact                                 | Purpose                                                                                                                                |
-| ----------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Architecture validation | verify-managed static checks                      | Location, dependency direction, profile, tokens, layers, state-matrix coverage, and registry consistency.                              |
-| Component contract      | colocated `<Component>.test.ts`                   | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and structural wiring that does not require a browser. |
-| State matrix            | Storybook `StateMatrix` story                     | Human-readable visual reference containing every supported visual state and every distinct state-rendering route.                      |
-| Visual regression       | Playwright screenshot of the state matrix         | Detect unintended rendered changes and provide a stable diff for human review.                                                         |
-| Browser behavior        | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-dependent behavior owned by the component.                |
-| Pure behavior           | focused Vitest tests when applicable              | Extracted pure helpers, composables, state transitions, timing decisions, or cleanup logic.                                            |
+| Layer | Required artifact | Purpose |
+| --- | --- | --- |
+| Architecture validation | enforceable static/structured checks | Location, dependency direction, profile files, tokens, exports, blueprint sections, and test-artifact consistency. |
+| Component contract | colocated `<Component>.test.ts` | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and non-browser structural wiring. |
+| State matrix | one Storybook export named `StateMatrix` | Human-readable reference for every distinct supported component-owned visual route. |
+| Visual regression | Playwright screenshot of the state matrix | Detect unintended rendered changes and provide a stable diff for review. |
+| Browser behavior | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-owned behavior. |
+| Pure behavior | focused Vitest tests when applicable | Extracted helpers, composables, transitions, timing, cancellation, and cleanup logic. |
+| Consumer preservation | focused checks when consumers changed | Existing usage, imports, and product-visible behavior remain valid. |
 
-A layer is not replaced by another layer. In particular:
+A layer does not replace another:
 
-- a screenshot does not prove semantics or interaction behavior;
-- a Vue component test does not prove browser layout, focus, pointer, or visual output;
-- a forced visual state does not prove that real user input reaches that state;
-- green automated checks do not prove that a baseline visually matches Material guidance.
+- screenshots do not prove semantics or interaction behavior;
+- Vue component tests do not prove browser layout, focus, pointer, or appearance;
+- forced visual states do not prove real acquisition, release, cancellation, or cleanup;
+- green automation does not prove that an accepted baseline matches Material.
 
 ## Source of test cases
 
-Test cases derive from the accepted family blueprint, not from implementation details.
-
-The minimum source set is:
+Test cases derive from the accepted family blueprint:
 
 1. supported Material surface;
 2. public API and native semantics;
-3. semantic states;
-4. interaction states;
-5. rendered-property matrix;
-6. foundation dependency table;
-7. documented extensions and deviations;
-8. existing consumer contracts affected by the change.
+3. anatomy and DOM ownership;
+4. semantic and interaction states;
+5. state ownership;
+6. rendered-property matrix;
+7. foundation dependencies;
+8. extensions and deviations;
+9. affected consumer contracts.
 
-Do not create tests for unsupported optional Material capabilities. Do not omit a reachable supported state merely because it is difficult to display or automate.
+Do not test unsupported optional capabilities. Do not omit a reachable supported contract because it is difficult to automate; place it at the correct proof layer.
 
 ## Component contract tests
 
-Use `@vue/test-utils` for the colocated `<Component>.test.ts` file.
+Use `@vue/test-utils` for the colocated `<Component>.test.ts`.
 
 Cover applicable stable contracts:
 
 - canonical defaults;
-- public configuration props;
-- supported semantic-state props;
+- public configuration and semantic-state props;
 - native element selection;
 - explicit `href`, `type`, `disabled`, `tabindex`, `role`, and `aria-*` ownership;
 - slots and fixed anatomy;
 - emits and controlled-state behavior;
-- invalid combinations and normalization explicitly accepted by the blueprint;
-- component-to-foundation wiring that can be asserted without browser rendering;
-- public project extensions.
+- invalid combinations and only the normalization accepted by the blueprint;
+- component-to-foundation wiring that does not require browser rendering;
+- public Mioframe extensions.
 
-Do not assert CSS appearance, layout, computed style, focus-visible behavior, pointer state, ripple, overlay lifecycle, or browser actionability in component contract tests.
+Do not assert:
 
-Prefer contract assertions over internal DOM snapshots. Do not snapshot the complete Vue-rendered tree as a substitute for named expectations.
+- CSS appearance or computed style;
+- layout or geometry;
+- focus-visible acquisition;
+- pointer/touch behavior;
+- ripple or overlay lifecycle;
+- browser actionability.
+
+Prefer named contract assertions over complete rendered-tree snapshots.
 
 ## Browser behavior tests
 
-Use isolated Storybook stories and Playwright under `tests/e2e/storybook` for behavior requiring a browser.
+Use isolated Storybook stories and Playwright under `tests/e2e/storybook`.
 
-Test only behavior owned by the component:
+Test only behavior owned or constrained by the component:
 
-- real keyboard activation and navigation;
-- real focus entry, movement, visibility, and restoration;
-- pointer, touch, drag, and gesture behavior;
-- expanded target areas and actual hit testing;
-- overlay, teleport, escape/back, outside-interaction, and containment behavior;
+- native and custom keyboard activation/navigation;
+- focus entry, movement, visibility, and restoration;
+- pointer, touch, drag, gesture, capture, cancellation, and cleanup;
+- expanded target-area hit testing;
+- overlay, teleport, escape/back, outside interaction, and containment;
 - responsive or container-dependent component behavior;
-- actual DOM property owners when browser rendering is required;
-- motion completion or reduced-motion behavior when it is part of the component contract.
+- actual property ownership when browser rendering is required;
+- motion completion and reduced-motion behavior when contractual.
 
-Drive the component through public inputs and real browser actions. Do not use forced visual-state providers, synthetic internal events, component methods, Vue internals, or direct state mutation to prove behavior.
+Drive behavior through public inputs and real browser actions. Do not use forced-state providers, direct Vue mutation, component methods, or synthetic internal events to prove behavior.
 
-A component with no browser-owned behavior may record `Browser behavior: not applicable` with the reason. Native behavior still requires a focused check when the component changes or constrains it.
+A component with no browser-owned behavior may record `not applicable` with an ownership-based reason. Native behavior still receives a focused browser check when the component changes or constrains it.
 
-## State matrix story
+## Canonical `StateMatrix`
 
 Every new or migrated public Material component has exactly one canonical Storybook export named `StateMatrix`.
 
 Its purpose is:
 
-- manual inspection of the complete supported visual state surface;
-- initial comparison with official Material guidance;
+- manual inspection of the complete supported visual-state surface;
+- initial comparison with official Material documentation and, when required, the official Design Kit;
 - review of intentional visual changes;
 - one deterministic visual-regression entry point.
 
-The story may be implemented inline in `<Component>.stories.ts` or extracted to `<Component>StateMatrixStory.vue` when the template would otherwise obscure the component stories. Extraction is a Storybook fixture decision, not a production abstraction.
+The story may be inline in `<Component>.stories.ts` or extracted to `<Component>StateMatrixStory.vue` when the fixture would obscure ordinary stories. Extraction is a Storybook fixture decision, not a production abstraction.
 
-### Story identity
-
-Use:
+### Stable identity
 
 ```text
 Story export: StateMatrix
@@ -106,128 +126,130 @@ Root anchor: data-testid="visual-<component-kebab>-state-matrix"
 Outer class: visual-checker-backdrop
 ```
 
-Keep the story id and root anchor stable after acceptance. Update the visual spec and snapshots atomically when a rename is unavoidable.
+Keep story id and root anchor stable after acceptance. Rename only with matching visual-spec and snapshot updates.
 
-### Matrix axes
+### Coverage rule
 
-The matrix is exhaustive by supported visual state, not by every possible content/configuration combination.
+The matrix covers visual contracts, not every state name.
 
-Columns normally represent interaction or terminal states:
+It must include:
+
+1. every supported state that changes component-owned visible output;
+2. every distinct visible route from the rendered-property matrix;
+3. every disabled/unavailable appearance that differs visually;
+4. every simultaneous-state combination with a distinct visible winner or coexistence result;
+5. every extension or deviation that changes visible output.
+
+A semantic, interaction, or lifecycle state with no distinct component-owned visible output does not require a matrix cell. Its contract remains covered by component or browser behavior tests.
+
+Do not build the full Cartesian product. Routes may share a cell only when the blueprint confirms identical visible properties, owners, sources, winner/coexistence rules, and foundation bridges.
+
+The family blueprint contains the canonical coverage table:
+
+| Visible route/group | Supported state/configuration | Distinct visible output | Matrix section/row/column |
+| --- | --- | --- | --- |
+
+`Readiness: ready` is invalid when a supported distinct visual route has no matrix location.
+
+### Axes
+
+Columns normally represent visually distinct interaction or terminal appearances:
 
 - resting/default;
-- hover, when supported;
-- focus-visible, when supported;
-- pressed, when supported;
-- dragged, when supported;
-- disabled, when supported;
-- other component-owned interaction states such as loading/open when they produce a distinct visual result.
+- hover;
+- focus-visible;
+- pressed;
+- dragged;
+- disabled;
+- visually distinct open/loading/active appearances.
 
-Rows normally represent the minimum cases needed to cover distinct visual routes:
+Rows normally represent the minimum configurations required to cover different visual routes:
 
-- configuration variants whose state tokens or rendered properties differ;
-- semantic states such as selected/unselected, checked/unchecked, error/normal, expanded/collapsed;
-- anatomy modes that change state output;
-- shape or elevation modes when state resolution differs;
-- documented project extensions with a distinct visual state contract.
+- variants whose state tokens or rendered properties differ;
+- semantic configurations such as selected/unselected or error/normal when appearance differs;
+- anatomy modes changing state output;
+- shape/elevation modes changing state resolution;
+- documented extensions with distinct visual contracts.
 
-Sizes, labels, icon choices, and content lengths do not receive separate matrix rows unless they change state routing, state geometry, or an actual property owner. Cover ordinary geometry/configuration breadth in separate `Variants`, `Sizes`, or `Configurations` stories.
-
-This refines the component architecture's representative-visual rule: configuration rows remain minimal and representative, while supported visual states and distinct state routes are exhaustive.
-
-### Completeness rule
-
-The state matrix must cover:
-
-1. every supported semantic state;
-2. every supported interaction state;
-3. every disabled or unavailable state;
-4. every distinct state route in the rendered-property matrix;
-5. every simultaneous state combination with a distinct winner or coexistence result;
-6. every documented extension or deviation that changes visual state output.
-
-Do not build the full Cartesian product. Two cells may represent multiple equivalent routes only when the family blueprint proves that the same properties, owners, sources, winner rules, and foundation bridges apply.
-
-The family README records a concise `State matrix coverage` table mapping each supported state route or grouped equivalent route to its visible matrix row and column. `Readiness: ready` is invalid when a supported visual route has no matrix cell.
+Sizes, labels, icons, and content lengths receive rows only when they change state routing, state geometry, or a property owner. Ordinary breadth belongs in `Variants`, `Sizes`, or `Configurations` stories.
 
 ### Human-readable layout
 
-A reviewer must be able to understand every cell without reading source code.
+A reviewer must understand every cell from the screenshot.
 
 Required:
 
 - visible column headings;
 - visible row headings;
-- a visible section heading when one component requires multiple bounded matrices;
+- visible section headings for multiple bounded sections;
 - consistent cell dimensions and alignment;
-- fixture-only labels outside the production component when its own visible content does not identify the case;
-- identical representative content across cells unless content/anatomy is the tested axis.
+- fixture-only labels for ambiguous or icon-only cases;
+- consistent representative content unless content/anatomy is the tested axis.
 
-Do not rely only on tooltips, accessible names, test IDs, CSS classes, source order, or Storybook controls to identify cases.
+Do not rely only on accessible names, tooltips, test ids, CSS classes, source order, or controls.
 
-Fixture labels must not change the component's internal layout or obscure focus indicators, state layers, elevation, outlines, or target areas.
+Fixture labels must not alter the production component layout or obscure focus indicators, state layers, elevation, outlines, or target areas.
 
 ### Deterministic visual states
 
-The matrix may use accepted verification-only foundation adapters to render hover, focus, pressed, dragged, or other transient states deterministically.
+The matrix may use accepted verification-only foundation adapters for generic transient visual facts such as hover, focus-visible, pressed, or dragged.
 
 Rules:
 
-- verification adapters are not public component props or product APIs;
-- adapters belong to the owning foundation testing surface, not to each component family;
-- component code must not contain branches that exist only for the matrix;
-- semantic and disabled states use the real public component contract;
-- when a visual state cannot be represented accurately by an accepted adapter, the Playwright visual setup reaches it with real browser input before capture;
-- forced states prove appearance only; separate browser tests prove acquisition and release behavior.
+- adapters are not public component props or product APIs;
+- adapters belong to the owning foundation testing surface;
+- component production code contains no matrix-only branches;
+- semantic and disabled appearance uses the public component contract;
+- when no accepted adapter can accurately represent the appearance, Playwright reaches the state with real input before capture;
+- forced state proves appearance only.
 
-Missing generic verification capability is classified through the foundation workflow. Do not add family-local forced-state systems.
+A missing generic verification capability follows the foundation workflow. Do not add a family-local forced-state system.
 
 ### Themes and contexts
 
-The canonical state matrix uses the accepted default deterministic theme context.
+Use the accepted deterministic default theme.
 
-Add another theme, surface, contrast, density, or container-context section only when:
+Add another theme, surface, density, contrast, or container section only when:
 
-- the component supports that context as part of its current contract; and
-- the context changes component-owned visual output or a required foundation route.
+- that context belongs to the current supported contract; and
+- it changes component-owned visible output or a required foundation route.
 
-Do not multiply every matrix by hypothetical themes or contexts. A foundation correction affecting all components uses representative consumers according to foundation verification rules.
+Do not multiply matrices by hypothetical contexts. Foundation corrections use representative consumers.
 
-## Visual regression test
+## Visual regression
 
-Every canonical `StateMatrix` story has a Playwright visual test under the Material visual suite.
+Every canonical `StateMatrix` has a Playwright visual test.
 
-For new and migrated families, prefer:
+Preferred location for new and migrated families:
 
 ```text
 tests/e2e/visual/material/<family>.spec.ts
 ```
 
-Legacy visual specs may remain in their current location until that family migrates.
-
 The visual test:
 
-1. opens the canonical `StateMatrix` story;
-2. waits for fonts, icons, async rendering, and deterministic state setup;
-3. screenshots the bounded matrix root or bounded sections;
+1. opens the canonical story;
+2. waits for fonts, icons, asynchronous rendering, and deterministic state setup;
+3. screenshots the bounded matrix root or visibly labelled bounded sections;
 4. uses stable Linux/Chromium baselines;
-5. names snapshots by component and matrix section;
-6. contains no business or interaction assertions.
+5. names snapshots by component and section;
+6. contains no business or behavior assertions.
 
-Prefer one screenshot for the complete bounded matrix. When the complete story would produce an unreadably large image, keep one `StateMatrix` story but screenshot its visibly labelled bounded sections separately. Do not create one snapshot per cell.
+Prefer one complete bounded screenshot. Split into labelled sections only when the complete image would be unreadable. Do not create one snapshot per cell.
 
-The screenshot baseline is a regression reference, not proof of Material correctness. Initial baselines and intentional updates require human inspection against the checked official Material sources.
+A screenshot baseline is a regression reference, not proof of Material correctness.
 
-## Manual visual review gate
+## Human visual review
 
-Human review of the state matrix is required when a PR:
+Human comparison with named official sources is required when a PR:
 
-- creates a new component;
-- migrates a component without an accepted complete state matrix;
-- changes component tokens, state routing, shape, color, elevation, typography, icon geometry, focus indicator, state layer, ripple, motion, or layout;
-- intentionally updates a state-matrix baseline;
-- changes an applicable foundation contract that affects the component's rendered output.
+- creates a component;
+- creates the first complete matrix during migration;
+- changes tokens, visible state routing, shape, color, elevation, typography, icon geometry, focus indicator, state layer, ripple, motion, or layout;
+- intentionally updates a matrix baseline;
+- changes an applicable foundation contract with rendered impact.
 
-The PR verification report records:
+The PR reports:
 
 ```text
 State matrix story: <story id>
@@ -236,57 +258,81 @@ Automated visual baseline: passed | updated and inspected | not applicable (<rea
 Human Material visual review: required | passed | blocked (<reason>)
 ```
 
-A coding agent may create the matrix and automated evidence, but must not claim that a human reviewed visual correctness. Until a human reviewer approves the relevant matrix or diff, report `Human Material visual review: required`.
+An automated coding agent must never report human review as passed.
 
-A relocation-only change with an unchanged accepted matrix and no screenshot diff may record that no new manual visual comparison is required.
+After acceptance, the family blueprint persists:
+
+```text
+Last accepted visual review: <PR/date>
+Source snapshot: <documentation and Design Kit snapshot>
+```
+
+A relocation-only change with an unchanged accepted matrix and no screenshot diff does not require a new visual comparison.
 
 ## Storybook organization
 
-A component's canonical story set should normally contain:
+A component story set normally contains:
 
 - `Overview` or `Default`;
-- `Variants`/`Configurations`/`Sizes` only for supported axes;
+- `Variants`, `Configurations`, or `Sizes` only for supported axes;
 - `StateMatrix`;
-- focused behavior fixtures that browser tests need;
-- usage, accessibility, tokens, unsupported surface, and deviations in docs.
+- focused browser-behavior fixtures;
+- docs for usage, accessibility, tokens, unsupported surface, extensions, and deviations.
 
-Do not create separate `VisualStates` and `VisualInteractionStates` stories for new or migrated components when one labelled `StateMatrix` can represent the complete supported state surface. Legacy stories may remain until family migration, then consolidate them unless a bounded section must remain separate for readability or browser setup.
+Do not retain separate `VisualStates` and `VisualInteractionStates` stories after migration when one labelled matrix can represent the visual contract clearly.
 
-## Consistency and reuse
+## Reuse and anti-overengineering
 
-Use shared Storybook-only layout styles for matrix rows, columns, headings, cells, and checkerboard backdrop.
+Reuse existing Storybook-only layout styles.
 
-Do not create a production `MDStateMatrix` component, generic component-test DSL, runtime state registry, or component API only to standardize fixtures.
+Do not create:
 
-A shared Storybook fixture component or typed case helper may be introduced only after at least two migrated component families demonstrate the same concrete need and the helper reduces total fixture complexity without hiding the rendered cases.
+- a production `MDStateMatrix`;
+- a runtime state registry;
+- a generic component-test DSL;
+- public test-only props, events, classes, or branches;
+- one family-specific forced-state provider.
 
-## Validation
+A shared Storybook fixture component or typed case helper may be introduced only after at least two migrated families demonstrate the same concrete need and the helper reduces total complexity without hiding rendered cases.
 
-Verify-managed checks should identify:
+## Validation ownership
 
-- a new or migrated component without a colocated contract test;
-- a new or migrated component without exactly one `StateMatrix` export;
-- a state matrix without the canonical root anchor and checkerboard backdrop;
-- a supported state or distinct state route missing from README matrix coverage;
-- a matrix cell that cannot be identified from visible headings/labels;
-- family-local forced-state infrastructure;
-- visual state assertions implemented in Vitest or Vue Test Utils;
-- browser behavior proved only through forced visual state;
-- a state-matrix story without a visual Playwright assertion;
-- a baseline update without recorded inspection;
-- a claim of human review made by an automated agent;
-- test files or risk registries not updated during family migration.
+### Static/structured automation
+
+Automation may verify:
+
+- required test artifacts exist;
+- exactly one `StateMatrix` export exists;
+- stable root anchor and checkerboard class exist;
+- visual spec opens the canonical story;
+- snapshot organization is bounded rather than one-per-cell;
+- coverage-table sections and visible labels are present structurally;
+- behavior specs do not use forced-state providers;
+- no test-only production API or family-local forced-state owner exists;
+- risk registration and migration paths are consistent.
+
+### Review blocking
+
+Human/architect review confirms:
+
+- the coverage table includes all distinct visible routes;
+- grouped routes are truly visually equivalent;
+- cells are readable and correctly labelled;
+- official visual sources are sufficient;
+- the baseline matches Material or an accepted deviation;
+- test ownership is proportionate and does not duplicate framework/browser behavior.
+
+Automation must not infer these semantic or visual conclusions from free-form Markdown or screenshots alone.
 
 ## Completion
 
 Component verification is complete only when:
 
-- the required test profile is recorded and all applicable layers exist;
+- the applicable test profile is recorded and implemented;
 - contract tests cover the accepted public contract;
-- browser tests cover component-owned browser behavior;
-- the state matrix covers every supported visual state route;
-- the state-matrix visual regression passes;
-- visual changes are available for human inspection;
-- required human Material visual review is passed or explicitly remains a merge blocker;
-- tests do not duplicate framework, browser, or foundation behavior outside component ownership;
-- family README, stories, test files, risk registration, snapshots, and production code agree.
+- browser tests cover real component-owned browser behavior;
+- the matrix covers every distinct supported visual route;
+- visual regression passes;
+- required human visual review is passed or remains an explicit merge blocker;
+- tests do not duplicate framework, browser, foundation, or product ownership;
+- blueprint, stories, specs, snapshots, risk registration, consumers, and production code agree.
