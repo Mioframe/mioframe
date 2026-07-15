@@ -14,6 +14,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 ## 2. Required scope
 
 - [ ] Started from named user scenarios and affected existing consumers.
+- [ ] When no scenario was supplied, used only canonical Material default usage and kept optional capabilities unsupported.
 - [ ] Chose an official Material component or documented composition.
 - [ ] Included one canonical Material default.
 - [ ] Added optional variants, sizes, shapes, modes, anatomy, or behavior only for named scenarios.
@@ -32,10 +33,11 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 ## 4. Minimum architecture profile
 
-- [ ] Selected the smallest profile whose objective conditions apply.
-- [ ] `simple` has Vue and rendering layers only.
-- [ ] `configured` adds routes only when configuration selects different values.
-- [ ] `stateful` adds state resolution only when semantic, interaction, disabled, gesture, or foundation-bridge state changes a property.
+- [ ] Selected exactly one smallest profile whose objective conditions apply.
+- [ ] `simple` has neither configuration routes nor state resolution.
+- [ ] `configured` has routes but no state resolution.
+- [ ] `stateful` has state resolution but no configuration routes.
+- [ ] `configured-stateful` has both routes and state resolution.
 - [ ] Added `<Component>.tokens.css` only when the component owns at least one exact official token.
 - [ ] Added `<Family>.tokens.css` only for exact shared official paths consumed by at least two public family components.
 - [ ] No empty token, route, or state file exists for symmetry.
@@ -60,8 +62,8 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Components with no owned official tokens have no empty component token file.
 - [ ] Token files declare the complete supported override surface independently of active configuration and state.
 - [ ] Token files contain no configuration modifiers, state selectors, pseudo-classes, private/app declarations, or rendering properties.
-- [ ] Routes select configuration values only.
-- [ ] Missing official paths use documented private, system, or app-owned routes rather than invented component tokens.
+- [ ] Routes exist only when configuration selects different values.
+- [ ] Missing official paths use documented private, system, or app-owned sources rather than invented component tokens.
 - [ ] Available component tokens are not bypassed by direct system-token values.
 - [ ] Family-private variables do not escape the family.
 - [ ] Generic foundations read only generic private contracts.
@@ -69,9 +71,13 @@ Use for every new, migrated, or materially changed public shared Material compon
 ## 7. State and rendering
 
 - [ ] Created matrix rows only for properties that vary.
-- [ ] Each row names DOM owner, final value, applicable route sources, interaction inputs, winner rule, simultaneous outputs, and bridge.
+- [ ] Each row names DOM owner, applied/final value, route source, state inputs, winner rule, simultaneous outputs, and bridge.
+- [ ] Grouped rows only when all routing and ownership columns are identical, while listing every property and applied/final value.
 - [ ] State resolution is property-specific; no global precedence is applied to every property.
 - [ ] Independent outputs coexist as documented.
+- [ ] Static properties apply canonical/documented sources directly without private aliases.
+- [ ] Configured non-stateful properties may apply route variables directly.
+- [ ] Rendered private variables exist only for state-resolved output or a stable generic bridge input.
 - [ ] Final values are applied to actual DOM property owners.
 - [ ] Vue acquires runtime facts while CSS resolves visual state.
 - [ ] Rendering CSS owns layout, geometry, presentation, transitions, and final property application only.
@@ -88,7 +94,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 ## 9. Verification
 
 - [ ] Contract tests cover supported API, native semantics, ARIA, invalid combinations, states, and extensions.
-- [ ] Static validation covers the selected profile, exact applicable layers, token names/owners, selectors, private boundaries, and README consistency.
+- [ ] Static validation covers the selected profile, exact applicable layers, token names/owners, selectors, private boundaries, alias necessity, and README consistency.
 - [ ] Browser tests cover focus, keyboard, pointer, gestures, computed CSS, public overrides, and actual property owners as applicable.
 - [ ] Every reachable property-matrix route and simultaneous-output case is verified.
 - [ ] Storybook documents supported and unsupported surface, extensions, and deviations.
@@ -103,7 +109,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Unsupported features and deviations are explicit.
 - [ ] No escalation condition was hidden as a local workaround.
 - [ ] No unrequested abstraction or flexibility remains.
-- [ ] No empty architecture layer remains.
+- [ ] No empty layer or unnecessary private alias remains.
 - [ ] The supported surface is complete even if optional Material capabilities remain unsupported.
 
 Do not mark a component `aligned` or architecture-complete until every applicable item passes or the missing item is explicitly recorded as unsupported, deviated, blocked, or follow-up verification.
