@@ -168,8 +168,10 @@ export const FocusIndicatorTarget: Story = {
       useFocusIndicator();
     },
     template: `
-      <div id="visual-md-fab-focus-indicator" style="position: fixed; inset: auto 12px 12px auto;">
+      <div class="visual-checker-backdrop" style="position:fixed;inset:0;">
+        <div id="visual-md-fab-focus-indicator" style="position:absolute;inset:auto 12px 12px auto;">
         <MDFab id="storybook-md-fab-focus" tooltip="Focus target" color="primary-container" md-symbol="add" />
+        </div>
       </div>
     `,
   }),

@@ -155,8 +155,10 @@ export const FocusIndicatorTarget: Story = {
       useFocusIndicator();
     },
     template: `
-      <div id="visual-md-button-focus-indicator" style="position: fixed; inset: auto 12px 12px auto;">
+      <div class="visual-checker-backdrop" style="position:fixed;inset:0;">
+        <div id="visual-md-button-focus-indicator" style="position:absolute;inset:auto 12px 12px auto;">
         <MDButton id="storybook-md-button-focus" label="Focus target" color="filled" />
+        </div>
       </div>
     `,
   }),
@@ -424,11 +426,13 @@ export const TokenRoutingMatrix: Story = {
               label="Outlined hover"
               color="outlined"
               style="
+                --md-comp-button-outlined-hovered-label-text-color: rgb(0 128 0);
+                --md-comp-button-outlined-hovered-icon-color: rgb(255 0 0);
                 --md-comp-button-outlined-hovered-outline-color: rgb(120 10 10);
                 --md-comp-button-outlined-hovered-state-layer-color: rgb(255 0 200);
                 --md-comp-button-outlined-hovered-state-layer-opacity: 0.03;
               "
-            />
+            ><template #icon>+</template></MDButton>
           </MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused>
             <MDButton
@@ -437,11 +441,13 @@ export const TokenRoutingMatrix: Story = {
               label="Outlined focus"
               color="outlined"
               style="
+                --md-comp-button-outlined-focused-label-text-color: rgb(0 0 255);
+                --md-comp-button-outlined-focused-icon-color: rgb(255 165 0);
                 --md-comp-button-outlined-focused-outline-color: rgb(10 120 10);
                 --md-comp-button-outlined-focused-state-layer-color: rgb(0 128 0);
                 --md-comp-button-outlined-focused-state-layer-opacity: 0.17;
               "
-            />
+            ><template #icon>+</template></MDButton>
           </MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider pressed>
             <MDButton
@@ -450,11 +456,13 @@ export const TokenRoutingMatrix: Story = {
               label="Outlined pressed"
               color="outlined"
               style="
+                --md-comp-button-outlined-pressed-label-text-color: rgb(255 0 255);
+                --md-comp-button-outlined-pressed-icon-color: rgb(0 255 255);
                 --md-comp-button-outlined-pressed-outline-color: rgb(10 10 120);
                 --md-comp-button-outlined-pressed-state-layer-color: rgb(0 0 255);
                 --md-comp-button-outlined-pressed-state-layer-opacity: 0.29;
               "
-            />
+            ><template #icon>+</template></MDButton>
           </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">

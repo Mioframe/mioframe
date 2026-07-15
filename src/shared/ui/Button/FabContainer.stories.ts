@@ -72,12 +72,14 @@ export const Default: Story = {
   render: () => ({
     components: { FabContainer, MDExtendedFab, StoryPaneHost },
     template: `
-      <StoryPaneHost>
-        <div style="height: 200px;" />
-        <FabContainer>
-          <MDExtendedFab label="Add" md-symbol="add" />
-        </FabContainer>
-      </StoryPaneHost>
+      <div class="visual-checker-backdrop">
+        <StoryPaneHost>
+          <div style="height: 200px;" />
+          <FabContainer>
+            <MDExtendedFab label="Add" md-symbol="add" />
+          </FabContainer>
+        </StoryPaneHost>
+      </div>
     `,
   }),
 };
@@ -101,7 +103,7 @@ export const PaneAnchoringLoadingTransition: Story = {
       return { isLoading, loadContent };
     },
     template: `
-      <div id="fab-pane-host" style="display: flex; flex-direction: column; gap: 8px;">
+      <div id="fab-pane-host" class="visual-checker-backdrop" style="display: flex; flex-direction: column; gap: 8px;">
         <StoryPaneHost id="fab-test-pane" width="400px" height="500px">
           <div v-if="isLoading" style="height: 80px; display: flex; align-items: center; padding: 16px;">
             Loading...
@@ -145,7 +147,7 @@ export const TwoPaneLayout: Story = {
       return { isLoading, loadContent };
     },
     template: `
-      <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="visual-checker-backdrop" style="display: flex; flex-direction: column; gap: 8px;">
         <div id="fab-two-pane-host" style="display: flex; gap: 8px;">
           <StoryPaneHost id="fab-pane-left" width="300px" height="400px">
             <div

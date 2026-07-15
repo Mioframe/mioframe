@@ -64,7 +64,7 @@ export const Default: Story = {
 export const VisualStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDIconButton },
+    components: { MDIconButton, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-icon-button-states" class="visual-checker-backdrop">
         <div class="visual-row">
@@ -191,7 +191,9 @@ export const SizeGeometryMatrix: Story = {
           <MDIconButton :data-testid="\`icon-geometry-\${size}-narrow\`" :tooltip="size" :size="size" width="narrow" md-symbol-name="edit" />
           <MDIconButton :data-testid="\`icon-geometry-\${size}-wide\`" :tooltip="size" :size="size" width="wide" md-symbol-name="edit" />
           <MDIconButton :data-testid="\`icon-geometry-\${size}-square\`" :tooltip="size" :size="size" shape="square" md-symbol-name="edit" />
-          <MDIconButton :data-testid="\`icon-geometry-\${size}-pressed\`" class="md-state_pressed" :tooltip="size" :size="size" shape="round" md-symbol-name="edit" />
+          <MDStateLayerForcedStateProvider pressed>
+            <MDIconButton :data-testid="\`icon-geometry-\${size}-pressed\`" class="md-state_pressed" :tooltip="size" :size="size" shape="round" md-symbol-name="edit" />
+          </MDStateLayerForcedStateProvider>
           <MDIconButton :data-testid="\`icon-geometry-\${size}-selected-round\`" :tooltip="size" :size="size" shape="round" variant="toggle" selected color="tonal" md-symbol-name="check" />
           <MDIconButton :data-testid="\`icon-geometry-\${size}-selected-square\`" :tooltip="size" :size="size" shape="square" variant="toggle" selected color="tonal" md-symbol-name="check" />
           <MDIconButton :data-testid="\`icon-geometry-\${size}-outlined\`" :tooltip="size" :size="size" color="outlined" md-symbol-name="edit" />
@@ -236,8 +238,10 @@ export const FocusIndicatorTarget: Story = {
       useFocusIndicator();
     },
     template: `
-      <div id="visual-md-icon-button-focus-indicator" style="position: fixed; inset: auto 12px 12px auto;">
+      <div class="visual-checker-backdrop" style="position:fixed;inset:0;">
+        <div id="visual-md-icon-button-focus-indicator" style="position:absolute;inset:auto 12px 12px auto;">
         <MDIconButton id="storybook-md-icon-button-focus" tooltip="Focus target" color="filled" md-symbol-name="favorite" />
+        </div>
       </div>
     `,
   }),
@@ -285,6 +289,11 @@ export const TokenRoutingMatrix: Story = {
     components: { MDIconButton, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-icon-button-token-routing" class="visual-checker-backdrop">
+        <div class="visual-row">
+          <MDStateLayerForcedStateProvider hovered><MDIconButton data-testid="icon-button-standard-hover" class="md-state_hover" tooltip="Standard hover" md-symbol-name="edit" style="--md-comp-icon-button-standard-hovered-icon-color:rgb(240 20 20);--md-comp-icon-button-standard-hovered-state-layer-color:rgb(20 210 210);--md-comp-icon-button-standard-hovered-state-layer-opacity:0.04;" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDIconButton data-testid="icon-button-standard-focus" class="md-state_focused" tooltip="Standard focus" md-symbol-name="edit" style="--md-comp-icon-button-standard-focused-icon-color:rgb(20 140 20);--md-comp-icon-button-standard-focused-state-layer-color:rgb(210 20 210);--md-comp-icon-button-standard-focused-state-layer-opacity:0.18;" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDIconButton data-testid="icon-button-standard-pressed" class="md-state_pressed" tooltip="Standard pressed" md-symbol-name="edit" style="--md-comp-icon-button-standard-pressed-icon-color:rgb(20 20 240);--md-comp-icon-button-standard-pressed-state-layer-color:rgb(210 130 20);--md-comp-icon-button-standard-pressed-state-layer-opacity:0.30;" /></MDStateLayerForcedStateProvider>
+        </div>
         <div class="visual-row">
           <MDStateLayerForcedStateProvider hovered>
             <MDIconButton
@@ -383,6 +392,7 @@ export const TokenRoutingMatrix: Story = {
               md-symbol-name="edit"
               style="
                 --md-comp-icon-button-outlined-outline-color: rgb(120 10 10);
+                --md-comp-icon-button-outlined-hovered-icon-color: rgb(120 10 200);
                 --md-comp-icon-button-outlined-hovered-state-layer-color: rgb(0 200 200);
                 --md-comp-icon-button-outlined-hovered-state-layer-opacity: 0.03;
               "

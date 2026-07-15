@@ -131,8 +131,10 @@ export const FocusIndicatorTarget: Story = {
       useFocusIndicator();
     },
     template: `
-      <div id="visual-md-extended-fab-focus-indicator" style="position: fixed; inset: auto 12px 12px auto;">
+      <div class="visual-checker-backdrop" style="position:fixed;inset:0;">
+        <div id="visual-md-extended-fab-focus-indicator" style="position:absolute;inset:auto 12px 12px auto;">
         <MDExtendedFab id="storybook-md-extended-fab-focus" label="Focus target" color="primary-container" md-symbol="add" />
+        </div>
       </div>
     `,
   }),
