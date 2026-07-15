@@ -2,148 +2,124 @@
 
 ## Principle
 
-Adopt Material 3 incrementally through source-backed component-family work. Architecture, token ownership, public API, anatomy, property-specific state resolution, Storybook, verification, and deviations must be resolved before implementation.
+Adopt Material 3 incrementally through source-backed component work. Standard components should be authored independently by the coding agent from required scenarios, official Material documentation, repository rules, native semantics, and the deterministic architecture workflow.
 
-Do not perform broad visual rewrites or let implementation agents invent missing component architecture while editing code.
+Use architecture escalation only for genuine ambiguity, project extensions, ownership conflicts, new generic infrastructure, compatibility decisions, or unverifiable required behavior.
 
-## Phase 1: Foundation policies
+## Phase 1: authoring policy
 
-The policy set establishes:
+Maintain:
 
-- official Material source of truth;
-- `dp` and `sp` authoring units;
-- reference, system, component, and app token namespaces;
-- baseline light and dark themes;
-- interaction-state and accessibility rules;
-- shared UI public API conventions;
-- Storybook and verification expectations;
-- component registry and deviation tracking;
-- strict public Material component architecture.
+- official Material source-of-truth workflow;
+- units and token namespaces;
+- baseline theme;
+- deterministic component architecture profiles;
+- public API and anatomy rules;
+- property-specific state resolution;
+- accessibility and native semantics;
+- Storybook, registry, deviation, and verification rules.
 
-This phase changes policy only. It does not reorganize production components or change component behavior.
+The policy must enable normal component creation without a bespoke architect-prepared specification.
 
-Resolved foundation decisions:
+## Phase 2: architecture and token enforcement
 
-- `sp` is the target Material typography authoring unit;
-- `dp` is the target Material measurement authoring unit;
-- `--app-*` is the namespace for project-specific CSS custom properties outside Material vocabulary;
-- every canonical `--md-comp-*` token has one component or family owner file at the Material family definition boundary;
-- canonical component tokens are declared independently of active configuration and state;
-- generic state, ripple, focus, elevation, and motion primitives read generic private contracts only;
-- public shared UI APIs are migrated together with in-repository consumers rather than preserved through compatibility-only aliases by default;
-- existing overlay containment ownership is reused instead of introducing a numeric z-index ownership model;
-- a ready `MATERIAL COMPONENT CONTRACT` is required before new or migrated public `MD*` implementation;
-- a migrated family `README.md` is the durable accepted family contract after merge.
+Implement verify-managed checks for:
 
-## Phase 2: Architecture enforcement
+- selected architecture profile and exact file set;
+- layer declaration and selector ownership;
+- exact official component-token names;
+- canonical token ownership and root selectors;
+- private-variable boundaries;
+- family README blueprint consistency;
+- rendered-property matrix coverage;
+- obsolete parallel routes.
 
-Establish and enforce [Component architecture](./component-architecture.md).
+Keep unrelated legacy components advisory-only. Make checks blocking for each new or migrated component.
 
-Required outcomes:
+Do not build a runtime token registry, generic Material base, CSS-generation DSL, global state precedence, or cross-family state machine.
 
-- `Architecture impact: none`, `layered-v1`, or `blocked` is recorded before public Material component edits;
-- every `layered-v1` component has fixed Vue, token, route, state, and rendering layers;
-- family README files hold durable architecture contracts and later handoffs define exact deltas;
-- canonical component and family token ownership is explicit;
-- every stateful rendered property has its own state-resolution matrix row and actual DOM owner;
-- independent outputs such as shape, elevation, state layer, and focus indicator can coexist as declared;
-- component-token ownership and private-variable boundaries are mechanically checked;
-- implementation agents stop when a required architecture decision is absent.
+## Phase 3: `MDButton` pilot
 
-Add verify-managed static validation incrementally:
+Use `MDButton` as the first architecture migration because it concentrates API, token inventory, configuration routing, state resolution, property ownership, geometry, and motion in one large component.
 
-1. implement checks against the first pilot;
-2. keep legacy components advisory-only;
-3. make checks blocking for each component after migration;
-4. expand the validator only after the rule is proven on an independent second pilot.
+The architecture-only migration must:
 
-Do not build a runtime token registry, generic component base, CSS-generation DSL, global property precedence, or cross-family state machine.
+- preserve public API and behavior;
+- preserve token names and values;
+- preserve rendered output;
+- create the family README blueprint;
+- select the smallest applicable profile;
+- separate token, route, state, and rendering ownership;
+- enable blocking validation;
+- preserve named consumers and existing verification.
 
-## Phase 3: `MDButton` architecture pilot
-
-Use `MDButton` as the first `layered-v1` migration because its current implementation exposes the failure mode this architecture must solve: public API, official token inventory, private routing, property-specific state resolution, property ownership, geometry, and motion are concentrated in one large component file.
-
-The architecture-only PR must:
-
-- keep public API unchanged;
-- keep token names and values unchanged;
-- keep state behavior unchanged;
-- keep rendered output unchanged;
-- introduce the family README and mandatory style layers;
-- assign each official token to one canonical owner file;
-- declare canonical tokens independently of active configuration and state;
-- route each stateful property through its declared matrix and actual DOM owner;
-- preserve existing consumers and verification;
-- enable blocking architecture validation for `MDButton`.
-
-Do not correct Material deviations in the architecture-only PR. `MDButton` is not a `combined-approved` exception.
+Do not mix remaining Material alignment corrections into the architecture-only migration.
 
 ## Phase 4: `MDButton` alignment
 
-After architecture migration is stable, complete a separate focused Material alignment PR.
+After migration, address only documented remaining deviations:
 
-The alignment PR must address only documented remaining gaps, including as applicable:
-
-- exact official component-token routes;
+- exact official routes;
 - label and icon property ownership;
-- content-color motion ownership;
-- disabled, selected, focused, and forced-state property resolution;
-- simultaneous focus-indicator and pressed-state behavior;
-- override verification;
-- Storybook and browser evidence;
-- honest component-registry status.
+- content-color motion;
+- disabled, selected, focus, pressed, and forced-state property resolution;
+- public override verification;
+- Storybook and registry accuracy.
 
-Use [Component conversion checklist](./component-conversion-checklist.md) as the completion gate.
+## Phase 5: `MDSwitch` independent pilot
 
-## Phase 5: independent `MDSwitch` pilot
-
-Validate `layered-v1` on `MDSwitch` before declaring the architecture universal across the library.
-
-`MDSwitch` is the independent pilot because it combines:
+Validate the same authoring and validator rules on `MDSwitch`, which exercises:
 
 - selected and unselected semantic states;
-- disabled selected and disabled unselected routes;
+- disabled state routes;
 - keyboard activation;
 - pointer drag behavior;
 - presentation mode;
 - multiple anatomy owners;
-- potential family-level token ownership shared by related selection-control surfaces.
+- independent property outputs.
 
-The pilot must determine whether fixed layers, canonical token ownership, property-specific state resolution, behavior ownership, and validator rules remain clear without Button-specific exceptions.
+If the architecture needs repeated exceptions or Button-specific validator logic, revise it before migrating further families.
 
-If the architecture requires repeated exceptions, hidden routing, or new generic infrastructure to fit `MDSwitch`, stop and revise the architecture before migrating further families.
+## Phase 6: autonomous new-component proof
 
-## Phase 6: library migration
+Before declaring the workflow complete, use it for one genuinely new or previously missing Material component requested by a product scenario.
 
-After both pilots are accepted, migrate component families one at a time in dependency and usage order.
+The coding agent must be able to:
 
-Each migration must:
+1. perform bounded Material source lookup;
+2. derive the minimum complete supported surface;
+3. create a ready family blueprint;
+4. select the smallest architecture profile;
+5. implement API, semantics, tokens, states, Storybook, and tests;
+6. pass blocking validation;
+7. complete the component without architecture correction rounds.
 
-- start from a ready component contract;
-- use architecture-only and alignment-only PRs for large or stateful legacy components;
-- update the component registry and family README atomically with production and verification;
-- add blocking validation for the migrated family;
-- preserve consumer scenarios and verify the declared blast radius;
-- remove replaced token routes and obsolete logic completely.
+A successful legacy migration alone does not prove autonomous authoring.
 
-Suggested order after the pilots:
+## Phase 7: library migration
 
-1. remaining Button-directory components, each according to its own official Material surface;
-2. Lists;
-3. Cards and Dialogs;
-4. Text fields and selection controls;
-5. Chips and Menus;
-6. Navigation, App bars, Toolbars, and Sheets;
-7. Progress indicators, Tooltips, Dividers, and other smaller surfaces.
+After both legacy pilots and the new-component proof are accepted, migrate families one at a time.
 
-The order may change only through an architecture decision based on dependencies, active product work, or risk. It must not change because several unrelated families happen to share similar CSS.
+Each migration:
 
-## Token structure constraint
+- starts from required scenarios and official sources;
+- updates the family README blueprint, code, registry, Storybook, and verification atomically;
+- uses architecture-only and alignment-only PRs for large legacy components;
+- makes validation blocking for accepted components;
+- removes replaced logic completely;
+- does not broaden into unrelated family work.
 
-Reference and system tokens remain in the Material foundation.
+Suggested order may follow active product need and dependency risk. Similar CSS alone is not a reason to combine families.
 
-Component tokens do not move into a global `src/shared/lib/md/tokens/comp` catalog. A component-specific canonical token belongs to `<Component>.tokens.css`. An exact official family token may belong to `<Family>.tokens.css` only when the ready contract names at least two consuming public components and their applicable roots.
+## Success criteria
 
-Shared low-level primitives expose generic private bridges and never read component-family token names directly.
+The adoption workflow is successful when:
 
-A later tooling change may generate reports or allowlists from family-owned CSS and family README contracts, but it must not create a second runtime source of truth.
+- an agent can create a standard Material component from a concise request without a bespoke architecture task;
+- unsupported optional features remain explicit instead of becoming speculative API;
+- simple components use simple profiles and complex components use only required layers;
+- validator failures catch structural drift before review;
+- architecture review finds no hidden ownership or state decisions;
+- one implementation round plus focused correction is normally sufficient;
+- family contracts remain readable and current;
+- implementation and review token usage stays bounded to the relevant component surface.
