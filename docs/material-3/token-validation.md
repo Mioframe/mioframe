@@ -45,12 +45,12 @@ Identify:
 
 ## Allowed public token namespaces
 
-| Namespace     | Use                                              |
-| ------------- | ------------------------------------------------ |
-| `--md-ref-*`  | Material reference tokens.                       |
-| `--md-sys-*`  | Material system tokens.                          |
-| `--md-comp-*` | Verified Material component tokens.              |
-| `--app-*`     | Project-specific tokens outside Material terms.  |
+| Namespace     | Use                                             |
+| ------------- | ----------------------------------------------- |
+| `--md-ref-*`  | Material reference tokens.                      |
+| `--md-sys-*`  | Material system tokens.                         |
+| `--md-comp-*` | Verified Material component tokens.             |
+| `--app-*`     | Project-specific tokens outside Material terms. |
 
 Do not introduce another public token namespace without updating the foundation contract.
 
