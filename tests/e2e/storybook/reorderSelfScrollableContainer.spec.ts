@@ -28,31 +28,6 @@ const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): vo
   }
 };
 
-// Waits for `scrollTop` to hold steady across several consecutive polls, not just one, before
-// treating it as settled: a single matching poll pair can still land inside an in-progress
-// reflow (e.g. dnd-kit swapping the dragged item's fixed-position clone back for the real,
-// back-in-flow element, or the restored scroll-snap container settling to its nearest snap
-// position) on a resource-constrained runner.
-const waitForStableScrollTop = async (
-  scrollable: Locator,
-  requiredStableReads = 3,
-): Promise<number> => {
-  let previous = await scrollable.evaluate((el) => el.scrollTop);
-  let stableCount = 1;
-  await expect
-    .poll(
-      async () => {
-        const current = await scrollable.evaluate((el) => el.scrollTop);
-        stableCount = current === previous ? stableCount + 1 : 1;
-        previous = current;
-        return stableCount >= requiredStableReads;
-      },
-      { timeout: 5000, intervals: [200] },
-    )
-    .toBe(true);
-  return previous;
-};
-
 interface ScrollSnapSnapshot {
   readonly inlineValue: string;
   readonly inlinePriority: string;
@@ -179,18 +154,24 @@ test.describe('self-scrollable reorder container', () => {
     await assertSuppressedDuringDrag(container);
     await assertSuppressedDuringDrag(ancestor);
 
+    const containerScrollTopBeforeRelease = await container.evaluate((el) => el.scrollTop);
+    const ancestorScrollTopBeforeRelease = await ancestor.evaluate((el) => el.scrollTop);
+
     await page.mouse.up();
 
     // After release, the temporary inline snap override is gone on both candidates, the original
-    // computed styles are restored, and no further scrolling happens once the pointer is no longer
-    // held. Cleanup runs once the drag-end status change flushes, so poll rather than asserting
-    // immediately.
+    // computed styles are restored, and neither candidate is allowed to move away from the exact
+    // position captured immediately before release. Cleanup runs once the drag-end status change
+    // flushes, so poll only for style restoration, never for a new settled scroll position.
     await expect
       .poll(() => container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe('');
     await expect
       .poll(() => ancestor.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe('');
+
+    expect(await container.evaluate((el) => el.scrollTop)).toBe(containerScrollTopBeforeRelease);
+    expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorScrollTopBeforeRelease);
 
     const containerSnapshotAfterDrag = await captureScrollSnapSnapshot(container);
     expect(containerSnapshotAfterDrag.inlineValue).toBe(containerSnapshotBeforeDrag.inlineValue);
@@ -212,12 +193,10 @@ test.describe('self-scrollable reorder container', () => {
     );
     expect(ancestorSnapshotAfterDrag.computedScrollBehavior).toBe('smooth');
 
-    const containerScrollTopAtUpperLimit = await waitForStableScrollTop(container);
     const containerReleaseSamples = await sampleScrollTop(page, container);
-    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopAtUpperLimit);
+    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
 
-    const ancestorScrollTopAfterDrag = await waitForStableScrollTop(ancestor);
     const ancestorReleaseSamples = await sampleScrollTop(page, ancestor);
-    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopAfterDrag);
+    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
   });
 });
