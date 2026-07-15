@@ -39,9 +39,11 @@ Implementation policies:
 3. Public `--md-*` tokens and `MD*` APIs use verified Material vocabulary.
 4. Project-specific UI remains explicitly project-specific.
 5. Tokens, units, API, accessibility, interaction, anatomy, ownership, and adaptive behavior are part of alignment.
-6. A coding agent can independently create a standard component from a concise scenario request by following the deterministic source-backed workflow.
-7. Simple components remain simple; abstractions and optional capabilities require current evidence.
-8. Validation catches structural drift before repeated review rounds.
+6. A coding agent can independently create a standard component from a concise request by following the deterministic source-backed workflow.
+7. A request without detailed scenarios falls back to canonical Material default usage rather than speculative optional scope.
+8. Configuration routing and state resolution are independent, so components receive only the layers they need.
+9. Simple components remain simple; aliases, abstractions, and optional capabilities require current evidence.
+10. Validation catches structural drift before repeated review rounds.
 
 ## Scope
 
@@ -52,7 +54,7 @@ A local repair to an unmigrated component may use the strict `Architecture impac
 ## Implementation order
 
 1. Keep source, token, architecture, registry, and verification policies current.
-2. Add verify-managed checks for architecture profiles and ownership.
+2. Add verify-managed checks for profiles, ownership, and unnecessary aliases.
 3. Migrate `MDButton` without behavior changes.
 4. Complete remaining `MDButton` alignment separately.
 5. Validate the workflow on `MDSwitch`.
