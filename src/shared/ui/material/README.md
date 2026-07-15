@@ -14,6 +14,8 @@ Detailed architecture is defined by:
 - `docs/material-3/foundation-architecture.md`;
 - `docs/material-3/component-architecture.md`.
 
+Canonical policy and source-evidence documents remain under `docs/material-3`; this directory owns runtime/library artifacts and their local contracts.
+
 ## Ownership map
 
 ```text
@@ -33,13 +35,17 @@ Generic platform utilities, project-specific shared UI, features, widgets, pages
 
 ```text
 shared/lib generic infrastructure
-  → material/foundation
-  → material/components
-  → material/patterns
-  → project-specific shared UI and product layers
+  ├─→ material/foundation
+  ├─→ material/components
+  └─→ material/patterns
+
+material/foundation → material/components → material/patterns
+material library → project-specific shared UI and product layers
 ```
 
-Imports in the opposite direction are forbidden.
+Higher Material layers may use a correctly owned generic `shared/lib` utility directly. Do not create a foundation wrapper merely to route a generic DOM, event, geometry, lifecycle, or browser helper.
+
+Imports from product layers into the Material library and imports from higher Material layers into lower owners are forbidden.
 
 ## Public API
 
@@ -52,7 +58,7 @@ import { MDButton } from '@shared/ui/material';
 Do not create the root production `index.ts` until the first real family or foundation artifact is migrated. Once it exists:
 
 - product consumers use the root entry point;
-- internal library modules use owning foundation/family entry points, not the root barrel;
+- internal library modules use owning foundation/family entry points or correctly owned generic `shared/lib` entry points, not the root barrel;
 - deep imports into implementation files are forbidden.
 
 ## New implementation rule
@@ -66,20 +72,22 @@ After this boundary is accepted:
 
 Empty placeholder directories and files are forbidden. A directory appears only with an accepted production artifact.
 
+Using a generic utility from outside the library does not transfer its ownership into Material.
+
 ## Physical migration map
 
 This table tracks source location, not Material alignment. Alignment status remains in the foundation and component registries.
 
-| Area                              | Current production owner                                                       | Canonical owner                                                                     | Migration status              |
-| --------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ----------------------------- |
-| Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                                                 | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
-| Typography utilities              | `src/shared/lib/md`                                                            | `material/foundation/typography`                                                    | `legacy`                      |
-| State layer, ripple, and focus    | `src/shared/ui/State`                                                          | `material/foundation/interaction`                                                   | `legacy`                      |
-| Material Symbols                  | `src/shared/ui/Icon`                                                           | `material/foundation/icon`                                                          | `legacy`                      |
-| Material overlay contract         | `src/shared/ui/Overlay` plus generic teleport/outside-interaction dependencies | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
-| Existing official `MD*` families  | existing `src/shared/ui/<LegacyFamily>` directories                            | `material/components/<family>`                                                      | `legacy`                      |
-| New official Material family      | none                                                                           | `material/components/<family>`                                                      | create directly as `migrated` |
-| Reusable Material patterns        | current scattered or missing compositions                                      | `material/patterns/<pattern>` only after the pattern gate passes                    | `legacy` or `missing`         |
+| Area | Current production owner | Canonical owner | Migration status |
+| --- | --- | --- | --- |
+| Reference/system tokens and theme | `src/shared/lib/md/tokens.css` | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy` |
+| Typography utilities | `src/shared/lib/md` | `material/foundation/typography` | `legacy` |
+| State layer, ripple, and focus | `src/shared/ui/State` | `material/foundation/interaction` | `legacy` |
+| Material Symbols | `src/shared/ui/Icon` | `material/foundation/icon` | `legacy` |
+| Material overlay contract | `src/shared/ui/Overlay` plus generic teleport/outside-interaction dependencies | `material/foundation/overlay`; generic dependencies remain outside | `legacy` |
+| Existing official `MD*` families | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<family>` | `legacy` |
+| New official Material family | none | `material/components/<family>` | create directly as `migrated` |
+| Reusable Material patterns | current scattered or missing compositions | `material/patterns/<pattern>` only after the pattern gate passes | `legacy` or `missing` |
 
 Do not split the monolithic token owner merely to match this table. Source relocation follows confirmed ownership and reviewable migration boundaries.
 
