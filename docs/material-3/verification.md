@@ -10,34 +10,34 @@ New, migrated, and materially changed public Material components follow [Compone
 
 ## Standard component verification profile
 
-| Layer | Verification |
-| --- | --- |
-| Architecture | Verify-managed location, dependency, profile, layer, token, registry, README, and state-matrix coverage checks. |
-| Component contract | Colocated Vue Test Utils tests for public API, native owner, ARIA, slots, emits, defaults, and invalid combinations. |
-| State matrix | One canonical Storybook `StateMatrix` containing every supported visual state and distinct state-rendering route. |
-| Visual regression | Playwright screenshot assertions against the bounded state matrix or its labelled sections. |
-| Browser behavior | Storybook Playwright tests for real keyboard, focus, pointer/touch, hit testing, overlays, responsive behavior, and other browser-owned contracts. |
-| Pure behavior | Vitest tests for extracted helpers, composables, transitions, timing decisions, and cleanup when applicable. |
-| Consumer preservation | Focused checks for every changed existing consumer. |
+| Layer                 | Verification                                                                                                                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture          | Verify-managed location, dependency, profile, layer, token, registry, README, and state-matrix coverage checks.                                    |
+| Component contract    | Colocated Vue Test Utils tests for public API, native owner, ARIA, slots, emits, defaults, and invalid combinations.                               |
+| State matrix          | One canonical Storybook `StateMatrix` containing every supported visual state and distinct state-rendering route.                                  |
+| Visual regression     | Playwright screenshot assertions against the bounded state matrix or its labelled sections.                                                        |
+| Browser behavior      | Storybook Playwright tests for real keyboard, focus, pointer/touch, hit testing, overlays, responsive behavior, and other browser-owned contracts. |
+| Pure behavior         | Vitest tests for extracted helpers, composables, transitions, timing decisions, and cleanup when applicable.                                       |
+| Consumer preservation | Focused checks for every changed existing consumer.                                                                                                |
 
 A test layer may be `not applicable` only with an ownership-based reason in the family README. The state matrix and its visual regression are mandatory for every new or migrated public Material component.
 
 ## Verification matrix
 
-| Changed layer | Expected verification |
-| --- | --- |
-| Source policy or docs | Read affected docs and check links, paths, and source authority. |
-| Library boundary or relocation | Location/dependency validation, complete consumer import migration, public export review, and removal of obsolete paths. |
-| Unit conversion | Focused PostCSS transform check or generated CSS inspection. |
-| Reference/system tokens | Token diff review and representative rendered surfaces when values affect UI. |
-| Component tokens or state routing | Contract/static validation plus affected state-matrix cells and visual baseline. |
-| Public component API | TypeScript checks, contract tests, consumer migration review, and Storybook docs/controls. |
-| Interaction behavior | Real browser checks through isolated Storybook fixtures. Forced visual state is not behavior proof. |
-| Interaction appearance | Deterministic state-matrix cells and Playwright visual regression. |
-| Accessibility behavior | Native semantics assertions plus keyboard/focus/ARIA checks in a real browser when behavior is involved. |
-| Adaptive layout | Responsive browser checks and representative visual surfaces at affected contexts. |
+| Changed layer                     | Expected verification                                                                                                       |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Source policy or docs             | Read affected docs and check links, paths, and source authority.                                                            |
+| Library boundary or relocation    | Location/dependency validation, complete consumer import migration, public export review, and removal of obsolete paths.    |
+| Unit conversion                   | Focused PostCSS transform check or generated CSS inspection.                                                                |
+| Reference/system tokens           | Token diff review and representative rendered surfaces when values affect UI.                                               |
+| Component tokens or state routing | Contract/static validation plus affected state-matrix cells and visual baseline.                                            |
+| Public component API              | TypeScript checks, contract tests, consumer migration review, and Storybook docs/controls.                                  |
+| Interaction behavior              | Real browser checks through isolated Storybook fixtures. Forced visual state is not behavior proof.                         |
+| Interaction appearance            | Deterministic state-matrix cells and Playwright visual regression.                                                          |
+| Accessibility behavior            | Native semantics assertions plus keyboard/focus/ARIA checks in a real browser when behavior is involved.                    |
+| Adaptive layout                   | Responsive browser checks and representative visual surfaces at affected contexts.                                          |
 | Foundation correction/replacement | Owner tests, complete direct-consumer inventory, and representative verification for every distinct affected contract path. |
-| Visual appearance | State-matrix screenshot diff plus human comparison with checked official Material sources. |
+| Visual appearance                 | State-matrix screenshot diff plus human comparison with checked official Material sources.                                  |
 
 ## Required Material lookup
 
