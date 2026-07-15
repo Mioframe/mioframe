@@ -71,6 +71,10 @@ Require `.vue`, `.routes.css`, and `.css`. Reject `.states.css`.
 
 ### `stateful`
 
+Require `.vue`, `.states.css`, and `.css`. Reject `.routes.css`.
+
+### `configured-stateful`
+
 Require `.vue`, `.routes.css`, `.states.css`, and `.css`.
 
 For every profile:
@@ -81,18 +85,21 @@ For every profile:
 - verify exact applicable style order;
 - reject additional production files not permitted by the blueprint and architecture rules.
 
-## Layer checks
+## Layer and alias checks
 
 Identify:
 
 - token declarations or inline component CSS in Vue;
 - configuration route variables outside `.routes.css`;
-- semantic-bank or property-state resolution outside `.states.css`;
+- semantic or property-state resolution outside `.states.css`;
 - rendering properties outside `.css` or approved family anatomy CSS;
 - configuration selectors in state or rendering layers;
 - state selectors in token, route, or rendering layers;
-- final rendered values assigned outside the state layer for stateful properties;
-- actual CSS properties applied by a DOM owner different from the blueprint.
+- actual CSS properties applied by a DOM owner different from the blueprint;
+- a route variable when no configuration selection exists;
+- a rendered private variable that is not produced by state resolution and is not needed as a stable generic bridge input;
+- a private alias whose only purpose is renaming a directly usable canonical token or route variable;
+- a stateful final value assigned outside `.states.css`.
 
 ## Family blueprint consistency
 
@@ -101,9 +108,10 @@ Identify:
 - migrated family without a README blueprint;
 - missing authoring mode, architecture version, profile, sources, supported surface, API, anatomy, token ownership, property matrix, files, verification, or readiness;
 - `Readiness: ready` with `TBD`, unresolved alternatives, or missing decisions;
-- stateful rendered variable without a matrix row;
-- matrix row without an implemented final value or actual owner;
+- varying property without a matrix row;
+- matrix row without an implemented applied/final value or actual owner;
 - implemented winner or coexistence rule absent from the matrix;
+- grouped matrix row whose properties differ in owner, stages, state inputs, winner rule, simultaneous outputs, or bridge;
 - optional family token, anatomy, behavior, composable, or context file that does not satisfy its extraction condition;
 - production, Storybook, registry, or verification disagreeing with the accepted blueprint.
 
@@ -127,7 +135,7 @@ These may require review evidence rather than syntax, but completion must still 
 2. classify tokens and private variables;
 3. confirm exact official names and source snapshot;
 4. validate the ready family blueprint;
-5. verify the smallest applicable profile and token-layer presence.
+5. verify the smallest applicable profile, token-layer presence, and shortest property pipelines.
 
 ### During implementation
 
@@ -135,7 +143,7 @@ These may require review evidence rather than syntax, but completion must still 
 2. enforce canonical token ownership and purity;
 3. enforce route, state, and rendering boundaries;
 4. enforce property-matrix coverage;
-5. reject obsolete parallel routes, empty layers, and unapproved files.
+5. reject obsolete parallel routes, empty layers, unnecessary aliases, and unapproved files.
 
 ### After implementation
 
@@ -153,7 +161,7 @@ Start with `MDButton` and check:
 - style order and layer ownership;
 - exact verified `--md-comp-button-*` names;
 - token declarations independent of active configuration and state;
-- duplicate ownership, empty layers, and private-variable escape;
+- duplicate ownership, empty layers, unnecessary aliases, and private-variable escape;
 - system-token bypass;
 - unread or undeclared route/final variables;
 - family README matrix coverage.
@@ -176,7 +184,7 @@ A Material component PR should report:
 - supported scenarios and non-goals;
 - architecture profile and exact layers;
 - token classification and ownership;
-- property-state resolution summary;
+- shortest property-pipeline and state-resolution summary;
 - validator result and enforcement level;
 - focused browser verification;
 - unsupported features, deviations, and remaining verification gaps.
