@@ -90,16 +90,16 @@ Using an external generic utility does not transfer its ownership into Material.
 
 This table tracks physical ownership only. Foundation/component alignment and verification status remain in their registries and family blueprints.
 
-| Area | Current production owner | Canonical owner | Migration status |
-| --- | --- | --- | --- |
-| Reference/system tokens and theme | `src/shared/lib/md/tokens.css` | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy` |
-| Typography utilities | `src/shared/lib/md` | `material/foundation/typography` | `legacy` |
-| State layer, ripple, and focus | `src/shared/ui/State` | `material/foundation/interaction` | `legacy` |
-| Material Symbols | `src/shared/ui/Icon` | `material/foundation/icon` | `legacy` |
-| Material overlay contract | `src/shared/ui/Overlay` plus generic teleport/outside-interaction dependencies | `material/foundation/overlay`; generic dependencies remain outside | `legacy` |
-| Existing official `MD*` families | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<family>` | `legacy` |
-| New official Material family | none | `material/components/<family>` | create directly as `migrated` |
-| Reusable Material patterns | scattered or missing compositions | `material/patterns/<pattern>` after the pattern gate passes | `legacy` or `missing` |
+| Area                              | Current production owner                                                       | Canonical owner                                                                     | Migration status              |
+| --------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ----------------------------- |
+| Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                                                 | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
+| Typography utilities              | `src/shared/lib/md`                                                            | `material/foundation/typography`                                                    | `legacy`                      |
+| State layer, ripple, and focus    | `src/shared/ui/State`                                                          | `material/foundation/interaction`                                                   | `legacy`                      |
+| Material Symbols                  | `src/shared/ui/Icon`                                                           | `material/foundation/icon`                                                          | `legacy`                      |
+| Material overlay contract         | `src/shared/ui/Overlay` plus generic teleport/outside-interaction dependencies | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
+| Existing official `MD*` families  | existing `src/shared/ui/<LegacyFamily>` directories                            | `material/components/<family>`                                                      | `legacy`                      |
+| New official Material family      | none                                                                           | `material/components/<family>`                                                      | create directly as `migrated` |
+| Reusable Material patterns        | scattered or missing compositions                                              | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
 
 Do not split a valid monolithic owner merely to match this table. Migration follows confirmed ownership and reviewable boundaries.
 

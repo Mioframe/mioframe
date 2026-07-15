@@ -10,16 +10,16 @@ New, migrated, and materially changed public Material components follow `compone
 
 ## Standard component verification profile
 
-| Layer | Verification |
-| --- | --- |
-| Architecture | Static and structured checks for location, dependency direction, profile files, tokens, exports, blueprint sections, registry/map references, and test artifacts. |
-| Component contract | Colocated Vue Test Utils tests for public API, native owner, ARIA, slots, emits, defaults, controlled state, and invalid combinations. |
-| State matrix | One canonical Storybook `StateMatrix` containing every distinct supported component-owned visual route. |
-| Visual regression | Playwright screenshots of the bounded matrix or labelled sections. |
-| Browser behavior | Storybook Playwright tests for real keyboard, focus, pointer/touch, hit testing, overlays, responsive behavior, lifecycle, and other browser-owned contracts. |
-| Pure behavior | Vitest tests for extracted helpers, composables, transitions, timing, cancellation, and cleanup when applicable. |
-| Consumer preservation | Focused checks for changed existing consumers. |
-| Review | Architecture/Material review and human visual comparison when required. |
+| Layer                 | Verification                                                                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture          | Static and structured checks for location, dependency direction, profile files, tokens, exports, blueprint sections, registry/map references, and test artifacts. |
+| Component contract    | Colocated Vue Test Utils tests for public API, native owner, ARIA, slots, emits, defaults, controlled state, and invalid combinations.                            |
+| State matrix          | One canonical Storybook `StateMatrix` containing every distinct supported component-owned visual route.                                                           |
+| Visual regression     | Playwright screenshots of the bounded matrix or labelled sections.                                                                                                |
+| Browser behavior      | Storybook Playwright tests for real keyboard, focus, pointer/touch, hit testing, overlays, responsive behavior, lifecycle, and other browser-owned contracts.     |
+| Pure behavior         | Vitest tests for extracted helpers, composables, transitions, timing, cancellation, and cleanup when applicable.                                                  |
+| Consumer preservation | Focused checks for changed existing consumers.                                                                                                                    |
+| Review                | Architecture/Material review and human visual comparison when required.                                                                                           |
 
 A layer may be `not applicable` only with an ownership-based reason. The canonical matrix and its visual regression are mandatory for every new or migrated public Material component.
 
@@ -27,21 +27,21 @@ Non-visual states remain in contract or browser tests rather than creating meani
 
 ## Verification matrix
 
-| Changed layer | Expected verification |
-| --- | --- |
-| Source policy/docs | Check links, source authority, snapshot metadata, and Design Kit references when applicable. |
-| Library boundary/relocation | Static location/dependency checks, complete consumer migration, public exports, and obsolete-path removal. |
-| Unit conversion | Focused PostCSS transform checks or generated CSS inspection. |
-| Reference/system tokens | Token diff review and representative rendered consumers when output changes. |
-| Component tokens/state routing | Static/structured validation, affected distinct matrix routes, and visual baseline. |
-| Public API/native semantics | TypeScript, component-contract tests, browser behavior where constrained, consumer migration, and Storybook docs. |
-| Interaction behavior | Real browser actions; forced visual state is not behavior proof. |
-| Interaction appearance | Deterministic matrix routes and visual regression. |
-| Accessibility | Native/ARIA contract tests plus real keyboard/focus/browser checks where behavior applies. |
-| Adaptive layout | Responsive browser checks and representative visual contexts. |
-| Foundation addition | Owner checks plus affected component proof. |
-| Foundation correction/replacement | Complete direct consumers and representative proof for every distinct affected contract path. |
-| Visual appearance | Matrix screenshot diff plus human comparison with named official sources. |
+| Changed layer                     | Expected verification                                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Source policy/docs                | Check links, source authority, snapshot metadata, and Design Kit references when applicable.                      |
+| Library boundary/relocation       | Static location/dependency checks, complete consumer migration, public exports, and obsolete-path removal.        |
+| Unit conversion                   | Focused PostCSS transform checks or generated CSS inspection.                                                     |
+| Reference/system tokens           | Token diff review and representative rendered consumers when output changes.                                      |
+| Component tokens/state routing    | Static/structured validation, affected distinct matrix routes, and visual baseline.                               |
+| Public API/native semantics       | TypeScript, component-contract tests, browser behavior where constrained, consumer migration, and Storybook docs. |
+| Interaction behavior              | Real browser actions; forced visual state is not behavior proof.                                                  |
+| Interaction appearance            | Deterministic matrix routes and visual regression.                                                                |
+| Accessibility                     | Native/ARIA contract tests plus real keyboard/focus/browser checks where behavior applies.                        |
+| Adaptive layout                   | Responsive browser checks and representative visual contexts.                                                     |
+| Foundation addition               | Owner checks plus affected component proof.                                                                       |
+| Foundation correction/replacement | Complete direct consumers and representative proof for every distinct affected contract path.                     |
+| Visual appearance                 | Matrix screenshot diff plus human comparison with named official sources.                                         |
 
 ## Source evidence
 
