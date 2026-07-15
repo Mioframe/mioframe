@@ -1,28 +1,30 @@
 ---
 name: material3-guidelines
-description: 'Use before Material-related UI/UX work. Verifies official sources, library location, component choice and usage, applicable foundation contracts, minimum supported surface, API, states, accessibility, composition, and focused verification.'
+description: 'Use before Material-related UI/UX work. Verifies official sources, library location, component choice and usage, applicable foundation contracts, minimum supported surface, API, states, accessibility, composition, standard testing, and focused verification.'
 paths:
   - 'src/**/*.vue'
   - 'src/shared/ui/**'
   - 'src/shared/lib/md/**'
   - 'docs/material-3/**'
   - 'tests/e2e/visual/**'
+  - 'tests/e2e/storybook/**'
 ---
 
 # Material 3 guidelines
 
-Use for work affecting Material component choice, usage, library structure, foundation contracts, layout, interaction, accessibility, tokens, or public UI APIs.
+Use for work affecting Material component choice, usage, library structure, foundation contracts, layout, interaction, accessibility, tokens, public UI APIs, Storybook state surfaces, or visual verification.
 
 For public `MD*` components, also use `shared-ui-implementation` and:
 
 - [Library architecture](../../../docs/material-3/library-architecture.md);
 - [Component architecture](../../../docs/material-3/component-architecture.md);
+- [Component testing architecture](../../../docs/material-3/component-testing.md);
 - [Foundation architecture](../../../docs/material-3/foundation-architecture.md).
 
-For a change preserving component choice, usage, location, public imports, API, foundation dependencies, tokens, anatomy, interaction, accessibility, and output, record:
+For a change preserving component choice, usage, location, public imports, API, foundation dependencies, tokens, anatomy, interaction, accessibility, testing surface, and output, record:
 
 ```text
-Material impact: none; existing Material surface, location, and foundation contracts unchanged
+Material impact: none; existing Material surface, location, foundation contracts, and verification surface unchanged
 ```
 
 ## Canonical library boundary
@@ -48,7 +50,7 @@ Read only what resolves:
 - applicable foundation contracts;
 - exact component/foundation tokens;
 - relevant layout/adaptive behavior;
-- verification.
+- the complete supported state surface and verification.
 
 Do not use Material Web, generic web search, screenshots, unrelated libraries, older Material versions, or memory as authority. Stop when the required surface is resolved.
 
@@ -56,9 +58,9 @@ Do not use Material Web, generic web search, screenshots, unrelated libraries, o
 
 Record one:
 
-- `standard-authoring`: all decisions derive from required scenarios, official sources, repository rules, accepted foundation contracts, library architecture, and native semantics;
+- `standard-authoring`: all decisions derive from required scenarios, official sources, repository rules, accepted foundation contracts, library architecture, testing architecture, and native semantics;
 - `handoff-authoring`: a ready handoff provides the exact delta;
-- `blocked`: component, foundation, or library architecture has an unresolved escalation condition.
+- `blocked`: component, foundation, library, or testing architecture has an unresolved escalation condition.
 
 Normal source-backed component work does not require a separate architect handoff.
 
@@ -100,6 +102,21 @@ A component must consume accepted foundation owners. It must not create local su
 
 Keep an additive foundation delta in a component PR only when every same-PR condition in `foundation-architecture.md` passes. Corrections and replacements normally require focused foundation work.
 
+### Standard test profile
+
+Record:
+
+- colocated component contract test;
+- canonical Storybook `StateMatrix` story and stable root anchor;
+- state-matrix coverage map;
+- Playwright visual regression path and snapshot sections;
+- Storybook browser-behavior spec or `not applicable` with reason;
+- pure helper/composable tests or `not applicable`;
+- changed-consumer preservation checks;
+- human Material visual-review status.
+
+The state matrix covers every supported visual state and every distinct state-rendering route. It does not repeat equivalent sizes, labels, icons, or content combinations.
+
 ## API and implementation constraints
 
 - Use official Material vocabulary and native semantics.
@@ -109,6 +126,7 @@ Keep an additive foundation delta in a component PR only when every same-PR cond
 - Use accepted generic foundation contracts and property-specific state resolution.
 - Product layers own information architecture, component choice, placement, and adaptive composition.
 - Project-specific shared UI must not be moved under official `material/components` merely because it uses Material primitives.
+- Do not add test-only public props, events, classes, or runtime branches.
 
 ## Required note
 
@@ -121,28 +139,34 @@ Supported / unsupported surface:
 Foundation dependencies:
 Token source:
 Accessibility/native semantics:
+State matrix story and coverage:
+Contract/browser/visual verification:
+Human Material visual review: required | passed | blocked
 Deviation: none | <named deviation>
 Authoring mode: standard-authoring | handoff-authoring | blocked
 ```
 
-Keep details in repository blueprints, library map, and registries, not repeated task prose.
+An automated coding agent must not report human review as passed. Keep details in repository blueprints, library map, stories, and registries rather than repeating them in task prose.
 
 ## Verification
 
-Use only applicable proof:
+Use the standard component test profile, narrowed only by explicit ownership:
 
 - canonical library location and dependency direction;
 - component-choice/composition evidence for product integration;
-- contract and accessibility tests;
+- colocated contract and accessibility tests;
 - foundation dependency and registry consistency;
 - token/layer/owner validation;
 - public export and no-deep-import validation;
-- browser behavior for focus, keyboard, pointer/touch, overlays, adaptivity, and actual CSS owners;
+- canonical `StateMatrix` coverage of all distinct supported visual state routes;
+- Playwright visual baseline of the matrix or its labelled sections;
+- real browser behavior for focus, keyboard, pointer/touch, overlays, adaptivity, and actual CSS owners when applicable;
+- pure helper/composable tests when applicable;
 - property-state matrix checks;
-- representative Storybook/visual coverage;
 - changed-consumer import and behavior preservation;
-- removal of obsolete legacy paths after migration.
+- removal of obsolete legacy paths after migration;
+- human review of initial or intentionally changed visual baselines.
 
-Do not claim Material alignment from green unit tests or screenshots alone.
+Do not claim Material alignment from green unit tests, snapshots, or automated image comparison alone.
 
-Use `blocked` only for unresolved source, usage, library location, ownership, compatibility, foundation, infrastructure, migration, or browser-verification decisions. Component size or token count is not an escalation reason.
+Use `blocked` only for unresolved source, usage, library location, ownership, compatibility, foundation, infrastructure, migration, state coverage, or browser-verification decisions. Component size or token count is not an escalation reason.
