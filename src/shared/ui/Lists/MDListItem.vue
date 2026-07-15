@@ -290,7 +290,7 @@ defineExpose({
     }
   },
   getPrimaryActionElement(): HTMLElement | null {
-    return primaryActionEl.value ?? null;
+    return interactiveSurfaceEl.value;
   },
 });
 </script>

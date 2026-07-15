@@ -25,6 +25,21 @@ import { isEqual } from 'es-toolkit';
 import type { DatabaseStateQueryResult } from '../databaseService';
 
 /**
+ * The single canonical ordering rule for stored views: legacy views without an explicit `order`
+ * sort as if their order were `0`, the same value newly created views start counting up from (see
+ * `getNextViewOrder`). Used by both `viewList$` and `getCanonicalOrderedIds` so the displayed
+ * order and the guarded reorder comparison can never disagree for missing or duplicate `order`
+ * values; ties keep the record's own iteration order via `Array.prototype.sort`'s stability.
+ * @param entryA - A `[viewId, view]` entry being compared.
+ * @param entryB - The other `[viewId, view]` entry being compared.
+ * @returns A negative, zero, or positive number per the standard comparator contract.
+ */
+const compareViewOrder = (
+  [, { order: orderA = 0 }]: readonly [DatabaseViewId, DatabaseView],
+  [, { order: orderB = 0 }]: readonly [DatabaseViewId, DatabaseView],
+): number => orderA - orderB;
+
+/**
  * Wires the database view read model and mutations on top of the shared database state query
  * and change helpers.
  * @param databaseState$ - Cached observable query for one document's raw database state.
@@ -82,9 +97,7 @@ export const setupDatabaseViewsService = (
             return viewsRecord;
           }
 
-          return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
-            ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
-          );
+          return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(compareViewOrder);
         }),
       ),
   );
@@ -122,16 +135,15 @@ export const setupDatabaseViewsService = (
     });
 
   /**
-   * Derives the canonical view order currently stored in the document.
+   * Derives the canonical view order currently stored in the document. Uses the same
+   * {@link compareViewOrder} comparator as `viewList$` so the displayed order and the guarded
+   * reorder comparison can never disagree for legacy views missing an explicit `order`.
    * @param views - The document's raw views record.
    * @returns The view ids ordered by their stored `order`.
    */
   const getCanonicalOrderedIds = (views: DatabaseState['views']): DatabaseViewId[] =>
     Array.from(strictRecordIterableEntries(views)())
-      .sort(
-        ([, { order: a = Number.MAX_SAFE_INTEGER }], [, { order: b = Number.MAX_SAFE_INTEGER }]) =>
-          a - b,
-      )
+      .sort(compareViewOrder)
       .map(([viewId]) => viewId);
 
   const isSameOrderedIds = (a: readonly DatabaseViewId[], b: readonly DatabaseViewId[]) =>

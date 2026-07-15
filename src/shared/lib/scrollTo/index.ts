@@ -9,15 +9,6 @@ type ScrollTarget = {
   top?: number | undefined;
 };
 
-/**
- * Tracks a scrollable element's position and exposes a serialized `scrollTo`: each call waits
- * for scrolling to settle and, if the element has not reached the requested position by then,
- * retries a bounded number of times. It does not guarantee the target is ultimately reached —
- * a persistently superseded or interrupted scroll can still resolve short of the request.
- * @param container - The scrollable element to observe and drive.
- * @param options - Throttle window for scroll-position sampling and settle detection.
- * @returns The current scroll position and a serialized `scrollTo`.
- */
 export const useScroll = (
   container: MaybeRefOrGetter<HTMLElement | undefined | null>,
   { throttleMs = 1e3 / 10 }: { throttleMs?: number } = {},
@@ -44,32 +35,19 @@ export const useScroll = (
   const scrollTo = async ({ behavior = 'smooth', left, top }: ScrollTarget) => {
     const el = toValue(container);
 
-    if (!el) {
-      return;
-    }
+    if (el) {
+      const target: ScrollToOptions = { behavior };
+      if (left !== undefined) {
+        target.left = left;
+      }
+      if (top !== undefined) {
+        target.top = top;
+      }
 
-    const target: ScrollToOptions = { behavior };
-    if (left !== undefined) {
-      target.left = left;
-    }
-    if (top !== undefined) {
-      target.top = top;
-    }
-
-    const reachedTarget = () =>
-      (top === undefined || Math.abs(el.scrollTop - top) <= 1) &&
-      (left === undefined || Math.abs(el.scrollLeft - left) <= 1);
-
-    // "No recent scroll events" only proxies for "the browser reached the requested position":
-    // a smooth scroll queued behind another one already in flight can be superseded before
-    // arriving. Retry until the element actually reports the requested position.
-    const maxAttempts = 3;
-    for (let attempt = 0; attempt < maxAttempts && !reachedTarget(); attempt += 1) {
       el.scrollTo(target);
 
-      // eslint-disable-next-line no-await-in-loop -- each retry must observe its own settle window before deciding whether another attempt is needed
       await delay(throttleMs);
-      // eslint-disable-next-line no-await-in-loop -- see above
+
       await until(scrollActive).toBe(false, { timeout: 10e3 });
     }
   };

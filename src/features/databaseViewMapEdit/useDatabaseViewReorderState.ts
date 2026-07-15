@@ -86,6 +86,14 @@ export const useDatabaseViewReorderState = (
 
     if (!isSameOrder(nextCanonical, current.expectedOrderedIds)) {
       current.conflicted = true;
+
+      // The service has already settled: both facts this request needs (its own result and
+      // the canonical divergence) are now known, so pending must terminate here. Without this,
+      // a conflict detected after the service already resolved `applied` would never clear
+      // pending, since `onReorder`'s continuation already ran and won't re-check `conflicted`.
+      if (current.serviceResult !== undefined) {
+        pending.value = null;
+      }
     }
   });
 

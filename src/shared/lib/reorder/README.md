@@ -4,6 +4,12 @@ A thin dnd-kit-based Vue 3 primitive for pointer-driven list reordering. It owns
 only: sensors, plugins, container-bounds restriction, the Material reorder transition, and
 translating a completed drag into a typed reorder request. It owns nothing about persistence.
 
+## Status
+
+This is the **canonical** reorder implementation and the target for incrementally migrating
+existing consumers off `@shared/lib/sortable` (legacy, see that module's README). New reorder
+consumers must use this module, not `@shared/lib/sortable`.
+
 ## Usage
 
 ```vue

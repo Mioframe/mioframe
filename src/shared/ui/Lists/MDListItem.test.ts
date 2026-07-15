@@ -652,6 +652,28 @@ describe('MDListItem', () => {
       return { wrapper, getItemRef: () => itemRef };
     };
 
+    // Same ref-capture mechanism as `mountWithItemRef`, but standalone (no ancestor `MDList`),
+    // for the standalone single-action topologies where the root element is the interactive
+    // surface.
+    const mountStandaloneWithItemRef = (itemProps: Record<string, unknown>) => {
+      let itemRef: ExposedMDListItem | null = null;
+      const wrapper = mount(
+        {
+          components: { MDListItem },
+          template: `<MDListItem :ref="setItemRef" v-bind="itemProps" />`,
+          setup: () => ({
+            itemProps,
+            setItemRef: (el: ExposedMDListItem | null) => {
+              itemRef = el;
+            },
+          }),
+        },
+        { attachTo: document.body },
+      );
+
+      return { wrapper, getItemRef: () => itemRef };
+    };
+
     it('returns the primary action element for an in-list single-action row', () => {
       const { wrapper, getItemRef } = mountWithItemRef({
         labelText: 'Settings',
@@ -677,6 +699,38 @@ describe('MDListItem', () => {
       }
 
       expect(itemRef.getPrimaryActionElement()).toBeNull();
+    });
+
+    it('returns the root button element for a standalone single-action button', () => {
+      const { wrapper, getItemRef } = mountStandaloneWithItemRef({
+        labelText: 'Settings',
+        mode: 'single-action',
+        onAction: vi.fn(),
+      });
+      const itemRef = getItemRef();
+
+      if (!itemRef) {
+        throw new Error('itemRef did not resolve');
+      }
+
+      expect(itemRef.getPrimaryActionElement()).toBe(wrapper.element);
+      expect(wrapper.element.tagName.toLowerCase()).toBe('button');
+    });
+
+    it('returns the root anchor element for a standalone single-action link', () => {
+      const { wrapper, getItemRef } = mountStandaloneWithItemRef({
+        labelText: 'Settings',
+        mode: 'single-action',
+        href: '/settings',
+      });
+      const itemRef = getItemRef();
+
+      if (!itemRef) {
+        throw new Error('itemRef did not resolve');
+      }
+
+      expect(itemRef.getPrimaryActionElement()).toBe(wrapper.element);
+      expect(wrapper.element.tagName.toLowerCase()).toBe('a');
     });
   });
 });

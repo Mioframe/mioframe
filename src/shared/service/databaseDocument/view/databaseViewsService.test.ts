@@ -190,4 +190,124 @@ describe('setupDatabaseViewsService', () => {
       expect(viewList.map(([id]) => id)).toEqual([viewBId, viewCId, viewAId]);
     });
   });
+
+  describe('legacy views without an explicit order', () => {
+    it('treats a single view with no order as if its order were 0', async () => {
+      const legacyId = generateViewId();
+      const orderedId = generateViewId();
+      const stateSubject = new BehaviorSubject<DatabaseState | undefined>({
+        version: 3,
+        data: {},
+        properties: {},
+        views: {
+          [orderedId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'ordered', order: 5 },
+          [legacyId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'legacy' },
+        },
+      });
+      const changeDatabase = createChangeDatabase(stateSubject);
+      const service = setupDatabaseViewsService(() => stateSubject.asObservable(), changeDatabase);
+      const documentId = createDocumentId();
+
+      const viewList = await service.viewList.fetch({ documentId, path: '/db' });
+
+      if (viewList instanceof Error || !viewList) {
+        throw viewList ?? new Error('viewList is undefined');
+      }
+
+      expect(viewList.map(([id]) => id)).toEqual([legacyId, orderedId]);
+    });
+
+    it('keeps a deterministic relative order for multiple views with no order', async () => {
+      const legacyFirstId = generateViewId();
+      const legacySecondId = generateViewId();
+      const stateSubject = new BehaviorSubject<DatabaseState | undefined>({
+        version: 3,
+        data: {},
+        properties: {},
+        views: {
+          [legacyFirstId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'legacy first' },
+          [legacySecondId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'legacy second' },
+        },
+      });
+      const changeDatabase = createChangeDatabase(stateSubject);
+      const service = setupDatabaseViewsService(() => stateSubject.asObservable(), changeDatabase);
+      const documentId = createDocumentId();
+
+      const viewList = await service.viewList.fetch({ documentId, path: '/db' });
+
+      if (viewList instanceof Error || !viewList) {
+        throw viewList ?? new Error('viewList is undefined');
+      }
+
+      expect(viewList.map(([id]) => id)).toEqual([legacyFirstId, legacySecondId]);
+    });
+
+    it('interleaves a mixture of ordered and unordered views by the same effective rank', async () => {
+      const orderOneId = generateViewId();
+      const legacyId = generateViewId();
+      const explicitZeroId = generateViewId();
+      const stateSubject = new BehaviorSubject<DatabaseState | undefined>({
+        version: 3,
+        data: {},
+        properties: {},
+        views: {
+          [orderOneId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'order one', order: 1 },
+          [legacyId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'legacy' },
+          [explicitZeroId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'explicit zero', order: 0 },
+        },
+      });
+      const changeDatabase = createChangeDatabase(stateSubject);
+      const service = setupDatabaseViewsService(() => stateSubject.asObservable(), changeDatabase);
+      const documentId = createDocumentId();
+
+      const viewList = await service.viewList.fetch({ documentId, path: '/db' });
+
+      if (viewList instanceof Error || !viewList) {
+        throw viewList ?? new Error('viewList is undefined');
+      }
+
+      // legacy (no order) and explicitZero (order: 0) share the same effective rank and keep
+      // their relative record order; orderOneId sorts after both.
+      expect(viewList.map(([id]) => id)).toEqual([legacyId, explicitZeroId, orderOneId]);
+    });
+
+    it('reorders a legacy document when expectedOrderedIds matches the order emitted by viewList', async () => {
+      const legacyId = generateViewId();
+      const orderedId = generateViewId();
+      const stateSubject = new BehaviorSubject<DatabaseState | undefined>({
+        version: 3,
+        data: {},
+        properties: {},
+        views: {
+          [orderedId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'ordered', order: 1 },
+          [legacyId]: { layout: DB_VIEW_LAYOUT.TABLE, name: 'legacy' },
+        },
+      });
+      const changeDatabase = createChangeDatabase(stateSubject);
+      const service = setupDatabaseViewsService(() => stateSubject.asObservable(), changeDatabase);
+      const documentId = createDocumentId();
+
+      const initialViewList = await service.viewList.fetch({ documentId, path: '/db' });
+      if (initialViewList instanceof Error || !initialViewList) {
+        throw initialViewList ?? new Error('viewList is undefined');
+      }
+      const expectedOrderedIds = initialViewList.map(([id]) => id);
+
+      expect(expectedOrderedIds).toEqual([legacyId, orderedId]);
+
+      const result = await service.reorder('/db', documentId, {
+        expectedOrderedIds,
+        orderedIds: [orderedId, legacyId],
+      });
+
+      expect(result).toBe('applied');
+
+      const viewListAfterReorder = await service.viewList.fetch({ documentId, path: '/db' });
+      if (viewListAfterReorder instanceof Error || !viewListAfterReorder) {
+        throw viewListAfterReorder ?? new Error('viewList is undefined');
+      }
+
+      expect(viewListAfterReorder.map(([id]) => id)).toEqual([orderedId, legacyId]);
+    });
+  });
 });

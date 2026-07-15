@@ -61,6 +61,19 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts'],
   },
   {
+    name: 'reorder generic layout support',
+    sourcePrefixes: [
+      'src/shared/lib/reorder/ReorderSurface.vue',
+      'src/shared/lib/reorder/useReorderItem.ts',
+      'src/shared/lib/reorder/reorderConfig.ts',
+      'src/shared/lib/reorder/reorderArray.ts',
+      'src/shared/lib/reorder/ReorderWrap.stories.ts',
+      'src/shared/lib/reorder/ReorderWrapStoryHarness.vue',
+      'src/shared/lib/reorder/ReorderWrapStoryItem.vue',
+    ],
+    specs: ['tests/e2e/storybook/reorderWrapLayout.spec.ts'],
+  },
+  {
     name: 'button family behavior',
     // A directory-wide prefix so every Button-family component, story, and colocated behavior
     // fixture (for example the target-hit and toolbar story helpers) selects this scenario,

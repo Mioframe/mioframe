@@ -718,3 +718,167 @@ test.describe('scoped autoscroll', () => {
     await closeBottomSheet(page, /database views sheet/i);
   });
 });
+
+test.describe('activation isolation', () => {
+  test('a completed drag reorders views without changing which view is current', async ({
+    page,
+  }) => {
+    await launchApp(page);
+    await openOpfs(page);
+
+    const directoryName = await createDirectory(page, createUniqueName('reorder isolation lab'));
+    await openDirectory(page, directoryName);
+
+    const documentName = await createDatabaseDocument(
+      page,
+      createUniqueName('reorder isolation catalog'),
+    );
+    await openDocumentFromExplorer(page, documentName);
+
+    const propertyName = await createStringProperty(page, createUniqueName('title'));
+    await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+    const firstViewName = await addView(page, createUniqueName('view iso alpha'));
+    const secondViewName = await addView(page, createUniqueName('view iso bravo'));
+
+    let sheet = await openViewsSheet(page);
+    await sheet.getByRole('button', { name: firstViewName }).click();
+    await expect(sheet.getByRole('button', { name: firstViewName })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await closeBottomSheet(page, /database views sheet/i);
+
+    sheet = await openViewsSheet(page);
+    const firstRow = sheet.getByRole('button', { name: firstViewName });
+    const secondRow = sheet.getByRole('button', { name: secondViewName });
+
+    await secondRow.scrollIntoViewIfNeeded();
+    await firstRow.scrollIntoViewIfNeeded();
+
+    const firstBox = await firstRow.boundingBox();
+    const secondBox = await secondRow.boundingBox();
+    if (!firstBox || !secondBox) {
+      throw new Error('missing bounding box for view row');
+    }
+
+    const dragSurfaceX = firstBox.x + firstBox.width / 2;
+
+    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2 + 8, { steps: 4 });
+    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2, { steps: 12 });
+    await page.mouse.up();
+
+    const rowsAfterDrag = await sheet.getByRole('list').locator(':scope > *').allTextContents();
+    expect(indexOfRow(rowsAfterDrag, secondViewName)).toBeLessThan(
+      indexOfRow(rowsAfterDrag, firstViewName),
+    );
+
+    // The drag release must not have activated/selected any row: the view selected before the
+    // drag stays current, regardless of where the dragged row now sits in the list.
+    await expect(sheet.getByRole('button', { name: firstViewName })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await expect(sheet.getByRole('button', { name: secondViewName })).not.toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await closeBottomSheet(page, /database views sheet/i);
+  });
+
+  test('pressing Escape mid-drag cancels the reorder and leaves current view and dragged state untouched', async ({
+    page,
+  }) => {
+    await launchApp(page);
+    await openOpfs(page);
+
+    const directoryName = await createDirectory(page, createUniqueName('reorder escape lab'));
+    await openDirectory(page, directoryName);
+
+    const documentName = await createDatabaseDocument(
+      page,
+      createUniqueName('reorder escape catalog'),
+    );
+    await openDocumentFromExplorer(page, documentName);
+
+    const propertyName = await createStringProperty(page, createUniqueName('title'));
+    await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+    const firstViewName = await addView(page, createUniqueName('view escape alpha'));
+    const secondViewName = await addView(page, createUniqueName('view escape bravo'));
+
+    let sheet = await openViewsSheet(page);
+    await sheet.getByRole('button', { name: firstViewName }).click();
+    await expect(sheet.getByRole('button', { name: firstViewName })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await closeBottomSheet(page, /database views sheet/i);
+
+    sheet = await openViewsSheet(page);
+    const firstRow = sheet.getByRole('button', { name: firstViewName });
+    const secondRow = sheet.getByRole('button', { name: secondViewName });
+    // `md-state_dragged` lives on the row's list-item wrapper, not the inner primary-action
+    // button that `getByRole('button', ...)` resolves to.
+    const firstRowWrapper = findListRow(sheet, firstViewName);
+
+    await secondRow.scrollIntoViewIfNeeded();
+    await firstRow.scrollIntoViewIfNeeded();
+
+    const rowsBeforeDrag = await sheet.getByRole('list').locator(':scope > *').allTextContents();
+
+    const firstBox = await firstRow.boundingBox();
+    const secondBox = await secondRow.boundingBox();
+    if (!firstBox || !secondBox) {
+      throw new Error('missing bounding box for view row');
+    }
+
+    const dragSurfaceX = firstBox.x + firstBox.width / 2;
+
+    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2);
+    await page.mouse.down();
+    // Cross the mouse activation distance so the drag actually activates before cancelling it.
+    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2 + 8, { steps: 4 });
+    await expect(firstRowWrapper).toHaveClass(/md-state_dragged/);
+
+    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2, { steps: 8 });
+
+    // Escape cancels the active drag while the physical mouse button is still held down.
+    await page.keyboard.press('Escape');
+    await expect(firstRowWrapper).not.toHaveClass(/md-state_dragged/);
+
+    await page.mouse.up();
+
+    // Escape's own overlay-dismiss behavior also closes the bottom sheet (its dialog contract
+    // is unrelated to this reorder scenario). Close (a no-op if already closed) and reopen it
+    // through the real product entry point before reading state, matching this app's actual
+    // observed behavior instead of assuming the sheet stays open.
+    await closeBottomSheet(page, /database views sheet/i);
+    sheet = await openViewsSheet(page);
+
+    // The reopened list can render asynchronously after the sheet dialog itself becomes
+    // visible, so wait for the expected row count before reading content.
+    const reopenedListItems = sheet.getByRole('list').locator(':scope > *');
+    await expect(reopenedListItems).toHaveCount(rowsBeforeDrag.length);
+
+    const rowsAfterCancel = await reopenedListItems.allTextContents();
+    expect(rowsAfterCancel).toEqual(rowsBeforeDrag);
+
+    await expect(sheet.getByRole('button', { name: firstViewName })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    // A later normal click still works after the cancelled drag.
+    await sheet.getByRole('button', { name: secondViewName }).click();
+    await expect(sheet.getByRole('button', { name: secondViewName })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await closeBottomSheet(page, /database views sheet/i);
+  });
+});

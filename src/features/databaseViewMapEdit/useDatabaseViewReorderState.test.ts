@@ -223,6 +223,36 @@ describe('useDatabaseViewReorderState', () => {
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
 
+  it('clears pending on a conflicting canonical update that arrives after the service already applied', async () => {
+    const canonicalIds = ref<readonly DatabaseViewId[]>([idA, idB, idC]);
+    const reorder = vi.fn().mockResolvedValue('applied' satisfies ReorderCommitResult);
+    const { displayIds, isPending, onReorder } = useDatabaseViewReorderState(
+      computed(() => canonicalIds.value),
+      reorder,
+    );
+
+    await onReorder({ expectedOrderedIds: [idA, idB, idC], orderedIds: [idB, idA, idC] });
+
+    // Service already applied, but canonical has not yet caught up to the requested order.
+    expect(isPending.value).toBe(true);
+    expect(displayIds.value).toEqual([idB, idA, idC]);
+
+    // A conflicting canonical update arrives afterward: neither the expected nor the requested
+    // order.
+    canonicalIds.value = [idC, idA, idB];
+    await nextTick();
+
+    expect(isPending.value).toBe(false);
+    expect(displayIds.value).toEqual([idC, idA, idB]);
+
+    // A new reorder must be allowed immediately on the very same composable instance.
+    reorder.mockResolvedValueOnce('applied' satisfies ReorderCommitResult);
+
+    await onReorder({ expectedOrderedIds: [idC, idA, idB], orderedIds: [idA, idC, idB] });
+
+    expect(reorder).toHaveBeenCalledTimes(2);
+  });
+
   it('starts a fresh token after a stale rollback and stays unaffected by the retired request', async () => {
     const canonicalIds = ref<readonly DatabaseViewId[]>([idA, idB, idC]);
     const first = deferred<ReorderCommitResult>();
