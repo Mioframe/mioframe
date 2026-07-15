@@ -166,7 +166,12 @@ const bodyStyle = computed(
       >
         <component :is="component" v-bind="paneProps" class="body__pane">
           <template #navigationButton>
-            <MDIconButton tooltip="back" md-symbol-name="arrow_back" @click="onClickBack" />
+            <MDIconButton
+              tooltip="back"
+              md-symbol-name="arrow_back"
+              color="standard"
+              @click="onClickBack"
+            />
           </template>
 
           <template v-if="showPanes.length - 1 - paneIndex === 0" #appBarTrailing>

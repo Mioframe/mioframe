@@ -69,11 +69,11 @@ const layoutOptions = [undefined, 'horizontal', 'vertical'] as const;
           :auto-hide="state.autoHide"
           class="md-margin-top-4"
         >
-          <MDIconButton tooltip="view settings" md-symbol-name="view_quilt" />
+          <MDIconButton tooltip="view settings" md-symbol-name="view_quilt" color="standard" />
 
-          <MDIconButton tooltip="sort" md-symbol-name="sort_by_alpha" />
+          <MDIconButton tooltip="sort" md-symbol-name="sort_by_alpha" color="standard" />
 
-          <MDIconButton tooltip="filter" md-symbol-name="filter_alt" />
+          <MDIconButton tooltip="filter" md-symbol-name="filter_alt" color="standard" />
 
           <MDIconButton
             tooltip="add a entry"
@@ -82,7 +82,7 @@ const layoutOptions = [undefined, 'horizontal', 'vertical'] as const;
             shape="square"
           />
 
-          <MDIconButton tooltip="configure properties" md-symbol-name="tune" />
+          <MDIconButton tooltip="configure properties" md-symbol-name="tune" color="standard" />
 
           <!-- <MDIconButton tooltip="button 5" md-symbol-name="more_vert" /> -->
         </MDToolbarContainer>

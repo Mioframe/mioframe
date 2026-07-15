@@ -82,7 +82,7 @@ export const VisualStates: Story = {
   render: () => ({
     components: { MDStateLayer, StateLayerDemoHost },
     template: `
-      <div data-testid="visual-md-state-layer" class="visual-surface">
+      <div data-testid="visual-md-state-layer" class="visual-checker-backdrop visual-surface">
         <div class="visual-row">
           <div class="visual-cell" style="display:grid;gap:8px;justify-items:start;">
             <span class="visual-label">Default</span>
@@ -144,7 +144,7 @@ export const VisualHostIntegration: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-state-layer-hosts" class="visual-surface">
+      <div data-testid="visual-md-state-layer-hosts" class="visual-checker-backdrop visual-surface">
         <div class="visual-row">
           <MDButton label="Filled button" color="filled" />
           <MDButton label="Outlined button" color="outlined" />
@@ -152,7 +152,7 @@ export const VisualHostIntegration: Story = {
         </div>
         <div class="visual-row">
           <MDButton label="Text button" color="text" />
-          <MDButton label="Selected toggle" color="filled" type="toggle" selected />
+          <MDButton label="Selected toggle" color="filled" variant="toggle" selected />
           <MDButton label="Elevated button" color="elevated" />
         </div>
       </div>

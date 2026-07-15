@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { defineComponent, h, ref } from 'vue';
-import MDFabContainer from './MDFabContainer.vue';
+import FabContainer from './FabContainer.vue';
 import MDExtendedFab from './MDExtendedFab.vue';
 import { definePaneScrollContainer } from '../Layout';
 
 /**
  * A minimal pane host for stories. Provides the pane container context that
- * MDFabContainer uses to anchor the floating surface, without requiring the
+ * FabContainer uses to anchor the floating surface, without requiring the
  * full MDSplitLayout + MDPane setup.
  */
 const StoryPaneHost = defineComponent({
@@ -42,12 +42,27 @@ const StoryPaneHost = defineComponent({
 });
 
 const meta = {
-  title: 'shared/ui/MDFabContainer',
-  component: MDFabContainer,
+  title: 'Project UI/Buttons/FabContainer',
+  component: FabContainer,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component: [
+          '**Project-specific placement infrastructure.** `FabContainer` is not an official Material 3 component; it does not appear under any `components/*` Material 3 page and owns no FAB visual tokens or colors.',
+          '',
+          'It composes existing Material foundations (`shared/ui/Overlay` teleport/positioning, `shared/ui/Layout` pane-scroll context) to anchor a single `MDFab` or `MDExtendedFab` action to the bottom of the nearest scrollable pane, matching the Material floating-action-button placement guidance without reimplementing FAB anatomy.',
+          '',
+          '**Props**: `autoHide` (hides the floating action while scrolling down, restores on scroll up or focus-within).',
+          '',
+          '**Slots**: `default` (a single `MDFab` or `MDExtendedFab`).',
+          '',
+          'Consumers own placement decisions (whether to use it at all) and the FAB action itself; `FabContainer` only owns the floating/overlay geometry.',
+        ].join('\n'),
+      },
+    },
   },
-} satisfies Meta<typeof MDFabContainer>;
+} satisfies Meta<typeof FabContainer>;
 
 export default meta;
 
@@ -55,14 +70,16 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => ({
-    components: { MDFabContainer, MDExtendedFab, StoryPaneHost },
+    components: { FabContainer, MDExtendedFab, StoryPaneHost },
     template: `
-      <StoryPaneHost>
-        <div style="height: 200px;" />
-        <MDFabContainer>
-          <MDExtendedFab label="Add" md-symbol="add" />
-        </MDFabContainer>
-      </StoryPaneHost>
+      <div class="visual-checker-backdrop">
+        <StoryPaneHost>
+          <div style="height: 200px;" />
+          <FabContainer>
+            <MDExtendedFab label="Add" md-symbol="add" />
+          </FabContainer>
+        </StoryPaneHost>
+      </div>
     `,
   }),
 };
@@ -77,7 +94,7 @@ export const Default: Story = {
  */
 export const PaneAnchoringLoadingTransition: Story = {
   render: () => ({
-    components: { MDFabContainer, MDExtendedFab, StoryPaneHost },
+    components: { FabContainer, MDExtendedFab, StoryPaneHost },
     setup() {
       const isLoading = ref(true);
       const loadContent = () => {
@@ -86,7 +103,7 @@ export const PaneAnchoringLoadingTransition: Story = {
       return { isLoading, loadContent };
     },
     template: `
-      <div id="fab-pane-host" style="display: flex; flex-direction: column; gap: 8px;">
+      <div id="fab-pane-host" class="visual-checker-backdrop" style="display: flex; flex-direction: column; gap: 8px;">
         <StoryPaneHost id="fab-test-pane" width="400px" height="500px">
           <div v-if="isLoading" style="height: 80px; display: flex; align-items: center; padding: 16px;">
             Loading...
@@ -100,9 +117,9 @@ export const PaneAnchoringLoadingTransition: Story = {
               Item {{ i }}
             </div>
           </template>
-          <MDFabContainer>
+          <FabContainer>
             <MDExtendedFab label="Add" md-symbol="add" />
-          </MDFabContainer>
+          </FabContainer>
         </StoryPaneHost>
         <button id="fab-load-content" type="button" @click="loadContent">Load content</button>
       </div>
@@ -111,7 +128,7 @@ export const PaneAnchoringLoadingTransition: Story = {
 };
 
 /**
- * Verifies that MDFabContainer anchors to its own pane when two independent
+ * Verifies that FabContainer anchors to its own pane when two independent
  * pane containers are present side by side. The FAB belongs to the right pane
  * and must remain positioned relative to that pane, not the left pane, the
  * viewport, or the document body.
@@ -121,7 +138,7 @@ export const PaneAnchoringLoadingTransition: Story = {
  */
 export const TwoPaneLayout: Story = {
   render: () => ({
-    components: { MDFabContainer, MDExtendedFab, StoryPaneHost },
+    components: { FabContainer, MDExtendedFab, StoryPaneHost },
     setup() {
       const isLoading = ref(true);
       const loadContent = () => {
@@ -130,7 +147,7 @@ export const TwoPaneLayout: Story = {
       return { isLoading, loadContent };
     },
     template: `
-      <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="visual-checker-backdrop" style="display: flex; flex-direction: column; gap: 8px;">
         <div id="fab-two-pane-host" style="display: flex; gap: 8px;">
           <StoryPaneHost id="fab-pane-left" width="300px" height="400px">
             <div
@@ -154,9 +171,9 @@ export const TwoPaneLayout: Story = {
                 Right item {{ i }}
               </div>
             </template>
-            <MDFabContainer>
+            <FabContainer>
               <MDExtendedFab label="Add" md-symbol="add" />
-            </MDFabContainer>
+            </FabContainer>
           </StoryPaneHost>
         </div>
         <button id="fab-two-pane-load-content" type="button" @click="loadContent">Load content</button>

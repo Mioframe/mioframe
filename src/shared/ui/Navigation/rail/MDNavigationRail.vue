@@ -54,6 +54,7 @@ const showMenuBtn = computed(() => props.hasMenu);
       v-if="showMenuBtn"
       :tooltip="tooltipMenuBtn"
       :md-symbol-name="symbolMenuBtn"
+      color="standard"
       class="md-navigation-rail__menu-button"
       @click="onClickMenuBtn"
     />

@@ -392,6 +392,23 @@
   --md-sys-motion-duration-extra-long3: 0.9s;
   --md-sys-motion-duration-extra-long4: 1s;
 
+  /* md.sys.motion.spring (Material 3 Expressive) */
+  --md-sys-motion-spring-fast-spatial-stiffness: 800;
+  --md-sys-motion-spring-fast-spatial-damping: 0.6;
+
+  /*
+   * Private Web platform adaptation of the Expressive spring curves above. CSS transitions
+   * cannot derive a curve from numeric stiffness/damping at runtime, so these are the fixed,
+   * documented Web conversion of the fast-spatial and fast-effects springs, not a dynamic
+   * regeneration of the curve from the --md-sys-motion-spring-* values. Not public
+   * --md-sys-* duration/easing tokens because Material 3 Expressive Web publishes no such
+   * public alias for spring-driven motion.
+   */
+  --md-private-motion-expressive-fast-spatial-duration: 350ms;
+  --md-private-motion-expressive-fast-spatial-easing: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --md-private-motion-expressive-fast-effects-duration: 150ms;
+  --md-private-motion-expressive-fast-effects-easing: cubic-bezier(0.31, 0.94, 0.34, 1);
+
   --md-comp-progress-indicator-active-indicator-color: var(--md-sys-color-primary);
 }
 

@@ -10,7 +10,7 @@ const onClick = () => {
 </script>
 
 <template>
-  <div id="visual-md-button-target-hit" class="visual-surface">
+  <div id="visual-md-button-target-hit" class="visual-checker-backdrop">
     <MDButton label="OK" size="extra-small" @click="onClick" />
 
     <output id="visual-md-button-target-hit-count">{{ clickCount }}</output>

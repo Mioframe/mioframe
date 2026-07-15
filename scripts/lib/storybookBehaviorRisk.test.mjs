@@ -81,6 +81,9 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     const coveredSpecs = new Set([...registrySpecs, ...STORYBOOK_BEHAVIOR_STANDALONE_SPECS]);
 
     expect(coveredSpecs.has('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/reorder.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/reorder.autoscroll.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/md-button-family.spec.ts')).toBe(true);
   });
 
   it('fails when a scenario references a spec missing from disk', () => {
@@ -324,22 +327,92 @@ describe('resolveStorybookBehaviorPlan', () => {
     );
   });
 
-  it('focuses the smoke spec for an MDButton story change', () => {
+  it('focuses the smoke spec and the button family spec for an MDButton story change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.stories.ts']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/md-button-family.spec.ts',
+      'tests/e2e/storybook/storybook.smoke.spec.ts',
+    ]);
   });
 
-  it('focuses the smoke spec for an MDButton component change', () => {
+  it('focuses the smoke spec and the button family spec for an MDButton component change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.vue']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/md-button-family.spec.ts',
+      'tests/e2e/storybook/storybook.smoke.spec.ts',
+    ]);
+  });
+
+  it('focuses the button family spec for an MDIconButton component or story change', () => {
+    expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDIconButton.vue']).specs).toEqual([
+      'tests/e2e/storybook/md-button-family.spec.ts',
+    ]);
+    expect(
+      resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDIconButton.stories.ts']).specs,
+    ).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
+  it('focuses the button family spec for an MDFab component or story change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.vue']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.stories.ts']).specs).toEqual([
+      'tests/e2e/storybook/md-button-family.spec.ts',
+    ]);
+  });
+
+  it('focuses the button family spec for an MDExtendedFab component or story change', () => {
+    expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDExtendedFab.vue']).specs).toEqual([
+      'tests/e2e/storybook/md-button-family.spec.ts',
+    ]);
+    expect(
+      resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDExtendedFab.stories.ts']).specs,
+    ).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
+  it('focuses the button family spec for a colocated Button story fixture change', () => {
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/ui/Button/MDButtonTargetHitVisualStory.vue',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
+  it('focuses the button family spec for a useFocusIndicator change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/useFocusIndicator.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
+  it('focuses the button family spec for a focus-indicator component/style change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/md-focus-indicator.css']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+  });
+
+  it('runs the changed button family behavior spec directly', () => {
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/md-button-family.spec.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
   });
 
   it('does not run the full lane for an unrelated src/shared/ui change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.vue']);
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Chips/MDChipBase.vue']);
+
+    expect(plan.mode).toBe('none');
+  });
+
+  it('does not select the button family spec for an unrelated shared State module', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/MDStateLayer.vue']);
 
     expect(plan.mode).toBe('none');
   });

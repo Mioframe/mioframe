@@ -1,5 +1,7 @@
 # Material 3 foundation audit
 
+> **Historical document.** This audit records the pre-Button-pilot foundation state. It is not the current source of truth for Button-family (`MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab`) implementation status. Current Button-family status is maintained in [Component family audit](./component-family-audit.md) and [Component registry](./component-registry.md).
+
 ## Scope
 
 This audit starts Phase 2 from [Material 3 adoption plan](./adoption-plan.md). It records the current foundation state before any component-family migration.
@@ -50,7 +52,7 @@ Use stable cache paths under `pages/components/...`. Avoid old failed or suspici
 
 Current gaps:
 
-- Component-family tokens are mostly still local implementation variables inside components. For example, `MDButton.vue` uses local `--md-button-*` variables instead of canonical public `--md-comp-button-*` tokens.
+- Component-family tokens are mostly still local implementation variables inside components. For example, `MDTextField.vue` uses local field-local border/padding variables instead of canonical public `--md-comp-text-field-*` tokens. (The Button family — `MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab` — has since completed this migration to `--md-comp-button-*`/`--md-comp-icon-button-*`/`--md-comp-fab-*`/`--md-comp-extended-fab-*`; see [Component family audit](./component-family-audit.md).)
 - Debug fallback color is isolated under the app/debug namespace `--app-debug-unknown-color`, not as a public Material token.
 - `--md-sys-color-surface-tint-color` is explicitly marked deprecated and should be removed or isolated as a compatibility alias during focused token cleanup.
 - The token bundle is monolithic. Keep it until the audit and pilot prove the next structure.
@@ -109,7 +111,7 @@ Current state:
 
 - Representative shared UI stories exist.
 - Visual helper stories already exist for buttons, icon buttons, chips, lists, and target-hit areas.
-- Some stories still use titles such as `shared/ui/MDButton` rather than `Material 3/Components/...` or `Project UI/...`.
+- Some stories still use titles such as `shared/ui/MDTextField` rather than `Material 3/Components/...` or `Project UI/...`. (The Button family now uses `Material 3/Components/Buttons/...`; see [Component family audit](./component-family-audit.md).)
 
 Current gaps:
 
@@ -211,7 +213,7 @@ Avoid generic screenshots for every component. Each visual story must prove a hi
 
 Keep the adoption-plan order:
 
-1. Buttons pilot: `MDButton`, `MDIconButton`, `MDFab`, `MDFabContainer`, and deprecated button compatibility exports.
+1. Buttons pilot: `MDButton`, `MDIconButton`, `MDFab`, `FabContainer`, and deprecated button compatibility exports.
 2. Lists: `MDList` and `MDListItem`.
 3. Dialogs and overlays needed by dialogs.
 4. Text fields and selection controls: `MDTextField`, `MDFieldContainer`, `MDSelectBase`, `MDCheckbox`, and `MDCheckboxField`.
@@ -221,7 +223,7 @@ Keep the adoption-plan order:
 
 ## Next implementation PR
 
-The smallest safe next implementation PR is foundation token wiring, followed by the Buttons pilot.
+The smallest safe next implementation PR is foundation token wiring, followed by the Buttons pilot. **This plan has since been carried out.** The Buttons pilot is implemented; current Button-family status lives in [Component family audit](./component-family-audit.md) and [Component registry](./component-registry.md). The scope below is preserved as historical planning context.
 
 Foundation token wiring should:
 
