@@ -51,20 +51,22 @@ For `.vue`, UI composable, shared UI, widget, pane/page, or feature UI changes, 
 
 For a new or materially changed public shared `MD*` component, the preflight must record exactly one architecture outcome:
 
-- `Architecture impact: none` — a strictly local legacy repair preserves public API, native semantics, token contract, anatomy, supported states, precedence, and visual output outside the named defect;
-- `Architecture impact: layered-v1` — the upstream handoff supplies the complete ready contract and exact files required by `docs/material-3/component-architecture.md`;
+- `Architecture impact: none` — a strictly local legacy repair preserves public API, native semantics, token contract, anatomy, supported states, per-property state resolution, and visual output outside the named defect;
+- `Architecture impact: layered-v1` — the upstream handoff supplies the complete ready contract delta and exact files required by `docs/material-3/component-architecture.md`;
 - `Architecture impact: blocked` — any required architecture or verification decision is unresolved.
 
 For `layered-v1`, the preflight verifies rather than redesigns:
 
 - `Architecture version`, `Change mode`, `Unresolved: none`, and `Readiness: ready` are present;
-- public API, anatomy owners, configuration axes, semantic states, interaction states, and precedence are fully resolved;
-- rendered property routes and actual DOM owners are named;
-- official token inventory, gaps, extensions, and deviations are named;
+- a first migration provides the complete initial family contract, or a later change names the current family `README.md` and exact contract delta;
+- public API, anatomy owners, configuration axes, semantic states, and interaction states are fully resolved;
+- every stateful rendered property has a matrix row with its DOM owner, final variable, route sources, interaction inputs, winner order, and simultaneous outputs;
+- each canonical official token names exactly one component or family token owner file;
+- any family token file names at least two consuming public components and the exact applicable roots;
 - exact production and verification files are named;
 - consumer blast radius and verification matrix are complete.
 
-If the implementer would need to choose a file, helper, context, state owner, token route, property owner, precedence rule, unsupported surface, or verification exception, stop and return the handoff. Do not turn the choice into implementation detail.
+If the implementer would need to choose a file, helper, context, token owner, property resolver, property owner, coexistence rule, unsupported surface, or verification exception, stop and return the handoff. Do not turn the choice into implementation detail.
 
 ## Scoped rule application
 
@@ -72,7 +74,7 @@ Use the applicable nested `AGENTS.md` and domain skills as the source of detaile
 
 - For storage, service, worker, provider, cache, protocol, or lifecycle work, apply `src/AGENTS.md`, the applicable `src/shared/**/AGENTS.md`, and `crdt-storage`. Record the canonical fact owner, public path to UI, error owner, recovery owner, and forbidden UI reconstruction.
 - For work across `entities`, `features`, `widgets`, or `pages`, apply their nested `AGENTS.md`. Record the model/read/action/composition split and the public API used between layers.
-- For shared UI, apply `shared-ui-implementation`, `material3-guidelines`, and `docs/material-3/component-architecture.md`; record architecture impact, consumer blast radius, and the browser/visual evidence required.
+- For shared UI, apply `shared-ui-implementation`, `material3-guidelines`, and `docs/material-3/component-architecture.md`; record architecture impact, current family contract, exact delta, consumer blast radius, and browser/visual evidence.
 - For diagnostics, apply `diagnostic-events` and the privacy rules under `src/AGENTS.md`; record only the boundary and safe diagnostic contract affected.
 
 A scoped rule conflict is a blocker. Resolve it before editing rather than choosing whichever wording permits the implementation.
@@ -137,4 +139,4 @@ Considering a matrix item does not require implementing it. Include behavior onl
 
 Keep the written preflight concise: usually 8-15 short lines plus a verification note. Do not repeat generic repository rules or the full Material component contract.
 
-Before final handoff, report whether the resulting diff still matches the architecture handoff. If it does not, fix the implementation or explicitly report the architectural divergence.
+Before final handoff, report whether the resulting diff still matches the architecture handoff and family README. If it does not, fix the implementation or explicitly report the architectural divergence.
