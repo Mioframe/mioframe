@@ -2,129 +2,138 @@
 
 ## Principle
 
-Adopt Material 3 incrementally through foundation-first, component-family work. Do not perform broad visual rewrites without first defining the token, API, Storybook, verification, and deviation contract.
+Adopt Material 3 incrementally through source-backed component-family work. Architecture, token ownership, public API, anatomy, state precedence, Storybook, verification, and deviations must be resolved before implementation.
 
-## Phase 1: Policies
+Do not perform broad visual rewrites or let implementation agents invent missing component architecture while editing code.
 
-Add and review the Material 3 foundation and implementation policies:
+## Phase 1: Foundation policies
 
-- source of truth;
-- units;
-- tokens;
-- baseline theme;
-- component tokens;
-- token validation;
-- component registry;
-- component conversion checklist;
-- interaction states;
-- accessibility;
-- layout and adaptive behavior;
-- density and spacing;
-- iconography;
-- overlays;
-- shared UI API;
-- Storybook;
-- verification;
-- deviations.
+The policy set establishes:
 
-This phase should not reorganize shared UI source files or change component behavior.
+- official Material source of truth;
+- `dp` and `sp` authoring units;
+- reference, system, component, and app token namespaces;
+- baseline light and dark themes;
+- interaction-state and accessibility rules;
+- shared UI public API conventions;
+- Storybook and verification expectations;
+- component registry and deviation tracking;
+- strict public Material component architecture.
+
+This phase changes policy only. It does not reorganize production components or change component behavior.
 
 Resolved foundation decisions:
 
-- `sp` is the target Material typography authoring unit; existing Material typography `pt` usage is legacy and should be migrated during the foundation audit.
-- `dp` remains the target Material measurement authoring unit.
-- `--app-*` is the neutral namespace for app-specific CSS custom properties outside Material token vocabulary.
-- Canonical `--md-comp-*` tokens are defined at the component definition boundary.
-- Start with a tokenized Material baseline theme with mandatory light and dark schemes.
-- Future base palette customization must update reference/system tokens rather than component CSS.
-- Do not keep old shared UI APIs only for internal compatibility; update in-repository consumers in the same focused migration.
-- Overlay containment ownership already exists through `useOverlayContainer`, `TeleportContainer`, child teleported container registration, and outside-interaction containment. Preserve and reuse that model instead of introducing a numeric z-index ownership model by default.
+- `sp` is the target Material typography authoring unit;
+- `dp` is the target Material measurement authoring unit;
+- `--app-*` is the namespace for project-specific CSS custom properties outside Material vocabulary;
+- canonical `--md-comp-*` tokens are owned by the component family and remain at its definition boundary;
+- generic state, ripple, focus, elevation, and motion primitives read generic private contracts only;
+- public shared UI APIs are migrated together with in-repository consumers rather than preserved through compatibility-only aliases by default;
+- existing overlay containment ownership is reused instead of introducing a numeric z-index ownership model;
+- a ready `MATERIAL COMPONENT CONTRACT` is required before new or migrated public `MD*` implementation.
 
-## Phase 2: Foundation audit
+## Phase 2: Architecture enforcement
 
-Audit existing implementation against the policies:
+Establish and enforce [Component architecture](./component-architecture.md).
 
-- `src/shared/lib/md/tokens.css`;
-- PostCSS custom unit handling, including adding `sp` support before typography migration relies on it;
-- `MDState` and state layer primitives;
-- icon primitives and Material Symbols handling;
-- overlay primitives: `useOverlayContainer`, `TeleportContainer`, teleported container registry, outside-interaction containment, escape/back stacking, focus trap behavior, and any remaining local z-index usage;
-- public `MD*` component props;
-- Storybook story hierarchy and coverage;
-- visual regression coverage.
+Required outcomes:
 
-The audit must produce:
+- `Architecture impact: none`, `layered-v1`, or `blocked` is recorded before public Material component edits;
+- every `layered-v1` component has fixed Vue, token, route, state, and rendering layers;
+- family README files hold durable architecture contracts;
+- state precedence and actual DOM property owners are explicit;
+- component-token ownership and private-variable boundaries are mechanically checked;
+- implementation agents stop when a required architecture decision is absent.
 
-- an expanded component registry;
-- a token inventory and validation plan;
-- a typography token migration from legacy `pt` to Material `sp`;
-- a baseline light/dark theme plan;
-- an overlay containment review based on the existing shared overlay primitives, with focused follow-ups only for gaps;
-- a shared UI API migration list without compatibility-only aliases unless technically necessary;
-- a Storybook coverage plan;
-- a prioritized component-family conversion order.
+Add verify-managed static validation incrementally:
 
-## Phase 3: Buttons pilot
+1. implement checks against the first pilot;
+2. keep legacy components advisory-only;
+3. make checks blocking for each component after migration;
+4. expand the validator only after the rule is proven on an independent second pilot.
 
-Use Buttons as the first component family because the current implementation already maps closely to the Material 3 button model.
+Do not build a runtime token registry, generic component base, CSS-generation DSL, or cross-family state machine.
 
-Pilot scope:
+## Phase 3: `MDButton` architecture pilot
 
-- `MDButton`;
-- `MDIconButton`;
-- `MDFab` and related FAB helpers;
-- deprecated button compatibility exports.
+Use `MDButton` as the first `layered-v1` migration because its current implementation exposes the failure mode this architecture must solve: public API, official token inventory, private routing, state precedence, property ownership, geometry, and motion are concentrated in one large component file.
 
-The pilot must establish the practical pattern for:
+The architecture-only PR must:
 
-- component tokens defined at the component boundary;
-- token validation;
-- public prop naming;
-- icon handling;
-- density, spacing, and target area handling;
-- invalid Material combinations;
-- Storybook documentation;
-- visual regression surfaces;
-- documented deviations.
+- keep public API unchanged;
+- keep token names and values unchanged;
+- keep state behavior unchanged;
+- keep rendered output unchanged;
+- introduce the family README and mandatory style layers;
+- route each stateful property through the declared pipeline;
+- preserve existing consumers and verification;
+- enable blocking architecture validation for `MDButton`.
 
-Use [Component conversion checklist](./component-conversion-checklist.md) as the pilot completion gate.
+Do not correct Material deviations in the architecture-only PR unless the architecture handoff explicitly classifies the component as a small `combined-approved` exception. `MDButton` is not such an exception.
 
-## Phase 4: Core components
+## Phase 4: `MDButton` alignment
 
-After the Buttons pilot is accepted, convert component families in dependency and usage order:
+After architecture migration is stable, complete a separate focused Material alignment PR.
 
-1. Lists;
-2. Dialogs;
-3. Text fields and selection controls;
-4. Chips and menus;
-5. Navigation, app bars, toolbars, and sheets;
-6. Cards, progress indicators, tooltips, dividers, and project-specific surfaces.
+The alignment PR must address only documented remaining gaps, including as applicable:
 
-Every converted component family must update [Component registry](./component-registry.md) and document remaining deviations.
+- exact official component-token routes;
+- label and icon property ownership;
+- content-color motion ownership;
+- disabled, selected, and forced-state precedence;
+- override verification;
+- Storybook and browser evidence;
+- honest component-registry status.
 
-## Phase 5: Structure cleanup
+Use [Component conversion checklist](./component-conversion-checklist.md) as the completion gate.
 
-Only after the policies and pilot prove the pattern should the code structure be reorganized.
+## Phase 5: independent `MDSwitch` pilot
 
-Possible later structure:
+Validate `layered-v1` on `MDSwitch` before declaring the architecture universal across the library.
 
-```text
-src/shared/lib/md/
-  index.css
-  units.css
-  tokens/
-    ref.css
-    sys.color.css
-    sys.typescale.css
-    sys.shape.css
-    sys.elevation.css
-    sys.motion.css
-    sys.state.css
-    comp/
-      button.css
-      icon-button.css
-      list.css
-      dialog.css
-```
+`MDSwitch` is the independent pilot because it combines:
 
-Do not perform this reorganization before the foundation audit unless a focused change requires it.
+- selected and unselected semantic states;
+- disabled selected and disabled unselected routes;
+- keyboard activation;
+- pointer drag behavior;
+- presentation mode;
+- multiple anatomy owners.
+
+The pilot must determine whether the fixed layers, state model, behavior ownership, and validator remain clear without introducing Button-specific exceptions.
+
+If the architecture requires repeated exceptions, hidden routing, or new generic infrastructure to fit `MDSwitch`, stop and revise the architecture before migrating further families.
+
+## Phase 6: library migration
+
+After both pilots are accepted, migrate component families one at a time in dependency and usage order.
+
+Each migration must:
+
+- start from a ready component contract;
+- use architecture-only and alignment-only PRs for large or stateful legacy components;
+- update the component registry and family README;
+- add blocking validation for the migrated family;
+- preserve consumer scenarios and verify the declared blast radius;
+- remove replaced token routes and obsolete logic completely.
+
+Suggested order after the pilots:
+
+1. remaining Button-directory components, each according to its own official Material surface;
+2. Lists;
+3. Cards and Dialogs;
+4. Text fields and selection controls;
+5. Chips and Menus;
+6. Navigation, App bars, Toolbars, and Sheets;
+7. Progress indicators, Tooltips, Dividers, and other smaller surfaces.
+
+The order may change only through an architecture decision based on dependencies, active product work, or risk. It must not change because several unrelated families happen to share similar CSS.
+
+## Token structure constraint
+
+Reference and system tokens remain in the Material foundation.
+
+Component tokens do not move into a global `src/shared/lib/md/tokens/comp` catalog. Each migrated component owns canonical `--md-comp-*` declarations in its `<Component>.tokens.css` file. Shared low-level primitives expose generic private bridges and never read component-family token names directly.
+
+A later tooling change may generate reports or allowlists from family-owned CSS, but it must not create a second runtime source of truth.
