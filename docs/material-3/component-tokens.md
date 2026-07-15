@@ -26,7 +26,7 @@ A family may own:
 
 only when the same exact official token path is consumed by at least two public components in that family. The blueprint names official paths, CSS names, applicable roots, and loading components.
 
-When all applicable official tokens are family-owned, a component does not also need its own token file. When no exact official component token exists, record token ownership as `none` and use documented private/system/app sources according to ownership.
+When all applicable official tokens are family-owned, a component does not also need its own token file. When no exact official component token exists, record ownership as `none` and use documented private, system, or app sources according to ownership.
 
 Equal values, similar usage, line count, or possible reuse do not justify family ownership.
 
@@ -84,52 +84,54 @@ Use a direct value only when the verified component spec defines it, such as a `
 When an official component path is missing:
 
 - do not invent an approximate public token;
-- use a family-private route from existing component/system tokens when internal;
+- use a documented private or system source when internal;
 - use `--app-*` only for an explicit public Mioframe extension;
 - record the gap in the family blueprint and registry.
 
-## Directed pipeline
+## Shortest applicable pipeline
 
-Each property uses only applicable stages:
+Each property uses only the stages it needs:
 
 ```text
-official md.comp token
-→ optional canonical --md-comp-* declaration
+canonical component token or documented private/system/app source
 → optional configuration route
-→ optional semantic bank
-→ optional property-specific interaction resolver
-→ rendered family-private value
+→ optional property-specific state resolver
+→ optional rendered private value
 → optional generic foundation bridge
 → actual DOM property owner
 ```
 
-The canonical stage is omitted only when no exact official component token exists for the property. An available official component token must not be bypassed by a direct system-token value.
+Rules:
+
+- a simple static property may be applied from its canonical token or documented source directly in rendering CSS;
+- a configured property may be applied from its route variable directly;
+- a rendered private variable is required only when state resolution produces the final value or a generic foundation bridge needs a stable final input;
+- do not add a private alias only for naming convenience;
+- an available official component token must not be bypassed by a direct system token.
 
 ## Private variables
 
-Use these naming classes when their stages apply.
+Create only the classes needed by the selected profile and property matrix.
 
 Configuration route:
 
 ```text
---md-private-<component>-<semantic>-<interaction>-<part>-<property>
+--md-private-<component>-<configuration>-<part>-<property>
 ```
 
-Current semantic candidate:
+State candidate when multiple semantic or interaction sources must be resolved:
 
 ```text
---md-private-<component>-current-<interaction>-<part>-<property>
+--md-private-<component>-<semantic-or-state>-<part>-<property>
 ```
 
-Final rendered value:
+Final state-resolved value:
 
 ```text
 --md-private-<component>-rendered-<part>-<property>
 ```
 
-Do not add alias levels for readability. Omit an entire stage when the blueprint states the property does not vary across it.
-
-Private variables remain inside the owning family and never become consumer styling API.
+Exact names and stages are recorded in the family matrix. Do not add alias levels for readability. Private variables remain inside the owning family and never become consumer styling API.
 
 ## Override contract
 
@@ -147,7 +149,8 @@ Consumers must not depend on family-private variables, internal classes, or gene
 A shared state-layer, ripple, focus, elevation, or motion primitive exposes only generic private inputs.
 
 - The primitive never reads family component tokens or family-private variables.
-- The consuming component maps its final rendered value into the generic bridge in its state layer.
+- The consuming component maps the applicable final source into the generic bridge.
+- A stateful component normally maps its rendered state-resolved value; a static bridge may map a canonical token directly when no state resolution is required.
 - The primitive owns generic rendering; the family owns source selection.
 - Do not move family routing into a primitive to remove duplication.
 
@@ -158,9 +161,9 @@ During standard component authoring, the implementation agent independently:
 1. inventories exact official token paths required by supported scenarios;
 2. assigns each path to one component or qualifying family owner file;
 3. omits token files with no owned official paths;
-4. records ownership in the family blueprint;
-5. selects the smallest applicable architecture profile;
-6. implements only required routes and state resolvers;
+4. records ownership and the shortest property pipelines in the family blueprint;
+5. selects one of the four deterministic profiles;
+6. implements only required routes, state resolvers, private variables, and bridges;
 7. validates public overrides and actual DOM property owners.
 
 Use architecture escalation only when official paths, ownership, or required project extension semantics are genuinely unresolved.
