@@ -18,7 +18,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Chose an official Material component or documented composition.
 - [ ] Included one canonical Material default.
 - [ ] Added optional variants, sizes, shapes, modes, anatomy, or behavior only for named scenarios.
-- [ ] Included every reachable state, semantic, accessibility, usage, and foundation requirement for the supported surface.
+- [ ] Included every reachable state, semantic, accessibility, usage, foundation, and verification requirement for the supported surface.
 - [ ] Listed other official capabilities as unsupported rather than implementing them speculatively.
 - [ ] Added no project extension without an explicit requirement.
 
@@ -61,7 +61,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 - [ ] Created or updated the family `README.md` before production code.
 - [ ] Kept the blueprint compact and source-backed.
-- [ ] Recorded library ownership, scenarios, non-goals, usage contract, supported and unsupported surface, API, native semantics, invalid combinations, anatomy, states, foundation dependencies, token ownership, rendered-property matrix, files, verification, consumers, and deviations.
+- [ ] Recorded library ownership, scenarios, non-goals, usage contract, supported and unsupported surface, API, native semantics, invalid combinations, anatomy, states, foundation dependencies, token ownership, rendered-property matrix, test profile, state-matrix coverage, files, verification, consumers, and deviations.
 - [ ] Set `Unresolved: none` and `Readiness: ready` only after every required decision was resolved.
 - [ ] For an existing family, changed only required README sections.
 - [ ] The implementation introduced no decision absent from the blueprint or ready handoff.
@@ -105,7 +105,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 
 ## 10. State and rendering
 
-- [ ] Created matrix rows only for properties that vary.
+- [ ] Created rendered-property matrix rows only for properties that vary.
 - [ ] Each row names DOM owner, applied/final value, route source, state inputs, winner rule, simultaneous outputs, and bridge.
 - [ ] Grouped rows only when all routing and ownership columns are identical, while listing every property and applied/final value.
 - [ ] State resolution is property-specific; no global precedence is applied to every property.
@@ -117,39 +117,65 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Vue acquires runtime facts while CSS resolves visual state.
 - [ ] Rendering CSS owns layout, geometry, presentation, transitions, and final property application only.
 
-## 11. Simplicity
+## 11. Standard component testing
 
-- [ ] Reused existing native semantics, accepted foundation contracts, and generic infrastructure.
-- [ ] Added no universal base component, runtime token registry, generic resolver, CSS DSL, cross-family state machine, second theme system, broad options object, workspace package, or publication infrastructure without a current requirement.
+- [ ] Read [Component testing architecture](./component-testing.md).
+- [ ] Recorded the same standard test profile used by other new/migrated Material components.
+- [ ] Added colocated `<Component>.test.ts` contract tests using Vue Test Utils.
+- [ ] Contract tests cover public API, defaults, native owner, ARIA, slots, emits, invalid combinations, and non-browser wiring as applicable.
+- [ ] Added exactly one canonical Storybook export named `StateMatrix`.
+- [ ] The matrix root uses `data-testid="visual-<component-kebab>-state-matrix"` and the canonical checkerboard backdrop.
+- [ ] Visible row, column, and section headings identify every case without reading source code.
+- [ ] The matrix covers every supported semantic, interaction, disabled, and other visually distinct state.
+- [ ] The matrix covers every distinct state-rendering route and simultaneous-state result from the rendered-property matrix.
+- [ ] Equivalent sizes, labels, icons, and content combinations are not multiplied when they share the same state route.
+- [ ] The family README maps each supported visual route or valid grouped route to a visible matrix row and column.
+- [ ] Transient states use accepted verification-only foundation adapters or real Playwright setup, not test-only public component APIs.
+- [ ] Added a Playwright visual assertion for the complete bounded matrix or its visibly labelled sections.
+- [ ] Did not create one screenshot per cell.
+- [ ] Added Storybook Playwright behavior tests for real focus, keyboard, pointer/touch, drag, overlay, responsive, or other browser-owned behavior as applicable.
+- [ ] Behavior tests use real browser input and do not use forced matrix states as proof.
+- [ ] Added focused Vitest tests for extracted pure helpers/composables when applicable.
+- [ ] Recorded changed-consumer preservation checks.
+- [ ] Recorded human Material visual review as `required`, `passed`, or `blocked`; an automated agent did not claim it passed.
+
+## 12. Simplicity
+
+- [ ] Reused existing native semantics, accepted foundation contracts, generic infrastructure, and testing infrastructure.
+- [ ] Added no universal base component, runtime token registry, generic resolver, CSS DSL, cross-family state machine, second theme system, broad options object, production state-matrix component, generic component-test DSL, workspace package, or publication infrastructure without a current requirement.
 - [ ] Extracted component behavior only for non-trivial testable lifecycle or gesture transitions.
 - [ ] Added a component composable only for behavior required by at least two production components now.
 - [ ] Added a foundation primitive only when the objective expansion rules are satisfied.
+- [ ] Added a shared Storybook matrix helper only after at least two migrated families proved the same concrete need.
 - [ ] Added a Material pattern only when the official-composition and current-scenario gate passes.
 - [ ] Added no compatibility alias without an existing consumer requirement and removal target.
 - [ ] Removed replaced and obsolete logic instead of retaining parallel paths.
 
-## 12. Verification
+## 13. Verification
 
-- [ ] Static validation covers canonical library location, dependency direction, public exports, no deep imports, foundation dependencies, selected profile, exact applicable layers, token names/owners, selectors, private boundaries, alias necessity, and README consistency.
+- [ ] Static validation covers canonical library location, dependency direction, public exports, no deep imports, foundation dependencies, selected profile, exact applicable layers, token names/owners, selectors, private boundaries, alias necessity, README consistency, and test-profile completeness.
 - [ ] Product integration verifies component choice and composition when applicable.
-- [ ] Contract tests cover supported API, native semantics, ARIA, invalid combinations, states, and extensions.
-- [ ] Browser tests cover focus, keyboard, pointer, gestures, overlays, adaptivity, computed CSS, public overrides, and actual property owners as applicable.
-- [ ] Every reachable property-matrix route and simultaneous-output case is verified.
-- [ ] Storybook documents supported and unsupported surface, usage, extensions, foundation dependencies, and deviations.
-- [ ] Visual coverage is representative rather than a full Cartesian matrix.
+- [ ] Contract tests cover the supported public contract without asserting browser appearance or behavior.
+- [ ] Browser tests cover component-owned real focus, keyboard, pointer, gestures, overlays, adaptivity, computed CSS, public overrides, and actual property owners as applicable.
+- [ ] Every reachable rendered-property route and simultaneous-output case is covered by contract, browser, or state-matrix evidence at the owning layer.
+- [ ] Storybook documents supported and unsupported surface, usage, extensions, foundation dependencies, deviations, and canonical state-matrix coverage.
+- [ ] The state-matrix visual regression passes on the canonical Linux/Chromium surface.
+- [ ] Initial or intentionally changed state-matrix baselines are available for human comparison with named official sources.
 - [ ] Every changed existing consumer has import and behavior preservation checks.
 - [ ] Every foundation correction or replacement has representative checks for distinct consumer paths.
 - [ ] Old legacy files and exports are absent after migration unless an approved temporary contract exists.
 - [ ] Tests do not verify framework, browser, or generic foundation internals the component does not own.
 - [ ] Final verify follows repository rules.
 
-## 13. Completion
+## 14. Completion
 
-- [ ] Family README, library migration map, foundation/component registries, owner contracts, production code, public exports, Storybook, and verification agree.
+- [ ] Family README, library migration map, foundation/component registries, owner contracts, production code, public exports, Storybook, contract/browser/visual tests, risk registration, and snapshots agree.
 - [ ] Unsupported features and deviations are explicit.
+- [ ] No supported visual state route is missing from the state matrix.
+- [ ] Human Material visual review is passed or remains an explicit merge blocker.
 - [ ] No escalation condition was hidden as a local workaround.
 - [ ] No unrequested abstraction or flexibility remains.
-- [ ] No empty layer, unnecessary private alias, local foundation substitute, cross-family private import, or permanent legacy export remains.
+- [ ] No empty layer, unnecessary private alias, local foundation substitute, cross-family private import, permanent legacy export, family-local forced-state system, or test-only production API remains.
 - [ ] The supported surface is complete even if optional Material capabilities remain unsupported.
 
-Do not mark a component `aligned`, migrated, or architecture-complete until every applicable item passes or the missing item is explicitly recorded as unsupported, deviated, blocked, or follow-up verification.
+Do not mark a component `aligned`, migrated, or architecture-complete until every applicable item passes or the missing item is explicitly recorded as unsupported, deviated, blocked, or follow-up verification. Human visual review cannot be replaced by an automated pass.
