@@ -20,19 +20,25 @@ Only:
 - `patterns`: reusable official Material compositions passing the documented pattern gate;
 - library-level documentation and curated public entry points.
 
+Canonical Material policy and source-evidence documents remain under `docs/material-3`.
+
 ## Dependency direction
 
 ```text
 shared/lib generic infrastructure
-  → material/foundation
-  → material/components
-  → material/patterns
-  → project-specific shared UI and product layers
+  ├─→ material/foundation
+  ├─→ material/components
+  └─→ material/patterns
+
+material/foundation → material/components → material/patterns
+material library → project-specific shared UI and product layers
 ```
 
+- Any Material layer may import a correctly owned generic `shared/lib` utility directly.
+- Do not create a foundation wrapper merely to route generic DOM, event, geometry, lifecycle, or browser behavior.
 - `foundation` must not import `components` or `patterns`.
 - Component families must not deep-import other families.
-- Patterns use public foundation/component entry points only.
+- Patterns use public foundation/component contracts and correctly owned generic utilities only.
 - No library code imports `entities`, `features`, `widgets`, `pages`, or `app`.
 - Generic `shared/lib` infrastructure must not depend on this library.
 
@@ -43,12 +49,13 @@ shared/lib generic infrastructure
 - New reusable Material compositions belong in `patterns/<pattern>` only when Material documents the composition and a current product scenario requires it.
 - Do not add empty directories, placeholder files, speculative extension points, or a universal base component.
 - Project-specific UI does not belong under `components`, even when it uses Material tokens or primitives.
+- Using a generic external utility does not transfer that utility's ownership into Material.
 
 ## Public API
 
 - Public product imports use `@shared/ui/material` after the root production entry point exists.
 - Internal library code must not import the root barrel.
-- Components import accepted foundation entry points.
+- Components import accepted foundation entry points or correctly owned generic `shared/lib` entry points.
 - External deep imports into `.vue`, `.css`, private helpers, or another family are forbidden.
 - Every public export has one owner, accurate TSDoc, and matching README/registry status.
 
@@ -86,4 +93,4 @@ A pattern is allowed only when:
 
 ## Verification
 
-Architecture validation is blocking for new and migrated library artifacts. Verify location, dependency direction, public exports, no deep imports, no project-specific content, no local foundation substitute, complete consumer migration, and removal of obsolete legacy paths.
+Architecture validation is blocking for new and migrated library artifacts. Verify location, dependency direction, public exports, no deep imports, no artificial foundation wrappers, no project-specific content, no local foundation substitute, complete consumer migration, and removal of obsolete legacy paths.
