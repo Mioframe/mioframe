@@ -17,7 +17,8 @@ Use `shared-ui-implementation` and `material3-guidelines` for shared UI work. Pu
 - Do not style or reposition neighboring parent-flow elements.
 - For a new or materially changed public `MD*` component, use `standard-authoring`, `handoff-authoring`, or `blocked` before production edits.
 - In `standard-authoring`, derive and write the compact family README blueprint from required scenarios, official Material sources, repository rules, and native semantics; a bespoke architect handoff is not required.
-- Select the smallest objective architecture profile: `simple`, `configured`, or `stateful`.
+- Select exactly one smallest objective profile: `simple`, `configured`, `stateful`, or `configured-stateful`.
+- Add token, route, state, and private alias layers only when their documented condition applies; empty or convenience-only layers are forbidden.
 - Canonical token files are independent of active configuration and state; routes and property-specific state resolution use their own layers.
 - Family README, production code, registry, Storybook, and verification must agree.
 - Use `blocked` rather than inventing behavior when an escalation condition is present.
