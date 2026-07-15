@@ -1,171 +1,179 @@
 # Material 3 foundation architecture
 
-This document defines the architecture and maintenance workflow for Material foundations used by public shared UI components and product composition.
+This document defines the ownership and change contract for cross-family Material foundations used by public shared UI components and product composition.
 
-The foundation is not one base component and not a complete framework implemented in advance. It is a set of independently owned, source-backed contracts that are expanded only when a current component or product scenario requires them.
+The foundation is not a universal base component and not a complete framework built in advance. It is a set of independently owned, source-backed contracts expanded only when a current component or product scenario requires them.
 
 ## Goals
 
 The foundation must:
 
-- give components one reusable owner for cross-family Material concerns;
-- keep official reference and system contracts current as Material guidance changes;
-- let component work discover and close real foundation gaps without local duplication;
-- make the impact of foundation changes explicit across all consumers;
-- preserve a small implementation surface and avoid speculative infrastructure;
-- separate Material component implementation, foundation behavior, and product composition.
+- provide one accepted owner for each cross-family Material concern;
+- keep source evidence, ownership, supported contract, gaps, and verification current;
+- prevent component-local substitutes and duplicate mechanisms;
+- make consumer impact explicit before shared behavior changes;
+- support incremental relocation into `src/shared/ui/material/foundation`;
+- remain small and free of component-family or product knowledge.
 
 ## Scope
 
 Foundation domains include:
 
 - official source evidence and snapshot metadata;
-- Material authoring units and their build-time conversion;
-- reference tokens and system tokens;
-- light, dark, and future theme contexts;
-- typography roles and typography utilities;
-- shape roles;
-- elevation roles and generic elevation bridges;
-- motion roles and verified platform adaptations;
-- state-layer, ripple, focus-visible, and interaction-state acquisition;
-- icon system and Material Symbols behavior;
-- density, target-area, and spacing policy;
-- accessibility rules shared across component families;
-- overlay containment and shared overlay lifecycle infrastructure;
-- canonical layout and adaptive-surface policy.
+- Material authoring units and build-time conversion;
+- reference and system tokens;
+- theme contexts;
+- typography, shape, elevation, and motion roles;
+- generic interaction-state acquisition, state layer, ripple, and focus;
+- Material Symbols rendering;
+- Material-facing overlay containment and lifecycle adapters;
+- cross-library accessibility, density, target-area, layout, and adaptivity policies;
+- verification-only adapters for generic transient visual states.
 
-The following are not foundation-owned:
+Foundation does not own:
 
 - component-family `--md-comp-*` tokens;
-- component anatomy, public props, slots, emits, and property-state resolution;
-- product information architecture and feature behavior;
-- screen-specific layout decisions;
-- app-specific public contracts under `--app-*`;
-- compatibility behavior that belongs to one component family.
+- component anatomy, public props, slots, emits, semantic-state meaning, or property precedence;
+- product information architecture, workflow, placement, or adaptive component choice;
+- screen-specific layout;
+- public project extensions under `--app-*`;
+- compatibility behavior used by one family only.
 
 ## Dependency direction
-
-Use this direction only:
 
 ```text
 official Material evidence
 → foundation contracts
 → component-family contracts
-→ features/widgets/pages composition
+→ Material patterns
+→ product composition
 ```
 
-Foundation code and contracts must not import or name a consuming component family. A generic primitive may expose a narrow private bridge, but the component maps its own final value into that bridge.
+Foundation code and contracts must not import or name consuming component families. A generic foundation primitive may expose a narrow public contract or private bridge; the component maps its own final value into that bridge.
 
-Component-family code must not recreate a foundation concern locally when an accepted foundation contract can express it.
+Component-family code must not recreate an accepted foundation concern locally. Product composition must not move product rules into foundation merely to make them reusable.
 
-Product composition chooses components and patterns. It must not move product rules into foundation or component internals merely to make them reusable.
+Generic DOM, browser, event, geometry, lifecycle, and teleport utilities remain in the correctly owned generic layer. A Material foundation domain may compose them through a narrow Material-facing adapter without taking ownership of the generic mechanism.
 
 ## Sources of truth
 
 Authority is layered:
 
-1. this document owns repository-wide foundation architecture and change rules;
-2. [Foundation registry](./foundation-registry.md) owns current domain status, owner paths, source snapshot, gaps, and verification;
-3. a domain owner document, such as `src/shared/ui/State/README.md` or [Overlays](./overlays.md), owns the detailed accepted runtime contract;
+1. this document owns repository-wide foundation architecture and change modes;
+2. [Foundation registry](./foundation-registry.md) owns current status, source snapshot, current/canonical owner, contracts, gaps, and verification;
+3. a domain owner document owns the detailed accepted runtime or policy contract;
 4. production code and tests implement that contract;
-5. a task handoff, when present, owns only the proposed delta for the current task.
+5. a task handoff owns only the approved delta for the current change.
 
-Historical foundation audits are evidence, not current status sources. When an audit conflicts with the registry or current code, the registry and current code must be reviewed and reconciled.
+Historical audits are evidence only. When an audit conflicts with the registry, owner contract, or code, reconcile the current sources before changing production.
 
-## Foundation registry record
+## Registry schema
 
-Every foundation domain has one registry record containing:
+Every foundation domain has one registry record with these fields:
 
 ```text
 Domain:
 Status: missing | partial | verified | deviated | blocked
 Official sources:
 Verified snapshot:
-Production owner:
+Current production owner:
+Canonical library owner:
+Migration status: legacy | migrating | migrated
 Public contract:
 Private bridge contract:
+Verification-only contract:
 Known consumers:
 Known gaps:
 Verification:
 Last reviewed:
 ```
 
-`verified` means the supported repository contract is source-backed, implemented, and verified. It does not claim that every optional Material capability has been implemented.
+Rules:
 
-A domain without a current registry record is not an accepted foundation dependency for a newly aligned component.
+- `missing`: no accepted contract exists;
+- `partial`: an owner exists, but source coverage, contract completeness, consistency, or verification has known gaps;
+- `verified`: the supported contract is source-backed, implemented, and verified against an exact recorded snapshot;
+- `deviated`: the accepted Mioframe contract intentionally differs from current Material guidance and names the deviation;
+- `blocked`: required source meaning or ownership is unresolved.
+
+`missing` and `blocked` prevent a dependent component from reporting readiness. `verified` applies only to the supported contract and does not claim every optional Material capability.
+
+For legacy `partial` records, `Verified snapshot` may explicitly state `not yet recorded — legacy owner`. A record must not use `verified` without a concrete snapshot and named verification.
+
+A domain without a registry record is not an accepted dependency for a new or aligned component.
 
 ## Foundation ownership classes
 
-### Token foundation
+### Tokens and theme
 
-Owns official `md.ref.*` and `md.sys.*` values and theme-role mapping.
+Own official `md.ref.*` and `md.sys.*` values and theme-role mapping.
 
 Rules:
 
 - one canonical declaration per official token;
-- no component-family tokens in the system token owner;
+- no component-family tokens in reference/system owners;
 - no project-only public value under `--md-*`;
 - theme contexts override system roles, not component CSS;
-- deprecated aliases are explicit, unused by new code, and have a removal target;
-- token structure may remain monolithic while ownership is clear; file splitting is not an alignment requirement.
+- deprecated aliases name a replacement and removal target;
+- file splitting is not required while ownership remains clear.
 
-### Authoring and build foundation
+### Authoring and build
 
-Owns Material-oriented authoring units and build-time conversion.
+Own Material-oriented authoring units and centralized conversion.
 
 Rules:
 
 - `dp` and `sp` conversion remains centralized;
-- components do not perform local unit conversion;
-- a conversion change is a cross-library behavior change, not a local CSS cleanup;
-- build configuration and base variables must be verified together.
+- components do not perform local conversion;
+- a conversion change is a cross-library behavior change;
+- build configuration and base variables are verified together.
 
-### Runtime interaction foundation
+### Runtime interaction
 
-Owns generic interaction-state acquisition, state layer, ripple, and focus contracts.
+Own generic hover/focus/press acquisition, state layer, ripple, and focus contracts.
 
 Rules:
 
-- it exposes generic inputs only;
-- it does not decide component semantic state or component property precedence;
+- expose generic inputs only;
+- do not decide semantic state or one global property precedence;
 - native host semantics remain component-owned;
-- component families map final colors, opacities, and other values into generic bridges;
-- forced visual state is verification infrastructure, not public production state.
+- components map final property values into generic bridges;
+- forced visual state is verification infrastructure, not product state.
 
-### Visual role foundation
+### Visual roles
 
-Owns cross-family typography, shape, elevation, and motion roles.
+Own cross-family typography, shape, elevation, and motion roles.
 
 Rules:
 
 - official system roles are canonical;
-- components consume the narrow role or component token required by their spec;
-- platform adaptations are private and documented when Material publishes a concept that the Web platform cannot express directly;
-- arbitrary durations, easing, shadows, radii, or typography values must not be introduced in component code.
+- components consume only the role or component token required by their supported surface;
+- Web adaptations are private, documented, and source-backed;
+- arbitrary durations, easing, shadows, radii, or typography values do not originate in component code.
 
-### Icon foundation
+### Icons
 
-Owns the Material Symbols primitive and shared symbol configuration behavior.
+Own Material Symbols rendering and shared symbol configuration behavior. Product icon choice and supported component anatomy remain outside the icon foundation.
 
-It does not decide which icon a product action uses or which anatomy positions are supported by a component family.
+### Overlays
 
-### Overlay foundation
+Own Material-facing containment, nested-overlay registration, outside-interaction boundaries, and shared lifecycle capabilities.
 
-Owns containment, teleport ownership, nested-overlay registration, outside-interaction boundaries, and shared lifecycle capabilities.
+Generic teleport, event, and geometry mechanisms may remain outside the Material library. The overlay foundation composes them rather than duplicating them.
 
-A component family still owns whether its surface is modal, its Material anatomy, role, scrim, and allowed dismissal behavior. It composes the existing overlay capabilities rather than creating another overlay system.
+A component family still owns its Material anatomy, native/ARIA role, modal meaning, scrim, allowed dismissal behavior, and component-specific focus contract.
 
 ### Policy foundations
 
-Accessibility, target area, density, layout, and adaptivity are cross-library policies even when they do not map to one runtime module.
+Accessibility, target area, density, layout, and adaptivity may remain policy-only until a concrete runtime artifact is required.
 
-Each component owns its native semantics and target area. Pages and layout primitives own product-level adaptive composition. The policy foundation defines the constraints and required evidence; it does not become a generic runtime manager.
+Each component owns its native semantics and target area. Pages and layout primitives own product-level adaptive composition. Policy does not justify a generic runtime manager.
 
 ## Component usage contract
 
-Material alignment includes correct use, not only internal implementation.
+Material alignment includes correct component choice and composition, not only internal rendering.
 
-Every new or materially changed public component family blueprint must add:
+Every new, migrated, or materially changed public component family blueprint records:
 
 ```text
 Material usage contract
@@ -180,13 +188,11 @@ Adaptive behavior and owner:
 Product integration in this PR: none | <named consumers>
 ```
 
-For a library-only request with no product placement, use canonical Material usage as the intended scenario and record `Product integration in this PR: none`. Do not invent a product integration to demonstrate the component.
+For library-only work, use canonical Material usage and record `Product integration in this PR: none`. Do not invent a product consumer to demonstrate the component.
 
-Features, widgets, and pages must verify component choice and composition against this contract when integrating the component.
+## Component foundation-dependency contract
 
-## Component foundation dependency contract
-
-Every new, migrated, or materially changed public component family blueprint must also add:
+Every new, migrated, or materially changed public component family blueprint includes:
 
 ```text
 Foundation dependencies
@@ -195,111 +201,145 @@ Foundation dependencies
 | --- | --- | --- | --- | --- |
 ```
 
-Include only applicable domains. Typical rows are tokens/theme, units, typography, shape, elevation, motion, state layer/ripple, focus, icons, target area, accessibility, overlay, and adaptivity.
+Include only applicable domains.
+
+Allowed registry statuses:
+
+```text
+missing | partial | verified | deviated | blocked
+```
+
+Allowed change values:
+
+```text
+none | library-relocation-only | additive | correction | replacement | refresh
+```
 
 Rules:
 
-- `Registry status` must be `verified`, `partial`, `deviated`, or `blocked` from the current registry;
-- a `partial` or `deviated` dependency must name the exact gap relevant to the supported component surface;
-- `blocked` prevents component completion;
-- `Change in this PR` is `none`, `additive`, `correction`, or `replacement`;
-- component production code must consume the named owner rather than reconstruct its behavior.
+- `missing` and `blocked` prevent component readiness;
+- `partial` or `deviated` must name the exact relevant gap and why the supported component surface remains valid;
+- component code consumes the named owner rather than reconstructing the capability;
+- a dependency row may reference a current legacy owner until focused migration, but the canonical owner and migration status remain explicit.
 
-## Discovering a foundation gap during component work
+## Discovering a foundation gap
 
-Use this workflow:
+1. Confirm the component scenario and official component/foundation evidence.
+2. Check the registry and current owner implementation.
+3. Reuse the accepted contract when sufficient.
+4. Classify the required delta before production edits.
+5. Update registry, owner contract, production code, verification, and component blueprint atomically.
+6. Remove investigation-only workarounds before completion.
 
-1. Confirm the component scenario and the official component/foundation evidence.
-2. Check the foundation registry and current owner implementation.
-3. Reuse the accepted contract when it is sufficient.
-4. When the capability is missing, classify the required delta before editing production code.
-5. Update the registry, owner contract, production code, verification, and component blueprint atomically for an accepted delta.
-6. Remove any temporary local workaround introduced during investigation before completion.
+A component must not silently create a local foundation substitute.
 
-A component must not silently create a family-local substitute for a missing foundation capability.
-
-## Foundation change modes
+## Change modes
 
 ### `foundation-impact: none`
 
-The component consumes an existing accepted foundation contract without changing it.
+The component consumes an accepted foundation contract without changing it.
+
+### `library-relocation-only`
+
+Moves one cohesive accepted owner without changing public meaning, values, behavior, rendering, or verification semantics.
+
+Requirements:
+
+- complete import/export and consumer migration;
+- current/canonical owner and migration map update;
+- obsolete path removal;
+- no hidden correction or replacement.
 
 ### `foundation-additive`
 
-Adds a source-backed capability without changing existing consumer behavior or public meaning.
+Adds a source-backed capability without changing existing public meaning or current consumer behavior.
 
-It may remain in the component PR only when all conditions hold:
+It may share a component PR only when:
 
-- the official foundation concept and exact contract are unambiguous;
-- one existing foundation owner clearly owns it;
+- the official concept and exact contract are unambiguous;
+- one current owner clearly owns the capability;
 - the delta is backward-compatible;
-- it introduces no new lifecycle manager, context hierarchy, dependency, or public extension;
-- focused foundation tests and affected component verification fit the same review scope.
+- it adds no new lifecycle manager, context hierarchy, dependency, or public extension;
+- focused owner tests and affected component verification fit the same review scope.
+
+Legacy-owner rule:
+
+- extending an existing file in the current legacy owner is allowed when it remains the single active owner and no second implementation is created;
+- a new standalone runtime or verification artifact must be created under the canonical owner, which requires relocating the cohesive owner first or in the same explicitly classified migration;
+- one domain must not have parallel active production owners in legacy and canonical paths without a temporary migration contract naming consumers and removal target.
 
 ### `foundation-correction`
 
-Corrects a token, behavior, platform adaptation, or policy and may change existing consumers.
+Corrects meaning, value, behavior, or platform adaptation and may change existing consumers.
 
 Requires:
 
-- consumer inventory;
 - old and new contract;
-- expected rendered or behavioral change;
-- migration or compatibility decision;
-- risk-specific verification for representative consumers;
-- a separate focused PR unless the correction is inseparable from a small first consumer and the handoff explicitly approves the combined scope.
+- complete direct-consumer inventory;
+- expected rendered or behavioral delta;
+- migration/compatibility decision;
+- representative verification for every distinct affected path;
+- a focused PR unless inseparable from a small first consumer and explicitly approved.
 
 ### `foundation-replacement`
 
-Replaces an accepted mechanism or owner.
+Replaces an accepted owner or mechanism.
 
-Requires an architecture handoff, complete consumer migration, removal of the replaced path, and blocking verification. Do not keep two foundation mechanisms active without an explicit temporary compatibility contract and removal target.
+Requires a ready architecture handoff, complete consumer migration, removal of the replaced path, and blocking verification. Two active mechanisms require an explicit temporary compatibility contract and removal target.
 
 ### `foundation-refresh`
 
-Revalidates a domain against a newer Material documentation snapshot.
+Revalidates a domain against a newer official snapshot.
 
-The refresh must classify every observed delta as:
+Classify every observed difference as:
 
-- source-only clarification;
-- additive official capability;
+- source clarification;
+- additive capability;
 - changed meaning or value;
 - deprecation;
 - removal;
 - repository deviation.
 
-A newer snapshot does not automatically change production behavior. Apply behavioral changes only through `foundation-additive`, `foundation-correction`, or `foundation-replacement`.
+A newer snapshot does not automatically change production behavior. Apply behavior changes through additive, correction, or replacement mode.
 
 ## Objective expansion rules
 
-Add an official reference or system token when a current supported component or theme scenario requires it and the exact official path and meaning are verified.
+Add a reference/system token only when a current supported component or theme scenario requires it and the exact official path and meaning are verified.
 
-Add or expand a runtime primitive only when:
+Add or expand a runtime or verification primitive only when:
 
-- the required behavior is explicitly cross-family in Material guidance or a platform boundary; and
-- the existing repository mechanism is insufficient; and
-- the generic contract can remain free of component-family knowledge; and
-- total implementation and verification complexity is lower than independent local implementations.
+- Material or an unavoidable platform/testing boundary defines a cross-family concern;
+- the current mechanism is insufficient;
+- the contract remains free of family knowledge;
+- total implementation and verification complexity is lower than local implementations.
 
-For a project-derived generic behavior without an explicit Material foundation owner, require at least two current unrelated component families or one unavoidable platform-wide owner such as overlay containment.
+For project-derived generic behavior without an official foundation owner, require at least two current unrelated families or one unavoidable platform-wide owner such as overlay containment.
 
-Do not implement complete palettes, motion catalogs, responsive managers, state machines, or extension APIs in anticipation of future components.
+Do not prebuild complete palettes, motion catalogs, responsive managers, state machines, test DSLs, or extension APIs.
 
-## Public and private contracts
+## Public, private, and testing contracts
 
-Public foundation contracts include verified `--md-ref-*`, `--md-sys-*`, documented utilities, and public shared primitives intended for component-family use.
+Public foundation contracts include verified reference/system tokens and shared primitives intentionally consumed by component families.
 
-Private foundation bridges use `--md-private-*` or private typed APIs and remain generic. They are not consumer customization surfaces.
+Private bridges use private CSS or typed APIs and remain component-agnostic.
+
+Verification-only contracts:
+
+- live under the owning domain testing surface;
+- are not exported from the project-facing Material root;
+- expose only generic transient state owned by the foundation;
+- may support canonical component state matrices;
+- do not prove real acquisition, cancellation, or cleanup behavior;
+- must not contain family names, anatomy, token routing, or precedence.
 
 Forbidden:
 
-- component-specific token names in foundation code;
-- foundation primitives importing component families;
-- components reading another family's private bridge;
-- app-specific values presented as Material foundation;
-- a runtime registry or generic resolver for all Material tokens or states;
-- a universal Material base component;
-- a foundation abstraction justified only by similar syntax or possible reuse.
+- component-specific names in foundation code;
+- foundation imports from component families;
+- runtime token/state registries;
+- universal Material base components;
+- duplicate theme, overlay, state, ripple, focus, icon, or motion systems;
+- foundation abstraction justified only by similar syntax or hypothetical reuse.
 
 ## Verification
 
@@ -307,55 +347,39 @@ Foundation verification is risk-based and owner-specific.
 
 ### Static checks
 
-Verify where practical:
+Verify where enforceable:
 
-- official token vocabulary and one canonical owner;
-- no component tokens in system-token owners;
+- canonical location and dependency direction;
+- registered public exports, tokens, bridges, and testing adapters;
+- exact token vocabulary and one owner;
 - no family-specific inputs in generic primitives;
-- registry owner paths and source snapshots exist;
-- component blueprints declare applicable dependencies;
-- no unregistered public foundation export or token;
-- deprecated contracts are not used by new code.
+- current/canonical owner and migration-map consistency;
+- deprecated contracts unused by new code.
 
 ### Contract tests
 
-Verify public utilities, generic bridge defaults, disabled behavior, lifecycle cleanup, and platform-adaptation contracts owned by the foundation domain.
+Verify public utilities, generic bridge defaults, disabled behavior, lifecycle cleanup, and documented platform-adaptation contracts.
 
-### Browser verification
+### Browser checks
 
-Use browser tests for real focus-visible behavior, pointer/touch state, ripple, overlays, focus restoration, scrolling, viewport/adaptive behavior, computed tokens, and actual property owners.
+Use a real browser for focus-visible, pointer/touch, ripple, overlays, focus restoration, scrolling, viewport behavior, computed tokens, and actual property owners.
 
-### Visual verification
+### Visual checks
 
-Use representative consumers to prove foundation changes. Do not create a screenshot matrix for every consumer. A system-token or primitive change must include at least one high-risk representative for every meaningfully different affected path.
+Use representative component consumers for foundation changes. Do not create a screenshot matrix for every consumer. Cover every meaningfully different affected contract path.
 
-### Consumer blast radius
+### Review gates
 
-Every `foundation-correction` or `foundation-replacement` records all direct consumers and the representative verification chosen for each distinct contract path.
+Human review confirms:
 
-## Maintenance loop
+- source meaning and snapshot sufficiency;
+- ownership rationale;
+- correctness of deviations;
+- representative consumer selection;
+- intentional visual changes.
 
-Foundation maintenance is continuous and demand-driven:
-
-1. component or product work declares foundation dependencies;
-2. the registry reveals accepted capabilities and gaps;
-3. source-backed gaps are added or corrected through the smallest change mode;
-4. validator and representative tests become blocking for the accepted contract;
-5. the registry records the new status and remaining gaps;
-6. later component work reuses the accepted owner;
-7. periodic or source-triggered refreshes reconcile newer Material guidance.
-
-The foundation is healthy when new component work usually consumes existing contracts, real gaps produce focused owner changes, and no family-local substitutes accumulate.
+Automation must not claim to prove those decisions.
 
 ## Completion
 
-Foundation architecture work is complete only when:
-
-- the affected registry records are current;
-- owner contracts, production code, and tests agree;
-- source evidence and snapshot are recorded;
-- consumer impact is explicit;
-- no component-specific knowledge entered a generic owner;
-- replaced mechanisms are removed;
-- component blueprints reference the resulting accepted contracts;
-- unsupported capabilities and deviations remain explicit.
+Foundation work is complete only when registry, migration map, owner contract, production/testing code, exports, tests, source meaning, and consumer impact agree; no parallel replacement, family-local substitute, hidden gap, or permanent legacy compatibility path remains.
