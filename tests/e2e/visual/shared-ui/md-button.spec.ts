@@ -37,11 +37,17 @@ test('MDButton label typography changes by size', async ({ page }) => {
     page
       .getByTestId(testId)
       .locator('.md-button__label-text')
-      .evaluate((el) => ({
-        className: Array.from(el.classList).join(' '),
-        fontSize: getComputedStyle(el).fontSize,
-        fontWeight: getComputedStyle(el).fontWeight,
-      }));
+      .evaluate((el) => {
+        const style = getComputedStyle(el);
+        return {
+          className: Array.from(el.classList).join(' '),
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          lineHeight: style.lineHeight,
+          letterSpacing: style.letterSpacing,
+        };
+      });
 
   await expect(page.getByTestId('typography-small')).toBeVisible();
 
@@ -51,25 +57,43 @@ test('MDButton label typography changes by size', async ({ page }) => {
   const large = await readTypography('typography-large');
   const extraLarge = await readTypography('typography-extra-large');
 
-  // label-large: 14px / 500, rendered through the md-typescale-label-large utility class
-  expect(extraSmall.className).toContain('md-typescale-label-large');
-  expect(extraSmall.fontSize).toBe('14px');
-  expect(extraSmall.fontWeight).toBe('500');
-  expect(small.className).toContain('md-typescale-label-large');
-  expect(small.fontSize).toBe('14px');
-  expect(small.fontWeight).toBe('500');
-  // title-medium: 16px / 500
+  // label-large: 14px / 500 / 20px line-height / 0.1px tracking, rendered through the
+  // md-typescale-label-large utility class
+  for (const sample of [extraSmall, small]) {
+    expect(sample.className).toContain('md-typescale-label-large');
+    expect(sample.fontSize).toBe('14px');
+    expect(sample.fontWeight).toBe('500');
+    expect(sample.lineHeight).toBe('20px');
+    expect(sample.letterSpacing).toBe('0.1px');
+    expect(sample.fontFamily.length).toBeGreaterThan(0);
+  }
+  // title-medium: 16px / 500 / 24px line-height / 0.15px tracking
   expect(medium.className).toContain('md-typescale-title-medium');
   expect(medium.fontSize).toBe('16px');
   expect(medium.fontWeight).toBe('500');
-  // headline-small: 24px / 400
+  expect(medium.lineHeight).toBe('24px');
+  expect(medium.letterSpacing).toBe('0.15px');
+  // headline-small: 24px / 400 / 32px line-height / 0 tracking. The shared token declares a bare
+  // unitless `0` (`--md-sys-typescale-headline-small-tracking`), which Chromium treats as an
+  // invalid `letter-spacing` length when substituted through `var()` and falls back to the
+  // inherited `normal` — a pre-existing shared-token behavior outside MDButton's ownership, not a
+  // regression from this change.
   expect(large.className).toContain('md-typescale-headline-small');
   expect(large.fontSize).toBe('24px');
   expect(large.fontWeight).toBe('400');
-  // headline-large: 32px / 400
+  expect(large.lineHeight).toBe('32px');
+  expect(large.letterSpacing).toBe('normal');
+  // headline-large: 32px / 400 / 40px line-height / 0 tracking (same bare-zero fallback as above)
   expect(extraLarge.className).toContain('md-typescale-headline-large');
   expect(extraLarge.fontSize).toBe('32px');
   expect(extraLarge.fontWeight).toBe('400');
+  expect(extraLarge.lineHeight).toBe('40px');
+  expect(extraLarge.letterSpacing).toBe('normal');
+  // Shared root fontFamily is asserted once via the label-large case above; every size uses the
+  // same `MD_TYPESCALE` family stack, only size/weight/line-height/tracking vary per class.
+  expect(medium.fontFamily).toBe(extraSmall.fontFamily);
+  expect(large.fontFamily).toBe(extraSmall.fontFamily);
+  expect(extraLarge.fontFamily).toBe(extraSmall.fontFamily);
 });
 
 test('MDButton selected toggle shape morphs round and square input shapes to the exact documented corner tokens', async ({
@@ -246,6 +270,29 @@ test('MDButton pressed shape takes precedence over selected shape', async ({ pag
   // from the selected-only shape.
   expect(selectedPressed).toBeCloseTo(pressedOnly, 5);
   expect(selectedPressed).not.toBeCloseTo(selectedOnly, 5);
+});
+
+test('MDButton selected shape is preserved while disabled, including a forced-pressed disabled selected button', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--toggle-shape-disabled-precedence');
+
+  const readRadius = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+
+  const roundSelected = await readRadius('toggle-round-selected');
+  const roundSelectedDisabled = await readRadius('toggle-round-selected-disabled');
+  const roundSelectedDisabledPressed = await readRadius('toggle-round-selected-disabled-pressed');
+  const squareSelected = await readRadius('toggle-square-selected');
+  const squareSelectedDisabledPressed = await readRadius('toggle-square-selected-disabled-pressed');
+
+  // Disabled selected (no forced pressed) already renders the selected shape.
+  expect(roundSelectedDisabled).toBeCloseTo(roundSelected, 5);
+  // A disabled button can never enter a real `:active` pressed interaction, but the forced-state
+  // test contract (`.md-state_pressed` applied directly) must still retain the selected shape
+  // instead of falling back to the plain input shape.
+  expect(roundSelectedDisabledPressed).toBeCloseTo(roundSelected, 5);
+  expect(squareSelectedDisabledPressed).toBeCloseTo(squareSelected, 5);
 });
 
 test('MDButton toggle shapes match baseline', async ({ page }) => {
@@ -793,7 +840,9 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
         label: 'rgb(240 200 255)',
         icon: 'rgb(255 0 150)',
         stateLayerColor: 'rgb(150 0 255)',
-        outline: 'rgb(200 0 120)',
+        // No published md.comp.button.outlined.selected.outline.color route: the selected outline
+        // visually follows the selected container color instead of an independent token — see the
+        // dedicated assertion below rather than a `tokens.outline` literal.
       },
       unselected: {
         restingLabel: 'rgb(211 212 213)',
@@ -877,6 +926,13 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
           expect(normalizeColorString(resting.borderColor), `${style} ${branch} outline`).toBe(
             normalizeColorString(tokens.outline),
           );
+        } else if (style === 'outlined' && branch === 'selected') {
+          // No published selected outline-color token: the outline must instead visually follow
+          // the selected container color set above.
+          expect(
+            normalizeColorString(resting.borderColor),
+            `${style} ${branch} outline follows container`,
+          ).toBe(normalizeColorString(tokens.container ?? ''));
         }
         expect(normalizeColorString(asColor(resting.labelColor)), `${style} ${branch} label`).toBe(
           normalizeColorString(tokens.restingLabel),
@@ -1031,11 +1087,91 @@ test('MDButton loading indicator consumes the rendered label color', async ({ pa
   );
 });
 
+test('MDButton loading exposes aria-busy, marks the progress indicator decorative, and dims the indicator to the disabled content opacity for every style', async ({
+  page,
+}) => {
+  await openStory(
+    page,
+    'material-3-components-buttons-mdbutton--loading-accessibility-and-disabled-opacity',
+  );
+
+  await Promise.all(
+    (['elevated', 'filled', 'tonal', 'outlined', 'text'] as const).map(async (style) => {
+      const enabled = page.getByTestId(`loading-a11y-${style}`);
+      const disabled = page.getByTestId(`loading-a11y-${style}-disabled`);
+
+      await expect(enabled).toHaveAttribute('aria-busy', 'true');
+      await expect(enabled.locator('.md-circular-progress-indicator')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      );
+      await expect(disabled).toHaveAttribute('aria-busy', 'true');
+      await expect(disabled.locator('.md-circular-progress-indicator')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      );
+
+      // The disabled indicator's stroke must render at the same effective disabled content
+      // opacity as the label it visually replaces, not the full-opacity enabled color.
+      const enabledIndicatorColor = await readProgressIndicatorColor(page, `loading-a11y-${style}`);
+      const disabledIndicatorColor = await readProgressIndicatorColor(
+        page,
+        `loading-a11y-${style}-disabled`,
+      );
+      expect(disabledIndicatorColor, `${style} disabled indicator color`).not.toBe(
+        enabledIndicatorColor,
+      );
+
+      const disabledLabelOpacity = await disabled.evaluate((el) =>
+        getComputedStyle(el).getPropertyValue('--md-private-button-disabled-label-opacity').trim(),
+      );
+      const expectedDisabledColor = await page.evaluate(
+        ({ testId, opacity }) => {
+          const el = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+          if (!el) throw new Error(`Missing ${testId}`);
+          const labelColor = getComputedStyle(el).getPropertyValue(
+            '--md-private-button-rendered-label-color',
+          );
+          const probe = document.createElement('div');
+          probe.style.backgroundColor = `rgb(from ${labelColor} r g b / ${opacity})`;
+          document.body.appendChild(probe);
+          const value = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+          return value;
+        },
+        { testId: `loading-a11y-${style}-disabled`, opacity: disabledLabelOpacity },
+      );
+      expect(normalizeColorString(disabledIndicatorColor)).toBe(
+        normalizeColorString(expectedDisabledColor),
+      );
+    }),
+  );
+});
+
 test('MDButton loading keeps the accessible name, outer size, and enabled activation contract', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--loading-color-routing');
   await assertLoadingContract(page, 'button-resting-color', 'button-loading-color');
+});
+
+test('MDButton public component-token overrides work through an ordinary CSS class and through ancestor inheritance, not only inline styles', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--override-contract-routes');
+
+  const classOverride = await page
+    .getByTestId('override-class-selector')
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const inherited = await page
+    .getByTestId('override-inherited')
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  // The class-based override on the element itself must win over the inherited ancestor value,
+  // and the inherited value must reach the button at all — neither would happen if MDButton still
+  // assigned `--md-comp-button-filled-container-color`'s default directly on `.md-button_color-filled`.
+  expect(normalizeColorString(classOverride)).toBe(normalizeColorString('rgb(40 50 60)'));
+  expect(normalizeColorString(inherited)).toBe(normalizeColorString('rgb(10 20 30)'));
 });
 
 test('MDButton container shadow-color routes an override into the shared elevation bridge', async ({
@@ -1057,6 +1193,68 @@ test('MDButton container shadow-color routes an override into the shared elevati
     getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
   );
   expect(normalizeColorString(overriddenBridge)).toBe('1 2 3');
+});
+
+test('MDButton container shadow-color override reaches the private elevation bridge while elevation geometry stays the active level', async ({
+  page,
+}) => {
+  const OVERRIDE_COLOR = 'rgb(9, 40, 12)';
+
+  await openStory(page, 'material-3-components-buttons-mdbutton--shadow-color-override-routes');
+
+  // NOTE on scope: this asserts the private bridge variable and the elevation *level* (geometry),
+  // which is everything reliably observable for this route. A prior investigation confirmed the
+  // override correctly reaches `--md-private-elevation-shadow-color` (this assertion), but the
+  // browser does not re-derive the final `box-shadow` color through the shared
+  // `--md-sys-elevation-levelN` formula's nested `rgb(from var(...))` when only the color source
+  // changes and the elevation level itself stays on its `var(..., fallback)` branch — a discovered
+  // limitation in the shared elevation token architecture (`src/shared/lib/md/tokens.css`, used
+  // identically by `MDIconButton`/`MDFab`/`MDExtendedFab`), not something owned or fixable inside
+  // `MDButton.vue`. See `docs/material-3/component-family-audit.md` for the recorded follow-up.
+  const expectedShadowForLevel = (elevationVar: string) =>
+    page.evaluate((variable) => {
+      const probe = document.createElement('div');
+      probe.style.boxShadow = `var(${variable})`;
+      document.body.appendChild(probe);
+      const computed = getComputedStyle(probe).boxShadow;
+      probe.remove();
+      return computed;
+    }, elevationVar);
+
+  const assertShadowColorBridgeAndLevel = async (testId: string, elevationVar: string) => {
+    const { renderedShadow, bridgeValue } = await page.getByTestId(testId).evaluate((el) => {
+      const style = getComputedStyle(el);
+      return {
+        renderedShadow: style.boxShadow,
+        bridgeValue: style.getPropertyValue('--md-private-elevation-shadow-color').trim(),
+      };
+    });
+    const expectedShadowGeometry = await expectedShadowForLevel(elevationVar);
+
+    expect(
+      normalizeColorString(bridgeValue),
+      `${testId} private shadow-color bridge variable carries the override`,
+    ).toBe(normalizeColorString(OVERRIDE_COLOR));
+    // Geometry (blur/spread/offset counts) stays pinned to the active elevation level regardless
+    // of the shadow-color override.
+    expect(renderedShadow.split(',').length, `${testId} elevation level shadow-layer count`).toBe(
+      expectedShadowGeometry.split(',').length,
+    );
+  };
+
+  await assertShadowColorBridgeAndLevel(
+    'shadow-override-elevated-resting',
+    '--md-sys-elevation-level1',
+  );
+  await assertShadowColorBridgeAndLevel(
+    'shadow-override-elevated-hover',
+    '--md-sys-elevation-level2',
+  );
+  await assertShadowColorBridgeAndLevel(
+    'shadow-override-filled-hover',
+    '--md-sys-elevation-level1',
+  );
+  await assertShadowColorBridgeAndLevel('shadow-override-tonal-hover', '--md-sys-elevation-level1');
 });
 
 test('MDButton per-size spring component tokens resolve to the fast-spatial system tokens', async ({
@@ -1086,24 +1284,79 @@ test('MDButton per-size spring component tokens resolve to the fast-spatial syst
   expect(damping).toBe('.6');
 });
 
-test('MDButton shape morph and color transitions use the documented Expressive Web motion durations', async ({
+test('MDButton root-owned spatial and color-effect transitions use the documented Expressive Web motion durations, and the root does not own a color transition', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
   const button = page.getByRole('button', { name: 'Filled', exact: true });
 
-  const transition = await button.evaluate((el) => {
-    const style = getComputedStyle(el);
-    return { properties: style.transitionProperty, durations: style.transitionDuration };
-  });
-  const properties = transition.properties.split(',').map((value) => value.trim());
-  const durations = transition.durations.split(',').map((value) => value.trim());
-  const durationFor = (property: string) => durations[properties.indexOf(property)];
+  const readTransition = (locator: typeof button) =>
+    locator.evaluate((el) => {
+      // `transitionTimingFunction` values such as `cubic-bezier(0.42, 1.67, 0.21, 0.9)` contain
+      // internal commas, so a plain top-level split must only break on commas outside parens.
+      const splitTopLevel = (value: string) => {
+        const parts: string[] = [];
+        let depth = 0;
+        let current = '';
+        for (const char of value) {
+          if (char === '(') depth += 1;
+          if (char === ')') depth -= 1;
+          if (char === ',' && depth === 0) {
+            parts.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        parts.push(current.trim());
+        return parts;
+      };
+      const style = getComputedStyle(el);
+      return {
+        properties: splitTopLevel(style.transitionProperty),
+        durations: splitTopLevel(style.transitionDuration),
+        easings: splitTopLevel(style.transitionTimingFunction),
+      };
+    });
 
+  const rootTransition = await readTransition(button);
+  const durationFor = (property: string) =>
+    rootTransition.durations[rootTransition.properties.indexOf(property)];
+  const easingFor = (property: string) =>
+    rootTransition.easings[rootTransition.properties.indexOf(property)];
+
+  // Root-owned spatial properties: border-radius, box-shadow.
   expect(durationFor('border-radius')).toBe('0.35s');
+  expect(easingFor('border-radius')).toBe('cubic-bezier(0.42, 1.67, 0.21, 0.9)');
   expect(durationFor('box-shadow')).toBe('0.35s');
-  expect(durationFor('color')).toBe('0.15s');
+  expect(easingFor('box-shadow')).toBe('cubic-bezier(0.42, 1.67, 0.21, 0.9)');
+  // Root-owned color effects: background-color, border-color.
   expect(durationFor('background-color')).toBe('0.15s');
+  expect(durationFor('border-color')).toBe('0.15s');
+  // The root does not render a color-owned property via `color`, so it must not transition it.
+  expect(rootTransition.properties).not.toContain('color');
+
+  // Label and icon own their own visible `color`/`opacity` and must carry the fast-effects
+  // transition themselves, not rely on a root `color` transition.
+  const labelTransition = await readTransition(button.locator('.md-button__label-text'));
+  expect(labelTransition.properties).toEqual(expect.arrayContaining(['color', 'opacity']));
+  for (const property of ['color', 'opacity']) {
+    const index = labelTransition.properties.indexOf(property);
+    expect(labelTransition.durations[index], `label ${property} duration`).toBe('0.15s');
+    expect(labelTransition.easings[index], `label ${property} easing`).toBe(
+      'cubic-bezier(0.31, 0.94, 0.34, 1)',
+    );
+  }
+
+  const iconTransition = await readTransition(button.locator('.md-button__icon'));
+  expect(iconTransition.properties).toEqual(expect.arrayContaining(['color', 'opacity']));
+  for (const property of ['color', 'opacity']) {
+    const index = iconTransition.properties.indexOf(property);
+    expect(iconTransition.durations[index], `icon ${property} duration`).toBe('0.15s');
+    expect(iconTransition.easings[index], `icon ${property} easing`).toBe(
+      'cubic-bezier(0.31, 0.94, 0.34, 1)',
+    );
+  }
 });
 
 test('MDStateLayer state-layer transition uses the Button family fast-effects mapping', async ({

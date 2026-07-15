@@ -39,22 +39,28 @@ Confirmed current state:
 
 - five Material color styles and five sizes are supported, with `round`/`square` shapes and `default`/`toggle` variants;
 - `color="text"` with `variant="toggle"` is unsupported by the verified token graph and normalizes to the default variant with a development warning;
-- public `--md-comp-button-*` tokens cover the supported Material paths for geometry, state colors, outline, elevation, shadow color, and motion spring parameters;
+- every public `--md-comp-button-*` property routes through a private variable with a Material/system fallback (`--md-private-button-X: var(--md-comp-button-…, <default>)`) instead of assigning the Material default directly on `.md-button_color-*`; this makes the override contract reliable for inline styles, ordinary CSS classes, and ancestor inheritance alike, verified in a real browser for all three routes plus a state-specific override;
+- ten previously undocumented `--md-comp-button-*` names have been removed (outlined/text publish no elevation route; outlined publishes no `unselected`- or `selected`-qualified resting/selected outline-color token); six real official tokens were added (`filled`/`tonal` disabled-container-elevation; outlined `unselected` hovered/focused/pressed/disabled outline-color); outlined/text elevation is now a private-only constant resolving to `--md-sys-elevation-level0`, and the outlined selected outline visually follows the selected container color in every interaction state instead of inventing a selected-outline token;
 - label and icon routes remain independently overrideable where Material publishes independent paths;
-- selected and disabled semantics compose correctly for reachable user states, including retained `aria-pressed`, selected shape while disabled, selected-disabled outlined routing, and enabled selected-plus-pressed shape precedence;
+- selected and disabled semantics compose correctly for reachable user states, including retained `aria-pressed`, selected shape while disabled (including the artificial selected + disabled + forced-pressed combination), selected-disabled outlined routing, and enabled selected-plus-pressed shape precedence;
+- the root owns `border-radius`/`box-shadow` (fast spatial) and `background-color`/`border-color` (fast effects) transitions and no longer transitions `color`; the label and icon elements each own their visible `color`/`opacity` fast-effects transition, verified on the actual owning elements;
+- loading remains a Mioframe extension: numeric values clamp to `[0, 1]` (finite out-of-range and non-finite values log a development warning and fall back to a safe `0`), the button exposes `aria-busy="true"` while loading, and the rendered progress indicator carries `aria-hidden="true"` and dims to the same effective content opacity as the label it replaces when disabled;
 - native form behavior, loading activation, expanded targets, keyboard focus, pointer ownership, Storybook stories, and browser token/geometry assertions are implemented;
-- loading remains a Mioframe extension.
+- the leading icon slot is typed as optional, matching its always-optional runtime behavior.
 
 Verification boundary:
 
-- resting, hover, focus, pressed, disabled, selected/unselected, enabled selected-plus-pressed, geometry, target, and default/custom token routes are covered for the supported public subset;
-- the artificial combination selected + disabled + forced pressed is not included in the completed shape-precedence claim and remains Stage 2 work below;
-- rendered label/icon color motion is not yet verified on the child elements that own those colors;
-- shadow override verification does not yet consistently assert the final rendered `box-shadow`.
+- resting, hover, focus, pressed, disabled, selected/unselected, enabled selected-plus-pressed, disabled selected forced-pressed, geometry, target, and default/inline/class/inherited token routes are covered for the supported public subset;
+- rendered label/icon color motion is verified on the child elements that own those colors;
+- shadow-color override verification asserts the private `--md-private-elevation-shadow-color` bridge variable and the active elevation level's shadow-layer geometry for elevated resting, elevated hover, filled hover, and tonal hover. It does not assert the final rendered `box-shadow` color: investigation confirmed the override reliably reaches the bridge variable, but the browser does not consistently re-derive the final `box-shadow` color through the shared `--md-sys-elevation-levelN` formula's `rgb(from var(...))` when only the color source changes. This is a discovered limitation in the shared elevation token architecture (`src/shared/lib/md/tokens.css`, used identically by `MDIconButton`/`MDFab`/`MDExtendedFab`), not something owned or fixable inside `MDButton.vue`.
+
+External foundation dependency (not fixed in this component): the repository's dark-theme `--md-sys-color-inverse-surface`/`--md-sys-color-inverse-on-surface` tokens currently resolve to the same values in both light and dark theme blocks (`src/shared/lib/md/tokens.css`), so they do not actually invert under dark theme. `MDButton`'s outlined selected-toggle route consumes these system tokens by design; this is a system-token defect outside this component's ownership and is not compensated for locally. `MDButton` must not be marked `aligned` while this remains unresolved.
+
+Also outside this component's ownership: the shared elevation-shadow-color bridge's final-`box-shadow` re-derivation gap noted above affects the whole Button family equally and should be tracked as a `src/shared/lib/md/tokens.css` follow-up, not a per-component fix.
 
 Unsupported official surfaces do not block this subset: Split Button, Standard Button Group, and Connected Button Group.
 
-Verdict: safe to use for the documented public subset, but not yet fully verified Material 3 Expressive alignment.
+Verdict: `MDButton`'s own token graph, override contract, motion ownership, shape precedence, and loading accessibility are now verified against the Button-family scope of this component; the family-level status stays `partial` because `MDIconButton`/`MDFab`/`MDExtendedFab` retain unfinished Stage 1–3 work below, and `MDButton` itself cannot reach `aligned` until the dark-theme inverse system-token defect is resolved upstream.
 
 ## Icon buttons: `MDIconButton`
 
@@ -115,7 +121,7 @@ Implemented foundation:
 - private Web fast-effects conversion: `150ms`, `cubic-bezier(0.31, 0.94, 0.34, 1)`;
 - `MDStateLayer` consumes a generic private transition contract and retains the legacy fallback for non-Button consumers.
 
-This foundation is present, but the Button family remains `partial` because not every visible property currently applies or verifies the transition on its actual owning element.
+This foundation is present. `MDButton` now applies and verifies the transition on every actual owning element (root spatial/color-effect properties, label/icon color/opacity). The Button family remains `partial` because `MDIconButton`, `MDFab`, and `MDExtendedFab` do not yet consistently apply or verify the transition on their actual owning elements.
 
 ## Remaining Button-family alignment work
 
@@ -123,7 +129,7 @@ Each stage is intentionally narrow and independently implementable.
 
 ### Stage 1 — Content motion ownership
 
-Scope: `MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab`, and focused motion verification only.
+Scope: `MDIconButton`, `MDFab`, `MDExtendedFab`, and focused motion verification only. `MDButton` completed this stage: the root retains transitions only for root-owned properties (no root `color` transition), the label and icon elements each carry their own fast-effects `color`/`opacity` transition, and duration/easing are asserted on those owning elements.
 
 Current gap: root controls expose Expressive color transitions, but rendered label/icon colors are owned by child elements that do not yet consistently consume the fast-effects color transition. Existing assertions inspect root controls rather than every actual property owner.
 
@@ -138,7 +144,7 @@ Classification: user-visible polish; not a current functional blocker.
 
 ### Stage 2 — Disabled selected forced-state shape precedence
 
-Scope: `MDButton`, `MDIconButton`, shape selectors, and focused browser checks only.
+Scope: `MDIconButton`, shape selectors, and focused browser checks only. `MDButton` completed this stage using plain CSS selector precedence (no JavaScript state derivation): the per-size selected-shape rule now also matches `.md-state_disabled`/`:disabled`, so it wins over the base shape even when a `.md-state_pressed` class is forced onto a disabled element.
 
 Current gap: an artificial fixture combining selected, disabled, and forced pressed state may fall back to the base shape. Native disabled controls cannot enter a real pressed interaction, so this is not a reachable user-flow failure, but it remains an incomplete state-composition contract.
 
@@ -153,17 +159,17 @@ Classification: contract edge case; not a current production interaction blocker
 
 ### Stage 3 — Override verification completion
 
-Scope: browser tests only unless a test proves a concrete production defect.
+Scope: browser tests only unless a test proves a concrete production defect. `MDButton`'s motion-owning-element assertions are complete. `MDButton`'s shadow-color verification is complete for what the shared elevation token architecture actually supports (private bridge variable plus elevation-level geometry); the final-`box-shadow`-color gap below turned out to be a shared-architecture limitation, not a per-component gap, so it is tracked once here rather than duplicated per component.
 
 Current gaps:
 
-- shadow-color tests do not consistently assert the final computed `box-shadow`;
+- the shared `--md-private-elevation-shadow-color` → `--md-sys-elevation-levelN` bridge does not reliably re-derive the final rendered `box-shadow` color when only the shadow-color source changes (discovered while implementing `MDButton`'s Stage 3 work: the bridge variable itself updates correctly, but the browser does not consistently recompute `box-shadow` through the nested `rgb(from var(...))` formula). This affects `MDButton`, `MDIconButton`, `MDFab`, and `MDExtendedFab` identically, since they share the same `src/shared/lib/md/tokens.css` elevation formula;
 - FAB focus-indicator verification does not yet cover both FAB components, color/thickness/offset, and all three plain styles;
-- some motion assertions inspect root elements rather than actual property owners.
+- some `MDIconButton`/`MDFab`/`MDExtendedFab` motion assertions inspect root elements rather than actual property owners.
 
 Expected result:
 
-- official shadow override reaches both the private bridge and rendered shadow;
+- the shared elevation formula in `src/shared/lib/md/tokens.css` is restructured (or a working alternative is found) so a shadow-color override reaches both the private bridge and the final rendered shadow, verified by a browser test; this is `tokens.css`/foundation work, not a Button-family component change;
 - `MDFab` and `MDExtendedFab` verify focus-indicator color, thickness, and offset for `primary`, `secondary`, and `tertiary`;
 - motion assertions inspect the actual owning elements;
 - production code changes only when an exact test proves a routing defect.
@@ -182,6 +188,8 @@ The family can return from `partial` to `aligned` only after:
 6. Unsupported surfaces and project extensions remain explicitly documented.
 
 Split Button, Button Groups, FAB Menu, lowered/surface FAB, legacy Small FAB, JavaScript spring physics, and automatic selected treatment for arbitrary custom icon slot content are not required for this gate.
+
+`MDButton` individually also cannot move to `aligned` until the dark-theme inverse system-token defect noted above is resolved, independent of the family-level gate.
 
 ## Lists: `MDList`, `MDListItem`, `MDListSelectionItem`
 

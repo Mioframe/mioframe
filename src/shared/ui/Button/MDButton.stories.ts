@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDButton from './MDButton.vue';
+import MDButtonOverrideContractVisualStory from './MDButtonOverrideContractVisualStory.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
 import { MDStateLayerForcedStateProvider } from '../State/testing';
 import { useFocusIndicator } from '../State/useFocusIndicator';
@@ -19,17 +20,23 @@ const meta = {
     docs: {
       description: {
         component: [
-          'Checked against Material 3 `components/buttons/{overview,guidelines,specs,accessibility}`.',
+          'Checked against the verified `Vyachean/m3-docs-cache` snapshot (commit `49ffae58a61f86c28b23720696dc9d07b6945483`, captured `2026-07-13T12:48:04.850Z`): `pages/components/buttons/{overview,specs,accessibility}.md` and `pages/styles/motion/overview/{how-it-works,specs}.md`. `guidelines` was not checked.',
           '',
-          '**Props**: `variant` (`default` | `toggle`, default `default`), `color` (`elevated` | `filled` | `tonal` | `outlined` | `text`, default `filled`), `size` (`extra-small` | `small` | `medium` | `large` | `extra-large`, default `small`), `shape` (`round` | `square`, default `round`), `nativeType` (`button` | `submit` | `reset`, default `button`), `label` (required), `selected`, `disabled`, `loading` (project extension: `boolean | number`, `0` is an active loading state).',
+          '**Props**: `variant` (`default` | `toggle`, default `default`), `color` (`elevated` | `filled` | `tonal` | `outlined` | `text`, default `filled`), `size` (`extra-small` | `small` | `medium` | `large` | `extra-large`, default `small`), `shape` (`round` | `square`, default `round`), `nativeType` (`button` | `submit` | `reset`, default `button`), `label` (required), `selected`, `disabled`, `loading` (project extension, see below).',
           '',
-          '**Slots**: `icon` (leading icon).',
+          '**Slots**: `icon` (leading icon, optional).',
           '',
-          '**Emits**: `click` (native click, not synthesized).',
+          '**Emits**: `click` (native click, after the component stops the native event from bubbling with `@click.stop`; the component still emits its own `click` exactly once, so this is a re-scoping of propagation, not a behavior removal).',
           '',
-          '**Tokens**: checked against the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. Exact official `--md-comp-button-*` properties are the public override surface. Each state and variant routes through component-local rendered variables for container, label, icon, outline, elevation, and state-layer color, while `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract.',
+          "**Tokens and the override contract**: every supported official `--md-comp-button-*` property is a public, independently overrideable consumer input. `MDButton` never assigns a token's Material default directly on its own `.md-button_color-*` selector; instead each token is consumed through a private variable with a Material/system fallback (`--md-private-button-X: var(--md-comp-button-…, <default>)`). This means a consumer override reaches the rendered button whether it is set via inline style, an ordinary CSS class (no `!important` or specificity escalation needed), or inheritance from an ancestor element. Container, label, icon, outline, elevation, and state-layer color/opacity route independently. `MDStateLayer` continues to consume only the generic `--md-private-state-*` contract and is unmodified by this component.",
+          '',
+          '**Elevation for outlined and text**: Material publishes no `container-elevation` route for the outlined or text styles (no shadow), so their elevation is a private-only constant resolving to `--md-sys-elevation-level0` — there is no corresponding public `--md-comp-button-{outlined,text}-*-container-elevation` token.',
+          '',
+          '**Outlined toggle outline color**: resting unselected outline uses the base `md.comp.button.outlined.outline.color` (no `unselected`-qualified resting token is published); unselected hover/focus/pressed/disabled outline route through their published `unselected.*.outline.color` tokens. Material publishes no selected outline-color token, so the selected outline visually follows the selected container color in every interaction state instead.',
           '',
           '**Typography**: the label uses the shared `MD_TYPESCALE` utility classes (no handwritten font CSS). `md.comp.button.<size>.label-text` is a composite official token with no exact decomposed `--md-comp-*` path, so it is documented here rather than split into invented font/size/line-height/weight/tracking fragments: `xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large.',
+          '',
+          '**Motion property ownership**: the root owns `border-radius`/`box-shadow` (fast spatial: 350ms `cubic-bezier(0.42, 1.67, 0.21, 0.9)`) and `background-color`/`border-color` (fast effects: 150ms `cubic-bezier(0.31, 0.94, 0.34, 1)`); the root does not transition `color` because no root-owned rendered property depends on it. The label and icon elements own their own visible `color` and `opacity` and each carry the fast-effects transition directly.',
           '',
           '**Toggle semantics**: `variant="toggle"` exposes controlled `aria-pressed` from `selected`. The consumer owns `selected` state; clicking only emits `click`.',
           '',
@@ -37,11 +44,13 @@ const meta = {
           '',
           '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target via `.md-button__target`.',
           '',
-          "**Toggle shape**: selected toggle buttons morph container shape per size (round input shape morphs to the size's square corner token, square input shape morphs to a fully-rounded corner token); the pressed shape always takes precedence over the selected shape, and the selected shape is preserved while disabled (pressed cannot activate while disabled, so it never overrides selected there).",
+          "**Toggle shape**: selected toggle buttons morph container shape per size (round input shape morphs to the size's square corner token, square input shape morphs to a fully-rounded corner token); the pressed shape always takes precedence over the selected shape, and the selected shape is preserved while disabled — including the artificial forced-pressed test combination, since a real disabled button can never enter a genuine `:active` interaction.",
           '',
           '**Unsupported: text toggle**: the verified Material Button specs state that toggle buttons do not use the text style, and the color matrix publishes no text selected/unselected routes. `color="text"` combined with `variant="toggle"` normalizes the applied variant to `"default"`: no `aria-pressed`, `selected` ignored, no selected shape or classes, and a development warning is logged. Ordinary `color="text"` `variant="default"` is unaffected.',
           '',
           '**Text spacing**: text buttons use the same per-size `leading-space`/`trailing-space` tokens as every other color style (no fixed small-size padding override).',
+          '',
+          '**Loading (Mioframe extension, not a published Material token)**: `loading` accepts `boolean | number`. `true` renders an indeterminate `MDCircularProgressIndicator`; a finite number in `[0, 1]` renders determinate progress, clamped if outside that range (values below `0` clamp to `0`, above `1` clamp to `1`); `NaN`/`Infinity`/`-Infinity` fall back to a safe determinate `0`. Any clamped or non-finite numeric input logs a development warning. `0` is still an active loading state (not the same as `false`). The button stays enabled and clickable while loading — the original label remains the accessible name, and the button exposes `aria-busy="true"` while loading (omitted otherwise); the rendered progress indicator carries `aria-hidden="true"` since it is decorative. The indicator color routes through the same rendered label color and opacity as the label it visually replaces, so a disabled loading button dims the indicator to the same effective content opacity. **Known external limitation**: `MDCircularProgressIndicator` renders its own determinate `progress={0}` through its indeterminate visual path rather than a determinate ring at zero fill; this is unchanged by `MDButton` and is not fixed here.',
         ].join('\n'),
       },
     },
@@ -102,6 +111,25 @@ export const ToggleShapes: Story = {
         <div class="visual-row">
           <MDButton data-testid="toggle-square-selected" label="Square selected" variant="toggle" shape="square" selected color="tonal" />
           <MDButton data-testid="toggle-square-unselected" label="Square unselected" variant="toggle" shape="square" color="tonal" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+// Not screenshot-tagged: geometry-only computed-style coverage for the disabled selected shape
+// precedence contract (Stage 2), kept out of `ToggleShapes`'s pixel baseline.
+export const ToggleShapeDisabledPrecedence: Story = {
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-toggle-shape-disabled-precedence" class="visual-checker-backdrop">
+        <div class="visual-row">
+          <MDButton data-testid="toggle-round-selected" label="Round selected" variant="toggle" shape="round" selected color="tonal" />
+          <MDButton data-testid="toggle-round-selected-disabled" label="Round selected disabled" variant="toggle" shape="round" selected disabled color="tonal" />
+          <MDButton data-testid="toggle-round-selected-disabled-pressed" class="md-state_pressed" label="Round selected disabled forced-pressed" variant="toggle" shape="round" selected disabled color="tonal" />
+          <MDButton data-testid="toggle-square-selected" label="Square selected" variant="toggle" shape="square" selected color="tonal" />
+          <MDButton data-testid="toggle-square-selected-disabled-pressed" class="md-state_pressed" label="Square selected disabled forced-pressed" variant="toggle" shape="square" selected disabled color="tonal" />
         </div>
       </div>
     `,
@@ -921,7 +949,8 @@ const BUTTON_TOGGLE_MATRIX: Record<
       label: 'rgb(240 200 255)',
       icon: 'rgb(255 0 150)',
       stateLayerColor: 'rgb(150 0 255)',
-      outline: 'rgb(200 0 120)',
+      // No published md.comp.button.outlined.selected.outline.color route: the selected outline
+      // visually follows the selected container color set above instead of an independent token.
     },
     unselected: {
       restingLabel: 'rgb(211 212 213)',
@@ -944,7 +973,13 @@ const buttonToggleRestingStyle = (style: ButtonToggleStyle, branch: 'selected' |
   restingStyle[`--md-comp-button-${style}-${branch}-label-text-color`] = tokens.restingLabel;
   restingStyle[`--md-comp-button-${style}-${branch}-icon-color`] = tokens.restingIcon;
   if (tokens.outline !== undefined) {
-    restingStyle[`--md-comp-button-${style}-${branch}-outline-color`] = tokens.outline;
+    // No `unselected`-qualified *resting* outline-color token is published; resting unselected
+    // outline uses the base (non-branch-qualified) `outlined.outline.color` route instead.
+    const outlineToken =
+      style === 'outlined' && branch === 'unselected'
+        ? `--md-comp-button-outlined-outline-color`
+        : `--md-comp-button-${style}-${branch}-outline-color`;
+    restingStyle[outlineToken] = tokens.outline;
   }
   return restingStyle;
 };
@@ -1075,6 +1110,82 @@ export const LoadingColorRouting: Story = {
           >
             <template #icon>+</template>
           </MDButton>
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const OverrideContractRoutes: Story = {
+  render: () => ({
+    components: { MDButtonOverrideContractVisualStory },
+    template: '<MDButtonOverrideContractVisualStory />',
+  }),
+};
+
+// Container shadow-color overrides applied via a render-time inline `style` attribute (not a
+// dynamic post-mount mutation). See the corresponding e2e test for the discovered limitation:
+// the private bridge variable reliably carries the override, but the shared
+// `--md-sys-elevation-levelN` formula's `rgb(from var(...))` does not always re-derive the final
+// `box-shadow` color from it in this browser — an out-of-scope, shared-token-architecture gap.
+export const ShadowColorOverrideRoutes: Story = {
+  render: () => ({
+    components: { MDButton, MDStateLayerForcedStateProvider },
+    template: `
+      <div data-testid="visual-md-button-shadow-color-override" class="visual-checker-backdrop">
+        <div class="visual-row">
+          <MDButton
+            data-testid="shadow-override-elevated-resting"
+            label="Elevated resting"
+            color="elevated"
+            style="--md-comp-button-elevated-container-shadow-color: rgb(9, 40, 12);"
+          />
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="shadow-override-elevated-hover"
+              class="md-state_hover"
+              label="Elevated hover"
+              color="elevated"
+              style="--md-comp-button-elevated-container-shadow-color: rgb(9, 40, 12);"
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="shadow-override-filled-hover"
+              class="md-state_hover"
+              label="Filled hover"
+              color="filled"
+              style="--md-comp-button-filled-container-shadow-color: rgb(9, 40, 12);"
+            />
+          </MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider hovered>
+            <MDButton
+              data-testid="shadow-override-tonal-hover"
+              class="md-state_hover"
+              label="Tonal hover"
+              color="tonal"
+              style="--md-comp-button-tonal-container-shadow-color: rgb(9, 40, 12);"
+            />
+          </MDStateLayerForcedStateProvider>
+        </div>
+      </div>
+    `,
+  }),
+};
+
+const LOADING_A11Y_STYLES = ['elevated', 'filled', 'tonal', 'outlined', 'text'] as const;
+
+export const LoadingAccessibilityAndDisabledOpacity: Story = {
+  render: () => ({
+    components: { MDButton },
+    setup() {
+      return { LOADING_A11Y_STYLES };
+    },
+    template: `
+      <div data-testid="visual-md-button-loading-a11y" class="visual-checker-backdrop">
+        <div v-for="style in LOADING_A11Y_STYLES" :key="style" class="visual-row">
+          <MDButton :data-testid="'loading-a11y-' + style" :label="style + ' loading'" :color="style" loading />
+          <MDButton :data-testid="'loading-a11y-' + style + '-disabled'" :label="style + ' loading disabled'" :color="style" loading disabled />
         </div>
       </div>
     `,

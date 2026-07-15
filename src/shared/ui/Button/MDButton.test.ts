@@ -180,4 +180,57 @@ describe('MDButton', () => {
     expect(button.attributes('aria-label')).toBe('Save');
     expect(button.attributes('disabled')).toBeUndefined();
   });
+
+  it('exposes aria-busy only while loading and marks the progress indicator decorative', () => {
+    const notLoadingWrapper = mountButton();
+    expect(notLoadingWrapper.get('button').attributes('aria-busy')).toBeUndefined();
+
+    const falseLoadingWrapper = mountButton({ loading: false });
+    expect(falseLoadingWrapper.get('button').attributes('aria-busy')).toBeUndefined();
+
+    const loadingWrapper = mountButton({ loading: true });
+    expect(loadingWrapper.get('button').attributes('aria-busy')).toBe('true');
+    expect(
+      loadingWrapper.get('.md-circular-progress-indicator-stub').attributes('aria-hidden'),
+    ).toBe('true');
+
+    const numericLoadingWrapper = mountButton({ loading: 0.5 });
+    expect(numericLoadingWrapper.get('button').attributes('aria-busy')).toBe('true');
+  });
+
+  it('does not render the icon wrapper when the icon slot is omitted', () => {
+    const wrapper = mountButton();
+
+    expect(wrapper.classes()).not.toContain('md-button_icon');
+    expect(wrapper.find('.md-button__icon').exists()).toBe(false);
+  });
+
+  it.each([
+    { loading: 0, expectedProgress: '0', shouldWarn: false },
+    { loading: 1, expectedProgress: '1', shouldWarn: false },
+    { loading: 0.5, expectedProgress: '0.5', shouldWarn: false },
+    { loading: -1, expectedProgress: '0', shouldWarn: true },
+    { loading: 1.5, expectedProgress: '1', shouldWarn: true },
+    { loading: Number.NaN, expectedProgress: '0', shouldWarn: true },
+    { loading: Number.POSITIVE_INFINITY, expectedProgress: '0', shouldWarn: true },
+    { loading: Number.NEGATIVE_INFINITY, expectedProgress: '0', shouldWarn: true },
+  ])(
+    'normalizes numeric loading=$loading to a clamped [0, 1] progress value',
+    ({ loading, expectedProgress, shouldWarn }) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const wrapper = mountButton({ loading });
+
+      expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
+        expectedProgress,
+      );
+      if (shouldWarn) {
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('`loading` numeric value'));
+      } else {
+        expect(warnSpy).not.toHaveBeenCalled();
+      }
+
+      warnSpy.mockRestore();
+    },
+  );
 });
