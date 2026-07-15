@@ -2,20 +2,22 @@
 
 This document defines the mandatory testing contract for new, migrated, and materially changed public components in the Mioframe Material library.
 
+It complements `component-architecture.md`: component architecture owns production structure and rendered-property resolution; this document owns test-layer separation, canonical Storybook state coverage, visual regression, and manual visual review.
+
 The goal is consistent proof across component families without duplicating browser, Vue, or foundation internals. Every component follows the same test layers, while each layer covers only behavior owned by that component.
 
 ## Required test profile
 
 Every new or migrated public Material component records this profile in its family README:
 
-| Layer                   | Required artifact                                 | Purpose                                                                                                                                |
-| ----------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Architecture validation | verify-managed static checks                      | Location, dependency direction, profile, tokens, layers, state-matrix coverage, and registry consistency.                              |
-| Component contract      | colocated `<Component>.test.ts`                   | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and structural wiring that does not require a browser. |
-| State matrix            | Storybook `StateMatrix` story                     | Human-readable visual reference containing every supported visual state and every distinct state-rendering route.                      |
-| Visual regression       | Playwright screenshot of the state matrix         | Detect unintended rendered changes and provide a stable diff for human review.                                                         |
-| Browser behavior        | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-dependent behavior owned by the component.                |
-| Pure behavior           | focused Vitest tests when applicable              | Extracted pure helpers, composables, state transitions, timing decisions, or cleanup logic.                                            |
+| Layer | Required artifact | Purpose |
+| --- | --- | --- |
+| Architecture validation | verify-managed static checks | Location, dependency direction, profile, tokens, layers, state-matrix coverage, and registry consistency. |
+| Component contract | colocated `<Component>.test.ts` | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and structural wiring that does not require a browser. |
+| State matrix | Storybook `StateMatrix` story | Human-readable visual reference containing every supported visual state and every distinct state-rendering route. |
+| Visual regression | Playwright screenshot of the state matrix | Detect unintended rendered changes and provide a stable diff for human review. |
+| Browser behavior | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-dependent behavior owned by the component. |
+| Pure behavior | focused Vitest tests when applicable | Extracted pure helpers, composables, state transitions, timing decisions, or cleanup logic. |
 
 A layer is not replaced by another layer. In particular:
 
@@ -129,6 +131,8 @@ Rows normally represent the minimum cases needed to cover distinct visual routes
 - documented project extensions with a distinct visual state contract.
 
 Sizes, labels, icon choices, and content lengths do not receive separate matrix rows unless they change state routing, state geometry, or an actual property owner. Cover ordinary geometry/configuration breadth in separate `Variants`, `Sizes`, or `Configurations` stories.
+
+This refines the component architecture's representative-visual rule: configuration rows remain minimal and representative, while supported visual states and distinct state routes are exhaustive.
 
 ### Completeness rule
 
