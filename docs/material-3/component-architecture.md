@@ -1,36 +1,40 @@
 # Material 3 component architecture
 
-This document defines the mandatory authoring architecture for public shared Material components under the canonical `src/shared/ui/material/components/<family>` boundary.
+This document is the canonical production architecture and family-blueprint contract for public Material components under:
 
-The goal is deterministic implementation from official Material documentation with minimal discovery, minimal structure, and minimal correction churn. A coding agent should be able to create a standard component independently. Architecture escalation is required only when official sources, repository ownership, or requested behavior cannot be resolved by these rules.
+```text
+src/shared/ui/material/components/<family>
+```
+
+It owns component-family boundaries, public contract decisions, state and DOM ownership, production layers, token routing, and the complete blueprint schema. Other Material documents explain foundation, testing, validation, and workflow rules but must not add mandatory blueprint fields outside this schema.
 
 ## Scope
 
-Use this architecture for:
+Apply this architecture to:
 
-- every new public shared `MD*` component backed by an official Material component family;
-- every existing public shared `MD*` component explicitly migrated to `layered-v1`;
-- every material change to a migrated component's public API, token contract, anatomy, state model, or rendering ownership.
+- every new public official `MD*` component;
+- every existing public `MD*` component migrated to the Material library;
+- every material change to a migrated component's API, native semantics, anatomy, state model, token ownership, property routing, or verification surface.
 
-Generic state-layer, ripple, focus, elevation, and motion foundations are not component families. They keep generic contracts and must not acquire knowledge of consuming families.
+A strict local repair to an unmigrated component may record `Architecture impact: none` only when it preserves location, public imports, API, native semantics, foundation dependencies, anatomy, state meaning, testing surface, behavior, and unrelated rendered output.
 
-A local fix to an unmigrated component may use `Architecture impact: none` only when it preserves public API, native semantics, token meanings, anatomy, property owners, supported states, state resolution, and unrelated output.
+Generic state-layer, ripple, focus, elevation, motion, icon, overlay, and other cross-family foundations are not component families.
 
 ## Authoring modes
 
-Record one mode before production edits.
+Record exactly one before production edits.
 
 ### `standard-authoring`
 
-Use when all decisions can be derived from:
+Use when every required decision can be derived from:
 
 1. required user scenarios;
-2. official Material documentation;
-3. repository rules and accepted family contracts;
+2. official Material sources;
+3. repository rules and accepted family/foundation contracts;
 4. native platform semantics;
-5. the deterministic rules below.
+5. this deterministic architecture.
 
-The implementation agent creates or updates the family blueprint and implements it. A separate architect handoff is not required.
+The family README blueprint becomes the implementation contract. A separate architecture handoff is unnecessary.
 
 ### `handoff-authoring`
 
@@ -38,94 +42,111 @@ Use when a ready architecture handoff supplies an exact family-contract delta. D
 
 ### `blocked`
 
-Use when an escalation condition is present. Stop before production edits and report the exact unresolved decision and evidence.
+Use when source meaning, ownership, public compatibility, family boundary, required foundation capability, state coverage, or required browser verification cannot be resolved.
 
-Do not replace a blocked decision with a convenient approximation.
+Do not replace a blocked decision with an approximation, compatibility alias, broad option, local foundation substitute, or generic abstraction.
 
 ## Sources of truth
 
-1. This document owns repository-wide component architecture.
-2. A migrated family's `README.md` owns its accepted durable blueprint.
-3. A task handoff, when present, owns only the current delta.
+1. This document owns component architecture and the complete blueprint schema.
+2. A migrated family's `README.md` owns its accepted durable blueprint instance.
+3. [Foundation architecture](./foundation-architecture.md) and the foundation registry own cross-family dependencies.
+4. [Component testing architecture](./component-testing.md) owns proof-layer separation and state-matrix rules.
+5. A task handoff, when present, owns only the approved delta.
 
-For a new family or first migration, create the initial README blueprint before production code. For an existing family, update only sections required by the request and source evidence.
-
-Production code, verification, registry, Storybook, and family README must be updated atomically. A mismatch means the architecture work is incomplete.
+Production code, family README, library map, public exports, registries, Storybook, tests, snapshots, and risk registration must agree.
 
 ## Bounded discovery
 
 Use this order:
 
-1. Read applicable `AGENTS.md`, `shared-ui-implementation`, `material3-guidelines`, and the relevant sections of this document.
-2. Check the component registry and existing family README.
-3. Inspect named consumers and the nearest relevant shared component only for repository integration patterns.
-4. Check Material MCP cache status.
-5. Read only relevant component overview/specs, accessibility, guidelines, and token pages.
-6. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete, after checking cache health.
-7. Stop when scenarios, surface, anatomy, tokens, states, accessibility, and verification are resolved.
+1. read applicable `AGENTS.md` and Material skills;
+2. inspect the Material library map, component registry, current family README, and applicable foundation records;
+3. inspect named consumers and only the nearest relevant integration patterns;
+4. check Material MCP/cache health;
+5. read only relevant component, foundation, accessibility, and usage pages;
+6. use the official Material Design Kit only when published docs cannot resolve exact visual geometry or state composition;
+7. stop when scenarios, ownership, supported surface, anatomy, states, tokens, accessibility, and verification are resolved.
 
-Do not inspect unrelated families to seek a more generic design. Do not use Material Web, memory, generic web search, or another library as Material behavior evidence.
+Do not inspect unrelated families to seek a generic design.
 
 ## Minimum complete surface
 
-The default scope is the smallest coherent official surface required by the request and current consumers.
+Implement the smallest coherent official surface required by current scenarios and consumers.
 
-Apply these rules:
+Rules:
 
-1. Start from explicit scenarios and required final behavior.
-2. Reuse an official Material component or documented composition when it covers the scenario.
+1. Start from explicit scenarios and final behavior.
+2. Reuse an official Material component or documented composition when it covers the need.
 3. Include one canonical Material default.
-4. Add another variant, size, shape, mode, anatomy option, or behavior only for a named scenario or existing consumer in the current change.
-5. Include every state, semantic, and accessibility requirement reachable through the supported surface.
-6. Record other official capabilities as unsupported instead of implementing them for completeness.
-7. Add no project extension without an explicit requirement.
+4. Add variants, sizes, shapes, modes, anatomy, or behavior only for a named scenario or current consumer.
+5. Include every reachable state, accessibility requirement, and foundation dependency of the supported surface.
+6. Record other official capabilities as unsupported.
+7. Add no Mioframe extension without an explicit requirement and owner.
 
-When the request only names a component and supplies no product scenario, use the canonical Material default usage as the required scenario. Implement its mandatory anatomy, native semantics, reachable states, accessibility, tokens, Storybook, and verification. Keep optional variants and capabilities unsupported. Do not block or ask the implementer to choose optional scope.
-
-A component is complete when its supported surface is coherent and verified. It does not need every optional capability published for the family.
+When the request names only a component, use canonical Material default usage. Do not implement optional completeness speculatively.
 
 ## Family ownership
 
-A family is a durable ownership boundary, not a migration convenience or a copy of the legacy directory tree.
+A family is a durable ownership boundary, not a copy of the legacy directory tree.
 
 A single public component may own its own family. Multiple public components share one family only when:
 
-1. official Material guidance treats them as one family or as an explicit parent/child component set;
-2. at least one real shared production contract exists now, such as exact family-owned tokens, shared anatomy, required runtime context, or shared component behavior; and
-3. shared ownership keeps APIs and dependencies clearer than separate families would.
+1. official Material guidance treats them as one family or explicit parent/child set;
+2. at least one real shared production contract exists now, such as exact family tokens, shared anatomy, required runtime context, or shared component behavior; and
+3. shared ownership keeps APIs and dependencies clearer than separate families.
 
-The following are insufficient reasons to combine components:
+Insufficient reasons:
 
-- current proximity in a legacy directory;
-- similar names or visual appearance;
-- repeated CSS values or syntax;
+- legacy directory proximity;
+- similar names or appearance;
+- repeated CSS syntax or values;
 - fewer files;
-- possible future reuse.
+- hypothetical future reuse.
 
-Family-owned files may be shared only under the objective conditions in this document. One public component must not deep-import another component's private files. Any family-private entry point, token owner, anatomy contract, context, or behavior shared by multiple components is named in the family blueprint.
+One family must not deep-import another family's private files. Every family-private entry point, token owner, anatomy contract, context, or behavior shared by public family members is named in the blueprint.
 
-Record `Family ownership basis: <official relationship and current shared contracts>`. Use `single-component family` when no multi-component boundary is required. If the family boundary or shared owner cannot be resolved, use `blocked` rather than inheriting the legacy grouping.
+Use `single-component family` when no multi-component boundary is justified. Unresolved family ownership is blocking.
 
-## Family blueprint
+## Canonical family blueprint
 
-Before production code, create or update a compact family `README.md` blueprint:
+Before production code, create or update the family `README.md` using this complete schema.
 
 ```text
 MATERIAL COMPONENT BLUEPRINT
 
 Authoring mode: standard-authoring | handoff-authoring
 Architecture version: layered-v1
-Change mode: new-component | architecture-only | alignment-only | combined-approved
+Change mode: new-component | library-relocation-only | architecture-only | alignment-only | combined-approved
+
 Family:
 Components:
 Family ownership basis:
-Existing family contract: none | <Family>/README.md
+Existing family contract: none | <family README path>
 Contract delta: complete initial contract | <changed sections>
+
+Library ownership:
+- Current path: none | <legacy path>
+- Canonical path: src/shared/ui/material/components/<family>
+- Migration status: legacy | migrating | migrated
+- Public library export: <export name/path>
+- Consumer import migration scope: none | <named consumers>
 
 Required scenarios:
 Non-goals:
 Official sources:
-Verified snapshot:
+Verified documentation snapshot:
+Official Design Kit evidence: not required | <file/version and component-set reference>
+
+Material usage contract:
+- Intended scenarios:
+- Do not use for:
+- Component-choice evidence:
+- Action/content hierarchy:
+- Allowed Material compositions:
+- Placement constraints:
+- Adaptive behavior and owner:
+- Product integration in this PR: none | <named consumers>
 
 Supported Material surface:
 Unsupported Material surface:
@@ -139,148 +160,74 @@ Semantic states:
 Interaction states:
 State ownership:
 
+Foundation dependencies:
+| Domain | Required capability | Accepted owner/contract | Registry status | Change in this PR |
+| --- | --- | --- | --- | --- |
+
 Architecture profile per component:
 Canonical token ownership:
-Rendered property matrix:
+Rendered-property matrix:
 
 Mioframe extensions:
 Documented deviations:
+
 Production files:
+Public/export files:
+Storybook files:
 Verification files and cases:
 Consumer blast radius:
+
+Standard test profile:
+- Component contract: <path and cases>
+- StateMatrix: <story id and root anchor>
+- State-matrix coverage: <table below>
+- Visual regression: <path and screenshot sections>
+- Browser behavior: <path/cases> | not applicable (<reason>)
+- Pure behavior: <path/cases> | not applicable (<reason>)
+- Consumer preservation: none | <paths/cases>
+
+State matrix coverage:
+| Visible route/group | Supported state/configuration | Distinct visible output | Matrix section/row/column |
+| --- | --- | --- | --- |
+
+Human visual review:
+- Required: yes | no (<reason>)
+- Last accepted review: none | <PR/date>
+- Source snapshot: none | <documentation/Design Kit snapshot>
 
 Unresolved: none
 Readiness: ready
 ```
 
-Use concise tables where useful. Include only decisions relevant to the supported surface.
+Use concise tables where useful. Include only decisions applicable to the supported surface.
 
-`Readiness: ready` requires every field to be resolved or explicitly `none`. `TBD`, alternatives, speculative extension points, and deferred implementation decisions are forbidden.
+`Readiness: ready` requires every field to be resolved or explicitly `none`/`not applicable`. `TBD`, unresolved alternatives, speculative extension points, missing or blocked foundation dependencies, and incomplete visible-state coverage are forbidden.
 
-## Deterministic profiles
-
-Configuration routing and state resolution are independent axes. Choose exactly one profile using the conditions below.
-
-### `simple`
-
-Use when no configuration axis selects different values and no semantic or interaction state changes a rendered property.
-
-Required layers:
-
-```text
-<Component>.vue
-<Component>.css
-```
-
-### `configured`
-
-Use when configuration selects different values and no semantic or interaction state changes a rendered property.
-
-Required layers:
-
-```text
-<Component>.vue
-<Component>.routes.css
-<Component>.css
-```
-
-### `stateful`
-
-Use when semantic or interaction state changes a rendered property and no configuration axis selects different candidate values.
-
-Required layers:
-
-```text
-<Component>.vue
-<Component>.states.css
-<Component>.css
-```
-
-### `configured-stateful`
-
-Use when configuration selects different candidate values and semantic or interaction state selects among them.
-
-Required layers:
-
-```text
-<Component>.vue
-<Component>.routes.css
-<Component>.states.css
-<Component>.css
-```
-
-Semantic state includes selected, error, expanded, and similar component meaning. Interaction state includes disabled, hover, focus, pressed, dragged, gesture, and equivalent runtime state. A generic state, focus, ripple, elevation, or motion bridge makes the component stateful only when the value supplied to that bridge varies by state.
-
-### Token layer rule
-
-Add `<Component>.tokens.css` only when the component canonically owns at least one exact official `md.comp.*` token used by the supported surface.
-
-Do not create an empty component token file. When all applicable tokens are family-owned, load only the family token file. When no exact official component token path exists, record `Canonical token ownership: none` and use documented private, system, or app sources according to ownership.
-
-Each family also owns `README.md` and `index.ts`.
-
-### Style order
-
-Load only applicable layers in this exact order:
-
-```text
-<Family>.tokens.css      # when approved
-<Component>.tokens.css   # when the component owns official tokens
-<Component>.routes.css   # configured or configured-stateful
-<Component>.states.css   # stateful or configured-stateful
-<Family>Anatomy.css      # when approved
-<Component>.css
-```
-
-Do not create empty layers for symmetry. Do not collapse a required layer into another file.
-
-## Additional files
-
-Additional production files are allowed only under these objective conditions.
-
-### `<Family>.tokens.css`
-
-The same exact official token path is consumed by at least two public family components. The blueprint names paths, CSS names, roots, and loading components.
-
-Equal values or similar usage do not justify family ownership.
-
-### `<Family>Anatomy.css`
-
-At least two public family components render the same owned anatomy contract and need the same layout or property-owner rules.
-
-### `<Component>Behavior.ts`
-
-One component owns non-trivial keyboard, pointer, gesture, timing, or cleanup transitions requiring focused unit tests outside Vue rendering.
-
-### `use<Component>Behavior.ts`
-
-The same production behavior is required by at least two public components now. Hypothetical reuse is insufficient.
-
-### `<Family>Context.ts`
-
-Public parent and child components require runtime composition state that cannot be expressed through the existing public contract without forwarding through unrelated layers.
-
-No other production file category is allowed without architecture escalation.
+No other document may define additional mandatory blueprint fields. Workflow documents may summarize or reference this schema only.
 
 ## State ownership
 
-Every supported state has one explicit source of truth and change path. The family blueprint records the owner, public input, emitted intent or output, and lifecycle where they apply.
+Every supported state has one source of truth and one change path.
 
-Use these defaults:
+Defaults:
 
-- semantic state owned by product or domain meaning is consumer-controlled when exposed through a public prop; user interaction emits an intent or next value, and the consumer updates the prop;
-- browser interaction facts such as hover, focus-visible, and ordinary pressed acquisition are browser/foundation-owned; the component maps those facts to its own property-specific visual routes;
-- component-owned transient state is allowed only for component-owned gesture sessions, overlay lifecycle, animation coordination, or native-platform coordination that cannot be represented as a stable consumer input.
+- consumer/product semantic state exposed through a public prop is controlled by the consumer;
+- user interaction emits intent or a next value; the consumer updates the prop;
+- browser facts such as hover, focus-visible, and ordinary pressed acquisition are browser/foundation-owned;
+- the component maps browser facts to component-specific property routes;
+- component-owned transient state is allowed only for owned gesture sessions, overlay lifecycle, animation coordination, or unavoidable native-platform coordination.
 
-A component must not keep a hidden parallel copy of controlled state. Component-owned transient state must define acquisition, release, cancellation, disabled behavior, and unmount cleanup when applicable. A component must not infer product state from a visual interaction state.
+A component must not keep a hidden parallel copy of controlled state or infer product state from visual interaction state.
 
-Record `State ownership: none` when the component owns and exposes no state. If the source of truth or transition owner is unresolved, use `blocked`.
+Component-owned transient state defines acquisition, release, cancellation, disabled behavior, failure behavior, and unmount cleanup where applicable.
+
+Use `State ownership: none` when no state applies.
 
 ## Anatomy and DOM ownership
 
-`Anatomy ownership` is the authoritative map from Material anatomy to actual DOM and accessibility owners.
+`Anatomy ownership` is the authoritative map from Material anatomy to DOM and accessibility owners.
 
-For every interactive or semantic anatomy part, record the applicable owners:
+For every interactive or semantic anatomy part, record applicable owners:
 
 - actual DOM/native element;
 - native semantics or explicit role;
@@ -294,9 +241,85 @@ For every interactive or semantic anatomy part, record the applicable owners:
 - whether consumer-provided interactive content is allowed, prohibited, or isolated;
 - final rendered-property owner.
 
-Non-interactive anatomy records only the applicable DOM, content, and rendered-property owners. Use `none` for concerns that do not apply.
+Non-interactive anatomy records applicable DOM, content, and rendered-property owners only.
 
-Each concern has one owner. Do not split native action, focus, accessible naming, target area, state layer, ripple, or rendered-property ownership implicitly between parent and child components. A parent may provide an explicit family context or public input; the component that renders the owned anatomy applies its semantics and styling.
+Each concern has one owner. Parent and child components must not implicitly split native action, focus, accessible naming, target area, state layer, ripple, or final rendering. A parent may provide an explicit public input or family context; the component rendering the anatomy applies its semantics and styling.
+
+## Deterministic profiles
+
+Configuration routing and state resolution are independent axes. Select exactly one profile per component.
+
+### `simple`
+
+No configuration axis selects different values and no semantic/interaction state changes a rendered property.
+
+```text
+<Component>.vue
+<Component>.css
+```
+
+### `configured`
+
+Configuration selects different values and state does not change rendered properties.
+
+```text
+<Component>.vue
+<Component>.routes.css
+<Component>.css
+```
+
+### `stateful`
+
+State changes rendered properties and no configuration axis selects different candidate values.
+
+```text
+<Component>.vue
+<Component>.states.css
+<Component>.css
+```
+
+### `configured-stateful`
+
+Configuration selects candidates and state selects among them.
+
+```text
+<Component>.vue
+<Component>.routes.css
+<Component>.states.css
+<Component>.css
+```
+
+Add `<Component>.tokens.css` only when the component owns at least one exact official component token used by the supported surface.
+
+Each family owns `README.md` and `index.ts`. Do not create empty production layers for symmetry.
+
+## Additional production files
+
+Additional files are allowed only under these conditions.
+
+### `<Family>.tokens.css`
+
+The same exact official token path is consumed by at least two public family components. Equal values or similar usage are insufficient.
+
+### `<Family>Anatomy.css`
+
+At least two public family components render the same owned anatomy contract and require the same layout/property-owner rules.
+
+### `<Component>Behavior.ts`
+
+One component owns non-trivial keyboard, pointer, gesture, timing, or cleanup transitions requiring focused tests outside Vue rendering.
+
+### `use<Component>Behavior.ts`
+
+The same production behavior is required by at least two current public family components.
+
+### `<Family>Context.ts`
+
+Public parent and child components require runtime composition state that cannot be expressed through the public contract without unrelated prop forwarding.
+
+No other production-file category is allowed without architecture escalation.
+
+Storybook fixture components and test helpers are governed by component-testing architecture and are not production profile layers.
 
 ## Layer ownership
 
@@ -310,102 +333,99 @@ Owns:
 - native element choice and explicit DOM-critical attributes;
 - event wiring;
 - anatomy;
-- declared generic foundation primitives;
-- ordered external style blocks.
+- declared foundation primitives;
+- ordered external style imports.
 
 Forbidden:
 
-- visual token declarations or token values computed in TypeScript;
+- visual token declarations or values computed in TypeScript;
 - inline component CSS;
 - CSS state resolution;
-- synthetic activation where native semantics provide behavior;
-- topology, render-plan, or style-resolver objects;
-- hidden ownership of DOM-critical attributes.
+- synthetic activation where native behavior exists;
+- topology/render-plan/style-resolver objects;
+- hidden DOM-critical attribute ownership.
 
 ### Token files
 
-`<Component>.tokens.css` and `<Family>.tokens.css` own only canonical official `--md-comp-*` defaults.
+Own canonical official `--md-comp-*` defaults only.
 
-Allowed selectors are the component root or exact family root list recorded in the blueprint. All supported tokens exist independently of active configuration and state.
+Allowed selectors are the exact owning root or approved family-root list. Tokens exist independently of active configuration and state.
 
 Forbidden:
 
 - configuration modifiers;
-- semantic or interaction selectors;
-- pseudo-classes;
-- private or app token declarations;
+- state selectors or pseudo-classes;
+- private/app tokens;
 - rendering properties;
 - invented, shortened, normalized, or duplicate component tokens.
 
 ### `<Component>.routes.css`
 
-Owns only configuration routing from public component tokens or documented private, system, or app sources into private route variables.
-
-Allowed selectors are the component root and blueprint-declared configuration classes.
+Owns configuration routing into private route variables only.
 
 Forbidden:
 
-- semantic or interaction selectors;
+- semantic/interaction selectors;
 - rendering properties;
-- state-resolved variables;
+- state-resolved values;
 - public token declarations;
-- layout, positioning, transitions, or DOM-owner styling.
+- anatomy/layout styling.
 
 ### `<Component>.states.css`
 
-Owns only:
+Owns property-specific semantic and interaction resolution and state-varying foundation bridges.
 
-- semantic-state selection;
-- property-specific interaction resolution;
-- generic foundation bridges whose supplied value varies by state.
-
-It implements the stateful rows of the rendered-property matrix. There is no global state precedence for all properties.
+There is no universal state precedence for every property.
 
 Forbidden:
 
 - rendering properties;
 - public token declarations;
 - configuration routing;
-- layout or anatomy styling;
-- state behavior absent from the blueprint;
-- undocumented reliance on selector order.
+- layout/anatomy styling;
+- undocumented selector-order behavior.
 
 ### `<Component>.css`
 
-Owns rendering and actual property application:
-
-- layout and display;
-- geometry, spacing, border, and outline;
-- background, color, opacity, and elevation;
-- transition and motion application;
-- target area, positioning, pointer, and cursor presentation;
-- final values applied to actual DOM owners.
+Owns layout, geometry, typography application, presentation, transitions, target area, and final property application to actual DOM owners.
 
 Forbidden:
 
-- component-token declarations;
+- canonical token declarations;
 - configuration routing;
-- semantic or interaction resolution;
-- state-specific source selection;
+- semantic/interaction source selection;
 - styling another component's internals through `:deep()`.
+
+## Style order
+
+Load only applicable files in this order:
+
+```text
+<Family>.tokens.css
+<Component>.tokens.css
+<Component>.routes.css
+<Component>.states.css
+<Family>Anatomy.css
+<Component>.css
+```
+
+Omit inapplicable layers. Do not collapse a required layer into another file.
 
 ## Value pipeline
 
-Map official paths mechanically:
+Map official component-token paths mechanically:
 
 ```text
 md.comp.<component>.[variant-or-style].<part>.<property>
 --md-comp-<component>-[variant-or-style]-<part>-<property>
 ```
 
-Do not create public component tokens without exact verified official paths.
-
-Each official token has one component or qualifying family owner. Reference and system tokens remain in the foundation. Public project extensions use `--app-*`; internal extension sources remain family-private.
+Do not create public component tokens without an exact verified official path.
 
 Each property uses the shortest applicable path:
 
 ```text
-source token or documented private/system/app value
+canonical token or documented private/system/app source
 → optional configuration route
 → optional property-specific state resolver
 → optional rendered private value
@@ -413,172 +433,107 @@ source token or documented private/system/app value
 → actual DOM property owner
 ```
 
-Use no private alias for a static property when the rendering layer can apply its canonical token or documented source directly. A configured property may apply its route variable directly. A rendered private value is required only when state resolution produces the final value or a generic bridge needs a stable final input.
+Rules:
 
-Never bypass an available official component token with a direct system token.
+- a static property applies its canonical source directly when possible;
+- a configured non-stateful property may apply its route directly;
+- a rendered private value exists only for state-resolved output or a stable foundation bridge input;
+- a private alias must not exist only for readability;
+- do not bypass an available official component token with a system token;
+- private family variables do not escape the family;
+- generic foundation primitives do not read family tokens or private variables.
 
 ## Rendered-property matrix
 
-Create one row for each property varying by configuration, semantic state, interaction state, or project mode. Static properties are recorded through anatomy ownership and do not need matrix rows.
+Create one row for every property varying by configuration, semantic state, interaction state, or supported project mode.
 
-| Property | DOM owner | Applied/final value | Configuration source | State inputs | Winner rule | Simultaneous outputs | Foundation bridge |
-| -------- | --------- | ------------------- | -------------------- | ------------ | ----------- | -------------------- | ----------------- |
+Static properties remain documented through anatomy ownership.
 
-Rules:
+Required columns:
 
-- use `none` when a column does not apply;
-- list only reachable states;
-- define winner rules per property;
-- model focus indicator, state layer, shape, elevation, color, opacity, and motion separately when they coexist;
-- apply final values to actual owners;
-- do not rely on inheritance when a more specific owner exists;
-- use a public token directly for a simple property, a route variable for a configured property, and a rendered private variable only for state-resolved output;
-- rows may be grouped only when every listed property has the same DOM owner, routing stages, state inputs, winner rule, simultaneous outputs, and bridge; list each property and applied/final value explicitly.
+| Property | DOM owner | Applied/final value | Configuration source | State inputs | Winner/coexistence rule | Foundation bridge |
+| --- | --- | --- | --- | --- | --- | --- |
 
-## Public API derivation
+Group rows only when owner, pipeline stages, state inputs, winner/coexistence rule, and bridge are identical. List every grouped property and final applied value explicitly.
 
-### Props
+The matrix defines implementation routing. The `StateMatrix` story covers only routes that produce distinct component-owned visible output; non-visual state behavior is verified by contract or browser tests.
 
-Add a prop only for:
+## Public API
 
-- supported Material configuration required by a scenario;
+Expose only:
+
+- supported Material configuration;
 - supported semantic state;
-- native behavior not expressible through normal attributes;
-- an explicit required Mioframe extension.
+- required native behavior;
+- supported consumer-provided anatomy;
+- explicit Mioframe extensions.
 
-Use official vocabulary. Do not expose internal anatomy, private routes, test controls, or speculative flexibility. A controlled semantic prop must not gain an undocumented component-owned copy.
+Use Material vocabulary when applicable. Keep DOM-critical attributes explicit on their owner.
 
-### Native attributes
+Invalid combinations:
 
-Keep `href`, `type`, `disabled`, `tabindex`, `role`, and `aria-*` explicit at the native owner. Preserve native button, link, input, and form behavior.
+1. prevent them through readable TypeScript contracts where practical;
+2. validate dynamic runtime inputs when needed;
+3. normalize only when official guidance defines a deterministic fallback;
+4. allow development warnings only for documented deterministic behavior;
+5. otherwise use `blocked` rather than partial or invented behavior.
 
-### Slots
+## Compatibility and migration
 
-Add slots only for supported consumer-provided anatomy. Fixed Material-owned decoration stays internal.
+A family migration updates atomically:
 
-### Emits
+- source location and imports;
+- complete family blueprint;
+- public library exports;
+- all repository consumers;
+- Storybook titles/imports;
+- contract, browser, visual, and pure tests;
+- snapshots and risk registrations;
+- component/foundation registries and library map;
+- obsolete paths and exports.
 
-Emit only component-owned state changes or actions. Do not wrap every native event without a contract need.
+Permanent legacy re-exports are forbidden. A temporary compatibility export requires an explicit consumer list, no new usage, and a removal target.
 
-### Invalid combinations
+Physical relocation must not hide API, token, behavior, or visual alignment changes.
 
-Follow official guidance. If it does not determine behavior, use `blocked`; do not invent normalization.
+## Architecture review gates
 
-## Behavior and simplicity
+### Enforceable static checks
 
-Prefer native semantics and existing generic foundations. Vue acquires runtime facts and coordinates component-owned behavior; CSS resolves visual values.
+Automation may block:
 
-Do not introduce:
+- wrong location or dependency direction;
+- missing/extra profile files;
+- invalid style order;
+- deep imports or stale exports;
+- token vocabulary/ownership violations;
+- missing required blueprint sections;
+- missing test artifacts and story identity;
+- migration-map and registry reference inconsistency.
 
-- state machines for static render conditions;
-- broad options objects;
-- unrelated-family base components;
-- runtime token registries;
-- generic token or state resolvers;
-- CSS-generation DSLs;
-- compatibility APIs without current consumer need.
+### Human/architect review
 
-Repeated syntax or values alone do not justify abstraction. Shared ownership requires the objective conditions above.
+Review must confirm:
 
-## Verification
+- family ownership basis;
+- scenario and supported-surface sufficiency;
+- Material source interpretation;
+- state and anatomy ownership correctness;
+- rendered-property route equivalence;
+- intentional deviations;
+- simplicity and absence of speculative abstractions.
 
-Use the smallest proof set covering the supported surface.
-
-### Contract
-
-Verify applicable defaults, props, emits, slots, native elements, explicit attributes, ARIA, invalid combinations, state ownership, anatomy ownership, states, and extensions.
-
-### Architecture
-
-Verify:
-
-- accepted family ownership basis and shared family contracts;
-- exact profile and applicable file set;
-- style order and layer ownership;
-- canonical token names and owners;
-- explicit state sources of truth and absence of hidden controlled-state copies;
-- explicit DOM, semantic, focus, accessible-name, target-area, state-layer/ripple, focus-indicator, and rendered-property owners where applicable;
-- absence of empty token, route, or state layers;
-- absence of unnecessary private alias stages;
-- approved token selectors;
-- private-variable boundaries;
-- generic foundation independence;
-- matrix coverage for varying properties.
-
-### Browser
-
-Use browser tests for focus, keyboard, pointer, gesture, state classes, computed CSS, public overrides, and actual property owners.
-
-Verify reachable matrix routes and simultaneous outputs. Avoid full Cartesian matrices when exact property assertions prove behavior.
-
-### Storybook and visual
-
-Document supported and unsupported surface, extensions, and deviations. Use representative visual cases only for materially different geometry or appearance.
-
-### Consumers
-
-Record one preservation check for every changed existing consumer.
-
-Do not test Vue, browser, or generic foundation internals the component does not own.
-
-## Escalation conditions
-
-Use `blocked` only when:
-
-- required official guidance is missing, contradictory, or unavailable;
-- requested behavior conflicts with Material or native semantics;
-- a new public project extension is required;
-- existing public API compatibility is unresolved;
-- family boundary, state source of truth, anatomy, or token ownership is unresolved or crosses established owners;
-- new generic infrastructure, shared context, base abstraction, or dependency appears necessary;
-- shared behavior ownership between official components is unclear;
-- the minimum supported surface cannot satisfy the scenario;
-- required browser behavior cannot be verified;
-- repository code contradicts the accepted family README or official source in a design-changing way.
-
-Size, token count, or matrix length are implementation volume, not escalation reasons.
-
-## Change modes
-
-### `new-component`
-
-Implement source-backed architecture and Material alignment together because no legacy behavior exists.
-
-### `architecture-only`
-
-For behavior-preserving migration of large or stateful legacy components: no API, token-value, state-behavior, or intended output change.
-
-### `alignment-only`
-
-Correct named deviations after migration while preserving accepted structure except for an explicit blueprint delta.
-
-### `combined-approved`
-
-For a small legacy component only when extraction and alignment cannot be usefully reviewed separately. Requires explicit handoff approval.
-
-## Limit and churn control
-
-- Keep the blueprint compact and in the repository instead of chat.
-- Quote Material docs only to resolve ambiguity.
-- Inspect only named consumers and the nearest relevant shared component.
-- Implement one component or tightly owned family surface per PR.
-- Use source/blueprint, DOM/API, styles, and verification passes.
-- Run focused verify-managed checks after risky passes.
-- Remove replaced logic instead of keeping parallel paths.
-- Stop after required scenarios and proof are complete.
+Automation must not claim to prove these semantic decisions from free-form Markdown or screenshots.
 
 ## Completion
 
-A component is complete only when:
+A component is architecture-complete only when:
 
-- the family blueprint is ready and matches code;
-- the family boundary and any shared family contracts are explicit;
-- requested scenarios work;
-- supported Material surface is source-backed;
-- state sources of truth and anatomy/DOM ownership are explicit;
-- profile, layers, ownership, and verification pass;
-- registry and Storybook are honest;
-- unsupported features and deviations are explicit;
-- no hidden controlled-state copy, unrequested abstraction, compatibility path, empty layer, or unnecessary private alias remains.
-
-Green checks alone do not prove Material correctness, but review must not reopen deterministically resolved decisions without contrary evidence.
+- the full canonical blueprint is ready;
+- the smallest correct profile is implemented;
+- state, DOM, token, and property ownership are explicit;
+- foundation dependencies are accepted and non-blocking;
+- public exports and consumers use the canonical contract;
+- production and test artifacts agree with the blueprint;
+- replaced logic and legacy paths are removed;
+- required review gates are passed or explicitly remain merge blockers.
