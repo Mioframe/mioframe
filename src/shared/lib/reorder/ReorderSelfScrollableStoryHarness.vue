@@ -84,6 +84,7 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
   overflow: auto;
   scroll-behavior: smooth;
   scroll-snap-type: y proximity;
+  scroll-padding-block: 8px;
   border: 1px dashed #999;
 }
 </style>
