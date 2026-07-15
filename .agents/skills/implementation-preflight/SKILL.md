@@ -61,11 +61,11 @@ For a new or materially changed public shared `MD*` component, record:
 For `standard-authoring`, confirm:
 
 - source lookup is bounded to the relevant Material surface;
-- required scenarios and non-goals define the minimum supported surface;
+- required scenarios and non-goals define the minimum supported surface, using canonical default usage when the request gives no scenario;
 - the family README blueprint is created or updated before production code;
 - `Unresolved: none` and `Readiness: ready` are source-backed;
-- the smallest objective profile is selected;
-- public API, native semantics, anatomy, token ownership, rendered-property matrix, files, and verification are resolved;
+- exactly one smallest profile (`simple`, `configured`, `stateful`, or `configured-stateful`) is selected;
+- public API, native semantics, anatomy, token ownership, shortest property pipelines, rendered-property matrix, files, and verification are resolved;
 - optional abstractions satisfy exact extraction conditions;
 - unsupported Material features and project deviations are explicit.
 
