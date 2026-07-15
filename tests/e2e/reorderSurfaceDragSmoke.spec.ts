@@ -435,3 +435,235 @@ test.describe('container bounds', () => {
     await closeBottomSheet(page, /database views sheet/i);
   });
 });
+
+test.describe('scoped autoscroll', () => {
+  test('a fully visible list does not scroll its bottom sheet while holding near either edge', async ({
+    page,
+  }) => {
+    test.slow();
+    await launchApp(page);
+    await openOpfs(page);
+
+    const directoryName = await createDirectory(
+      page,
+      createUniqueName('reorder scope visible lab'),
+    );
+    await openDirectory(page, directoryName);
+
+    const documentName = await createDatabaseDocument(
+      page,
+      createUniqueName('reorder scope visible catalog'),
+    );
+    await openDocumentFromExplorer(page, documentName);
+
+    const propertyName = await createStringProperty(page, createUniqueName('title'));
+    await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+    // A single added view (plus the document's own default view) keeps the list short enough to
+    // stay fully visible even on the narrowest supported viewport.
+    const firstViewName = await addView(page, createUniqueName('view scope alpha'));
+
+    const sheet = await openViewsSheet(page);
+    const list = sheet.getByRole('list');
+    const draggedRow = findListRow(sheet, firstViewName);
+
+    // The document's own default view row renders alongside added views, but can settle into the
+    // list a moment after the sheet itself becomes visible. Wait for the final row count before
+    // measuring bounds below, or a still-growing list would falsely appear to fit the sheet.
+    await expect(list.locator(':scope > *')).toHaveCount(2);
+
+    // Scroll the whole list, not just the dragged row, into view: only the row is guaranteed
+    // visible otherwise, and this test specifically needs the entire container visible.
+    await list.scrollIntoViewIfNeeded();
+
+    const preDragRowBox = await draggedRow.boundingBox();
+    const sheetBox = await sheet.boundingBox();
+    if (!preDragRowBox || !sheetBox) {
+      throw new Error('missing bounding box for view row or sheet');
+    }
+
+    const rowCenterX = preDragRowBox.x + preDragRowBox.width / 2;
+
+    await page.mouse.move(rowCenterX, preDragRowBox.y + preDragRowBox.height / 2);
+    await page.mouse.down();
+    // Cross the mouse activation distance before probing autoscroll.
+    await page.mouse.move(rowCenterX, preDragRowBox.y + preDragRowBox.height / 2 + 8, { steps: 4 });
+
+    // Measure bounds only once the drag is active and settled: dnd-kit's feedback plugin takes
+    // the dragged row out of normal flow (`position: fixed`) and inserts a same-size placeholder
+    // once activation completes, and the sheet separately repositions itself via a
+    // ResizeObserver-driven watcher whenever its body's rendered height changes as a result. Both
+    // are unrelated to autoscroll, so wait for them to finish before measuring, or their tail end
+    // could be mistaken for the list not fitting.
+    await expect(draggedRow).toHaveClass(/md-state_dragged/);
+    let previousSheetScrollTop = await sheet.evaluate((el) => el.scrollTop);
+    await expect
+      .poll(
+        async () => {
+          const currentScrollTop = await sheet.evaluate((el) => el.scrollTop);
+          const stable = currentScrollTop === previousSheetScrollTop;
+          previousSheetScrollTop = currentScrollTop;
+          return stable;
+        },
+        { timeout: 5000, intervals: [200] },
+      )
+      .toBe(true);
+
+    const rowBox = await draggedRow.boundingBox();
+    const listBox = await list.boundingBox();
+    if (!rowBox || !listBox) {
+      throw new Error('missing live bounding box for view row or list');
+    }
+
+    // Sanity: the whole list must already fit inside the sheet's visible viewport rectangle, or
+    // this test would not actually exercise the "fully visible container" scenario it targets.
+    // The sheet's own `scrollHeight` includes layout padding unrelated to list content, so
+    // comparing rendered boxes (rather than scrollHeight/clientHeight) is the reliable check here.
+    expect(listBox.y).toBeGreaterThanOrEqual(sheetBox.y - 1);
+    expect(listBox.y + listBox.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
+
+    const holdNearEdgeAndAssertNoScroll = async (edgeY: number) => {
+      await page.mouse.move(rowCenterX, edgeY, { steps: 4 });
+
+      // Sample scrollTop across many rendered frames: a real autoscroll loop increments it every
+      // single frame for as long as the pointer stays near the edge, so it would never stop
+      // climbing. The sheet also repositions itself independent of any drag (see the
+      // ResizeObserver watcher noted above), which can still contribute unrelated settling here
+      // even after waiting for it to stabilize before the baseline — but that settling is
+      // time-bounded and converges, unlike autoscroll. So assert on the tail of the hold staying
+      // flat rather than on equality with the pre-hold baseline, which the unrelated settling can
+      // still perturb by an unpredictable amount.
+      const frameCount = 12;
+      const samples: number[] = [];
+      for (let frame = 0; frame < frameCount; frame += 1) {
+        // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+        // eslint-disable-next-line no-await-in-loop -- sampling must happen in order, one per frame
+        samples.push(await sheet.evaluate((el) => el.scrollTop));
+      }
+
+      const tailSampleCount = 4;
+      const tail = samples.slice(-tailSampleCount);
+      expect(new Set(tail).size, `scrollTop samples: ${samples.join(', ')}`).toBe(1);
+
+      const isDragging = await draggedRow.evaluate((el) =>
+        el.classList.contains('md-state_dragged'),
+      );
+      expect(isDragging).toBe(true);
+
+      const [draggedBox, liveListBox] = await Promise.all([
+        draggedRow.boundingBox(),
+        list.boundingBox(),
+      ]);
+      if (!draggedBox || !liveListBox) {
+        throw new Error('missing live bounding box for list or dragged row');
+      }
+      expect(draggedBox.y).toBeGreaterThanOrEqual(liveListBox.y - 1);
+      expect(draggedBox.y + draggedBox.height).toBeLessThanOrEqual(
+        liveListBox.y + liveListBox.height + 1,
+      );
+    };
+
+    await holdNearEdgeAndAssertNoScroll(sheetBox.y + 2);
+    await holdNearEdgeAndAssertNoScroll(sheetBox.y + sheetBox.height - 2);
+
+    await page.mouse.up();
+
+    await closeBottomSheet(page, /database views sheet/i);
+  });
+
+  test('a partially hidden list autoscrolls toward hidden rows, stops once revealed, and reverses toward the opposite edge', async ({
+    page,
+  }) => {
+    test.slow();
+    await launchApp(page);
+    await openOpfs(page);
+
+    const directoryName = await createDirectory(page, createUniqueName('reorder scope hidden lab'));
+    await openDirectory(page, directoryName);
+
+    const documentName = await createDatabaseDocument(
+      page,
+      createUniqueName('reorder scope hidden catalog'),
+    );
+    await openDocumentFromExplorer(page, documentName);
+
+    const propertyName = await createStringProperty(page, createUniqueName('title'));
+    await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+    const viewNames: string[] = [];
+    for (let index = 0; index < 16; index += 1) {
+      const viewName = createUniqueName(`view hidden ${String(index).padStart(2, '0')}`);
+      // eslint-disable-next-line no-await-in-loop -- each view must be created before the next is added
+      viewNames.push(await addView(page, viewName));
+    }
+
+    const sheet = await openViewsSheet(page);
+    const list = sheet.getByRole('list');
+    const firstRow = findListRow(sheet, viewNames[0]);
+    const lastRow = findListRow(sheet, viewNames[viewNames.length - 1]);
+
+    // The document's own default view row renders alongside added views, but can settle into the
+    // list a moment after the sheet itself becomes visible.
+    await expect(list.locator(':scope > *')).toHaveCount(viewNames.length + 1);
+    await firstRow.scrollIntoViewIfNeeded();
+
+    // Sanity: the list must overflow the sheet, and the last row must start hidden, or this test
+    // would not actually exercise the "partially hidden container" scenario it targets.
+    await expect
+      .poll(() => sheet.evaluate((el) => el.scrollHeight - el.clientHeight))
+      .toBeGreaterThan(1);
+    await expect(lastRow).not.toBeInViewport();
+
+    const sheetBox = await sheet.boundingBox();
+    const rowBox = await firstRow.boundingBox();
+    if (!sheetBox || !rowBox) {
+      throw new Error('missing bounding box for sheet or view row');
+    }
+
+    const rowCenterX = rowBox.x + rowBox.width / 2;
+    const scrollTopStart = await sheet.evaluate((el) => el.scrollTop);
+
+    await page.mouse.move(rowCenterX, rowBox.y + rowBox.height / 2);
+    await page.mouse.down();
+    // Cross the mouse activation distance before probing autoscroll.
+    await page.mouse.move(rowCenterX, rowBox.y + rowBox.height / 2 + 8, { steps: 4 });
+    await page.mouse.move(rowCenterX, sheetBox.y + sheetBox.height - 2, { steps: 4 });
+
+    await expect
+      .poll(() => sheet.evaluate((el) => el.scrollTop), { timeout: 5000 })
+      .toBeGreaterThan(scrollTopStart);
+    await expect(lastRow).toBeInViewport({ timeout: 5000 });
+
+    // Scrolling stops once the container's own bottom edge is visible: wait for scrollTop to
+    // settle (rather than racing a fixed delay against `toBeInViewport`'s own looser, any-overlap
+    // definition of visible), then confirm it stays put while the pointer is still held near the
+    // sheet's edge.
+    let previousScrollTop = await sheet.evaluate((el) => el.scrollTop);
+    await expect
+      .poll(
+        async () => {
+          const currentScrollTop = await sheet.evaluate((el) => el.scrollTop);
+          const stable = currentScrollTop === previousScrollTop;
+          previousScrollTop = currentScrollTop;
+          return stable;
+        },
+        { timeout: 5000, intervals: [200] },
+      )
+      .toBe(true);
+
+    const scrollTopAtRevealed = previousScrollTop;
+    await page.waitForTimeout(300);
+    expect(await sheet.evaluate((el) => el.scrollTop)).toBe(scrollTopAtRevealed);
+
+    // Moving toward the opposite, now-hidden edge enables scrolling in that direction too.
+    await page.mouse.move(rowCenterX, sheetBox.y + 2, { steps: 4 });
+    await expect
+      .poll(() => sheet.evaluate((el) => el.scrollTop), { timeout: 5000 })
+      .toBeLessThan(scrollTopAtRevealed);
+
+    await page.mouse.up();
+
+    await closeBottomSheet(page, /database views sheet/i);
+  });
+});

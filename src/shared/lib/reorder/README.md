@@ -72,6 +72,15 @@ Every sortable item root must be a **direct DOM child** of the container that de
 bounds (e.g. `MDList`'s root element). The dragged element cannot visually leave that direct
 parent. This is enforced through dnd-kit's `RestrictToElement` modifier, not custom geometry.
 
+## Autoscroll scope
+
+Autoscroll during a drag is scoped to the active reorder container: an outer scrollable ancestor
+(e.g. a bottom sheet) only autoscrolls in a direction that would reveal more of the container.
+Once the container's edge in that direction is visible, the outer ancestor stops scrolling, even
+if the pointer is still held near its own edge. The container's own scrolling, if it has any,
+keeps standard dnd-kit behavior. This is implemented by `ReorderScopedAutoScroller`, which replaces
+dnd-kit's default `AutoScroller` in `getReorderPlugins`.
+
 ## Supported scope
 
 - One `ReorderSurface` per screen region.
