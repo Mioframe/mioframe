@@ -2,7 +2,7 @@
 
 This registry is the current status source for Material foundation domains. It complements [Foundation architecture](./foundation-architecture.md).
 
-Historical foundation audits remain evidence only. Update this registry whenever a foundation contract, owner, source snapshot, status, gap, or verification surface changes.
+Historical foundation audits remain evidence only. Update this registry whenever a foundation contract, owner, source snapshot, status, gap, verification adapter, or verification surface changes.
 
 ## Source basis
 
@@ -33,7 +33,7 @@ A record must name its exact snapshot when it is changed from `partial` to `veri
 - Production owner: tooling outside application runtime.
 - Public contract: source lookup order, cache health check, stable page/snapshot recording, no Material Web or memory as authority.
 - Private bridge contract: none.
-- Known consumers: every Material foundation, component, and composition decision.
+- Known consumers: every Material foundation, component, composition, and state-matrix decision.
 - Known gaps: individual records still need exact snapshot metadata when they are revalidated.
 - Verification: PR notes and registry records name checked pages and snapshots.
 - Last reviewed: 2026-07-15.
@@ -122,17 +122,19 @@ A record must name its exact snapshot when it is changed from `partial` to `veri
 - Verification: static token validation, reduced-motion/browser behavior where applicable, and representative motion assertions rather than screenshot-only proof.
 - Last reviewed: 2026-07-15.
 
-### Interaction state, state layer, ripple, and focus
+### Interaction state, state layer, ripple, focus, and visual-state verification
 
 - Status: `partial`.
 - Official sources: Material interaction-state, state-layer, focus, and component-specific state guidance.
-- Production owner: `src/shared/ui/State/` and system state tokens in `src/shared/lib/md/tokens.css`.
-- Public contract: `MDStateLayer`, `useStateLayer`, `useRipple`, real host focus/activation semantics, and system state opacity/focus tokens.
+- Current production owner: `src/shared/ui/State/` and system state tokens in `src/shared/lib/md/tokens.css`.
+- Canonical library owner: `src/shared/ui/material/foundation/interaction` after focused migration.
+- Public production contract: `MDStateLayer`, `useStateLayer`, `useRipple`, real host focus/activation semantics, and system state opacity/focus tokens.
 - Private bridge contract: generic `--md-private-state-*` and state-layer color inputs documented in `src/shared/ui/State/README.md`.
-- Known consumers: interactive shared Material components.
-- Known gaps: ripple policy, focus-indicator ownership, reduced-motion interaction, and coverage across all families are not yet fully normalized; semantic combined-state resolution remains component-owned.
-- Verification: State contract/unit tests, browser focus/pointer/touch checks, and representative host integrations.
-- Last reviewed: 2026-07-15.
+- Verification-only contract: `src/shared/ui/State/testing` and `MDStateLayerForcedStateProvider` may render deterministic transient visual states in isolated Storybook fixtures. This contract is not exported as a product/component API and does not prove real state acquisition or cleanup.
+- Known consumers: interactive shared Material components and their Storybook state matrices.
+- Known gaps: ripple policy, focus-indicator ownership, reduced-motion interaction, exact verification coverage for focus indicator/dragged states, and coverage across all families are not yet fully normalized; semantic combined-state resolution remains component-owned.
+- Verification: foundation contract/unit tests, browser focus/pointer/touch checks, deterministic state-matrix appearance, and representative host integrations. Behavior tests must use real browser input separately from forced visual states.
+- Last reviewed: 2026-07-16.
 
 ### Iconography
 
@@ -200,7 +202,7 @@ For every foundation change:
 
 1. update the affected record before claiming completion;
 2. record exact official sources and snapshot when meaning or status changes;
-3. keep owner paths and public/private contracts accurate;
+3. keep current/canonical owner paths and public/private/testing contracts accurate;
 4. inventory affected consumers for corrections or replacements;
-5. update verification and remaining gaps honestly;
+5. update verification, state-matrix impact, and remaining gaps honestly;
 6. keep unrelated domains unchanged.
