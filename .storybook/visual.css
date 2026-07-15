@@ -20,6 +20,24 @@
   gap: 16px;
 }
 
+.visual-gallery-heading,
+.visual-gallery-label {
+  color: #1f1f1f;
+  font: 500 14px/20px sans-serif;
+}
+
+.visual-gallery-grid {
+  display: grid;
+  grid-template-columns: max-content repeat(var(--visual-gallery-columns), max-content);
+  align-items: center;
+  gap: 16px;
+}
+
+.visual-gallery-cell {
+  display: grid;
+  place-items: center;
+}
+
 /*
  * Canonical neutral checkerboard backdrop for Material component Storybook
  * demonstrations and visual fixtures. Every shared `MD*` component fixture must

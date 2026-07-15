@@ -690,6 +690,15 @@ if (import.meta.env.DEV) {
           --md-sys-color-inverse-surface
         );
         --md-comp-icon-button-outlined-selected-icon-color: var(--md-sys-color-inverse-on-surface);
+        --md-comp-icon-button-outlined-selected-hovered-icon-color: var(
+          --md-sys-color-inverse-on-surface
+        );
+        --md-comp-icon-button-outlined-selected-focused-icon-color: var(
+          --md-sys-color-inverse-on-surface
+        );
+        --md-comp-icon-button-outlined-selected-pressed-icon-color: var(
+          --md-sys-color-inverse-on-surface
+        );
         --md-comp-icon-button-outlined-selected-hovered-state-layer-color: var(
           --md-sys-color-inverse-on-surface
         );
@@ -709,13 +718,13 @@ if (import.meta.env.DEV) {
           --md-comp-icon-button-outlined-selected-container-color
         );
         --md-private-icon-button-hover-icon-color: var(
-          --md-comp-icon-button-outlined-selected-icon-color
+          --md-comp-icon-button-outlined-selected-hovered-icon-color
         );
         --md-private-icon-button-focus-icon-color: var(
-          --md-comp-icon-button-outlined-selected-icon-color
+          --md-comp-icon-button-outlined-selected-focused-icon-color
         );
         --md-private-icon-button-pressed-icon-color: var(
-          --md-comp-icon-button-outlined-selected-icon-color
+          --md-comp-icon-button-outlined-selected-pressed-icon-color
         );
         --md-private-icon-button-hover-state-layer-color: var(
           --md-comp-icon-button-outlined-selected-hovered-state-layer-color

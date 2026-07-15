@@ -7,7 +7,19 @@ import {
   getColorAtOpacity,
   getSysPropertyValue,
   asColor,
+  readProgressIndicatorColor,
+  readElementColor,
+  assertLoadingContract,
+  readButtonLocatorVisuals,
 } from './md-button-family.testUtils';
+
+test('MDIconButton loading color and enabled geometry contract', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--loading-color-routing');
+  expect(await readProgressIndicatorColor(page, 'icon-button-loading-color')).toBe(
+    await readElementColor(page, 'icon-button-loading-color', '.md-icon-button__icon'),
+  );
+  await assertLoadingContract(page, 'icon-button-resting-color', 'icon-button-loading-color');
+});
 
 test('MDIconButton visual states match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-states');
@@ -167,6 +179,48 @@ test('MDIconButton hover, focus, and pressed default state-layer opacity resolve
       expect(focusOpacity).toBe(focusRole);
       expect(pressedOpacity).toBe(pressedRole);
     }),
+  );
+});
+
+test('MDIconButton default interaction routes resolve rendered icon, outline, and state layer', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-interaction-states');
+  const styles = {
+    Standard: { colorRole: 'on-surface-variant' },
+    Filled: { colorRole: 'on-primary' },
+    Tonal: { colorRole: 'on-secondary-container' },
+    Outlined: { colorRole: 'on-surface-variant', outlineRole: 'outline-variant' },
+  } as const;
+  const states = ['hover', 'focus', 'pressed'] as const;
+  const opacityVars = {
+    hover: '--md-sys-state-hover-state-layer-opacity',
+    focus: '--md-sys-state-focus-state-layer-opacity',
+    pressed: '--md-sys-state-pressed-state-layer-opacity',
+  } as const;
+
+  await Promise.all(
+    Object.entries(styles).flatMap(([style, route]) =>
+      states.map(async (state) => {
+        const expectedColor = await getSysColorValue(page, `--md-sys-color-${route.colorRole}`);
+        const expectedOpacity = await getSysPropertyValue(page, opacityVars[state]);
+        const sample = await readButtonLocatorVisuals(
+          page.getByRole('button', { name: `${style} ${state}`, exact: true }),
+          { iconSelector: '.md-icon-button__icon' },
+        );
+        expect(normalizeColorString(asColor(sample.iconColor))).toBe(expectedColor);
+        expect(normalizeColorString(sample.stateLayerColor)).toBe(expectedColor);
+        expect(sample[`${state}Opacity`]).toBe(expectedOpacity);
+        expect(normalizeColorString(asColor(sample.stateLayerBackground))).toBe(
+          await getColorAtOpacity(page, `var(--md-sys-color-${route.colorRole})`, expectedOpacity),
+        );
+        if ('outlineRole' in route) {
+          expect(normalizeColorString(sample.borderColor)).toBe(
+            await getSysColorValue(page, `--md-sys-color-${route.outlineRole}`),
+          );
+        }
+      }),
+    ),
   );
 });
 
@@ -426,25 +480,47 @@ test('MDIconButton selected/unselected toggle token routing is independently ver
   const TOGGLE_MATRIX: Record<
     'standard' | 'filled' | 'tonal' | 'outlined',
     {
-      selected: { container?: string; icon: string; stateLayerColor: string; outline?: string };
-      unselected: { container?: string; icon: string; stateLayerColor: string; outline?: string };
+      selected: {
+        container?: string;
+        icon: string;
+        hoverIcon: string;
+        stateLayerColor: string;
+        outline?: string;
+      };
+      unselected: {
+        container?: string;
+        icon: string;
+        hoverIcon: string;
+        stateLayerColor: string;
+        outline?: string;
+      };
       hoverOpacity: string;
     }
   > = {
     standard: {
-      selected: { icon: 'rgb(210 90 0)', stateLayerColor: 'rgb(0 150 210)' },
-      unselected: { icon: 'rgb(0 140 70)', stateLayerColor: 'rgb(150 0 90)' },
+      selected: {
+        icon: 'rgb(210 90 0)',
+        hoverIcon: 'rgb(210 90 40)',
+        stateLayerColor: 'rgb(0 150 210)',
+      },
+      unselected: {
+        icon: 'rgb(0 140 70)',
+        hoverIcon: 'rgb(40 140 70)',
+        stateLayerColor: 'rgb(150 0 90)',
+      },
       hoverOpacity: '0.07',
     },
     filled: {
       selected: {
         container: 'rgb(10 60 10)',
         icon: 'rgb(255 210 0)',
+        hoverIcon: 'rgb(255 230 60)',
         stateLayerColor: 'rgb(0 200 160)',
       },
       unselected: {
         container: 'rgb(10 10 90)',
         icon: 'rgb(255 120 180)',
+        hoverIcon: 'rgb(255 150 200)',
         stateLayerColor: 'rgb(150 80 0)',
       },
       hoverOpacity: '0.09',
@@ -453,11 +529,13 @@ test('MDIconButton selected/unselected toggle token routing is independently ver
       selected: {
         container: 'rgb(90 60 10)',
         icon: 'rgb(255 255 0)',
+        hoverIcon: 'rgb(255 255 90)',
         stateLayerColor: 'rgb(200 100 0)',
       },
       unselected: {
         container: 'rgb(10 90 60)',
         icon: 'rgb(0 255 255)',
+        hoverIcon: 'rgb(90 255 255)',
         stateLayerColor: 'rgb(0 120 200)',
       },
       hoverOpacity: '0.13',
@@ -469,10 +547,12 @@ test('MDIconButton selected/unselected toggle token routing is independently ver
       selected: {
         container: 'rgb(60 10 90)',
         icon: 'rgb(255 0 150)',
+        hoverIcon: 'rgb(255 60 180)',
         stateLayerColor: 'rgb(150 0 255)',
       },
       unselected: {
         icon: 'rgb(0 255 120)',
+        hoverIcon: 'rgb(60 255 150)',
         stateLayerColor: 'rgb(0 90 255)',
         outline: 'rgb(90 60 0)',
       },
@@ -515,6 +595,10 @@ test('MDIconButton selected/unselected toggle token routing is independently ver
           entry.hoverOpacity,
         );
         expect(
+          normalizeColorString(asColor(hover.iconColor)),
+          `${style} ${branch} hover icon`,
+        ).toBe(normalizeColorString(tokens.hoverIcon));
+        expect(
           normalizeColorString(hover.stateLayerColor),
           `${style} ${branch} state-layer color`,
         ).toBe(normalizeColorString(tokens.stateLayerColor));
@@ -525,6 +609,58 @@ test('MDIconButton selected/unselected toggle token routing is independently ver
           normalizeColorString(asColor(hover.stateLayerBackground)),
           `${style} ${branch} rendered state-layer background`,
         ).toBe(expectedStateLayerBackground);
+      }),
+    ),
+  );
+});
+
+test('MDIconButton selected/unselected defaults resolve through documented Material roles', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--default-toggle-role-matrix');
+  const routes = {
+    standard: { unselected: { icon: 'on-surface-variant' }, selected: { icon: 'primary' } },
+    filled: {
+      unselected: { container: 'surface-container', icon: 'on-surface-variant' },
+      selected: { container: 'primary', icon: 'on-primary' },
+    },
+    tonal: {
+      unselected: { container: 'secondary-container', icon: 'on-secondary-container' },
+      selected: { container: 'secondary', icon: 'on-secondary' },
+    },
+    outlined: {
+      unselected: { icon: 'on-surface-variant', outline: 'outline-variant' },
+      selected: { container: 'inverse-surface', icon: 'inverse-on-surface' },
+    },
+  } as const;
+  const hoverOpacity = await getSysPropertyValue(page, '--md-sys-state-hover-state-layer-opacity');
+
+  await Promise.all(
+    Object.entries(routes).flatMap(([style, branches]) =>
+      (['selected', 'unselected'] as const).map(async (branch) => {
+        const route = branches[branch];
+        const expectedIcon = await getSysColorValue(page, `--md-sys-color-${route.icon}`);
+        const resting = await readButtonVisuals(page, `default-toggle-${style}-${branch}-resting`, {
+          iconSelector: '.md-icon-button__icon',
+        });
+        const hover = await readButtonVisuals(page, `default-toggle-${style}-${branch}-hover`, {
+          iconSelector: '.md-icon-button__icon',
+        });
+        expect(normalizeColorString(asColor(resting.iconColor))).toBe(expectedIcon);
+        expect(normalizeColorString(asColor(hover.iconColor))).toBe(expectedIcon);
+        expect(normalizeColorString(hover.stateLayerColor)).toBe(expectedIcon);
+        expect(hover.hoverOpacity).toBe(hoverOpacity);
+        expect(normalizeColorString(asColor(hover.stateLayerBackground))).toBe(
+          await getColorAtOpacity(page, `var(--md-sys-color-${route.icon})`, hoverOpacity),
+        );
+        if ('container' in route)
+          expect(normalizeColorString(resting.background)).toBe(
+            await getSysColorValue(page, `--md-sys-color-${route.container}`),
+          );
+        if ('outline' in route)
+          expect(normalizeColorString(resting.borderColor)).toBe(
+            await getSysColorValue(page, `--md-sys-color-${route.outline}`),
+          );
       }),
     ),
   );

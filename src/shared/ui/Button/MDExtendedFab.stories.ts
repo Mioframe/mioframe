@@ -74,13 +74,14 @@ export const VisualStates: Story = {
     template: `
         <div data-testid="visual-md-extended-fab-states" class="visual-checker-backdrop">
         <div class="visual-row">
-          <MDExtendedFab label="Add" md-symbol="add" />
-          <MDExtendedFab label="Share" color="secondary-container" md-symbol="share" />
-          <MDExtendedFab label="Archive" color="primary" md-symbol="archive" />
+          <MDExtendedFab label="Primary container" md-symbol="add" />
+          <MDExtendedFab label="Secondary container" color="secondary-container" md-symbol="share" />
+          <MDExtendedFab label="Primary" color="primary" md-symbol="archive" />
         </div>
         <div class="visual-row">
-          <MDExtendedFab label="Medium" size="medium" color="tertiary-container" md-symbol="star" />
-          <MDExtendedFab label="Large" size="large" color="secondary" md-symbol="menu" />
+          <MDExtendedFab label="Secondary" color="secondary" md-symbol="menu" />
+          <MDExtendedFab label="Tertiary" color="tertiary" md-symbol="star" />
+          <MDExtendedFab label="Tertiary container" color="tertiary-container" md-symbol="archive" />
         </div>
       </div>
     `,
@@ -93,6 +94,7 @@ export const InteractionStates: Story = {
     components: { MDExtendedFab, MDStateLayerForcedStateProvider },
     template: `
       <div data-testid="visual-md-extended-fab-interaction-states" class="visual-checker-backdrop">
+        <span class="visual-gallery-heading">Enabled colors</span>
         <div class="visual-row">
           <MDExtendedFab label="Primary" color="primary" md-symbol="add" />
           <MDExtendedFab label="Secondary" color="secondary" md-symbol="edit" />
@@ -152,6 +154,37 @@ const EXTENDED_FAB_COLORS = [
 
 type ExtendedFabColor = (typeof EXTENDED_FAB_COLORS)[number];
 type ExtendedFabTokenState = 'hovered' | 'focused' | 'pressed';
+
+const DEFAULT_ROLE_STATES = ['hover', 'focus', 'pressed'] as const;
+
+export const DefaultRoleMatrix: Story = {
+  render: () => ({
+    components: { MDExtendedFab, MDStateLayerForcedStateProvider },
+    setup() {
+      return { EXTENDED_FAB_COLORS, DEFAULT_ROLE_STATES };
+    },
+    template: `
+      <div data-testid="visual-md-extended-fab-default-role-matrix" class="visual-checker-backdrop">
+        <div v-for="color in EXTENDED_FAB_COLORS" :key="color" class="visual-row">
+          <MDStateLayerForcedStateProvider
+            v-for="state in DEFAULT_ROLE_STATES"
+            :key="state"
+            :hovered="state === 'hover'"
+            :focused="state === 'focus'"
+            :pressed="state === 'pressed'"
+          >
+            <MDExtendedFab
+              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :label="color + ' ' + state"
+              :color="color"
+              md-symbol="add"
+            />
+          </MDStateLayerForcedStateProvider>
+        </div>
+      </div>
+    `,
+  }),
+};
 
 /**
  * Deterministic, hand-written override values used only to prove that hover/focus/pressed label

@@ -227,6 +227,39 @@ export const VisualInteractionStates: Story = {
   }),
 };
 
+const DEFAULT_ROLE_BUTTON_STYLES = ['elevated', 'filled', 'tonal', 'outlined', 'text'] as const;
+const DEFAULT_ROLE_STATES = ['hover', 'focus', 'pressed'] as const;
+
+export const DefaultRoleMatrix: Story = {
+  render: () => ({
+    components: { MDButton, MDStateLayerForcedStateProvider },
+    setup() {
+      return { DEFAULT_ROLE_BUTTON_STYLES, DEFAULT_ROLE_STATES };
+    },
+    template: `
+      <div data-testid="visual-md-button-default-role-matrix" class="visual-checker-backdrop">
+        <div v-for="style in DEFAULT_ROLE_BUTTON_STYLES" :key="style" class="visual-row">
+          <MDStateLayerForcedStateProvider
+            v-for="state in DEFAULT_ROLE_STATES"
+            :key="state"
+            :hovered="state === 'hover'"
+            :focused="state === 'focus'"
+            :pressed="state === 'pressed'"
+          >
+            <MDButton
+              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :label="style + ' ' + state"
+              :color="style"
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </MDStateLayerForcedStateProvider>
+        </div>
+      </div>
+    `,
+  }),
+};
+
 export const ExpandedTargetHitArea: Story = {
   render: () => ({
     components: { MDButtonTargetHitVisualStory },
@@ -262,7 +295,9 @@ export const SizeGeometryMatrix: Story = {
     },
     template: `
       <div data-testid="visual-md-button-size-geometry" class="visual-checker-backdrop">
+        <div class="visual-row"><span class="visual-gallery-heading">Size</span><span class="visual-gallery-label">Round</span><span class="visual-gallery-label">Square</span><span class="visual-gallery-label">Pressed</span><span class="visual-gallery-label">Selected round</span><span class="visual-gallery-label">Selected square</span><span class="visual-gallery-label">Outlined</span></div>
         <div v-for="size in BUTTON_SIZES" :key="size" class="visual-row">
+          <span class="visual-gallery-label">{{ size }}</span>
           <MDButton :data-testid="\`geometry-\${size}-round\`" :label="size" :size="size" shape="round">
             <template #icon>+</template>
           </MDButton>
@@ -635,6 +670,25 @@ export const TokenRoutingMatrix: Story = {
 /** The four Button styles publishing distinct selected/unselected Material color tokens. */
 const BUTTON_TOGGLE_STYLES = ['elevated', 'filled', 'tonal', 'outlined'] as const;
 type ButtonToggleStyle = (typeof BUTTON_TOGGLE_STYLES)[number];
+
+export const DefaultToggleRoleMatrix: Story = {
+  render: () => ({
+    components: { MDButton, MDStateLayerForcedStateProvider },
+    setup() {
+      return { BUTTON_TOGGLE_STYLES };
+    },
+    template: `
+      <div data-testid="visual-md-button-default-toggle-role-matrix" class="visual-checker-backdrop">
+        <div v-for="style in BUTTON_TOGGLE_STYLES" :key="style" class="visual-row">
+          <template v-for="selected in [false, true]" :key="String(selected)">
+            <MDButton :data-testid="'default-button-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-resting'" :label="style + ' ' + (selected ? 'selected' : 'unselected') + ' resting'" variant="toggle" :selected="selected" :color="style"><template #icon>+</template></MDButton>
+            <MDStateLayerForcedStateProvider hovered><MDButton :data-testid="'default-button-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-hover'" class="md-state_hover" :label="style + ' ' + (selected ? 'selected' : 'unselected') + ' hover'" variant="toggle" :selected="selected" :color="style"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
+          </template>
+        </div>
+      </div>
+    `,
+  }),
+};
 
 interface ButtonToggleBranchTokens {
   /** Resting container color. Omitted where the style publishes none (outlined unselected). */

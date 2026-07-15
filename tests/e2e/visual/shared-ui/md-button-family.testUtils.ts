@@ -1,6 +1,14 @@
-import type { Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
+
+/* eslint-disable jsdoc/require-jsdoc -- Narrow browser-test helpers and callback shapes are local to the Button-family visual specs. */
 
 export const normalizeColorString = (rawColor: string) => {
+  const hexMatch = rawColor.match(/^#(?<hex>[0-9a-f]{6})$/i);
+  if (hexMatch?.groups) {
+    const { hex } = hexMatch.groups;
+    return [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16)).join(' ');
+  }
+
   const rgbMatch = rawColor.match(/^rgb\(([^)]+)\)$/);
   if (rgbMatch) {
     return rgbMatch[1].replaceAll(',', '').replace(/\s+/g, ' ').trim();
@@ -62,6 +70,37 @@ export const readButtonVisuals = async (
     },
   );
 
+export const readButtonLocatorVisuals = async (
+  locator: Locator,
+  options?: { labelSelector?: string; iconSelector?: string },
+) =>
+  locator.evaluate(
+    (el, selectors) => {
+      const style = getComputedStyle(el);
+      const label = selectors.labelSelector ? el.querySelector(selectors.labelSelector) : null;
+      const icon = selectors.iconSelector ? el.querySelector(selectors.iconSelector) : null;
+      const stateLayer = el.querySelector('.md-state-layer');
+      return {
+        background: style.backgroundColor,
+        boxShadow: style.boxShadow,
+        borderColor: style.borderColor,
+        labelColor: label ? getComputedStyle(label).color : null,
+        iconColor: icon ? getComputedStyle(icon).color : null,
+        stateLayerColor: style.getPropertyValue('--md-private-state-layer-color').trim(),
+        stateLayerBackground: stateLayer ? getComputedStyle(stateLayer).backgroundColor : null,
+        hoverOpacity: style.getPropertyValue('--md-private-state-hover-state-layer-opacity').trim(),
+        focusOpacity: style.getPropertyValue('--md-private-state-focus-state-layer-opacity').trim(),
+        pressedOpacity: style
+          .getPropertyValue('--md-private-state-pressed-state-layer-opacity')
+          .trim(),
+      };
+    },
+    {
+      labelSelector: options?.labelSelector ?? null,
+      iconSelector: options?.iconSelector ?? null,
+    },
+  );
+
 export const readProgressIndicatorColor = async (page: Page, testId: string) => {
   const rawColor = await page.getByTestId(testId).evaluate((el) => {
     const indicator = el.querySelector('.md-circular-progress-indicator__progress');
@@ -88,6 +127,29 @@ export const readElementColor = async (page: Page, testId: string, selector: str
   }, selector);
 
   return normalizeColorString(rawColor);
+};
+
+export const assertLoadingContract = async (
+  page: Page,
+  restingTestId: string,
+  loadingTestId: string,
+) => {
+  const resting = page.getByTestId(restingTestId);
+  const loading = page.getByTestId(loadingTestId);
+
+  await expect(resting).toHaveAccessibleName('Loading');
+  await expect(loading).toHaveAccessibleName('Loading');
+  await expect(loading).toBeEnabled();
+
+  const restingBox = await resting.boundingBox();
+  const loadingBox = await loading.boundingBox();
+  expect(restingBox).not.toBeNull();
+  expect(loadingBox).not.toBeNull();
+  if (restingBox == null || loadingBox == null) {
+    throw new Error(`Missing bounding boxes for ${restingTestId}/${loadingTestId}.`);
+  }
+  expect(loadingBox.width).toBeCloseTo(restingBox.width, 0);
+  expect(loadingBox.height).toBeCloseTo(restingBox.height, 0);
 };
 
 // Resolves a `--md-sys-color-*` role to its rendered value in the current page, so default
@@ -158,3 +220,5 @@ export const getBoxShadowValue = async (page: Page, boxShadow: string) =>
     probe.remove();
     return computed;
   }, boxShadow);
+
+/* eslint-enable jsdoc/require-jsdoc -- End the local exemption for browser-test helper shapes. */

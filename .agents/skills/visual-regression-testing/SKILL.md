@@ -106,6 +106,14 @@ Good targets:
 
 Avoid full-page screenshots unless the page layout itself is the behavior under test.
 
+## Manual-review labels
+
+For galleries intended for manual comparison, a reviewer must be able to identify every case
+directly from the screenshot. Give icon-only controls visible fixture-only external labels and
+prefer row/column headings for matrices. Invisible tooltips, accessible names, test IDs, and
+source order are insufficient. Labels must not alter or obscure the production component; avoid
+redundant captions when the component's own visible content already identifies the complete case.
+
 ## Determinism checklist
 
 Before adding or updating snapshots:

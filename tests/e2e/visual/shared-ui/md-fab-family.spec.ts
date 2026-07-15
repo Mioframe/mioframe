@@ -7,7 +7,26 @@ import {
   getColorAtOpacity,
   asColor,
   getBoxShadowValue,
+  readProgressIndicatorColor,
+  readElementColor,
+  assertLoadingContract,
+  getSysPropertyValue,
+  readButtonLocatorVisuals,
 } from './md-button-family.testUtils';
+
+test('FAB-family loading colors and enabled geometry contracts', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--loading-color-routing');
+  expect(await readProgressIndicatorColor(page, 'fab-loading-color')).toBe(
+    await readElementColor(page, 'fab-loading-color', '.md-fab__icon'),
+  );
+  await assertLoadingContract(page, 'fab-resting-color', 'fab-loading-color');
+
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--loading-color-routing');
+  expect(await readProgressIndicatorColor(page, 'extended-fab-loading-color')).toBe(
+    await readElementColor(page, 'extended-fab-loading-color', '.md-extended-fab__icon'),
+  );
+  await assertLoadingContract(page, 'extended-fab-resting-color', 'extended-fab-loading-color');
+});
 
 test('MDFab visual states match baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
@@ -285,21 +304,38 @@ test('MDFab default hover, focus, and pressed elevation resolves to the document
       'Secondary container',
       'Tertiary container',
     ].map(async (color) => {
-      const [hover, focus, pressed] = await Promise.all([
-        page
-          .getByRole('button', { name: `${color} hover`, exact: true })
-          .evaluate((el) => getComputedStyle(el).boxShadow),
-        page
-          .getByRole('button', { name: `${color} focus`, exact: true })
-          .evaluate((el) => getComputedStyle(el).boxShadow),
-        page
-          .getByRole('button', { name: `${color} pressed`, exact: true })
-          .evaluate((el) => getComputedStyle(el).boxShadow),
-      ]);
-
-      expect(hover, `${color} hover elevation`).toBe(level4);
-      expect(focus, `${color} focus elevation`).toBe(level3);
-      expect(pressed, `${color} pressed elevation`).toBe(level3);
+      const role = `on-${color.toLowerCase().replaceAll(' ', '-')}`;
+      const expectedColor = await getSysColorValue(page, `--md-sys-color-${role}`);
+      await Promise.all(
+        (
+          [
+            ['hover', level4],
+            ['focus', level3],
+            ['pressed', level3],
+          ] as const
+        ).map(async ([state, elevation]) => {
+          const opacity = await getSysPropertyValue(
+            page,
+            `--md-sys-state-${state}-state-layer-opacity`,
+          );
+          const sample = await readButtonLocatorVisuals(
+            page.getByRole('button', { name: `${color} ${state}`, exact: true }),
+            { iconSelector: '.md-fab__icon' },
+          );
+          expect(normalizeColorString(asColor(sample.iconColor)), `${color} ${state} icon`).toBe(
+            expectedColor,
+          );
+          expect(
+            normalizeColorString(sample.stateLayerColor),
+            `${color} ${state} state layer`,
+          ).toBe(expectedColor);
+          expect(sample[`${state}Opacity`], `${color} ${state} opacity`).toBe(opacity);
+          expect(normalizeColorString(asColor(sample.stateLayerBackground))).toBe(
+            await getColorAtOpacity(page, `var(--md-sys-color-${role})`, opacity),
+          );
+          expect(sample.boxShadow, `${color} ${state} elevation`).toBe(elevation);
+        }),
+      );
     }),
   );
 });
@@ -611,6 +647,41 @@ test('MDExtendedFab resting styles resolve to the documented Material color role
   expect(tertiaryContainer.background).toBe(sysTertiaryContainer);
   expect(tertiaryContainer.labelColor).toBe(sysOnTertiaryContainer);
   expect(tertiaryContainer.iconColor).toBe(sysOnTertiaryContainer);
+});
+
+test('MDExtendedFab default interaction routes resolve rendered label, icon, state layer, and elevation for all six colors', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--default-role-matrix');
+  const [level3, level4] = await Promise.all([
+    getBoxShadowValue(page, 'var(--md-sys-elevation-level3)'),
+    getBoxShadowValue(page, 'var(--md-sys-elevation-level4)'),
+  ]);
+
+  await Promise.all(
+    FAB_COLORS.flatMap((color) =>
+      (['hover', 'focus', 'pressed'] as const).map(async (state) => {
+        const role = `on-${color}`;
+        const expectedColor = await getSysColorValue(page, `--md-sys-color-${role}`);
+        const opacity = await getSysPropertyValue(
+          page,
+          `--md-sys-state-${state}-state-layer-opacity`,
+        );
+        const sample = await readButtonLocatorVisuals(
+          page.getByRole('button', { name: `${color} ${state}`, exact: true }),
+          { labelSelector: '.md-extended-fab__label', iconSelector: '.md-extended-fab__icon' },
+        );
+        expect(normalizeColorString(asColor(sample.labelColor))).toBe(expectedColor);
+        expect(normalizeColorString(asColor(sample.iconColor))).toBe(expectedColor);
+        expect(normalizeColorString(sample.stateLayerColor)).toBe(expectedColor);
+        expect(sample[`${state}Opacity`]).toBe(opacity);
+        expect(normalizeColorString(asColor(sample.stateLayerBackground))).toBe(
+          await getColorAtOpacity(page, `var(--md-sys-color-${role})`, opacity),
+        );
+        expect(sample.boxShadow).toBe(state === 'hover' ? level4 : level3);
+      }),
+    ),
+  );
 });
 
 test('MDExtendedFab container height matches the exact documented size tokens', async ({

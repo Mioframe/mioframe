@@ -10,6 +10,8 @@ import {
   getSysPropertyValue,
   asColor,
   getBoxShadowValue,
+  assertLoadingContract,
+  readButtonLocatorVisuals,
 } from './md-button-family.testUtils';
 
 test('MDButton visual states match baseline', async ({ page }) => {
@@ -369,6 +371,59 @@ test('MDButton hover, focus, and pressed default state-layer opacity resolves to
   );
 });
 
+test('MDButton default interaction routes resolve rendered label, icon, outline, state layer, and elevation', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--default-role-matrix');
+  const styles = {
+    Elevated: { colorRole: 'primary', elevations: ['level2', 'level1', 'level1'] },
+    Filled: { colorRole: 'on-primary', elevations: ['level1', 'level0', 'level0'] },
+    Tonal: { colorRole: 'on-secondary-container', elevations: ['level1', 'level0', 'level0'] },
+    Outlined: {
+      colorRole: 'on-surface-variant',
+      elevations: ['level0', 'level0', 'level0'],
+      outlineRole: 'outline-variant',
+    },
+    Text: { colorRole: 'primary', elevations: ['level0', 'level0', 'level0'] },
+  } as const;
+  const states = ['hover', 'focus', 'pressed'] as const;
+  const opacityVars = {
+    hover: '--md-sys-state-hover-state-layer-opacity',
+    focus: '--md-sys-state-focus-state-layer-opacity',
+    pressed: '--md-sys-state-pressed-state-layer-opacity',
+  } as const;
+
+  await Promise.all(
+    Object.entries(styles).flatMap(([style, route]) =>
+      states.map(async (state, stateIndex) => {
+        const expectedColor = await getSysColorValue(page, `--md-sys-color-${route.colorRole}`);
+        const expectedOpacity = await getSysPropertyValue(page, opacityVars[state]);
+        const expectedElevation = await getBoxShadowValue(
+          page,
+          `var(--md-sys-elevation-${route.elevations[stateIndex]})`,
+        );
+        const sample = await readButtonLocatorVisuals(
+          page.getByRole('button', { name: `${style.toLowerCase()} ${state}`, exact: true }),
+          { labelSelector: '.md-button__label-text', iconSelector: '.md-button__icon' },
+        );
+        expect(normalizeColorString(asColor(sample.labelColor))).toBe(expectedColor);
+        expect(normalizeColorString(asColor(sample.iconColor))).toBe(expectedColor);
+        expect(normalizeColorString(sample.stateLayerColor)).toBe(expectedColor);
+        expect(sample[`${state}Opacity`]).toBe(expectedOpacity);
+        expect(normalizeColorString(asColor(sample.stateLayerBackground))).toBe(
+          await getColorAtOpacity(page, `var(--md-sys-color-${route.colorRole})`, expectedOpacity),
+        );
+        expect(sample.boxShadow).toBe(expectedElevation);
+        if ('outlineRole' in route) {
+          expect(normalizeColorString(sample.borderColor)).toBe(
+            await getSysColorValue(page, `--md-sys-color-${route.outlineRole}`),
+          );
+        }
+      }),
+    ),
+  );
+});
+
 test('MDButton disabled state wins over forced hover, focus, and pressed visuals', async ({
   page,
 }) => {
@@ -725,6 +780,70 @@ test('MDButton selected/unselected toggle token routing is independently verifie
   );
 });
 
+test('MDButton selected/unselected defaults resolve through documented Material roles', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--default-toggle-role-matrix');
+  const routes = {
+    elevated: {
+      unselected: { container: 'surface-container-low', content: 'primary' },
+      selected: { container: 'primary', content: 'on-primary' },
+    },
+    filled: {
+      unselected: { container: 'surface-container', content: 'on-surface-variant' },
+      selected: { container: 'primary', content: 'on-primary' },
+    },
+    tonal: {
+      unselected: { container: 'secondary-container', content: 'on-secondary-container' },
+      selected: { container: 'secondary', content: 'on-secondary' },
+    },
+    outlined: {
+      unselected: { content: 'on-surface-variant', outline: 'outline-variant' },
+      selected: {
+        container: 'inverse-surface',
+        content: 'inverse-on-surface',
+        outline: 'inverse-surface',
+      },
+    },
+  } as const;
+  const opacity = await getSysPropertyValue(page, '--md-sys-state-hover-state-layer-opacity');
+  await Promise.all(
+    Object.entries(routes).flatMap(([style, branches]) =>
+      (['selected', 'unselected'] as const).map(async (branch) => {
+        const route = branches[branch];
+        const color = await getSysColorValue(page, `--md-sys-color-${route.content}`);
+        const resting = await readButtonVisuals(
+          page,
+          `default-button-toggle-${style}-${branch}-resting`,
+          { labelSelector: '.md-button__label-text', iconSelector: '.md-button__icon' },
+        );
+        const hover = await readButtonVisuals(
+          page,
+          `default-button-toggle-${style}-${branch}-hover`,
+          { labelSelector: '.md-button__label-text', iconSelector: '.md-button__icon' },
+        );
+        for (const sample of [resting, hover]) {
+          expect(normalizeColorString(asColor(sample.labelColor))).toBe(color);
+          expect(normalizeColorString(asColor(sample.iconColor))).toBe(color);
+        }
+        expect(normalizeColorString(hover.stateLayerColor)).toBe(color);
+        expect(hover.hoverOpacity).toBe(opacity);
+        expect(normalizeColorString(asColor(hover.stateLayerBackground))).toBe(
+          await getColorAtOpacity(page, `var(--md-sys-color-${route.content})`, opacity),
+        );
+        if ('container' in route)
+          expect(normalizeColorString(resting.background)).toBe(
+            await getSysColorValue(page, `--md-sys-color-${route.container}`),
+          );
+        if ('outline' in route)
+          expect(normalizeColorString(resting.borderColor)).toBe(
+            await getSysColorValue(page, `--md-sys-color-${route.outline}`),
+          );
+      }),
+    ),
+  );
+});
+
 test('MDButton keeps a 48dp target layer for extra-small and small sizes without growing layout', async ({
   page,
 }) => {
@@ -750,64 +869,16 @@ test('MDButton keeps a 48dp target layer for extra-small and small sizes without
   }
 });
 
-test('Button-family loading indicators consume the rendered component colors', async ({ page }) => {
+test('MDButton loading indicator consumes the rendered label color', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--loading-color-routing');
   expect(await readProgressIndicatorColor(page, 'button-loading-color')).toBe(
     await readElementColor(page, 'button-loading-color', '.md-button__label-text'),
   );
-
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--loading-color-routing');
-  expect(await readProgressIndicatorColor(page, 'icon-button-loading-color')).toBe(
-    await readElementColor(page, 'icon-button-loading-color', '.md-icon-button__icon'),
-  );
-
-  await openStory(page, 'material-3-components-buttons-mdfab--loading-color-routing');
-  expect(await readProgressIndicatorColor(page, 'fab-loading-color')).toBe(
-    await readElementColor(page, 'fab-loading-color', '.md-fab__icon'),
-  );
-
-  await openStory(page, 'material-3-components-buttons-mdextendedfab--loading-color-routing');
-  expect(await readProgressIndicatorColor(page, 'extended-fab-loading-color')).toBe(
-    await readElementColor(page, 'extended-fab-loading-color', '.md-extended-fab__icon'),
-  );
 });
 
-test('Button-family loading keeps the accessible name, outer size, and enabled activation contract', async ({
+test('MDButton loading keeps the accessible name, outer size, and enabled activation contract', async ({
   page,
 }) => {
-  const assertLoadingContract = async (restingTestId: string, loadingTestId: string) => {
-    const resting = page.getByTestId(restingTestId);
-    const loading = page.getByTestId(loadingTestId);
-
-    await expect(resting).toHaveAccessibleName('Loading');
-    await expect(loading).toHaveAccessibleName('Loading');
-
-    // Loading alone does not disable the control; only the explicit `disabled` prop does.
-    await expect(loading).toBeEnabled();
-
-    const restingBox = await resting.boundingBox();
-    const loadingBox = await loading.boundingBox();
-
-    expect(restingBox).not.toBeNull();
-    expect(loadingBox).not.toBeNull();
-
-    if (restingBox == null || loadingBox == null) {
-      throw new Error(`Missing bounding boxes for ${restingTestId}/${loadingTestId}.`);
-    }
-
-    expect(loadingBox.width).toBeCloseTo(restingBox.width, 0);
-    expect(loadingBox.height).toBeCloseTo(restingBox.height, 0);
-  };
-
   await openStory(page, 'material-3-components-buttons-mdbutton--loading-color-routing');
-  await assertLoadingContract('button-resting-color', 'button-loading-color');
-
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--loading-color-routing');
-  await assertLoadingContract('icon-button-resting-color', 'icon-button-loading-color');
-
-  await openStory(page, 'material-3-components-buttons-mdfab--loading-color-routing');
-  await assertLoadingContract('fab-resting-color', 'fab-loading-color');
-
-  await openStory(page, 'material-3-components-buttons-mdextendedfab--loading-color-routing');
-  await assertLoadingContract('extended-fab-resting-color', 'extended-fab-loading-color');
+  await assertLoadingContract(page, 'button-resting-color', 'button-loading-color');
 });
