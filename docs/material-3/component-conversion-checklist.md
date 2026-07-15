@@ -22,7 +22,20 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Listed other official capabilities as unsupported rather than implementing them speculatively.
 - [ ] Added no project extension without an explicit requirement.
 
-## 3. Material usage and composition
+## 3. Material library ownership
+
+- [ ] Read [Library architecture](./library-architecture.md) and `src/shared/ui/material/README.md`.
+- [ ] New official public components are created under `src/shared/ui/material/components/<family>`.
+- [ ] A migrated component records its current legacy path, canonical path, migration mode, and migration status.
+- [ ] The family blueprint names the public `@shared/ui/material` export and complete consumer import scope.
+- [ ] Internal library modules do not import the root library barrel.
+- [ ] Product consumers do not deep-import `.vue`, `.css`, private helpers, or family internals.
+- [ ] No component family deep-imports another family's private files or variables.
+- [ ] Project-specific wrappers and product behavior remain outside official Material component families.
+- [ ] Empty namespace directories and placeholder files were not created.
+- [ ] A legacy path receives no new public Material surface.
+
+## 4. Material usage and composition
 
 - [ ] Recorded intended scenarios and when the component must not be used.
 - [ ] Recorded component-choice evidence from official guidance.
@@ -32,28 +45,28 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] For library-only work, used `Product integration in this PR: none` instead of inventing a consumer.
 - [ ] For integrated work, product layers own information architecture, component choice, placement, and adaptive switching.
 
-## 4. Foundation dependencies
+## 5. Foundation dependencies
 
 - [ ] Added the dependency table from [Foundation architecture](./foundation-architecture.md).
 - [ ] Checked every applicable domain against [Foundation registry](./foundation-registry.md).
-- [ ] Named the accepted production owner and contract for each dependency.
+- [ ] Named the accepted current production owner and canonical library owner for each dependency.
 - [ ] Confirmed that every partial or deviated dependency is sufficient for the exact supported surface.
 - [ ] Used `blocked` when a required dependency or ownership decision is blocked.
-- [ ] Classified every foundation delta as `none`, `additive`, `correction`, or `replacement`.
+- [ ] Classified every foundation delta as `none`, `additive`, `correction`, `replacement`, or behavior-preserving `library-relocation-only`.
 - [ ] Kept an additive delta in the component PR only when all same-PR conditions pass.
 - [ ] Added no component-local substitute for a missing theme, token, typography, motion, state, focus, ripple, icon, overlay, unit, density, accessibility, or adaptive capability.
-- [ ] Updated the foundation registry, owner contract, code, and tests atomically when a foundation contract changed.
+- [ ] Updated the foundation registry, library migration map, owner contract, code, and tests atomically when a foundation owner or contract changed.
 
-## 5. Family blueprint
+## 6. Family blueprint
 
 - [ ] Created or updated the family `README.md` before production code.
 - [ ] Kept the blueprint compact and source-backed.
-- [ ] Recorded scenarios, non-goals, usage contract, supported and unsupported surface, API, native semantics, invalid combinations, anatomy, states, foundation dependencies, token ownership, rendered-property matrix, files, verification, consumers, and deviations.
+- [ ] Recorded library ownership, scenarios, non-goals, usage contract, supported and unsupported surface, API, native semantics, invalid combinations, anatomy, states, foundation dependencies, token ownership, rendered-property matrix, files, verification, consumers, and deviations.
 - [ ] Set `Unresolved: none` and `Readiness: ready` only after every required decision was resolved.
 - [ ] For an existing family, changed only required README sections.
 - [ ] The implementation introduced no decision absent from the blueprint or ready handoff.
 
-## 6. Minimum architecture profile
+## 7. Minimum architecture profile
 
 - [ ] Selected exactly one smallest profile whose objective conditions apply.
 - [ ] `simple` has neither configuration routes nor state resolution.
@@ -66,7 +79,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] No required layer was collapsed into another file.
 - [ ] Optional family anatomy, behavior, composable, or context files satisfy exact extraction conditions.
 
-## 7. Public contract and anatomy
+## 8. Public contract and anatomy
 
 - [ ] Public props are limited to supported configuration, semantic state, required native behavior, and explicit extensions.
 - [ ] API names and values use Material vocabulary where applicable.
@@ -77,7 +90,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Each anatomy part and CSS property has one owner.
 - [ ] Parent components do not style child internals through `:deep()`.
 
-## 8. Tokens and routing
+## 9. Tokens and routing
 
 - [ ] Every public `--md-comp-*` maps mechanically to an exact verified official path.
 - [ ] Every canonical token has one component or family owner file.
@@ -90,7 +103,7 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Family-private variables do not escape the family.
 - [ ] Generic foundations read only generic private contracts.
 
-## 9. State and rendering
+## 10. State and rendering
 
 - [ ] Created matrix rows only for properties that vary.
 - [ ] Each row names DOM owner, applied/final value, route source, state inputs, winner rule, simultaneous outputs, and bridge.
@@ -104,37 +117,39 @@ Use for every new, migrated, or materially changed public shared Material compon
 - [ ] Vue acquires runtime facts while CSS resolves visual state.
 - [ ] Rendering CSS owns layout, geometry, presentation, transitions, and final property application only.
 
-## 10. Simplicity
+## 11. Simplicity
 
-- [ ] Reused existing native semantics and accepted foundation contracts.
-- [ ] Added no generic base component, runtime token registry, generic resolver, CSS DSL, cross-family state machine, second theme system, or broad options object.
+- [ ] Reused existing native semantics, accepted foundation contracts, and generic infrastructure.
+- [ ] Added no universal base component, runtime token registry, generic resolver, CSS DSL, cross-family state machine, second theme system, broad options object, workspace package, or publication infrastructure without a current requirement.
 - [ ] Extracted component behavior only for non-trivial testable lifecycle or gesture transitions.
 - [ ] Added a component composable only for behavior required by at least two production components now.
 - [ ] Added a foundation primitive only when the objective expansion rules are satisfied.
-- [ ] Added no compatibility alias without an existing consumer requirement.
+- [ ] Added a Material pattern only when the official-composition and current-scenario gate passes.
+- [ ] Added no compatibility alias without an existing consumer requirement and removal target.
 - [ ] Removed replaced and obsolete logic instead of retaining parallel paths.
 
-## 11. Verification
+## 12. Verification
 
+- [ ] Static validation covers canonical library location, dependency direction, public exports, no deep imports, foundation dependencies, selected profile, exact applicable layers, token names/owners, selectors, private boundaries, alias necessity, and README consistency.
 - [ ] Product integration verifies component choice and composition when applicable.
 - [ ] Contract tests cover supported API, native semantics, ARIA, invalid combinations, states, and extensions.
-- [ ] Static validation covers foundation dependencies, selected profile, exact applicable layers, token names/owners, selectors, private boundaries, alias necessity, and README consistency.
 - [ ] Browser tests cover focus, keyboard, pointer, gestures, overlays, adaptivity, computed CSS, public overrides, and actual property owners as applicable.
 - [ ] Every reachable property-matrix route and simultaneous-output case is verified.
 - [ ] Storybook documents supported and unsupported surface, usage, extensions, foundation dependencies, and deviations.
 - [ ] Visual coverage is representative rather than a full Cartesian matrix.
-- [ ] Every changed existing consumer has a preservation check.
+- [ ] Every changed existing consumer has import and behavior preservation checks.
 - [ ] Every foundation correction or replacement has representative checks for distinct consumer paths.
+- [ ] Old legacy files and exports are absent after migration unless an approved temporary contract exists.
 - [ ] Tests do not verify framework, browser, or generic foundation internals the component does not own.
 - [ ] Final verify follows repository rules.
 
-## 12. Completion
+## 13. Completion
 
-- [ ] Family README, foundation/component registries, owner contracts, production code, Storybook, and verification agree.
+- [ ] Family README, library migration map, foundation/component registries, owner contracts, production code, public exports, Storybook, and verification agree.
 - [ ] Unsupported features and deviations are explicit.
 - [ ] No escalation condition was hidden as a local workaround.
 - [ ] No unrequested abstraction or flexibility remains.
-- [ ] No empty layer, unnecessary private alias, or local foundation substitute remains.
+- [ ] No empty layer, unnecessary private alias, local foundation substitute, cross-family private import, or permanent legacy export remains.
 - [ ] The supported surface is complete even if optional Material capabilities remain unsupported.
 
-Do not mark a component `aligned` or architecture-complete until every applicable item passes or the missing item is explicitly recorded as unsupported, deviated, blocked, or follow-up verification.
+Do not mark a component `aligned`, migrated, or architecture-complete until every applicable item passes or the missing item is explicitly recorded as unsupported, deviated, blocked, or follow-up verification.
