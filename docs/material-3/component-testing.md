@@ -26,15 +26,15 @@ The full profile is not required only when `Architecture impact: none` is valid 
 
 Every new or migrated public Material component records these layers in the canonical family blueprint:
 
-| Layer | Required artifact | Purpose |
-| --- | --- | --- |
-| Architecture validation | enforceable static/structured checks | Location, dependency direction, profile files, tokens, exports, blueprint sections, and test-artifact consistency. |
-| Component contract | colocated `<Component>.test.ts` | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and non-browser structural wiring. |
-| State matrix | one Storybook export named `StateMatrix` | Human-readable reference for every distinct supported component-owned visual route. |
-| Visual regression | Playwright screenshot of the state matrix | Detect unintended rendered changes and provide a stable diff for review. |
-| Browser behavior | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-owned behavior. |
-| Pure behavior | focused Vitest tests when applicable | Extracted helpers, composables, transitions, timing, cancellation, and cleanup logic. |
-| Consumer preservation | focused checks when consumers changed | Existing usage, imports, and product-visible behavior remain valid. |
+| Layer                   | Required artifact                                 | Purpose                                                                                                            |
+| ----------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Architecture validation | enforceable static/structured checks              | Location, dependency direction, profile files, tokens, exports, blueprint sections, and test-artifact consistency. |
+| Component contract      | colocated `<Component>.test.ts`                   | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and non-browser structural wiring. |
+| State matrix            | one Storybook export named `StateMatrix`          | Human-readable reference for every distinct supported component-owned visual route.                                |
+| Visual regression       | Playwright screenshot of the state matrix         | Detect unintended rendered changes and provide a stable diff for review.                                           |
+| Browser behavior        | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-owned behavior.                       |
+| Pure behavior           | focused Vitest tests when applicable              | Extracted helpers, composables, transitions, timing, cancellation, and cleanup logic.                              |
+| Consumer preservation   | focused checks when consumers changed             | Existing usage, imports, and product-visible behavior remain valid.                                                |
 
 A layer does not replace another:
 
@@ -147,7 +147,7 @@ Do not build the full Cartesian product. Routes may share a cell only when the b
 The family blueprint contains the canonical coverage table:
 
 | Visible route/group | Supported state/configuration | Distinct visible output | Matrix section/row/column |
-| --- | --- | --- | --- |
+| ------------------- | ----------------------------- | ----------------------- | ------------------------- |
 
 `Readiness: ready` is invalid when a supported distinct visual route has no matrix location.
 

@@ -452,7 +452,7 @@ Static properties remain documented through anatomy ownership.
 Required columns:
 
 | Property | DOM owner | Applied/final value | Configuration source | State inputs | Winner/coexistence rule | Foundation bridge |
-| --- | --- | --- | --- | --- | --- | --- |
+| -------- | --------- | ------------------- | -------------------- | ------------ | ----------------------- | ----------------- |
 
 Group rows only when owner, pipeline stages, state inputs, winner/coexistence rule, and bridge are identical. List every grouped property and final applied value explicitly.
 
