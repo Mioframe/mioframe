@@ -362,7 +362,7 @@ Never bypass an available official component token with a direct system token.
 Create one row for each property varying by configuration, semantic state, interaction state, or project mode. Static properties are recorded through anatomy ownership and do not need matrix rows.
 
 | Property | DOM owner | Applied/final value | Configuration source | State inputs | Winner rule | Simultaneous outputs | Foundation bridge |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+| -------- | --------- | ------------------- | -------------------- | ------------ | ----------- | -------------------- | ----------------- |
 
 Rules:
 
