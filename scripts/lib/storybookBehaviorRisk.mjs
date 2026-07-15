@@ -56,7 +56,7 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/ReorderSelfScrollable.stories.ts',
       'src/shared/lib/reorder/ReorderSelfScrollableStoryHarness.vue',
       'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',
-    ]
+    ],
   },
   {
     specs: ['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts'],
