@@ -2,7 +2,7 @@
 
 This document defines the mandatory authoring architecture for public shared Material components under `src/shared/ui`.
 
-The goal is deterministic implementation from official Material documentation with minimal redesign, token usage, and review churn. A coding agent should be able to create a standard component independently. Architecture escalation is required only when official sources, repository ownership, or requested product behavior cannot be resolved by these rules.
+The goal is deterministic implementation from official Material documentation with minimal discovery, minimal structure, and minimal correction churn. A coding agent should be able to create a standard component independently. Architecture escalation is required only when official sources, repository ownership, or requested behavior cannot be resolved by these rules.
 
 ## Scope
 
@@ -80,6 +80,8 @@ Apply these rules:
 6. Record other official capabilities as unsupported instead of implementing them for completeness.
 7. Add no project extension without an explicit requirement.
 
+When the request only names a component and supplies no product scenario, use the canonical Material default usage as the required scenario. Implement its mandatory anatomy, native semantics, reachable states, accessibility, tokens, Storybook, and verification. Keep optional variants and capabilities unsupported. Do not block or ask the implementer to choose optional scope.
+
 A component is complete when its supported surface is coherent and verified. It does not need every optional capability published for the family.
 
 ## Family blueprint
@@ -113,7 +115,7 @@ Configuration axes:
 Semantic states:
 Interaction states:
 
-Architecture profile per component: simple | configured | stateful
+Architecture profile per component:
 Canonical token ownership:
 Rendered property matrix:
 
@@ -133,16 +135,11 @@ Use concise tables where useful. Include only decisions relevant to the supporte
 
 ## Deterministic profiles
 
-Choose the smallest matching profile. This is rule application, not an open design choice.
+Configuration routing and state resolution are independent axes. Choose exactly one profile using the conditions below.
 
 ### `simple`
 
-Use when there is:
-
-- no configuration axis selecting different values;
-- no semantic state;
-- no interaction-dependent rendered property;
-- no generic state, focus, ripple, elevation, or motion bridge.
+Use when no configuration axis selects different values and no semantic or interaction state changes a rendered property.
 
 Required layers:
 
@@ -153,7 +150,7 @@ Required layers:
 
 ### `configured`
 
-Use when configuration selects different values but no semantic or interaction state changes rendered properties.
+Use when configuration selects different values and no semantic or interaction state changes a rendered property.
 
 Required layers:
 
@@ -165,7 +162,19 @@ Required layers:
 
 ### `stateful`
 
-Use when a semantic, interaction, disabled, selected, error, gesture, or foundation-bridge state changes a rendered property.
+Use when semantic or interaction state changes a rendered property and no configuration axis selects different candidate values.
+
+Required layers:
+
+```text
+<Component>.vue
+<Component>.states.css
+<Component>.css
+```
+
+### `configured-stateful`
+
+Use when configuration selects different candidate values and semantic or interaction state selects among them.
 
 Required layers:
 
@@ -176,11 +185,13 @@ Required layers:
 <Component>.css
 ```
 
+Semantic state includes selected, error, expanded, and similar component meaning. Interaction state includes disabled, hover, focus, pressed, dragged, gesture, and equivalent runtime state. A generic state, focus, ripple, elevation, or motion bridge makes the component stateful only when the value supplied to that bridge varies by state.
+
 ### Token layer rule
 
 Add `<Component>.tokens.css` only when the component canonically owns at least one exact official `md.comp.*` token used by the supported surface.
 
-Do not create an empty component token file. When all applicable tokens are family-owned, load only the family token file. When no exact official component token path exists, record `Canonical token ownership: none` and use documented private/system/app routes according to ownership.
+Do not create an empty component token file. When all applicable tokens are family-owned, load only the family token file. When no exact official component token path exists, record `Canonical token ownership: none` and use documented private, system, or app sources according to ownership.
 
 Each family also owns `README.md` and `index.ts`.
 
@@ -191,8 +202,8 @@ Load only applicable layers in this exact order:
 ```text
 <Family>.tokens.css      # when approved
 <Component>.tokens.css   # when the component owns official tokens
-<Component>.routes.css   # configured or stateful
-<Component>.states.css   # stateful
+<Component>.routes.css   # configured or configured-stateful
+<Component>.states.css   # stateful or configured-stateful
 <Family>Anatomy.css      # when approved
 <Component>.css
 ```
@@ -268,7 +279,7 @@ Forbidden:
 
 ### `<Component>.routes.css`
 
-Owns only configuration routing from public component tokens or documented private/system/app sources into private route variables.
+Owns only configuration routing from public component tokens or documented private, system, or app sources into private route variables.
 
 Allowed selectors are the component root and blueprint-declared configuration classes.
 
@@ -276,7 +287,7 @@ Forbidden:
 
 - semantic or interaction selectors;
 - rendering properties;
-- final rendered variables;
+- state-resolved variables;
 - public token declarations;
 - layout, positioning, transitions, or DOM-owner styling.
 
@@ -284,11 +295,11 @@ Forbidden:
 
 Owns only:
 
-- semantic-bank selection;
+- semantic-state selection;
 - property-specific interaction resolution;
-- generic foundation bridges.
+- generic foundation bridges whose supplied value varies by state.
 
-It implements the rendered-property matrix. There is no global state precedence for all properties.
+It implements the stateful rows of the rendered-property matrix. There is no global state precedence for all properties.
 
 Forbidden:
 
@@ -308,17 +319,17 @@ Owns rendering and actual property application:
 - background, color, opacity, and elevation;
 - transition and motion application;
 - target area, positioning, pointer, and cursor presentation;
-- final rendered values.
+- final values applied to actual DOM owners.
 
 Forbidden:
 
 - component-token declarations;
 - configuration routing;
 - semantic or interaction resolution;
-- state-specific token selection;
+- state-specific source selection;
 - styling another component's internals through `:deep()`.
 
-## Token pipeline
+## Value pipeline
 
 Map official paths mechanically:
 
@@ -329,29 +340,29 @@ md.comp.<component>.[variant-or-style].<part>.<property>
 
 Do not create public component tokens without exact verified official paths.
 
-Each official token has one component or qualifying family owner. Reference and system tokens remain in the foundation. Public project extensions use `--app-*`; internal extension routes remain family-private.
+Each official token has one component or qualifying family owner. Reference and system tokens remain in the foundation. Public project extensions use `--app-*`; internal extension sources remain family-private.
 
-Each property uses the smallest applicable path:
+Each property uses the shortest applicable path:
 
 ```text
-official md.comp token
-→ optional canonical --md-comp-* declaration
+source token or documented private/system/app value
 → optional configuration route
-→ optional semantic bank
-→ optional property interaction resolver
-→ rendered family-private value
+→ optional property-specific state resolver
+→ optional rendered private value
 → optional generic foundation bridge
 → actual DOM property owner
 ```
 
-Omit a stage only when the blueprint states the property does not vary across it. Never bypass an available official component token with a direct system token.
+Use no private alias for a static property when the rendering layer can apply its canonical token or documented source directly. A configured property may apply its route variable directly. A rendered private value is required only when state resolution produces the final value or a generic bridge needs a stable final input.
+
+Never bypass an available official component token with a direct system token.
 
 ## Rendered-property matrix
 
-Create one row for each property varying by configuration, semantic state, interaction state, or project mode.
+Create one row for each property varying by configuration, semantic state, interaction state, or project mode. Static properties are recorded through anatomy ownership and do not need matrix rows.
 
-| Property | DOM owner | Final value | Configuration source | Semantic source | Interaction inputs | Winner rule | Simultaneous outputs | Foundation bridge |
-| -------- | --------- | ----------- | -------------------- | --------------- | ------------------ | ----------- | -------------------- | ----------------- |
+| Property | DOM owner | Applied/final value | Configuration source | State inputs | Winner rule | Simultaneous outputs | Foundation bridge |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 
 Rules:
 
@@ -360,7 +371,9 @@ Rules:
 - define winner rules per property;
 - model focus indicator, state layer, shape, elevation, color, opacity, and motion separately when they coexist;
 - apply final values to actual owners;
-- do not rely on inheritance when a more specific owner exists.
+- do not rely on inheritance when a more specific owner exists;
+- use a public token directly for a simple property, a route variable for a configured property, and a rendered private variable only for state-resolved output;
+- rows may be grouped only when every listed property has the same DOM owner, routing stages, state inputs, winner rule, simultaneous outputs, and bridge; list each property and applied/final value explicitly.
 
 ## Public API derivation
 
@@ -423,6 +436,7 @@ Verify:
 - style order and layer ownership;
 - canonical token names and owners;
 - absence of empty token, route, or state layers;
+- absence of unnecessary private alias stages;
 - approved token selectors;
 - private-variable boundaries;
 - generic foundation independence;
@@ -500,6 +514,6 @@ A component is complete only when:
 - profile, layers, ownership, and verification pass;
 - registry and Storybook are honest;
 - unsupported features and deviations are explicit;
-- no unrequested abstraction, compatibility path, or empty layer remains.
+- no unrequested abstraction, compatibility path, empty layer, or unnecessary private alias remains.
 
 Green checks alone do not prove Material correctness, but review must not reopen deterministically resolved decisions without contrary evidence.
