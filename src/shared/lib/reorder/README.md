@@ -74,12 +74,17 @@ parent. This is enforced through dnd-kit's `RestrictToElement` modifier, not cus
 
 ## Autoscroll scope
 
-Autoscroll during a drag is scoped to the active reorder container: an outer scrollable ancestor
-(e.g. a bottom sheet) only autoscrolls in a direction that would reveal more of the container.
-Once the container's edge in that direction is visible, the outer ancestor stops scrolling, even
-if the pointer is still held near its own edge. The container's own scrolling, if it has any,
-keeps standard dnd-kit behavior. This is implemented by `ReorderScopedAutoScroller`, which replaces
-dnd-kit's default `AutoScroller` in `getReorderPlugins`.
+Autoscroll during a drag is scoped to the active reorder container: outer scrollable ancestors
+(e.g. a bottom sheet) only scroll while doing so can still reveal more of the container. Once the
+container's edge in a given direction is visible, that ancestor stops scrolling in that direction,
+even if the pointer is still held near its own edge — top, bottom, left, and right are resolved
+independently, and X and Y can move different ancestors within the same drag. The container's own
+overflow scrolling, if it has any, keeps standard, unrestricted autoscroll: that is what reveals
+hidden sortable items.
+
+dnd-kit 0.5.0's default `AutoScroller` has no notion of the reorder container's bounds, so it keeps
+autoscrolling an outer ancestor even once that ancestor can no longer reveal more of the container.
+`ReorderAutoScroller` replaces it in `getReorderPlugins` rather than running alongside it.
 
 ## Supported scope
 

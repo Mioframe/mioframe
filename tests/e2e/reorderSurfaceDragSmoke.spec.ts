@@ -51,6 +51,58 @@ const center = (box: { x: number; y: number; width: number; height: number }) =>
 // must be asserted relatively (by name) rather than by fixed list index.
 const indexOfRow = (rows: string[], name: string) => rows.findIndex((text) => text.includes(name));
 
+// Samples a scrollable element's `scrollTop` across consecutive rendered animation frames. A real
+// autoscroll loop would increment `scrollTop` every single frame for as long as the pointer stays
+// near the edge, so comparing every sample (not just the last few) against a pre-hold baseline is
+// required to catch a scroll that happens first and then stops.
+const sampleScrollTop = async (
+  page: Page,
+  scrollable: { evaluate: (fn: (el: HTMLElement) => number) => Promise<number> },
+  frameCount = 12,
+): Promise<number[]> => {
+  const samples: number[] = [];
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    // eslint-disable-next-line no-await-in-loop -- sampling must happen in order, one per frame
+    samples.push(await scrollable.evaluate((el) => el.scrollTop));
+  }
+  return samples;
+};
+
+const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): void => {
+  for (const sample of samples) {
+    expect(
+      Math.abs(sample - baseline),
+      `scrollTop samples: ${samples.join(', ')}, baseline: ${baseline}`,
+    ).toBeLessThanOrEqual(1);
+  }
+};
+
+// Waits for a scrollable element's `scrollTop` to hold steady across several consecutive polls,
+// not just one, before treating it as settled: a single matching poll pair can still land inside
+// an in-progress reposition (e.g. the bottom sheet's own ResizeObserver-driven watcher) on a
+// resource-constrained runner.
+const waitForStableScrollTop = async (
+  scrollable: { evaluate: (fn: (el: HTMLElement) => number) => Promise<number> },
+  requiredStableReads = 3,
+): Promise<number> => {
+  let previous = await scrollable.evaluate((el) => el.scrollTop);
+  let stableCount = 1;
+  await expect
+    .poll(
+      async () => {
+        const current = await scrollable.evaluate((el) => el.scrollTop);
+        stableCount = current === previous ? stableCount + 1 : 1;
+        previous = current;
+        return stableCount >= requiredStableReads;
+      },
+      { timeout: 5000, intervals: [200] },
+    )
+    .toBe(true);
+  return previous;
+};
+
 test('reordering database views by drag does not leak text selection and persists after reopen', async ({
   page,
 }) => {
@@ -496,18 +548,7 @@ test.describe('scoped autoscroll', () => {
     // are unrelated to autoscroll, so wait for them to finish before measuring, or their tail end
     // could be mistaken for the list not fitting.
     await expect(draggedRow).toHaveClass(/md-state_dragged/);
-    let previousSheetScrollTop = await sheet.evaluate((el) => el.scrollTop);
-    await expect
-      .poll(
-        async () => {
-          const currentScrollTop = await sheet.evaluate((el) => el.scrollTop);
-          const stable = currentScrollTop === previousSheetScrollTop;
-          previousSheetScrollTop = currentScrollTop;
-          return stable;
-        },
-        { timeout: 5000, intervals: [200] },
-      )
-      .toBe(true);
+    await waitForStableScrollTop(sheet);
 
     const rowBox = await draggedRow.boundingBox();
     const listBox = await list.boundingBox();
@@ -523,28 +564,16 @@ test.describe('scoped autoscroll', () => {
     expect(listBox.y + listBox.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
 
     const holdNearEdgeAndAssertNoScroll = async (edgeY: number) => {
+      // Record the exact baseline before holding near the edge, then assert every sampled frame
+      // during the hold stays within it: a test that only checks the tail of the hold has settled
+      // would still pass if the sheet scrolled first and then stopped, which is not this
+      // scenario's contract.
+      const baseline = await sheet.evaluate((el) => el.scrollTop);
+
       await page.mouse.move(rowCenterX, edgeY, { steps: 4 });
 
-      // Sample scrollTop across many rendered frames: a real autoscroll loop increments it every
-      // single frame for as long as the pointer stays near the edge, so it would never stop
-      // climbing. The sheet also repositions itself independent of any drag (see the
-      // ResizeObserver watcher noted above), which can still contribute unrelated settling here
-      // even after waiting for it to stabilize before the baseline — but that settling is
-      // time-bounded and converges, unlike autoscroll. So assert on the tail of the hold staying
-      // flat rather than on equality with the pre-hold baseline, which the unrelated settling can
-      // still perturb by an unpredictable amount.
-      const frameCount = 12;
-      const samples: number[] = [];
-      for (let frame = 0; frame < frameCount; frame += 1) {
-        // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
-        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-        // eslint-disable-next-line no-await-in-loop -- sampling must happen in order, one per frame
-        samples.push(await sheet.evaluate((el) => el.scrollTop));
-      }
-
-      const tailSampleCount = 4;
-      const tail = samples.slice(-tailSampleCount);
-      expect(new Set(tail).size, `scrollTop samples: ${samples.join(', ')}`).toBe(1);
+      const samples = await sampleScrollTop(page, sheet);
+      assertScrollTopHoldsAtBaseline(samples, baseline);
 
       const isDragging = await draggedRow.evaluate((el) =>
         el.classList.contains('md-state_dragged'),
@@ -601,19 +630,32 @@ test.describe('scoped autoscroll', () => {
     const sheet = await openViewsSheet(page);
     const list = sheet.getByRole('list');
     const firstRow = findListRow(sheet, viewNames[0]);
-    const lastRow = findListRow(sheet, viewNames[viewNames.length - 1]);
+
+    // Uses the complete list rectangle, not just one row's loose viewport overlap, so "revealed"
+    // reflects the whole reorder container's edge becoming visible, matching the autoscroll
+    // contract rather than Playwright's looser, any-overlap `toBeInViewport` definition.
+    const isListEdgeVisible = async (edge: 'top' | 'bottom'): Promise<boolean> => {
+      const [listBox, liveSheetBox] = await Promise.all([list.boundingBox(), sheet.boundingBox()]);
+      if (!listBox || !liveSheetBox) {
+        throw new Error('missing live bounding box for list or sheet');
+      }
+      return edge === 'bottom'
+        ? listBox.y + listBox.height <= liveSheetBox.y + liveSheetBox.height + 1
+        : listBox.y >= liveSheetBox.y - 1;
+    };
 
     // The document's own default view row renders alongside added views, but can settle into the
     // list a moment after the sheet itself becomes visible.
     await expect(list.locator(':scope > *')).toHaveCount(viewNames.length + 1);
     await firstRow.scrollIntoViewIfNeeded();
 
-    // Sanity: the list must overflow the sheet, and the last row must start hidden, or this test
-    // would not actually exercise the "partially hidden container" scenario it targets.
+    // Sanity: the list must overflow the sheet and start with its bottom edge hidden below the
+    // sheet's visible rectangle, or this test would not actually exercise the "partially hidden
+    // container" scenario it targets.
     await expect
       .poll(() => sheet.evaluate((el) => el.scrollHeight - el.clientHeight))
       .toBeGreaterThan(1);
-    await expect(lastRow).not.toBeInViewport();
+    await expect.poll(() => isListEdgeVisible('bottom')).toBe(false);
 
     const sheetBox = await sheet.boundingBox();
     const rowBox = await firstRow.boundingBox();
@@ -633,34 +675,27 @@ test.describe('scoped autoscroll', () => {
     await expect
       .poll(() => sheet.evaluate((el) => el.scrollTop), { timeout: 5000 })
       .toBeGreaterThan(scrollTopStart);
-    await expect(lastRow).toBeInViewport({ timeout: 5000 });
+    await expect.poll(() => isListEdgeVisible('bottom'), { timeout: 5000 }).toBe(true);
 
     // Scrolling stops once the container's own bottom edge is visible: wait for scrollTop to
-    // settle (rather than racing a fixed delay against `toBeInViewport`'s own looser, any-overlap
-    // definition of visible), then confirm it stays put while the pointer is still held near the
-    // sheet's edge.
-    let previousScrollTop = await sheet.evaluate((el) => el.scrollTop);
-    await expect
-      .poll(
-        async () => {
-          const currentScrollTop = await sheet.evaluate((el) => el.scrollTop);
-          const stable = currentScrollTop === previousScrollTop;
-          previousScrollTop = currentScrollTop;
-          return stable;
-        },
-        { timeout: 5000, intervals: [200] },
-      )
-      .toBe(true);
-
-    const scrollTopAtRevealed = previousScrollTop;
-    await page.waitForTimeout(300);
-    expect(await sheet.evaluate((el) => el.scrollTop)).toBe(scrollTopAtRevealed);
+    // settle, then sample several animation frames to confirm it holds at that baseline rather
+    // than climbing further, while the pointer is still held near the sheet's edge.
+    const scrollTopAtBottomRevealed = await waitForStableScrollTop(sheet);
+    const bottomHoldSamples = await sampleScrollTop(page, sheet);
+    assertScrollTopHoldsAtBaseline(bottomHoldSamples, scrollTopAtBottomRevealed);
 
     // Moving toward the opposite, now-hidden edge enables scrolling in that direction too.
     await page.mouse.move(rowCenterX, sheetBox.y + 2, { steps: 4 });
     await expect
       .poll(() => sheet.evaluate((el) => el.scrollTop), { timeout: 5000 })
-      .toBeLessThan(scrollTopAtRevealed);
+      .toBeLessThan(scrollTopAtBottomRevealed);
+    await expect.poll(() => isListEdgeVisible('top'), { timeout: 5000 }).toBe(true);
+
+    // Scrolling stops once the container's own top edge is visible, symmetric to the bottom-edge
+    // check above.
+    const scrollTopAtTopRevealed = await waitForStableScrollTop(sheet);
+    const topHoldSamples = await sampleScrollTop(page, sheet);
+    assertScrollTopHoldsAtBaseline(topHoldSamples, scrollTopAtTopRevealed);
 
     await page.mouse.up();
 

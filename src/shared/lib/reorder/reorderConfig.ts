@@ -6,7 +6,8 @@ import {
   PointerSensor,
 } from '@dnd-kit/dom';
 import { RestrictToElement } from '@dnd-kit/dom/modifiers';
-import { ReorderScopedAutoScroller } from './ReorderScopedAutoScroller';
+import { getReorderContainer } from './getReorderContainer';
+import { ReorderAutoScroller } from './ReorderAutoScroller';
 
 /**
  * Resolves pointer activation thresholds for a reorder drag: touch and pen require a long
@@ -33,13 +34,13 @@ export const REORDER_SENSORS: typeof defaultPreset.sensors = [
 /**
  * Centralized plugin set for every `ReorderSurface`: keeps cursor handling, original-element
  * feedback, and selection prevention from the dnd-kit default preset, but excludes the
- * `Accessibility` plugin and replaces the default `AutoScroller` with
- * `ReorderScopedAutoScroller`. This surface is pointer-only, and `Accessibility` would advertise
- * unsupported keyboard drag semantics (`aria-roledescription="draggable"`, `aria-grabbed`,
- * screen-reader drag instructions) on the primary row action. The default `AutoScroller` has no
- * notion of the reorder container's bounds, so it keeps autoscrolling an outer scrollable
- * ancestor (e.g. a bottom sheet) even once that ancestor can no longer reveal more of the
- * container; `ReorderScopedAutoScroller` replaces it rather than running alongside it.
+ * `Accessibility` plugin and replaces the default `AutoScroller` with `ReorderAutoScroller`. This
+ * surface is pointer-only, and `Accessibility` would advertise unsupported keyboard drag
+ * semantics (`aria-roledescription="draggable"`, `aria-grabbed`, screen-reader drag instructions)
+ * on the primary row action. The default `AutoScroller` has no notion of the reorder container's
+ * bounds, so it keeps autoscrolling an outer scrollable ancestor (e.g. a bottom sheet) even once
+ * that ancestor can no longer reveal more of the container; `ReorderAutoScroller` replaces it
+ * rather than running alongside it.
  * @param defaults - The dnd-kit default plugin preset supplied by `DragDropProvider`.
  * @returns The default plugins with `Accessibility` removed and `AutoScroller` replaced.
  */
@@ -48,7 +49,7 @@ export const getReorderPlugins = (
 ): typeof defaultPreset.plugins =>
   defaults
     .filter((plugin) => plugin !== Accessibility)
-    .map((plugin) => (plugin === AutoScroller ? ReorderScopedAutoScroller : plugin));
+    .map((plugin) => (plugin === AutoScroller ? ReorderAutoScroller : plugin));
 
 /** Material 3 Expressive spatial transition applied to every reordering item. */
 export const REORDER_TRANSITION = {
@@ -64,6 +65,6 @@ export const REORDER_TRANSITION = {
  */
 export const REORDER_MODIFIERS: typeof defaultPreset.modifiers = [
   RestrictToElement.configure({
-    element: (operation) => operation.source?.element?.parentElement ?? null,
+    element: getReorderContainer,
   }),
 ];
