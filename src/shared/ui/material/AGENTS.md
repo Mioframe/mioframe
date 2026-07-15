@@ -49,6 +49,9 @@ material library → project-specific shared UI and product layers
 ## New artifacts
 
 - New official Material components belong in `components/<family>`.
+- A single component may own its own family.
+- Multiple public components share a family only when official Material guidance relates them and a real shared production contract exists now.
+- Legacy directory proximity, similar names, repeated CSS, fewer files, or possible future reuse do not establish family ownership.
 - New Material foundation runtime artifacts belong in `foundation/<domain>`.
 - New reusable Material compositions belong in `patterns/<pattern>` only when Material documents the composition and a current product scenario requires it.
 - Do not add empty directories, placeholder files, speculative extension points, or a universal base component.
@@ -74,7 +77,14 @@ material library → project-specific shared UI and product layers
 ## Components
 
 - Each family follows one `layered-v1` profile and owns its README blueprint.
+- The blueprint records the family ownership basis; unresolved family boundaries are blocking.
 - Family code owns API, semantics, anatomy, component tokens, routing, property-specific state resolution, rendering, stories, and focused tests.
+- Every supported state has one explicit source of truth and change path.
+- Consumer-controlled semantic state must not have a hidden component-owned copy.
+- Browser/foundation interaction facts remain browser/foundation-owned; components map them to property-specific output.
+- Component-owned transient state is limited to owned gesture, overlay, animation, or native coordination lifecycle and defines cancellation and cleanup.
+- Every interactive or semantic anatomy part records its DOM/native, semantics, focus, accessible-name, ARIA, disabled/readonly, target-area, state-layer/ripple, focus-indicator, consumer-interactivity, and rendered-property owners as applicable.
+- Parent and child components must not implicitly split native action, focus, accessibility, interaction-surface, or rendering ownership.
 - Product behavior, placement, information architecture, and workflow remain outside the family.
 - Every new or migrated public component records and implements the standard test profile from `component-testing.md`.
 - Every new or migrated public component has one canonical Storybook export named `StateMatrix`.
@@ -130,8 +140,10 @@ Architecture and test-profile validation are blocking for new and migrated libra
 
 Verify:
 
-- location and dependency direction;
+- location, accepted family boundary, and dependency direction;
 - public exports and no deep imports;
+- explicit state sources of truth and no hidden controlled-state copies;
+- explicit anatomy, DOM, accessibility, interaction-surface, and rendered-property owners;
 - no artificial foundation wrappers or project-specific content;
 - no local foundation substitute;
 - complete consumer migration and removal of obsolete paths;
