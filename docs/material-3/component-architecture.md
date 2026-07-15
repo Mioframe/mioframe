@@ -374,7 +374,7 @@ canonical token or documented private/system/app source
 Create one row for every property varying by configuration, semantic state, interaction state, or supported project mode. Static properties remain in anatomy ownership.
 
 | Property | DOM owner | Applied/final value | Configuration source | State inputs | Winner/coexistence rule | Foundation bridge |
-| --- | --- | --- | --- | --- | --- | --- |
+| -------- | --------- | ------------------- | -------------------- | ------------ | ----------------------- | ----------------- |
 
 Group rows only when owner, pipeline stages, state inputs, winner/coexistence rule, and bridge are identical. List every grouped property/final value.
 
