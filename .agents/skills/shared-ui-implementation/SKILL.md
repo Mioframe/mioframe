@@ -69,6 +69,8 @@ Derive the smallest coherent API:
 
 If Material guidance does not determine invalid-combination behavior, use `blocked` rather than inventing normalization.
 
+Wrapper components call the current shared UI API directly or expose a wrapper-owned domain-intent prop. Do not preserve removed shared-component props as wrapper compatibility aliases unless an existing consumer contract explicitly requires it.
+
 ## Styling ownership
 
 - Token files contain only exact official `--md-comp-*` defaults on approved roots and never depend on active configuration or state.
@@ -96,6 +98,17 @@ Keep behavior local unless an objective extraction condition applies:
 
 Line count or duplicated syntax alone does not justify extraction.
 
+## Browser-specific CSS
+
+- Author standard CSS properties when a standard form exists. Do not hand-write vendor prefixes for standard properties.
+- Prefixing and compatibility transforms belong to the build pipeline. Fix or verify the pipeline rather than routing around it in component source.
+- When a standard property does not produce the required result in a pinned browser, use a browser-neutral supported fallback that preserves the contract.
+- A genuinely vendor-only API with no standard equivalent is a separate narrow case and must not become precedent for compatibility hacks.
+
+## Typography
+
+Use `MD_TYPESCALE` constants and `.md-typescale-*` classes from `shared/lib/md` for Material typography. Do not hand-author type-scale declarations in component CSS unless changing the typography utility contract itself.
+
 ## Verification
 
 Use the smallest proof set covering the supported surface:
@@ -107,6 +120,6 @@ Use the smallest proof set covering the supported surface:
 - representative Storybook and visual coverage for materially different geometry or appearance;
 - one preservation check per changed existing consumer.
 
-Do not test Vue, browser, or generic foundation internals the component does not own.
+Do not test Vue, browser, or generic foundation internals that the component does not own.
 
 Before completion, verify that family README, production code, registry, Storybook, and tests agree. Do not report completion with empty layers, known violations, unsupported claims, parallel obsolete logic, or unrequested abstractions.
