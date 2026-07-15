@@ -2,15 +2,13 @@
 
 ## Principle
 
-Material shared UI components must expose a Material-compatible component-token layer before relying on private implementation variables.
+Public shared Material components expose verified official component tokens before relying on private implementation variables.
 
-Component tokens describe parts of a component and state-specific styling, such as container color, label text color, icon size, outline color, state-layer opacity, container height, and container shape.
-
-For migrated components, token ownership and routing follow [Component architecture](./component-architecture.md).
+Token ownership and routing follow [Component architecture](./component-architecture.md) and the accepted family README blueprint.
 
 ## Canonical ownership
 
-Every official `--md-comp-*` token has exactly one canonical declaration owner named by the ready family contract.
+Every official `--md-comp-*` token has exactly one canonical declaration owner.
 
 The normal owner is:
 
@@ -18,174 +16,148 @@ The normal owner is:
 <Component>.tokens.css
 ```
 
-A component-specific official token must remain in that component file.
-
 A family may own:
 
 ```text
 <Family>.tokens.css
 ```
 
-only when the same exact official token path belongs to the family contract and is consumed by at least two public components in that family. The ready contract must list:
+only when the same exact official token path belongs to the family contract and is consumed by at least two public components in that family. The family blueprint names the official paths, public CSS names, applicable roots, and loading components.
 
-- every official token path;
-- every public CSS token name;
-- every applicable component root;
-- every component that loads the family token file.
+Equal values, similar usage, line count, or possible future reuse do not justify family ownership.
 
-Equal values or similar local usage do not justify family ownership. Do not move component-specific tokens to a family file to reduce duplication or file size.
+Reference and system tokens remain in the foundation. Do not create a global runtime catalog for component-family tokens.
 
-The foundation layer owns reference and system tokens only. It must not become a runtime catalog for component-family tokens. Generated reports or allowlists may be derived from family-owned CSS, but they are not canonical runtime ownership.
-
-Consumers may override public component tokens, but they must not define the canonical token contract for a shared Material component.
+Consumers may override public component tokens but must not define the canonical contract.
 
 ## Declaration selectors
 
-Canonical token files declare the complete supported public override surface independently of active configuration or state.
+Canonical token files declare the complete supported public override surface independently of active configuration and state.
 
 Allowed selectors are only:
 
 - the owning component root in `<Component>.tokens.css`;
-- the exact family-member root selector list named by the ready contract in `<Family>.tokens.css`.
+- the exact family-member root list from the family blueprint in `<Family>.tokens.css`.
 
-Forbidden in canonical token files:
+Forbidden:
 
-- variant, size, shape, width, density, or mode modifier selectors;
-- semantic-state selectors;
-- interaction-state selectors;
+- variant, size, shape, width, density, or mode selectors;
+- semantic or interaction state selectors;
 - pseudo-classes;
+- private or app token declarations;
 - normal rendering properties.
 
-All supported tokens exist on the owning root whenever the component is rendered. Configuration selection belongs only to `.routes.css`; semantic and interaction resolution belongs only to `.states.css`.
+Configuration selection belongs to `.routes.css`. Semantic and interaction resolution belongs to `.states.css`.
 
 ## Naming
 
-Map Material token names to CSS custom properties mechanically. Do not shorten, normalize, or remove path segments.
+Map official paths mechanically without shortening or removing segments:
 
 ```text
-md.comp.<component>.[variant-or-style].<element>.<property>
---md-comp-<component>-[variant-or-style]-<element>-<property>
+md.comp.<component>.[variant-or-style].<part>.<property>
+--md-comp-<component>-[variant-or-style]-<part>-<property>
 ```
 
-Examples:
-
-```css
---md-comp-button-filled-container-color: var(--md-sys-color-primary);
---md-comp-button-filled-label-text-color: var(--md-sys-color-on-primary);
---md-comp-button-container-height: 40dp;
---md-comp-button-container-shape: var(--md-sys-shape-corner-full);
-```
-
-## Component token sources
-
-When official Material 3 component specs list component tokens, use those exact names and meanings.
-
-Define a public `--md-comp-*` token only when an exact official Material token path exists in the verified MCP/cache snapshot for that part, state, and property.
-
-For example, `md.comp.list.list-item.dragged.leading-icon.icon.color` maps to:
+Example:
 
 ```text
+md.comp.list.list-item.dragged.leading-icon.icon.color
 --md-comp-list-list-item-dragged-leading-icon-icon-color
 ```
 
-It must not be collapsed to a shorter local name.
+Do not create a public component token without an exact path in the verified MCP/cache snapshot.
 
-When official docs describe a measurement or role but no exact token path exists, do not invent an approximate public token. Use a family-private route resolved from existing `--md-sys-*`, confirmed `--md-comp-*`, or `--app-*` values according to ownership, and record the missing-token gap in the component contract and registry.
+## Values
 
-Do not invent local `--md-comp-*` tokens for Mioframe-specific behavior. Use `--app-*` for a public project extension or a family-private variable for an internal extension route.
-
-## Relationship to system tokens
-
-Component tokens should point to system tokens whenever possible.
-
-Preferred:
+Resolve component tokens to system tokens whenever the official model uses a system role:
 
 ```css
 --md-comp-button-filled-container-color: var(--md-sys-color-primary);
 ```
 
-Avoid:
+Use a direct value only when the verified component spec defines it, such as a `dp` measurement or numeric opacity.
 
-```css
---md-comp-button-filled-container-color: #6750a4;
-```
+When an official component path is missing:
 
-Hardcoded values are acceptable only when the verified component spec defines a direct value such as `40dp`, `12dp`, `0dp`, or a numeric opacity.
+- do not invent an approximate public token;
+- use a family-private route from existing component/system tokens when internal;
+- use `--app-*` only for an explicit public Mioframe extension;
+- record the gap in the family blueprint and registry.
 
-Using only `--md-sys-*` inside a shared Material component is not a complete component-token contract when official component-token paths exist for the touched parts, states, or measurements.
+## Directed pipeline
 
-Direct `--md-sys-*` use inside migrated component routing is acceptable only for:
-
-- a value with no exact official component-token path;
-- a true foundation-level role;
-- a documented missing-token fallback named in the component contract.
-
-## Layered token pipeline
-
-Every rendered property follows this path:
+Each property uses only the stages that apply to the selected architecture profile and blueprint row:
 
 ```text
 official md.comp token
-→ canonical family-owned --md-comp-* declaration
-→ configuration route bank
-→ current semantic bank
-→ property-specific interaction resolver
+→ canonical --md-comp-* declaration
+→ optional configuration route
+→ optional semantic bank
+→ optional property-specific interaction resolver
 → rendered family-private value
 → optional generic foundation bridge
 → actual DOM property owner
 ```
 
-The architecture handoff may omit a private stage only when the property's matrix row states that the property does not vary across that stage.
+An available official component token must not be bypassed by a direct system-token value.
 
-A component must not bypass an available official token with a direct system-token value.
+## Private variables
 
-## Private variable classes
+Use these naming classes when their stages apply.
 
-Configuration route bank:
+Configuration route:
 
 ```text
 --md-private-<component>-<semantic>-<interaction>-<part>-<property>
 ```
 
-Current semantic bank:
+Current semantic candidate:
 
 ```text
 --md-private-<component>-current-<interaction>-<part>-<property>
 ```
 
-Rendered value:
+Final rendered value:
 
 ```text
 --md-private-<component>-rendered-<part>-<property>
 ```
 
-Do not introduce an additional alias layer without a new ready architecture decision.
+Do not add alias levels for readability. Omit an entire stage when the blueprint states the property does not vary across it.
 
-Private variables must not become the public styling contract when an official component token exists. They must remain inside the owning family.
+Private variables remain inside the owning family and never become consumer styling API.
 
 ## Override contract
 
-The supported customization surface for shared Material components is:
+Supported public namespaces are:
 
-1. `--md-ref-*` when changing raw reference values;
-2. `--md-sys-*` when changing theme roles;
-3. `--md-comp-*` when changing an official component part or state;
-4. `--app-*` for a public project-specific extension outside Material vocabulary.
+1. `--md-ref-*` for raw reference values;
+2. `--md-sys-*` for theme roles;
+3. `--md-comp-*` for verified component parts and states;
+4. `--app-*` for explicit public project extensions outside Material vocabulary.
 
-Consumers must not depend on private classes, route variables, rendered variables, or generic foundation bridges.
+Consumers must not depend on family-private variables, internal classes, or generic foundation bridges.
 
-## Shared primitive private contracts
+## Generic foundation bridges
 
-A low-level primitive reused by several component families must expose a generic private contract, never a component-specific one.
+A shared state-layer, ripple, focus, elevation, or motion primitive exposes only generic private inputs.
 
-- The primitive defines one generic private variable for each value it needs, with a safe generic fallback where appropriate.
-- The primitive must not read a consumer's `--md-comp-*` or `--md-private-<component>-*` variable directly.
-- The consuming family maps its rendered family value into the primitive's generic private contract in `<Component>.states.css`.
-- The component owns the mapping; the primitive owns only the generic contract and rendering.
-- Do not move family routing into a shared primitive to remove duplication.
+- The primitive never reads family component tokens or family-private variables.
+- The consuming component maps its final rendered value into the generic bridge in its state layer.
+- The primitive owns generic rendering; the family owns source selection.
+- Do not move family routing into a primitive to remove duplication.
 
-## Migration pilots
+## Authoring workflow
 
-`MDButton` is the first `layered-v1` architecture pilot. `MDSwitch` is the independent second pilot used to verify semantic-state, disabled-state, gesture, family-token, and anatomy ownership without Button-specific assumptions.
+During standard component authoring, the implementation agent independently:
 
-Do not generalize validator rules or library-wide abstractions from `MDButton` alone.
+1. inventories exact official token paths required by the supported scenarios;
+2. assigns each path to one component or qualifying family owner file;
+3. records ownership in the family blueprint;
+4. selects the smallest applicable architecture profile;
+5. implements only required routes and state resolvers;
+6. validates public overrides and actual DOM property owners.
+
+Use architecture escalation only when official paths, ownership, or required project extension semantics are genuinely unresolved.
+
+`MDButton` is the first validation pilot and `MDSwitch` is the independent second pilot. Do not generalize validator exceptions from one component alone.
