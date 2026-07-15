@@ -4,27 +4,26 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material lib
 
 Use:
 
-- `material3-guidelines` for source, usage, and alignment decisions;
+- `material3-guidelines` for sources, usage, alignment, and review gates;
 - `material-foundation` for cross-family foundation changes;
-- `shared-ui-implementation` for public component implementation;
-- `component-contract-testing` for colocated Vue contract tests;
-- `ui-browser-behavior` for real browser-owned behavior;
-- `visual-regression-testing` for state-matrix screenshots and visual diffs;
-- `docs/material-3/library-architecture.md` for location, dependency, public API, and migration;
-- `docs/material-3/foundation-architecture.md` for foundation ownership;
-- `docs/material-3/component-architecture.md` for family implementation;
-- `docs/material-3/component-testing.md` for the mandatory component test profile and state matrix.
+- `shared-ui-implementation` for component implementation;
+- `component-contract-testing` for Vue contract tests;
+- `ui-browser-behavior` for real browser behavior;
+- `visual-regression-testing` for visual matrices and baseline diffs;
+- canonical architecture under `docs/material-3`.
+
+These scoped rules route work and state hard boundaries. Complete schemas live in the architecture documents.
 
 ## Contains
 
 Only:
 
 - `foundation`: cross-family Material contracts;
-- `components`: official public Material component families;
-- `patterns`: reusable official Material compositions passing the documented pattern gate;
-- library-level documentation and curated public entry points.
+- `components`: official public Material families;
+- `patterns`: accepted reusable official Material compositions;
+- local contracts and curated public entry points.
 
-Canonical Material policy and source-evidence documents remain under `docs/material-3`.
+Policy and source-evidence documents remain under `docs/material-3`.
 
 ## Dependency direction
 
@@ -38,118 +37,94 @@ material/foundation → material/components → material/patterns
 material library → project-specific shared UI and product layers
 ```
 
-- Any Material layer may import a correctly owned generic `shared/lib` utility directly.
-- Do not create a foundation wrapper merely to route generic DOM, event, geometry, lifecycle, or browser behavior.
-- `foundation` must not import `components` or `patterns`.
-- Component families must not deep-import other families.
-- Patterns use public foundation/component contracts and correctly owned generic utilities only.
-- No library code imports `entities`, `features`, `widgets`, `pages`, or `app`.
-- Generic `shared/lib` infrastructure must not depend on this library.
+- Any Material layer may use a correctly owned generic utility directly.
+- Do not create foundation wrappers only to route generic DOM/event/geometry/lifecycle/teleport/browser behavior.
+- Foundation must not import components or patterns.
+- Families must not deep-import other families.
+- Patterns use public component/foundation contracts only.
+- Library code must not import product layers.
+- Generic infrastructure must not depend on the Material library.
 
 ## New artifacts
 
-- New official Material components belong in `components/<family>`.
-- A single component may own its own family.
-- Multiple public components share a family only when official Material guidance relates them and a real shared production contract exists now.
-- Legacy directory proximity, similar names, repeated CSS, fewer files, or possible future reuse do not establish family ownership.
-- New Material foundation runtime artifacts belong in `foundation/<domain>`.
-- New reusable Material compositions belong in `patterns/<pattern>` only when Material documents the composition and a current product scenario requires it.
-- Do not add empty directories, placeholder files, speculative extension points, or a universal base component.
-- Project-specific UI does not belong under `components`, even when it uses Material tokens or primitives.
-- Using a generic external utility does not transfer that utility's ownership into Material.
+- New official components belong under `components/<family>`.
+- A single component may own a family.
+- Multi-component families require an official relationship and a real current shared contract.
+- Legacy proximity, similar names, repeated CSS, fewer files, or hypothetical reuse do not establish family ownership.
+- New foundation runtime/testing owners belong under `foundation/<domain>`.
+- New patterns require official composition evidence and a current scenario.
+- Do not add empty directories, placeholder files, speculative extension points, or universal bases.
+- Project-specific UI remains outside `components`.
 
 ## Public API
 
-- Public product imports use `@shared/ui/material` after the root production entry point exists.
-- Internal library code must not import the root barrel.
-- Components import accepted foundation entry points or correctly owned generic `shared/lib` entry points.
-- External deep imports into `.vue`, `.css`, private helpers, or another family are forbidden.
-- Every public export has one owner, accurate TSDoc, and matching README/registry status.
+- Product consumers use `@shared/ui/material` after the root entry point exists.
+- Internal library code does not import the root barrel.
+- Components import accepted foundation/family entry points or correctly owned generic utilities.
+- External deep imports into implementation/testing/private files are forbidden.
+- Every public export has one owner, accurate TSDoc, and matching blueprint/registry status.
 
 ## Foundation
 
 - Foundation owners are component-agnostic and registry-backed.
 - Generic bridges expose only minimum cross-family inputs.
-- Do not duplicate theme, tokens, units, typography, state/ripple/focus, motion, icon, or overlay ownership.
-- Generic browser/DOM/teleport utilities stay outside the library unless their contract is specifically Material-owned.
-- Verification-only transient-state adapters belong to the owning foundation testing surface, never to individual component APIs.
+- Do not duplicate theme, tokens, units, typography, state/ripple/focus, motion, icon, overlay, or verification ownership.
+- Generic browser/DOM/teleport utilities remain outside unless the contract itself is Material-owned.
+- Verification adapters belong to the owning foundation testing surface and are never component/product API.
+- Legacy additive changes must keep one active owner; new standalone artifacts require canonical relocation.
 
 ## Components
 
-- Each family follows one `layered-v1` profile and owns its README blueprint.
-- The blueprint records the family ownership basis; unresolved family boundaries are blocking.
-- Family code owns API, semantics, anatomy, component tokens, routing, property-specific state resolution, rendering, stories, and focused tests.
-- Every supported state has one explicit source of truth and change path.
-- Consumer-controlled semantic state must not have a hidden component-owned copy.
-- Browser/foundation interaction facts remain browser/foundation-owned; components map them to property-specific output.
-- Component-owned transient state is limited to owned gesture, overlay, animation, or native coordination lifecycle and defines cancellation and cleanup.
-- Every interactive or semantic anatomy part records its DOM/native, semantics, focus, accessible-name, ARIA, disabled/readonly, target-area, state-layer/ripple, focus-indicator, consumer-interactivity, and rendered-property owners as applicable.
-- Parent and child components must not implicitly split native action, focus, accessibility, interaction-surface, or rendering ownership.
+- Each family owns one complete canonical README blueprint and one `layered-v1` profile.
+- Family boundary, state source of truth, and DOM/accessibility owners must be explicit.
+- Controlled semantic state has no hidden component copy.
+- Browser/foundation facts remain browser/foundation-owned.
+- Transient component state is limited to owned gesture, overlay, animation, or native coordination and defines cancellation/cleanup.
 - Product behavior, placement, information architecture, and workflow remain outside the family.
-- Every new or migrated public component records and implements the standard test profile from `component-testing.md`.
-- Every new or migrated public component has one canonical Storybook export named `StateMatrix`.
-- The matrix covers every supported visual state and every distinct state-rendering route, not every equivalent size/content combination.
-- The family README includes a concise state-matrix coverage map.
-- A state-matrix screenshot is mandatory, but real browser behavior is verified separately through real input.
-- Automated agents must not claim that human visual review passed.
+- Every new or migrated component follows the standard test profile.
+- Exactly one canonical `StateMatrix` covers every distinct supported component-owned visible route.
+- Non-visual state contracts remain in contract/browser tests.
+- Visual regression and real browser behavior are separate proof layers.
+- Automated agents do not claim human visual review passed.
 
-## Component testing ownership
+## Testing
 
-Use the same layers for every component:
+Required for new/migrated components:
 
-1. verify-managed architecture checks;
-2. colocated `<Component>.test.ts` contract tests;
-3. canonical `StateMatrix` Storybook story;
-4. Playwright visual regression of that matrix;
-5. Storybook Playwright behavior tests when browser-owned behavior exists;
-6. pure helper/composable tests when extracted logic exists;
-7. changed-consumer preservation checks.
+1. static and structured architecture validation;
+2. colocated Vue Test Utils contract tests;
+3. canonical `StateMatrix`;
+4. Playwright visual regression;
+5. Storybook Playwright behavior tests when applicable;
+6. pure helper/composable tests when applicable;
+7. changed-consumer preservation checks;
+8. required architecture, Material, and human visual review.
 
-Do not:
-
-- verify appearance in Vitest or Vue Test Utils;
-- prove behavior with forced visual states;
-- add test-only public props, events, classes, or production branches;
-- create one screenshot per state cell;
-- omit a supported state because it is hard to display;
-- build a production state-matrix component or generic test DSL.
+Do not verify appearance in Vitest/Vue Test Utils, prove behavior with forced state, add test-only production APIs, create one screenshot per cell, duplicate non-visual states as matrix cells, or build a production matrix/test DSL.
 
 ## Patterns
 
-A pattern is allowed only when:
+A pattern is allowed only when it:
 
-- it maps to an official Material composition or canonical/adaptive layout;
-- it is independent of one domain or feature;
-- a current scenario requires it;
-- it cannot be owned more narrowly by one family or product composition;
-- it is testable without product data.
+- maps to official Material composition or canonical/adaptive layout;
+- is independent of one domain/feature;
+- is required by a current scenario;
+- cannot be owned more narrowly;
+- is testable without product data.
 
-## Legacy migration
+## Migration
 
 - Existing Material code outside this directory is legacy, not a template.
-- Strict local repairs may remain at legacy paths under `Architecture impact: none`.
-- New public Material surface at a legacy path is forbidden.
-- Migrate one family or foundation domain per focused PR.
-- Update all consumers, exports, contracts, registries, stories, tests, risk registration, snapshots, and the library migration map atomically.
-- A component migration adds or consolidates the canonical state matrix and standard test profile.
-- Remove old paths; temporary compatibility re-exports require an explicit removal target and must not receive new usage.
+- Strict local repairs may remain under valid `Architecture impact: none`.
+- New Material ownership at legacy paths is forbidden.
+- Migrate one cohesive family/domain per focused PR.
+- Update consumers, exports, blueprints/contracts, registries, stories, tests, snapshots, risk registration, and migration map atomically.
+- Remove obsolete paths; temporary compatibility requires exact consumers, no new usage, and removal target.
 
 ## Verification
 
-Architecture and test-profile validation are blocking for new and migrated library artifacts.
+Automation may block deterministic facts: paths, dependencies, exports, files, token syntax, required blueprint sections, story identity, and test artifacts.
 
-Verify:
+Architecture/Material review confirms family rationale, source interpretation, route correctness, visual-route completeness/equivalence, and matrix readability. Human review confirms visual correctness.
 
-- location, accepted family boundary, and dependency direction;
-- public exports and no deep imports;
-- explicit state sources of truth and no hidden controlled-state copies;
-- explicit anatomy, DOM, accessibility, interaction-surface, and rendered-property owners;
-- no artificial foundation wrappers or project-specific content;
-- no local foundation substitute;
-- complete consumer migration and removal of obsolete paths;
-- colocated contract tests;
-- exactly one canonical `StateMatrix` export and stable root anchor;
-- complete state-route coverage with visible labels;
-- Playwright visual regression for the matrix;
-- separate real browser behavior tests when applicable;
-- truthful human-review status.
+Do not claim that automation proves free-form architecture or visual decisions.
