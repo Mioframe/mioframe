@@ -16,24 +16,28 @@ Use this checklist when creating, converting, or materially changing a shared Ma
 - [ ] For `layered-v1`, completed the `MATERIAL COMPONENT CONTRACT` from [Component architecture](./component-architecture.md).
 - [ ] The contract has `Unresolved: none` and `Readiness: ready`.
 - [ ] Change mode is explicitly `architecture-only`, `alignment-only`, or architect-approved `combined-approved`.
+- [ ] A first migration supplies the complete initial family contract, or a later change names the current family `README.md` and exact delta.
 - [ ] Supported and unsupported Material surfaces are explicit.
 - [ ] Public API, native semantics, and invalid combinations are explicit.
-- [ ] Every anatomy part and stateful rendered property has one declared owner.
-- [ ] Configuration axes, semantic states, interaction states, and precedence are explicit.
+- [ ] Every anatomy part has one declared owner.
+- [ ] Configuration axes, semantic states, and interaction states are explicit.
+- [ ] Every stateful rendered property has its own matrix row with DOM owner, final variable, route sources, interaction inputs, winner order, and simultaneous outputs.
 - [ ] Exact production and verification files are explicit.
 - [ ] The implementation did not add architecture decisions absent from the ready contract.
 
 ## 3. Layered implementation
 
-- [ ] Family `README.md` contains the durable architecture contract.
+- [ ] Family `README.md` contains the durable accepted architecture contract.
+- [ ] The final README, production implementation, registry, and verification agree.
 - [ ] The component has `.vue`, `.tokens.css`, `.routes.css`, `.states.css`, and `.css` files.
-- [ ] Style layers load in the required order.
+- [ ] Optional `<Family>.tokens.css` exists only when the contract assigns exact shared official tokens to at least two public family components.
+- [ ] Style layers load in the exact handoff-declared order.
 - [ ] `.vue` owns API, runtime state acquisition, native bindings, events, and anatomy only.
-- [ ] `.tokens.css` owns canonical `--md-comp-*` defaults only.
+- [ ] Component and family token files own canonical `--md-comp-*` defaults only.
 - [ ] `.routes.css` owns configuration-to-route-bank mappings only.
-- [ ] `.states.css` owns semantic and interaction state resolution only.
+- [ ] `.states.css` owns semantic-bank selection and per-property interaction resolution only.
 - [ ] `.css` owns rendering and actual DOM property application only.
-- [ ] Additional behavior, anatomy, or context files were explicitly approved by the ready handoff.
+- [ ] Additional behavior, anatomy, token, or context files were explicitly approved by the ready handoff.
 - [ ] Generic foundations read only generic private contracts.
 
 ## 4. Registry
@@ -50,6 +54,10 @@ Use this checklist when creating, converting, or materially changing a shared Ma
 - [ ] Classified variables as public component tokens, private route variables, private rendered variables, generic foundation bridges, app-specific tokens, compatibility aliases, or obsolete tokens.
 - [ ] Added required `--md-comp-*` tokens.
 - [ ] Existing official component token paths are exposed as mechanically named `--md-comp-*` tokens.
+- [ ] Every canonical component token names exactly one component or family owner file.
+- [ ] A family token owner lists exact token paths, applicable roots, and at least two consuming public components.
+- [ ] Canonical tokens are declared independently of active variant, size, shape, width, semantic state, and interaction state.
+- [ ] Token files contain no configuration modifiers, state selectors, or pseudo-classes.
 - [ ] Component CSS uses `--md-comp-*` as the component override surface, resolving them to `--md-sys-*` where appropriate.
 - [ ] The component is not implemented as sys-token-only when official component tokens exist.
 - [ ] Direct `--md-sys-*` usage inside component internals is limited to values without an official component token path or true foundation-level roles.
@@ -71,7 +79,8 @@ Use this checklist when creating, converting, or materially changing a shared Ma
 ## 7. States and accessibility
 
 - [ ] Only handoff-declared states are implemented.
-- [ ] State precedence matches the ready contract rather than accidental selector order.
+- [ ] Each property resolver matches its matrix row rather than a global or accidental selector order.
+- [ ] Independent outputs such as focus indicator, pressed shape, state layer, and elevation coexist exactly as declared.
 - [ ] State layers and focus indicators use generic shared primitives where applicable.
 - [ ] Accessible names and roles are correct.
 - [ ] Keyboard behavior follows native semantics or an explicit documented deviation.
@@ -98,10 +107,11 @@ Use this checklist when creating, converting, or materially changing a shared Ma
 ## 10. Verification
 
 - [ ] Component contract tests cover defaults, props, emits, slots, native semantics, ARIA, invalid combinations, and extensions as applicable.
-- [ ] Static architecture verification covers required files and layer boundaries, or the missing automation is explicitly reported as remaining work.
-- [ ] Token checks cover official names, canonical ownership, and unknown or escaped variables.
+- [ ] Static architecture verification covers required files and layer boundaries, or missing automation is explicitly reported as remaining work.
+- [ ] Token checks cover official names, canonical ownership, approved root selectors, and unknown or escaped variables.
 - [ ] Browser checks assert stateful properties on their actual DOM owners.
-- [ ] Every reachable row in the declared state-precedence matrix is verified.
+- [ ] Every reachable property-matrix row and winner combination is verified.
+- [ ] Declared simultaneous independent outputs are verified together.
 - [ ] Visual regression covers materially different geometry and states without an unnecessary Cartesian screenshot matrix.
 - [ ] Every consumer in the blast-radius inventory has the named preservation check.
 - [ ] Final repository verification follows `AGENTS.md` requirements.
@@ -112,6 +122,6 @@ Use this checklist when creating, converting, or materially changing a shared Ma
 - [ ] Project-specific extensions are documented.
 - [ ] Temporary compatibility behavior has a migration target.
 - [ ] Remaining risks are explicit and not hidden as completed alignment.
-- [ ] The final diff still matches the ready architecture contract.
+- [ ] The final diff matches the ready contract delta and leaves unchanged README sections intact.
 
-A component family must not be marked `aligned` until this checklist is complete or every incomplete item is explicitly recorded as an unsupported feature, deviation, blocked verification, or follow-up risk. A `layered-v1` migration must not be reported complete while known layer violations remain.
+A component family must not be marked `aligned` until this checklist is complete or every incomplete item is explicitly recorded as an unsupported feature, deviation, blocked verification, or follow-up risk. A `layered-v1` migration must not be reported complete while the family README, implementation, registry, verification, or known layer boundaries disagree.
