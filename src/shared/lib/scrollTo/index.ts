@@ -10,8 +10,10 @@ type ScrollTarget = {
 };
 
 /**
- * Tracks a scrollable element's position and exposes a `scrollTo` that resolves only once the
- * element has verifiably reached the requested position, retrying a superseded smooth scroll.
+ * Tracks a scrollable element's position and exposes a serialized `scrollTo`: each call waits
+ * for scrolling to settle and, if the element has not reached the requested position by then,
+ * retries a bounded number of times. It does not guarantee the target is ultimately reached —
+ * a persistently superseded or interrupted scroll can still resolve short of the request.
  * @param container - The scrollable element to observe and drive.
  * @param options - Throttle window for scroll-position sampling and settle detection.
  * @returns The current scroll position and a serialized `scrollTo`.
