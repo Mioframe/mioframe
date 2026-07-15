@@ -280,4 +280,74 @@ describe('ReorderAutoScroller lifecycle', () => {
     manager.actions.stop({});
     await flushRendering(manager);
   });
+
+  it('cancels the pending animation frame when disabled during an active drag', async () => {
+    const { manager } = await createDraggingManager();
+
+    const frameId = rafSpy.mock.results[0]?.value;
+    const plugin = manager.registry.plugins.get(ReorderAutoScroller);
+
+    plugin?.disable();
+
+    expect(cancelSpy).toHaveBeenCalledWith(frameId);
+
+    manager.actions.stop({});
+    await flushRendering(manager);
+  });
+
+  it('does not schedule another frame from a callback captured before disable', async () => {
+    const { manager } = await createDraggingManager();
+    const [firstCallback] = rafSpy.mock.calls[0] ?? [];
+
+    const plugin = manager.registry.plugins.get(ReorderAutoScroller);
+    plugin?.disable();
+    rafSpy.mockClear();
+
+    firstCallback?.(0);
+
+    expect(rafSpy).not.toHaveBeenCalled();
+
+    manager.actions.stop({});
+    await flushRendering(manager);
+  });
+
+  it('starts exactly one new frame when re-enabled while the drag is still active', async () => {
+    const { manager } = await createDraggingManager();
+
+    const plugin = manager.registry.plugins.get(ReorderAutoScroller);
+    plugin?.disable();
+    rafSpy.mockClear();
+
+    plugin?.enable();
+
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+
+    manager.actions.stop({});
+    await flushRendering(manager);
+  });
+
+  it('never creates concurrent frame loops across repeated enable/disable transitions', async () => {
+    const { manager } = await createDraggingManager();
+
+    const plugin = manager.registry.plugins.get(ReorderAutoScroller);
+    rafSpy.mockClear();
+
+    for (let iteration = 0; iteration < 3; iteration += 1) {
+      plugin?.disable();
+      plugin?.enable();
+    }
+
+    expect(rafSpy).toHaveBeenCalledTimes(3);
+    expect(cancelSpy).toHaveBeenCalledTimes(3);
+
+    const [latestCallback] = rafSpy.mock.calls[rafSpy.mock.calls.length - 1] ?? [];
+    rafSpy.mockClear();
+
+    latestCallback?.(0);
+
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+
+    manager.actions.stop({});
+    await flushRendering(manager);
+  });
 });

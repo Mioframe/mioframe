@@ -644,6 +644,21 @@ test.describe('scoped autoscroll', () => {
         : listBox.y >= liveSheetBox.y - 1;
     };
 
+    // Signed gap between the list's edge and the sheet's matching visible edge, collapsed to an
+    // absolute distance. Autoscroll must stop exactly at this edge, not merely once the edge is
+    // somewhere inside the sheet's visible rectangle (which `isListEdgeVisible` above would still
+    // accept if autoscroll overshot past the edge and later settled back), so this drives the
+    // exact-edge poll below instead.
+    const edgeDistance = async (edge: 'top' | 'bottom'): Promise<number> => {
+      const [listBox, liveSheetBox] = await Promise.all([list.boundingBox(), sheet.boundingBox()]);
+      if (!listBox || !liveSheetBox) {
+        throw new Error('missing live bounding box for list or sheet');
+      }
+      return edge === 'bottom'
+        ? Math.abs(listBox.y + listBox.height - (liveSheetBox.y + liveSheetBox.height))
+        : Math.abs(listBox.y - liveSheetBox.y);
+    };
+
     // The document's own default view row renders alongside added views, but can settle into the
     // list a moment after the sheet itself becomes visible.
     await expect(list.locator(':scope > *')).toHaveCount(viewNames.length + 1);
@@ -675,12 +690,13 @@ test.describe('scoped autoscroll', () => {
     await expect
       .poll(() => sheet.evaluate((el) => el.scrollTop), { timeout: 5000 })
       .toBeGreaterThan(scrollTopStart);
-    await expect.poll(() => isListEdgeVisible('bottom'), { timeout: 5000 }).toBe(true);
+    await expect.poll(() => edgeDistance('bottom'), { timeout: 5000 }).toBeLessThanOrEqual(1);
 
-    // Scrolling stops once the container's own bottom edge is visible: wait for scrollTop to
-    // settle, then sample several animation frames to confirm it holds at that baseline rather
-    // than climbing further, while the pointer is still held near the sheet's edge.
-    const scrollTopAtBottomRevealed = await waitForStableScrollTop(sheet);
+    // Autoscroll must stop exactly at the container's own bottom edge rather than overshoot past
+    // it and settle back: record scrollTop the instant the exact-edge condition above is reached,
+    // then sample several animation frames to confirm it holds at that baseline while the pointer
+    // is still held near the sheet's edge.
+    const scrollTopAtBottomRevealed = await sheet.evaluate((el) => el.scrollTop);
     const bottomHoldSamples = await sampleScrollTop(page, sheet);
     assertScrollTopHoldsAtBaseline(bottomHoldSamples, scrollTopAtBottomRevealed);
 
@@ -689,11 +705,11 @@ test.describe('scoped autoscroll', () => {
     await expect
       .poll(() => sheet.evaluate((el) => el.scrollTop), { timeout: 5000 })
       .toBeLessThan(scrollTopAtBottomRevealed);
-    await expect.poll(() => isListEdgeVisible('top'), { timeout: 5000 }).toBe(true);
+    await expect.poll(() => edgeDistance('top'), { timeout: 5000 }).toBeLessThanOrEqual(1);
 
-    // Scrolling stops once the container's own top edge is visible, symmetric to the bottom-edge
+    // Autoscroll must stop exactly at the container's own top edge, symmetric to the bottom-edge
     // check above.
-    const scrollTopAtTopRevealed = await waitForStableScrollTop(sheet);
+    const scrollTopAtTopRevealed = await sheet.evaluate((el) => el.scrollTop);
     const topHoldSamples = await sampleScrollTop(page, sheet);
     assertScrollTopHoldsAtBaseline(topHoldSamples, scrollTopAtTopRevealed);
 

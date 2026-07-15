@@ -43,6 +43,22 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     ],
     specs: ['tests/e2e/storybook/overlayLifecycle.spec.ts'],
   },
+  {
+    name: 'reorder self-scrollable container autoscroll',
+    sourcePrefixes: [
+      'src/shared/lib/reorder/ReorderAutoScroller.ts',
+      'src/shared/lib/reorder/getReorderContainer.ts',
+      'src/shared/lib/reorder/getReorderScrollCandidates.ts',
+      'src/shared/lib/reorder/reorderAutoscrollGeometry.ts',
+      'src/shared/lib/reorder/reorderConfig.ts',
+      'src/shared/lib/reorder/ReorderSurface.vue',
+      'src/shared/lib/reorder/useReorderItem.ts',
+      'src/shared/lib/reorder/ReorderSelfScrollable.stories.ts',
+      'src/shared/lib/reorder/ReorderSelfScrollableStoryHarness.vue',
+      'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',
+    ],
+    specs: ['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts'],
+  },
 ];
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior

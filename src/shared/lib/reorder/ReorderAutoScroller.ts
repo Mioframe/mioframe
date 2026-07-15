@@ -213,7 +213,7 @@ export class ReorderAutoScroller extends Plugin<DragDropManager> {
     super(manager);
 
     this.registerEffect(() => {
-      if (this.isDisabled() || !manager.dragOperation.status.dragging) {
+      if (this.disabled || !manager.dragOperation.status.dragging) {
         return;
       }
 
@@ -231,11 +231,7 @@ export class ReorderAutoScroller extends Plugin<DragDropManager> {
       let frameId: number | undefined;
 
       const tick = () => {
-        if (!active) {
-          return;
-        }
-
-        if (!manager.dragOperation.status.dragging) {
+        if (!active || this.disabled || !manager.dragOperation.status.dragging) {
           active = false;
           return;
         }
