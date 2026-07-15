@@ -380,7 +380,7 @@ Create one row for each property that varies by configuration, semantic state, i
 Use these columns:
 
 | Property | DOM owner | Final value | Configuration source | Semantic source | Interaction inputs | Winner rule | Simultaneous outputs | Foundation bridge |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| -------- | --------- | ----------- | -------------------- | --------------- | ------------------ | ----------- | -------------------- | ----------------- |
 
 Rules:
 
