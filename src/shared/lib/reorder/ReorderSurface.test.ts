@@ -122,6 +122,77 @@ describe('ReorderSurface', () => {
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
 
+  it('emits nothing for a negative fromIndex', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, -1, 1) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('emits nothing for a negative toIndex', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 1, -1) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('emits nothing for a fromIndex at or beyond the snapshot length', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 3, 1) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('emits nothing for a toIndex at or beyond the snapshot length', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 1, 3) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('emits normally for a valid drag after a canceled drag', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, {
+      canceled: true,
+      source: fakeSortableSource(wrapper.get('li').element, 0, 2),
+    });
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toHaveLength(1);
+    expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
+      expectedOrderedIds: ['a', 'b', 'c'],
+      orderedIds: ['b', 'c', 'a'],
+    });
+  });
+
+  it('emits normally for a valid drag after an out-of-range drag', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 5, 1) });
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toHaveLength(1);
+    expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
+      expectedOrderedIds: ['a', 'b', 'c'],
+      orderedIds: ['b', 'c', 'a'],
+    });
+  });
+
   it('emits nothing for a non-sortable drag source', () => {
     mockedIsSortableOperation.mockReturnValue(false);
     const wrapper = mountSurface(['a', 'b', 'c']);

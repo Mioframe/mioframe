@@ -95,6 +95,7 @@ const show = refDebounced(hovered, 1.5e3);
 
   position: fixed;
   z-index: 1;
+  pointer-events: none;
 
   transition-property: transform, opacity;
   transition-duration: var(--md-sys-motion-duration-medium1);

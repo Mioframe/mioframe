@@ -140,7 +140,7 @@ describe('useDatabaseViewReorderState', () => {
     expect(reorder).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the new canonical order on a conflicting canonical update and blocks a second drag', async () => {
+  it('shows the new canonical order on a conflicting canonical update, blocks a second drag, and clears only once the service settles', async () => {
     const canonicalIds = ref<readonly DatabaseViewId[]>([idA, idB, idC]);
     const { promise, resolve } = deferred<ReorderCommitResult>();
     const reorder = vi.fn().mockReturnValue(promise);
@@ -158,6 +158,11 @@ describe('useDatabaseViewReorderState', () => {
     expect(displayIds.value).toEqual([idC, idA, idB]);
     expect(isPending.value).toBe(true);
 
+    // A second drag must stay blocked while the conflicted request is still outstanding.
+    await onReorder({ expectedOrderedIds: [idC, idA, idB], orderedIds: [idA, idC, idB] });
+    expect(reorder).toHaveBeenCalledTimes(1);
+    expect(isPending.value).toBe(true);
+
     resolve('applied');
     await call;
 
@@ -165,7 +170,60 @@ describe('useDatabaseViewReorderState', () => {
     expect(displayIds.value).toEqual([idC, idA, idB]);
   });
 
-  it('ignores a stale async completion using the request token once superseded', async () => {
+  it('keeps pending when canonical confirms first while the service call is still outstanding, blocks a second drag, and clears once the service applies', async () => {
+    const canonicalIds = ref<readonly DatabaseViewId[]>([idA, idB, idC]);
+    const { promise, resolve } = deferred<ReorderCommitResult>();
+    const reorder = vi.fn().mockReturnValue(promise);
+    const { displayIds, isPending, onReorder } = useDatabaseViewReorderState(
+      computed(() => canonicalIds.value),
+      reorder,
+    );
+
+    const call = onReorder({ expectedOrderedIds: [idA, idB, idC], orderedIds: [idB, idA, idC] });
+
+    canonicalIds.value = [idB, idA, idC];
+    await nextTick();
+
+    // Canonical confirmed the requested order, but the service promise has not settled yet.
+    expect(isPending.value).toBe(true);
+    expect(displayIds.value).toEqual([idB, idA, idC]);
+
+    await onReorder({ expectedOrderedIds: [idB, idA, idC], orderedIds: [idC, idB, idA] });
+    expect(reorder).toHaveBeenCalledTimes(1);
+
+    resolve('applied');
+    await call;
+
+    expect(isPending.value).toBe(false);
+    expect(displayIds.value).toEqual([idB, idA, idC]);
+  });
+
+  it('reports the rejection and clears pending even when canonical confirmed the request before the service rejected', async () => {
+    const canonicalIds = ref<readonly DatabaseViewId[]>([idA, idB, idC]);
+    const { promise, reject } = deferred<ReorderCommitResult>();
+    const reorder = vi.fn().mockReturnValue(promise);
+    const { displayIds, isPending, onReorder } = useDatabaseViewReorderState(
+      computed(() => canonicalIds.value),
+      reorder,
+    );
+
+    const call = onReorder({ expectedOrderedIds: [idA, idB, idC], orderedIds: [idB, idA, idC] });
+
+    canonicalIds.value = [idB, idA, idC];
+    await nextTick();
+
+    expect(isPending.value).toBe(true);
+
+    reject(new Error('network down'));
+    await call;
+
+    expect(isPending.value).toBe(false);
+    expect(displayIds.value).toEqual([idB, idA, idC]);
+    expect(addSnackbarMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a fresh token after a stale rollback and stays unaffected by the retired request', async () => {
     const canonicalIds = ref<readonly DatabaseViewId[]>([idA, idB, idC]);
     const first = deferred<ReorderCommitResult>();
     const second = deferred<ReorderCommitResult>();
@@ -181,9 +239,18 @@ describe('useDatabaseViewReorderState', () => {
     });
 
     first.resolve('stale');
-    await firstCall;
+
+    // A second drag attempted before the first request's continuation has run must stay
+    // blocked by the single-flight guard rather than racing the still-current token.
+    const blockedAttempt = onReorder({
+      expectedOrderedIds: [idA, idB, idC],
+      orderedIds: [idC, idA, idB],
+    });
+
+    await Promise.all([firstCall, blockedAttempt]);
 
     expect(isPending.value).toBe(false);
+    expect(reorder).toHaveBeenCalledTimes(1);
 
     const secondCall = onReorder({
       expectedOrderedIds: [idA, idB, idC],
@@ -195,6 +262,7 @@ describe('useDatabaseViewReorderState', () => {
     second.resolve('applied');
     await secondCall;
 
+    // Retiring the first token must not leave residual state that affects the second request.
     expect(displayIds.value).toEqual([idC, idB, idA]);
     expect(reorder).toHaveBeenCalledTimes(2);
   });

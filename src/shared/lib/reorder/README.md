@@ -8,6 +8,7 @@ translating a completed drag into a typed reorder request. It owns nothing about
 
 ```vue
 <script setup lang="ts">
+import { ref } from 'vue';
 import { ReorderSurface, type ReorderCommitRequest } from '@shared/lib/reorder';
 import { MDList } from '@shared/ui/Lists';
 
@@ -32,6 +33,7 @@ Each row registers itself with `useReorderItem`:
 
 ```vue
 <script setup lang="ts">
+import { useTemplateRef } from 'vue';
 import { useReorderItem } from '@shared/lib/reorder';
 
 const props = defineProps<{ itemId: MyItemId; index: number }>();

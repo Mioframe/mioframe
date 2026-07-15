@@ -383,27 +383,34 @@ test.describe('container bounds', () => {
 
     // The list's own scroll container can auto-scroll while the pointer is held beyond an edge,
     // so both boxes must be re-measured live rather than compared against the pre-drag snapshot.
-    // The Material spatial transition (see REORDER_TRANSITION) intentionally overshoots before
-    // settling, so poll briefly instead of asserting a single mid-transition snapshot.
-    const isDraggedRowWithinListBounds = async () => {
+    // This asserts the active dragged row's bounds at a single point in time: it must never be
+    // observed outside the list, so it must not wait or retry until containment becomes true.
+    const assertDraggedRowWithinListBounds = async () => {
+      // One rendered frame for the browser to apply the pointer move, not a poll for eventual
+      // containment.
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+
+      const isDragging = await draggedRow.evaluate((el) =>
+        el.classList.contains('md-state_dragged'),
+      );
+      expect(isDragging).toBe(true);
+
       const [draggedBox, liveListBox] = await Promise.all([
         draggedRow.boundingBox(),
         list.boundingBox(),
       ]);
       if (!draggedBox || !liveListBox) {
-        return false;
+        throw new Error('missing live bounding box for list or dragged row');
       }
 
-      return (
-        draggedBox.x >= liveListBox.x - 1 &&
-        draggedBox.y >= liveListBox.y - 1 &&
-        draggedBox.x + draggedBox.width <= liveListBox.x + liveListBox.width + 1 &&
-        draggedBox.y + draggedBox.height <= liveListBox.y + liveListBox.height + 1
+      expect(draggedBox.x).toBeGreaterThanOrEqual(liveListBox.x - 1);
+      expect(draggedBox.y).toBeGreaterThanOrEqual(liveListBox.y - 1);
+      expect(draggedBox.x + draggedBox.width).toBeLessThanOrEqual(
+        liveListBox.x + liveListBox.width + 1,
       );
-    };
-
-    const assertDraggedRowWithinListBounds = async () => {
-      await expect.poll(isDraggedRowWithinListBounds, { timeout: 1000 }).toBe(true);
+      expect(draggedBox.y + draggedBox.height).toBeLessThanOrEqual(
+        liveListBox.y + liveListBox.height + 1,
+      );
     };
 
     await page.mouse.move(rowCenterX, rowCenterY);

@@ -17,6 +17,10 @@ interface PendingReorder {
   token: symbol;
   expectedOrderedIds: readonly DatabaseViewId[];
   orderedIds: readonly DatabaseViewId[];
+  /** Set once the guarded reorder settles; undefined while the service call is still in flight. */
+  serviceResult: ReorderCommitResult | undefined;
+  /** Set once canonical state confirms `orderedIds`, independent of whether the service settled. */
+  canonicalConfirmed: boolean;
   /** Set once the canonical order diverges from both the expected and requested order. */
   conflicted: boolean;
 }
@@ -66,12 +70,17 @@ export const useDatabaseViewReorderState = (
   watch(canonicalIds, (nextCanonical) => {
     const current = pending.value;
 
-    if (!current) {
+    if (!current || current.conflicted) {
       return;
     }
 
     if (isSameOrder(nextCanonical, current.orderedIds)) {
-      pending.value = null;
+      current.canonicalConfirmed = true;
+
+      if (current.serviceResult === 'applied') {
+        pending.value = null;
+      }
+
       return;
     }
 
@@ -90,6 +99,8 @@ export const useDatabaseViewReorderState = (
       token,
       expectedOrderedIds: request.expectedOrderedIds,
       orderedIds: request.orderedIds,
+      serviceResult: undefined,
+      canonicalConfirmed: false,
       conflicted: false,
     };
 
@@ -101,7 +112,9 @@ export const useDatabaseViewReorderState = (
         return;
       }
 
-      if (result === 'stale' || current.conflicted) {
+      current.serviceResult = result;
+
+      if (result === 'stale' || current.conflicted || current.canonicalConfirmed) {
         pending.value = null;
       }
     } catch (error) {

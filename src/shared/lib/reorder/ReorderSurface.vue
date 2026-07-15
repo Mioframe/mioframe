@@ -9,7 +9,11 @@ import { attemptTouchHapticFeedback, scheduleTouchDragCleanup } from './touchDra
 import type { ReorderCommitRequest, ReorderItemId } from './types';
 
 const props = defineProps<{
-  /** Canonical ordered item ids; the only authoritative source of order. */
+  /**
+   * The current ordered item ids rendered by the surface. This is the order a drag operates on,
+   * not necessarily the canonical persisted order: a caller reconciling optimistic state (see
+   * `useDatabaseViewReorderState`) passes its optimistic display order while a reorder is pending.
+   */
   itemIds: readonly TId[];
   /** Whether new drag activation must stay disabled, e.g. while a reorder is still pending. */
   disabled?: boolean;
