@@ -130,6 +130,21 @@ describe('MDIconButton', () => {
     expect(toggleSelectedWrapper.classes()).toContain('md-icon-button_selected');
   });
 
+  it('defaults color to "filled" (the official Material Icon Button default)', () => {
+    const wrapper = mountIconButton();
+
+    expect(wrapper.classes()).toContain('md-icon-button_color-filled');
+  });
+
+  it('keeps aria-pressed and selected structure while disabled', () => {
+    const wrapper = mountIconButton({ variant: 'toggle', selected: true, disabled: true });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.classes()).toContain('md-icon-button_selected');
+    expect(wrapper.classes()).toContain('md-state_disabled');
+  });
+
   it('activates via click while loading, exactly once, keeping the accessible name and enabled state', async () => {
     const wrapper = mountIconButton({ loading: true });
     const button = wrapper.get('button');

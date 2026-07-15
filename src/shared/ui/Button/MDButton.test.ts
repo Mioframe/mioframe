@@ -122,20 +122,40 @@ describe('MDButton', () => {
     warnSpy.mockRestore();
   });
 
-  it('supports variant="toggle" with color="text" without warning or restriction', () => {
+  it('normalizes color="text" + variant="toggle" to the default variant and warns', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const unselectedWrapper = mountButton({ variant: 'toggle', color: 'text', selected: false });
-    expect(unselectedWrapper.get('button').attributes('aria-pressed')).toBe('false');
-    expect(unselectedWrapper.classes()).not.toContain('md-button_selected');
-
     const selectedWrapper = mountButton({ variant: 'toggle', color: 'text', selected: true });
-    expect(selectedWrapper.get('button').attributes('aria-pressed')).toBe('true');
-    expect(selectedWrapper.classes()).toContain('md-button_selected');
 
+    expect(selectedWrapper.get('button').attributes('aria-pressed')).toBeUndefined();
+    expect(selectedWrapper.classes()).not.toContain('md-button_selected');
+    expect(selectedWrapper.classes()).toContain('md-button_variant-default');
+    expect(selectedWrapper.classes()).not.toContain('md-button_variant-toggle');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('does not support `variant="toggle"`'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('keeps ordinary color="text" variant="default" unchanged and warning-free', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const wrapper = mountButton({ color: 'text' });
+
+    expect(wrapper.classes()).toContain('md-button_variant-default');
     expect(warnSpy).not.toHaveBeenCalled();
 
     warnSpy.mockRestore();
+  });
+
+  it('keeps aria-pressed and selected structure while disabled', () => {
+    const wrapper = mountButton({ variant: 'toggle', selected: true, disabled: true });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.classes()).toContain('md-button_selected');
+    expect(wrapper.classes()).toContain('md-state_disabled');
   });
 
   it('emits click on native click and toggling does not introduce hidden local selection state', async () => {

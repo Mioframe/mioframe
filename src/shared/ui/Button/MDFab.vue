@@ -112,11 +112,12 @@ if (import.meta.env.DEV) {
 
 <style scoped>
 .md-fab {
-  /* Focus indicator: md.comp.fab.*.focus.indicator.color resolves to the
-     secondary role for every style; the global focus-indicator system already
-     defaults to --md-sys-color-secondary, so no override is required here. */
+  /* Focus indicator: md.comp.fab.{primary,secondary,tertiary}.focus.indicator.* publish
+     component tokens (routed below); the *-container styles publish no distinct focus
+     indicator tokens (documented gap), so they keep the generic system default. */
   --md-fab-icon-size: 24dp;
-  --md-fab-container-size: 56dp;
+  --md-private-fab-container-width: 56dp;
+  --md-private-fab-container-height: 56dp;
   --md-fab-container-shape: var(--md-sys-shape-corner-large);
   --md-private-fab-container-color: transparent;
   --md-private-fab-icon-color: inherit;
@@ -139,19 +140,32 @@ if (import.meta.env.DEV) {
   --md-private-state-focus-state-layer-opacity: var(--md-sys-state-focus-state-layer-opacity);
   --md-private-state-pressed-state-layer-opacity: var(--md-sys-state-pressed-state-layer-opacity);
   --md-private-state-layer-color: var(--md-private-fab-rendered-state-layer-color);
+  --md-private-state-layer-transition-duration: var(
+    --md-private-motion-expressive-fast-effects-duration
+  );
+  --md-private-state-layer-transition-easing: var(
+    --md-private-motion-expressive-fast-effects-easing
+  );
 
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: var(--md-fab-container-size);
-  height: var(--md-fab-container-size);
+  width: var(--md-private-fab-container-width);
+  height: var(--md-private-fab-container-height);
   border: 0;
   border-radius: var(--md-fab-container-shape);
   background: var(--md-private-fab-rendered-container-color);
   color: var(--md-private-fab-rendered-icon-color);
   box-shadow: var(--md-private-fab-rendered-elevation);
   cursor: pointer;
+  transition:
+    box-shadow var(--md-private-motion-expressive-fast-spatial-duration)
+      var(--md-private-motion-expressive-fast-spatial-easing),
+    color var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing),
+    background-color var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing);
   -webkit-tap-highlight-color: transparent;
 
   &:disabled {
@@ -161,7 +175,17 @@ if (import.meta.env.DEV) {
   &_color_primary {
     --md-comp-fab-primary-container-color: var(--md-sys-color-primary);
     --md-comp-fab-primary-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-fab-primary-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-fab-primary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-primary-focus-indicator-color: var(--md-sys-color-secondary);
+    --md-comp-fab-primary-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness);
+    --md-comp-fab-primary-focus-indicator-outline-offset: var(
+      --md-sys-state-focus-indicator-outer-offset
+    );
+
+    --md-focus-indicator-color: var(--md-comp-fab-primary-focus-indicator-color);
+    --md-focus-indicator-thickness: var(--md-comp-fab-primary-focus-indicator-thickness);
+    --md-focus-indicator-offset: var(--md-comp-fab-primary-focus-indicator-outline-offset);
     --md-comp-fab-primary-hovered-icon-color: var(--md-sys-color-on-primary);
     --md-comp-fab-primary-focused-icon-color: var(--md-sys-color-on-primary);
     --md-comp-fab-primary-pressed-icon-color: var(--md-sys-color-on-primary);
@@ -183,6 +207,7 @@ if (import.meta.env.DEV) {
 
     --md-private-fab-container-color: var(--md-comp-fab-primary-container-color);
     --md-private-fab-icon-color: var(--md-comp-fab-primary-icon-color);
+    --md-private-elevation-shadow-color: var(--md-comp-fab-primary-container-shadow-color);
     --md-private-fab-elevation: var(--md-comp-fab-primary-container-elevation);
     --md-private-fab-hover-icon-color: var(--md-comp-fab-primary-hovered-icon-color);
     --md-private-fab-focus-icon-color: var(--md-comp-fab-primary-focused-icon-color);
@@ -209,7 +234,19 @@ if (import.meta.env.DEV) {
   &_color_secondary {
     --md-comp-fab-secondary-container-color: var(--md-sys-color-secondary);
     --md-comp-fab-secondary-icon-color: var(--md-sys-color-on-secondary);
+    --md-comp-fab-secondary-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-fab-secondary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-secondary-focus-indicator-color: var(--md-sys-color-secondary);
+    --md-comp-fab-secondary-focus-indicator-thickness: var(
+      --md-sys-state-focus-indicator-thickness
+    );
+    --md-comp-fab-secondary-focus-indicator-outline-offset: var(
+      --md-sys-state-focus-indicator-outer-offset
+    );
+
+    --md-focus-indicator-color: var(--md-comp-fab-secondary-focus-indicator-color);
+    --md-focus-indicator-thickness: var(--md-comp-fab-secondary-focus-indicator-thickness);
+    --md-focus-indicator-offset: var(--md-comp-fab-secondary-focus-indicator-outline-offset);
     --md-comp-fab-secondary-hovered-icon-color: var(--md-sys-color-on-secondary);
     --md-comp-fab-secondary-focused-icon-color: var(--md-sys-color-on-secondary);
     --md-comp-fab-secondary-pressed-icon-color: var(--md-sys-color-on-secondary);
@@ -231,6 +268,7 @@ if (import.meta.env.DEV) {
 
     --md-private-fab-container-color: var(--md-comp-fab-secondary-container-color);
     --md-private-fab-icon-color: var(--md-comp-fab-secondary-icon-color);
+    --md-private-elevation-shadow-color: var(--md-comp-fab-secondary-container-shadow-color);
     --md-private-fab-elevation: var(--md-comp-fab-secondary-container-elevation);
     --md-private-fab-hover-icon-color: var(--md-comp-fab-secondary-hovered-icon-color);
     --md-private-fab-focus-icon-color: var(--md-comp-fab-secondary-focused-icon-color);
@@ -261,7 +299,17 @@ if (import.meta.env.DEV) {
   &_color_tertiary {
     --md-comp-fab-tertiary-container-color: var(--md-sys-color-tertiary);
     --md-comp-fab-tertiary-icon-color: var(--md-sys-color-on-tertiary);
+    --md-comp-fab-tertiary-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-fab-tertiary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-fab-tertiary-focus-indicator-color: var(--md-sys-color-secondary);
+    --md-comp-fab-tertiary-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness);
+    --md-comp-fab-tertiary-focus-indicator-outline-offset: var(
+      --md-sys-state-focus-indicator-outer-offset
+    );
+
+    --md-focus-indicator-color: var(--md-comp-fab-tertiary-focus-indicator-color);
+    --md-focus-indicator-thickness: var(--md-comp-fab-tertiary-focus-indicator-thickness);
+    --md-focus-indicator-offset: var(--md-comp-fab-tertiary-focus-indicator-outline-offset);
     --md-comp-fab-tertiary-hovered-icon-color: var(--md-sys-color-on-tertiary);
     --md-comp-fab-tertiary-focused-icon-color: var(--md-sys-color-on-tertiary);
     --md-comp-fab-tertiary-pressed-icon-color: var(--md-sys-color-on-tertiary);
@@ -283,6 +331,7 @@ if (import.meta.env.DEV) {
 
     --md-private-fab-container-color: var(--md-comp-fab-tertiary-container-color);
     --md-private-fab-icon-color: var(--md-comp-fab-tertiary-icon-color);
+    --md-private-elevation-shadow-color: var(--md-comp-fab-tertiary-container-shadow-color);
     --md-private-fab-elevation: var(--md-comp-fab-tertiary-container-elevation);
     --md-private-fab-hover-icon-color: var(--md-comp-fab-tertiary-hovered-icon-color);
     --md-private-fab-focus-icon-color: var(--md-comp-fab-tertiary-focused-icon-color);
@@ -309,6 +358,7 @@ if (import.meta.env.DEV) {
   &_color_primary-container {
     --md-comp-fab-primary-container-container-color: var(--md-sys-color-primary-container);
     --md-comp-fab-primary-container-icon-color: var(--md-sys-color-on-primary-container);
+    --md-comp-fab-primary-container-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-fab-primary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-primary-container-hovered-icon-color: var(--md-sys-color-on-primary-container);
     --md-comp-fab-primary-container-focused-icon-color: var(--md-sys-color-on-primary-container);
@@ -337,6 +387,9 @@ if (import.meta.env.DEV) {
 
     --md-private-fab-container-color: var(--md-comp-fab-primary-container-container-color);
     --md-private-fab-icon-color: var(--md-comp-fab-primary-container-icon-color);
+    --md-private-elevation-shadow-color: var(
+      --md-comp-fab-primary-container-container-shadow-color
+    );
     --md-private-fab-elevation: var(--md-comp-fab-primary-container-container-elevation);
     --md-private-fab-hover-icon-color: var(--md-comp-fab-primary-container-hovered-icon-color);
     --md-private-fab-focus-icon-color: var(--md-comp-fab-primary-container-focused-icon-color);
@@ -373,6 +426,7 @@ if (import.meta.env.DEV) {
   &_color_secondary-container {
     --md-comp-fab-secondary-container-container-color: var(--md-sys-color-secondary-container);
     --md-comp-fab-secondary-container-icon-color: var(--md-sys-color-on-secondary-container);
+    --md-comp-fab-secondary-container-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-fab-secondary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-secondary-container-hovered-icon-color: var(
       --md-sys-color-on-secondary-container
@@ -407,6 +461,9 @@ if (import.meta.env.DEV) {
 
     --md-private-fab-container-color: var(--md-comp-fab-secondary-container-container-color);
     --md-private-fab-icon-color: var(--md-comp-fab-secondary-container-icon-color);
+    --md-private-elevation-shadow-color: var(
+      --md-comp-fab-secondary-container-container-shadow-color
+    );
     --md-private-fab-elevation: var(--md-comp-fab-secondary-container-container-elevation);
     --md-private-fab-hover-icon-color: var(--md-comp-fab-secondary-container-hovered-icon-color);
     --md-private-fab-focus-icon-color: var(--md-comp-fab-secondary-container-focused-icon-color);
@@ -443,6 +500,7 @@ if (import.meta.env.DEV) {
   &_color_tertiary-container {
     --md-comp-fab-tertiary-container-container-color: var(--md-sys-color-tertiary-container);
     --md-comp-fab-tertiary-container-icon-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-fab-tertiary-container-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-fab-tertiary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-fab-tertiary-container-hovered-icon-color: var(--md-sys-color-on-tertiary-container);
     --md-comp-fab-tertiary-container-focused-icon-color: var(--md-sys-color-on-tertiary-container);
@@ -471,6 +529,9 @@ if (import.meta.env.DEV) {
 
     --md-private-fab-container-color: var(--md-comp-fab-tertiary-container-container-color);
     --md-private-fab-icon-color: var(--md-comp-fab-tertiary-container-icon-color);
+    --md-private-elevation-shadow-color: var(
+      --md-comp-fab-tertiary-container-container-shadow-color
+    );
     --md-private-fab-elevation: var(--md-comp-fab-tertiary-container-container-elevation);
     --md-private-fab-hover-icon-color: var(--md-comp-fab-tertiary-container-hovered-icon-color);
     --md-private-fab-focus-icon-color: var(--md-comp-fab-tertiary-container-focused-icon-color);
@@ -521,31 +582,37 @@ if (import.meta.env.DEV) {
   }
 
   &_size_regular {
+    --md-comp-fab-container-width: 56dp;
     --md-comp-fab-container-height: 56dp;
     --md-comp-fab-icon-size: 24dp;
     --md-comp-fab-container-shape: var(--md-sys-shape-corner-large);
 
-    --md-fab-container-size: var(--md-comp-fab-container-height);
+    --md-private-fab-container-width: var(--md-comp-fab-container-width);
+    --md-private-fab-container-height: var(--md-comp-fab-container-height);
     --md-fab-icon-size: var(--md-comp-fab-icon-size);
     --md-fab-container-shape: var(--md-comp-fab-container-shape);
   }
 
   &_size_medium {
+    --md-comp-fab-medium-container-width: 80dp;
     --md-comp-fab-medium-container-height: 80dp;
     --md-comp-fab-medium-icon-size: 28dp;
     --md-comp-fab-medium-container-shape: var(--md-sys-shape-corner-large-increased);
 
-    --md-fab-container-size: var(--md-comp-fab-medium-container-height);
+    --md-private-fab-container-width: var(--md-comp-fab-medium-container-width);
+    --md-private-fab-container-height: var(--md-comp-fab-medium-container-height);
     --md-fab-icon-size: var(--md-comp-fab-medium-icon-size);
     --md-fab-container-shape: var(--md-comp-fab-medium-container-shape);
   }
 
   &_size_large {
+    --md-comp-fab-large-container-width: 96dp;
     --md-comp-fab-large-container-height: 96dp;
     --md-comp-fab-large-icon-size: 36dp;
     --md-comp-fab-large-container-shape: var(--md-sys-shape-corner-extra-large);
 
-    --md-fab-container-size: var(--md-comp-fab-large-container-height);
+    --md-private-fab-container-width: var(--md-comp-fab-large-container-width);
+    --md-private-fab-container-height: var(--md-comp-fab-large-container-height);
     --md-fab-icon-size: var(--md-comp-fab-large-icon-size);
     --md-fab-container-shape: var(--md-comp-fab-large-container-shape);
   }

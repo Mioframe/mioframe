@@ -54,6 +54,7 @@ const onPointerLeave = (buttonId: ToolbarButtonId) => {
                   ? 'sort'
                   : 'search'
           "
+          color="standard"
           @click="onClick(buttonId)"
         />
       </span>

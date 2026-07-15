@@ -37,9 +37,9 @@ const meta = {
           '',
           '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target via `.md-button__target`.',
           '',
-          "**Toggle shape**: selected toggle buttons morph container shape per size (round input shape morphs to the size's square corner token, square input shape morphs to a fully-rounded corner token); the pressed shape always takes precedence over the selected shape. Disabled selected-toggle buttons explicitly exclude the selected-color selector so a higher-specificity `.md-button_selected` rule cannot outrank `:disabled`.",
+          "**Toggle shape**: selected toggle buttons morph container shape per size (round input shape morphs to the size's square corner token, square input shape morphs to a fully-rounded corner token); the pressed shape always takes precedence over the selected shape, and the selected shape is preserved while disabled (pressed cannot activate while disabled, so it never overrides selected there).",
           '',
-          '**Text toggle**: `variant="toggle"` with `color="text"` is supported (Material 3 guidelines list text buttons among the five toggle-capable styles). `md.comp.button.text` has no dedicated `selected`/`unselected` color tokens, so a selected text toggle keeps its default label/icon color and only the shape and `aria-pressed` change.',
+          '**Unsupported: text toggle**: the verified Material Button specs state that toggle buttons do not use the text style, and the color matrix publishes no text selected/unselected routes. `color="text"` combined with `variant="toggle"` normalizes the applied variant to `"default"`: no `aria-pressed`, `selected` ignored, no selected shape or classes, and a development warning is logged. Ordinary `color="text"` `variant="default"` is unaffected.',
           '',
           '**Text spacing**: text buttons use the same per-size `leading-space`/`trailing-space` tokens as every other color style (no fixed small-size padding override).',
         ].join('\n'),
@@ -141,6 +141,27 @@ export const ToggleInteractionStates: Story = {
           <MDButton label="Disabled selected" variant="toggle" selected disabled color="tonal">
             <template #icon>+</template>
           </MDButton>
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const DisabledSelectedOutlinedAndText: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-disabled-selected-outlined-text" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 2">
+        <div class="visual-row"><span class="visual-gallery-label">Outlined unselected disabled</span><span class="visual-gallery-label">Outlined selected disabled</span></div>
+        <div class="visual-row">
+          <MDButton data-testid="outlined-unselected-disabled" label="Unselected" variant="toggle" disabled color="outlined" />
+          <MDButton data-testid="outlined-selected-disabled" label="Selected" variant="toggle" selected disabled color="outlined" />
+        </div>
+        <div class="visual-row"><span class="visual-gallery-label">Text disabled</span><span aria-hidden="true"></span></div>
+        <div class="visual-row">
+          <MDButton data-testid="text-disabled" label="Disabled text" color="text" disabled />
+          <span aria-hidden="true"></span>
         </div>
       </div>
     `,
@@ -695,20 +716,6 @@ export const DefaultToggleRoleMatrix: Story = {
             </MDStateLayerForcedStateProvider>
           </template>
         </div>
-      </div>
-    `,
-  }),
-};
-
-export const TextToggleRouting: Story = {
-  render: () => ({
-    components: { MDButton, MDStateLayerForcedStateProvider },
-    template: `
-      <div class="visual-checker-backdrop">
-        <MDButton data-testid="text-toggle-resting" label="Text selected" variant="toggle" selected color="text"><template #icon>+</template></MDButton>
-        <MDStateLayerForcedStateProvider hovered><MDButton data-testid="text-toggle-hover" class="md-state_hover" label="Text hover" variant="toggle" selected color="text"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
-        <MDStateLayerForcedStateProvider focused><MDButton data-testid="text-toggle-focus" class="md-state_focused" label="Text focus" variant="toggle" selected color="text"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
-        <MDStateLayerForcedStateProvider pressed><MDButton data-testid="text-toggle-pressed" class="md-state_pressed" label="Text pressed" variant="toggle" selected color="text"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
       </div>
     `,
   }),

@@ -202,7 +202,7 @@ test('MDIconButton disabled defaults cover standard, filled, tonal, and outlined
     getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.38'),
     getSysColorValue(page, '--md-sys-color-outline-variant'),
     getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.1'),
-    getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.12'),
+    getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.1'),
   ]);
   const cases = [
     ['standard', 'Disabled standard', 'rgba(0 0 0 0)'],
@@ -957,4 +957,49 @@ test('MDIconButton toggle interaction states match baseline', async ({ page }) =
   const surface = page.getByTestId('visual-md-icon-button-toggle-interaction-states');
 
   await expect(surface).toHaveScreenshot('md-icon-button-toggle-interaction-states.png');
+});
+
+test('MDIconButton per-size spring component tokens resolve to the fast-spatial system tokens', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--size-geometry-matrix');
+  const button = page.getByTestId('icon-geometry-small-default');
+
+  const [stiffness, damping] = await button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return [
+      style
+        .getPropertyValue(
+          '--md-comp-icon-button-small-pressed-container-corner-size-motion-spring-stiffness',
+        )
+        .trim(),
+      style
+        .getPropertyValue(
+          '--md-comp-icon-button-small-pressed-container-corner-size-motion-spring-damping',
+        )
+        .trim(),
+    ];
+  });
+
+  expect(stiffness).toBe('800');
+  // Chromium serializes a bare custom-property number token without its leading zero.
+  expect(damping).toBe('.6');
+});
+
+test('MDIconButton shape morph and color transitions use the documented Expressive Web motion durations', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-states');
+  const button = page.getByRole('button', { name: 'Filled', exact: true });
+
+  const transition = await button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { properties: style.transitionProperty, durations: style.transitionDuration };
+  });
+  const properties = transition.properties.split(',').map((value) => value.trim());
+  const durations = transition.durations.split(',').map((value) => value.trim());
+  const durationFor = (property: string) => durations[properties.indexOf(property)];
+
+  expect(durationFor('border-radius')).toBe('0.35s');
+  expect(durationFor('color')).toBe('0.15s');
 });

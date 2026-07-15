@@ -137,6 +137,7 @@ const onRenameViewCompleted = () => {
         <MDIconButton
           tooltip="Managing content sorting"
           md-symbol-name="info"
+          color="standard"
           class="md-margin-left-2"
           show-tooltip-on-click
         >

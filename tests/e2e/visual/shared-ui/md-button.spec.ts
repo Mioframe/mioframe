@@ -264,42 +264,17 @@ test('MDButton toggle interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-button-toggle-interaction-states.png');
 });
 
-test('MDButton text toggle selects without the removed color restriction', async ({ page }) => {
+test('MDButton normalizes color="text" + variant="toggle" to the default variant', async ({
+  page,
+}) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--toggle-text');
 
   const button = page.getByRole('button', { name: 'Bookmark' });
 
-  await expect(button).toHaveAttribute('aria-pressed', 'true');
-  await expect(button).toHaveClass(/md-button_selected/);
-});
-
-test('MDButton text toggle keeps normal text-button color routes while applying selected shape', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdbutton--text-toggle-routing');
-  const primary = await getSysColorValue(page, '--md-sys-color-primary');
-  const resting = await readButtonVisuals(page, 'text-toggle-resting', {
-    labelSelector: '.md-button__label-text',
-    iconSelector: '.md-button__icon',
-  });
-  await expect(page.getByTestId('text-toggle-resting')).toHaveAttribute('aria-pressed', 'true');
-  expect(normalizeColorString(asColor(resting.labelColor))).toBe(primary);
-  expect(normalizeColorString(asColor(resting.iconColor))).toBe(primary);
-  await Promise.all(
-    (['hover', 'focus', 'pressed'] as const).map(async (state) => {
-      const sample = await readButtonVisuals(page, `text-toggle-${state}`, {
-        labelSelector: '.md-button__label-text',
-        iconSelector: '.md-button__icon',
-      });
-      expect(normalizeColorString(asColor(sample.labelColor))).toBe(primary);
-      expect(normalizeColorString(asColor(sample.iconColor))).toBe(primary);
-      expect(normalizeColorString(sample.stateLayerColor)).toBe(primary);
-    }),
-  );
-  const radius = await page
-    .getByTestId('text-toggle-resting')
-    .evaluate((el) => getComputedStyle(el).borderRadius);
-  expect(radius).not.toBe('9999px');
+  await expect(button).not.toHaveAttribute('aria-pressed');
+  await expect(button).not.toHaveClass(/md-button_selected/);
+  await expect(button).toHaveClass(/md-button_variant-default/);
+  await expect(button).not.toHaveClass(/md-button_variant-toggle/);
 });
 
 test('MDButton resting styles resolve to the documented Material color role by default', async ({
@@ -419,14 +394,12 @@ test('MDButton hover, focus, and pressed default state-layer opacity resolves to
 
 test('MDButton disabled defaults cover every materially distinct style route', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
-  const [disabledContent, outlineVariant, level0, disabledContainer, tonalDisabledContainer] =
-    await Promise.all([
-      getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.38'),
-      getSysColorValue(page, '--md-sys-color-outline-variant'),
-      getBoxShadowValue(page, 'var(--md-sys-elevation-level0)'),
-      getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.1'),
-      getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.12'),
-    ]);
+  const [disabledContent, outlineVariant, level0, disabledContainer] = await Promise.all([
+    getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.38'),
+    getSysColorValue(page, '--md-sys-color-outline-variant'),
+    getBoxShadowValue(page, 'var(--md-sys-elevation-level0)'),
+    getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.1'),
+  ]);
   await Promise.all(
     (['elevated', 'filled', 'tonal', 'outlined', 'text'] as const).map(async (style) => {
       const sample = await readButtonLocatorVisuals(
@@ -447,11 +420,7 @@ test('MDButton disabled defaults cover every materially distinct style route', a
         `${style} state layer`,
       ).toBe('0 0 0 / 0');
       expect(normalizeColorString(sample.background), `${style} container`).toBe(
-        style === 'outlined' || style === 'text'
-          ? 'rgba(0 0 0 0)'
-          : style === 'tonal'
-            ? tonalDisabledContainer
-            : disabledContainer,
+        style === 'outlined' ? 'rgba(0 0 0 0)' : disabledContainer,
       );
       if (style === 'outlined')
         expect(normalizeColorString(sample.borderColor)).toBe(outlineVariant);
@@ -1067,4 +1036,87 @@ test('MDButton loading keeps the accessible name, outer size, and enabled activa
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--loading-color-routing');
   await assertLoadingContract(page, 'button-resting-color', 'button-loading-color');
+});
+
+test('MDButton container shadow-color routes an override into the shared elevation bridge', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
+  const button = page.getByRole('button', { name: 'Filled', exact: true });
+
+  const defaultBridge = await button.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
+  );
+  const defaultShadow = await getSysColorValue(page, '--md-sys-color-shadow');
+  expect(normalizeColorString(defaultBridge)).toBe(defaultShadow);
+
+  await button.evaluate((el) => {
+    el.style.setProperty('--md-comp-button-filled-container-shadow-color', 'rgb(1, 2, 3)');
+  });
+  const overriddenBridge = await button.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
+  );
+  expect(normalizeColorString(overriddenBridge)).toBe('1 2 3');
+});
+
+test('MDButton per-size spring component tokens resolve to the fast-spatial system tokens', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--size-geometry-matrix');
+  const button = page.getByTestId('geometry-small-round');
+
+  const [stiffness, damping] = await button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return [
+      style
+        .getPropertyValue(
+          '--md-comp-button-small-pressed-container-corner-size-motion-spring-stiffness',
+        )
+        .trim(),
+      style
+        .getPropertyValue(
+          '--md-comp-button-small-pressed-container-corner-size-motion-spring-damping',
+        )
+        .trim(),
+    ];
+  });
+
+  expect(stiffness).toBe('800');
+  // Chromium serializes a bare custom-property number token without its leading zero.
+  expect(damping).toBe('.6');
+});
+
+test('MDButton shape morph and color transitions use the documented Expressive Web motion durations', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
+  const button = page.getByRole('button', { name: 'Filled', exact: true });
+
+  const transition = await button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { properties: style.transitionProperty, durations: style.transitionDuration };
+  });
+  const properties = transition.properties.split(',').map((value) => value.trim());
+  const durations = transition.durations.split(',').map((value) => value.trim());
+  const durationFor = (property: string) => durations[properties.indexOf(property)];
+
+  expect(durationFor('border-radius')).toBe('0.35s');
+  expect(durationFor('box-shadow')).toBe('0.35s');
+  expect(durationFor('color')).toBe('0.15s');
+  expect(durationFor('background-color')).toBe('0.15s');
+});
+
+test('MDStateLayer state-layer transition uses the Button family fast-effects mapping', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
+  const stateLayer = page
+    .getByRole('button', { name: 'Filled', exact: true })
+    .locator('.md-state-layer');
+
+  const duration = await stateLayer.evaluate((el) =>
+    getComputedStyle(el).transitionDuration.trim(),
+  );
+
+  expect(duration).toBe('0.15s');
 });

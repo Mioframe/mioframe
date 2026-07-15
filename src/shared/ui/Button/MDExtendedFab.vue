@@ -124,13 +124,13 @@ useRipple(buttonEl);
 
 <style scoped>
 .md-extended-fab {
-  /* Focus indicator: md.comp.extended-fab.{primary,secondary,tertiary}.focus.indicator.color
-     resolves to the secondary role; no distinct tokens exist for the *-container styles
-     (documented gap), so the global focus-indicator default (--md-sys-color-secondary) is
-     reused for all six styles without a component override. */
+  /* Focus indicator: md.comp.extended-fab.{primary,secondary,tertiary}.focus.indicator.*
+     publish component tokens (routed below); the *-container styles publish no distinct
+     focus indicator tokens (documented gap), so they keep the generic system default. */
   --md-fab-icon-size: 24dp;
   --md-fab-container-size: 56dp;
-  --md-fab-horizontal-padding: 16dp;
+  --md-private-extended-fab-leading-space: 16dp;
+  --md-private-extended-fab-trailing-space: 16dp;
   --md-fab-container-shape: var(--md-sys-shape-corner-large);
   --md-extended-fab-icon-label-space: 8dp;
   --md-private-extended-fab-container-color: transparent;
@@ -169,6 +169,12 @@ useRipple(buttonEl);
   --md-private-state-focus-state-layer-opacity: var(--md-sys-state-focus-state-layer-opacity);
   --md-private-state-pressed-state-layer-opacity: var(--md-sys-state-pressed-state-layer-opacity);
   --md-private-state-layer-color: var(--md-private-extended-fab-rendered-state-layer-color);
+  --md-private-state-layer-transition-duration: var(
+    --md-private-motion-expressive-fast-effects-duration
+  );
+  --md-private-state-layer-transition-easing: var(
+    --md-private-motion-expressive-fast-effects-easing
+  );
 
   position: relative;
   display: inline-flex;
@@ -176,13 +182,21 @@ useRipple(buttonEl);
   gap: var(--md-extended-fab-icon-label-space);
   min-width: var(--md-fab-container-size);
   height: var(--md-fab-container-size);
-  padding: 0 var(--md-fab-horizontal-padding);
+  padding-inline: var(--md-private-extended-fab-leading-space)
+    var(--md-private-extended-fab-trailing-space);
   border: 0;
   border-radius: var(--md-fab-container-shape);
   background: var(--md-private-extended-fab-rendered-container-color);
   color: var(--md-private-extended-fab-rendered-label-color);
   box-shadow: var(--md-private-extended-fab-rendered-elevation);
   cursor: pointer;
+  transition:
+    box-shadow var(--md-private-motion-expressive-fast-spatial-duration)
+      var(--md-private-motion-expressive-fast-spatial-easing),
+    color var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing),
+    background-color var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing);
   -webkit-tap-highlight-color: transparent;
 
   &:disabled {
@@ -193,7 +207,19 @@ useRipple(buttonEl);
     --md-comp-extended-fab-primary-container-color: var(--md-sys-color-primary);
     --md-comp-extended-fab-primary-label-text-color: var(--md-sys-color-on-primary);
     --md-comp-extended-fab-primary-icon-color: var(--md-sys-color-on-primary);
+    --md-comp-extended-fab-primary-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-extended-fab-primary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-primary-focus-indicator-color: var(--md-sys-color-secondary);
+    --md-comp-extended-fab-primary-focus-indicator-thickness: var(
+      --md-sys-state-focus-indicator-thickness
+    );
+    --md-comp-extended-fab-primary-focus-indicator-outline-offset: var(
+      --md-sys-state-focus-indicator-outer-offset
+    );
+
+    --md-focus-indicator-color: var(--md-comp-extended-fab-primary-focus-indicator-color);
+    --md-focus-indicator-thickness: var(--md-comp-extended-fab-primary-focus-indicator-thickness);
+    --md-focus-indicator-offset: var(--md-comp-extended-fab-primary-focus-indicator-outline-offset);
     --md-comp-extended-fab-primary-hovered-label-text-color: var(--md-sys-color-on-primary);
     --md-comp-extended-fab-primary-focused-label-text-color: var(--md-sys-color-on-primary);
     --md-comp-extended-fab-primary-pressed-label-text-color: var(--md-sys-color-on-primary);
@@ -219,6 +245,7 @@ useRipple(buttonEl);
     --md-private-extended-fab-container-color: var(--md-comp-extended-fab-primary-container-color);
     --md-private-extended-fab-label-color: var(--md-comp-extended-fab-primary-label-text-color);
     --md-private-extended-fab-icon-color: var(--md-comp-extended-fab-primary-icon-color);
+    --md-private-elevation-shadow-color: var(--md-comp-extended-fab-primary-container-shadow-color);
     --md-private-extended-fab-elevation: var(--md-comp-extended-fab-primary-container-elevation);
     --md-private-extended-fab-hover-label-color: var(
       --md-comp-extended-fab-primary-hovered-label-text-color
@@ -271,7 +298,21 @@ useRipple(buttonEl);
     --md-comp-extended-fab-secondary-container-color: var(--md-sys-color-secondary);
     --md-comp-extended-fab-secondary-label-text-color: var(--md-sys-color-on-secondary);
     --md-comp-extended-fab-secondary-icon-color: var(--md-sys-color-on-secondary);
+    --md-comp-extended-fab-secondary-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-extended-fab-secondary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-secondary-focus-indicator-color: var(--md-sys-color-secondary);
+    --md-comp-extended-fab-secondary-focus-indicator-thickness: var(
+      --md-sys-state-focus-indicator-thickness
+    );
+    --md-comp-extended-fab-secondary-focus-indicator-outline-offset: var(
+      --md-sys-state-focus-indicator-outer-offset
+    );
+
+    --md-focus-indicator-color: var(--md-comp-extended-fab-secondary-focus-indicator-color);
+    --md-focus-indicator-thickness: var(--md-comp-extended-fab-secondary-focus-indicator-thickness);
+    --md-focus-indicator-offset: var(
+      --md-comp-extended-fab-secondary-focus-indicator-outline-offset
+    );
     --md-comp-extended-fab-secondary-hovered-label-text-color: var(--md-sys-color-on-secondary);
     --md-comp-extended-fab-secondary-focused-label-text-color: var(--md-sys-color-on-secondary);
     --md-comp-extended-fab-secondary-pressed-label-text-color: var(--md-sys-color-on-secondary);
@@ -299,6 +340,9 @@ useRipple(buttonEl);
     );
     --md-private-extended-fab-label-color: var(--md-comp-extended-fab-secondary-label-text-color);
     --md-private-extended-fab-icon-color: var(--md-comp-extended-fab-secondary-icon-color);
+    --md-private-elevation-shadow-color: var(
+      --md-comp-extended-fab-secondary-container-shadow-color
+    );
     --md-private-extended-fab-elevation: var(--md-comp-extended-fab-secondary-container-elevation);
     --md-private-extended-fab-hover-label-color: var(
       --md-comp-extended-fab-secondary-hovered-label-text-color
@@ -351,7 +395,21 @@ useRipple(buttonEl);
     --md-comp-extended-fab-tertiary-container-color: var(--md-sys-color-tertiary);
     --md-comp-extended-fab-tertiary-label-text-color: var(--md-sys-color-on-tertiary);
     --md-comp-extended-fab-tertiary-icon-color: var(--md-sys-color-on-tertiary);
+    --md-comp-extended-fab-tertiary-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-extended-fab-tertiary-container-elevation: var(--md-sys-elevation-level3);
+    --md-comp-extended-fab-tertiary-focus-indicator-color: var(--md-sys-color-secondary);
+    --md-comp-extended-fab-tertiary-focus-indicator-thickness: var(
+      --md-sys-state-focus-indicator-thickness
+    );
+    --md-comp-extended-fab-tertiary-focus-indicator-outline-offset: var(
+      --md-sys-state-focus-indicator-outer-offset
+    );
+
+    --md-focus-indicator-color: var(--md-comp-extended-fab-tertiary-focus-indicator-color);
+    --md-focus-indicator-thickness: var(--md-comp-extended-fab-tertiary-focus-indicator-thickness);
+    --md-focus-indicator-offset: var(
+      --md-comp-extended-fab-tertiary-focus-indicator-outline-offset
+    );
     --md-comp-extended-fab-tertiary-hovered-label-text-color: var(--md-sys-color-on-tertiary);
     --md-comp-extended-fab-tertiary-focused-label-text-color: var(--md-sys-color-on-tertiary);
     --md-comp-extended-fab-tertiary-pressed-label-text-color: var(--md-sys-color-on-tertiary);
@@ -377,6 +435,9 @@ useRipple(buttonEl);
     --md-private-extended-fab-container-color: var(--md-comp-extended-fab-tertiary-container-color);
     --md-private-extended-fab-label-color: var(--md-comp-extended-fab-tertiary-label-text-color);
     --md-private-extended-fab-icon-color: var(--md-comp-extended-fab-tertiary-icon-color);
+    --md-private-elevation-shadow-color: var(
+      --md-comp-extended-fab-tertiary-container-shadow-color
+    );
     --md-private-extended-fab-elevation: var(--md-comp-extended-fab-tertiary-container-elevation);
     --md-private-extended-fab-hover-label-color: var(
       --md-comp-extended-fab-tertiary-hovered-label-text-color
@@ -431,6 +492,7 @@ useRipple(buttonEl);
       --md-sys-color-on-primary-container
     );
     --md-comp-extended-fab-primary-container-icon-color: var(--md-sys-color-on-primary-container);
+    --md-comp-extended-fab-primary-container-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-extended-fab-primary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-extended-fab-primary-container-hovered-label-text-color: var(
       --md-sys-color-on-primary-container
@@ -485,6 +547,9 @@ useRipple(buttonEl);
       --md-comp-extended-fab-primary-container-label-text-color
     );
     --md-private-extended-fab-icon-color: var(--md-comp-extended-fab-primary-container-icon-color);
+    --md-private-elevation-shadow-color: var(
+      --md-comp-extended-fab-primary-container-container-shadow-color
+    );
     --md-private-extended-fab-elevation: var(
       --md-comp-extended-fab-primary-container-container-elevation
     );
@@ -545,6 +610,7 @@ useRipple(buttonEl);
     --md-comp-extended-fab-secondary-container-icon-color: var(
       --md-sys-color-on-secondary-container
     );
+    --md-comp-extended-fab-secondary-container-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-extended-fab-secondary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-extended-fab-secondary-container-hovered-label-text-color: var(
       --md-sys-color-on-secondary-container
@@ -600,6 +666,9 @@ useRipple(buttonEl);
     );
     --md-private-extended-fab-icon-color: var(
       --md-comp-extended-fab-secondary-container-icon-color
+    );
+    --md-private-elevation-shadow-color: var(
+      --md-comp-extended-fab-secondary-container-container-shadow-color
     );
     --md-private-extended-fab-elevation: var(
       --md-comp-extended-fab-secondary-container-container-elevation
@@ -659,6 +728,7 @@ useRipple(buttonEl);
       --md-sys-color-on-tertiary-container
     );
     --md-comp-extended-fab-tertiary-container-icon-color: var(--md-sys-color-on-tertiary-container);
+    --md-comp-extended-fab-tertiary-container-container-shadow-color: var(--md-sys-color-shadow);
     --md-comp-extended-fab-tertiary-container-container-elevation: var(--md-sys-elevation-level3);
     --md-comp-extended-fab-tertiary-container-hovered-label-text-color: var(
       --md-sys-color-on-tertiary-container
@@ -713,6 +783,9 @@ useRipple(buttonEl);
       --md-comp-extended-fab-tertiary-container-label-text-color
     );
     --md-private-extended-fab-icon-color: var(--md-comp-extended-fab-tertiary-container-icon-color);
+    --md-private-elevation-shadow-color: var(
+      --md-comp-extended-fab-tertiary-container-container-shadow-color
+    );
     --md-private-extended-fab-elevation: var(
       --md-comp-extended-fab-tertiary-container-container-elevation
     );
@@ -799,7 +872,8 @@ useRipple(buttonEl);
     --md-fab-container-size: var(--md-comp-extended-fab-small-container-height);
     --md-fab-icon-size: var(--md-comp-extended-fab-small-icon-size);
     --md-fab-container-shape: var(--md-comp-extended-fab-small-container-shape);
-    --md-fab-horizontal-padding: var(--md-comp-extended-fab-small-leading-space);
+    --md-private-extended-fab-leading-space: var(--md-comp-extended-fab-small-leading-space);
+    --md-private-extended-fab-trailing-space: var(--md-comp-extended-fab-small-trailing-space);
     --md-extended-fab-icon-label-space: var(--md-comp-extended-fab-small-icon-label-space);
   }
 
@@ -814,7 +888,8 @@ useRipple(buttonEl);
     --md-fab-container-size: var(--md-comp-extended-fab-medium-container-height);
     --md-fab-icon-size: var(--md-comp-extended-fab-medium-icon-size);
     --md-fab-container-shape: var(--md-comp-extended-fab-medium-container-shape);
-    --md-fab-horizontal-padding: var(--md-comp-extended-fab-medium-leading-space);
+    --md-private-extended-fab-leading-space: var(--md-comp-extended-fab-medium-leading-space);
+    --md-private-extended-fab-trailing-space: var(--md-comp-extended-fab-medium-trailing-space);
     --md-extended-fab-icon-label-space: var(--md-comp-extended-fab-medium-icon-label-space);
   }
 
@@ -829,7 +904,8 @@ useRipple(buttonEl);
     --md-fab-container-size: var(--md-comp-extended-fab-large-container-height);
     --md-fab-icon-size: var(--md-comp-extended-fab-large-icon-size);
     --md-fab-container-shape: var(--md-comp-extended-fab-large-container-shape);
-    --md-fab-horizontal-padding: var(--md-comp-extended-fab-large-leading-space);
+    --md-private-extended-fab-leading-space: var(--md-comp-extended-fab-large-leading-space);
+    --md-private-extended-fab-trailing-space: var(--md-comp-extended-fab-large-trailing-space);
     --md-extended-fab-icon-label-space: var(--md-comp-extended-fab-large-icon-label-space);
   }
 

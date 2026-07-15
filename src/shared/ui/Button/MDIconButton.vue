@@ -9,7 +9,7 @@ const props = withDefaults(
   defineProps<{
     /** Native `<button>` `type`. Defaults to `"button"` so the control never submits a form by accident. */
     nativeType?: 'button' | 'submit' | 'reset' | undefined;
-    /** Material Icon Button color style. Defaults to `"standard"`. */
+    /** Material Icon Button color style. Defaults to `"filled"` (`md.comp.icon-button` official default). */
     color?: 'filled' | 'tonal' | 'outlined' | 'standard' | undefined;
     /** Native `disabled`. Blocks click, hover, focus, and pressed visuals; state-layer opacity forces to 0. */
     disabled?: boolean | undefined;
@@ -38,7 +38,7 @@ const props = withDefaults(
     shape?: 'round' | 'square' | undefined;
   }>(),
   {
-    color: 'standard',
+    color: 'filled',
     nativeType: 'button',
     variant: 'default',
     shape: 'round',
@@ -53,7 +53,12 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<{
-  /** Custom icon content. Falls back to an `MDSymbol` rendered from `mdSymbolName` when omitted. */
+  /**
+   * Custom icon content. Falls back to an `MDSymbol` rendered from `mdSymbolName` when omitted.
+   * Automatic selected/unselected fill (`--md-symbol-fill`) only applies to the built-in
+   * `MDSymbol` fallback; custom slot content is consumer-owned and must manage its own
+   * selected-state icon treatment.
+   */
   icon(): unknown;
   /** Rich tooltip body. When provided, an `MDRichTooltip` replaces the default `MDPlainTooltip`. */
   richTooltipContent(): unknown;
@@ -184,6 +189,12 @@ if (import.meta.env.DEV) {
   );
   --md-private-icon-button-icon-opacity: 1;
   --md-private-state-layer-color: var(--md-private-icon-button-rendered-state-layer-color);
+  --md-private-state-layer-transition-duration: var(
+    --md-private-motion-expressive-fast-effects-duration
+  );
+  --md-private-state-layer-transition-easing: var(
+    --md-private-motion-expressive-fast-effects-easing
+  );
 
   position: relative;
   display: inline-flex;
@@ -202,8 +213,15 @@ if (import.meta.env.DEV) {
   vertical-align: middle;
   cursor: pointer;
   user-select: none;
-  transition-property: color, background-color, border-color, border-radius;
-  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  transition:
+    border-radius var(--md-private-motion-expressive-fast-spatial-duration)
+      var(--md-private-motion-expressive-fast-spatial-easing),
+    color var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing),
+    background-color var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing),
+    border-color var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing);
   -webkit-tap-highlight-color: transparent;
 
   &:disabled {
@@ -241,8 +259,8 @@ if (import.meta.env.DEV) {
         var(--md-private-icon-button-icon-opacity)
     );
     background: transparent;
-    transition-property: opacity;
-    transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+    transition: opacity var(--md-private-motion-expressive-fast-effects-duration)
+      var(--md-private-motion-expressive-fast-effects-easing);
     --md-symbol-size: var(--md-icon-button-icon-size);
 
     .md-icon-button_loading & {
@@ -368,6 +386,12 @@ if (import.meta.env.DEV) {
       );
       --md-symbol-fill: 0;
 
+      /* Fill routes independently of disabled: selected built-in MDSymbol treatment survives
+         disabled even though selected colors below are gated to the enabled state. */
+      &.md-icon-button_selected {
+        --md-symbol-fill: 1;
+      }
+
       &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-icon-button-filled-selected-container-color: var(--md-sys-color-primary);
         --md-comp-icon-button-filled-selected-icon-color: var(--md-sys-color-on-primary);
@@ -405,7 +429,6 @@ if (import.meta.env.DEV) {
         --md-private-icon-button-pressed-state-layer-color: var(
           --md-comp-icon-button-filled-selected-pressed-state-layer-color
         );
-        --md-symbol-fill: 1;
       }
     }
   }
@@ -435,7 +458,7 @@ if (import.meta.env.DEV) {
       --md-sys-state-pressed-state-layer-opacity
     );
     --md-comp-icon-button-tonal-disabled-container-color: var(--md-sys-color-on-surface);
-    --md-comp-icon-button-tonal-disabled-container-opacity: 0.12;
+    --md-comp-icon-button-tonal-disabled-container-opacity: 0.1;
     --md-comp-icon-button-tonal-disabled-icon-color: var(--md-sys-color-on-surface);
     --md-comp-icon-button-tonal-disabled-icon-opacity: 0.38;
 
@@ -523,6 +546,10 @@ if (import.meta.env.DEV) {
       );
       --md-symbol-fill: 0;
 
+      &.md-icon-button_selected {
+        --md-symbol-fill: 1;
+      }
+
       &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-icon-button-tonal-selected-container-color: var(--md-sys-color-secondary);
         --md-comp-icon-button-tonal-selected-icon-color: var(--md-sys-color-on-secondary);
@@ -560,7 +587,6 @@ if (import.meta.env.DEV) {
         --md-private-icon-button-pressed-state-layer-color: var(
           --md-comp-icon-button-tonal-selected-pressed-state-layer-color
         );
-        --md-symbol-fill: 1;
       }
     }
   }
@@ -685,6 +711,10 @@ if (import.meta.env.DEV) {
       );
       --md-symbol-fill: 0;
 
+      &.md-icon-button_selected {
+        --md-symbol-fill: 1;
+      }
+
       &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-icon-button-outlined-selected-container-color: var(
           --md-sys-color-inverse-surface
@@ -735,7 +765,23 @@ if (import.meta.env.DEV) {
         --md-private-icon-button-pressed-state-layer-color: var(
           --md-comp-icon-button-outlined-selected-pressed-state-layer-color
         );
-        --md-symbol-fill: 1;
+      }
+
+      /* No published md.comp.icon-button.outlined.selected.disabled.outline.color route; the
+         disabled outline falls through to the base outlined-disabled route below. Icon color
+         also falls through to the base outlined-disabled route (on-surface @ 0.38), which is
+         the same value the spec publishes for both selected and unselected disabled icons. */
+      &.md-icon-button_selected.md-state_disabled,
+      &.md-icon-button_selected:disabled {
+        --md-comp-icon-button-outlined-selected-disabled-container-color: var(
+          --md-sys-color-on-surface
+        );
+        --md-comp-icon-button-outlined-selected-disabled-container-opacity: 0.1;
+
+        --md-private-icon-button-disabled-container-color: rgb(
+          from var(--md-comp-icon-button-outlined-selected-disabled-container-color) r g b /
+            var(--md-comp-icon-button-outlined-selected-disabled-container-opacity)
+        );
       }
     }
   }
@@ -845,6 +891,10 @@ if (import.meta.env.DEV) {
       );
       --md-symbol-fill: 0;
 
+      &.md-icon-button_selected {
+        --md-symbol-fill: 1;
+      }
+
       &.md-icon-button_selected:not(.md-state_disabled):not(:disabled) {
         --md-comp-icon-button-standard-selected-icon-color: var(--md-sys-color-primary);
         --md-comp-icon-button-standard-selected-hovered-icon-color: var(--md-sys-color-primary);
@@ -880,7 +930,6 @@ if (import.meta.env.DEV) {
         --md-private-icon-button-pressed-state-layer-color: var(
           --md-comp-icon-button-standard-selected-pressed-state-layer-color
         );
-        --md-symbol-fill: 1;
       }
     }
   }
@@ -905,6 +954,12 @@ if (import.meta.env.DEV) {
         --md-sys-shape-corner-medium
       );
       --md-comp-icon-button-xsmall-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-icon-button-xsmall-pressed-container-corner-size-motion-spring-stiffness: var(
+        --md-sys-motion-spring-fast-spatial-stiffness
+      );
+      --md-comp-icon-button-xsmall-pressed-container-corner-size-motion-spring-damping: var(
+        --md-sys-motion-spring-fast-spatial-damping
+      );
       --md-comp-icon-button-xsmall-outlined-outline-width: 1dp;
 
       --md-icon-button-container-height: var(--md-comp-icon-button-xsmall-container-height);
@@ -931,7 +986,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xsmall-selected-container-shape-round
           );
@@ -940,7 +995,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xsmall-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xsmall-selected-container-shape-square
           );
@@ -964,6 +1019,12 @@ if (import.meta.env.DEV) {
       --md-comp-icon-button-small-pressed-container-shape: var(--md-sys-shape-corner-small);
       --md-comp-icon-button-small-selected-container-shape-round: var(--md-sys-shape-corner-medium);
       --md-comp-icon-button-small-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-icon-button-small-pressed-container-corner-size-motion-spring-stiffness: var(
+        --md-sys-motion-spring-fast-spatial-stiffness
+      );
+      --md-comp-icon-button-small-pressed-container-corner-size-motion-spring-damping: var(
+        --md-sys-motion-spring-fast-spatial-damping
+      );
       --md-comp-icon-button-small-outlined-outline-width: 1dp;
 
       --md-icon-button-container-height: var(--md-comp-icon-button-small-container-height);
@@ -990,7 +1051,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-small-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-small-selected-container-shape-round
           );
@@ -999,7 +1060,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-small-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-small-selected-container-shape-square
           );
@@ -1023,6 +1084,12 @@ if (import.meta.env.DEV) {
       --md-comp-icon-button-medium-pressed-container-shape: var(--md-sys-shape-corner-medium);
       --md-comp-icon-button-medium-selected-container-shape-round: var(--md-sys-shape-corner-large);
       --md-comp-icon-button-medium-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-icon-button-medium-pressed-container-corner-size-motion-spring-stiffness: var(
+        --md-sys-motion-spring-fast-spatial-stiffness
+      );
+      --md-comp-icon-button-medium-pressed-container-corner-size-motion-spring-damping: var(
+        --md-sys-motion-spring-fast-spatial-damping
+      );
       --md-comp-icon-button-medium-outlined-outline-width: 1dp;
 
       --md-icon-button-container-height: var(--md-comp-icon-button-medium-container-height);
@@ -1048,7 +1115,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-medium-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-medium-selected-container-shape-round
           );
@@ -1057,7 +1124,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-medium-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-medium-selected-container-shape-square
           );
@@ -1083,6 +1150,12 @@ if (import.meta.env.DEV) {
         --md-sys-shape-corner-extra-large
       );
       --md-comp-icon-button-large-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-icon-button-large-pressed-container-corner-size-motion-spring-stiffness: var(
+        --md-sys-motion-spring-fast-spatial-stiffness
+      );
+      --md-comp-icon-button-large-pressed-container-corner-size-motion-spring-damping: var(
+        --md-sys-motion-spring-fast-spatial-damping
+      );
       --md-comp-icon-button-large-outlined-outline-width: 2dp;
 
       --md-icon-button-container-height: var(--md-comp-icon-button-large-container-height);
@@ -1108,7 +1181,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-large-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-large-selected-container-shape-round
           );
@@ -1117,7 +1190,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-large-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-large-selected-container-shape-square
           );
@@ -1143,6 +1216,12 @@ if (import.meta.env.DEV) {
         --md-sys-shape-corner-extra-large
       );
       --md-comp-icon-button-xlarge-selected-container-shape-square: var(--md-sys-shape-corner-full);
+      --md-comp-icon-button-xlarge-pressed-container-corner-size-motion-spring-stiffness: var(
+        --md-sys-motion-spring-fast-spatial-stiffness
+      );
+      --md-comp-icon-button-xlarge-pressed-container-corner-size-motion-spring-damping: var(
+        --md-sys-motion-spring-fast-spatial-damping
+      );
       --md-comp-icon-button-xlarge-outlined-outline-width: 3dp;
 
       --md-icon-button-container-height: var(--md-comp-icon-button-xlarge-container-height);
@@ -1168,7 +1247,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-round {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-container-shape-round);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xlarge-selected-container-shape-round
           );
@@ -1177,7 +1256,7 @@ if (import.meta.env.DEV) {
       &.md-icon-button_shape-square {
         --md-icon-button-container-shape: var(--md-comp-icon-button-xlarge-container-shape-square);
 
-        &.md-icon-button_selected:not(.md-state_disabled):not(:disabled):not(.md-state_pressed) {
+        &.md-icon-button_selected:not(.md-state_pressed) {
           --md-icon-button-container-shape: var(
             --md-comp-icon-button-xlarge-selected-container-shape-square
           );
@@ -1256,7 +1335,6 @@ if (import.meta.env.DEV) {
     );
     --md-private-icon-button-rendered-state-layer-color: transparent;
     --md-private-icon-button-icon-opacity: var(--md-private-icon-button-disabled-icon-opacity, 1);
-    --md-symbol-fill: 0;
   }
 }
 </style>

@@ -79,7 +79,7 @@ useFocusIndicator();
             @action="onAction"
           >
             <template #trailingAction>
-              <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
+              <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" color="standard" />
             </template>
           </MDListItem>
         </MDStateLayerForcedStateProvider>
@@ -106,7 +106,12 @@ useFocusIndicator();
           @action="onAction"
         >
           <template #trailingAction>
-            <MDIconButton class="md-state_hover" tooltip="Options" md-symbol-name="more_vert" />
+            <MDIconButton
+              class="md-state_hover"
+              tooltip="Options"
+              md-symbol-name="more_vert"
+              color="standard"
+            />
           </template>
         </MDListItem>
       </MDList>

@@ -39,6 +39,7 @@ const onClickDisconnect = (event: MouseEvent) => {
       <MDIconButton
         tooltip="Disconnect Mioframe space"
         md-symbol-name="link_off"
+        color="standard"
         @click="onClickDisconnect"
       />
     </template>

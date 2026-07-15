@@ -23,7 +23,7 @@ const meta = {
         component: [
           'Checked against Material 3 `components/icon-buttons/{overview,guidelines,specs,accessibility}`.',
           '',
-          '**Props**: `variant` (`default` | `toggle`, default `default`), `color` (`filled` | `tonal` | `outlined` | `standard`, default `standard`), `size` (`extra-small` | `small` | `medium` | `large` | `extra-large`, default `small`), `width` (`narrow` | `default` | `wide`, default `default`), `shape` (`round` | `square`, default `round`), `nativeType` (`button` | `submit` | `reset`, default `button`), required `tooltip`, `selected`, `disabled`.',
+          '**Props**: `variant` (`default` | `toggle`, default `default`), `color` (`filled` | `tonal` | `outlined` | `standard`, default `filled` — the official `md.comp.icon-button` default; existing product consumers migrated to explicit `color="standard"` to preserve their prior appearance), `size` (`extra-small` | `small` | `medium` | `large` | `extra-large`, default `small`), `width` (`narrow` | `default` | `wide`, default `default`), `shape` (`round` | `square`, default `round`), `nativeType` (`button` | `submit` | `reset`, default `button`), required `tooltip`, `selected`, `disabled`.',
           '',
           '**Slots**: `icon`, `richTooltipContent`.',
           '',
@@ -39,7 +39,7 @@ const meta = {
           '',
           '**Outlined outline width**: scales by size per `md.comp.icon-button.<size>.outlined.outline.width` (xsmall/small/medium 1dp, large 2dp, xlarge 3dp). The outlined interaction contract exposes one official outline-color token, `--md-comp-icon-button-outlined-outline-color`; hover, focus, and pressed vary icon and state-layer values, not the outline token name.',
           '',
-          '**Disabled precedence**: disabled selected-toggle controls explicitly exclude the active hover/focus/pressed and selected-color selectors so a higher-specificity `.md-icon-button_selected` rule cannot outrank `:disabled`.',
+          '**Disabled precedence**: disabled selected-toggle controls explicitly exclude the active hover/focus/pressed and selected-color selectors so a higher-specificity `.md-icon-button_selected` rule cannot outrank `:disabled`. `aria-pressed`, the selected container shape, and the selected built-in `MDSymbol` fill route independently of disabled and are preserved. Outlined selected-disabled uses the published `on-surface @ 0.1` container route; tonal disabled container opacity is `0.1`.',
         ].join('\n'),
       },
     },
@@ -69,20 +69,20 @@ export const VisualStates: Story = {
       <div data-testid="visual-md-icon-button-states" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 2">
         <div class="visual-row"><span class="visual-gallery-label">Standard enabled</span><span class="visual-gallery-label">Filled enabled</span><span class="visual-gallery-label">Outlined enabled</span></div>
         <div class="visual-row">
-          <MDIconButton tooltip="Standard" md-symbol-name="more_vert" />
+          <MDIconButton tooltip="Standard" color="standard" md-symbol-name="more_vert" />
           <MDIconButton tooltip="Filled" color="filled" md-symbol-name="favorite" />
           <MDIconButton tooltip="Outlined" color="outlined" md-symbol-name="edit" />
         </div>
         <div class="visual-row"><span class="visual-gallery-label">Tonal enabled</span><span class="visual-gallery-label">Selected</span><span class="visual-gallery-label">Disabled standard</span></div>
         <div class="visual-row">
           <MDIconButton tooltip="Tonal" color="tonal" md-symbol-name="bookmark" />
-          <MDIconButton tooltip="Selected toggle" variant="toggle" selected md-symbol-name="check" />
-          <MDIconButton tooltip="Disabled standard" disabled md-symbol-name="block" />
+          <MDIconButton tooltip="Selected toggle" variant="toggle" selected color="standard" md-symbol-name="check" />
+          <MDIconButton tooltip="Disabled standard" color="standard" disabled md-symbol-name="block" />
         </div>
         <div class="visual-row"><span class="visual-gallery-label">Disabled unselected</span><span class="visual-gallery-label">Disabled selected</span><span class="visual-gallery-label">Disabled filled selected</span></div>
         <div class="visual-row">
-          <MDIconButton tooltip="Disabled standard toggle" variant="toggle" disabled md-symbol-name="bookmark" />
-          <MDIconButton tooltip="Disabled standard toggle selected" variant="toggle" selected disabled md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Disabled standard toggle" variant="toggle" color="standard" disabled md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Disabled standard toggle selected" variant="toggle" selected color="standard" disabled md-symbol-name="bookmark" />
           <MDIconButton tooltip="Disabled filled toggle selected" variant="toggle" selected color="filled" disabled md-symbol-name="favorite" />
         </div>
         <div class="visual-row"><span class="visual-gallery-label">Disabled tonal selected</span><span class="visual-gallery-label">Disabled outlined selected</span><span class="visual-gallery-label">Disabled outlined</span></div>
@@ -116,9 +116,9 @@ export const VisualInteractionStates: Story = {
       <div data-testid="visual-md-icon-button-interaction-states" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 3">
         <div class="visual-row"><span class="visual-gallery-heading">Standard</span><span class="visual-gallery-label">Hover</span><span class="visual-gallery-label">Focus</span><span class="visual-gallery-label">Pressed</span></div>
         <div class="visual-row"><span aria-hidden="true"></span>
-          <MDStateLayerForcedStateProvider hovered><MDIconButton class="md-state_hover" tooltip="Standard hover" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider focused><MDIconButton class="md-state_focused" tooltip="Standard focus" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider pressed><MDIconButton class="md-state_pressed" tooltip="Standard pressed" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider hovered><MDIconButton class="md-state_hover" tooltip="Standard hover" color="standard" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDIconButton class="md-state_focused" tooltip="Standard focus" color="standard" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDIconButton class="md-state_pressed" tooltip="Standard pressed" color="standard" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row"><span class="visual-gallery-heading">Filled</span><span class="visual-gallery-label">Hover</span><span class="visual-gallery-label">Focus</span><span class="visual-gallery-label">Pressed</span></div>
         <div class="visual-row"><span aria-hidden="true"></span>
@@ -273,6 +273,7 @@ export const DisabledStatePrecedence: Story = {
     template: `
       <div data-testid="visual-md-icon-button-disabled-state-precedence" class="visual-checker-backdrop">
         <div class="visual-row">
+          <MDIconButton data-testid="disabled-resting-standard" tooltip="Disabled standard" color="standard" disabled md-symbol-name="edit" />
           <MDIconButton data-testid="disabled-resting" tooltip="Disabled outlined" color="outlined" disabled md-symbol-name="edit" />
           <MDStateLayerForcedStateProvider hovered>
             <MDIconButton data-testid="disabled-hover" class="md-state_hover" tooltip="Disabled outlined hover" color="outlined" disabled md-symbol-name="edit" />
@@ -310,9 +311,9 @@ export const TokenRoutingMatrix: Story = {
     template: `
       <div data-testid="visual-md-icon-button-token-routing" class="visual-checker-backdrop">
         <div class="visual-row">
-          <MDStateLayerForcedStateProvider hovered><MDIconButton data-testid="icon-button-standard-hover" class="md-state_hover" tooltip="Standard hover" md-symbol-name="edit" style="--md-comp-icon-button-standard-hovered-icon-color:rgb(240 20 20);--md-comp-icon-button-standard-hovered-state-layer-color:rgb(20 210 210);--md-comp-icon-button-standard-hovered-state-layer-opacity:0.04;" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider focused><MDIconButton data-testid="icon-button-standard-focus" class="md-state_focused" tooltip="Standard focus" md-symbol-name="edit" style="--md-comp-icon-button-standard-focused-icon-color:rgb(20 140 20);--md-comp-icon-button-standard-focused-state-layer-color:rgb(210 20 210);--md-comp-icon-button-standard-focused-state-layer-opacity:0.18;" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider pressed><MDIconButton data-testid="icon-button-standard-pressed" class="md-state_pressed" tooltip="Standard pressed" md-symbol-name="edit" style="--md-comp-icon-button-standard-pressed-icon-color:rgb(20 20 240);--md-comp-icon-button-standard-pressed-state-layer-color:rgb(210 130 20);--md-comp-icon-button-standard-pressed-state-layer-opacity:0.30;" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider hovered><MDIconButton data-testid="icon-button-standard-hover" class="md-state_hover" tooltip="Standard hover" color="standard" md-symbol-name="edit" style="--md-comp-icon-button-standard-hovered-icon-color:rgb(240 20 20);--md-comp-icon-button-standard-hovered-state-layer-color:rgb(20 210 210);--md-comp-icon-button-standard-hovered-state-layer-opacity:0.04;" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider focused><MDIconButton data-testid="icon-button-standard-focus" class="md-state_focused" tooltip="Standard focus" color="standard" md-symbol-name="edit" style="--md-comp-icon-button-standard-focused-icon-color:rgb(20 140 20);--md-comp-icon-button-standard-focused-state-layer-color:rgb(210 20 210);--md-comp-icon-button-standard-focused-state-layer-opacity:0.18;" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDIconButton data-testid="icon-button-standard-pressed" class="md-state_pressed" tooltip="Standard pressed" color="standard" md-symbol-name="edit" style="--md-comp-icon-button-standard-pressed-icon-color:rgb(20 20 240);--md-comp-icon-button-standard-pressed-state-layer-color:rgb(210 130 20);--md-comp-icon-button-standard-pressed-state-layer-opacity:0.30;" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
           <MDStateLayerForcedStateProvider hovered>
@@ -476,6 +477,7 @@ export const TokenRoutingMatrix: Story = {
               tooltip="Standard selected pressed"
               variant="toggle"
               selected
+              color="standard"
               md-symbol-name="bookmark"
               style="
                 --md-comp-icon-button-standard-selected-pressed-icon-color: rgb(180 0 180);
@@ -490,6 +492,7 @@ export const TokenRoutingMatrix: Story = {
               class="md-state_pressed"
               tooltip="Standard unselected pressed"
               variant="toggle"
+              color="standard"
               md-symbol-name="bookmark"
               style="
                 --md-comp-icon-button-standard-unselected-pressed-icon-color: rgb(0 90 0);

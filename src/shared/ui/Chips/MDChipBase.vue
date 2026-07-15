@@ -133,6 +133,7 @@ const onDragEnd = () => {
       :tooltip="closeTooltip"
       md-symbol-name="close"
       size="extra-small"
+      color="standard"
       :disabled="props.disabled"
       class="md-chip__close-btn"
       @click="onClickClose"

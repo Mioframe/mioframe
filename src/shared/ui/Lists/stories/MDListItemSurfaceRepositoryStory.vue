@@ -27,7 +27,7 @@ const onAction = () => {};
             <h4 class="md-list-item-surface-repository-story__repo-title">Documents</h4>
             <p class="md-list-item-surface-repository-story__repo-supporting-text">2 documents</p>
           </div>
-          <MDIconButton tooltip="How documents are stored" md-symbol-name="info" />
+          <MDIconButton tooltip="How documents are stored" md-symbol-name="info" color="standard" />
         </div>
 
         <div id="surface-context-repository-standard-list">
@@ -52,7 +52,11 @@ const onAction = () => {};
                 <MDSymbol name="description" />
               </template>
               <template #trailingAction>
-                <MDIconButton tooltip="Manage document" md-symbol-name="more_vert" />
+                <MDIconButton
+                  tooltip="Manage document"
+                  md-symbol-name="more_vert"
+                  color="standard"
+                />
               </template>
             </MDListItem>
           </MDList>

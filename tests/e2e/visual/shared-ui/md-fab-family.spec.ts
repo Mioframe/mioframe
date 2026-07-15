@@ -731,3 +731,99 @@ test('MDExtendedFab interaction states match baseline', async ({ page }) => {
 
   await expect(surface).toHaveScreenshot('md-extended-fab-interaction-states.png');
 });
+
+test('MDFab width and height are independently overridable through exact official component tokens', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--default');
+  const fab = page.getByRole('button');
+
+  const beforeOverride = await fab.boundingBox();
+  expect(beforeOverride?.width).toBe(56);
+  expect(beforeOverride?.height).toBe(56);
+
+  await fab.evaluate((el) => {
+    el.style.setProperty('--md-comp-fab-container-width', '120px');
+  });
+  const afterWidthOverride = await fab.boundingBox();
+  expect(afterWidthOverride?.width).toBe(120);
+  expect(afterWidthOverride?.height).toBe(56);
+});
+
+test('MDExtendedFab leading and trailing space are independently overridable through exact official component tokens', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--default');
+  const fab = page.getByRole('button');
+
+  await fab.evaluate((el) => {
+    el.style.setProperty('--md-comp-extended-fab-small-leading-space', '40px');
+    el.style.setProperty('--md-comp-extended-fab-small-trailing-space', '10px');
+  });
+  const [paddingLeft, paddingRight] = await fab.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return [style.paddingLeft, style.paddingRight];
+  });
+  expect(paddingLeft).toBe('40px');
+  expect(paddingRight).toBe('10px');
+});
+
+test('MDFab container shadow-color routes an override into the shared elevation bridge', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
+  const fab = page.getByRole('button', { name: 'Primary', exact: true });
+
+  const defaultBridge = await fab.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
+  );
+  const defaultShadow = await getSysColorValue(page, '--md-sys-color-shadow');
+  expect(normalizeColorString(defaultBridge)).toBe(defaultShadow);
+
+  await fab.evaluate((el) => {
+    el.style.setProperty('--md-comp-fab-primary-container-shadow-color', 'rgb(12, 34, 56)');
+  });
+  const overriddenBridge = await fab.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
+  );
+  expect(normalizeColorString(overriddenBridge)).toBe('12 34 56');
+});
+
+test('MDExtendedFab container shadow-color routes an override into the shared elevation bridge', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdextendedfab--visual-states');
+  const fab = page.getByRole('button', { name: 'Primary', exact: true });
+
+  await fab.evaluate((el) => {
+    el.style.setProperty(
+      '--md-comp-extended-fab-primary-container-shadow-color',
+      'rgb(65, 43, 21)',
+    );
+  });
+  const overriddenBridge = await fab.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
+  );
+  expect(normalizeColorString(overriddenBridge)).toBe('65 43 21');
+});
+
+test('MDFab plain-style focus-indicator component tokens route into the generic focus-indicator contract', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
+  const fab = page.getByRole('button', { name: 'Primary', exact: true });
+
+  const defaultRouted = await fab.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue('--md-focus-indicator-color').trim(),
+  );
+  const defaultSecondary = await getSysColorValue(page, '--md-sys-color-secondary');
+  expect(normalizeColorString(defaultRouted)).toBe(defaultSecondary);
+
+  await fab.evaluate((el) => {
+    el.style.setProperty('--md-comp-fab-primary-focus-indicator-color', 'rgb(9, 8, 7)');
+  });
+  const overrideRouted = await fab.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue('--md-focus-indicator-color').trim(),
+  );
+  expect(normalizeColorString(overrideRouted)).toBe('9 8 7');
+});

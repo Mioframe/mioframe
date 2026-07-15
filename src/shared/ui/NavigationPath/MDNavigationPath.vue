@@ -46,6 +46,7 @@ const onClickPath = (targetPath: string) => {
     <MDIconButton
       tooltip="Home"
       md-symbol-name="home"
+      color="standard"
       class="md-navigation-path__home-button"
       @click="onClickHome"
     />

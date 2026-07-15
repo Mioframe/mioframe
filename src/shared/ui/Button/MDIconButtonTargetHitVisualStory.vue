@@ -15,7 +15,13 @@ const onClick = () => {
     class="visual-checker-backdrop md-icon-button-target-hit"
   >
     <div class="md-icon-button-target-hit__stage">
-      <MDIconButton tooltip="Expanded target" size="small" md-symbol-name="add" @click="onClick" />
+      <MDIconButton
+        tooltip="Expanded target"
+        size="small"
+        md-symbol-name="add"
+        color="standard"
+        @click="onClick"
+      />
     </div>
     <p class="md-icon-button-target-hit__status">
       Click count:
