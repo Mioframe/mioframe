@@ -35,11 +35,12 @@ Do not begin with broad repository exploration or unrelated component comparison
 
 ## Architecture profile
 
-Apply the exact profile rules from `component-architecture.md`:
+Configuration routing and state resolution are independent. Apply the exact profile rules from `component-architecture.md`:
 
-- `simple`: Vue and rendering layers;
-- `configured`: add configuration routes;
-- `stateful`: add configuration routes and state resolution;
+- `simple`: neither routes nor state resolution;
+- `configured`: routes only;
+- `stateful`: state resolution only;
+- `configured-stateful`: routes and state resolution;
 - add a component token file only when the component owns at least one exact official token;
 - add a family token file only under the documented multi-component ownership condition.
 
@@ -75,8 +76,10 @@ Wrapper components call the current shared UI API directly or expose a wrapper-o
 
 - Token files contain only exact official `--md-comp-*` defaults on approved roots and never depend on active configuration or state.
 - Route files select configuration values only.
-- State files select semantic banks, resolve properties independently, and map generic foundation bridges.
+- State files resolve semantic and interaction state independently per property and map state-varying generic foundation bridges.
 - Rendering files apply final values to actual DOM owners and own layout, geometry, transitions, and presentation.
+- Static properties apply canonical or documented sources directly; configured non-stateful properties may apply route variables directly.
+- Create a rendered private value only for state-resolved output or when a generic bridge needs a stable final input.
 - Do not apply one state precedence to every property.
 - Do not rely on inheritance when the blueprint names a more specific owner.
 - Do not use `:deep()` to style another component's internal anatomy.
@@ -84,7 +87,7 @@ Wrapper components call the current shared UI API directly or expose a wrapper-o
 
 ## Generic foundations
 
-Generic state-layer, ripple, focus-indicator, elevation, and motion primitives read only generic private contracts. The consuming family maps its final value into the generic bridge.
+Generic state-layer, ripple, focus-indicator, elevation, and motion primitives read only generic private contracts. The consuming family maps the shortest applicable final source into the generic bridge.
 
 Do not move family routes into foundations or create a generic Material base, runtime token registry, token resolver, CSS DSL, or cross-family state machine.
 
@@ -114,7 +117,7 @@ Use `MD_TYPESCALE` constants and `.md-typescale-*` classes from `shared/lib/md` 
 Use the smallest proof set covering the supported surface:
 
 - component contract tests for API, native semantics, ARIA, invalid combinations, and component-owned behavior;
-- architecture validation for profile, exact applicable layers, token ownership, and private boundaries;
+- architecture validation for profile, exact applicable layers, token ownership, private boundaries, and alias necessity;
 - browser checks for focus, keyboard, pointer, gestures, computed CSS, public overrides, and actual property owners;
 - matrix checks for reachable property resolvers and simultaneous outputs;
 - representative Storybook and visual coverage for materially different geometry or appearance;
@@ -122,4 +125,4 @@ Use the smallest proof set covering the supported surface:
 
 Do not test Vue, browser, or generic foundation internals that the component does not own.
 
-Before completion, verify that family README, production code, registry, Storybook, and tests agree. Do not report completion with empty layers, known violations, unsupported claims, parallel obsolete logic, or unrequested abstractions.
+Before completion, verify that family README, production code, registry, Storybook, and tests agree. Do not report completion with empty layers, unnecessary aliases, known violations, unsupported claims, parallel obsolete logic, or unrequested abstractions.
