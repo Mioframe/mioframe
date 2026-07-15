@@ -10,14 +10,14 @@ The goal is consistent proof across component families without duplicating brows
 
 Every new or migrated public Material component records this profile in its family README:
 
-| Layer | Required artifact | Purpose |
-| --- | --- | --- |
-| Architecture validation | verify-managed static checks | Location, dependency direction, profile, tokens, layers, state-matrix coverage, and registry consistency. |
-| Component contract | colocated `<Component>.test.ts` | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and structural wiring that does not require a browser. |
-| State matrix | Storybook `StateMatrix` story | Human-readable visual reference containing every supported visual state and every distinct state-rendering route. |
-| Visual regression | Playwright screenshot of the state matrix | Detect unintended rendered changes and provide a stable diff for human review. |
-| Browser behavior | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-dependent behavior owned by the component. |
-| Pure behavior | focused Vitest tests when applicable | Extracted pure helpers, composables, state transitions, timing decisions, or cleanup logic. |
+| Layer                   | Required artifact                                 | Purpose                                                                                                                                |
+| ----------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture validation | verify-managed static checks                      | Location, dependency direction, profile, tokens, layers, state-matrix coverage, and registry consistency.                              |
+| Component contract      | colocated `<Component>.test.ts`                   | Public props, emits, slots, native owner, ARIA, defaults, invalid combinations, and structural wiring that does not require a browser. |
+| State matrix            | Storybook `StateMatrix` story                     | Human-readable visual reference containing every supported visual state and every distinct state-rendering route.                      |
+| Visual regression       | Playwright screenshot of the state matrix         | Detect unintended rendered changes and provide a stable diff for human review.                                                         |
+| Browser behavior        | focused Storybook Playwright spec when applicable | Real focus, keyboard, pointer, touch, drag, overlay, responsive, and browser-dependent behavior owned by the component.                |
+| Pure behavior           | focused Vitest tests when applicable              | Extracted pure helpers, composables, state transitions, timing decisions, or cleanup logic.                                            |
 
 A layer is not replaced by another layer. In particular:
 
