@@ -677,14 +677,22 @@ export const DefaultToggleRoleMatrix: Story = {
   render: () => ({
     components: { MDButton, MDStateLayerForcedStateProvider },
     setup() {
-      return { BUTTON_TOGGLE_STYLES };
+      return { BUTTON_TOGGLE_STYLES, BUTTON_TOGGLE_INTERACTION_STATES };
     },
     template: `
       <div data-testid="visual-md-button-default-toggle-role-matrix" class="visual-checker-backdrop">
         <div v-for="style in BUTTON_TOGGLE_STYLES" :key="style" class="visual-row">
           <template v-for="selected in [false, true]" :key="String(selected)">
             <MDButton :data-testid="'default-button-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-resting'" :label="style + ' ' + (selected ? 'selected' : 'unselected') + ' resting'" variant="toggle" :selected="selected" :color="style"><template #icon>+</template></MDButton>
-            <MDStateLayerForcedStateProvider hovered><MDButton :data-testid="'default-button-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-hover'" class="md-state_hover" :label="style + ' ' + (selected ? 'selected' : 'unselected') + ' hover'" variant="toggle" :selected="selected" :color="style"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
+            <MDStateLayerForcedStateProvider
+              v-for="state in BUTTON_TOGGLE_INTERACTION_STATES"
+              :key="state"
+              :hovered="state === 'hover'"
+              :focused="state === 'focus'"
+              :pressed="state === 'pressed'"
+            >
+              <MDButton :data-testid="'default-button-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-' + state" :class="'md-state_' + (state === 'focus' ? 'focused' : state)" :label="style + ' ' + (selected ? 'selected' : 'unselected') + ' ' + state" variant="toggle" :selected="selected" :color="style"><template #icon>+</template></MDButton>
+            </MDStateLayerForcedStateProvider>
           </template>
         </div>
       </div>
@@ -814,6 +822,10 @@ const BUTTON_TOGGLE_ADDITIONAL_STATES: Record<
 interface ButtonToggleBranchTokens {
   /** Resting container color. Omitted where the style publishes none (outlined unselected). */
   container?: string;
+  /** Resting label color. */
+  restingLabel: string;
+  /** Resting icon color. */
+  restingIcon: string;
   /** Hover-forced label color. */
   label: string;
   /** Hover-forced icon color. */
@@ -840,12 +852,16 @@ const BUTTON_TOGGLE_MATRIX: Record<
   elevated: {
     selected: {
       container: 'rgb(10 60 10)',
+      restingLabel: 'rgb(11 61 12)',
+      restingIcon: 'rgb(13 62 14)',
       label: 'rgb(200 255 200)',
       icon: 'rgb(255 210 0)',
       stateLayerColor: 'rgb(0 200 160)',
     },
     unselected: {
       container: 'rgb(10 10 90)',
+      restingLabel: 'rgb(11 12 91)',
+      restingIcon: 'rgb(13 14 92)',
       label: 'rgb(190 210 255)',
       icon: 'rgb(255 120 180)',
       stateLayerColor: 'rgb(150 80 0)',
@@ -855,12 +871,16 @@ const BUTTON_TOGGLE_MATRIX: Record<
   filled: {
     selected: {
       container: 'rgb(120 20 20)',
+      restingLabel: 'rgb(121 21 22)',
+      restingIcon: 'rgb(122 23 24)',
       label: 'rgb(20 20 20)',
       icon: 'rgb(40 40 40)',
       stateLayerColor: 'rgb(180 0 0)',
     },
     unselected: {
       container: 'rgb(20 20 120)',
+      restingLabel: 'rgb(21 22 121)',
+      restingIcon: 'rgb(23 24 122)',
       label: 'rgb(50 50 50)',
       icon: 'rgb(70 70 70)',
       stateLayerColor: 'rgb(0 0 180)',
@@ -870,12 +890,16 @@ const BUTTON_TOGGLE_MATRIX: Record<
   tonal: {
     selected: {
       container: 'rgb(90 60 10)',
+      restingLabel: 'rgb(91 61 12)',
+      restingIcon: 'rgb(92 63 14)',
       label: 'rgb(255 240 200)',
       icon: 'rgb(255 255 0)',
       stateLayerColor: 'rgb(200 100 0)',
     },
     unselected: {
       container: 'rgb(10 90 60)',
+      restingLabel: 'rgb(11 91 62)',
+      restingIcon: 'rgb(13 92 64)',
       label: 'rgb(200 255 240)',
       icon: 'rgb(0 255 255)',
       stateLayerColor: 'rgb(0 120 200)',
@@ -885,12 +909,16 @@ const BUTTON_TOGGLE_MATRIX: Record<
   outlined: {
     selected: {
       container: 'rgb(60 10 90)',
+      restingLabel: 'rgb(61 12 91)',
+      restingIcon: 'rgb(63 14 92)',
       label: 'rgb(240 200 255)',
       icon: 'rgb(255 0 150)',
       stateLayerColor: 'rgb(150 0 255)',
       outline: 'rgb(200 0 120)',
     },
     unselected: {
+      restingLabel: 'rgb(211 212 213)',
+      restingIcon: 'rgb(2 251 121)',
       label: 'rgb(210 210 210)',
       icon: 'rgb(0 255 120)',
       stateLayerColor: 'rgb(0 90 255)',
@@ -906,6 +934,8 @@ const buttonToggleRestingStyle = (style: ButtonToggleStyle, branch: 'selected' |
   if (tokens.container !== undefined) {
     restingStyle[`--md-comp-button-${style}-${branch}-container-color`] = tokens.container;
   }
+  restingStyle[`--md-comp-button-${style}-${branch}-label-text-color`] = tokens.restingLabel;
+  restingStyle[`--md-comp-button-${style}-${branch}-icon-color`] = tokens.restingIcon;
   if (tokens.outline !== undefined) {
     restingStyle[`--md-comp-button-${style}-${branch}-outline-color`] = tokens.outline;
   }

@@ -741,7 +741,12 @@ test('MDIconButton selected/unselected defaults resolve through documented Mater
       selected: { container: 'inverse-surface', icon: 'inverse-on-surface' },
     },
   } as const;
-  const hoverOpacity = await getSysPropertyValue(page, '--md-sys-state-hover-state-layer-opacity');
+  const states = ['hover', 'focus', 'pressed'] as const;
+  const opacityVars = {
+    hover: '--md-sys-state-hover-state-layer-opacity',
+    focus: '--md-sys-state-focus-state-layer-opacity',
+    pressed: '--md-sys-state-pressed-state-layer-opacity',
+  } as const;
 
   await Promise.all(
     Object.entries(routes).flatMap(([style, branches]) =>
@@ -751,15 +756,22 @@ test('MDIconButton selected/unselected defaults resolve through documented Mater
         const resting = await readButtonVisuals(page, `default-toggle-${style}-${branch}-resting`, {
           iconSelector: '.md-icon-button__icon',
         });
-        const hover = await readButtonVisuals(page, `default-toggle-${style}-${branch}-hover`, {
-          iconSelector: '.md-icon-button__icon',
-        });
         expect(normalizeColorString(asColor(resting.iconColor))).toBe(expectedIcon);
-        expect(normalizeColorString(asColor(hover.iconColor))).toBe(expectedIcon);
-        expect(normalizeColorString(hover.stateLayerColor)).toBe(expectedIcon);
-        expect(hover.hoverOpacity).toBe(hoverOpacity);
-        expect(normalizeColorString(asColor(hover.stateLayerBackground))).toBe(
-          await getColorAtOpacity(page, `var(--md-sys-color-${route.icon})`, hoverOpacity),
+        await Promise.all(
+          states.map(async (state) => {
+            const opacity = await getSysPropertyValue(page, opacityVars[state]);
+            const sample = await readButtonVisuals(
+              page,
+              `default-toggle-${style}-${branch}-${state}`,
+              { iconSelector: '.md-icon-button__icon' },
+            );
+            expect(normalizeColorString(asColor(sample.iconColor))).toBe(expectedIcon);
+            expect(normalizeColorString(sample.stateLayerColor)).toBe(expectedIcon);
+            expect(sample[`${state}Opacity`]).toBe(opacity);
+            expect(normalizeColorString(asColor(sample.stateLayerBackground))).toBe(
+              await getColorAtOpacity(page, `var(--md-sys-color-${route.icon})`, opacity),
+            );
+          }),
         );
         if ('container' in route)
           expect(normalizeColorString(resting.background)).toBe(
@@ -768,6 +780,10 @@ test('MDIconButton selected/unselected defaults resolve through documented Mater
         if ('outline' in route)
           expect(normalizeColorString(resting.borderColor)).toBe(
             await getSysColorValue(page, `--md-sys-color-${route.outline}`),
+          );
+        if (style === 'outlined' && branch === 'selected')
+          expect(normalizeColorString(resting.borderColor)).toBe(
+            normalizeColorString(resting.background),
           );
       }),
     ),

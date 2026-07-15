@@ -514,15 +514,21 @@ export const DefaultToggleRoleMatrix: Story = {
   render: () => ({
     components: { MDIconButton, MDStateLayerForcedStateProvider },
     setup() {
-      return { ICON_BUTTON_TOGGLE_STYLES };
+      return { ICON_BUTTON_TOGGLE_STYLES, ICON_BUTTON_TOGGLE_INTERACTION_STATES };
     },
     template: `
       <div data-testid="visual-md-icon-button-default-toggle-role-matrix" class="visual-checker-backdrop">
         <div v-for="style in ICON_BUTTON_TOGGLE_STYLES" :key="style" class="visual-row">
           <template v-for="selected in [false, true]" :key="String(selected)">
             <MDIconButton :data-testid="'default-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-resting'" :tooltip="style + ' ' + (selected ? 'selected' : 'unselected') + ' resting'" variant="toggle" :selected="selected" :color="style" md-symbol-name="bookmark" />
-            <MDStateLayerForcedStateProvider hovered>
-              <MDIconButton :data-testid="'default-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-hover'" class="md-state_hover" :tooltip="style + ' ' + (selected ? 'selected' : 'unselected') + ' hover'" variant="toggle" :selected="selected" :color="style" md-symbol-name="bookmark" />
+            <MDStateLayerForcedStateProvider
+              v-for="state in ICON_BUTTON_TOGGLE_INTERACTION_STATES"
+              :key="state"
+              :hovered="state === 'hover'"
+              :focused="state === 'focus'"
+              :pressed="state === 'pressed'"
+            >
+              <MDIconButton :data-testid="'default-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-' + state" :class="'md-state_' + (state === 'focus' ? 'focused' : state)" :tooltip="style + ' ' + (selected ? 'selected' : 'unselected') + ' ' + state" variant="toggle" :selected="selected" :color="style" md-symbol-name="bookmark" />
             </MDStateLayerForcedStateProvider>
           </template>
         </div>

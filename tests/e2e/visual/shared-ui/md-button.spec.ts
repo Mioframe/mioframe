@@ -740,6 +740,8 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
     {
       selected: {
         container?: string;
+        restingLabel: string;
+        restingIcon: string;
         label: string;
         icon: string;
         stateLayerColor: string;
@@ -747,6 +749,8 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
       };
       unselected: {
         container?: string;
+        restingLabel: string;
+        restingIcon: string;
         label: string;
         icon: string;
         stateLayerColor: string;
@@ -758,12 +762,16 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
     elevated: {
       selected: {
         container: 'rgb(10 60 10)',
+        restingLabel: 'rgb(11 61 12)',
+        restingIcon: 'rgb(13 62 14)',
         label: 'rgb(200 255 200)',
         icon: 'rgb(255 210 0)',
         stateLayerColor: 'rgb(0 200 160)',
       },
       unselected: {
         container: 'rgb(10 10 90)',
+        restingLabel: 'rgb(11 12 91)',
+        restingIcon: 'rgb(13 14 92)',
         label: 'rgb(190 210 255)',
         icon: 'rgb(255 120 180)',
         stateLayerColor: 'rgb(150 80 0)',
@@ -773,12 +781,16 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
     filled: {
       selected: {
         container: 'rgb(120 20 20)',
+        restingLabel: 'rgb(121 21 22)',
+        restingIcon: 'rgb(122 23 24)',
         label: 'rgb(20 20 20)',
         icon: 'rgb(40 40 40)',
         stateLayerColor: 'rgb(180 0 0)',
       },
       unselected: {
         container: 'rgb(20 20 120)',
+        restingLabel: 'rgb(21 22 121)',
+        restingIcon: 'rgb(23 24 122)',
         label: 'rgb(50 50 50)',
         icon: 'rgb(70 70 70)',
         stateLayerColor: 'rgb(0 0 180)',
@@ -788,12 +800,16 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
     tonal: {
       selected: {
         container: 'rgb(90 60 10)',
+        restingLabel: 'rgb(91 61 12)',
+        restingIcon: 'rgb(92 63 14)',
         label: 'rgb(255 240 200)',
         icon: 'rgb(255 255 0)',
         stateLayerColor: 'rgb(200 100 0)',
       },
       unselected: {
         container: 'rgb(10 90 60)',
+        restingLabel: 'rgb(11 91 62)',
+        restingIcon: 'rgb(13 92 64)',
         label: 'rgb(200 255 240)',
         icon: 'rgb(0 255 255)',
         stateLayerColor: 'rgb(0 120 200)',
@@ -803,12 +819,16 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
     outlined: {
       selected: {
         container: 'rgb(60 10 90)',
+        restingLabel: 'rgb(61 12 91)',
+        restingIcon: 'rgb(63 14 92)',
         label: 'rgb(240 200 255)',
         icon: 'rgb(255 0 150)',
         stateLayerColor: 'rgb(150 0 255)',
         outline: 'rgb(200 0 120)',
       },
       unselected: {
+        restingLabel: 'rgb(211 212 213)',
+        restingIcon: 'rgb(2 251 121)',
         label: 'rgb(210 210 210)',
         icon: 'rgb(0 255 120)',
         stateLayerColor: 'rgb(0 90 255)',
@@ -875,7 +895,10 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
         const entry = TOGGLE_MATRIX[style];
         const tokens = entry[branch];
 
-        const resting = await readButtonVisuals(page, `toggle-token-${style}-${branch}-resting`);
+        const resting = await readButtonVisuals(page, `toggle-token-${style}-${branch}-resting`, {
+          labelSelector: '.md-button__label-text',
+          iconSelector: '.md-button__icon',
+        });
         if (tokens.container !== undefined) {
           expect(normalizeColorString(resting.background), `${style} ${branch} container`).toBe(
             normalizeColorString(tokens.container),
@@ -886,6 +909,12 @@ test('MDButton selected/unselected hover, focus, and pressed token routing is in
             normalizeColorString(tokens.outline),
           );
         }
+        expect(normalizeColorString(asColor(resting.labelColor)), `${style} ${branch} label`).toBe(
+          normalizeColorString(tokens.restingLabel),
+        );
+        expect(normalizeColorString(asColor(resting.iconColor)), `${style} ${branch} icon`).toBe(
+          normalizeColorString(tokens.restingIcon),
+        );
 
         await Promise.all(
           (['hover', 'focus', 'pressed'] as const).map(async (state) => {
@@ -953,7 +982,12 @@ test('MDButton selected/unselected defaults resolve through documented Material 
       },
     },
   } as const;
-  const opacity = await getSysPropertyValue(page, '--md-sys-state-hover-state-layer-opacity');
+  const states = ['hover', 'focus', 'pressed'] as const;
+  const opacityVars = {
+    hover: '--md-sys-state-hover-state-layer-opacity',
+    focus: '--md-sys-state-focus-state-layer-opacity',
+    pressed: '--md-sys-state-pressed-state-layer-opacity',
+  } as const;
   await Promise.all(
     Object.entries(routes).flatMap(([style, branches]) =>
       (['selected', 'unselected'] as const).map(async (branch) => {
@@ -964,19 +998,24 @@ test('MDButton selected/unselected defaults resolve through documented Material 
           `default-button-toggle-${style}-${branch}-resting`,
           { labelSelector: '.md-button__label-text', iconSelector: '.md-button__icon' },
         );
-        const hover = await readButtonVisuals(
-          page,
-          `default-button-toggle-${style}-${branch}-hover`,
-          { labelSelector: '.md-button__label-text', iconSelector: '.md-button__icon' },
-        );
-        for (const sample of [resting, hover]) {
-          expect(normalizeColorString(asColor(sample.labelColor))).toBe(color);
-          expect(normalizeColorString(asColor(sample.iconColor))).toBe(color);
-        }
-        expect(normalizeColorString(hover.stateLayerColor)).toBe(color);
-        expect(hover.hoverOpacity).toBe(opacity);
-        expect(normalizeColorString(asColor(hover.stateLayerBackground))).toBe(
-          await getColorAtOpacity(page, `var(--md-sys-color-${route.content})`, opacity),
+        expect(normalizeColorString(asColor(resting.labelColor))).toBe(color);
+        expect(normalizeColorString(asColor(resting.iconColor))).toBe(color);
+        await Promise.all(
+          states.map(async (state) => {
+            const opacity = await getSysPropertyValue(page, opacityVars[state]);
+            const sample = await readButtonVisuals(
+              page,
+              `default-button-toggle-${style}-${branch}-${state}`,
+              { labelSelector: '.md-button__label-text', iconSelector: '.md-button__icon' },
+            );
+            expect(normalizeColorString(asColor(sample.labelColor))).toBe(color);
+            expect(normalizeColorString(asColor(sample.iconColor))).toBe(color);
+            expect(normalizeColorString(sample.stateLayerColor)).toBe(color);
+            expect(sample[`${state}Opacity`]).toBe(opacity);
+            expect(normalizeColorString(asColor(sample.stateLayerBackground))).toBe(
+              await getColorAtOpacity(page, `var(--md-sys-color-${route.content})`, opacity),
+            );
+          }),
         );
         if ('container' in route)
           expect(normalizeColorString(resting.background)).toBe(
