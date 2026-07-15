@@ -19,7 +19,7 @@ For non-local changes, write a short preflight artifact before the first product
 
 Required sections:
 
-0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat it. Confirm the verdict is `ready`, restate only decisions that affect planned edits, and verify the plan matches the handoff. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop.
+0. **Upstream handoff check**: if the task includes an architecture handoff, do not repeat it. Confirm the verdict is `ready`, restate only decisions that affect planned edits, and verify the plan matches the handoff. If a non-trivial task has no handoff and ownership, source of truth, or expected final state is unclear, stop. For public Material component work, also confirm the ready `MATERIAL COMPONENT CONTRACT` from `docs/material-3/component-architecture.md`.
 1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
 2. **Public entry points**: name the owning FSD layer and public APIs that must be used instead of deep imports.
 3. **Reuse**: identify existing helpers, components, configs, schemas, services, tests, or dependencies that already own nearby behavior.
@@ -47,13 +47,32 @@ For user-visible UI or UX changes, run `material3-guidelines` before choosing co
 
 For `.vue`, UI composable, shared UI, widget, pane/page, or feature UI changes, run `vue-component-implementation` and include its concise component contract. If that contract is unclear, implementation is not ready.
 
+## Public Material component architecture gate
+
+For a new or materially changed public shared `MD*` component, the preflight must record exactly one architecture outcome:
+
+- `Architecture impact: none` — a strictly local legacy repair preserves public API, native semantics, token contract, anatomy, supported states, precedence, and visual output outside the named defect;
+- `Architecture impact: layered-v1` — the upstream handoff supplies the complete ready contract and exact files required by `docs/material-3/component-architecture.md`;
+- `Architecture impact: blocked` — any required architecture or verification decision is unresolved.
+
+For `layered-v1`, the preflight verifies rather than redesigns:
+
+- `Architecture version`, `Change mode`, `Unresolved: none`, and `Readiness: ready` are present;
+- public API, anatomy owners, configuration axes, semantic states, interaction states, and precedence are fully resolved;
+- rendered property routes and actual DOM owners are named;
+- official token inventory, gaps, extensions, and deviations are named;
+- exact production and verification files are named;
+- consumer blast radius and verification matrix are complete.
+
+If the implementer would need to choose a file, helper, context, state owner, token route, property owner, precedence rule, unsupported surface, or verification exception, stop and return the handoff. Do not turn the choice into implementation detail.
+
 ## Scoped rule application
 
 Use the applicable nested `AGENTS.md` and domain skills as the source of detailed invariants. The preflight records decisions; it does not duplicate those rules.
 
 - For storage, service, worker, provider, cache, protocol, or lifecycle work, apply `src/AGENTS.md`, the applicable `src/shared/**/AGENTS.md`, and `crdt-storage`. Record the canonical fact owner, public path to UI, error owner, recovery owner, and forbidden UI reconstruction.
 - For work across `entities`, `features`, `widgets`, or `pages`, apply their nested `AGENTS.md`. Record the model/read/action/composition split and the public API used between layers.
-- For shared UI, apply `shared-ui-implementation` and `material3-guidelines`; record consumer blast radius and the browser/visual evidence required.
+- For shared UI, apply `shared-ui-implementation`, `material3-guidelines`, and `docs/material-3/component-architecture.md`; record architecture impact, consumer blast radius, and the browser/visual evidence required.
 - For diagnostics, apply `diagnostic-events` and the privacy rules under `src/AGENTS.md`; record only the boundary and safe diagnostic contract affected.
 
 A scoped rule conflict is a blocker. Resolve it before editing rather than choosing whichever wording permits the implementation.
@@ -69,7 +88,7 @@ For non-trivial UI, UX, or cross-layer refactors, additionally record:
 - affected shared UI primitives and consumer blast radius;
 - browser, visual, Storybook, e2e, mutation, and focused unit verification that applies.
 
-Before completion, compare the diff with this gate. If a scenario, invariant, owner, public API, or minimum-design decision changed during implementation, update the handoff/preflight and fix the implementation before claiming completion.
+Before completion, compare the diff with this gate. If a scenario, invariant, owner, public API, architecture decision, or minimum-design decision changed during implementation, update the handoff/preflight and fix the implementation before claiming completion.
 
 ## Breadth control
 
@@ -116,6 +135,6 @@ Considering a matrix item does not require implementing it. Include behavior onl
 
 ## Output discipline
 
-Keep the written preflight concise: usually 8-15 short lines plus a verification note. Do not repeat generic repository rules. Name only decisions and risks that apply.
+Keep the written preflight concise: usually 8-15 short lines plus a verification note. Do not repeat generic repository rules or the full Material component contract.
 
 Before final handoff, report whether the resulting diff still matches the architecture handoff. If it does not, fix the implementation or explicitly report the architectural divergence.
