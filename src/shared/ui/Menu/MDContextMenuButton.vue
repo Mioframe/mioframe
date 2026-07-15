@@ -58,6 +58,7 @@ const idMenu = sessionUniqueId('menu');
     :size="size"
     :tooltip="tooltip"
     :width="width"
+    color="standard"
     md-symbol-name="more_vert"
     aria-haspopup="menu"
     :aria-expanded="showMenu ? 'true' : 'false'"

@@ -1,5 +1,7 @@
 # Material 3 foundation audit details
 
+> **Historical document.** This audit records the pre-Button-pilot foundation state. It is not the current source of truth for Button-family (`MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab`) implementation status. Current Button-family status is maintained in [Component family audit](./component-family-audit.md) and [Component registry](./component-registry.md).
+
 This file extends [Material 3 foundation audit](./foundation-audit.md) with source-backed findings from the current code and the local Material 3 cache.
 
 ## Sources checked
@@ -40,7 +42,7 @@ The project can proceed with gradual Material 3 normalization, but not with broa
 
 The main problem is not missing components. The main problem is that the foundation is only partially normalized:
 
-- system tokens exist, but public component tokens are mostly missing;
+- system tokens exist, but public component tokens are mostly still missing outside the completed Button and Card pilots;
 - Material typography now uses `sp`, but broader component-token migration is still pending;
 - state-layer system tokens are now consumed by `MDStateLayer` for hover, focus, pressed, and dragged through a generic private bridge contract;
 - Storybook and visual tests exist for the strongest pilot families, but the hierarchy still uses legacy `shared/ui/...` names;
@@ -54,7 +56,7 @@ The main problem is not missing components. The main problem is that the foundat
 
 Gaps:
 
-- most component-family values remain local variables such as `--md-button-*`, `--md-icon-button-*`, `--md-fab-*`, `--md-list-item-*`, and field-local border/padding variables;
+- most component-family values remain local variables such as `--md-list-item-*`, `--md-chip-*`, `--md-menu-*`, and field-local border/padding variables (the Button family — `MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab` — has since migrated to public `--md-comp-button-*`/`--md-comp-icon-button-*`/`--md-comp-fab-*`/`--md-comp-extended-fab-*` tokens; see [Component family audit](./component-family-audit.md));
 - the debug fallback color now lives at `--app-debug-unknown-color`, which keeps it out of the public Material token surface;
 - `--md-sys-color-surface-tint-color` is already marked deprecated;
 - light/dark theme exists through `prefers-color-scheme`, but there is no explicit app-level theme override contract;
@@ -80,7 +82,7 @@ Decision: use the official `--md-sys-state-dragged-state-layer-opacity` token (`
 
 ### Storybook and visual coverage
 
-Current stories still use legacy titles such as `shared/ui/MDButton` instead of `Material 3/Components/...` or `Project UI/...`.
+Current stories still use legacy titles such as `shared/ui/MDTextField` instead of `Material 3/Components/...` or `Project UI/...`. (The Button family now uses `Material 3/Components/Buttons/...`; see [Component family audit](./component-family-audit.md).)
 
 Visual tests already cover:
 
@@ -117,12 +119,14 @@ Small focused implementation before the Buttons pilot:
 
 ### PR 2: Buttons pilot
 
+**Completed.** The pilot described below has been implemented (`MDButton`, `MDIconButton`, `MDFab`, `MDExtendedFab`); current status and remaining follow-up stages are tracked in [Component family audit](./component-family-audit.md).
+
 Scope:
 
 - `MDButton`;
 - `MDIconButton`;
 - `MDFab`;
-- `MDFabContainer` only as project-specific placement infrastructure;
+- `FabContainer` only as project-specific placement infrastructure;
 - related Storybook and visual tests.
 
 The pilot must introduce public `--md-comp-*` tokens, block or document invalid combinations, move stories to `Material 3/Components/...`, and keep visual/browser coverage green.

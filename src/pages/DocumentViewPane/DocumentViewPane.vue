@@ -85,6 +85,7 @@ const onCloseRenameDocument = () => {
             v-if="showRenameButton"
             tooltip="Rename document"
             md-symbol-name="edit"
+            color="standard"
             @click="onClickRenameDocument"
           />
         </template>

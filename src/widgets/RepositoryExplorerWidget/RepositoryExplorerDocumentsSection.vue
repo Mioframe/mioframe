@@ -93,6 +93,7 @@ const emptySupportingText = computed(() => {
       <MDIconButton
         tooltip="How documents are stored"
         md-symbol-name="info"
+        color="standard"
         @click="openStorageInfoSheet"
       />
     </div>

@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import MDIconButton from './MDIconButton.vue';
 
 const mountIconButton = (props: Record<string, unknown> = {}) =>
@@ -82,5 +82,93 @@ describe('MDIconButton', () => {
     expect(falseLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
     expect(absentLoadingWrapper.classes()).not.toContain('md-icon-button_loading');
     expect(absentLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
+  });
+
+  it('treats loading=true as an active, indeterminate loading state', () => {
+    const wrapper = mountIconButton({ loading: true });
+
+    expect(wrapper.classes()).toContain('md-icon-button_loading');
+    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
+      '0',
+    );
+  });
+
+  it('treats a positive numeric loading value as an active, determinate loading state', () => {
+    const wrapper = mountIconButton({ loading: 0.5 });
+
+    expect(wrapper.classes()).toContain('md-icon-button_loading');
+    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
+      '0.5',
+    );
+  });
+
+  it('defaults nativeType to "button" and reflects an explicit nativeType', () => {
+    const defaultWrapper = mountIconButton();
+    expect(defaultWrapper.get('button').attributes('type')).toBe('button');
+
+    const submitWrapper = mountIconButton({ nativeType: 'submit' });
+    expect(submitWrapper.get('button').attributes('type')).toBe('submit');
+  });
+
+  it('does not emit click when disabled', async () => {
+    const wrapper = mountIconButton({ disabled: true });
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.emitted('click')).toBeUndefined();
+  });
+
+  it('exposes aria-pressed only for variant="toggle" and reflects selected', () => {
+    const defaultWrapper = mountIconButton();
+    expect(defaultWrapper.get('button').attributes('aria-pressed')).toBeUndefined();
+
+    const toggleWrapper = mountIconButton({ variant: 'toggle', selected: false });
+    expect(toggleWrapper.get('button').attributes('aria-pressed')).toBe('false');
+
+    const toggleSelectedWrapper = mountIconButton({ variant: 'toggle', selected: true });
+    expect(toggleSelectedWrapper.get('button').attributes('aria-pressed')).toBe('true');
+    expect(toggleSelectedWrapper.classes()).toContain('md-icon-button_selected');
+  });
+
+  it('defaults color to "filled" (the official Material Icon Button default)', () => {
+    const wrapper = mountIconButton();
+
+    expect(wrapper.classes()).toContain('md-icon-button_color-filled');
+  });
+
+  it('keeps aria-pressed and selected structure while disabled', () => {
+    const wrapper = mountIconButton({ variant: 'toggle', selected: true, disabled: true });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.classes()).toContain('md-icon-button_selected');
+    expect(wrapper.classes()).toContain('md-state_disabled');
+  });
+
+  it('activates via click while loading, exactly once, keeping the accessible name and enabled state', async () => {
+    const wrapper = mountIconButton({ loading: true });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-label')).toBe('Close');
+    expect(button.attributes('disabled')).toBeUndefined();
+
+    await button.trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+    expect(button.attributes('aria-label')).toBe('Close');
+    expect(button.attributes('disabled')).toBeUndefined();
+  });
+
+  it('ignores selected and warns when variant is "default"', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const wrapper = mountIconButton({ variant: 'default', selected: true });
+
+    expect(wrapper.classes()).not.toContain('md-icon-button_selected');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('`selected` has no effect unless `variant` is "toggle"'),
+    );
+
+    warnSpy.mockRestore();
   });
 });

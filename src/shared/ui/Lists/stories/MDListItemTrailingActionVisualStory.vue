@@ -18,7 +18,7 @@ const onAction = () => {};
         @action="onAction"
       >
         <template #trailingAction>
-          <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
+          <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" color="standard" />
         </template>
       </MDListItem>
 
@@ -41,7 +41,7 @@ const onAction = () => {};
         @action="onAction"
       >
         <template #trailingAction>
-          <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" disabled />
+          <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" color="standard" disabled />
         </template>
       </MDListItem>
     </MDList>

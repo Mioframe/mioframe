@@ -56,8 +56,21 @@ const effectiveDragged = computed(() => forcedState?.dragged?.value ?? props.dra
   background-color: rgb(
     from var(--md-private-state-layer-color, var(--md-content-color)) r g b / 0
   );
+  /*
+   * Generic private transition contract: MDStateLayer reads only these two variables and
+   * never a Button/FAB component token directly. Consumers that want Expressive motion
+   * (the Button family) map their own private motion tokens onto these locally on an
+   * ancestor; every other MDStateLayer consumer keeps the legacy fallback below unless
+   * explicitly mapped. The fallback must stay inside the `var()` call below rather than a
+   * separate declaration on this same selector — a same-selector declaration would always
+   * win over an ancestor's mapping regardless of cascade order, defeating inheritance.
+   */
   transition-property: background, background-color;
-  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  transition-duration: var(
+    --md-private-state-layer-transition-duration,
+    var(--md-sys-motion-duration-short4, 0.2s)
+  );
+  transition-timing-function: var(--md-private-state-layer-transition-easing, ease);
 
   &.md-state_hover,
   :global(.md-state_hover) > & {

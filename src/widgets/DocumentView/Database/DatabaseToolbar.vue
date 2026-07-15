@@ -107,6 +107,7 @@ const hasProperties = computed(() => {
       v-if="hasProperties"
       tooltip="view settings"
       md-symbol-name="view_quilt"
+      color="standard"
       @click="onToggleViewSettings"
     />
 
@@ -114,6 +115,7 @@ const hasProperties = computed(() => {
       v-if="hasProperties"
       tooltip="sort"
       md-symbol-name="sort_by_alpha"
+      color="standard"
       @click="onToggleSortSettings"
     />
 
@@ -130,12 +132,14 @@ const hasProperties = computed(() => {
       v-if="hasProperties"
       tooltip="filter"
       md-symbol-name="filter_alt"
+      color="standard"
       @click="onToggleFilterSettings"
     />
 
     <MDIconButton
       tooltip="configure properties"
       md-symbol-name="tune"
+      color="standard"
       @click="onTogglePropertySettings"
     />
 

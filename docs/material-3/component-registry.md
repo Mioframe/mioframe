@@ -4,7 +4,21 @@
 
 The shared UI kit must be tracked as a registry that maps official Material 3 surfaces to project components, Storybook pages, tokens, verification, and deviations.
 
-Do not migrate components only by local inspection. Use the registry to keep the UI kit coherent and to avoid duplicating or partially reimplementing the same Material surface in multiple places.
+Do not migrate components only by local inspection. Use the registry to keep the UI kit coherent and avoid duplicating or partially reimplementing the same Material surface in multiple places.
+
+## Source basis
+
+Unless a row says otherwise, Material rows reference the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. Historical fallback evidence from `Vyachean/m3-docs-cache` captured at `2026-05-19T05:56:22.642Z` remains a separate source.
+
+The Button-family rows instead use the verified `Vyachean/m3-docs-cache` snapshot:
+
+- commit: `49ffae58a61f86c28b23720696dc9d07b6945483`
+- capturedAt: `2026-07-13T12:48:04.850Z`
+- failedPageCount: `0`
+- suspiciousPageCount: `0`
+- coverageHealth: `verified`
+
+See [Component family audit](./component-family-audit.md) for the detailed Button-family findings and follow-up stages.
 
 ## Related audit documents
 
@@ -15,7 +29,7 @@ Do not migrate components only by local inspection. Use the registry to keep the
 
 ## Status values
 
-Use these status values consistently:
+Use these values consistently:
 
 - `missing`: no project component exists.
 - `partial`: project component exists but is not fully aligned or verified.
@@ -26,27 +40,40 @@ Use these status values consistently:
 
 ## Registry row fields
 
-Each registry row should record:
+Each row should record:
 
-- Material surface.
-- Project component or components.
-- Status.
-- Material docs checked.
-- Token status.
-- Public API status.
-- Storybook status.
-- Visual or browser verification status.
-- Deviations or unsupported features.
+- Material surface;
+- project component or components;
+- status;
+- Material docs checked;
+- token and public API status;
+- Storybook and browser verification status;
+- deviations or unsupported features.
 
 ## Foundation audit snapshot
 
-Rows below are intentionally conservative. `partial` does not mean Material 3 alignment. It means the project has an implementation surface that still needs source-backed API, token, Storybook, verification, and deviation work before it can be marked `aligned`.
+Rows below are intentionally conservative. `partial` does not mean Material 3 alignment. It means the implementation still has explicitly recorded alignment or verification work.
 
 ### Primary official surfaces
 
-- Buttons: `MDButton` is `partial`. First pilot. Verify variants, props, target area, `--md-comp-button-*`, Storybook hierarchy, and visual states.
-- Icon buttons: `MDIconButton` is `partial`. Include in Buttons pilot. Verify selected/toggle behavior, icon sizing, and toolbar target behavior.
-- Floating action buttons: `MDFab` and `MDFabContainer` are `partial`. Include in Buttons pilot. Separate Material FAB behavior from project placement helpers.
+- Buttons: `MDButton` is `partial`.
+  Material docs checked: `pages/components/buttons/overview.md`, `pages/components/buttons/specs.md`, `pages/components/buttons/accessibility.md`, `pages/styles/motion/overview/how-it-works.md`, and `pages/styles/motion/overview/specs.md` via the July 13 verified fallback snapshot.
+  Current state: five styles, five sizes, two shapes, default/toggle variants, native form semantics, selected/disabled state routing, component tokens, accessibility, Storybook, and core browser verification are implemented. Text toggle is unsupported and normalizes to default. Reachable state combinations and enabled selected-plus-pressed precedence are verified; the artificial disabled-plus-forced-pressed shape combination remains outside the completed claim.
+  Remaining work: content-color motion ownership and final override verification. Loading is a Mioframe extension. Split Button and Button Groups are unsupported.
+  Details: [Component family audit § Buttons](./component-family-audit.md#buttons-mdbutton) and [remaining Button-family alignment work](./component-family-audit.md#remaining-button-family-alignment-work).
+
+- Icon buttons: `MDIconButton` is `partial`.
+  Material docs checked: `pages/components/icon-buttons/overview.md`, `pages/components/icon-buttons/specs.md`, `pages/styles/motion/overview/how-it-works.md`, and `pages/styles/motion/overview/specs.md` via the July 13 verified fallback snapshot. No Icon Button accessibility page is claimed as checked in this review.
+  Current state: official `filled` default, four styles, five sizes, three widths, two shapes, default/toggle variants, selected/disabled routing, component tokens, accessibility, Storybook, and core browser verification are implemented. Existing low-emphasis consumers explicitly request `standard`. Built-in `MDSymbol` selection treatment is component-owned; arbitrary custom icon content remains consumer-owned. Reachable states and enabled selected-plus-pressed precedence are verified; the artificial disabled-plus-forced-pressed combination remains follow-up work.
+  Remaining work: icon-color motion ownership and final override verification. Loading and rich tooltip behavior are Mioframe extensions. Split Button and Button Groups are unsupported.
+  Details: [Component family audit § Icon buttons](./component-family-audit.md#icon-buttons-mdiconbutton) and [remaining Button-family alignment work](./component-family-audit.md#remaining-button-family-alignment-work).
+
+- Floating action buttons: `MDFab` and `MDExtendedFab` are `partial`; `FabContainer` is `project-specific`.
+  Material docs checked: `pages/components/floating-action-button/overview.md`, `pages/components/floating-action-button/specs.md`, `pages/components/extended-fab/overview.md`, `pages/components/extended-fab/specs.md`, `pages/styles/motion/overview/how-it-works.md`, and `pages/styles/motion/overview/specs.md` via the July 13 verified fallback snapshot. No FAB or Extended FAB accessibility page is claimed as checked in this review.
+  Current state: six colors, supported sizes, exact component-token surfaces, independent FAB width/height, independent Extended FAB leading/trailing space, state/elevation routing, accessibility, Storybook, and core browser verification are implemented. Plain `primary`/`secondary`/`tertiary` focus-indicator component tokens route into the generic focus contract; their defaults match system defaults. The three `*-container` styles have no distinct published focus component tokens and use the generic fallback.
+  Remaining work: child label/icon motion ownership and complete rendered-shadow/focus-indicator verification. Loading is a Mioframe extension. FAB disabled state, FAB Menu, legacy Small FAB, and lowered/surface FAB are unsupported. `FabContainer` owns placement only.
+  Details: [Component family audit § FAB](./component-family-audit.md#fab-mdfab-mdextendedfab-fabcontainer) and [remaining Button-family alignment work](./component-family-audit.md#remaining-button-family-alignment-work).
+
 - Lists: `MDList`, `MDListItem`, and `MDListSelectionItem` are `partial`.
   Material docs checked: `components/lists/overview.md`, `components/lists/specs.md`, `components/lists/guidelines.md`, `components/lists/accessibility.md`, `foundations/design-tokens/overview.md`, and `foundations/interaction/states/state-layers.md`.
   Surface-context status: Lists use inherited foundation surface-context tokens `--md-current-container-color` and `--md-current-content-color`, which default to `--md-container-color` and `--md-content-color`. Standard lists and default rows stay transparent; segmented lists establish their own grouped surface context only within the list bounds.
@@ -91,40 +118,3 @@ Rows below are intentionally conservative. `partial` does not mean Material 3 al
   Deviations or unsupported features: no support for nested actionable content inside an actionable card (documented, and caught in development by the button-mode phrasing-content warning for `mode="button"`); internal padding/gap (16dp padding, 8dp content gap) is a project layout default, not an official Material token. Media, headline/supporting-text anatomy, action rows, lists, selection controls, linked text, and overflow menus are consumer-owned composition per Material's own card-content examples, not `MDCard` deviations.
 - Progress indicators: shared progress indicator surfaces are `partial`. Expand beyond the current single progress component token.
 - Tooltips: `MDPlainTooltip`, `MDRichTooltip`, and `MDOverlayTooltip` are `partial`. Verify plain/rich contracts, trigger ownership, delay, and overlay containment.
-- Dividers: `MDDivider` is `partial`. Verify inset/full-bleed and orientation contracts.
-- Snackbars: `MDSnackbar` is `partial`. Verify action, dismiss, timeout, live-region, and queue/portal ownership.
-
-### Mixed or project-specific surfaces
-
-- Navigation bar and rail surfaces are `partial`. Verify official bar/rail mapping and adaptive ownership.
-- Navigation path is `project-specific` unless a Material mapping is found.
-- `MDAppBar` is `partial`; toolbar containers are `project-specific` unless they map to app bar guidance.
-- `MDTable` is `project-specific` until current Material data-table guidance is verified.
-- `MDEmptyState` is `project-specific` and should be treated as a product UX surface using Material foundations.
-- `MDPane` and `MDSplitLayout` are `project-specific` adaptive layout primitives.
-- `MDButtonsBar` is `project-specific` unless mapped through dialogs or buttons.
-
-## Requirements before marking a row aligned
-
-Before any row is marked `aligned`, it must answer:
-
-1. Which official Material surface does this correspond to?
-2. Which project component or components implement it?
-3. Which Material pages were checked?
-4. Which public tokens are supported?
-5. Which public props are supported?
-6. Which Storybook page documents it?
-7. Which visual or browser checks cover it?
-8. Which deviations or unsupported official features exist?
-
-## Usage
-
-Before starting a component family conversion:
-
-1. Update or add the registry row.
-2. Identify the Material docs to check.
-3. Identify existing project components and deprecated aliases.
-4. Decide whether the component is official Material-aligned or project-specific.
-5. Define the verification target.
-
-A component family is not done until the registry row can be marked `aligned` or its remaining gaps are explicitly documented.

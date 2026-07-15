@@ -70,7 +70,7 @@ useFocusIndicator();
               <MDSymbol name="folder" />
             </template>
             <template #trailingAction>
-              <MDIconButton tooltip="More options" md-symbol-name="more_vert" />
+              <MDIconButton tooltip="More options" md-symbol-name="more_vert" color="standard" />
             </template>
           </MDListItem>
         </div>

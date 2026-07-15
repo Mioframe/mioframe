@@ -10,5 +10,10 @@ const onDismiss = () => {
 </script>
 
 <template>
-  <MDIconButton tooltip="Hide starter examples" md-symbol-name="close" @click="onDismiss" />
+  <MDIconButton
+    tooltip="Hide starter examples"
+    md-symbol-name="close"
+    color="standard"
+    @click="onDismiss"
+  />
 </template>

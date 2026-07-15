@@ -75,7 +75,7 @@ const onCheckboxChange = () => {
               <span class="md-list-item-consumer-patterns-story__avatar">EU</span>
             </template>
             <template #trailingAction>
-              <MDIconButton tooltip="Disconnect account" md-symbol-name="close" />
+              <MDIconButton tooltip="Disconnect account" md-symbol-name="close" color="standard" />
             </template>
           </MDListItem>
         </MDList>
@@ -152,7 +152,7 @@ const onCheckboxChange = () => {
               <MDSymbol name="draft" />
             </template>
             <template #trailingAction>
-              <MDIconButton tooltip="Manage entry" md-symbol-name="more_vert" />
+              <MDIconButton tooltip="Manage entry" md-symbol-name="more_vert" color="standard" />
             </template>
           </MDListItem>
           <MDListItem label-text="archive.zip" supporting-text="Read-only">

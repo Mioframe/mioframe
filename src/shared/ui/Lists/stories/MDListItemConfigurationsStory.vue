@@ -67,7 +67,7 @@ const onAction = () => {};
             <span class="md-list-item-configurations-story__media" />
           </template>
           <template #trailingAction>
-            <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" />
+            <MDIconButton tooltip="Open menu" md-symbol-name="more_vert" color="standard" />
           </template>
         </MDListItem>
       </MDList>

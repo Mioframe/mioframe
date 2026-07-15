@@ -116,6 +116,38 @@ describe('MDExtendedFab', () => {
     expect(slotWrapper.find('[data-testid="slot-icon"]').exists()).toBe(true);
   });
 
+  it('does not render an icon container for loading=false or absent loading with no icon', () => {
+    const falseLoadingWrapper = mount(MDExtendedFab, {
+      props: { label: 'Create', loading: false },
+      global: { stubs: globalStubs },
+    });
+    const absentLoadingWrapper = mount(MDExtendedFab, {
+      props: { label: 'Create' },
+      global: { stubs: globalStubs },
+    });
+
+    expect(falseLoadingWrapper.find('.md-extended-fab__icon').exists()).toBe(false);
+    expect(absentLoadingWrapper.find('.md-extended-fab__icon').exists()).toBe(false);
+  });
+
+  it('renders determinate progress for a positive numeric loading value', () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: { label: 'Create', loading: 0.5 },
+      global: { stubs: globalStubs },
+    });
+
+    expect(wrapper.get('[data-testid="progress"]').attributes('data-progress')).toBe('0.5');
+  });
+
+  it('defaults to the "primary-container" color', () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: { label: 'Create' },
+      global: { stubs: globalStubs },
+    });
+
+    expect(wrapper.classes()).toContain('md-extended-fab_color_primary-container');
+  });
+
   it('uses BEM modifiers and emits click events', async () => {
     const wrapper = mount(MDExtendedFab, {
       props: {
@@ -136,5 +168,22 @@ describe('MDExtendedFab', () => {
     await wrapper.get('button').trigger('click');
 
     expect(wrapper.emitted('click')).toHaveLength(1);
+  });
+
+  it('activates via click while loading, exactly once, keeping the accessible name and enabled state', async () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: { label: 'Create', mdSymbol: 'add', loading: true },
+      global: { stubs: globalStubs },
+    });
+    const button = wrapper.get('button');
+
+    expect(button.attributes('aria-label')).toBe('Create');
+    expect(button.attributes('disabled')).toBeUndefined();
+
+    await button.trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+    expect(button.attributes('aria-label')).toBe('Create');
+    expect(button.attributes('disabled')).toBeUndefined();
   });
 });

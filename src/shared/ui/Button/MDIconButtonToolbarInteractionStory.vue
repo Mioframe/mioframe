@@ -33,7 +33,7 @@ const onPointerLeave = (buttonId: ToolbarButtonId) => {
 <template>
   <div
     id="visual-md-icon-button-toolbar-interaction"
-    class="visual-surface md-icon-button-toolbar-interaction"
+    class="visual-checker-backdrop md-icon-button-toolbar-interaction"
   >
     <div class="md-icon-button-toolbar-interaction__row" role="toolbar" aria-label="Dense toolbar">
       <span
@@ -54,6 +54,7 @@ const onPointerLeave = (buttonId: ToolbarButtonId) => {
                   ? 'sort'
                   : 'search'
           "
+          color="standard"
           @click="onClick(buttonId)"
         />
       </span>
