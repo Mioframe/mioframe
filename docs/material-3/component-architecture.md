@@ -506,15 +506,15 @@ Until a verify-managed validator covers a rule, the PR review and conversion che
 
 Assert each stateful visual property on the actual owner declared by the anatomy contract. Typical owners include:
 
-| Property | Owner |
-| --- | --- |
-| container color | root container |
-| label color and motion | label element |
-| icon color and motion | icon wrapper or icon primitive |
-| outline | root container |
-| elevation | root container |
-| state layer | state-layer element |
-| focus indicator | declared focus-indicator target |
+| Property               | Owner                           |
+| ---------------------- | ------------------------------- |
+| container color        | root container                  |
+| label color and motion | label element                   |
+| icon color and motion  | icon wrapper or icon primitive  |
+| outline                | root container                  |
+| elevation              | root container                  |
+| state layer            | state-layer element             |
+| focus indicator        | declared focus-indicator target |
 
 Do not assert a parent merely because the final value currently inherits to the real owner.
 
