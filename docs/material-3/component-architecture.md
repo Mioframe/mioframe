@@ -1,6 +1,6 @@
 # Material 3 component architecture
 
-This document defines the mandatory authoring architecture for public shared Material components under `src/shared/ui`.
+This document defines the mandatory authoring architecture for public shared Material components under the canonical `src/shared/ui/material/components/<family>` boundary.
 
 The goal is deterministic implementation from official Material documentation with minimal discovery, minimal structure, and minimal correction churn. A coding agent should be able to create a standard component independently. Architecture escalation is required only when official sources, repository ownership, or requested behavior cannot be resolved by these rules.
 
@@ -84,6 +84,28 @@ When the request only names a component and supplies no product scenario, use th
 
 A component is complete when its supported surface is coherent and verified. It does not need every optional capability published for the family.
 
+## Family ownership
+
+A family is a durable ownership boundary, not a migration convenience or a copy of the legacy directory tree.
+
+A single public component may own its own family. Multiple public components share one family only when:
+
+1. official Material guidance treats them as one family or as an explicit parent/child component set;
+2. at least one real shared production contract exists now, such as exact family-owned tokens, shared anatomy, required runtime context, or shared component behavior; and
+3. shared ownership keeps APIs and dependencies clearer than separate families would.
+
+The following are insufficient reasons to combine components:
+
+- current proximity in a legacy directory;
+- similar names or visual appearance;
+- repeated CSS values or syntax;
+- fewer files;
+- possible future reuse.
+
+Family-owned files may be shared only under the objective conditions in this document. One public component must not deep-import another component's private files. Any family-private entry point, token owner, anatomy contract, context, or behavior shared by multiple components is named in the family blueprint.
+
+Record `Family ownership basis: <official relationship and current shared contracts>`. Use `single-component family` when no multi-component boundary is required. If the family boundary or shared owner cannot be resolved, use `blocked` rather than inheriting the legacy grouping.
+
 ## Family blueprint
 
 Before production code, create or update a compact family `README.md` blueprint:
@@ -96,6 +118,7 @@ Architecture version: layered-v1
 Change mode: new-component | architecture-only | alignment-only | combined-approved
 Family:
 Components:
+Family ownership basis:
 Existing family contract: none | <Family>/README.md
 Contract delta: complete initial contract | <changed sections>
 
@@ -114,6 +137,7 @@ Anatomy ownership:
 Configuration axes:
 Semantic states:
 Interaction states:
+State ownership:
 
 Architecture profile per component:
 Canonical token ownership:
@@ -237,6 +261,42 @@ The same production behavior is required by at least two public components now. 
 Public parent and child components require runtime composition state that cannot be expressed through the existing public contract without forwarding through unrelated layers.
 
 No other production file category is allowed without architecture escalation.
+
+## State ownership
+
+Every supported state has one explicit source of truth and change path. The family blueprint records the owner, public input, emitted intent or output, and lifecycle where they apply.
+
+Use these defaults:
+
+- semantic state owned by product or domain meaning is consumer-controlled when exposed through a public prop; user interaction emits an intent or next value, and the consumer updates the prop;
+- browser interaction facts such as hover, focus-visible, and ordinary pressed acquisition are browser/foundation-owned; the component maps those facts to its own property-specific visual routes;
+- component-owned transient state is allowed only for component-owned gesture sessions, overlay lifecycle, animation coordination, or native-platform coordination that cannot be represented as a stable consumer input.
+
+A component must not keep a hidden parallel copy of controlled state. Component-owned transient state must define acquisition, release, cancellation, disabled behavior, and unmount cleanup when applicable. A component must not infer product state from a visual interaction state.
+
+Record `State ownership: none` when the component owns and exposes no state. If the source of truth or transition owner is unresolved, use `blocked`.
+
+## Anatomy and DOM ownership
+
+`Anatomy ownership` is the authoritative map from Material anatomy to actual DOM and accessibility owners.
+
+For every interactive or semantic anatomy part, record the applicable owners:
+
+- actual DOM/native element;
+- native semantics or explicit role;
+- focus owner;
+- accessible-name source;
+- semantic `aria-*` state owner;
+- disabled or readonly owner;
+- target-area owner;
+- state-layer and ripple owner;
+- focus-indicator geometry target;
+- whether consumer-provided interactive content is allowed, prohibited, or isolated;
+- final rendered-property owner.
+
+Non-interactive anatomy records only the applicable DOM, content, and rendered-property owners. Use `none` for concerns that do not apply.
+
+Each concern has one owner. Do not split native action, focus, accessible naming, target area, state layer, ripple, or rendered-property ownership implicitly between parent and child components. A parent may provide an explicit family context or public input; the component that renders the owned anatomy applies its semantics and styling.
 
 ## Layer ownership
 
@@ -386,7 +446,7 @@ Add a prop only for:
 - native behavior not expressible through normal attributes;
 - an explicit required Mioframe extension.
 
-Use official vocabulary. Do not expose internal anatomy, private routes, test controls, or speculative flexibility.
+Use official vocabulary. Do not expose internal anatomy, private routes, test controls, or speculative flexibility. A controlled semantic prop must not gain an undocumented component-owned copy.
 
 ### Native attributes
 
@@ -426,15 +486,18 @@ Use the smallest proof set covering the supported surface.
 
 ### Contract
 
-Verify applicable defaults, props, emits, slots, native elements, explicit attributes, ARIA, invalid combinations, states, and extensions.
+Verify applicable defaults, props, emits, slots, native elements, explicit attributes, ARIA, invalid combinations, state ownership, anatomy ownership, states, and extensions.
 
 ### Architecture
 
 Verify:
 
+- accepted family ownership basis and shared family contracts;
 - exact profile and applicable file set;
 - style order and layer ownership;
 - canonical token names and owners;
+- explicit state sources of truth and absence of hidden controlled-state copies;
+- explicit DOM, semantic, focus, accessible-name, target-area, state-layer/ripple, focus-indicator, and rendered-property owners where applicable;
 - absence of empty token, route, or state layers;
 - absence of unnecessary private alias stages;
 - approved token selectors;
@@ -466,7 +529,7 @@ Use `blocked` only when:
 - requested behavior conflicts with Material or native semantics;
 - a new public project extension is required;
 - existing public API compatibility is unresolved;
-- anatomy or token ownership crosses families or established owners;
+- family boundary, state source of truth, anatomy, or token ownership is unresolved or crosses established owners;
 - new generic infrastructure, shared context, base abstraction, or dependency appears necessary;
 - shared behavior ownership between official components is unclear;
 - the minimum supported surface cannot satisfy the scenario;
@@ -509,11 +572,13 @@ For a small legacy component only when extraction and alignment cannot be useful
 A component is complete only when:
 
 - the family blueprint is ready and matches code;
+- the family boundary and any shared family contracts are explicit;
 - requested scenarios work;
 - supported Material surface is source-backed;
+- state sources of truth and anatomy/DOM ownership are explicit;
 - profile, layers, ownership, and verification pass;
 - registry and Storybook are honest;
 - unsupported features and deviations are explicit;
-- no unrequested abstraction, compatibility path, empty layer, or unnecessary private alias remains.
+- no hidden controlled-state copy, unrequested abstraction, compatibility path, empty layer, or unnecessary private alias remains.
 
 Green checks alone do not prove Material correctness, but review must not reopen deterministically resolved decisions without contrary evidence.
