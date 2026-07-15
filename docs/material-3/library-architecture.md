@@ -65,6 +65,8 @@ src/shared/ui/material/
 
 `component-architecture.md` defines the internal family layers and profiles. `foundation-architecture.md` defines foundation ownership and maintenance. This document owns location, library dependency direction, public entry points, and migration.
 
+The canonical policy and evidence documents remain under `docs/material-3`. They describe the library but are not runtime library artifacts.
+
 ## Library domains
 
 ### `foundation`
@@ -119,29 +121,41 @@ The following remain outside `src/shared/ui/material`:
 - product information architecture and workflow decisions;
 - app-specific tokens and contracts under `--app-*`;
 - compatibility adapters owned by one legacy consumer;
-- global e2e infrastructure and application-level test fixtures.
+- global e2e infrastructure and application-level test fixtures;
+- canonical policy and source-evidence documents under `docs/material-3`.
 
 A Material foundation implementation may depend on generic `shared/lib` infrastructure. Generic infrastructure must not depend on the Material library.
 
 ## Dependency direction
 
-Use only this direction:
+Allowed dependency direction is downward only:
 
 ```text
 shared/lib generic infrastructure
-  → material/foundation
+  ├─→ material/foundation
+  ├─→ material/components
+  └─→ material/patterns
+
+material/foundation
   → material/components
   → material/patterns
+
+material/components
+  → material/patterns
+
+material library
   → project-specific shared UI
   → entities/features/widgets/pages/app
 ```
+
+Higher Material layers may import a correctly owned generic `shared/lib` utility directly. Do not create a foundation wrapper merely to route a generic DOM, event, geometry, lifecycle, or browser helper through `material/foundation`.
 
 Additional rules:
 
 - `foundation` must not import `components` or `patterns`;
 - one component family must not import private files or variables from another family;
-- `patterns` may compose only public component/foundation contracts;
-- the Material library must not import product layers;
+- `patterns` may compose only public component/foundation contracts and correctly owned generic utilities;
+- the Material library must not import project layers;
 - project layers must not deep-import library implementation files;
 - generic infrastructure must not use `MD*`, Material token vocabulary, or component-family knowledge unless it is itself migrated into the library as an accepted Material owner.
 
@@ -160,7 +174,7 @@ Rules:
 - product consumers import from the root library entry point by default;
 - the root entry point re-exports curated family and public foundation entry points;
 - internal library code must not import the root entry point because that creates avoidable cycles;
-- component families import foundation contracts from `material/foundation` or an accepted foundation sub-entry point;
+- component families import foundation contracts from `material/foundation`, an accepted foundation sub-entry point, or a correctly owned generic `shared/lib` entry point;
 - tests may import a family entry point when verifying that family contract;
 - deep imports into `.vue`, `.css`, private helpers, or another family are forbidden;
 - public exports require accurate TSDoc and registry/README ownership.
@@ -188,6 +202,8 @@ After this architecture is accepted:
 - no new public `MD*` implementation may be added directly under `src/shared/ui/<LegacyFamily>`;
 - no new Material token, typography, state, icon, or overlay owner may be added under `src/shared/lib/md` or legacy `src/shared/ui/State|Icon|Overlay` paths;
 - a strict local repair to legacy code may stay in place only under the existing `Architecture impact: none` rules.
+
+Using an existing generic `shared/lib` utility from a new Material artifact is allowed when that utility already owns the generic concern. This does not make the utility part of the Material library.
 
 ## Legacy ownership and target ownership
 
@@ -267,6 +283,7 @@ Verify-managed architecture checks should identify:
 - a foundation import from components or patterns;
 - a cross-family private import;
 - external deep imports into library implementation files;
+- an unnecessary foundation wrapper around an existing correctly owned generic utility;
 - a migrated artifact still exported from a legacy path without an approved temporary contract;
 - a migration-map entry inconsistent with actual paths or public exports;
 - a generic infrastructure module that gained Material ownership without registry migration;
@@ -280,6 +297,7 @@ The library architecture is healthy when:
 
 - agents know one location for every new Material artifact;
 - foundation, components, patterns, project UI, and generic infrastructure have distinct owners;
+- generic utilities remain directly reusable without artificial foundation wrappers;
 - new work no longer increases legacy Material surface;
 - each migration removes its old path and updates all consumers;
 - public imports do not expose internal file structure;
