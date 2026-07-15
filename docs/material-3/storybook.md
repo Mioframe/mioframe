@@ -2,39 +2,52 @@
 
 ## Principle
 
-Storybook is the project documentation surface for shared UI. For Material components used by the app, Storybook should read like the corresponding official Material 3 documentation adapted to the project implementation.
+Storybook is the project documentation and isolated verification surface for the Material library. For Material components used by the app, Storybook should read like the corresponding official Material documentation adapted to the supported Mioframe contract.
 
-Storybook is not the source of truth for Material 3. It documents how the project implements the official guidance checked through MCP or `m3-docs-cache`.
+Storybook is not the source of truth for Material. It documents how the project implements official guidance checked through MCP or `m3-docs-cache`.
 
 ## Story hierarchy
 
 Use a hierarchy that separates official Material-aligned components from project-specific UI:
 
 ```text
-Material 3/Components/<Component>/<Story>
+Material 3/Components/<Family>/<Component>/<Story>
+Material 3/Patterns/<Pattern>/<Story>
 Project UI/<Component>/<Story>
 ```
 
-Use `Material 3/Components` only for components that intentionally implement an official Material 3 component or pattern.
+Use `Material 3/Components` only for components that intentionally implement an official Material component family. Use `Material 3/Patterns` only for accepted reusable Material compositions. Use `Project UI` for app-specific surfaces.
 
-Use `Project UI` for components such as markdown renderers, repository-specific navigation helpers, and other app-specific surfaces.
+## Canonical component story set
 
-## Required story sections for Material components
+A new or migrated public Material component should normally expose:
 
-A mature Material component story set should cover:
+- `Overview` or `Default`;
+- `Variants`, `Configurations`, or `Sizes` only for supported axes that need explanation;
+- exactly one canonical `StateMatrix`;
+- focused browser-behavior fixtures when tests require them;
+- documentation for usage, accessibility, tokens, supported/unsupported surface, extensions, and deviations.
 
-- Overview;
-- Variants;
-- Configurations;
-- Anatomy when useful;
-- States;
-- Accessibility notes;
-- Tokens and supported override points;
-- Do / Don't or usage notes when the official docs include them;
-- Project deviations or unsupported official variants;
-- Visual regression surfaces when the component is a shared primitive or has high visual risk.
+Do not create sections mechanically when the supported surface does not need them. `StateMatrix` is the exception: it is mandatory for every new or migrated public Material component.
 
-Do not add every section mechanically in the first pass. Add the sections that make the component understandable and verifyable, then expand during the component's parity work.
+## State matrix
+
+The canonical `StateMatrix` story follows [Component testing architecture](./component-testing.md).
+
+It must:
+
+- show every supported semantic, interaction, disabled, and other visually distinct component state;
+- cover every distinct state-rendering route and simultaneous-state result from the rendered-property matrix;
+- use the minimum rows required to cover distinct configuration/anatomy routes rather than the full Cartesian product;
+- use visible row and column headings so a human can identify every case without source code;
+- use the canonical checkerboard outer backdrop;
+- keep representative content stable across cells unless content/anatomy is the tested axis;
+- expose the stable root anchor `data-testid="visual-<component-kebab>-state-matrix"`;
+- use accepted verification-only foundation adapters for deterministic transient states without adding test-only production APIs.
+
+When one bounded image would be unreadable, keep one `StateMatrix` story with visibly labelled sections and screenshot those sections separately. Do not create one story or snapshot per cell.
+
+New or migrated components should not retain separate `VisualStates` and `VisualInteractionStates` stories when the canonical matrix can represent both clearly. Legacy stories remain valid until family migration.
 
 ## Story rules
 
@@ -42,15 +55,49 @@ Do not add every section mechanically in the first pass. Add the sections that m
 - Do not connect product stores, storage flows, diagnostics, routing lifecycle, Google Drive integration, live network calls, or app bootstrap side effects.
 - Do not change public component APIs only to satisfy Storybook.
 - Do not put business logic in stories.
-- Use the same public props and tokens that product code uses.
+- Use the same public props, slots, native semantics, and tokens that product code uses.
+- Verification-only state adapters remain outside the public component contract.
 - Tag screenshot-ready stories with `visual`.
+- Keep story titles, export names, and visual anchors stable after acceptance.
+
+## Browser behavior fixtures
+
+A behavior fixture exists only when a focused Playwright test needs a deterministic initial surface for real browser interaction.
+
+The fixture may supply data and initial public props, but the test must acquire focus, hover, pressed, drag, open, or other behavior through real browser input. Do not use the state-matrix forced-state mechanism as behavior proof.
 
 ## Visual documentation
 
-For components that are used as visual regression surfaces, prefer stable gallery stories that show Material-relevant states and configurations in one bounded locator screenshot.
+The state matrix is the primary visual regression and manual-review surface for a component.
 
-Do not add visual snapshots for every story. Use visual coverage for shared primitives, important Material states, responsive layout surfaces, CSS-heavy components, and previously broken states.
+Additional visual stories are allowed only for materially different geometry or contexts that the matrix should not multiply, such as:
+
+- size/configuration galleries;
+- responsive/container contexts;
+- typography-specific surfaces;
+- target-area or clipping diagnostics;
+- previously broken focused cases.
+
+Do not add visual snapshots for every story. Keep screenshots bounded and understandable.
+
+## Human review
+
+Initial state matrices and intentional matrix baseline changes require human comparison with the official Material sources named by the family blueprint.
+
+A screenshot baseline is only a regression reference. Storybook must make the complete supported visual state surface inspectable; it cannot automatically decide whether that surface is correct.
 
 ## Documentation notes
 
-Each Material component's Storybook docs should name the checked official Material 3 pages or cache paths. If a feature is project-specific or unsupported, say so in the Storybook notes rather than implying official Material support.
+Each Material component's Storybook docs should name:
+
+- checked official Material pages and snapshot;
+- intended and prohibited usage;
+- supported and unsupported surface;
+- public API and native semantics;
+- foundation dependencies;
+- tokens and supported override points;
+- accessibility behavior;
+- extensions and deviations;
+- canonical state-matrix coverage.
+
+Do not imply official Material support for project-specific or unsupported behavior.
