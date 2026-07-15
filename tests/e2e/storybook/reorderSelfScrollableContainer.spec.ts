@@ -28,6 +28,13 @@ const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): vo
   }
 };
 
+const getComputedScrollStyles = (
+  el: Element,
+): { scrollBehavior: string; scrollSnapType: string } => {
+  const styles = getComputedStyle(el);
+  return { scrollBehavior: styles.scrollBehavior, scrollSnapType: styles.scrollSnapType };
+};
+
 test.describe('self-scrollable reorder container', () => {
   test('a drag drains the container own scroll extent in both directions without ever moving the outer ancestor', async ({
     page,
@@ -45,6 +52,18 @@ test.describe('self-scrollable reorder container', () => {
     const ancestorExtent = await ancestor.evaluate((el) => el.scrollHeight - el.clientHeight);
     expect(containerExtent).toBeGreaterThan(0);
     expect(ancestorExtent).toBeGreaterThan(0);
+
+    // Preconditions: both elements carry the smooth-scroll and scroll-snap styles this scenario
+    // exercises, and neither has an inline scroll-snap override applied yet.
+    const containerStylesBeforeDrag = await container.evaluate(getComputedScrollStyles);
+    const ancestorStylesBeforeDrag = await ancestor.evaluate(getComputedScrollStyles);
+    expect(containerStylesBeforeDrag.scrollBehavior).toBe('smooth');
+    expect(containerStylesBeforeDrag.scrollSnapType).not.toBe('none');
+    expect(ancestorStylesBeforeDrag.scrollBehavior).toBe('smooth');
+    expect(ancestorStylesBeforeDrag.scrollSnapType).not.toBe('none');
+    expect(await container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type'))).toBe(
+      '',
+    );
 
     const containerBox = await container.boundingBox();
     const itemBox = await firstItem.boundingBox();
@@ -70,6 +89,12 @@ test.describe('self-scrollable reorder container', () => {
 
     await expect(firstItem).toHaveClass(/reorder-self-scrollable-story-item_dragging/);
     expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorScrollTopStart);
+
+    // During the drag, the container's own inline scroll-snap-type is temporarily suppressed so
+    // scroll snap cannot redirect the deterministic autoscroll deltas.
+    expect(await container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type'))).toBe(
+      'none',
+    );
 
     // The container reaches its own native lower scroll limit while the pointer stays put.
     await expect
@@ -103,5 +128,19 @@ test.describe('self-scrollable reorder container', () => {
     assertScrollTopHoldsAtBaseline(upperHoldSamples, ancestorScrollTopStart);
 
     await page.mouse.up();
+
+    // After release, the temporary inline snap override is gone, the original computed styles are
+    // restored, and no further scrolling happens once the pointer is no longer held. Cleanup runs
+    // once the drag-end status change flushes, so poll rather than asserting immediately.
+    await expect
+      .poll(() => container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
+      .toBe('');
+    const containerStylesAfterDrag = await container.evaluate(getComputedScrollStyles);
+    expect(containerStylesAfterDrag.scrollSnapType).toBe(containerStylesBeforeDrag.scrollSnapType);
+    expect(containerStylesAfterDrag.scrollBehavior).toBe('smooth');
+
+    const containerScrollTopAtUpperLimit = await container.evaluate((el) => el.scrollTop);
+    const releaseSamples = await sampleScrollTop(page, container);
+    assertScrollTopHoldsAtBaseline(releaseSamples, containerScrollTopAtUpperLimit);
   });
 });

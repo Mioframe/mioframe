@@ -60,15 +60,19 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
   max-width: 320px;
   max-height: 260px;
   overflow: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
   border: 1px solid #ccc;
 }
 
 .reorder-self-scrollable-story-harness__ancestor-spacer-top {
   height: 80px;
+  scroll-snap-align: start;
 }
 
 .reorder-self-scrollable-story-harness__ancestor-spacer-bottom {
   height: 200px;
+  scroll-snap-align: start;
 }
 
 .reorder-self-scrollable-story-harness__container {
@@ -78,6 +82,8 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
   padding: 8px;
   max-height: 140px;
   overflow: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
   border: 1px dashed #999;
 }
 </style>

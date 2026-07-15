@@ -61,6 +61,31 @@ afterEach(() => {
 });
 
 describe('runReorderAutoscrollFrame', () => {
+  it('applies both axes through one combined instant scrollTo call', () => {
+    const container = createElement();
+    stubRect(container, { top: 100, bottom: 200, left: 0, right: 200 });
+
+    const candidate = createElement();
+    stubRect(candidate, { top: 100, bottom: 200, left: 0, right: 200 });
+    candidate.scrollTop = 5;
+    candidate.scrollLeft = 3;
+
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Forward, y: ScrollDirection.Forward },
+      speed: { x: 4, y: 10 },
+    });
+
+    const scrollToSpy = vi.spyOn(candidate, 'scrollTo');
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    const manager = { dragOperation: { position: { current: { x: 0, y: 0 } }, source } };
+
+    runReorderAutoscrollFrame(manager, container, [candidate]);
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    expect(scrollToSpy).toHaveBeenCalledWith({ left: 7, top: 15, behavior: 'instant' });
+  });
+
   it('does not reapply an axis already resolved by a nearer candidate', () => {
     const container = createElement();
     stubRect(container, { top: 100, bottom: 200, left: 0, right: 50 });

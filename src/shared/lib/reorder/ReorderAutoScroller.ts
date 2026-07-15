@@ -9,6 +9,7 @@ import {
 } from '@dnd-kit/dom/utilities';
 import { getReorderContainer } from './getReorderContainer';
 import { getReorderScrollCandidates } from './getReorderScrollCandidates';
+import { acquireReorderAutoscrollEnvironment } from './reorderAutoscrollEnvironment';
 import type { ReorderScrollCandidateRole } from './reorderAutoscrollGeometry';
 import { resolveReorderScrollDelta } from './reorderAutoscrollGeometry';
 
@@ -130,11 +131,12 @@ const applyReorderScrollCandidate = (
   const previousLeft = candidate.scrollLeft;
   const previousTop = candidate.scrollTop;
 
-  if (delta.x !== 0) {
-    candidate.scrollLeft += delta.x;
-  }
-  if (delta.y !== 0) {
-    candidate.scrollTop += delta.y;
+  if (delta.x !== 0 || delta.y !== 0) {
+    candidate.scrollTo({
+      left: previousLeft + delta.x,
+      top: previousTop + delta.y,
+      behavior: 'instant',
+    });
   }
 
   return {
@@ -227,6 +229,8 @@ export class ReorderAutoScroller extends Plugin<DragDropManager> {
         return;
       }
 
+      const environment = acquireReorderAutoscrollEnvironment(candidates);
+
       let active = true;
       let frameId: number | undefined;
 
@@ -247,6 +251,7 @@ export class ReorderAutoScroller extends Plugin<DragDropManager> {
         if (frameId !== undefined) {
           cancelAnimationFrame(frameId);
         }
+        environment.dispose();
       };
     });
   }
