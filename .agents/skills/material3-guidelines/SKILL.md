@@ -1,6 +1,6 @@
 ---
 name: material3-guidelines
-description: 'Use before Material-related UI/UX work. Verifies official sources, library location, component choice and usage, applicable foundation contracts, minimum supported surface, API, states, accessibility, composition, standard testing, and focused verification.'
+description: 'Use before Material-related UI/UX work. Resolves official sources, component choice and usage, minimum supported surface, library/foundation ownership, accessibility, visual-state coverage, and focused verification.'
 paths:
   - 'src/**/*.vue'
   - 'src/shared/ui/**'
@@ -12,161 +12,111 @@ paths:
 
 # Material 3 guidelines
 
-Use for work affecting Material component choice, usage, library structure, foundation contracts, layout, interaction, accessibility, tokens, public UI APIs, Storybook state surfaces, or visual verification.
+Use for work affecting Material component choice, usage, library structure, foundation contracts, layout, interaction, accessibility, tokens, public UI APIs, Storybook, or visual verification.
 
-For public `MD*` components, also use `shared-ui-implementation` and:
+Canonical rules live in:
 
-- [Library architecture](../../../docs/material-3/library-architecture.md);
-- [Component architecture](../../../docs/material-3/component-architecture.md);
-- [Component testing architecture](../../../docs/material-3/component-testing.md);
-- [Foundation architecture](../../../docs/material-3/foundation-architecture.md).
+- `docs/material-3/source-of-truth.md`;
+- `docs/material-3/library-architecture.md`;
+- `docs/material-3/foundation-architecture.md`;
+- `docs/material-3/component-architecture.md`;
+- `docs/material-3/component-testing.md`.
 
-For a change preserving component choice, usage, location, public imports, API, foundation dependencies, tokens, anatomy, interaction, accessibility, testing surface, and output, record:
+This skill defines workflow and stop conditions. It does not add fields to the canonical family blueprint.
+
+## No-impact path
+
+For a change preserving component choice, usage, location, public imports, API, foundation dependencies, tokens, anatomy, states, accessibility, testing surface, behavior, and rendered output, record:
 
 ```text
-Material impact: none; existing Material surface, location, foundation contracts, and verification surface unchanged
+Material impact: none
 ```
 
-## Canonical library boundary
+A public contract, visual contract, foundation, or state-model change is not `none`.
 
-`src/shared/ui/material` is the only location for new Material implementation.
+## Library routing
 
-- New official public components go to `material/components/<family>`.
-- New Material foundation runtime owners go to `material/foundation/<domain>`.
-- New reusable official Material compositions go to `material/patterns/<pattern>` only after the pattern gate passes.
-- Existing Material code outside the library is legacy and may receive only strict local repairs until focused migration.
-- Generic platform infrastructure and project-specific UI remain outside the library.
+- New official public `MD*` components go to `src/shared/ui/material/components/<family>`.
+- New Material foundation runtime/testing owners go to `material/foundation/<domain>`.
+- Reusable official Material compositions go to `material/patterns/<pattern>` only after the pattern gate passes.
+- Existing Material locations outside the library are legacy and may receive only strict local repairs until focused migration.
+- Generic platform infrastructure and project-specific UI remain outside the Material library.
 
-Do not add a new public `MD*` component, token owner, state/ripple/focus owner, Material icon owner, or Material overlay owner to a legacy path.
+Do not add new Material ownership to a legacy path.
 
 ## Source workflow
 
-Use `material3` MCP first and `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete. Record cache health, snapshot, and exact relevant pages.
+1. Use `material3` MCP.
+2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete.
+3. Use the official Material Design Kit only when published docs cannot resolve exact visual geometry, anatomy, or state composition.
+4. Record exact pages, snapshot, and Design Kit reference when applicable.
+5. Stop when the required surface is resolved.
 
-Read only what resolves:
+Do not use Material Web, generic web search, screenshots without official provenance, older Material versions, third-party libraries, or memory as authority.
 
-- component choice, intended/prohibited usage, and composition;
-- required configuration, anatomy, states, and accessibility;
-- applicable foundation contracts;
-- exact component/foundation tokens;
-- relevant layout/adaptive behavior;
-- the complete supported state surface and verification.
+If required official evidence is missing, narrow unsupported scope or use `blocked`.
 
-Do not use Material Web, generic web search, screenshots, unrelated libraries, older Material versions, or memory as authority. Stop when the required surface is resolved.
-
-## Component authoring mode
+## Authoring mode
 
 Record one:
 
-- `standard-authoring`: all decisions derive from required scenarios, official sources, repository rules, accepted foundation contracts, library architecture, testing architecture, and native semantics;
-- `handoff-authoring`: a ready handoff provides the exact delta;
-- `blocked`: component, foundation, library, or testing architecture has an unresolved escalation condition.
+- `standard-authoring`: all decisions derive from required scenarios, official sources, repository rules, accepted contracts, and native semantics;
+- `handoff-authoring`: a ready architecture handoff supplies the exact delta;
+- `blocked`: a required source, ownership, compatibility, foundation, state, or verification decision remains unresolved.
 
-Normal source-backed component work does not require a separate architect handoff.
+Normal source-backed component work does not require a separate architecture handoff when the canonical blueprint is ready.
 
 ## Minimum complete surface
 
 - Start from required scenarios and affected consumers.
-- When no scenario is provided, implement canonical Material default usage only.
+- When no scenario is supplied, implement canonical Material default usage only.
 - Add variants, modes, anatomy, and behavior only for named scenarios or current consumers.
-- Include every reachable state, accessibility requirement, usage constraint, and foundation dependency.
+- Include every reachable contract and every distinct component-owned visible route of the supported surface.
 - Record remaining official capabilities as unsupported.
-- Add no project extension without an explicit requirement.
+- Add no Mioframe extension without an explicit requirement and owner.
 
-## Required family blueprint additions
+## Canonical family blueprint
 
-The family `README.md` must include the component blueprint from `component-architecture.md` plus:
+Use the complete schema from `component-architecture.md`. Do not create a parallel checklist or add mandatory fields here.
 
-### Library ownership
+Before production edits, confirm that the blueprint resolves:
 
-- canonical family path under `material/components`;
-- current legacy path when migrating;
-- migration mode and status;
-- public library export;
-- consumer import migration scope.
+- family and library ownership;
+- required scenarios, usage, and supported/unsupported surface;
+- official source snapshots and Design Kit evidence when required;
+- public API, native semantics, states, and anatomy/DOM owners;
+- foundation dependencies and change modes;
+- architecture profile, token ownership, and rendered-property matrix;
+- production/export/story/test files;
+- standard test profile and distinct visual-route coverage;
+- migration, consumers, deviations, and human-review status.
 
-### Material usage contract
+`Readiness: ready` is invalid with unresolved or blocked decisions.
 
-- intended scenarios and when not to use the component;
-- component-choice evidence;
-- action/content hierarchy;
-- allowed compositions and placement constraints;
-- adaptive behavior and owner;
-- product integration in this PR.
-
-### Foundation dependencies
-
-Use the table from `foundation-architecture.md` and current statuses from `foundation-registry.md`.
-
-A component must consume accepted foundation owners. It must not create local substitutes for theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, density, accessibility, overlays, or adaptivity.
-
-Keep an additive foundation delta in a component PR only when every same-PR condition in `foundation-architecture.md` passes. Corrections and replacements normally require focused foundation work.
-
-### Standard test profile
-
-Record:
-
-- colocated component contract test;
-- canonical Storybook `StateMatrix` story and stable root anchor;
-- state-matrix coverage map;
-- Playwright visual regression path and snapshot sections;
-- Storybook browser-behavior spec or `not applicable` with reason;
-- pure helper/composable tests or `not applicable`;
-- changed-consumer preservation checks;
-- human Material visual-review status.
-
-The state matrix covers every supported visual state and every distinct state-rendering route. It does not repeat equivalent sizes, labels, icons, or content combinations.
-
-## API and implementation constraints
+## Implementation constraints
 
 - Use official Material vocabulary and native semantics.
-- Expose only supported configuration, semantic state, required native behavior, consumer-provided anatomy, and explicit extensions.
-- Follow official invalid-combination behavior or use `blocked`.
-- Use exact official `md.comp.*` paths when present; do not invent or shorten component tokens.
-- Use accepted generic foundation contracts and property-specific state resolution.
-- Product layers own information architecture, component choice, placement, and adaptive composition.
-- Project-specific shared UI must not be moved under official `material/components` merely because it uses Material primitives.
+- Expose only supported configuration, semantic state, native behavior, consumer anatomy, and explicit extensions.
+- Follow official invalid-combination behavior; otherwise use `blocked`.
+- Use exact official `md.comp.*` paths; do not invent or shorten tokens.
+- Consume accepted foundation owners and keep property-specific state resolution component-owned.
+- Product layers own information architecture, component choice, placement, workflow, and adaptive composition.
 - Do not add test-only public props, events, classes, or runtime branches.
-
-## Required note
-
-```text
-Material source:
-Required scenarios:
-Usage/composition:
-Library owner/current path:
-Supported / unsupported surface:
-Foundation dependencies:
-Token source:
-Accessibility/native semantics:
-State matrix story and coverage:
-Contract/browser/visual verification:
-Human Material visual review: required | passed | blocked
-Deviation: none | <named deviation>
-Authoring mode: standard-authoring | handoff-authoring | blocked
-```
-
-An automated coding agent must not report human review as passed. Keep details in repository blueprints, library map, stories, and registries rather than repeating them in task prose.
+- Do not create local foundation substitutes, universal bases, runtime registries, generic resolvers, CSS DSLs, or cross-family state machines.
 
 ## Verification
 
-Use the standard component test profile, narrowed only by explicit ownership:
+Use the standard proof profile from `component-testing.md`:
 
-- canonical library location and dependency direction;
-- component-choice/composition evidence for product integration;
-- colocated contract and accessibility tests;
-- foundation dependency and registry consistency;
-- token/layer/owner validation;
-- public export and no-deep-import validation;
-- canonical `StateMatrix` coverage of all distinct supported visual state routes;
-- Playwright visual baseline of the matrix or its labelled sections;
-- real browser behavior for focus, keyboard, pointer/touch, overlays, adaptivity, and actual CSS owners when applicable;
+- static and structured architecture checks;
+- colocated component-contract tests;
+- canonical `StateMatrix` covering every distinct supported component-owned visual route;
+- Playwright visual regression of the matrix;
+- real browser behavior tests when applicable;
 - pure helper/composable tests when applicable;
-- property-state matrix checks;
-- changed-consumer import and behavior preservation;
-- removal of obsolete legacy paths after migration;
-- human review of initial or intentionally changed visual baselines.
+- changed-consumer preservation;
+- required architecture, Material, and human visual review.
 
-Do not claim Material alignment from green unit tests, snapshots, or automated image comparison alone.
+Non-visual states belong in contract or browser tests, not duplicate matrix cells. Forced state proves appearance only.
 
-Use `blocked` only for unresolved source, usage, library location, ownership, compatibility, foundation, infrastructure, migration, state coverage, or browser-verification decisions. Component size or token count is not an escalation reason.
+An automated coding agent must not report human visual review as passed. Green checks or screenshot equality alone do not prove Material alignment.
