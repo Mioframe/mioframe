@@ -351,7 +351,7 @@ Omit a stage only when the blueprint states the property does not vary across it
 Create one row for each property varying by configuration, semantic state, interaction state, or project mode.
 
 | Property | DOM owner | Final value | Configuration source | Semantic source | Interaction inputs | Winner rule | Simultaneous outputs | Foundation bridge |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| -------- | --------- | ----------- | -------------------- | --------------- | ------------------ | ----------- | -------------------- | ----------------- |
 
 Rules:
 
