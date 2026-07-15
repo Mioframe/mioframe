@@ -28,11 +28,56 @@ const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): vo
   }
 };
 
-const getComputedScrollStyles = (
-  el: Element,
-): { scrollBehavior: string; scrollSnapType: string } => {
-  const styles = getComputedStyle(el);
-  return { scrollBehavior: styles.scrollBehavior, scrollSnapType: styles.scrollSnapType };
+// Waits for `scrollTop` to hold steady across several consecutive polls, not just one, before
+// treating it as settled: a single matching poll pair can still land inside an in-progress
+// reflow (e.g. dnd-kit swapping the dragged item's fixed-position clone back for the real,
+// back-in-flow element, or the restored scroll-snap container settling to its nearest snap
+// position) on a resource-constrained runner.
+const waitForStableScrollTop = async (
+  scrollable: Locator,
+  requiredStableReads = 3,
+): Promise<number> => {
+  let previous = await scrollable.evaluate((el) => el.scrollTop);
+  let stableCount = 1;
+  await expect
+    .poll(
+      async () => {
+        const current = await scrollable.evaluate((el) => el.scrollTop);
+        stableCount = current === previous ? stableCount + 1 : 1;
+        previous = current;
+        return stableCount >= requiredStableReads;
+      },
+      { timeout: 5000, intervals: [200] },
+    )
+    .toBe(true);
+  return previous;
+};
+
+interface ScrollSnapSnapshot {
+  readonly inlineValue: string;
+  readonly inlinePriority: string;
+  readonly computedScrollSnapType: string;
+  readonly computedScrollBehavior: string;
+}
+
+const captureScrollSnapSnapshot = (scrollable: Locator): Promise<ScrollSnapSnapshot> =>
+  scrollable.evaluate((el) => {
+    const styles = getComputedStyle(el);
+    return {
+      inlineValue: el.style.getPropertyValue('scroll-snap-type'),
+      inlinePriority: el.style.getPropertyPriority('scroll-snap-type'),
+      computedScrollSnapType: styles.scrollSnapType,
+      computedScrollBehavior: styles.scrollBehavior,
+    };
+  });
+
+const assertSuppressedDuringDrag = async (scrollable: Locator): Promise<void> => {
+  expect(await scrollable.evaluate((el) => el.style.getPropertyValue('scroll-snap-type'))).toBe(
+    'none',
+  );
+  expect(await scrollable.evaluate((el) => el.style.getPropertyPriority('scroll-snap-type'))).toBe(
+    '',
+  );
 };
 
 test.describe('self-scrollable reorder container', () => {
@@ -53,17 +98,20 @@ test.describe('self-scrollable reorder container', () => {
     expect(containerExtent).toBeGreaterThan(0);
     expect(ancestorExtent).toBeGreaterThan(0);
 
-    // Preconditions: both elements carry the smooth-scroll and scroll-snap styles this scenario
-    // exercises, and neither has an inline scroll-snap override applied yet.
-    const containerStylesBeforeDrag = await container.evaluate(getComputedScrollStyles);
-    const ancestorStylesBeforeDrag = await ancestor.evaluate(getComputedScrollStyles);
-    expect(containerStylesBeforeDrag.scrollBehavior).toBe('smooth');
-    expect(containerStylesBeforeDrag.scrollSnapType).not.toBe('none');
-    expect(ancestorStylesBeforeDrag.scrollBehavior).toBe('smooth');
-    expect(ancestorStylesBeforeDrag.scrollSnapType).not.toBe('none');
-    expect(await container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type'))).toBe(
-      '',
-    );
+    // Preconditions: both elements carry the smooth-scroll and real scroll-snap styles this
+    // scenario exercises, neither has an inline scroll-snap override applied yet, and the inner
+    // items create real snap positions inside the container.
+    const containerSnapshotBeforeDrag = await captureScrollSnapSnapshot(container);
+    const ancestorSnapshotBeforeDrag = await captureScrollSnapSnapshot(ancestor);
+    expect(containerSnapshotBeforeDrag.computedScrollBehavior).toBe('smooth');
+    expect(containerSnapshotBeforeDrag.computedScrollSnapType).not.toBe('none');
+    expect(containerSnapshotBeforeDrag.inlineValue).toBe('');
+    expect(containerSnapshotBeforeDrag.inlinePriority).toBe('');
+    expect(ancestorSnapshotBeforeDrag.computedScrollBehavior).toBe('smooth');
+    expect(ancestorSnapshotBeforeDrag.computedScrollSnapType).not.toBe('none');
+    expect(ancestorSnapshotBeforeDrag.inlineValue).toBe('');
+    expect(ancestorSnapshotBeforeDrag.inlinePriority).toBe('');
+    expect(await firstItem.evaluate((el) => getComputedStyle(el).scrollSnapAlign)).toBe('start');
 
     const containerBox = await container.boundingBox();
     const itemBox = await firstItem.boundingBox();
@@ -90,11 +138,11 @@ test.describe('self-scrollable reorder container', () => {
     await expect(firstItem).toHaveClass(/reorder-self-scrollable-story-item_dragging/);
     expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorScrollTopStart);
 
-    // During the drag, the container's own inline scroll-snap-type is temporarily suppressed so
-    // scroll snap cannot redirect the deterministic autoscroll deltas.
-    expect(await container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type'))).toBe(
-      'none',
-    );
+    // During the drag, both candidates' inline scroll-snap-type is temporarily suppressed (with no
+    // priority, i.e. no `!important`) so scroll snap cannot redirect the deterministic autoscroll
+    // deltas on either the container or its outer scrollable ancestor.
+    await assertSuppressedDuringDrag(container);
+    await assertSuppressedDuringDrag(ancestor);
 
     // The container reaches its own native lower scroll limit while the pointer stays put.
     await expect
@@ -127,20 +175,49 @@ test.describe('self-scrollable reorder container', () => {
     const upperHoldSamples = await sampleScrollTop(page, ancestor);
     assertScrollTopHoldsAtBaseline(upperHoldSamples, ancestorScrollTopStart);
 
+    // Suppression is still in effect for both candidates right up to release.
+    await assertSuppressedDuringDrag(container);
+    await assertSuppressedDuringDrag(ancestor);
+
     await page.mouse.up();
 
-    // After release, the temporary inline snap override is gone, the original computed styles are
-    // restored, and no further scrolling happens once the pointer is no longer held. Cleanup runs
-    // once the drag-end status change flushes, so poll rather than asserting immediately.
+    // After release, the temporary inline snap override is gone on both candidates, the original
+    // computed styles are restored, and no further scrolling happens once the pointer is no longer
+    // held. Cleanup runs once the drag-end status change flushes, so poll rather than asserting
+    // immediately.
     await expect
       .poll(() => container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe('');
-    const containerStylesAfterDrag = await container.evaluate(getComputedScrollStyles);
-    expect(containerStylesAfterDrag.scrollSnapType).toBe(containerStylesBeforeDrag.scrollSnapType);
-    expect(containerStylesAfterDrag.scrollBehavior).toBe('smooth');
+    await expect
+      .poll(() => ancestor.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
+      .toBe('');
 
-    const containerScrollTopAtUpperLimit = await container.evaluate((el) => el.scrollTop);
-    const releaseSamples = await sampleScrollTop(page, container);
-    assertScrollTopHoldsAtBaseline(releaseSamples, containerScrollTopAtUpperLimit);
+    const containerSnapshotAfterDrag = await captureScrollSnapSnapshot(container);
+    expect(containerSnapshotAfterDrag.inlineValue).toBe(containerSnapshotBeforeDrag.inlineValue);
+    expect(containerSnapshotAfterDrag.inlinePriority).toBe(
+      containerSnapshotBeforeDrag.inlinePriority,
+    );
+    expect(containerSnapshotAfterDrag.computedScrollSnapType).toBe(
+      containerSnapshotBeforeDrag.computedScrollSnapType,
+    );
+    expect(containerSnapshotAfterDrag.computedScrollBehavior).toBe('smooth');
+
+    const ancestorSnapshotAfterDrag = await captureScrollSnapSnapshot(ancestor);
+    expect(ancestorSnapshotAfterDrag.inlineValue).toBe(ancestorSnapshotBeforeDrag.inlineValue);
+    expect(ancestorSnapshotAfterDrag.inlinePriority).toBe(
+      ancestorSnapshotBeforeDrag.inlinePriority,
+    );
+    expect(ancestorSnapshotAfterDrag.computedScrollSnapType).toBe(
+      ancestorSnapshotBeforeDrag.computedScrollSnapType,
+    );
+    expect(ancestorSnapshotAfterDrag.computedScrollBehavior).toBe('smooth');
+
+    const containerScrollTopAtUpperLimit = await waitForStableScrollTop(container);
+    const containerReleaseSamples = await sampleScrollTop(page, container);
+    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopAtUpperLimit);
+
+    const ancestorScrollTopAfterDrag = await waitForStableScrollTop(ancestor);
+    const ancestorReleaseSamples = await sampleScrollTop(page, ancestor);
+    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopAfterDrag);
   });
 });

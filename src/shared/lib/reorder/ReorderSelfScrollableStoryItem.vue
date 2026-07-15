@@ -38,6 +38,7 @@ const { isDragging } = useReorderItem({
   border: 1px solid #a5b4fc;
   border-radius: 4px;
   cursor: grab;
+  scroll-snap-align: start;
 }
 
 .reorder-self-scrollable-story-item_dragging {

@@ -1,5 +1,6 @@
 const SCROLL_SNAP_PROPERTY = 'scroll-snap-type';
 const SCROLL_SNAP_SUPPRESSED_VALUE = 'none';
+const SCROLL_SNAP_SUPPRESSED_PRIORITY = '';
 
 interface SavedScrollSnapDeclaration {
   readonly element: HTMLElement;
@@ -11,8 +12,8 @@ interface SavedScrollSnapDeclaration {
 export interface ReorderAutoscrollEnvironment {
   /**
    * Restores each candidate's original inline `scroll-snap-type` declaration, unless a concurrent
-   * consumer changed that inline property during the drag, in which case that change is left
-   * untouched. Safe to call more than once.
+   * consumer changed that inline property (its value, its priority, or both) during the drag, in
+   * which case that change is left untouched. Safe to call more than once.
    */
   dispose(): void;
 }
@@ -22,10 +23,12 @@ export interface ReorderAutoscrollEnvironment {
  * reorder drag, so `ReorderAutoScroller` (see `ReorderAutoScroller.ts`) can apply deterministic
  * autoscroll deltas without a candidate's own `scroll-snap-type` redirecting or undoing them.
  *
- * The suppression is applied as an inline `!important` declaration, which is the only way to
- * reliably defeat an author-level scroll-snap rule for the duration of the drag; it is temporary
- * runtime state, not a project styling convention. Callers must dispose the returned environment
- * when the drag ends, is cancelled, or the owning plugin is disabled/destroyed.
+ * The suppression is applied as a normal-priority inline declaration; it never uses `!important`.
+ * An inline declaration is a single per-property slot, so setting it replaces whatever inline
+ * value and priority a candidate already had, and its specificity still outranks any non-important
+ * author stylesheet rule (such as the fixture's `scroll-snap-type: y proximity`). This is
+ * temporary runtime state, not a project styling convention. Callers must dispose the returned
+ * environment when the drag ends, is cancelled, or the owning plugin is disabled/destroyed.
  * @param candidates - The precomputed scroll candidate chain for the active drag (see
  * `getReorderScrollCandidates`). Non-`HTMLElement` candidates are left untouched.
  * @returns A guard whose `dispose()` restores the original scroll-snap declarations.
@@ -45,7 +48,7 @@ export const acquireReorderAutoscrollEnvironment = (
       value: element.style.getPropertyValue(SCROLL_SNAP_PROPERTY),
       priority: element.style.getPropertyPriority(SCROLL_SNAP_PROPERTY),
     });
-    element.style.setProperty(SCROLL_SNAP_PROPERTY, SCROLL_SNAP_SUPPRESSED_VALUE, 'important');
+    element.style.setProperty(SCROLL_SNAP_PROPERTY, SCROLL_SNAP_SUPPRESSED_VALUE);
   }
 
   let disposed = false;
@@ -58,9 +61,10 @@ export const acquireReorderAutoscrollEnvironment = (
       disposed = true;
 
       for (const { element, value, priority } of saved) {
+        const currentPriority = element.style.getPropertyPriority(SCROLL_SNAP_PROPERTY);
         const stillOwned =
           element.style.getPropertyValue(SCROLL_SNAP_PROPERTY) === SCROLL_SNAP_SUPPRESSED_VALUE &&
-          element.style.getPropertyPriority(SCROLL_SNAP_PROPERTY) === 'important';
+          currentPriority === SCROLL_SNAP_SUPPRESSED_PRIORITY;
 
         if (!stillOwned) {
           continue;

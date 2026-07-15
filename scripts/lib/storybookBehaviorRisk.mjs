@@ -49,6 +49,7 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/ReorderAutoScroller.ts',
       'src/shared/lib/reorder/getReorderContainer.ts',
       'src/shared/lib/reorder/getReorderScrollCandidates.ts',
+      'src/shared/lib/reorder/reorderAutoscrollEnvironment.ts',
       'src/shared/lib/reorder/reorderAutoscrollGeometry.ts',
       'src/shared/lib/reorder/reorderConfig.ts',
       'src/shared/lib/reorder/ReorderSurface.vue',
@@ -57,9 +58,9 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/ReorderSelfScrollableStoryHarness.vue',
       'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',
     ],
+    specs: ['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts'],
   },
   {
-    specs: ['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts'],
     name: 'button family behavior',
     // A directory-wide prefix so every Button-family component, story, and colocated behavior
     // fixture (for example the target-hit and toolbar story helpers) selects this scenario,

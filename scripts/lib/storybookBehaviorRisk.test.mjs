@@ -81,8 +81,9 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     const coveredSpecs = new Set([...registrySpecs, ...STORYBOOK_BEHAVIOR_STANDALONE_SPECS]);
 
     expect(coveredSpecs.has('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
-    expect(coveredSpecs.has('tests/e2e/storybook/reorder.spec.ts')).toBe(true);
-    expect(coveredSpecs.has('tests/e2e/storybook/reorder.autoscroll.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts')).toBe(
+      true,
+    );
     expect(coveredSpecs.has('tests/e2e/storybook/md-button-family.spec.ts')).toBe(true);
   });
 
@@ -303,6 +304,15 @@ describe('resolveStorybookBehaviorPlan', () => {
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+  });
+
+  it('focuses the self-scrollable-container spec for a reorderAutoscrollEnvironment change', () => {
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/lib/reorder/reorderAutoscrollEnvironment.ts',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts']);
   });
 
   it('does not run the full lane for an arbitrary unrelated src change', () => {

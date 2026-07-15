@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe('acquireReorderAutoscrollEnvironment', () => {
-  it('applies scroll-snap-type: none !important to each unique HTML candidate', () => {
+  it('applies scroll-snap-type: none without a priority to each unique HTML candidate', () => {
     const first = createElement();
     const second = createElement();
 
@@ -20,7 +20,7 @@ describe('acquireReorderAutoscrollEnvironment', () => {
 
     for (const element of [first, second]) {
       expect(element.style.getPropertyValue('scroll-snap-type')).toBe('none');
-      expect(element.style.getPropertyPriority('scroll-snap-type')).toBe('important');
+      expect(element.style.getPropertyPriority('scroll-snap-type')).toBe('');
     }
   });
 
@@ -44,7 +44,7 @@ describe('acquireReorderAutoscrollEnvironment', () => {
     expect(element.style.getPropertyPriority('scroll-snap-type')).toBe('');
   });
 
-  it('restores an existing !important inline declaration on dispose', () => {
+  it('restores an original !important inline declaration with its original priority on dispose', () => {
     const element = createElement();
     element.style.setProperty('scroll-snap-type', 'x mandatory', 'important');
 
@@ -55,7 +55,7 @@ describe('acquireReorderAutoscrollEnvironment', () => {
     expect(element.style.getPropertyPriority('scroll-snap-type')).toBe('important');
   });
 
-  it('does not overwrite a concurrent consumer change made during the drag', () => {
+  it('does not overwrite a concurrent consumer value change made during the drag', () => {
     const element = createElement();
     element.style.setProperty('scroll-snap-type', 'y proximity');
 
@@ -66,6 +66,21 @@ describe('acquireReorderAutoscrollEnvironment', () => {
     environment.dispose();
 
     expect(element.style.getPropertyValue('scroll-snap-type')).toBe('x proximity');
+    expect(element.style.getPropertyPriority('scroll-snap-type')).toBe('');
+  });
+
+  it('does not overwrite a concurrent consumer priority change made during the drag', () => {
+    const element = createElement();
+    element.style.setProperty('scroll-snap-type', 'y proximity');
+
+    const environment = acquireReorderAutoscrollEnvironment([element]);
+
+    element.style.setProperty('scroll-snap-type', 'none', 'important');
+
+    environment.dispose();
+
+    expect(element.style.getPropertyValue('scroll-snap-type')).toBe('none');
+    expect(element.style.getPropertyPriority('scroll-snap-type')).toBe('important');
   });
 
   it('is idempotent across repeated dispose calls', () => {
