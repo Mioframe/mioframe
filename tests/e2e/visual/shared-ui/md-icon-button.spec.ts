@@ -110,9 +110,11 @@ test('MDIconButton resting styles resolve to the documented Material color role 
     const button = page.getByRole('button', { name, exact: true });
     return Promise.all([
       button.evaluate((el) => getComputedStyle(el).backgroundColor),
+      button.evaluate((el) => getComputedStyle(el).borderColor),
       button.locator('.md-icon-button__icon').evaluate((el) => getComputedStyle(el).color),
-    ]).then(([background, iconColor]) => ({
+    ]).then(([background, borderColor, iconColor]) => ({
       background: normalizeColorString(background),
+      borderColor: normalizeColorString(borderColor),
       iconColor: normalizeColorString(iconColor),
     }));
   };
@@ -123,14 +125,21 @@ test('MDIconButton resting styles resolve to the documented Material color role 
     readResting('Tonal'),
     readResting('Outlined'),
   ]);
-  const [primary, onPrimary, secondaryContainer, onSecondaryContainer, onSurfaceVariant] =
-    await Promise.all([
-      getSysColorValue(page, '--md-sys-color-primary'),
-      getSysColorValue(page, '--md-sys-color-on-primary'),
-      getSysColorValue(page, '--md-sys-color-secondary-container'),
-      getSysColorValue(page, '--md-sys-color-on-secondary-container'),
-      getSysColorValue(page, '--md-sys-color-on-surface-variant'),
-    ]);
+  const [
+    primary,
+    onPrimary,
+    secondaryContainer,
+    onSecondaryContainer,
+    onSurfaceVariant,
+    outlineVariant,
+  ] = await Promise.all([
+    getSysColorValue(page, '--md-sys-color-primary'),
+    getSysColorValue(page, '--md-sys-color-on-primary'),
+    getSysColorValue(page, '--md-sys-color-secondary-container'),
+    getSysColorValue(page, '--md-sys-color-on-secondary-container'),
+    getSysColorValue(page, '--md-sys-color-on-surface-variant'),
+    getSysColorValue(page, '--md-sys-color-outline-variant'),
+  ]);
 
   expect(standard.iconColor).toBe(onSurfaceVariant);
   expect(filled.background).toBe(primary);
@@ -138,6 +147,9 @@ test('MDIconButton resting styles resolve to the documented Material color role 
   expect(tonal.background).toBe(secondaryContainer);
   expect(tonal.iconColor).toBe(onSecondaryContainer);
   expect(outlined.iconColor).toBe(onSurfaceVariant);
+  expect(outlined.borderColor).toBe(outlineVariant);
+  expect(standard.background).toBe('rgba(0 0 0 0)');
+  expect(outlined.background).toBe('rgba(0 0 0 0)');
 });
 
 test('MDIconButton hover, focus, and pressed default state-layer opacity resolves to the documented system role', async ({
@@ -178,6 +190,41 @@ test('MDIconButton hover, focus, and pressed default state-layer opacity resolve
       expect(hoverOpacity).toBe(hoverRole);
       expect(focusOpacity).toBe(focusRole);
       expect(pressedOpacity).toBe(pressedRole);
+    }),
+  );
+});
+
+test('MDIconButton disabled defaults cover standard, filled, tonal, and outlined routes', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-states');
+  const [disabledIcon, outlineVariant, filledContainer, tonalContainer] = await Promise.all([
+    getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.38'),
+    getSysColorValue(page, '--md-sys-color-outline-variant'),
+    getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.1'),
+    getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.12'),
+  ]);
+  const cases = [
+    ['standard', 'Disabled standard', 'rgba(0 0 0 0)'],
+    ['filled', 'Disabled filled', filledContainer],
+    ['tonal', 'Disabled tonal', tonalContainer],
+    ['outlined', 'Disabled outlined', 'rgba(0 0 0 0)'],
+  ] as const;
+  await Promise.all(
+    cases.map(async ([style, name, container]) => {
+      const sample = await readButtonLocatorVisuals(
+        page.getByRole('button', { name, exact: true }),
+        { iconSelector: '.md-icon-button__icon' },
+      );
+      expect(normalizeColorString(sample.background), `${style} container`).toBe(container);
+      expect(normalizeColorString(asColor(sample.iconColor)), `${style} icon`).toBe(disabledIcon);
+      expect(sample.disabledIconButtonOpacity, `${style} icon opacity route`).toBe('.38');
+      expect(
+        normalizeColorString(asColor(sample.stateLayerBackground)),
+        `${style} state layer`,
+      ).toBe('0 0 0 / 0');
+      if (style === 'outlined')
+        expect(normalizeColorString(sample.borderColor)).toBe(outlineVariant);
     }),
   );
 });
@@ -469,14 +516,14 @@ test('MDIconButton routes icon, outline, and state-layer tokens through the rend
   );
 });
 
-test('MDIconButton selected/unselected toggle token routing is independently verified for standard, filled, tonal, and outlined', async ({
+test('MDIconButton selected/unselected hover, focus, and pressed token routing is independently verified for standard, filled, tonal, and outlined', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdiconbutton--toggle-token-routing-matrix');
 
   // Literals mirror `ICON_BUTTON_TOGGLE_MATRIX` in `MDIconButton.stories.ts`. Container (where
-  // published) and resting icon are read at rest; state-layer color/opacity are read under a
-  // forced hover state, since `MDStateLayer` only paints a color once a state is active.
+  // published) and resting icon are read at rest; interaction icon and state-layer color/opacity
+  // are read under each forced state, since `MDStateLayer` only paints while a state is active.
   const TOGGLE_MATRIX: Record<
     'standard' | 'filled' | 'tonal' | 'outlined',
     {
@@ -559,6 +606,56 @@ test('MDIconButton selected/unselected toggle token routing is independently ver
       hoverOpacity: '0.15',
     },
   };
+  const ADDITIONAL_STATES = {
+    standard: {
+      selected: {
+        focus: ['rgb(209 91 2)', 'rgb(2 149 209)'],
+        pressed: ['rgb(208 92 4)', 'rgb(4 148 208)'],
+      },
+      unselected: {
+        focus: ['rgb(2 139 71)', 'rgb(149 2 91)'],
+        pressed: ['rgb(4 138 72)', 'rgb(148 4 92)'],
+      },
+      focusOpacity: '0.17',
+      pressedOpacity: '0.27',
+    },
+    filled: {
+      selected: {
+        focus: ['rgb(254 229 62)', 'rgb(2 198 161)'],
+        pressed: ['rgb(253 228 64)', 'rgb(4 196 162)'],
+      },
+      unselected: {
+        focus: ['rgb(254 149 202)', 'rgb(149 82 1)'],
+        pressed: ['rgb(253 148 204)', 'rgb(148 84 2)'],
+      },
+      focusOpacity: '0.19',
+      pressedOpacity: '0.29',
+    },
+    tonal: {
+      selected: {
+        focus: ['rgb(254 253 92)', 'rgb(199 102 3)'],
+        pressed: ['rgb(253 251 94)', 'rgb(198 104 6)'],
+      },
+      unselected: {
+        focus: ['rgb(92 253 254)', 'rgb(3 119 199)'],
+        pressed: ['rgb(94 251 253)', 'rgb(6 118 198)'],
+      },
+      focusOpacity: '0.23',
+      pressedOpacity: '0.33',
+    },
+    outlined: {
+      selected: {
+        focus: ['rgb(254 62 179)', 'rgb(149 3 254)'],
+        pressed: ['rgb(253 64 178)', 'rgb(148 6 253)'],
+      },
+      unselected: {
+        focus: ['rgb(62 253 149)', 'rgb(3 89 254)'],
+        pressed: ['rgb(64 251 148)', 'rgb(6 88 253)'],
+      },
+      focusOpacity: '0.25',
+      pressedOpacity: '0.35',
+    },
+  } as const;
   const ICON_BUTTON_TOGGLE_STYLE_KEYS = ['standard', 'filled', 'tonal', 'outlined'] as const;
 
   await Promise.all(
@@ -582,33 +679,44 @@ test('MDIconButton selected/unselected toggle token routing is independently ver
             normalizeColorString(tokens.outline),
           );
         }
+        if (style === 'outlined' && branch === 'selected') {
+          expect(
+            normalizeColorString(resting.borderColor),
+            'outlined selected outline mirrors container',
+          ).toBe(normalizeColorString(resting.background));
+        }
         expect(normalizeColorString(asColor(resting.iconColor)), `${style} ${branch} icon`).toBe(
           normalizeColorString(tokens.icon),
         );
 
-        const hover = await readButtonVisuals(page, `icon-toggle-token-${style}-${branch}-hover`, {
-          iconSelector: '.md-icon-button__icon',
-        });
-        const expectedStateLayerBackground = await getColorAtOpacity(
-          page,
-          tokens.stateLayerColor,
-          entry.hoverOpacity,
+        await Promise.all(
+          (['hover', 'focus', 'pressed'] as const).map(async (state) => {
+            const sample = await readButtonVisuals(
+              page,
+              `icon-toggle-token-${style}-${branch}-${state}`,
+              { iconSelector: '.md-icon-button__icon' },
+            );
+            const [icon, stateLayerColor] =
+              state === 'hover'
+                ? [tokens.hoverIcon, tokens.stateLayerColor]
+                : ADDITIONAL_STATES[style][branch][state];
+            const opacity =
+              state === 'hover' ? entry.hoverOpacity : ADDITIONAL_STATES[style][`${state}Opacity`];
+            expect(
+              normalizeColorString(asColor(sample.iconColor)),
+              `${style} ${branch} ${state} icon`,
+            ).toBe(normalizeColorString(icon));
+            expect(
+              normalizeColorString(sample.stateLayerColor),
+              `${style} ${branch} ${state} state-layer color`,
+            ).toBe(normalizeColorString(stateLayerColor));
+            expect(sample[`${state}Opacity`], `${style} ${branch} ${state} opacity`).toBe(opacity);
+            expect(
+              normalizeColorString(asColor(sample.stateLayerBackground)),
+              `${style} ${branch} ${state} rendered state layer`,
+            ).toBe(await getColorAtOpacity(page, stateLayerColor, opacity));
+          }),
         );
-        expect(
-          normalizeColorString(asColor(hover.iconColor)),
-          `${style} ${branch} hover icon`,
-        ).toBe(normalizeColorString(tokens.hoverIcon));
-        expect(
-          normalizeColorString(hover.stateLayerColor),
-          `${style} ${branch} state-layer color`,
-        ).toBe(normalizeColorString(tokens.stateLayerColor));
-        expect(hover.hoverOpacity, `${style} ${branch} state-layer opacity`).toBe(
-          entry.hoverOpacity,
-        );
-        expect(
-          normalizeColorString(asColor(hover.stateLayerBackground)),
-          `${style} ${branch} rendered state-layer background`,
-        ).toBe(expectedStateLayerBackground);
       }),
     ),
   );

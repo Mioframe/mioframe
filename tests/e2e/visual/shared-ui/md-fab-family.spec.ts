@@ -224,9 +224,11 @@ test('MDFab resting styles resolve to the documented Material color role for all
     const button = page.getByRole('button', { name, exact: true });
     return Promise.all([
       button.evaluate((el) => getComputedStyle(el).backgroundColor),
+      button.evaluate((el) => getComputedStyle(el).boxShadow),
       button.locator('.md-fab__icon').evaluate((el) => getComputedStyle(el).color),
-    ]).then(([background, iconColor]) => ({
+    ]).then(([background, boxShadow, iconColor]) => ({
       background: normalizeColorString(background),
+      boxShadow,
       iconColor: normalizeColorString(iconColor),
     }));
   };
@@ -283,6 +285,17 @@ test('MDFab resting styles resolve to the documented Material color role for all
   expect(secondaryContainer.iconColor).toBe(sysOnSecondaryContainer);
   expect(tertiaryContainer.background).toBe(sysTertiaryContainer);
   expect(tertiaryContainer.iconColor).toBe(sysOnTertiaryContainer);
+  const level3 = await getBoxShadowValue(page, 'var(--md-sys-elevation-level3)');
+  for (const sample of [
+    primary,
+    secondary,
+    tertiary,
+    primaryContainer,
+    secondaryContainer,
+    tertiaryContainer,
+  ]) {
+    expect(sample.boxShadow).toBe(level3);
+  }
 });
 
 test('MDFab default hover, focus, and pressed elevation resolves to the documented system levels for all six colors', async ({
@@ -581,10 +594,12 @@ test('MDExtendedFab resting styles resolve to the documented Material color role
     const button = page.getByRole('button', { name, exact: true });
     return Promise.all([
       button.evaluate((el) => getComputedStyle(el).backgroundColor),
+      button.evaluate((el) => getComputedStyle(el).boxShadow),
       button.locator('.md-extended-fab__label').evaluate((el) => getComputedStyle(el).color),
       button.locator('.md-extended-fab__icon').evaluate((el) => getComputedStyle(el).color),
-    ]).then(([background, labelColor, iconColor]) => ({
+    ]).then(([background, boxShadow, labelColor, iconColor]) => ({
       background: normalizeColorString(background),
+      boxShadow,
       labelColor: normalizeColorString(labelColor),
       iconColor: normalizeColorString(iconColor),
     }));
@@ -647,6 +662,17 @@ test('MDExtendedFab resting styles resolve to the documented Material color role
   expect(tertiaryContainer.background).toBe(sysTertiaryContainer);
   expect(tertiaryContainer.labelColor).toBe(sysOnTertiaryContainer);
   expect(tertiaryContainer.iconColor).toBe(sysOnTertiaryContainer);
+  const level3 = await getBoxShadowValue(page, 'var(--md-sys-elevation-level3)');
+  for (const sample of [
+    primary,
+    secondary,
+    tertiary,
+    primaryContainer,
+    secondaryContainer,
+    tertiaryContainer,
+  ]) {
+    expect(sample.boxShadow).toBe(level3);
+  }
 });
 
 test('MDExtendedFab default interaction routes resolve rendered label, icon, state layer, and elevation for all six colors', async ({

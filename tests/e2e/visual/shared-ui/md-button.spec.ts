@@ -273,6 +273,35 @@ test('MDButton text toggle selects without the removed color restriction', async
   await expect(button).toHaveClass(/md-button_selected/);
 });
 
+test('MDButton text toggle keeps normal text-button color routes while applying selected shape', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--text-toggle-routing');
+  const primary = await getSysColorValue(page, '--md-sys-color-primary');
+  const resting = await readButtonVisuals(page, 'text-toggle-resting', {
+    labelSelector: '.md-button__label-text',
+    iconSelector: '.md-button__icon',
+  });
+  await expect(page.getByTestId('text-toggle-resting')).toHaveAttribute('aria-pressed', 'true');
+  expect(normalizeColorString(asColor(resting.labelColor))).toBe(primary);
+  expect(normalizeColorString(asColor(resting.iconColor))).toBe(primary);
+  await Promise.all(
+    (['hover', 'focus', 'pressed'] as const).map(async (state) => {
+      const sample = await readButtonVisuals(page, `text-toggle-${state}`, {
+        labelSelector: '.md-button__label-text',
+        iconSelector: '.md-button__icon',
+      });
+      expect(normalizeColorString(asColor(sample.labelColor))).toBe(primary);
+      expect(normalizeColorString(asColor(sample.iconColor))).toBe(primary);
+      expect(normalizeColorString(sample.stateLayerColor)).toBe(primary);
+    }),
+  );
+  const radius = await page
+    .getByTestId('text-toggle-resting')
+    .evaluate((el) => getComputedStyle(el).borderRadius);
+  expect(radius).not.toBe('9999px');
+});
+
 test('MDButton resting styles resolve to the documented Material color role by default', async ({
   page,
 }) => {
@@ -282,15 +311,18 @@ test('MDButton resting styles resolve to the documented Material color role by d
     const button = page.getByRole('button', { name, exact: true });
     return Promise.all([
       button.evaluate((el) => getComputedStyle(el).backgroundColor),
+      button.evaluate((el) => getComputedStyle(el).borderColor),
+      button.evaluate((el) => getComputedStyle(el).boxShadow),
       button.locator('.md-button__label-text').evaluate((el) => getComputedStyle(el).color),
       button.locator('.md-button__icon').evaluate((el) => getComputedStyle(el).color),
-    ]).then(([background, labelColor, iconColor]) => ({
+    ]).then(([background, borderColor, boxShadow, labelColor, iconColor]) => ({
       background: normalizeColorString(background),
+      borderColor: normalizeColorString(borderColor),
+      boxShadow,
       labelColor: normalizeColorString(labelColor),
       iconColor: normalizeColorString(iconColor),
     }));
   };
-
   const [filled, tonal, outlined, text, elevated] = await Promise.all([
     readResting('Filled'),
     readResting('Tonal'),
@@ -305,6 +337,9 @@ test('MDButton resting styles resolve to the documented Material color role by d
     onSecondaryContainer,
     onSurfaceVariant,
     surfaceContainerLow,
+    outlineVariant,
+    level0,
+    level1,
   ] = await Promise.all([
     getSysColorValue(page, '--md-sys-color-primary'),
     getSysColorValue(page, '--md-sys-color-on-primary'),
@@ -312,6 +347,9 @@ test('MDButton resting styles resolve to the documented Material color role by d
     getSysColorValue(page, '--md-sys-color-on-secondary-container'),
     getSysColorValue(page, '--md-sys-color-on-surface-variant'),
     getSysColorValue(page, '--md-sys-color-surface-container-low'),
+    getSysColorValue(page, '--md-sys-color-outline-variant'),
+    getBoxShadowValue(page, 'var(--md-sys-elevation-level0)'),
+    getBoxShadowValue(page, 'var(--md-sys-elevation-level1)'),
   ]);
 
   expect(filled.background).toBe(primary);
@@ -322,11 +360,19 @@ test('MDButton resting styles resolve to the documented Material color role by d
   expect(tonal.iconColor).toBe(onSecondaryContainer);
   expect(outlined.labelColor).toBe(onSurfaceVariant);
   expect(outlined.iconColor).toBe(onSurfaceVariant);
+  expect(outlined.borderColor).toBe(outlineVariant);
+  expect(outlined.boxShadow).toBe(level0);
   expect(text.labelColor).toBe(primary);
   expect(text.iconColor).toBe(primary);
+  expect(text.boxShadow).toBe(level0);
+  expect(filled.boxShadow).toBe(level0);
+  expect(tonal.boxShadow).toBe(level0);
   expect(elevated.background).toBe(surfaceContainerLow);
   expect(elevated.labelColor).toBe(primary);
   expect(elevated.iconColor).toBe(primary);
+  expect(elevated.boxShadow).toBe(level1);
+  expect(outlined.background).toBe('rgba(0 0 0 0)');
+  expect(text.background).toBe('rgba(0 0 0 0)');
 });
 
 test('MDButton hover, focus, and pressed default state-layer opacity resolves to the documented system role', async ({
@@ -367,6 +413,48 @@ test('MDButton hover, focus, and pressed default state-layer opacity resolves to
       expect(hoverOpacity).toBe(hoverRole);
       expect(focusOpacity).toBe(focusRole);
       expect(pressedOpacity).toBe(pressedRole);
+    }),
+  );
+});
+
+test('MDButton disabled defaults cover every materially distinct style route', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
+  const [disabledContent, outlineVariant, level0, disabledContainer, tonalDisabledContainer] =
+    await Promise.all([
+      getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.38'),
+      getSysColorValue(page, '--md-sys-color-outline-variant'),
+      getBoxShadowValue(page, 'var(--md-sys-elevation-level0)'),
+      getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.1'),
+      getColorAtOpacity(page, 'var(--md-sys-color-on-surface)', '0.12'),
+    ]);
+  await Promise.all(
+    (['elevated', 'filled', 'tonal', 'outlined', 'text'] as const).map(async (style) => {
+      const sample = await readButtonLocatorVisuals(
+        page.getByRole('button', { name: `Disabled ${style}`, exact: true }),
+        { labelSelector: '.md-button__label-text', iconSelector: '.md-button__icon' },
+      );
+      expect(normalizeColorString(asColor(sample.labelColor)), `${style} label`).toBe(
+        disabledContent,
+      );
+      expect(normalizeColorString(asColor(sample.iconColor)), `${style} icon`).toBe(
+        disabledContent,
+      );
+      expect(sample.disabledLabelOpacity, `${style} label opacity route`).toBe('.38');
+      expect(sample.disabledIconOpacity, `${style} icon opacity route`).toBe('.38');
+      expect(sample.boxShadow, `${style} elevation`).toBe(level0);
+      expect(
+        normalizeColorString(asColor(sample.stateLayerBackground)),
+        `${style} state layer`,
+      ).toBe('0 0 0 / 0');
+      expect(normalizeColorString(sample.background), `${style} container`).toBe(
+        style === 'outlined' || style === 'text'
+          ? 'rgba(0 0 0 0)'
+          : style === 'tonal'
+            ? tonalDisabledContainer
+            : disabledContainer,
+      );
+      if (style === 'outlined')
+        expect(normalizeColorString(sample.borderColor)).toBe(outlineVariant);
     }),
   );
 });
@@ -639,14 +727,14 @@ test('MDButton routes independent label, icon, outline, elevation, and state-lay
   );
 });
 
-test('MDButton selected/unselected toggle token routing is independently verified for elevated, filled, tonal, and outlined', async ({
+test('MDButton selected/unselected hover, focus, and pressed token routing is independently verified for elevated, filled, tonal, and outlined', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--toggle-token-routing-matrix');
 
   // Literals mirror `BUTTON_TOGGLE_MATRIX` in `MDButton.stories.ts`. Container and outline (where
-  // published) are read at rest; label, icon, and state-layer color/opacity are read under a
-  // forced hover state, since `MDStateLayer` only paints a color once a state is active.
+  // published) are read at rest; label, icon, and state-layer color/opacity are read under each
+  // forced interaction state, since `MDStateLayer` only paints a color once a state is active.
   const TOGGLE_MATRIX: Record<
     'elevated' | 'filled' | 'tonal' | 'outlined',
     {
@@ -729,6 +817,56 @@ test('MDButton selected/unselected toggle token routing is independently verifie
       hoverOpacity: '0.15',
     },
   };
+  const ADDITIONAL_STATES = {
+    elevated: {
+      selected: {
+        focus: ['rgb(201 254 199)', 'rgb(254 209 2)', 'rgb(2 198 161)'],
+        pressed: ['rgb(202 253 198)', 'rgb(253 208 4)', 'rgb(4 196 162)'],
+      },
+      unselected: {
+        focus: ['rgb(189 211 254)', 'rgb(254 121 179)', 'rgb(149 82 1)'],
+        pressed: ['rgb(188 212 253)', 'rgb(253 122 178)', 'rgb(148 84 2)'],
+      },
+      focusOpacity: '0.19',
+      pressedOpacity: '0.29',
+    },
+    filled: {
+      selected: {
+        focus: ['rgb(21 22 23)', 'rgb(41 42 43)', 'rgb(179 2 3)'],
+        pressed: ['rgb(24 25 26)', 'rgb(44 45 46)', 'rgb(178 4 6)'],
+      },
+      unselected: {
+        focus: ['rgb(51 52 53)', 'rgb(71 72 73)', 'rgb(2 3 179)'],
+        pressed: ['rgb(54 55 56)', 'rgb(74 75 76)', 'rgb(4 6 178)'],
+      },
+      focusOpacity: '0.21',
+      pressedOpacity: '0.31',
+    },
+    tonal: {
+      selected: {
+        focus: ['rgb(254 239 198)', 'rgb(254 253 2)', 'rgb(199 102 3)'],
+        pressed: ['rgb(253 238 196)', 'rgb(253 251 4)', 'rgb(198 104 6)'],
+      },
+      unselected: {
+        focus: ['rgb(198 254 239)', 'rgb(2 253 254)', 'rgb(3 119 199)'],
+        pressed: ['rgb(196 253 238)', 'rgb(4 251 253)', 'rgb(6 118 198)'],
+      },
+      focusOpacity: '0.23',
+      pressedOpacity: '0.33',
+    },
+    outlined: {
+      selected: {
+        focus: ['rgb(239 198 254)', 'rgb(254 2 149)', 'rgb(149 3 254)'],
+        pressed: ['rgb(238 196 253)', 'rgb(253 4 148)', 'rgb(148 6 253)'],
+      },
+      unselected: {
+        focus: ['rgb(209 208 207)', 'rgb(2 253 119)', 'rgb(3 89 254)'],
+        pressed: ['rgb(206 205 204)', 'rgb(4 251 118)', 'rgb(6 88 253)'],
+      },
+      focusOpacity: '0.25',
+      pressedOpacity: '0.35',
+    },
+  } as const;
   const BUTTON_TOGGLE_STYLE_KEYS = ['elevated', 'filled', 'tonal', 'outlined'] as const;
 
   await Promise.all(
@@ -749,32 +887,41 @@ test('MDButton selected/unselected toggle token routing is independently verifie
           );
         }
 
-        const hover = await readButtonVisuals(page, `toggle-token-${style}-${branch}-hover`, {
-          labelSelector: '.md-button__label-text',
-          iconSelector: '.md-button__icon',
-        });
-        const expectedStateLayerBackground = await getColorAtOpacity(
-          page,
-          tokens.stateLayerColor,
-          entry.hoverOpacity,
+        await Promise.all(
+          (['hover', 'focus', 'pressed'] as const).map(async (state) => {
+            const sample = await readButtonVisuals(
+              page,
+              `toggle-token-${style}-${branch}-${state}`,
+              {
+                labelSelector: '.md-button__label-text',
+                iconSelector: '.md-button__icon',
+              },
+            );
+            const [label, icon, stateLayerColor] =
+              state === 'hover'
+                ? [tokens.label, tokens.icon, tokens.stateLayerColor]
+                : ADDITIONAL_STATES[style][branch][state];
+            const opacity =
+              state === 'hover' ? entry.hoverOpacity : ADDITIONAL_STATES[style][`${state}Opacity`];
+            expect(
+              normalizeColorString(asColor(sample.labelColor)),
+              `${style} ${branch} ${state} label`,
+            ).toBe(normalizeColorString(label));
+            expect(
+              normalizeColorString(asColor(sample.iconColor)),
+              `${style} ${branch} ${state} icon`,
+            ).toBe(normalizeColorString(icon));
+            expect(
+              normalizeColorString(sample.stateLayerColor),
+              `${style} ${branch} ${state} state-layer color`,
+            ).toBe(normalizeColorString(stateLayerColor));
+            expect(sample[`${state}Opacity`], `${style} ${branch} ${state} opacity`).toBe(opacity);
+            expect(
+              normalizeColorString(asColor(sample.stateLayerBackground)),
+              `${style} ${branch} ${state} rendered state layer`,
+            ).toBe(await getColorAtOpacity(page, stateLayerColor, opacity));
+          }),
         );
-        expect(normalizeColorString(asColor(hover.labelColor)), `${style} ${branch} label`).toBe(
-          normalizeColorString(tokens.label),
-        );
-        expect(normalizeColorString(asColor(hover.iconColor)), `${style} ${branch} icon`).toBe(
-          normalizeColorString(tokens.icon),
-        );
-        expect(
-          normalizeColorString(hover.stateLayerColor),
-          `${style} ${branch} state-layer color`,
-        ).toBe(normalizeColorString(tokens.stateLayerColor));
-        expect(hover.hoverOpacity, `${style} ${branch} state-layer opacity`).toBe(
-          entry.hoverOpacity,
-        );
-        expect(
-          normalizeColorString(asColor(hover.stateLayerBackground)),
-          `${style} ${branch} rendered state-layer background`,
-        ).toBe(expectedStateLayerBackground);
       }),
     ),
   );

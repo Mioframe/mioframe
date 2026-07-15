@@ -48,6 +48,7 @@ export const readButtonVisuals = async (
       const style = getComputedStyle(el);
       return {
         background: style.backgroundColor,
+        opacity: style.opacity,
         boxShadow: style.boxShadow,
         borderColor: style.borderColor,
         hoverOpacity: style.getPropertyValue('--md-private-state-hover-state-layer-opacity').trim(),
@@ -55,8 +56,19 @@ export const readButtonVisuals = async (
         pressedOpacity: style
           .getPropertyValue('--md-private-state-pressed-state-layer-opacity')
           .trim(),
+        disabledLabelOpacity: style
+          .getPropertyValue('--md-private-button-disabled-label-opacity')
+          .trim(),
+        disabledIconOpacity: style
+          .getPropertyValue('--md-private-button-disabled-icon-opacity')
+          .trim(),
+        disabledIconButtonOpacity: style
+          .getPropertyValue('--md-private-icon-button-disabled-icon-opacity')
+          .trim(),
         labelColor: label ? getComputedStyle(label).color : null,
+        labelOpacity: label ? getComputedStyle(label).opacity : null,
         iconColor: icon ? getComputedStyle(icon).color : null,
+        iconOpacity: icon ? getComputedStyle(icon).opacity : null,
         stateLayerBackground: stateLayer ? getComputedStyle(stateLayer).backgroundColor : null,
         // The generic contract var `MDStateLayer` reads its color from. Reading it here (rather
         // than the rendered `.md-state-layer` background) verifies the routing MDButton owns —
@@ -82,16 +94,28 @@ export const readButtonLocatorVisuals = async (
       const stateLayer = el.querySelector('.md-state-layer');
       return {
         background: style.backgroundColor,
+        opacity: style.opacity,
         boxShadow: style.boxShadow,
         borderColor: style.borderColor,
         labelColor: label ? getComputedStyle(label).color : null,
+        labelOpacity: label ? getComputedStyle(label).opacity : null,
         iconColor: icon ? getComputedStyle(icon).color : null,
+        iconOpacity: icon ? getComputedStyle(icon).opacity : null,
         stateLayerColor: style.getPropertyValue('--md-private-state-layer-color').trim(),
         stateLayerBackground: stateLayer ? getComputedStyle(stateLayer).backgroundColor : null,
         hoverOpacity: style.getPropertyValue('--md-private-state-hover-state-layer-opacity').trim(),
         focusOpacity: style.getPropertyValue('--md-private-state-focus-state-layer-opacity').trim(),
         pressedOpacity: style
           .getPropertyValue('--md-private-state-pressed-state-layer-opacity')
+          .trim(),
+        disabledLabelOpacity: style
+          .getPropertyValue('--md-private-button-disabled-label-opacity')
+          .trim(),
+        disabledIconOpacity: style
+          .getPropertyValue('--md-private-button-disabled-icon-opacity')
+          .trim(),
+        disabledIconButtonOpacity: style
+          .getPropertyValue('--md-private-icon-button-disabled-icon-opacity')
           .trim(),
       };
     },

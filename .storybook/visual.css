@@ -30,12 +30,12 @@
   display: grid;
   grid-template-columns: max-content repeat(var(--visual-gallery-columns), max-content);
   align-items: center;
+  justify-items: center;
   gap: 16px;
 }
 
-.visual-gallery-cell {
-  display: grid;
-  place-items: center;
+.visual-gallery-grid > .visual-row {
+  display: contents;
 }
 
 /*

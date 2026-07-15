@@ -66,7 +66,7 @@ export const VisualStates: Story = {
   render: () => ({
     components: { MDIconButton, MDStateLayerForcedStateProvider },
     template: `
-      <div data-testid="visual-md-icon-button-states" class="visual-checker-backdrop">
+      <div data-testid="visual-md-icon-button-states" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 2">
         <div class="visual-row"><span class="visual-gallery-label">Standard enabled</span><span class="visual-gallery-label">Filled enabled</span><span class="visual-gallery-label">Outlined enabled</span></div>
         <div class="visual-row">
           <MDIconButton tooltip="Standard" md-symbol-name="more_vert" />
@@ -91,15 +91,17 @@ export const VisualStates: Story = {
           <MDIconButton tooltip="Disabled outlined toggle selected" variant="toggle" selected color="outlined" disabled md-symbol-name="edit" />
           <MDIconButton tooltip="Disabled outlined" color="outlined" disabled md-symbol-name="edit" />
         </div>
-        <div class="visual-row"><span class="visual-gallery-label">Disabled filled</span><span class="visual-gallery-label">Disabled tonal</span></div>
+        <div class="visual-row"><span class="visual-gallery-label">Disabled filled</span><span class="visual-gallery-label">Disabled tonal</span><span aria-hidden="true"></span></div>
         <div class="visual-row">
           <MDIconButton tooltip="Disabled filled" color="filled" disabled md-symbol-name="favorite" />
           <MDIconButton tooltip="Disabled tonal" color="tonal" disabled md-symbol-name="bookmark" />
+          <span aria-hidden="true"></span>
         </div>
-        <div class="visual-row"><span class="visual-gallery-label">Extra-small target</span><span class="visual-gallery-label">Small target</span></div>
+        <div class="visual-row"><span class="visual-gallery-label">Extra-small target</span><span class="visual-gallery-label">Small target</span><span aria-hidden="true"></span></div>
         <div data-testid="visual-md-icon-button-targets" class="visual-row">
           <MDIconButton tooltip="Extra small target" size="extra-small" md-symbol-name="add" />
           <MDIconButton tooltip="Small target" size="small" md-symbol-name="add" />
+          <span aria-hidden="true"></span>
         </div>
       </div>
     `,
@@ -111,27 +113,27 @@ export const VisualInteractionStates: Story = {
   render: () => ({
     components: { MDIconButton, MDStateLayerForcedStateProvider },
     template: `
-      <div data-testid="visual-md-icon-button-interaction-states" class="visual-checker-backdrop">
+      <div data-testid="visual-md-icon-button-interaction-states" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 3">
         <div class="visual-row"><span class="visual-gallery-heading">Standard</span><span class="visual-gallery-label">Hover</span><span class="visual-gallery-label">Focus</span><span class="visual-gallery-label">Pressed</span></div>
-        <div class="visual-row">
+        <div class="visual-row"><span aria-hidden="true"></span>
           <MDStateLayerForcedStateProvider hovered><MDIconButton class="md-state_hover" tooltip="Standard hover" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDIconButton class="md-state_focused" tooltip="Standard focus" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider pressed><MDIconButton class="md-state_pressed" tooltip="Standard pressed" md-symbol-name="add" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row"><span class="visual-gallery-heading">Filled</span><span class="visual-gallery-label">Hover</span><span class="visual-gallery-label">Focus</span><span class="visual-gallery-label">Pressed</span></div>
-        <div class="visual-row">
+        <div class="visual-row"><span aria-hidden="true"></span>
           <MDStateLayerForcedStateProvider hovered><MDIconButton class="md-state_hover" tooltip="Filled hover" color="filled" md-symbol-name="favorite" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDIconButton class="md-state_focused" tooltip="Filled focus" color="filled" md-symbol-name="favorite" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider pressed><MDIconButton class="md-state_pressed" tooltip="Filled pressed" color="filled" md-symbol-name="favorite" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row"><span class="visual-gallery-heading">Tonal</span><span class="visual-gallery-label">Hover</span><span class="visual-gallery-label">Focus</span><span class="visual-gallery-label">Pressed</span></div>
-        <div class="visual-row">
+        <div class="visual-row"><span aria-hidden="true"></span>
           <MDStateLayerForcedStateProvider hovered><MDIconButton class="md-state_hover" tooltip="Tonal hover" color="tonal" md-symbol-name="bookmark" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDIconButton class="md-state_focused" tooltip="Tonal focus" color="tonal" md-symbol-name="bookmark" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider pressed><MDIconButton class="md-state_pressed" tooltip="Tonal pressed" color="tonal" md-symbol-name="bookmark" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row"><span class="visual-gallery-heading">Outlined</span><span class="visual-gallery-label">Hover</span><span class="visual-gallery-label">Focus</span><span class="visual-gallery-label">Pressed</span></div>
-        <div class="visual-row">
+        <div class="visual-row"><span aria-hidden="true"></span>
           <MDStateLayerForcedStateProvider hovered><MDIconButton class="md-state_hover" tooltip="Outlined hover" color="outlined" md-symbol-name="edit" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDIconButton class="md-state_focused" tooltip="Outlined focus" color="outlined" md-symbol-name="edit" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider pressed><MDIconButton class="md-state_pressed" tooltip="Outlined pressed" color="outlined" md-symbol-name="edit" /></MDStateLayerForcedStateProvider>
@@ -161,20 +163,21 @@ export const Geometry: Story = {
   render: () => ({
     components: { MDIconButton, MDStateLayerForcedStateProvider },
     template: `
-      <div data-testid="visual-md-icon-button-geometry" class="visual-checker-backdrop">
+      <div data-testid="visual-md-icon-button-geometry" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 3">
         <div class="visual-row"><span class="visual-gallery-heading">Width</span><span class="visual-gallery-label">Narrow</span><span class="visual-gallery-label">Default width</span><span class="visual-gallery-label">Wide</span></div>
-        <div class="visual-row">
+        <div class="visual-row"><span aria-hidden="true"></span>
           <MDIconButton data-testid="geometry-width-narrow" tooltip="Narrow" width="narrow" md-symbol-name="edit" />
           <MDIconButton data-testid="geometry-width-default" tooltip="Default width" width="default" md-symbol-name="edit" />
           <MDIconButton data-testid="geometry-width-wide" tooltip="Wide" width="wide" md-symbol-name="edit" />
         </div>
-        <div class="visual-row"><span class="visual-gallery-heading">Shape</span><span class="visual-gallery-label">Round</span><span class="visual-gallery-label">Square</span></div>
-        <div class="visual-row">
+        <div class="visual-row"><span class="visual-gallery-heading">Shape</span><span class="visual-gallery-label">Round</span><span class="visual-gallery-label">Square</span><span aria-hidden="true"></span></div>
+        <div class="visual-row"><span aria-hidden="true"></span>
           <MDIconButton data-testid="geometry-shape-round" tooltip="Round" shape="round" color="tonal" md-symbol-name="edit" />
           <MDIconButton data-testid="geometry-shape-square" tooltip="Square" shape="square" color="tonal" md-symbol-name="edit" />
+          <span aria-hidden="true"></span>
         </div>
         <div class="visual-row"><span class="visual-gallery-heading">Shape state</span><span class="visual-gallery-label">Selected round</span><span class="visual-gallery-label">Pressed round</span><span class="visual-gallery-label">Selected + pressed round</span></div>
-        <div class="visual-row">
+        <div class="visual-row"><span aria-hidden="true"></span>
           <MDIconButton data-testid="geometry-round-selected" tooltip="Round selected" variant="toggle" shape="round" selected color="tonal" md-symbol-name="check" />
           <MDStateLayerForcedStateProvider pressed>
             <MDIconButton data-testid="geometry-round-pressed" class="md-state_pressed" tooltip="Round pressed" shape="round" color="tonal" md-symbol-name="check" />
@@ -198,8 +201,10 @@ export const SizeGeometryMatrix: Story = {
       return { ICON_BUTTON_SIZES };
     },
     template: `
-      <div data-testid="visual-md-icon-button-size-geometry" class="visual-checker-backdrop">
+      <div data-testid="visual-md-icon-button-size-geometry" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 8">
+        <div class="visual-row"><span class="visual-gallery-heading">Size</span><span class="visual-gallery-label">Default width</span><span class="visual-gallery-label">Narrow</span><span class="visual-gallery-label">Wide</span><span class="visual-gallery-label">Square</span><span class="visual-gallery-label">Pressed</span><span class="visual-gallery-label">Selected round</span><span class="visual-gallery-label">Selected square</span><span class="visual-gallery-label">Outlined</span></div>
         <div v-for="size in ICON_BUTTON_SIZES" :key="size" class="visual-row">
+          <span class="visual-gallery-label">{{ size }}</span>
           <MDIconButton :data-testid="\`icon-geometry-\${size}-default\`" :tooltip="size" :size="size" width="default" md-symbol-name="edit" />
           <MDIconButton :data-testid="\`icon-geometry-\${size}-narrow\`" :tooltip="size" :size="size" width="narrow" md-symbol-name="edit" />
           <MDIconButton :data-testid="\`icon-geometry-\${size}-wide\`" :tooltip="size" :size="size" width="wide" md-symbol-name="edit" />
@@ -221,7 +226,7 @@ export const ToggleInteractionStates: Story = {
   render: () => ({
     components: { MDIconButton, MDStateLayerForcedStateProvider },
     template: `
-      <div data-testid="visual-md-icon-button-toggle-interaction-states" class="visual-checker-backdrop">
+      <div data-testid="visual-md-icon-button-toggle-interaction-states" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 2">
         <div class="visual-row"><span class="visual-gallery-label">Unselected</span><span class="visual-gallery-label">Selected</span><span class="visual-gallery-label">Selected hover</span></div>
         <div class="visual-row">
           <MDIconButton tooltip="Unselected" variant="toggle" color="tonal" md-symbol-name="bookmark" />
@@ -502,6 +507,8 @@ export const TokenRoutingMatrix: Story = {
 /** The four IconButton styles publishing distinct selected/unselected Material color tokens. */
 const ICON_BUTTON_TOGGLE_STYLES = ['standard', 'filled', 'tonal', 'outlined'] as const;
 type IconButtonToggleStyle = (typeof ICON_BUTTON_TOGGLE_STYLES)[number];
+const ICON_BUTTON_TOGGLE_INTERACTION_STATES = ['hover', 'focus', 'pressed'] as const;
+type IconButtonToggleInteractionState = (typeof ICON_BUTTON_TOGGLE_INTERACTION_STATES)[number];
 
 export const DefaultToggleRoleMatrix: Story = {
   render: () => ({
@@ -523,6 +530,57 @@ export const DefaultToggleRoleMatrix: Story = {
     `,
   }),
 };
+
+const ICON_BUTTON_TOGGLE_ADDITIONAL_STATES = {
+  standard: {
+    selected: {
+      focus: ['rgb(209 91 2)', 'rgb(2 149 209)'],
+      pressed: ['rgb(208 92 4)', 'rgb(4 148 208)'],
+    },
+    unselected: {
+      focus: ['rgb(2 139 71)', 'rgb(149 2 91)'],
+      pressed: ['rgb(4 138 72)', 'rgb(148 4 92)'],
+    },
+    focusOpacity: '0.17',
+    pressedOpacity: '0.27',
+  },
+  filled: {
+    selected: {
+      focus: ['rgb(254 229 62)', 'rgb(2 198 161)'],
+      pressed: ['rgb(253 228 64)', 'rgb(4 196 162)'],
+    },
+    unselected: {
+      focus: ['rgb(254 149 202)', 'rgb(149 82 1)'],
+      pressed: ['rgb(253 148 204)', 'rgb(148 84 2)'],
+    },
+    focusOpacity: '0.19',
+    pressedOpacity: '0.29',
+  },
+  tonal: {
+    selected: {
+      focus: ['rgb(254 253 92)', 'rgb(199 102 3)'],
+      pressed: ['rgb(253 251 94)', 'rgb(198 104 6)'],
+    },
+    unselected: {
+      focus: ['rgb(92 253 254)', 'rgb(3 119 199)'],
+      pressed: ['rgb(94 251 253)', 'rgb(6 118 198)'],
+    },
+    focusOpacity: '0.23',
+    pressedOpacity: '0.33',
+  },
+  outlined: {
+    selected: {
+      focus: ['rgb(254 62 179)', 'rgb(149 3 254)'],
+      pressed: ['rgb(253 64 178)', 'rgb(148 6 253)'],
+    },
+    unselected: {
+      focus: ['rgb(62 253 149)', 'rgb(3 89 254)'],
+      pressed: ['rgb(64 251 148)', 'rgb(6 88 253)'],
+    },
+    focusOpacity: '0.25',
+    pressedOpacity: '0.35',
+  },
+} as const;
 
 interface IconButtonToggleBranchTokens {
   /** Resting container color. Omitted where the style publishes none (standard, outlined unselected). */
@@ -632,16 +690,26 @@ const iconButtonToggleRestingStyle = (
   return restingStyle;
 };
 
-const iconButtonToggleHoverStyle = (
+const iconButtonToggleInteractionStyle = (
   style: IconButtonToggleStyle,
   branch: 'selected' | 'unselected',
+  state: IconButtonToggleInteractionState,
 ) => {
   const entry = ICON_BUTTON_TOGGLE_MATRIX[style];
-  const tokens = entry[branch];
+  const branchTokens = entry[branch];
+  const [icon, stateLayerColor] =
+    state === 'hover'
+      ? [branchTokens.hoverIcon, branchTokens.stateLayerColor]
+      : ICON_BUTTON_TOGGLE_ADDITIONAL_STATES[style][branch][state];
+  const opacity =
+    state === 'hover'
+      ? entry.hoverOpacity
+      : ICON_BUTTON_TOGGLE_ADDITIONAL_STATES[style][`${state}Opacity`];
+  const tokenState = state === 'hover' ? 'hovered' : state === 'focus' ? 'focused' : 'pressed';
   return {
-    [`--md-comp-icon-button-${style}-hovered-state-layer-opacity`]: entry.hoverOpacity,
-    [`--md-comp-icon-button-${style}-${branch}-hovered-icon-color`]: tokens.hoverIcon,
-    [`--md-comp-icon-button-${style}-${branch}-hovered-state-layer-color`]: tokens.stateLayerColor,
+    [`--md-comp-icon-button-${style}-${tokenState}-state-layer-opacity`]: opacity,
+    [`--md-comp-icon-button-${style}-${branch}-${tokenState}-icon-color`]: icon,
+    [`--md-comp-icon-button-${style}-${branch}-${tokenState}-state-layer-color`]: stateLayerColor,
   };
 };
 
@@ -651,8 +719,9 @@ export const ToggleTokenRoutingMatrix: Story = {
     setup() {
       return {
         ICON_BUTTON_TOGGLE_STYLES,
+        ICON_BUTTON_TOGGLE_INTERACTION_STATES,
         iconButtonToggleRestingStyle,
-        iconButtonToggleHoverStyle,
+        iconButtonToggleInteractionStyle,
       };
     },
     template: `
@@ -675,27 +744,35 @@ export const ToggleTokenRoutingMatrix: Story = {
             md-symbol-name="check"
             :style="iconButtonToggleRestingStyle(style, 'unselected')"
           />
-          <MDStateLayerForcedStateProvider hovered>
+          <MDStateLayerForcedStateProvider
+            v-for="state in ICON_BUTTON_TOGGLE_INTERACTION_STATES"
+            :key="'selected-' + state"
+            :hovered="state === 'hover'" :focused="state === 'focus'" :pressed="state === 'pressed'"
+          >
             <MDIconButton
-              :data-testid="\`icon-toggle-token-\${style}-selected-hover\`"
-              class="md-state_hover"
-              :tooltip="\`\${style} selected hover\`"
+              :data-testid="\`icon-toggle-token-\${style}-selected-\${state}\`"
+              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :tooltip="\`\${style} selected \${state}\`"
               variant="toggle"
               selected
               :color="style"
               md-symbol-name="check"
-              :style="iconButtonToggleHoverStyle(style, 'selected')"
+              :style="iconButtonToggleInteractionStyle(style, 'selected', state)"
             />
           </MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider hovered>
+          <MDStateLayerForcedStateProvider
+            v-for="state in ICON_BUTTON_TOGGLE_INTERACTION_STATES"
+            :key="'unselected-' + state"
+            :hovered="state === 'hover'" :focused="state === 'focus'" :pressed="state === 'pressed'"
+          >
             <MDIconButton
-              :data-testid="\`icon-toggle-token-\${style}-unselected-hover\`"
-              class="md-state_hover"
-              :tooltip="\`\${style} unselected hover\`"
+              :data-testid="\`icon-toggle-token-\${style}-unselected-\${state}\`"
+              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :tooltip="\`\${style} unselected \${state}\`"
               variant="toggle"
               :color="style"
               md-symbol-name="check"
-              :style="iconButtonToggleHoverStyle(style, 'unselected')"
+              :style="iconButtonToggleInteractionStyle(style, 'unselected', state)"
             />
           </MDStateLayerForcedStateProvider>
         </div>

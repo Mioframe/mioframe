@@ -178,13 +178,13 @@ export const VisualStates: Story = {
         <div class="visual-row">
           <MDButton label="Tonal" color="tonal"><template #icon>+</template></MDButton>
           <MDButton label="Elevated" color="elevated"><template #icon>+</template></MDButton>
-          <MDButton label="Disabled elevated" color="elevated" disabled />
+          <MDButton label="Disabled elevated" color="elevated" disabled><template #icon>+</template></MDButton>
         </div>
         <div class="visual-row">
-          <MDButton label="Disabled filled" color="filled" disabled />
-          <MDButton label="Disabled tonal" color="tonal" disabled />
-          <MDButton label="Disabled outlined" color="outlined" disabled />
-          <MDButton label="Disabled text" color="text" disabled />
+          <MDButton label="Disabled filled" color="filled" disabled><template #icon>+</template></MDButton>
+          <MDButton label="Disabled tonal" color="tonal" disabled><template #icon>+</template></MDButton>
+          <MDButton label="Disabled outlined" color="outlined" disabled><template #icon>+</template></MDButton>
+          <MDButton label="Disabled text" color="text" disabled><template #icon>+</template></MDButton>
         </div>
       </div>
     `,
@@ -294,7 +294,7 @@ export const SizeGeometryMatrix: Story = {
       return { BUTTON_SIZES };
     },
     template: `
-      <div data-testid="visual-md-button-size-geometry" class="visual-checker-backdrop">
+      <div data-testid="visual-md-button-size-geometry" class="visual-checker-backdrop visual-gallery-grid" style="--visual-gallery-columns: 6">
         <div class="visual-row"><span class="visual-gallery-heading">Size</span><span class="visual-gallery-label">Round</span><span class="visual-gallery-label">Square</span><span class="visual-gallery-label">Pressed</span><span class="visual-gallery-label">Selected round</span><span class="visual-gallery-label">Selected square</span><span class="visual-gallery-label">Outlined</span></div>
         <div v-for="size in BUTTON_SIZES" :key="size" class="visual-row">
           <span class="visual-gallery-label">{{ size }}</span>
@@ -670,6 +670,8 @@ export const TokenRoutingMatrix: Story = {
 /** The four Button styles publishing distinct selected/unselected Material color tokens. */
 const BUTTON_TOGGLE_STYLES = ['elevated', 'filled', 'tonal', 'outlined'] as const;
 type ButtonToggleStyle = (typeof BUTTON_TOGGLE_STYLES)[number];
+const BUTTON_TOGGLE_INTERACTION_STATES = ['hover', 'focus', 'pressed'] as const;
+type ButtonToggleInteractionState = (typeof BUTTON_TOGGLE_INTERACTION_STATES)[number];
 
 export const DefaultToggleRoleMatrix: Story = {
   render: () => ({
@@ -688,6 +690,125 @@ export const DefaultToggleRoleMatrix: Story = {
       </div>
     `,
   }),
+};
+
+export const TextToggleRouting: Story = {
+  render: () => ({
+    components: { MDButton, MDStateLayerForcedStateProvider },
+    template: `
+      <div class="visual-checker-backdrop">
+        <MDButton data-testid="text-toggle-resting" label="Text selected" variant="toggle" selected color="text"><template #icon>+</template></MDButton>
+        <MDStateLayerForcedStateProvider hovered><MDButton data-testid="text-toggle-hover" class="md-state_hover" label="Text hover" variant="toggle" selected color="text"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider focused><MDButton data-testid="text-toggle-focus" class="md-state_focused" label="Text focus" variant="toggle" selected color="text"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
+        <MDStateLayerForcedStateProvider pressed><MDButton data-testid="text-toggle-pressed" class="md-state_pressed" label="Text pressed" variant="toggle" selected color="text"><template #icon>+</template></MDButton></MDStateLayerForcedStateProvider>
+      </div>
+    `,
+  }),
+};
+
+const BUTTON_TOGGLE_ADDITIONAL_STATES: Record<
+  ButtonToggleStyle,
+  Record<
+    'selected' | 'unselected',
+    Record<'focus' | 'pressed', { label: string; icon: string; stateLayerColor: string }>
+  > & { focusOpacity: string; pressedOpacity: string }
+> = {
+  elevated: {
+    selected: {
+      focus: {
+        label: 'rgb(201 254 199)',
+        icon: 'rgb(254 209 2)',
+        stateLayerColor: 'rgb(2 198 161)',
+      },
+      pressed: {
+        label: 'rgb(202 253 198)',
+        icon: 'rgb(253 208 4)',
+        stateLayerColor: 'rgb(4 196 162)',
+      },
+    },
+    unselected: {
+      focus: {
+        label: 'rgb(189 211 254)',
+        icon: 'rgb(254 121 179)',
+        stateLayerColor: 'rgb(149 82 1)',
+      },
+      pressed: {
+        label: 'rgb(188 212 253)',
+        icon: 'rgb(253 122 178)',
+        stateLayerColor: 'rgb(148 84 2)',
+      },
+    },
+    focusOpacity: '0.19',
+    pressedOpacity: '0.29',
+  },
+  filled: {
+    selected: {
+      focus: { label: 'rgb(21 22 23)', icon: 'rgb(41 42 43)', stateLayerColor: 'rgb(179 2 3)' },
+      pressed: { label: 'rgb(24 25 26)', icon: 'rgb(44 45 46)', stateLayerColor: 'rgb(178 4 6)' },
+    },
+    unselected: {
+      focus: { label: 'rgb(51 52 53)', icon: 'rgb(71 72 73)', stateLayerColor: 'rgb(2 3 179)' },
+      pressed: { label: 'rgb(54 55 56)', icon: 'rgb(74 75 76)', stateLayerColor: 'rgb(4 6 178)' },
+    },
+    focusOpacity: '0.21',
+    pressedOpacity: '0.31',
+  },
+  tonal: {
+    selected: {
+      focus: {
+        label: 'rgb(254 239 198)',
+        icon: 'rgb(254 253 2)',
+        stateLayerColor: 'rgb(199 102 3)',
+      },
+      pressed: {
+        label: 'rgb(253 238 196)',
+        icon: 'rgb(253 251 4)',
+        stateLayerColor: 'rgb(198 104 6)',
+      },
+    },
+    unselected: {
+      focus: {
+        label: 'rgb(198 254 239)',
+        icon: 'rgb(2 253 254)',
+        stateLayerColor: 'rgb(3 119 199)',
+      },
+      pressed: {
+        label: 'rgb(196 253 238)',
+        icon: 'rgb(4 251 253)',
+        stateLayerColor: 'rgb(6 118 198)',
+      },
+    },
+    focusOpacity: '0.23',
+    pressedOpacity: '0.33',
+  },
+  outlined: {
+    selected: {
+      focus: {
+        label: 'rgb(239 198 254)',
+        icon: 'rgb(254 2 149)',
+        stateLayerColor: 'rgb(149 3 254)',
+      },
+      pressed: {
+        label: 'rgb(238 196 253)',
+        icon: 'rgb(253 4 148)',
+        stateLayerColor: 'rgb(148 6 253)',
+      },
+    },
+    unselected: {
+      focus: {
+        label: 'rgb(209 208 207)',
+        icon: 'rgb(2 253 119)',
+        stateLayerColor: 'rgb(3 89 254)',
+      },
+      pressed: {
+        label: 'rgb(206 205 204)',
+        icon: 'rgb(4 251 118)',
+        stateLayerColor: 'rgb(6 88 253)',
+      },
+    },
+    focusOpacity: '0.25',
+    pressedOpacity: '0.35',
+  },
 };
 
 interface ButtonToggleBranchTokens {
@@ -791,14 +912,24 @@ const buttonToggleRestingStyle = (style: ButtonToggleStyle, branch: 'selected' |
   return restingStyle;
 };
 
-const buttonToggleHoverStyle = (style: ButtonToggleStyle, branch: 'selected' | 'unselected') => {
+const buttonToggleInteractionStyle = (
+  style: ButtonToggleStyle,
+  branch: 'selected' | 'unselected',
+  state: ButtonToggleInteractionState,
+) => {
   const entry = BUTTON_TOGGLE_MATRIX[style];
-  const tokens = entry[branch];
+  const tokens =
+    state === 'hover' ? entry[branch] : BUTTON_TOGGLE_ADDITIONAL_STATES[style][branch][state];
+  const opacity =
+    state === 'hover'
+      ? entry.hoverOpacity
+      : BUTTON_TOGGLE_ADDITIONAL_STATES[style][`${state}Opacity`];
+  const tokenState = state === 'hover' ? 'hovered' : state === 'focus' ? 'focused' : 'pressed';
   return {
-    [`--md-comp-button-${style}-hovered-state-layer-opacity`]: entry.hoverOpacity,
-    [`--md-comp-button-${style}-${branch}-hovered-label-text-color`]: tokens.label,
-    [`--md-comp-button-${style}-${branch}-hovered-icon-color`]: tokens.icon,
-    [`--md-comp-button-${style}-${branch}-hovered-state-layer-color`]: tokens.stateLayerColor,
+    [`--md-comp-button-${style}-${tokenState}-state-layer-opacity`]: opacity,
+    [`--md-comp-button-${style}-${branch}-${tokenState}-label-text-color`]: tokens.label,
+    [`--md-comp-button-${style}-${branch}-${tokenState}-icon-color`]: tokens.icon,
+    [`--md-comp-button-${style}-${branch}-${tokenState}-state-layer-color`]: tokens.stateLayerColor,
   };
 };
 
@@ -808,8 +939,9 @@ export const ToggleTokenRoutingMatrix: Story = {
     setup() {
       return {
         BUTTON_TOGGLE_STYLES,
+        BUTTON_TOGGLE_INTERACTION_STATES,
         buttonToggleRestingStyle,
-        buttonToggleHoverStyle,
+        buttonToggleInteractionStyle,
       };
     },
     template: `
@@ -834,27 +966,39 @@ export const ToggleTokenRoutingMatrix: Story = {
           >
             <template #icon>+</template>
           </MDButton>
-          <MDStateLayerForcedStateProvider hovered>
+          <MDStateLayerForcedStateProvider
+            v-for="state in BUTTON_TOGGLE_INTERACTION_STATES"
+            :key="'selected-' + state"
+            :hovered="state === 'hover'"
+            :focused="state === 'focus'"
+            :pressed="state === 'pressed'"
+          >
             <MDButton
-              :data-testid="\`toggle-token-\${style}-selected-hover\`"
-              class="md-state_hover"
-              :label="\`\${style} selected hover\`"
+              :data-testid="\`toggle-token-\${style}-selected-\${state}\`"
+              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :label="\`\${style} selected \${state}\`"
               variant="toggle"
               selected
               :color="style"
-              :style="buttonToggleHoverStyle(style, 'selected')"
+              :style="buttonToggleInteractionStyle(style, 'selected', state)"
             >
               <template #icon>+</template>
             </MDButton>
           </MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider hovered>
+          <MDStateLayerForcedStateProvider
+            v-for="state in BUTTON_TOGGLE_INTERACTION_STATES"
+            :key="'unselected-' + state"
+            :hovered="state === 'hover'"
+            :focused="state === 'focus'"
+            :pressed="state === 'pressed'"
+          >
             <MDButton
-              :data-testid="\`toggle-token-\${style}-unselected-hover\`"
-              class="md-state_hover"
-              :label="\`\${style} unselected hover\`"
+              :data-testid="\`toggle-token-\${style}-unselected-\${state}\`"
+              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :label="\`\${style} unselected \${state}\`"
               variant="toggle"
               :color="style"
-              :style="buttonToggleHoverStyle(style, 'unselected')"
+              :style="buttonToggleInteractionStyle(style, 'unselected', state)"
             >
               <template #icon>+</template>
             </MDButton>
