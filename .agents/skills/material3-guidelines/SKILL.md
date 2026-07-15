@@ -45,19 +45,25 @@ For full component-family work, the architect must complete the `MATERIAL COMPON
 
 The contract records:
 
+- the existing family `README.md` and exact delta, or a complete initial contract for a first migration;
 - checked Material pages or cache paths and verified snapshot;
 - supported and unsupported official surface;
-- exact `md.comp.*` paths and public `--md-comp-*` inventory;
+- exact `md.comp.*` paths, public `--md-comp-*` inventory, canonical owner file, and applicable roots;
 - public props, emits, slots, native semantics, and invalid combinations;
-- anatomy ownership and rendered property routes;
-- configuration axes, semantic states, interaction states, and precedence;
+- anatomy ownership;
+- configuration axes, semantic states, and interaction states;
+- a property-specific rendered-state matrix, including DOM owner, sources, winner order, and simultaneous independent outputs;
 - Mioframe extensions and deviations;
 - exact production and verification files;
 - acceptance matrix, verification matrix, and consumer blast radius.
 
+There is no universal interaction-state precedence. Material source evidence and the component contract determine resolution separately for each rendered property.
+
 The implementation agent must not fill a missing contract decision while editing code.
 
-A shared Material component implemented only with `--md-sys-*` tokens is not complete token compliance when official component token paths exist. Define and use the matching `--md-comp-*` layer at the component-family boundary, resolving those component tokens to `--md-sys-*` values where appropriate. Direct `--md-sys-*` usage inside component internals is allowed only for values with no published component token path or true foundation-level roles; record that gap or decision in the family contract and component registry.
+A shared Material component implemented only with `--md-sys-*` tokens is not complete token compliance when official component-token paths exist. Define and use the matching `--md-comp-*` layer at the component-family boundary, resolving those component tokens to `--md-sys-*` values where appropriate. Direct `--md-sys-*` usage inside component internals is allowed only for values with no published component-token path or true foundation-level roles; record that gap or decision in the family contract and component registry.
+
+Canonical component tokens are declared independently of the active configuration and state. Variant, size, shape, width, semantic-state, and interaction-state selection belongs to routing and state layers, not token-definition selectors.
 
 ## Project policies
 
