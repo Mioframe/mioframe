@@ -8,21 +8,55 @@ Component tokens describe parts of a component and state-specific styling, such 
 
 For migrated components, token ownership and routing follow [Component architecture](./component-architecture.md).
 
-## Ownership
+## Canonical ownership
 
-Define canonical `--md-comp-*` tokens at the owning component definition boundary.
+Every official `--md-comp-*` token has exactly one canonical declaration owner named by the ready family contract.
 
-A migrated component owns its canonical declarations in:
+The normal owner is:
 
 ```text
 <Component>.tokens.css
 ```
 
-The foundation layer owns reference and system tokens only. It must not become a catalog for component-family tokens.
+A component-specific official token must remain in that component file.
 
-Do not move canonical component-token declarations into a global `src/shared/lib/md/tokens/comp` directory. Reports, allowlists, or generated documentation may be derived from family-owned CSS, but runtime ownership remains with the component.
+A family may own:
+
+```text
+<Family>.tokens.css
+```
+
+only when the same exact official token path belongs to the family contract and is consumed by at least two public components in that family. The ready contract must list:
+
+- every official token path;
+- every public CSS token name;
+- every applicable component root;
+- every component that loads the family token file.
+
+Equal values or similar local usage do not justify family ownership. Do not move component-specific tokens to a family file to reduce duplication or file size.
+
+The foundation layer owns reference and system tokens only. It must not become a runtime catalog for component-family tokens. Generated reports or allowlists may be derived from family-owned CSS, but they are not canonical runtime ownership.
 
 Consumers may override public component tokens, but they must not define the canonical token contract for a shared Material component.
+
+## Declaration selectors
+
+Canonical token files declare the complete supported public override surface independently of active configuration or state.
+
+Allowed selectors are only:
+
+- the owning component root in `<Component>.tokens.css`;
+- the exact family-member root selector list named by the ready contract in `<Family>.tokens.css`.
+
+Forbidden in canonical token files:
+
+- variant, size, shape, width, density, or mode modifier selectors;
+- semantic-state selectors;
+- interaction-state selectors;
+- pseudo-classes;
+- normal rendering properties.
+
+All supported tokens exist on the owning root whenever the component is rendered. Configuration selection belongs only to `.routes.css`; semantic and interaction resolution belongs only to `.states.css`.
 
 ## Naming
 
@@ -88,25 +122,24 @@ Direct `--md-sys-*` use inside migrated component routing is acceptable only for
 
 ## Layered token pipeline
 
-Every stateful rendered property follows this path:
+Every rendered property follows this path:
 
 ```text
 official md.comp token
-→ family-owned --md-comp-* token
+→ canonical family-owned --md-comp-* declaration
 → configuration route bank
 → current semantic bank
+→ property-specific interaction resolver
 → rendered family-private value
 → optional generic foundation bridge
 → actual DOM property owner
 ```
 
-The architecture handoff may omit a private stage only when the property does not vary across that stage and the omission is explicit in the rendered-property route table.
+The architecture handoff may omit a private stage only when the property's matrix row states that the property does not vary across that stage.
 
 A component must not bypass an available official token with a direct system-token value.
 
 ## Private variable classes
-
-Migrated components use only these family-private classes.
 
 Configuration route bank:
 
@@ -153,6 +186,6 @@ A low-level primitive reused by several component families must expose a generic
 
 ## Migration pilots
 
-`MDButton` is the first `layered-v1` architecture pilot. `MDSwitch` is the independent second pilot used to verify semantic-state, disabled-state, gesture, and anatomy ownership without Button-specific assumptions.
+`MDButton` is the first `layered-v1` architecture pilot. `MDSwitch` is the independent second pilot used to verify semantic-state, disabled-state, gesture, family-token, and anatomy ownership without Button-specific assumptions.
 
 Do not generalize validator rules or library-wide abstractions from `MDButton` alone.
