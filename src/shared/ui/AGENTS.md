@@ -17,7 +17,9 @@ Use the `shared-ui-implementation` and `material3-guidelines` skills when implem
 - Keep scroll-aware, sticky, floating, and teleport-aware behavior tied to the actual rendered DOM hierarchy.
 - Do not write styles that affect the styling or positioning of neighboring elements in the parent flow. External spacing or visual treatment may move or style the component itself, but must not reach outward and change how adjacent elements are laid out or rendered.
 - For every new or materially changed public `MD*` component, record `Architecture impact: none`, ready `layered-v1`, or `blocked` before production edits.
-- A `layered-v1` component must use the exact production files, layer ownership, token pipeline, state precedence, property owners, and verification matrix from its ready Material component contract.
+- A migrated family's `README.md` is its durable accepted architecture contract; later handoffs define exact deltas and must update the README atomically with code and verification.
+- A `layered-v1` component must use the exact production files, canonical token owners, property-specific state matrix, DOM property owners, and verification matrix from its ready contract.
+- Canonical token files must declare tokens independently of active configuration and state; selection belongs to route and state layers.
 - If implementation requires an architecture choice not present in the ready contract, stop and return it for resolution; do not infer a reasonable default.
 
 ## Anti-patterns
@@ -25,7 +27,7 @@ Use the `shared-ui-implementation` and `material3-guidelines` skills when implem
 - Do not import `entities`, `features`, `widgets`, or `pages` here.
 - Do not couple shared UI to document, property, or view models.
 - Do not hide multiple unrelated behaviors behind one broad `options` prop.
-- Do not introduce a generic Material base component, token resolver, cross-family state machine, or family-specific knowledge in generic state/ripple/focus primitives.
+- Do not introduce a generic Material base component, token resolver, global property precedence, cross-family state machine, or family-specific knowledge in generic state/ripple/focus primitives.
 
 ## Constraints
 
