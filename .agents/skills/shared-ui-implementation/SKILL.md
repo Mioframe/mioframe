@@ -1,35 +1,37 @@
 ---
 name: shared-ui-implementation
-description: 'Use before implementing or reviewing src/shared/ui primitives. For public MD* components, follows deterministic layered-v1 authoring, the smallest applicable file profile, source-backed API and anatomy, property-specific state resolution, explicit DOM ownership, and focused verification without speculative abstractions.'
+description: 'Use before implementing or reviewing src/shared/ui primitives. For public MD* components, follows deterministic layered-v1 authoring, verified Material usage, accepted foundation dependencies, the smallest applicable file profile, source-backed API and anatomy, property-specific state resolution, explicit DOM ownership, and focused verification without speculative abstractions.'
 paths:
   - 'src/shared/ui/**'
+  - 'src/shared/lib/md/**'
   - 'tests/e2e/visual/shared-ui/**'
 ---
 
 # Shared UI implementation
 
-Use this skill for `src/shared/ui` work. Pair public Material component work with `material3-guidelines` and the relevant sections of `docs/material-3/component-architecture.md`.
+Use this skill for `src/shared/ui` work. Pair public Material component work with `material3-guidelines`, `docs/material-3/component-architecture.md`, and `docs/material-3/foundation-architecture.md`.
 
 ## Public Material authoring gate
 
 Before production edits, record one mode:
 
-- `standard-authoring`: derive the component blueprint from required scenarios, official Material documentation, repository rules, native semantics, and deterministic architecture rules;
+- `standard-authoring`: derive the component blueprint from required scenarios, official Material documentation, repository rules, accepted foundation contracts, native semantics, and deterministic architecture rules;
 - `handoff-authoring`: follow a ready exact family-contract delta;
 - `blocked`: an escalation condition is present.
 
 A separate architect handoff is not required for normal source-backed component creation. Create or update the compact family README blueprint before production code and proceed only with `Unresolved: none` and `Readiness: ready`.
 
-Use `blocked` rather than inventing behavior when sources conflict, ownership crosses boundaries, a new public project extension is required, or new generic infrastructure appears necessary.
+Use `blocked` rather than inventing behavior when sources conflict, ownership crosses boundaries, a new public project extension is required, a required foundation domain is blocked, or new generic infrastructure appears necessary.
 
 ## Bounded preparation
 
-1. Read scoped rules and the current family README.
+1. Read scoped rules, the current family README, and applicable foundation registry records.
 2. Inspect named consumers and the nearest relevant shared component.
-3. Read only relevant official Material pages.
-4. Derive the minimum complete supported surface.
-5. Write the compact blueprint.
-6. Implement the smallest applicable profile.
+3. Read only relevant official Material component and foundation pages.
+4. Derive the minimum complete supported surface and Material usage contract.
+5. Record foundation dependencies and classify any foundation delta.
+6. Write the compact blueprint.
+7. Implement the smallest applicable profile.
 
 Do not begin with broad repository exploration or unrelated component comparisons.
 
@@ -48,6 +50,28 @@ Do not create empty token, route, or state layers for symmetry. Do not merge a r
 
 Optional family anatomy, behavior, composable, or context files are allowed only under objective architecture conditions. Similar code or possible reuse is insufficient.
 
+## Material usage and composition
+
+A component README blueprint must state intended usage, prohibited usage, content/action hierarchy, allowed Material compositions, placement constraints, adaptive owner, and whether product integration is part of the PR.
+
+The component owns its public surface and anatomy. Product layers own information architecture, selection of the component, placement, and adaptive composition.
+
+Do not add product-specific placement or workflow behavior to a shared component to satisfy one consumer.
+
+## Foundation dependencies
+
+Use `foundation-registry.md` as the current status source.
+
+- Consume the named foundation owner when its accepted contract is sufficient.
+- Keep generic foundation bridges free of component-family knowledge.
+- Map family values into generic bridges from the component state layer.
+- Do not copy theme, typography, motion, focus, ripple, state, icon, overlay, unit, density, accessibility, or adaptive behavior into a component-local substitute.
+- Keep a foundation delta in the component PR only when it is source-backed, additive, backward-compatible, has one clear existing owner, introduces no new lifecycle/context/dependency, and fits focused verification.
+- Treat foundation corrections and replacements as focused architecture work with full consumer impact unless an explicit handoff approves a small inseparable combined change.
+- Update the foundation registry, owner contract, code, tests, and component blueprint atomically when a foundation contract changes.
+
+A partial foundation domain is usable only when the exact required capability is already accepted and the relevant gap does not affect the supported component surface.
+
 ## Vue and DOM ownership
 
 - Keep typed props, emits, slots, small named computeds, runtime fact acquisition, native bindings, events, and anatomy in Vue.
@@ -59,13 +83,13 @@ Optional family anatomy, behavior, composable, or context files are allowed only
 
 ## Public API
 
-Derive the smallest coherent API:
+Derive the smallest coherent public API:
 
 - add props only for requested Material configuration, semantic state, required native behavior, or explicit project extensions;
 - use official Material vocabulary and values;
 - add slots only for supported consumer-provided anatomy;
 - emit only component-owned state changes or actions;
-- do not expose private anatomy, token routes, test controls, or speculative flexibility;
+- do not expose private anatomy, token routes, foundation bridges, test controls, or speculative flexibility;
 - update in-repository consumers instead of keeping compatibility aliases by default.
 
 If Material guidance does not determine invalid-combination behavior, use `blocked` rather than inventing normalization.
@@ -87,9 +111,9 @@ Wrapper components call the current shared UI API directly or expose a wrapper-o
 
 ## Generic foundations
 
-Generic state-layer, ripple, focus-indicator, elevation, and motion primitives read only generic private contracts. The consuming family maps the shortest applicable final source into the generic bridge.
+Generic state-layer, ripple, focus-indicator, elevation, motion, icon, overlay, and layout primitives expose only their accepted generic contracts. The consuming family maps final values or composes the capability without moving family routes into the foundation.
 
-Do not move family routes into foundations or create a generic Material base, runtime token registry, token resolver, CSS DSL, or cross-family state machine.
+Do not create a generic Material base, runtime token registry, token resolver, CSS DSL, cross-family state machine, or second overlay/theme system.
 
 ## Behavior extraction
 
@@ -97,7 +121,8 @@ Keep behavior local unless an objective extraction condition applies:
 
 - `<Component>Behavior.ts` only for non-trivial keyboard, pointer, gesture, timing, or cleanup transitions requiring focused unit tests;
 - a composable only when the same production behavior is required by at least two public components now;
-- family context only for real public parent/child composition state that cannot use the existing contract cleanly.
+- family context only for real public parent/child composition state that cannot use the existing contract cleanly;
+- a new foundation primitive only under the objective expansion rules in `foundation-architecture.md`.
 
 Line count or duplicated syntax alone does not justify extraction.
 
@@ -110,19 +135,22 @@ Line count or duplicated syntax alone does not justify extraction.
 
 ## Typography
 
-Use `MD_TYPESCALE` constants and `.md-typescale-*` classes from `shared/lib/md` for Material typography. Do not hand-author type-scale declarations in component CSS unless changing the typography utility contract itself.
+Use `MD_TYPESCALE` constants and `.md-typescale-*` classes from `shared/lib/md` for Material typography. Do not hand-author type-scale declarations in component CSS unless changing the typography foundation contract itself.
 
 ## Verification
 
 Use the smallest proof set covering the supported surface:
 
+- component-choice and composition evidence for integrated consumers;
 - component contract tests for API, native semantics, ARIA, invalid combinations, and component-owned behavior;
+- foundation dependency and registry consistency checks;
 - architecture validation for profile, exact applicable layers, token ownership, private boundaries, and alias necessity;
-- browser checks for focus, keyboard, pointer, gestures, computed CSS, public overrides, and actual property owners;
+- browser checks for focus, keyboard, pointer, gestures, overlays, adaptivity, computed CSS, public overrides, and actual property owners;
 - matrix checks for reachable property resolvers and simultaneous outputs;
 - representative Storybook and visual coverage for materially different geometry or appearance;
-- one preservation check per changed existing consumer.
+- one preservation check per changed existing consumer;
+- representative consumer checks for every foundation correction or replacement path.
 
-Do not test Vue, browser, or generic foundation internals that the component does not own.
+Do not test Vue, browser, or generic foundation internals the component does not own.
 
-Before completion, verify that family README, production code, registry, Storybook, and tests agree. Do not report completion with empty layers, unnecessary aliases, known violations, unsupported claims, parallel obsolete logic, or unrequested abstractions.
+Before completion, verify that family README, foundation/component registries, owner contracts, production code, Storybook, and tests agree. Do not report completion with empty layers, unnecessary aliases, known violations, unsupported claims, local foundation substitutes, parallel obsolete logic, or unrequested abstractions.
