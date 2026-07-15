@@ -7,9 +7,13 @@ Use:
 - `material3-guidelines` for source, usage, and alignment decisions;
 - `material-foundation` for cross-family foundation changes;
 - `shared-ui-implementation` for public component implementation;
+- `component-contract-testing` for colocated Vue contract tests;
+- `ui-browser-behavior` for real browser-owned behavior;
+- `visual-regression-testing` for state-matrix screenshots and visual diffs;
 - `docs/material-3/library-architecture.md` for location, dependency, public API, and migration;
 - `docs/material-3/foundation-architecture.md` for foundation ownership;
-- `docs/material-3/component-architecture.md` for family implementation.
+- `docs/material-3/component-architecture.md` for family implementation;
+- `docs/material-3/component-testing.md` for the mandatory component test profile and state matrix.
 
 ## Contains
 
@@ -65,12 +69,40 @@ material library → project-specific shared UI and product layers
 - Generic bridges expose only minimum cross-family inputs.
 - Do not duplicate theme, tokens, units, typography, state/ripple/focus, motion, icon, or overlay ownership.
 - Generic browser/DOM/teleport utilities stay outside the library unless their contract is specifically Material-owned.
+- Verification-only transient-state adapters belong to the owning foundation testing surface, never to individual component APIs.
 
 ## Components
 
 - Each family follows one `layered-v1` profile and owns its README blueprint.
 - Family code owns API, semantics, anatomy, component tokens, routing, property-specific state resolution, rendering, stories, and focused tests.
 - Product behavior, placement, information architecture, and workflow remain outside the family.
+- Every new or migrated public component records and implements the standard test profile from `component-testing.md`.
+- Every new or migrated public component has one canonical Storybook export named `StateMatrix`.
+- The matrix covers every supported visual state and every distinct state-rendering route, not every equivalent size/content combination.
+- The family README includes a concise state-matrix coverage map.
+- A state-matrix screenshot is mandatory, but real browser behavior is verified separately through real input.
+- Automated agents must not claim that human visual review passed.
+
+## Component testing ownership
+
+Use the same layers for every component:
+
+1. verify-managed architecture checks;
+2. colocated `<Component>.test.ts` contract tests;
+3. canonical `StateMatrix` Storybook story;
+4. Playwright visual regression of that matrix;
+5. Storybook Playwright behavior tests when browser-owned behavior exists;
+6. pure helper/composable tests when extracted logic exists;
+7. changed-consumer preservation checks.
+
+Do not:
+
+- verify appearance in Vitest or Vue Test Utils;
+- prove behavior with forced visual states;
+- add test-only public props, events, classes, or production branches;
+- create one screenshot per state cell;
+- omit a supported state because it is hard to display;
+- build a production state-matrix component or generic test DSL.
 
 ## Patterns
 
@@ -88,9 +120,24 @@ A pattern is allowed only when:
 - Strict local repairs may remain at legacy paths under `Architecture impact: none`.
 - New public Material surface at a legacy path is forbidden.
 - Migrate one family or foundation domain per focused PR.
-- Update all consumers, exports, contracts, registries, stories, tests, and the library migration map atomically.
+- Update all consumers, exports, contracts, registries, stories, tests, risk registration, snapshots, and the library migration map atomically.
+- A component migration adds or consolidates the canonical state matrix and standard test profile.
 - Remove old paths; temporary compatibility re-exports require an explicit removal target and must not receive new usage.
 
 ## Verification
 
-Architecture validation is blocking for new and migrated library artifacts. Verify location, dependency direction, public exports, no deep imports, no artificial foundation wrappers, no project-specific content, no local foundation substitute, complete consumer migration, and removal of obsolete legacy paths.
+Architecture and test-profile validation are blocking for new and migrated library artifacts.
+
+Verify:
+
+- location and dependency direction;
+- public exports and no deep imports;
+- no artificial foundation wrappers or project-specific content;
+- no local foundation substitute;
+- complete consumer migration and removal of obsolete paths;
+- colocated contract tests;
+- exactly one canonical `StateMatrix` export and stable root anchor;
+- complete state-route coverage with visible labels;
+- Playwright visual regression for the matrix;
+- separate real browser behavior tests when applicable;
+- truthful human-review status.
