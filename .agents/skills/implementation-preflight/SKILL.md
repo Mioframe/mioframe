@@ -1,209 +1,158 @@
 ---
 name: implementation-preflight
-description: 'Use before non-trivial implementation work to reduce corrective commits by identifying owner boundaries, reusable project code, acceptance matrix, risk matrix, task breadth, work passes, and focused verification before the first production edit.'
+description: 'Use before non-trivial implementation work to resolve owners, public entry points, minimum design, risks, passes, and verification before the first production edit.'
 ---
 
 # Implementation preflight
 
-Use this skill before non-trivial code edits. Keep the preflight short and bounded; do not turn it into broad repository exploration or repeat scoped repository policy.
+Use before non-trivial code edits. Keep the artifact short and bounded. Do not repeat scoped repository policy or copy complete domain blueprints into the preflight.
 
-## Activation check
+## Activation
 
-Use this skill when the task will likely change production code, test behavior, tooling, CI, app configuration, storage semantics, diagnostics, browser behavior, or user-visible UI.
+Use when work may change production code, tests, tooling, CI, configuration, storage semantics, diagnostics, browser behavior, or user-visible UI.
 
-Do not use this skill for trivial typo fixes, formatting-only changes, comments-only changes, or mechanical renames with no behavior or ownership decisions.
+Skip only for trivial typo, formatting, comment, or mechanical rename work with no ownership or behavior decision.
 
-## Required preflight
+## Required artifact
 
-For non-local changes, write a short preflight artifact before the first production edit.
+Record:
 
-Required sections:
+0. **Authoring source** — ready architecture handoff or named deterministic repository workflow and authoritative sources.
+1. **Owner map** — source of truth, runtime owner, user-action owner, composition owner, error/recovery owner, and verification owner where applicable.
+2. **Public entry points** — owning layer and APIs; no deep imports.
+3. **Reuse** — existing helpers, components, configs, schemas, services, tests, and dependencies already owning nearby behavior.
+4. **Minimum sufficient design** — every planned concept mapped to a current requirement or boundary; simpler alternative compared explicitly.
+5. **Acceptance matrix** — only reachable happy and failure/cancellation states required by the current contract.
+6. **Risk matrix** — only applicable browser, lifecycle, async, data, accessibility, visual, CI, or tooling risks.
+7. **Breadth and passes** — independent domains and safe implementation order.
+8. **Verification** — focused proof for the highest risk plus final repository verification.
 
-0. **Authoring source**: if a ready architecture handoff exists, confirm it and restate only decisions affecting planned edits. Otherwise identify the deterministic repository workflow and authoritative sources used to derive the design. If neither path resolves ownership, source of truth, or expected final state, stop.
-1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
-2. **Public entry points**: name the owning FSD layer and public APIs that must be used instead of deep imports.
-3. **Reuse**: identify existing helpers, components, configs, schemas, services, tests, or dependencies that already own nearby behavior.
-4. **Minimum sufficient design**: map every planned concept to a current requirement or owner boundary; compare it with a narrower design and reject unrequested flexibility or stronger guarantees.
-5. **Acceptance matrix**: list only reachable non-happy-path states required by the current contract.
-6. **Risk matrix**: list only applicable browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks.
-7. **Breadth and passes**: identify independent domains and the order that keeps work incremental.
-8. **Verification**: name the focused verify-managed check for the riskiest behavior and the final verification required.
+Proceed without a separate architecture handoff only when an applicable repository policy defines a deterministic authoring path and every required decision is resolved from authoritative sources.
 
-A non-trivial task may proceed without a separate handoff only when an applicable repository skill or policy defines a deterministic standard-authoring path and the preflight resolves every required decision from authoritative sources.
+Stop when:
 
-If a required handoff is missing or `not ready`, or a deterministic path remains unresolved or `blocked`, stop. Do not infer readiness from a detailed task description.
+- a required handoff is missing/not ready;
+- the deterministic path remains `blocked`;
+- ownership, source of truth, final state, compatibility, or verification is unresolved;
+- a narrower design satisfies the same acceptance criteria;
+- planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, or testing framework lacks a current requirement.
 
-If any required owner is unclear for a cross-layer change, stop and resolve the architecture before editing.
+Do not hide the same complexity by splitting it across more files.
 
-If the minimum sufficient design check finds an abstraction, extension point, compatibility path, recovery mechanism, optimization, stronger guarantee, or testing framework without a current requirement, existing consumer, repository invariant, platform constraint, or measured need, stop for simplification. Do not hide the same complexity by splitting it across more files.
+## Contract changes
 
-For contract changes such as persisted formats, public APIs, shared UI contracts, Material library/foundation contracts, component testing contracts, service APIs, worker/provider boundaries, or cross-layer behavior, also record:
+For persisted formats, public APIs, shared UI, Material library/foundation, service/worker/provider, or cross-layer contracts also record:
 
 - affected consumer inventory;
-- owner module;
 - current and canonical owner when migration applies;
 - compatibility decision;
-- edge-case matrix;
-- verification plan per consumer.
+- applicable edge cases;
+- verification per distinct consumer path.
 
-For user-visible UI or UX changes, run `material3-guidelines` before choosing component structure, component usage, library location, layout, interaction behavior, state-matrix coverage, or visual verification. For copy-only or wiring-only changes preserving the existing Material surface, location, foundation contracts, testing surface, and output, record `Material impact: none`.
+## Material work
 
-For `.vue`, UI composable, shared UI, widget, pane/page, or feature UI changes, run `vue-component-implementation` and include its concise component contract. If that contract is unclear, implementation is not ready.
+For Material-related work use `material3-guidelines` and the canonical architecture documents.
 
-## Public Material component gate
+The preflight records only:
 
-For a new or materially changed public shared `MD*` component, record:
+- authoring mode;
+- family/foundation owner and change mode;
+- canonical blueprint or registry record being changed;
+- unresolved blockers;
+- affected consumers;
+- required proof and review gates.
 
-- `standard-authoring`: the agent can derive a ready family blueprint from required scenarios, official Material documentation, repository rules, accepted library/foundation contracts, component testing architecture, current family contracts, and native semantics;
-- `handoff-authoring`: an upstream handoff supplies an exact ready delta;
-- `blocked`: an escalation condition from library, component, foundation, or testing architecture is present;
-- `Architecture impact: none`: a strictly local unmigrated-component repair preserves existing location, public imports, component/foundation contracts, verification surface, and unrelated output.
+Do not restate the complete family blueprint, foundation registry schema, state-matrix rules, or validator checklist here.
 
-For `standard-authoring`, confirm:
+### Public Material component
 
-- source lookup is bounded to the relevant Material surface and applicable foundation domains;
-- required scenarios and non-goals define the minimum supported surface, using canonical default usage when the request gives no scenario;
-- the Material usage contract resolves component choice, prohibited usage, composition, placement, and adaptive ownership;
-- new work uses `src/shared/ui/material/components/<family>`;
-- an existing family records current legacy path, canonical path, migration mode, migration status, public export, and complete consumer import scope;
-- internal library code avoids the root barrel and external consumers avoid deep imports;
-- the foundation dependency table names current registry records, accepted current/canonical owners, statuses, and change classifications;
-- no required foundation dependency is blocked or replaced by component-local behavior;
-- the family README blueprint is created or updated before production code;
-- `Unresolved: none` and `Readiness: ready` are source-backed;
-- exactly one smallest profile (`simple`, `configured`, `stateful`, or `configured-stateful`) is selected;
-- public API, native semantics, anatomy, token ownership, shortest property pipelines, rendered-property matrix, files, and verification are resolved;
-- the standard test profile is resolved before implementation;
-- exactly one canonical `StateMatrix` story is planned with complete supported state-route coverage;
-- contract, browser, visual, pure-behavior, and consumer verification ownership is explicit;
-- optional abstractions and Material patterns satisfy exact extraction conditions;
-- unsupported Material features and project deviations are explicit.
+Before production edits confirm:
 
-A separate architect handoff is not required when these checks pass.
+- the complete canonical family blueprint in `component-architecture.md` is ready;
+- supported scenarios and surface are bounded;
+- current/canonical paths, exports, and consumer migration are resolved;
+- foundation dependencies are non-blocking and correctly classified;
+- the smallest architecture profile is selected;
+- API, native semantics, state/DOM ownership, token routes, and files are resolved;
+- the standard test profile covers distinct component-owned visual routes and applicable browser behavior;
+- required architecture, Material, and human visual review is identified.
 
-Use `blocked` when official guidance conflicts or is missing, requested behavior contradicts Material or native semantics, a new public project extension is required, existing API or migration compatibility is unresolved, ownership crosses families, a required foundation capability is blocked or ownerless, state-matrix completeness cannot be determined, new generic infrastructure appears necessary, or required browser behavior cannot be verified.
+A separate handoff is unnecessary when all of these are source-resolved. Use `blocked` when official guidance, Design Kit evidence, ownership, extension semantics, compatibility, foundation capability, distinct visual-route coverage, generic infrastructure, or required browser proof remains unresolved.
 
-Do not convert a blocked decision into a fallback, compatibility alias, broad option, generic abstraction, local foundation substitute, deep import, permanent legacy export, test-only public API, or family-local forced-state mechanism.
+### Material foundation
 
-## Material foundation gate
+Apply `material-foundation` and record:
 
-When changing reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, overlays, accessibility, density, adaptivity, or foundation verification adapters, apply `material-foundation` and record:
+- registry domain/status/snapshot;
+- current/canonical owner and migration status;
+- public/private/testing contract delta;
+- mode: `none`, `library-relocation-only`, `additive`, `correction`, `replacement`, or `refresh`;
+- consumers and representative verification.
 
-- affected registry domain and current status;
-- exact source snapshot;
-- current production owner and canonical `material/foundation/<domain>` owner;
-- physical migration status;
-- public/private/testing contract;
-- change mode: relocation-only, additive, correction, replacement, or refresh;
-- affected consumers and expected delta;
-- compatibility/migration decision;
-- focused owner verification and representative consumer proof.
+Physical relocation must not hide a correction or replacement.
 
-A foundation additive delta may share a component PR only when every condition in `foundation-architecture.md` passes. Corrections and replacements normally require focused architecture work. Physical relocation must not hide a contract change.
+### Material migration
 
-## Material library migration gate
+For family/domain relocation record:
 
-For any family or foundation relocation into `src/shared/ui/material`, record:
+- one cohesive owner;
+- complete source/consumer import inventory;
+- public export plan;
+- contract/story/test/snapshot/risk-registration updates;
+- registry and migration-map updates;
+- obsolete-path removal;
+- any temporary compatibility contract and removal target.
 
-- one cohesive owner being moved;
-- whether the change is relocation-only, architecture-only, alignment-only, or a stricter foundation mode;
-- complete source and consumer import inventory;
-- public `@shared/ui/material` export plan;
-- canonical Storybook `StateMatrix`, contract/browser/visual tests, snapshots, and risk-registration updates;
-- registry and library-map updates;
-- old path and export removal;
-- any temporary compatibility export, its exact consumers, and removal target.
-
-Do not combine unrelated family moves, broad import cleanup, foundation corrections, and visual alignment in one migration PR.
-
-## Material component testing gate
-
-For every new or migrated public Material component, record:
-
-- colocated `<Component>.test.ts` contract coverage;
-- canonical `StateMatrix` story id and root anchor;
-- state-matrix row/column coverage derived from semantic states, interaction states, and the rendered-property matrix;
-- Playwright visual spec and bounded screenshot sections;
-- Storybook browser-behavior spec or `not applicable` with owner-based reason;
-- pure helper/composable tests or `not applicable`;
-- changed-consumer preservation checks;
-- whether human Material visual review is `required`, `passed`, or `blocked`.
-
-The matrix is exhaustive by supported visual state and distinct state-rendering route, not by equivalent size/content combinations. Forced states prove appearance only; browser behavior uses real input.
-
-An automated coding agent must not report human visual review as passed.
+Do not combine unrelated moves, broad cleanup, foundation corrections, and visual alignment in one migration PR.
 
 ## Scoped rule application
 
-Use applicable nested `AGENTS.md` and domain skills as detailed policy. The preflight records decisions; it does not duplicate those rules.
+Use nested `AGENTS.md` and domain skills as detailed policy.
 
-- For storage, service, worker, provider, cache, protocol, or lifecycle work, apply `src/AGENTS.md`, applicable `src/shared/**/AGENTS.md`, and `crdt-storage`. Record the canonical fact owner, public path to UI, error owner, recovery owner, and forbidden UI reconstruction.
-- For work across `entities`, `features`, `widgets`, or `pages`, apply their nested `AGENTS.md`. Record the model/read/action/composition split and public API used between layers.
-- For shared UI, apply `shared-ui-implementation`, `material3-guidelines`, library architecture, component architecture, component testing architecture, and foundation architecture; record authoring mode, canonical/current path, usage contract, current family blueprint, foundation dependencies, exact delta, consumer blast radius, test profile, state-matrix coverage, and browser/visual evidence.
-- For foundation work, apply `material-foundation`; update the foundation registry, library migration map, owner contract, public exports, and affected verification surfaces with the production change.
-- For diagnostics, apply `diagnostic-events` and privacy rules under `src/AGENTS.md`; record only the boundary and safe diagnostic contract affected.
+- Storage/service/worker/provider work: record fact owner, public path, error/recovery owner, and forbidden UI reconstruction.
+- FSD cross-layer work: record model/read/action/composition split and public APIs.
+- Shared UI: record consumer blast radius and the applicable Material/browser/visual proof.
+- Diagnostics: record only the safe boundary and privacy contract.
 
-A scoped rule conflict is a blocker. Resolve it before editing rather than choosing whichever wording permits implementation.
+A scoped-rule conflict is blocking.
 
-## Wide UI and refactor gate
+## Wide UI/refactor gate
 
-For non-trivial UI, UX, or cross-layer refactors, additionally record:
+For non-trivial UI or cross-layer refactors record:
 
-- confirmed domain invariants and later user clarifications;
-- existing user scenarios that must remain reachable, especially menus, navigation, settings, status indicators, and shared surfaces being replaced;
-- owner layer and public entry point for each changed behavior;
-- settings, preferences, persisted state, or feature flags whose semantics change;
-- affected shared UI primitives, Material library paths, foundation contracts, and state-matrix surfaces;
-- consumer blast radius;
-- browser, visual, Storybook, e2e, mutation, focused unit, and manual visual verification that applies.
+- preserved user scenarios;
+- owner and public entry point for each changed behavior;
+- persisted settings/preferences/flags affected;
+- shared UI, Material foundation, and visual surfaces affected;
+- browser, visual, Storybook, e2e, mutation, unit, and manual review that applies.
 
-Before completion, compare the diff with this gate. If a scenario, invariant, owner, public API, library path, foundation dependency, state route, architecture decision, testing decision, or minimum-design decision changed during implementation, update the blueprint/handoff/registry/library map and fix the implementation before claiming completion.
+If implementation changes a scenario, invariant, owner, public API, Material path, foundation dependency, architecture decision, or verification decision, update the upstream contract before completion.
 
 ## Breadth control
 
-Before editing, count independent domains such as domain read models, storage semantics, diagnostics, navigation, shared UI primitives, Material library migration, Material foundation domains, component test-profile migration, browser layout, e2e coverage, visual snapshots, tooling, and copy normalization.
+Count independent domains before editing.
 
-- If the task touches four or more independent domains, split work into explicit passes and run focused verification after each risky pass.
-- Keep behavior-preserving cleanup separate from functional changes when practical.
-- If the user did not explicitly ask to finish one existing branch, prefer proposing a split before broad corrective implementation.
-- If work must stay in one branch, make pass order explicit and do not start the next risky pass until the previous one has a focused check.
+- Four or more domains require explicit passes and focused proof after risky passes.
+- Keep behavior-preserving cleanup separate from functional change when practical.
+- Do not start the next risky pass before the previous one has focused verification.
+- If repeated correction rounds add concepts or workarounds, stop and redo the architecture/preflight.
 
 ## Feature-flow guardrails
 
-Use these rules for create/open/import/export, setup, picker, dialog, storage, permission, recovery, and other multi-step flows.
+For multi-step flows:
 
-- Start with only applicable states from happy path, cancellation, unsupported platform/API, permission denial, invalid input, duplicate/conflict, stale data/race, partial failure, rollback failure, and recovery action.
-- Separate user intents into different feature contracts when acceptance rules, UX copy, domain invariants, or recovery paths differ. Do not begin with a generic all-in-one composable, dialog, or state machine.
-- Keep domain and storage invariants below UI layers. UI requests actions and renders results; the data owner enforces uniqueness, reserved names, marker detection, normalization, migrations, and lifecycle ordering.
-- Make allowed and disallowed target states explicit. Prefer refusing invalid targets with clear recovery over accepting broad inputs and compensating later.
-- Keep outcomes typed and local. Avoid broad status protocols mixing field issues, transport failures, conflicts, and navigation unless several independent callers require them.
-- If a feature requires a shared UI primitive or foundation change, decide whether it is a separate prerequisite. When kept in the same PR, make it minimal, source-backed, independently tested, correctly located, and explicit in blast-radius review.
-- Delete obsolete paths, facades, providers, and tests with their replacement unless compatibility is required.
-- When two correction rounds add concepts, abstractions, branches, protocols, configuration, recovery paths, ownership mistakes, mixed responsibilities, scenarios, or test workarounds, stop patching and redo the architecture/preflight.
-- Prefer tests for domain invariants and extracted transitions before component wiring. Browser behavior, layout, focus, gestures, overlays, adaptivity, and Material visual states require browser or visual verification.
+- include only reachable cancellation, unsupported API, permission, invalid input, conflict, race, partial failure, rollback, and recovery states;
+- separate intents with different invariants or recovery contracts;
+- keep domain/storage invariants below UI;
+- refuse invalid targets instead of accepting broadly and compensating later;
+- keep typed outcomes local;
+- delete obsolete owners with their replacement unless compatibility is explicit;
+- prefer pure/domain tests before component wiring; use browser/visual proof for layout, focus, gestures, overlays, adaptivity, and appearance.
 
 ## Bounded reuse search
 
-Before creating a helper, component, config, dependency, test pattern, Material pattern, Storybook matrix helper, or foundation primitive, use targeted repository search or direct imports to identify the current owner. Stop once ownership and reuse are clear. Do not begin broad exploration unless evidence shows wider impact.
-
-## Acceptance and risk matrix guidance
-
-Consider only applicable states:
-
-- unavailable or disabled integrations;
-- missing browser APIs or unsupported runtime;
-- async pending, cancellation, stale completion, and repeated toggles;
-- invalid, malformed, or hostile input;
-- cache invalidation after create, update, delete, or failed lookup;
-- data-safety-sensitive values in diagnostics, URLs, names, ids, and content;
-- accessibility structure and heading hierarchy;
-- Material component choice, library location, foundation dependencies, adaptive layout, focus, keyboard, touch, motion, overlays, supported visual states, state-matrix completeness, and human review;
-- CI, build, Storybook, Playwright, verify, fix, or verbose modes for tooling changes.
-
-Considering an item does not require implementing it. Include behavior only when reachable through the current contract and required by a user flow, existing consumer, data-safety rule, platform constraint, or repository invariant. State intentionally unsupported behavior instead of adding speculative mechanisms.
+Search only enough to identify the current owner and reusable mechanism. Do not perform broad exploration to justify a generic abstraction.
 
 ## Output discipline
 
-Keep the written preflight concise: usually 8-15 short lines plus a verification note. Do not repeat generic repository rules or the full Material blueprint/registry/library map.
-
-Before final handoff, report whether the resulting diff still matches the derived blueprint or ready handoff and whether library path, public exports, foundation registry, migration map, test profile, state-matrix coverage, and owner contracts remain consistent. If not, fix the implementation or explicitly report the divergence.
+Keep the written preflight usually within 8–15 short lines plus verification. Before completion, confirm the diff still matches the ready handoff or canonical blueprint and that owners, exports, registry/map records, tests, and review status remain consistent.
