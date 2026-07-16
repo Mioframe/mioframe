@@ -55,6 +55,95 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/shared/ui/material/**/*.{ts,tsx,vue}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@feature/*",
+                  "@feature/**",
+                  "@entity/*",
+                  "@entity/**",
+                  "@widget/*",
+                  "@widget/**",
+                  "@page/*",
+                  "@page/**",
+                  "@/app/*",
+                  "@/app/**",
+                  "@/pages/*",
+                  "@/pages/**",
+                  "@/widgets/*",
+                  "@/widgets/**",
+                  "@/features/*",
+                  "@/features/**",
+                  "@/entities/*",
+                  "@/entities/**",
+                  "@/processes/*",
+                  "@/processes/**",
+                  "**/src/app/**",
+                  "**/src/pages/**",
+                  "**/src/widgets/**",
+                  "**/src/features/**",
+                  "**/src/entities/**",
+                  "**/src/processes/**"
+                ],
+                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/shared/lib/**/*.{ts,tsx,vue}"],
+      "excludeFiles": ["src/shared/lib/md/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@shared/ui/material",
+                  "@shared/ui/material/*",
+                  "@shared/ui/material/**",
+                  "**/shared/ui/material",
+                  "**/shared/ui/material/*",
+                  "**/shared/ui/material/**"
+                ],
+                "message": "Generic shared/lib infrastructure must not import the Material library or gain component-family ownership."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/**/*.{ts,tsx,vue}", "tests/**/*.ts"],
+      "excludeFiles": ["src/shared/ui/material/**", "src/shared/lib/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@shared/ui/material/*",
+                  "@shared/ui/material/**",
+                  "**/shared/ui/material/*",
+                  "**/shared/ui/material/**"
+                ],
+                "message": "Import the Material library's public entry point (@shared/ui/material) instead of a deep internal path."
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
