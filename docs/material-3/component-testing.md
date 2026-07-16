@@ -2,7 +2,7 @@
 
 This document defines the mandatory testing contract for public components in the Mioframe Material library.
 
-It complements `component-architecture.md`: component architecture owns production structure and the complete family blueprint; this document owns test-layer separation, canonical Storybook visual-state coverage, visual regression, and human visual review.
+It complements `component-architecture.md`: component architecture owns production structure and the complete family blueprint; this document owns test-layer separation, canonical Storybook visual-state coverage, visual regression, and visual-acceptance mechanics. `autonomous-review.md` owns review-role separation.
 
 ## Applicability
 
@@ -16,7 +16,7 @@ Create or consolidate the complete standard test profile and canonical `StateMat
 
 ### Later material change to a migrated component
 
-Update every affected contract, browser, visual, pure-behavior, consumer, and review artifact. Do not recreate unaffected coverage.
+Update every affected contract, browser, visual, pure-behavior, consumer, evidence-review, and visual-acceptance artifact. Do not recreate unaffected coverage.
 
 ### Strict local repair to an unmigrated component
 
@@ -41,7 +41,7 @@ A layer does not replace another:
 - screenshots do not prove semantics or interaction behavior;
 - Vue component tests do not prove browser layout, focus, pointer, or appearance;
 - forced visual states do not prove real acquisition, release, cancellation, or cleanup;
-- green automation does not prove that an accepted baseline matches Material.
+- green automation does not prove that an accepted baseline matches current official Material 3 Expressive.
 
 ## Source of test cases
 
@@ -65,7 +65,7 @@ Use `@vue/test-utils` for the colocated `<Component>.test.ts`.
 
 Cover applicable stable contracts:
 
-- canonical defaults;
+- canonical Expressive defaults;
 - public configuration and semantic-state props;
 - native element selection;
 - explicit `href`, `type`, `disabled`, `tabindex`, `role`, and `aria-*` ownership;
@@ -112,7 +112,7 @@ Every new or migrated public Material component has exactly one canonical Storyb
 Its purpose is:
 
 - manual inspection of the complete supported visual-state surface;
-- initial comparison with official Material documentation and, when required, the official Design Kit;
+- comparison with current official Material 3 Expressive documentation and, when required, the current official Design Kit Expressive component set;
 - review of intentional visual changes;
 - one deterministic visual-regression entry point.
 
@@ -175,7 +175,7 @@ Sizes, labels, icons, and content lengths receive rows only when they change sta
 
 ### Human-readable layout
 
-A reviewer must understand every cell from the screenshot.
+The operator must understand every cell from the screenshot without inspecting implementation details.
 
 Required:
 
@@ -239,26 +239,47 @@ Prefer one complete bounded screenshot. Split into labelled sections only when t
 
 A screenshot baseline is a regression reference, not proof of Material correctness.
 
-## Human visual review
+## Agent evidence review
 
-Human comparison with named official sources is required when a PR:
+Before operator handoff, the coding agent performs the source-backed review defined by `autonomous-review.md`.
+
+For testing and visual-route ownership, the agent confirms:
+
+- the coverage table includes every distinct supported component-owned visible route;
+- grouped routes have identical visible properties, owners, sources, state inputs, winner/coexistence rules, and foundation bridges;
+- matrix cells are readable and correctly labelled;
+- official visual sources are sufficient and current;
+- tests prove semantics, accessibility, interaction, motion, cancellation, cleanup, and consumer preservation at the correct layers;
+- verification is proportionate and does not duplicate framework, browser, foundation, or product ownership;
+- all non-visual review items are `passed` before visual handoff.
+
+The coding agent may mark this evidence review `passed`. It must use `blocked` when source meaning, route equivalence, test ownership, or required evidence remains unresolved.
+
+## Operator visual acceptance
+
+Operator comparison with named official sources is required when a PR:
 
 - creates a component;
 - creates the first complete matrix during migration;
-- changes tokens, visible state routing, shape, color, elevation, typography, icon geometry, focus indicator, state layer, ripple, motion, or layout;
+- changes tokens, visible state routing, shape, color, elevation, typography, icon geometry, focus indicator, state layer, ripple, motion-related appearance, or layout;
 - intentionally updates a matrix baseline;
 - changes an applicable foundation contract with rendered impact.
 
-The PR reports:
+The agent prepares this report:
 
 ```text
 State matrix story: <story id>
 State coverage: complete | incomplete (<gap>)
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
-Human Material visual review: required | passed | blocked (<reason>)
+Agent evidence review: passed | blocked (<reason>)
+Official visual sources: <documentation snapshot and Design Kit reference when required>
+Expected deviations: none | <records>
+Operator visual acceptance: required | accepted | rejected | blocked (<reason>)
 ```
 
-An automated coding agent must never report human review as passed.
+The operator checks screenshot fidelity only. API, semantics, accessibility, source interpretation, state/property routing, dependency architecture, migration completeness, and test sufficiency must already be agent-reviewed and must not be deferred to the operator.
+
+An automated coding agent must never report operator visual acceptance as `accepted`.
 
 After acceptance, the family blueprint persists:
 
@@ -311,18 +332,13 @@ Automation may verify:
 - no test-only production API or family-local forced-state owner exists;
 - risk registration and migration paths are consistent.
 
-### Review blocking
+### Agent review blocking
 
-Human/architect review confirms:
+The coding agent confirms semantic route completeness, route equivalence, source sufficiency, proof-layer ownership, and migration/test consistency through the evidence review. These conclusions are reasoned from official sources, blueprint, code, and tests; static automation must not claim to infer them from free-form Markdown or screenshots.
 
-- the coverage table includes all distinct visible routes;
-- grouped routes are truly visually equivalent;
-- cells are readable and correctly labelled;
-- official visual sources are sufficient;
-- the baseline matches Material or an accepted deviation;
-- test ownership is proportionate and does not duplicate framework/browser behavior.
+### Operator visual blocking
 
-Automation must not infer these semantic or visual conclusions from free-form Markdown or screenshots alone.
+The operator confirms only that the prepared screenshot matches current official Material 3 Expressive visual evidence or accepted deviations. A visible mismatch is returned as a named correction. Missing required official visual evidence produces `blocked`, not an inferred acceptance.
 
 ## Completion
 
@@ -333,6 +349,7 @@ Component verification is complete only when:
 - browser tests cover real component-owned browser behavior;
 - the matrix covers every distinct supported visual route;
 - visual regression passes;
-- required human visual review is passed or remains an explicit merge blocker;
+- agent evidence review is `passed`;
+- required operator visual acceptance is `accepted` or remains an explicit merge blocker;
 - tests do not duplicate framework, browser, foundation, or product ownership;
-- blueprint, stories, specs, snapshots, risk registration, consumers, and production code agree.
+- blueprint, stories, specs, snapshots, risk registration, inventory, roadmap, consumers, and production code agree.
