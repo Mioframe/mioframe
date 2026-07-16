@@ -2,17 +2,16 @@
 
 Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material library boundary.
 
-Use:
+## Routing
 
-- `material3-guidelines` for sources, usage, alignment, and review gates;
-- `material-foundation` for cross-family foundation changes;
-- `shared-ui-implementation` for component implementation;
-- `component-contract-testing` for Vue contract tests;
-- `ui-browser-behavior` for real browser behavior;
-- `visual-regression-testing` for visual matrices and baseline diffs;
-- canonical architecture under `docs/material-3`.
+- Use `material-component-authoring` as the primary workflow for creating, migrating, aligning, or materially changing an official public component family.
+- Use `material-foundation` as the primary workflow for cross-family foundation changes.
+- Use `material3-guidelines` for official sources, component choice, usage, composition, and minimum supported surface.
+- Use `vue-component-implementation` for Vue mechanics after the Material blueprint is ready.
+- Use `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, and `verification` for their owned proof layers.
+- Use the canonical architecture under `docs/material-3` as the durable source of schemas and invariants.
 
-These scoped rules route work and state hard boundaries. Complete schemas live in the architecture documents.
+Do not use `shared-ui-implementation` as the authoring workflow for an official Material family. These scoped rules state hard boundaries; `material-component-authoring` owns execution order and stop conditions.
 
 ## Contains
 
