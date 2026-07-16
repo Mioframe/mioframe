@@ -29,11 +29,11 @@ You may skip this skill for:
 - mechanical renames with no ownership or behavior change;
 - docs-only edits that do not define or alter workflow contracts;
 - narrow fixes where ownership, source of truth, final state, and verification are explicit and unchanged;
-- work covered by an applicable deterministic standard-authoring policy when the agent can derive a ready repository-backed blueprint from authoritative sources and no escalation condition is present.
+- work covered by an applicable deterministic standard-authoring policy when the agent can derive a ready repository-backed contract from authoritative sources and no escalation condition is present.
 
-For public Material components, `docs/material-3/component-architecture.md` defines that path as `standard-authoring`. The family README blueprint becomes the implementation contract. Use this skill instead when that workflow reports `blocked` or the task explicitly uses `handoff-authoring`.
+For official public Material component families, `material-component-authoring` owns that deterministic workflow and `component-architecture.md` owns its canonical blueprint. Use this handoff instead when the workflow reports `blocked` or the task explicitly uses `handoff-authoring`.
 
-If you skip this skill, the implementation preflight must name the deterministic policy, authoritative sources, ready blueprint, and reason no unresolved architecture decision remains.
+If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready contract, and reason no unresolved architecture decision remains.
 
 ## Token budget
 
@@ -104,7 +104,7 @@ When blocked, resolve the handoff first. Do not patch forward and expect review 
 ## Implementation contract
 
 - Treat the ready handoff as upstream input for tasking, preflight, coding, PR description, and review.
-- When the skill is legitimately skipped, treat the repository-backed standard-authoring blueprint as the equivalent implementation contract.
+- When the skill is legitimately skipped, treat the repository-backed deterministic workflow and its ready contract as the equivalent implementation contract.
 - Do not implement while the applicable contract is `not ready` or `blocked`.
 - Do not ask the coding agent to resolve product or architecture decisions left open by the applicable contract.
 - Restate only implementation-relevant decisions downstream.
@@ -113,7 +113,7 @@ When blocked, resolve the handoff first. Do not patch forward and expect review 
 
 ## Review contract after implementation
 
-Review the full implementation against the applicable handoff or standard-authoring blueprint.
+Review the full implementation against the applicable handoff or deterministic workflow contract.
 
 - Do not review only the latest fix or latest changed files.
 - Check goal, non-goals, scenarios, ownership, dependency direction, state shape, API, public contracts, shared UI blast radius, verification, simplicity, proportionality, and future safety.
