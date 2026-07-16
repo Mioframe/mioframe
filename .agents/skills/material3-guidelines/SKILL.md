@@ -1,140 +1,139 @@
 ---
 name: material3-guidelines
-description: 'Use this skill before planning, implementing, or reviewing Material-related UI/UX work, especially any new or materially changed shared MD* component. Verifies official Material 3 source lookup, component choice, token/component-token mapping, public UI API, interaction states, accessibility, layout, Storybook, deviations, and focused verification.'
+description: 'Use for official Material source lookup, component choice, usage, composition, minimum supported surface, accessibility, adaptive behavior, and product-facing Material UI/UX decisions. For authoring an official public component family, pair with material-component-authoring as the primary workflow.'
 paths:
   - 'src/**/*.vue'
   - 'src/shared/ui/**'
+  - 'src/shared/lib/md/**'
   - 'docs/material-3/**'
   - 'tests/e2e/visual/**'
+  - 'tests/e2e/storybook/**'
 ---
 
 # Material 3 guidelines
 
-Use this skill before planning or implementing user-visible UI or UX changes that may affect component choice, layout, interaction behavior, accessibility, visual states, tokens, or public UI APIs.
+Use for decisions about:
 
-This skill owns Material 3 doc compliance. For `src/shared/ui` Material primitives (e.g. `MDList` / `MDListItem` / `MDListSelectionItem`), pair it with the `shared-ui-implementation` skill, which owns Vue implementation structure, DOM-critical attrs, native activation semantics, parent/child styling boundaries, and browser-specific CSS decisions.
+- which Material component or documented composition fits a scenario;
+- intended and prohibited usage;
+- component hierarchy and placement;
+- official source interpretation;
+- minimum supported surface;
+- accessibility, interaction, adaptive behavior, and visual evidence;
+- whether a surface is official Material, a documented pattern, or project-specific UI.
 
-## Activation check
+For creating, migrating, aligning, or materially changing an official public component family, use `material-component-authoring` as the primary execution workflow. This skill supplies source and usage decisions; it does not own the family blueprint, production file plan, migration order, or completion process.
 
-Use this workflow when a task adds, removes, repositions, restyles, or changes the behavior of:
+Canonical source, architecture, autonomous review, and operator visual-acceptance rules live in `docs/material-3`.
 
-- UI components, shared UI primitives, or Material-style wrappers;
-- navigation, panes, dialogs, sheets, menus, forms, buttons, lists, cards, tabs, or toolbars;
-- layout, density, hierarchy, responsive/adaptive behavior, or visual states;
-- onboarding, empty states, loading states, error states, destructive flows, or input flows;
-- focus, keyboard, pointer, touch, accessibility semantics, affordances, or motion;
-- Material tokens, Material authoring units, component tokens, or public `MD*` component API names.
+## Canonical target
 
-Do not use this skill for non-UI-only changes, type-only edits, internal storage/service logic, formatting, comments, or mechanical renames unless they affect rendered behavior or public UI contracts.
+Official Mioframe Material components target the current official **Material 3 Expressive** contract.
 
-For copy-only, wiring-only, test-only, or component-internal cleanup that preserves the existing component, layout, interaction model, tokens, and public UI API, use the fast path: record `Material impact: none; existing Material surface unchanged` and do not perform an MCP/fallback lookup.
+- Prefer current Expressive guidance, tokens, measurements, state composition, motion, and Design Kit component sets whenever they exist for the supported surface.
+- Do not preserve baseline Material 3 merely because it matches current code.
+- Use baseline behavior or geometry only when no official Expressive contract exists for the supported surface, or when an explicit product requirement records a deviation.
+- Do not silently combine baseline and Expressive contracts in one supported surface.
+- `Canonical Material default` means the current Expressive default when available.
 
-## Material component-family gate
+## No-impact path
 
-Any new shared `MD*` component or material change to an existing shared `MD*` component is Material component-family work, even when it appears as incidental support for another task.
+For a change preserving component choice, usage, location, public imports, API, foundation dependencies, tokens, anatomy, states, accessibility, testing surface, behavior, and rendered output, record:
 
-Before production edits, decide one of these outcomes:
+```text
+Material impact: none
+```
 
-1. `No shared MD component work`: keep the UI local/non-public or reuse an existing shared primitive.
-2. `Full component-family work`: complete the source lookup, token map, public API, states/accessibility, Storybook, registry, and verification gates for the component family.
-3. `Blocked`: official Material guidance, token source, ownership, or required verification is unclear.
+A public contract, visual contract, component choice, foundation, or state-model change is not `none`.
 
-A new public shared `MD*` component must not be introduced as incidental support without completing the component-family workflow. If the caller did not ask for a new shared component and the workflow cannot be completed in the current change, keep the implementation local/non-public or stop and report the scope risk.
+## Source workflow
 
-For full component-family work, define the component-family preflight before the first production edit:
+1. Use the `material3` MCP server first.
+2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete for the required page.
+3. Use the current official Material Design Kit Expressive component set only when published documentation cannot resolve exact visual geometry, anatomy, expressive measurements, or state composition.
+4. Record exact page names, snapshot metadata, and Design Kit file/component-set reference when applicable.
+5. Stop source lookup when the required decisions are resolved.
 
-- checked Material pages or cache paths;
-- component token map, including official `md.comp.*` paths, public `--md-comp-*` tokens, private fallbacks, and missing-token gaps;
-- public props, emits, slots, native element semantics, and invalid combinations;
-- supported states and accessibility behavior;
-- affected consumers, Storybook surfaces, visual/browser verification, and registry status.
+Do not use Material Web, generic web search, screenshots without official provenance, older Material versions, third-party libraries, existing Mioframe rendering, or memory as Material authority.
 
-A shared Material component implemented only with `--md-sys-*` tokens is not complete token compliance when official component token paths exist. Define and use the matching `--md-comp-*` component token layer at the component-family boundary, resolving those component tokens to `--md-sys-*` values where appropriate. Direct `--md-sys-*` usage inside component internals is allowed only for values with no published component token path or for true foundation-level roles; document that gap or decision in the registry, Storybook notes, or Material policy docs.
+Material Web or another implementation may be inspected only after the official contract is resolved and only as a non-authoritative implementation reference.
 
-## Project policies
+When required evidence is unavailable or contradictory:
 
-Before planning or editing shared UI primitives, Material-style wrappers, Material tokens, Storybook documentation, or Material visual verification surfaces, read the relevant policy under `docs/material-3/`.
+- identify the exact unresolved decision;
+- narrow unsupported scope when required scenarios remain satisfied;
+- otherwise report `blocked`;
+- do not infer correctness from an existing baseline or another library.
 
-Use these policies as the project contract:
+## Component choice and usage
 
-- `docs/material-3/source-of-truth.md`
-- `docs/material-3/units.md`
-- `docs/material-3/tokens.md`
-- `docs/material-3/baseline-theme.md`
-- `docs/material-3/component-tokens.md`
-- `docs/material-3/token-validation.md`
-- `docs/material-3/component-registry.md`
-- `docs/material-3/component-conversion-checklist.md`
-- `docs/material-3/interaction-states.md`
-- `docs/material-3/accessibility.md`
-- `docs/material-3/layout-adaptive.md`
-- `docs/material-3/density-spacing.md`
-- `docs/material-3/icons.md`
-- `docs/material-3/overlays.md`
-- `docs/material-3/shared-ui-api.md`
-- `docs/material-3/storybook.md`
-- `docs/material-3/verification.md`
-- `docs/material-3/deviations.md`
+Start from the user scenario and current official Material guidance, not from the component already present in the repository.
 
-## Source of truth
+Confirm:
 
-Use the `material3` MCP server from https://github.com/Vyachean/m3-docs-mcp as the primary lookup source for official Material 3 documentation.
+- intended scenario;
+- scenarios where the component must not be used;
+- action/content hierarchy;
+- allowed Material compositions;
+- placement constraints;
+- adaptive behavior and its owner;
+- whether product composition or a reusable Material pattern owns the relationship.
 
-Prefer these MCP tools when available:
+Prefer an existing official component or documented composition when it covers the need.
 
-1. `material_docs_cache_status` to confirm cache availability and freshness.
-2. `search_material_docs` to find relevant guidance by component, pattern, or interaction.
-3. `get_component_docs` for component-level guidance.
-4. `get_material_page` for exact cached pages referenced by search results.
+Do not create an `MD*` surface for a project-specific workflow merely because it visually resembles Material.
 
-If the MCP server is unavailable or incomplete for the needed page, use the `Vyachean/m3-docs-cache` repository as the fallback readable snapshot of official `m3.material.io` content. Inspect `index.json` when using the fallback so failed or suspicious pages are not treated as reliable guidance.
+## Minimum complete surface
 
-Do not treat Material Web, direct fetches, generic web search, screenshots, older Material versions, unrelated libraries, or memory as reliable substitutes for official Material 3 guidance. Material Web is not the source of truth for this project.
+- Start from named scenarios and affected consumers.
+- When no scenario is supplied, use the current canonical Expressive default usage only.
+- Add variants, sizes, shapes, modes, anatomy, and behavior only for a current scenario or consumer.
+- Include every reachable state, accessibility requirement, and applicable foundation dependency of the supported surface.
+- Record remaining official capabilities as unsupported.
+- Add no Mioframe extension without an explicit requirement, owner, and deviation record.
 
-If both MCP and `m3-docs-cache` lack the needed guidance, state that explicitly and treat the UI/UX decision as an unresolved Material 3 verification risk. Do not claim Material 3 alignment without a successful official-doc-backed check.
+Minimum scope is not partial correctness: every reachable contract of the chosen supported surface must be complete.
 
-External review bot comments are review inputs, not project policy. Before applying a bot suggestion that conflicts with `AGENTS.md`, `docs/material-3/`, official Material 3 guidance, or established project tooling, verify the project-specific rule and keep the project rule authoritative. Record the reason when rejecting a bot suggestion.
+## Product and library ownership
 
-## Required check
+Product layers own:
 
-Before the first production edit, identify:
+- information architecture;
+- workflow and domain behavior;
+- component choice and placement for a concrete screen;
+- product-level adaptive composition;
+- consumer content and data.
 
-1. **Relevant Material surface**: the component, pattern, foundation, token family, or layout guidance checked.
-2. **Decision impact**: what the guidance implies for component choice, placement, hierarchy, token names, API names, state, interaction, accessibility, or verification.
-3. **Project fit**: whether existing project policies, FSD ownership, mobile-first constraints, privacy, accessibility, or performance requirements add stricter constraints.
-4. **Deviation**: any deliberate mismatch with Material 3, with the reason and blast radius.
-5. **Verification**: the focused Storybook, browser smoke, Playwright/e2e, visual regression, token/unit check, or accessibility-oriented check that proves the Material-relevant behavior.
+Official Material component families own only their documented usage contract, API, native semantics, anatomy, state meaning, tokens, behavior, and rendering.
 
-For shared UI component-family work, also update or consult `docs/material-3/component-registry.md` and use `docs/material-3/component-conversion-checklist.md` as the completion checklist.
+Reusable compositions belong in `material/patterns` only when official evidence defines the composition, it is independent of one feature/domain, a current scenario requires it, and it can be tested without product data.
 
-## Output discipline
+## Accessibility and interaction
 
-Keep the Material 3 note short. A useful note usually has:
+Material alignment includes:
 
-- checked docs or component pages;
-- relevant `docs/material-3/` policy files;
-- resulting implementation constraint;
-- unresolved risk or deviation, if any;
-- verification surface.
+- native semantics where applicable;
+- accessible names and meaningful state exposure;
+- keyboard and focus behavior;
+- pointer/touch behavior;
+- target areas;
+- disabled and readonly semantics;
+- contrast-safe role pairings;
+- modal focus and dismissal behavior;
+- reduced-motion behavior where contractual.
 
-For PR summaries or task handoff, name the checked Material 3 pages, components, foundations, or patterns. If no relevant guidance was found in MCP or fallback cache, state that explicitly.
+Visual similarity alone is not alignment.
 
-For the fast path, include only the `Material impact: none; existing Material surface unchanged` note.
+## Review and verification
 
-## Documented composition only
+For product-facing Material changes, name:
 
-Mioframe follows documented Material 3 / Material 3 Expressive components and documented component compositions. Do not invent `MD*` components or Material-like surfaces that are not backed by Material documentation.
+- official sources checked;
+- resulting component-choice, usage, placement, accessibility, or adaptive decision;
+- deliberate deviation or unresolved evidence;
+- affected existing Material component contracts;
+- focused browser, visual, accessibility, or consumer proof required.
 
-- `features`, `widgets`, and `pages` must not implement their own Material-like dialogs, sheets, overlays, scrims, progress surfaces, elevation surfaces, or component anatomy; compose the existing shared `MD*` primitive instead (e.g. a status/progress flow uses `MDDialog` + `MDCircularProgressIndicator`, not a feature-owned modal).
-- If a needed pattern is not directly covered by Material docs, stop and resolve architecture before coding — do not improvise a surface to unblock the task.
-- Project-specific surfaces must not use `MD*` naming and must not claim Material alignment unless there is a source-backed mapping to an official Material 3 page.
+For official component-family implementation and migration, `material-component-authoring` owns the standard test profile and completion gate, and `docs/material-3/autonomous-review.md` owns review-role separation.
 
-## Anti-patterns
-
-- Do not use Material 3 as a visual-only style guide; interaction, tokens, API names, accessibility, and UX guidance also apply.
-- Do not introduce a new shared `MD*` component as incidental support for another task.
-- Do not treat `--md-sys-*` token usage alone as component-token compliance when official component token paths exist.
-- Do not invent local component behavior when Material 3 defines a suitable component, pattern, token, or interaction rule.
-- Do not copy patterns from Material Web, unrelated libraries, desktop-first products, or older Material versions without an official Material 3 check.
-- Do not defer the Material 3 lookup until final review when it could change component choice, token design, flow, layout, or verification.
-- Do not add new public `--md-*` tokens or `MD*` component props that conflict with the policy docs without documenting a deviation.
+A coding agent may mark the source-backed architecture and Material evidence review as `passed` only when every non-visual decision is resolved and proved. It must never report operator visual acceptance as accepted. Routine operator work is limited to the prepared screenshot comparison; unresolved source, architecture, compatibility, or product decisions remain explicit blockers rather than being deferred to visual review.
