@@ -240,6 +240,175 @@ describe('runReorderAutoscrollFrame', () => {
     expect(farther.scrollTop).toBe(0);
   });
 
+  it('gives forward Y ownership to an ancestor while the container bottom edge is hidden', () => {
+    const ancestor = createElement();
+    const container = createElement(ancestor);
+    stubRect(ancestor, { top: 0, bottom: 100, left: 0, right: 100 });
+    stubRect(container, { top: 20, bottom: 140, left: 0, right: 100 });
+    mockedGetVisibleBoundingRectangle.mockImplementation((element) =>
+      element === ancestor
+        ? { top: 0, bottom: 100, left: 0, right: 100, width: 100, height: 100 }
+        : element.getBoundingClientRect(),
+    );
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Idle, y: ScrollDirection.Forward },
+      speed: { x: 0, y: 10 },
+    });
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    runReorderAutoscrollFrame(
+      { dragOperation: { position: { current: { x: 50, y: 100 } }, source } },
+      container,
+      [container, ancestor],
+    );
+
+    expect(container.scrollTop).toBe(0);
+    expect(ancestor.scrollTop).toBe(10);
+  });
+
+  it('transfers forward Y ownership to the container once its bottom edge is visible', () => {
+    const ancestor = createElement();
+    const container = createElement(ancestor);
+    stubRect(ancestor, { top: 0, bottom: 140, left: 0, right: 100 });
+    stubRect(container, { top: 20, bottom: 140, left: 0, right: 100 });
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Idle, y: ScrollDirection.Forward },
+      speed: { x: 0, y: 10 },
+    });
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    runReorderAutoscrollFrame(
+      { dragOperation: { position: { current: { x: 50, y: 138 } }, source } },
+      container,
+      [container, ancestor],
+    );
+
+    expect(container.scrollTop).toBe(10);
+    expect(ancestor.scrollTop).toBe(0);
+  });
+
+  it('does not fall back to the ancestor at the inner lower limit while the bottom edge is visible', () => {
+    const ancestor = createElement();
+    const container = createElement(ancestor);
+    stubRect(ancestor, { top: 0, bottom: 140, left: 0, right: 100 });
+    stubRect(container, { top: 20, bottom: 140, left: 0, right: 100 });
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Idle, y: ScrollDirection.Forward },
+      speed: { x: 0, y: 10 },
+    });
+    mockedCanScroll.mockImplementation((element) => ({
+      ...alwaysScrollable,
+      bottom: element !== container,
+    }));
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    runReorderAutoscrollFrame(
+      { dragOperation: { position: { current: { x: 50, y: 138 } }, source } },
+      container,
+      [container, ancestor],
+    );
+
+    expect(container.scrollTop).toBe(0);
+    expect(ancestor.scrollTop).toBe(0);
+  });
+
+  it('makes the ancestor eligible again when the lower physical edge becomes clipped again', () => {
+    const ancestor = createElement();
+    const container = createElement(ancestor);
+    let containerBottom = 140;
+    stubRect(ancestor, { top: 0, bottom: 140, left: 0, right: 100 });
+    Object.assign(container, {
+      getBoundingClientRect: () => ({
+        top: containerBottom - 120,
+        bottom: containerBottom,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 120,
+        x: 0,
+        y: containerBottom - 120,
+        toJSON: () => ({}),
+      }),
+    });
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Idle, y: ScrollDirection.Forward },
+      speed: { x: 0, y: 10 },
+    });
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    const manager = { dragOperation: { position: { current: { x: 50, y: 138 } }, source } };
+    runReorderAutoscrollFrame(manager, container, [container, ancestor]);
+    expect(container.scrollTop).toBe(10);
+    expect(ancestor.scrollTop).toBe(0);
+
+    containerBottom = 170;
+    runReorderAutoscrollFrame(manager, container, [container, ancestor]);
+    expect(container.scrollTop).toBe(10);
+    expect(ancestor.scrollTop).toBe(10);
+  });
+
+  it('gives reverse Y ownership to an ancestor only while the container top edge is hidden', () => {
+    const ancestor = createElement();
+    const container = createElement(ancestor);
+    let containerTop = -40;
+    stubRect(ancestor, { top: 0, bottom: 100, left: 0, right: 100 });
+    Object.assign(container, {
+      getBoundingClientRect: () => ({
+        top: containerTop,
+        bottom: containerTop + 120,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 120,
+        x: 0,
+        y: containerTop,
+        toJSON: () => ({}),
+      }),
+    });
+    mockedGetVisibleBoundingRectangle.mockImplementation((element) =>
+      element === ancestor
+        ? { top: 0, bottom: 100, left: 0, right: 100, width: 100, height: 100 }
+        : element.getBoundingClientRect(),
+    );
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Idle, y: ScrollDirection.Reverse },
+      speed: { x: 0, y: 10 },
+    });
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    const manager = { dragOperation: { position: { current: { x: 50, y: 2 } }, source } };
+    runReorderAutoscrollFrame(manager, container, [container, ancestor]);
+    expect(container.scrollTop).toBe(0);
+    expect(ancestor.scrollTop).toBe(-10);
+
+    containerTop = 0;
+    ancestor.scrollTop = 0;
+    runReorderAutoscrollFrame(manager, container, [container, ancestor]);
+    expect(container.scrollTop).toBe(-10);
+    expect(ancestor.scrollTop).toBe(0);
+  });
+
+  it('resolves clipped Y through the ancestor while visible X scrolls the container', () => {
+    const ancestor = createElement();
+    const container = createElement(ancestor);
+    stubRect(ancestor, { top: 0, bottom: 100, left: 0, right: 140 });
+    stubRect(container, { top: 20, bottom: 140, left: 20, right: 140 });
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Forward, y: ScrollDirection.Forward },
+      speed: { x: 7, y: 10 },
+    });
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    runReorderAutoscrollFrame(
+      { dragOperation: { position: { current: { x: 138, y: 98 } }, source } },
+      container,
+      [container, ancestor],
+    );
+
+    expect({ x: container.scrollLeft, y: container.scrollTop }).toEqual({ x: 7, y: 0 });
+    expect({ x: ancestor.scrollLeft, y: ancestor.scrollTop }).toEqual({ x: 0, y: 10 });
+  });
+
   it('lets a farther candidate resolve an axis the nearer candidate left unresolved', () => {
     const container = createElement();
     stubRect(container, { top: 100, bottom: 200, left: 50, right: 150 });

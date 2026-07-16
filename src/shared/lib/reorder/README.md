@@ -102,13 +102,14 @@ parent. This is enforced through dnd-kit's `RestrictToElement` modifier, not cus
 
 ## Autoscroll scope
 
-Autoscroll during a drag is scoped to the active reorder container: outer scrollable ancestors
-(e.g. a bottom sheet) only scroll while doing so can still reveal more of the container. Once the
-container's edge in a given direction is visible, that ancestor stops scrolling in that direction,
-even if the pointer is still held near its own edge — top, bottom, left, and right are resolved
-independently, and X and Y can move different ancestors within the same drag. The container's own
-overflow scrolling, if it has any, keeps standard, unrestricted autoscroll: that is what reveals
-hidden sortable items.
+Autoscroll during a drag is scoped to the active reorder container and resolved independently per
+axis. While an outer scrollable ancestor hides the relevant physical edge of the reorder surface,
+the nearest ancestor that can reveal that edge owns the axis and the container does not scroll on
+that axis. Once the physical edge is visible, ancestor movement stops and the container's own
+overflow may scroll to reveal sortable content. Reaching the container's content limit does not
+fall through to an ancestor while that physical surface edge remains visible; an ancestor becomes
+eligible again only if the edge is genuinely clipped again. X and Y may therefore be owned by
+different candidates in the same frame.
 
 Edge intent is measured against each candidate's actually visible rectangle after overflow and
 viewport clipping. The real pointer's relative X/Y position is projected independently into

@@ -2,6 +2,7 @@ import { ScrollDirection } from '@dnd-kit/dom/utilities';
 import { describe, expect, it } from 'vitest';
 import type { AutoscrollRectangle, ReorderScrollIntent } from './reorderAutoscrollGeometry';
 import {
+  isReorderContainerEdgeHidden,
   projectVisibleScrollIntentInput,
   resolveReorderScrollDelta,
 } from './reorderAutoscrollGeometry';
@@ -224,5 +225,40 @@ describe('resolveReorderScrollDelta', () => {
     expect(
       resolveReorderScrollDelta('container', containerRect, visibleCandidateRect, idleIntent),
     ).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('isReorderContainerEdgeHidden', () => {
+  const visible = rect({});
+
+  it.each([
+    ['y', ScrollDirection.Forward, rect({ bottom: 120 })],
+    ['y', ScrollDirection.Reverse, rect({ top: -20 })],
+    ['x', ScrollDirection.Forward, rect({ right: 120 })],
+    ['x', ScrollDirection.Reverse, rect({ left: -20 })],
+  ] as const)(
+    'detects a hidden %s edge in the requested direction',
+    (axis, direction, container) => {
+      expect(isReorderContainerEdgeHidden(container, visible, axis, direction)).toBe(true);
+    },
+  );
+
+  it('resolves X and Y independently', () => {
+    const container = rect({ right: 120, bottom: 100 });
+
+    expect(isReorderContainerEdgeHidden(container, visible, 'x', ScrollDirection.Forward)).toBe(
+      true,
+    );
+    expect(isReorderContainerEdgeHidden(container, visible, 'y', ScrollDirection.Forward)).toBe(
+      false,
+    );
+  });
+
+  it('treats an edge within the geometry tolerance as visible', () => {
+    const container = rect({ bottom: 100.5 });
+
+    expect(isReorderContainerEdgeHidden(container, visible, 'y', ScrollDirection.Forward)).toBe(
+      false,
+    );
   });
 });

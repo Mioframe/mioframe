@@ -14,6 +14,7 @@ import { getReorderScrollCandidates } from './getReorderScrollCandidates';
 import { acquireReorderAutoscrollEnvironment } from './reorderAutoscrollEnvironment';
 import type { ReorderScrollCandidateRole } from './reorderAutoscrollGeometry';
 import {
+  isReorderContainerEdgeHidden,
   projectVisibleScrollIntentInput,
   resolveReorderScrollDelta,
 } from './reorderAutoscrollGeometry';
@@ -110,16 +111,49 @@ const resolveScrollableDirection = (
   return requested;
 };
 
+const canRevealContainerEdge = (
+  candidate: Element,
+  containerRect: ReturnType<typeof getBoundingRectangle>,
+  axis: 'x' | 'y',
+  direction: ScrollDirection,
+): boolean => {
+  if (
+    !isReorderContainerEdgeHidden(
+      containerRect,
+      getScrollIntentRectangles(candidate).visible,
+      axis,
+      direction,
+    )
+  ) {
+    return false;
+  }
+
+  const requested = {
+    x: axis === 'x' ? direction : ScrollDirection.Idle,
+    y: axis === 'y' ? direction : ScrollDirection.Idle,
+  };
+  const scrollable = canScroll(candidate, requested);
+  return axis === 'x'
+    ? direction === ScrollDirection.Reverse
+      ? scrollable.left
+      : scrollable.right
+    : direction === ScrollDirection.Reverse
+      ? scrollable.top
+      : scrollable.bottom;
+};
+
 /**
  * Resolves and applies one candidate's scroll delta for the current frame, returning which axes
- * it actually moved.
+ * it owns after visibility and scrollability are considered.
  * @param candidate - The scroll candidate being evaluated this frame.
  * @param container - The active reorder container.
  * @param containerRect - The reorder container's bounding rectangle this frame.
  * @param pointerPosition - The current pointer position.
  * @param unresolvedX - Whether the X axis is still unresolved by a nearer candidate.
  * @param unresolvedY - Whether the Y axis is still unresolved by a nearer candidate.
- * @returns Which axes `candidate` actually moved this frame.
+ * @param ancestors - Candidates farther outward than `candidate`, used to defer inner scrolling
+ * while one of them can reveal the requested physical container edge.
+ * @returns Which axes `candidate` resolved this frame.
  */
 const applyReorderScrollCandidate = (
   candidate: Element,
@@ -128,7 +162,8 @@ const applyReorderScrollCandidate = (
   pointerPosition: { x: number; y: number },
   unresolvedX: boolean,
   unresolvedY: boolean,
-): { movedX: boolean; movedY: boolean } => {
+  ancestors: readonly Element[],
+): { resolvedX: boolean; resolvedY: boolean } => {
   const { full: candidateRect, visible: visibleCandidateRect } =
     getScrollIntentRectangles(candidate);
   const frameTransform = getFrameTransform(candidate);
@@ -138,7 +173,7 @@ const applyReorderScrollCandidate = (
     pointerPosition,
   );
   if (!intentInput) {
-    return { movedX: false, movedY: false };
+    return { resolvedX: false, resolvedY: false };
   }
 
   const { direction, speed } = detectScrollIntent(
@@ -161,8 +196,27 @@ const applyReorderScrollCandidate = (
     unresolvedY,
   );
 
+  if (candidate === container) {
+    if (
+      effectiveDirection.x !== ScrollDirection.Idle &&
+      ancestors.some((ancestor) =>
+        canRevealContainerEdge(ancestor, containerRect, 'x', effectiveDirection.x),
+      )
+    ) {
+      effectiveDirection.x = ScrollDirection.Idle;
+    }
+    if (
+      effectiveDirection.y !== ScrollDirection.Idle &&
+      ancestors.some((ancestor) =>
+        canRevealContainerEdge(ancestor, containerRect, 'y', effectiveDirection.y),
+      )
+    ) {
+      effectiveDirection.y = ScrollDirection.Idle;
+    }
+  }
+
   if (isIdle(effectiveDirection)) {
-    return { movedX: false, movedY: false };
+    return { resolvedX: false, resolvedY: false };
   }
 
   const role: ReorderScrollCandidateRole = candidate === container ? 'container' : 'ancestor';
@@ -185,8 +239,11 @@ const applyReorderScrollCandidate = (
   }
 
   return {
-    movedX: candidate.scrollLeft !== previousLeft,
-    movedY: candidate.scrollTop !== previousTop,
+    // An ancestor with a non-zero visibility delta owns that axis even if the DOM reports no
+    // movement after scrollTo. Failure to move is not permission to hand the same axis farther
+    // outward; geometry must become clipped there again before another ancestor is eligible.
+    resolvedX: role === 'ancestor' ? delta.x !== 0 : candidate.scrollLeft !== previousLeft,
+    resolvedY: role === 'ancestor' ? delta.y !== 0 : candidate.scrollTop !== previousTop,
   };
 };
 
@@ -216,24 +273,25 @@ export const runReorderAutoscrollFrame = (
   let unresolvedX = true;
   let unresolvedY = true;
 
-  for (const candidate of candidates) {
+  for (const [candidateIndex, candidate] of candidates.entries()) {
     if (!unresolvedX && !unresolvedY) {
       break;
     }
 
-    const { movedX, movedY } = applyReorderScrollCandidate(
+    const { resolvedX, resolvedY } = applyReorderScrollCandidate(
       candidate,
       container,
       containerRect,
       pointerPosition,
       unresolvedX,
       unresolvedY,
+      candidates.slice(candidateIndex + 1),
     );
 
-    if (unresolvedX && movedX) {
+    if (unresolvedX && resolvedX) {
       unresolvedX = false;
     }
-    if (unresolvedY && movedY) {
+    if (unresolvedY && resolvedY) {
       unresolvedY = false;
     }
   }
@@ -243,10 +301,10 @@ export const runReorderAutoscrollFrame = (
  * Autoscroll plugin scoped to the active reorder container. Replaces dnd-kit's default
  * `AutoScroller` in `getReorderPlugins`: it owns the complete reorder-specific autoscroll
  * operation instead of delegating to the standard `Scroller`, so it can resolve X and Y together
- * in one candidate pass per frame and clamp each outer ancestor to the distance still hiding the
- * container (see `resolveReorderScrollDelta`). This stops a fully visible container from
- * dragging an already-fully-visible outer ancestor (e.g. a bottom sheet) along with it, while
- * still scrolling that ancestor when it is genuinely hiding part of the container.
+ * in one candidate pass per frame. A scroll-capable ancestor that hides the relevant physical
+ * container edge owns that axis until its clamp reveals the edge (see
+ * `resolveReorderScrollDelta`); only then may the container scroll its own content. This also
+ * prevents an exhausted inner container from handing an already-visible surface back outward.
  *
  * The candidate chain (see `getReorderScrollCandidates`) is built once per drag; only pointer
  * position, drag status, and candidate geometry are re-read every animation frame.

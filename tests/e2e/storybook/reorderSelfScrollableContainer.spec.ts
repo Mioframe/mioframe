@@ -1,10 +1,20 @@
 import { expect, test, type Locator } from '@playwright/test';
+import { z } from 'zod';
 import { openStory } from './storybook.testUtils';
 
 const STORY_ID = 'shared-lib-reorder-reorderselfscrollablestoryharness--default';
 const CLIPPED_STORY_ID =
   'shared-lib-reorder-reorderselfscrollablestoryharness--clipped-by-ancestor';
 const ACTIVATION_STORY_ID = 'shared-lib-reorder-reorderactivationstoryharness--default';
+
+const lifecycleSamplesSchema = z.array(
+  z.object({
+    inner: z.number(),
+    outer: z.number(),
+    top: z.number(),
+    bottom: z.number(),
+  }),
+);
 
 // Samples a scrollable element's `scrollTop` across consecutive rendered animation frames, so a
 // value that moves during the sampled window (not just at its tail) is caught rather than missed.
@@ -23,23 +33,6 @@ const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): vo
   for (const sample of samples) {
     expect(sample, `scrollTop samples: ${samples.join(', ')}, baseline: ${baseline}`).toBe(
       baseline,
-    );
-  }
-};
-
-const assertBoundedSmoothAutoscroll = (samples: number[], maximumDelta: number): void => {
-  const deltas = samples.slice(1).map((sample, index) => sample - (samples[index] ?? sample));
-  expect(
-    deltas.some((delta) => delta > 0),
-    `scrollTop samples: ${samples.join(', ')}`,
-  ).toBe(true);
-  expect(
-    (samples.at(-1) ?? 0) - (samples[0] ?? 0),
-    `scrollTop samples: ${samples.join(', ')}`,
-  ).toBeGreaterThan(0);
-  for (const delta of deltas) {
-    expect(Math.abs(delta), `scrollTop samples: ${samples.join(', ')}`).toBeLessThanOrEqual(
-      maximumDelta,
     );
   }
 };
@@ -132,9 +125,10 @@ test.describe('self-scrollable reorder container', () => {
     await expect(list.getByRole('listitem')).toHaveText(['bravo', 'charlie', 'alpha']);
   });
 
-  test('a pointer beyond the clipped visible edge autoscrolls at bounded frame speed and cleanup stops it', async ({
+  test('a clipped surface is revealed before its inner content scrolls and never falls back at the inner limit', async ({
     page,
   }) => {
+    test.slow();
     await openStory(page, CLIPPED_STORY_ID);
 
     const container = page.getByRole('list', { name: 'Self-scrollable reorder items' });
@@ -156,6 +150,7 @@ test.describe('self-scrollable reorder container', () => {
         visibleBottom,
         pointerY,
         oldForwardZoneStart: full.bottom - full.height * 0.2,
+        ancestorVisibleBottom: Math.min(ancestorRect.bottom, window.innerHeight),
       };
     });
 
@@ -168,26 +163,80 @@ test.describe('self-scrollable reorder container', () => {
     const itemBox = await firstItem.boundingBox();
     if (!itemBox) throw new Error('missing first item bounding box');
     const pointerX = itemBox.x + itemBox.width / 2;
+    const innerLimit = await container.evaluate((el) => {
+      const outer = el.parentElement;
+      if (!outer) throw new Error('missing scroll ancestor');
+      const nativeLimit = el.scrollHeight - el.clientHeight;
+      const recorded: Array<{
+        inner: number;
+        outer: number;
+        top: number;
+        bottom: number;
+      }> = [];
+      let frame = 0;
+      let framesAtLimit = 0;
+      const sample = () => {
+        const rect = el.getBoundingClientRect();
+        recorded.push({
+          inner: el.scrollTop,
+          outer: outer.scrollTop,
+          top: rect.top,
+          bottom: rect.bottom,
+        });
+        framesAtLimit = Math.abs(el.scrollTop - nativeLimit) <= 1 ? framesAtLimit + 1 : 0;
+        frame += 1;
+        if (frame < 300 && framesAtLimit < 12) {
+          requestAnimationFrame(sample);
+        } else {
+          el.setAttribute('data-autoscroll-lifecycle-samples', JSON.stringify(recorded));
+        }
+      };
+      requestAnimationFrame(sample);
+      return nativeLimit;
+    });
     await page.mouse.move(pointerX, itemBox.y + itemBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(pointerX, itemBox.y + itemBox.height / 2 + 8, { steps: 4 });
-    await page.mouse.move(pointerX, geometry.pointerY, { steps: 4 });
+    await page.mouse.move(pointerX, geometry.pointerY);
 
     await assertSuppressedDuringDrag(container);
     await assertSuppressedDuringDrag(ancestor);
-    const ancestorStart = await ancestor.evaluate((el) => el.scrollTop);
+    await expect
+      .poll(() => container.getAttribute('data-autoscroll-lifecycle-samples'), { timeout: 15000 })
+      .not.toBeNull();
+    const serializedSamples = await container.getAttribute('data-autoscroll-lifecycle-samples');
+    const samples = lifecycleSamplesSchema.parse(JSON.parse(serializedSamples ?? '[]'));
 
-    // Sample consecutive rendered frames while the inner candidate still has ample remaining
-    // extent. The fractional allowance covers browser geometry and scrollTop representation.
-    const scrollingSamples = await sampleScrollTop(container, 8);
-    assertBoundedSmoothAutoscroll(scrollingSamples, 25.5);
-    expect(scrollingSamples.at(-1)).toBeLessThan(
-      await container.evaluate((el) => el.scrollHeight - el.clientHeight),
+    const revealIndex = samples.findIndex(
+      (sample) => sample.bottom <= geometry.ancestorVisibleBottom + 1,
     );
-    expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorStart);
+    expect(revealIndex, JSON.stringify(samples)).toBeGreaterThan(0);
+    const revealSamples = samples.slice(0, revealIndex + 1);
+    expect(revealSamples.at(-1)?.outer).toBeGreaterThan(revealSamples[0]?.outer ?? 0);
+    expect(Math.max(...revealSamples.map((sample) => sample.inner))).toBeLessThanOrEqual(1);
+
+    const stableSamples = samples.slice(revealIndex);
+    const outerAtReveal = stableSamples[0]?.outer ?? 0;
+    const bottomAtReveal = stableSamples[0]?.bottom ?? 0;
+    expect(stableSamples.some((sample) => sample.inner > 1)).toBe(true);
+    expect(stableSamples.at(-1)?.inner).toBeCloseTo(innerLimit, 0);
+    for (const sample of stableSamples) {
+      expect(sample.outer).toBe(outerAtReveal);
+      expect(Math.abs(sample.bottom - bottomAtReveal)).toBeLessThanOrEqual(1);
+    }
+
+    const holdSamples = samples.slice(-10);
+    expect(holdSamples).toHaveLength(10);
+    for (const sample of holdSamples) {
+      expect(sample.inner).toBeCloseTo(innerLimit, 0);
+      expect(sample.outer).toBe(outerAtReveal);
+      expect(Math.abs(sample.bottom - bottomAtReveal)).toBeLessThanOrEqual(1);
+      expect(Math.abs(sample.bottom - geometry.pointerY)).toBeLessThan(5);
+    }
 
     await page.mouse.up();
     const containerAtRelease = await container.evaluate((el) => el.scrollTop);
+    const ancestorAtRelease = await ancestor.evaluate((el) => el.scrollTop);
     await expect
       .poll(() => container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe(containerSnapshot.inlineValue);
@@ -195,7 +244,7 @@ test.describe('self-scrollable reorder container', () => {
       .poll(() => ancestor.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe(ancestorSnapshot.inlineValue);
     assertScrollTopHoldsAtBaseline(await sampleScrollTop(container), containerAtRelease);
-    expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorStart);
+    assertScrollTopHoldsAtBaseline(await sampleScrollTop(ancestor), ancestorAtRelease);
   });
 
   test('a drag drains the container own scroll extent in both directions without ever moving the outer ancestor', async ({
@@ -275,7 +324,11 @@ test.describe('self-scrollable reorder container', () => {
     // ancestor at all: sample several frames and assert both stay put.
     const holdSamples = await sampleScrollTop(ancestor);
     assertScrollTopHoldsAtBaseline(holdSamples, ancestorScrollTopStart);
-    expect(await container.evaluate((el) => el.scrollTop)).toBe(containerScrollTopAtLowerLimit);
+    expect(
+      await container.evaluate((el) =>
+        Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight)),
+      ),
+    ).toBeLessThanOrEqual(1);
 
     // Reverse direction: hold near the container's own upper visible edge.
     await page.mouse.move(centerX, containerBox.y + 2, { steps: 4 });

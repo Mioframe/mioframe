@@ -16,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 /**
  * A dedicated fixture whose reorder container itself scrolls (`overflow: auto`) and sits inside
  * an outer scrollable ancestor that also has its own scroll room, used by Playwright to verify
- * that a drag drains the container's own scroll extent before ever moving the outer ancestor. No
+ * visibility-first ownership between the outer surface position and inner content overflow. No
  * screenshot coverage applies here; the library owns no visual contract.
  */
 export const Default: Story = {};

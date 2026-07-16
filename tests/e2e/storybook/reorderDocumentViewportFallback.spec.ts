@@ -15,16 +15,13 @@ const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): vo
   }
 };
 
-// A live autoscroll loop advances `scrollTop` on every rendered frame for as long as the pointer
-// stays near the edge, so the sampled window's last reading must clear its first by more than
-// ordinary layout rounding noise, proving the loop was still running (not just settled) at the
-// moment the sample was taken.
-const assertScrollTopProgressed = (samples: number[]): void => {
+const assertViewportSettlesWithoutResuming = (samples: number[]): void => {
   const first = samples.at(0);
   const last = samples.at(-1);
   expect(first).not.toBeUndefined();
   expect(last).not.toBeUndefined();
-  expect((last ?? 0) - (first ?? 0), `scrollTop samples: ${samples.join(', ')}`).toBeGreaterThan(1);
+  expect(Math.max(...samples) - Math.min(...samples)).toBeLessThanOrEqual(3);
+  expect(last ?? 0).toBeLessThanOrEqual(first ?? 0);
 };
 
 interface DragProgressionResult {
@@ -40,8 +37,6 @@ interface DragProgressionResult {
   documentMoveFrames: number;
   /** `document.body`'s remaining native scroll room the instant its movement was first detected. */
   remainingRoom: number;
-  /** Whether the reorder container's bottom edge still sat below the visible viewport at that instant. */
-  containerStillHidden: boolean;
   /** `document.body.scrollTop` sampled once per rendered frame, starting from the first detected move. */
   samples: number[];
 }
@@ -59,8 +54,8 @@ interface DragProgressionResult {
  * whole sequence in one round trip removes every such gap.
  * @param page - The Playwright page driving the drag.
  * @param args - Baseline scroll positions, viewport height, and per-phase frame budgets.
- * @returns Per-phase frame counts, the document's remaining room and hidden state at first
- * movement, and the sampled `document.body.scrollTop` trace.
+ * @returns Per-phase frame counts, the document's remaining room, and the sampled
+ * `document.body.scrollTop` trace.
  */
 const observeDragProgression = (
   page: Page,
@@ -117,16 +112,15 @@ const observeDragProgression = (
         // 4. ...and reaches its own native limit.
         const ancestorMaxFrames = await waitForCondition(() => isAtNativeLimit(ancestorEl));
 
-        // 5. The document viewport then scrolls.
+        // 5. The document viewport also participates when the physical surface reaches its edge.
         const documentMoveFrames = await waitForCondition(
           () => docEl.scrollTop > p.documentScrollTopStart,
         );
 
         const remainingRoom = docEl.scrollHeight - docEl.clientHeight - docEl.scrollTop;
-        const containerStillHidden =
-          containerEl.getBoundingClientRect().bottom > p.viewportHeight + 1;
 
-        // 6. A live autoscroll loop keeps advancing it every subsequent frame.
+        // 6. Sample subsequent frames to prove the viewport stops once it has revealed the
+        // physical container edge, even though it retains native scroll room.
         const samples: number[] = [docEl.scrollTop];
         for (let frame = 1; frame < p.extraFrames; frame += 1) {
           // eslint-disable-next-line no-await-in-loop -- sampling must happen in order, one per frame
@@ -141,7 +135,6 @@ const observeDragProgression = (
           ancestorMaxFrames,
           documentMoveFrames,
           remainingRoom,
-          containerStillHidden,
           samples,
         };
       })();
@@ -195,7 +188,7 @@ const sampleReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseSc
   );
 
 test.describe('document viewport autoscroll fallback', () => {
-  test('a drag drains the container, then its ancestor, then the real document viewport, and release stops all three', async ({
+  test('a drag uses the container, its ancestor, and the real document viewport, and release stops all three', async ({
     page,
   }) => {
     test.slow();
@@ -267,17 +260,12 @@ test.describe('document viewport autoscroll fallback', () => {
       'document scrollTop never exceeded its starting value',
     ).toBeLessThan(600);
 
-    // Sanity: at the instant document movement was first detected, the document scroller still
-    // had meaningful remaining native scroll room, and the reorder container's own bottom edge
-    // still sat below the visible viewport. Otherwise the sample below would not actually prove a
-    // live document-level autoscroll loop — it would just catch the tail of one that already
-    // finished.
+    // The viewport fallback remains valid because it moves, but visibility-first ownership stops
+    // it after revealing the physical surface even though meaningful native room remains.
     expect(progression.remainingRoom).toBeGreaterThan(4);
-    expect(progression.containerStillHidden).toBe(true);
-    assertScrollTopProgressed(progression.samples);
+    assertViewportSettlesWithoutResuming(progression.samples);
 
-    // 7. Releasing the pointer while document-level autoscroll is still active must stop all
-    // three levels immediately — no fixed sleep or wait for a settled position beforehand.
+    // 7. Releasing the pointer keeps all three levels stopped and runs drag cleanup.
     await page.mouse.up();
 
     const releaseSamples = await sampleReleaseScrollTops(page);

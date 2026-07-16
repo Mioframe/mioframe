@@ -104,6 +104,43 @@ const getMeaningfulHiddenDistance = (hiddenDistance: number, tolerance: number):
   Math.max(0, hiddenDistance - tolerance);
 
 /**
+ * Reports whether one physical edge of the reorder container is still hidden by a candidate's
+ * visible rectangle in the requested direction. X and Y are intentionally queried separately so
+ * different candidates can own the two axes in the same frame.
+ * @param containerRect - The reorder container's physical bounding rectangle.
+ * @param visibleCandidateRect - The candidate's currently visible bounding rectangle.
+ * @param axis - The axis whose physical edge is being tested.
+ * @param direction - The requested scroll direction on that axis.
+ * @param tolerance - Pixel tolerance absorbing fractional layout geometry.
+ * @returns Whether the requested physical container edge is hidden beyond the candidate.
+ */
+export const isReorderContainerEdgeHidden = (
+  containerRect: AutoscrollRectangle,
+  visibleCandidateRect: AutoscrollRectangle,
+  axis: 'x' | 'y',
+  direction: ScrollDirection,
+  tolerance: number = AUTOSCROLL_GEOMETRY_TOLERANCE_PX,
+): boolean => {
+  if (axis === 'y') {
+    if (direction === ScrollDirection.Reverse) {
+      return visibleCandidateRect.top - containerRect.top > tolerance;
+    }
+    if (direction === ScrollDirection.Forward) {
+      return containerRect.bottom - visibleCandidateRect.bottom > tolerance;
+    }
+    return false;
+  }
+
+  if (direction === ScrollDirection.Reverse) {
+    return visibleCandidateRect.left - containerRect.left > tolerance;
+  }
+  if (direction === ScrollDirection.Forward) {
+    return containerRect.right - visibleCandidateRect.right > tolerance;
+  }
+  return false;
+};
+
+/**
  * Resolves the combined `{x, y}` scroll delta for one candidate in the active reorder
  * container's scrollable ancestor chain.
  *
