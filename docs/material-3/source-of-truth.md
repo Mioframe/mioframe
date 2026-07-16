@@ -1,5 +1,19 @@
 # Material 3 source of truth
 
+## Canonical target
+
+Official Mioframe Material components implement the current official **Material 3 Expressive** contract.
+
+When official sources distinguish Expressive from baseline Material 3:
+
+- current Expressive usage, anatomy, tokens, geometry, state composition, motion, and adaptive guidance are canonical;
+- baseline Material 3 must not be selected because it is simpler, already implemented, or more familiar;
+- baseline behavior or geometry may remain only when the current official component has no Expressive contract for the supported surface, or when an explicit product compatibility requirement records it as a deviation;
+- one supported component surface must not silently mix baseline and Expressive contracts;
+- the family blueprint records the exact Expressive sources used and any unavailable, unsupported, or deliberately deviated surface.
+
+`Canonical Material default` means the current Expressive default when an official Expressive contract exists.
+
 ## Authority order
 
 Use the narrowest official source that resolves the decision.
@@ -16,6 +30,7 @@ A task handoff or previous audit may describe an accepted delta, but it is not a
 Before planning or implementing Material work, check the relevant official pages through MCP. Prefer only pages that resolve the touched surface:
 
 - component overview, specs, guidelines, and accessibility;
+- current Expressive component guidance and tokens when published separately;
 - design-token and foundation pages;
 - interaction-state, motion, color, typography, shape, elevation, layout, and adaptive guidance;
 - current deprecation or migration guidance.
@@ -34,7 +49,7 @@ A cache-backed decision records the exact cache snapshot and path.
 
 The official Material Design Kit is the visual authority only when published documentation does not contain enough detail for an exact visual decision.
 
-Use it for questions such as:
+Use the current Expressive component set when one exists. Use it for questions such as:
 
 - exact component geometry or expressive dimensions;
 - anatomy relationships not fully described in text;
@@ -84,7 +99,7 @@ When required official guidance is unavailable, incomplete, or contradictory:
 3. otherwise use `blocked` before production edits;
 4. record a deliberate Mioframe deviation only when the product requirement explicitly requires it and the architecture handoff approves it.
 
-Do not claim full Material alignment for unresolved surfaces.
+Do not claim full Material 3 Expressive alignment for unresolved surfaces.
 
 ## PR expectation
 
@@ -92,9 +107,12 @@ Material PR descriptions or review notes name the exact sources used, for exampl
 
 - `components/buttons/overview`;
 - `components/buttons/specs`;
+- current Expressive component/token pages when distinct;
 - `foundations/design-tokens/overview`;
 - `foundations/interaction/states/overview`;
 - `styles/color/roles`;
 - official Design Kit file/version and component-set reference when visual evidence was required.
 
 Use stable page names, snapshot metadata, and Design Kit references instead of raw screenshots or generic source descriptions.
+
+Review ownership and the required agent/operator evidence handoff are defined in `autonomous-review.md`.
