@@ -63,19 +63,19 @@ Next action: complete final verification, then mark PR #149 ready for review and
 
 ## Milestone overview
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | Architecture and operating model | `active` | none | PR #149 merged; canonical policies, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop` |
-| M1 | Static Material architecture validation | `planned` | M0 | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work |
-| M2 | Structured Material consistency validation | `planned` | M1 | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference |
-| M3 | Shared UI inventory and prioritized migration backlog | `planned` | M2 | every in-scope shared UI artifact is classified exactly once, consumers and target owners are recorded, and an ordered evidence-backed `P0`/`P1` queue exists |
-| M4 | Button foundation readiness | `planned` | M2 and M3 | every foundation domain required by the accepted Button surface has an exact owner, snapshot/status, contract, change mode, verification, and no hidden blocker |
-| M5 | Required Button foundation changes | `planned` | M4 | every change identified by M4 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required |
-| M6 | `MDButton` architecture migration | `planned` | M4 and applicable M5 work | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed |
-| M7 | `MDButton` Material alignment | `planned` | M6 | documented Button deviations are corrected or accepted, visual evidence is current, and required human Material review is recorded |
-| M8 | Independent stateful migration pilot | `planned` | M2, M3, and applicable foundation readiness | a high-priority stateful family—default candidate `MDSwitch`—validates controlled state, interaction/cancellation, anatomy, property coexistence, browser proof, and visual-matrix separation without Button-specific exceptions |
-| M9 | Autonomous new-component proof | `planned` | M7 and M8 | one genuinely required new official component is authored directly in the library from sources and scenarios without bespoke architecture correction rounds |
-| M10 | Priority-driven incremental library population | `planned` | M9 | inventory rows progress by accepted priority until every row is `migrated`, `retained`, or `removed`, with Material-owned artifacts canonical and legacy owners eliminated |
+| ID  | Milestone                                             | Status    | Depends on                                  | Exit gate                                                                                                                                                                                                                        |
+| --- | ----------------------------------------------------- | --------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model                      | `active`  | none                                        | PR #149 merged; canonical policies, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop`                                                                                  |
+| M1  | Static Material architecture validation               | `planned` | M0                                          | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work                                                               |
+| M2  | Structured Material consistency validation            | `planned` | M1                                          | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference                                                                                                     |
+| M3  | Shared UI inventory and prioritized migration backlog | `planned` | M2                                          | every in-scope shared UI artifact is classified exactly once, consumers and target owners are recorded, and an ordered evidence-backed `P0`/`P1` queue exists                                                                    |
+| M4  | Button foundation readiness                           | `planned` | M2 and M3                                   | every foundation domain required by the accepted Button surface has an exact owner, snapshot/status, contract, change mode, verification, and no hidden blocker                                                                  |
+| M5  | Required Button foundation changes                    | `planned` | M4                                          | every change identified by M4 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required                                                                       |
+| M6  | `MDButton` architecture migration                     | `planned` | M4 and applicable M5 work                   | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed                                                                                      |
+| M7  | `MDButton` Material alignment                         | `planned` | M6                                          | documented Button deviations are corrected or accepted, visual evidence is current, and required human Material review is recorded                                                                                               |
+| M8  | Independent stateful migration pilot                  | `planned` | M2, M3, and applicable foundation readiness | a high-priority stateful family—default candidate `MDSwitch`—validates controlled state, interaction/cancellation, anatomy, property coexistence, browser proof, and visual-matrix separation without Button-specific exceptions |
+| M9  | Autonomous new-component proof                        | `planned` | M7 and M8                                   | one genuinely required new official component is authored directly in the library from sources and scenarios without bespoke architecture correction rounds                                                                      |
+| M10 | Priority-driven incremental library population        | `planned` | M9                                          | inventory rows progress by accepted priority until every row is `migrated`, `retained`, or `removed`, with Material-owned artifacts canonical and legacy owners eliminated                                                       |
 
 ## Milestone details
 
@@ -240,9 +240,9 @@ M10 remains ongoing until every inventory row has a terminal status and all Mate
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date | Milestone | Change | Evidence |
-| --- | --- | --- | --- |
-| 2026-07-16 | M0 | Architecture baseline, operational roadmap, and full-library inventory contract completed; final verification and merge remain | PR #149; previous architecture head passed `verify` |
+| Date       | Milestone | Change                                                                                                                         | Evidence                                            |
+| ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| 2026-07-16 | M0        | Architecture baseline, operational roadmap, and full-library inventory contract completed; final verification and merge remain | PR #149; previous architecture head passed `verify` |
 
 ## Update protocol
 
