@@ -24,7 +24,17 @@ Use for decisions about:
 
 For creating, migrating, aligning, or materially changing an official public component family, use `material-component-authoring` as the primary execution workflow. This skill supplies source and usage decisions; it does not own the family blueprint, production file plan, migration order, or completion process.
 
-Canonical source and architecture rules live in `docs/material-3`.
+Canonical source, architecture, autonomous review, and operator visual-acceptance rules live in `docs/material-3`.
+
+## Canonical target
+
+Official Mioframe Material components target the current official **Material 3 Expressive** contract.
+
+- Prefer current Expressive guidance, tokens, measurements, state composition, motion, and Design Kit component sets whenever they exist for the supported surface.
+- Do not preserve baseline Material 3 merely because it matches current code.
+- Use baseline behavior or geometry only when no official Expressive contract exists for the supported surface, or when an explicit product requirement records a deviation.
+- Do not silently combine baseline and Expressive contracts in one supported surface.
+- `Canonical Material default` means the current Expressive default when available.
 
 ## No-impact path
 
@@ -40,7 +50,7 @@ A public contract, visual contract, component choice, foundation, or state-model
 
 1. Use the `material3` MCP server first.
 2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete for the required page.
-3. Use the official Material Design Kit only when published documentation cannot resolve exact visual geometry, anatomy, expressive measurements, or state composition.
+3. Use the current official Material Design Kit Expressive component set only when published documentation cannot resolve exact visual geometry, anatomy, expressive measurements, or state composition.
 4. Record exact page names, snapshot metadata, and Design Kit file/component-set reference when applicable.
 5. Stop source lookup when the required decisions are resolved.
 
@@ -57,7 +67,7 @@ When required evidence is unavailable or contradictory:
 
 ## Component choice and usage
 
-Start from the user scenario and Material guidance, not from the component already present in the repository.
+Start from the user scenario and current official Material guidance, not from the component already present in the repository.
 
 Confirm:
 
@@ -76,7 +86,7 @@ Do not create an `MD*` surface for a project-specific workflow merely because it
 ## Minimum complete surface
 
 - Start from named scenarios and affected consumers.
-- When no scenario is supplied, use canonical Material default usage only.
+- When no scenario is supplied, use the current canonical Expressive default usage only.
 - Add variants, sizes, shapes, modes, anatomy, and behavior only for a current scenario or consumer.
 - Include every reachable state, accessibility requirement, and applicable foundation dependency of the supported surface.
 - Record remaining official capabilities as unsupported.
@@ -124,6 +134,6 @@ For product-facing Material changes, name:
 - affected existing Material component contracts;
 - focused browser, visual, accessibility, or consumer proof required.
 
-For official component-family implementation and migration, `material-component-authoring` owns the standard test profile and completion gate.
+For official component-family implementation and migration, `material-component-authoring` owns the standard test profile and completion gate, and `docs/material-3/autonomous-review.md` owns review-role separation.
 
-An automated agent must not report human visual review as passed. Green checks or screenshot equality alone do not prove Material correctness.
+A coding agent may mark the source-backed architecture and Material evidence review as `passed` only when every non-visual decision is resolved and proved. It must never report operator visual acceptance as accepted. Routine operator work is limited to the prepared screenshot comparison; unresolved source, architecture, compatibility, or product decisions remain explicit blockers rather than being deferred to visual review.
