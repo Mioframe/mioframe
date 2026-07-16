@@ -1,6 +1,6 @@
 ---
 name: material3-guidelines
-description: 'Use before Material-related UI/UX work. Resolves official sources, component choice and usage, minimum supported surface, library/foundation ownership, accessibility, visual-state coverage, and focused verification.'
+description: 'Use for official Material source lookup, component choice, usage, composition, minimum supported surface, accessibility, adaptive behavior, and product-facing Material UI/UX decisions. For authoring an official public component family, pair with material-component-authoring as the primary workflow.'
 paths:
   - 'src/**/*.vue'
   - 'src/shared/ui/**'
@@ -12,17 +12,19 @@ paths:
 
 # Material 3 guidelines
 
-Use for work affecting Material component choice, usage, library structure, foundation contracts, layout, interaction, accessibility, tokens, public UI APIs, Storybook, or visual verification.
+Use for decisions about:
 
-Canonical rules live in:
+- which Material component or documented composition fits a scenario;
+- intended and prohibited usage;
+- component hierarchy and placement;
+- official source interpretation;
+- minimum supported surface;
+- accessibility, interaction, adaptive behavior, and visual evidence;
+- whether a surface is official Material, a documented pattern, or project-specific UI.
 
-- `docs/material-3/source-of-truth.md`;
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-testing.md`.
+For creating, migrating, aligning, or materially changing an official public component family, use `material-component-authoring` as the primary execution workflow. This skill supplies source and usage decisions; it does not own the family blueprint, production file plan, migration order, or completion process.
 
-This skill defines workflow and stop conditions. It does not add fields to the canonical family blueprint.
+Canonical source and architecture rules live in `docs/material-3`.
 
 ## No-impact path
 
@@ -32,91 +34,96 @@ For a change preserving component choice, usage, location, public imports, API, 
 Material impact: none
 ```
 
-A public contract, visual contract, foundation, or state-model change is not `none`.
-
-## Library routing
-
-- New official public `MD*` components go to `src/shared/ui/material/components/<family>`.
-- New Material foundation runtime/testing owners go to `material/foundation/<domain>`.
-- Reusable official Material compositions go to `material/patterns/<pattern>` only after the pattern gate passes.
-- Existing Material locations outside the library are legacy and may receive only strict local repairs until focused migration.
-- Generic platform infrastructure and project-specific UI remain outside the Material library.
-
-Do not add new Material ownership to a legacy path.
+A public contract, visual contract, component choice, foundation, or state-model change is not `none`.
 
 ## Source workflow
 
-1. Use `material3` MCP.
-2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete.
-3. Use the official Material Design Kit only when published docs cannot resolve exact visual geometry, anatomy, or state composition.
-4. Record exact pages, snapshot, and Design Kit reference when applicable.
-5. Stop when the required surface is resolved.
+1. Use the `material3` MCP server first.
+2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete for the required page.
+3. Use the official Material Design Kit only when published documentation cannot resolve exact visual geometry, anatomy, expressive measurements, or state composition.
+4. Record exact page names, snapshot metadata, and Design Kit file/component-set reference when applicable.
+5. Stop source lookup when the required decisions are resolved.
 
-Do not use Material Web, generic web search, screenshots without official provenance, older Material versions, third-party libraries, or memory as authority.
+Do not use Material Web, generic web search, screenshots without official provenance, older Material versions, third-party libraries, existing Mioframe rendering, or memory as Material authority.
 
-If required official evidence is missing, narrow unsupported scope or use `blocked`.
+Material Web or another implementation may be inspected only after the official contract is resolved and only as a non-authoritative implementation reference.
 
-## Authoring mode
+When required evidence is unavailable or contradictory:
 
-Record one:
+- identify the exact unresolved decision;
+- narrow unsupported scope when required scenarios remain satisfied;
+- otherwise report `blocked`;
+- do not infer correctness from an existing baseline or another library.
 
-- `standard-authoring`: all decisions derive from required scenarios, official sources, repository rules, accepted contracts, and native semantics;
-- `handoff-authoring`: a ready architecture handoff supplies the exact delta;
-- `blocked`: a required source, ownership, compatibility, foundation, state, or verification decision remains unresolved.
+## Component choice and usage
 
-Normal source-backed component work does not require a separate architecture handoff when the canonical blueprint is ready.
+Start from the user scenario and Material guidance, not from the component already present in the repository.
+
+Confirm:
+
+- intended scenario;
+- scenarios where the component must not be used;
+- action/content hierarchy;
+- allowed Material compositions;
+- placement constraints;
+- adaptive behavior and its owner;
+- whether product composition or a reusable Material pattern owns the relationship.
+
+Prefer an existing official component or documented composition when it covers the need.
+
+Do not create an `MD*` surface for a project-specific workflow merely because it visually resembles Material.
 
 ## Minimum complete surface
 
-- Start from required scenarios and affected consumers.
-- When no scenario is supplied, implement canonical Material default usage only.
-- Add variants, modes, anatomy, and behavior only for named scenarios or current consumers.
-- Include every reachable contract and every distinct component-owned visible route of the supported surface.
+- Start from named scenarios and affected consumers.
+- When no scenario is supplied, use canonical Material default usage only.
+- Add variants, sizes, shapes, modes, anatomy, and behavior only for a current scenario or consumer.
+- Include every reachable state, accessibility requirement, and applicable foundation dependency of the supported surface.
 - Record remaining official capabilities as unsupported.
-- Add no Mioframe extension without an explicit requirement and owner.
+- Add no Mioframe extension without an explicit requirement, owner, and deviation record.
 
-## Canonical family blueprint
+Minimum scope is not partial correctness: every reachable contract of the chosen supported surface must be complete.
 
-Use the complete schema from `component-architecture.md`. Do not create a parallel checklist or add mandatory fields here.
+## Product and library ownership
 
-Before production edits, confirm that the blueprint resolves:
+Product layers own:
 
-- family and library ownership;
-- required scenarios, usage, and supported/unsupported surface;
-- official source snapshots and Design Kit evidence when required;
-- public API, native semantics, states, and anatomy/DOM owners;
-- foundation dependencies and change modes;
-- architecture profile, token ownership, and rendered-property matrix;
-- production/export/story/test files;
-- standard test profile and distinct visual-route coverage;
-- migration, consumers, deviations, and human-review status.
+- information architecture;
+- workflow and domain behavior;
+- component choice and placement for a concrete screen;
+- product-level adaptive composition;
+- consumer content and data.
 
-`Readiness: ready` is invalid with unresolved or blocked decisions.
+Official Material component families own only their documented usage contract, API, native semantics, anatomy, state meaning, tokens, behavior, and rendering.
 
-## Implementation constraints
+Reusable compositions belong in `material/patterns` only when official evidence defines the composition, it is independent of one feature/domain, a current scenario requires it, and it can be tested without product data.
 
-- Use official Material vocabulary and native semantics.
-- Expose only supported configuration, semantic state, native behavior, consumer anatomy, and explicit extensions.
-- Follow official invalid-combination behavior; otherwise use `blocked`.
-- Use exact official `md.comp.*` paths; do not invent or shorten tokens.
-- Consume accepted foundation owners and keep property-specific state resolution component-owned.
-- Product layers own information architecture, component choice, placement, workflow, and adaptive composition.
-- Do not add test-only public props, events, classes, or runtime branches.
-- Do not create local foundation substitutes, universal bases, runtime registries, generic resolvers, CSS DSLs, or cross-family state machines.
+## Accessibility and interaction
 
-## Verification
+Material alignment includes:
 
-Use the standard proof profile from `component-testing.md`:
+- native semantics where applicable;
+- accessible names and meaningful state exposure;
+- keyboard and focus behavior;
+- pointer/touch behavior;
+- target areas;
+- disabled and readonly semantics;
+- contrast-safe role pairings;
+- modal focus and dismissal behavior;
+- reduced-motion behavior where contractual.
 
-- static and structured architecture checks;
-- colocated component-contract tests;
-- canonical `StateMatrix` covering every distinct supported component-owned visual route;
-- Playwright visual regression of the matrix;
-- real browser behavior tests when applicable;
-- pure helper/composable tests when applicable;
-- changed-consumer preservation;
-- required architecture, Material, and human visual review.
+Visual similarity alone is not alignment.
 
-Non-visual states belong in contract or browser tests, not duplicate matrix cells. Forced state proves appearance only.
+## Review and verification
 
-An automated coding agent must not report human visual review as passed. Green checks or screenshot equality alone do not prove Material alignment.
+For product-facing Material changes, name:
+
+- official sources checked;
+- resulting component-choice, usage, placement, accessibility, or adaptive decision;
+- deliberate deviation or unresolved evidence;
+- affected existing Material component contracts;
+- focused browser, visual, accessibility, or consumer proof required.
+
+For official component-family implementation and migration, `material-component-authoring` owns the standard test profile and completion gate.
+
+An automated agent must not report human visual review as passed. Green checks or screenshot equality alone do not prove Material correctness.
