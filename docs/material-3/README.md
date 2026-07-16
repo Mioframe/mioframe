@@ -1,52 +1,109 @@
-# Material 3 policies
+# Material 3 Expressive policies
 
-This directory defines the project contract for aligning the shared UI kit, Storybook documentation, and visual verification with the official Material 3 documentation.
-
-The policies apply before changing shared UI primitives, Material-style wrappers, user-visible component APIs, design tokens, Storybook documentation, Material interaction states, layout behavior, or visual verification surfaces.
+This directory defines the project contract for the standalone Material library at `src/shared/ui/material`, its legacy migration, product usage, Storybook documentation, verification, and review against current official Material 3 Expressive sources.
 
 ## Policy set
 
-Foundation policies:
+Library boundary, inventory, and migration:
 
-- [Source of truth](./source-of-truth.md)
+- [Library architecture](./library-architecture.md)
+- [Library implementation roadmap](./library-roadmap.md) — current milestone, blockers, next action, and progress
+- [Shared UI library inventory](./ui-library-inventory.md) — exhaustive classification, priority, queue state, and terminal outcome for every shared UI artifact
+- [`src/shared/ui/material` library map](../../src/shared/ui/material/README.md)
+
+Foundation architecture and status:
+
+- [Source of truth](./source-of-truth.md) — current Material 3 Expressive target and source hierarchy
+- [Foundation architecture](./foundation-architecture.md)
+- [Foundation registry](./foundation-registry.md)
 - [Units](./units.md)
 - [Tokens](./tokens.md)
 - [Baseline theme](./baseline-theme.md)
-- [Component tokens](./component-tokens.md)
 - [Interaction states](./interaction-states.md)
 - [Accessibility](./accessibility.md)
 - [Layout and adaptive behavior](./layout-adaptive.md)
-- [Shared UI API](./shared-ui-api.md)
-- [Storybook](./storybook.md)
-- [Verification](./verification.md)
-- [Deviations](./deviations.md)
-
-Implementation policies:
-
-- [Component registry](./component-registry.md)
-- [Token validation](./token-validation.md)
 - [Iconography](./icons.md)
 - [Density and spacing](./density-spacing.md)
 - [Overlays](./overlays.md)
-- [Component conversion checklist](./component-conversion-checklist.md)
-- [Adoption plan](./adoption-plan.md)
+
+Component and completion policies:
+
+- [Component architecture](./component-architecture.md) — complete canonical family blueprint and production ownership
+- [Component testing architecture](./component-testing.md)
+- [Autonomous review contract](./autonomous-review.md) — agent evidence review and operator-only visual acceptance
+- [Component tokens](./component-tokens.md)
+- [Shared UI API](./shared-ui-api.md)
+- [Component registry](./component-registry.md)
+- [Token and architecture validation](./token-validation.md)
+- [Component authoring checklist](./component-conversion-checklist.md)
+- [Storybook](./storybook.md)
+- [Verification](./verification.md)
+- [Deviations](./deviations.md)
+- [Adoption plan](./adoption-plan.md) — strategic rollout rationale and phase definitions
+
+## Rule ownership
+
+- Architecture documents own durable schemas and invariants.
+- `AGENTS.md` files own scoped hard boundaries and routing.
+- `library-roadmap.md` owns milestone state, blockers, dependencies, and the single next action.
+- `ui-library-inventory.md` owns exhaustive shared-UI classification, evidence-backed priority, queue state, and terminal outcome.
+- `source-of-truth.md` owns the canonical current Material 3 Expressive target and source hierarchy.
+- `autonomous-review.md` owns agent/operator review-role separation, the agent evidence report, visual handoff, and merge gate.
+- `material-component-authoring` owns execution order and stop conditions for creating, migrating, aligning, or materially changing official public component families, including legacy `MD*` components.
+- `material-foundation` owns execution order for cross-family foundation changes.
+- `material3-guidelines` owns official source lookup, component choice, usage, composition, and product-facing Material decisions.
+- `shared-ui-implementation` owns project-specific and generic shared UI outside official Material families.
+- Specialized testing skills own only their proof layers.
+- The authoring checklist owns operational completion review.
+- Validation owns enforceable static/structured checks; the coding agent owns source-backed semantic evidence review; the operator owns final visual acceptance only.
+
+No skill or secondary policy may add mandatory fields to the canonical family blueprint outside `component-architecture.md`.
 
 ## Goals
 
-1. Reading the official Material 3 documentation should explain how to use the project UI kit.
-2. Reading the project Storybook should feel like reading the relevant Material 3 component documentation for the components used by the app.
-3. Material-compatible names must be used for public `--md-*` tokens and public `MD*` component APIs.
-4. Project-specific UI must be documented as project-specific and must not masquerade as an official Material 3 component.
-5. Visual similarity alone is not enough. Tokens, units, API names, accessibility, interaction states, and adaptive behavior are part of Material 3 alignment.
+1. `src/shared/ui/material` is the canonical location for new official Material implementation.
+2. Official components implement the current canonical Material 3 Expressive contract where it exists; baseline Material 3 is never a silent fallback.
+3. Every shared UI artifact is classified as official Material, project-specific, generic, retained, consolidated, or removed; no artifact is forced into Material merely because it is UI.
+4. Migration priority is evidence-backed by consumer reach, critical workflows, interaction frequency, foundation leverage, risk, and dependency readiness.
+5. Official documentation and the current official Material Design Kit Expressive component set, when required, explain the supported surface and visual contract.
+6. Storybook documents the supported surface, extensions, deviations, and one canonical matrix per component.
+7. Every new or migrated component follows one proof profile: architecture, contract, matrix visual regression, browser behavior when applicable, pure behavior when applicable, agent evidence review, and operator visual acceptance.
+8. Every distinct supported component-owned visible route is readable in the canonical matrix; non-visual state contracts remain in contract/browser tests.
+9. Public `--md-*` tokens and `MD*` APIs use exact verified current official Material vocabulary.
+10. Generic infrastructure, foundation, families, patterns, project UI, and product layers have distinct owners.
+11. Project-specific UI remains outside official component families.
+12. Usage, tokens, units, API, accessibility, interaction, anatomy, ownership, adaptivity, testing, and review are all part of alignment.
+13. A coding agent can author or migrate a standard component from a concise request using one complete family blueprint and close every non-visual gate autonomously.
+14. Routine operator work is limited to comparing prepared `StateMatrix` screenshots with named official sources and accepting or rejecting visible fidelity.
+15. Requests without detailed scenarios fall back to the current canonical Expressive default usage rather than speculative scope.
+16. Configuration routing and state resolution remain independent so components receive only required layers.
+17. Foundation contracts expand on demand and remain registry-backed.
+18. Existing Material code migrates family-by-family/domain-by-domain without permanent compatibility paths.
+19. Automation catches deterministic drift; the coding agent closes source-backed semantic review; the operator closes visual correctness.
 
 ## Scope
 
-These policies are foundation documents. They do not require all existing code to be immediately compliant. New Material UI work and refactors that touch affected surfaces must move the touched area toward this contract and document any deliberate deviation.
+Existing code is not automatically Expressive-compliant, consistently tested, evidence-reviewed, visually accepted, physically migrated, or correctly classified.
+
+New Material artifacts use the canonical library and test architecture immediately. Existing code outside the library is legacy and may receive only strict local repairs until focused migration.
+
+Project-specific and generic shared UI may remain outside `src/shared/ui/material` permanently when the inventory records the correct owner and classification.
+
+A local repair may use `Architecture impact: none` only when it preserves component/foundation contracts, location, public imports, testing surface, behavior, and unrelated output.
+
+Source, architecture, foundation, compatibility, or behavior ambiguity remains an explicit blocker. It must not be delegated to screenshot review.
 
 ## Implementation order
 
-1. Keep these policies small and reviewable.
-2. Audit existing tokens and shared UI APIs against the policies.
-3. Use [Component registry](./component-registry.md), [Token validation](./token-validation.md), and [Component conversion checklist](./component-conversion-checklist.md) for every component-family migration.
-4. Use Buttons as the first pilot component family after the foundation contract is accepted.
-5. Apply the same pattern to Lists, Dialogs, Text fields, selection controls, Navigation, App bars, Toolbars, and Sheets.
+The current operational state and single next action are tracked in [Library implementation roadmap](./library-roadmap.md).
+
+1. Keep source, library, foundation, component, testing, autonomous-review, registry, inventory, validation, and verification policies consistent.
+2. Implement static library-boundary and test-artifact checks for new work and active migrations.
+3. Implement structured blueprint/registry reference checks without a semantic Markdown DSL.
+4. Populate the exhaustive shared UI inventory and establish an evidence-backed migration queue.
+5. Validate minimum Button foundation domains and exact snapshots after confirming the first pilot order.
+6. Relocate/migrate `MDButton` with its canonical matrix and no intentional behavior change.
+7. Complete remaining Button Material 3 Expressive alignment and operator visual acceptance separately.
+8. Validate the architecture on an independent high-priority stateful family, with `MDSwitch` as the default candidate.
+9. Prove autonomous authoring on a genuinely new required component.
+10. Migrate further families and foundations by inventory priority until every row is migrated, retained, or removed.

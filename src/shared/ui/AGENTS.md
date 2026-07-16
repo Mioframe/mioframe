@@ -1,29 +1,35 @@
 # src/shared/ui
 
-Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and its descendants until a deeper `AGENTS.md` refines it.
+Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants until a deeper rule file refines it.
 
-Use the `shared-ui-implementation` skill for detailed guidance on Vue state composition, DOM-critical attrs, native activation semantics, parent/child styling boundaries, and browser-specific CSS when implementing or reviewing shared UI / Material primitives.
+## Routing
+
+- Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component families.
+- Use `material-component-authoring` for any new, migrated, aligned, or materially changed official public Material component family, including legacy `MD*` components outside `src/shared/ui/material`.
+- Use `material-foundation` for changes to cross-family Material foundation contracts.
+- Use `material3-guidelines` for official source lookup, component choice, usage, composition, and product-facing Material decisions.
+- Inside `src/shared/ui/material`, follow `src/shared/ui/material/AGENTS.md` and the canonical architecture under `docs/material-3`.
+
+Do not assemble an official Material component workflow from generic shared UI rules. `material-component-authoring` is the primary execution contract for that work.
 
 ## Contains
 
-- Shared presentation primitives, layout building blocks, overlay infrastructure, and interaction helpers.
+- `src/shared/ui/material`: canonical Material library;
+- project-specific shared presentation primitives and wrappers outside the Material root;
+- generic shared UI layout, interaction, and infrastructure that are not Material-owned.
 
-## Patterns
+## Boundaries
 
-- Drive components through props, emits, slots, and composables rather than hidden global state.
-- Keep public props explicit, small, and domain-agnostic.
-- Accessibility, keyboard behavior, and focus management are part of the component contract.
-- Extend an existing primitive through props or slots before adding a near-duplicate component.
-- Keep scroll-aware, sticky, floating, and teleport-aware behavior tied to the actual rendered DOM hierarchy.
-- Do not write styles that affect the styling or positioning of neighboring elements in the parent flow. External spacing or visual treatment may move or style the component itself, but must not reach outward and change how adjacent elements are laid out or rendered.
+- Project-specific and generic shared UI stays outside official Material component families.
+- New official public `MD*` components belong under `material/components/<family>`.
+- New Material foundation runtime/testing owners belong under `material/foundation/<domain>`.
+- Reusable official Material compositions belong under `material/patterns/<pattern>` only after the pattern gate passes.
+- Existing Material directories outside the canonical root are legacy and may receive only strict local repairs until focused migration.
+- New Material ownership at a legacy path is forbidden.
+- Shared UI must not import product layers or domain models.
 
-## Anti-patterns
+Detailed generic component rules belong to `shared-ui-implementation`. Detailed Material component rules belong to `material-component-authoring` and `src/shared/ui/material/AGENTS.md`.
 
-- Do not import `entities`, `features`, `widgets`, or `pages` here.
-- Do not couple shared UI to document, property, or view models.
-- Do not hide multiple unrelated behaviors behind one broad `options` prop.
+## Verification
 
-## Constraints
-
-- Base control and layout changes have a wide UI blast radius.
-- Minimum verification: run `pnpm verify --only type-check`, then use focused verify-managed browser or visual checks for the touched control when keyboard, pointer, focus, overlay, scroll-container, or appearance contracts changed. Final completion still requires `pnpm verify`.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Final completion requires repository verification.
