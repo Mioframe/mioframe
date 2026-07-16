@@ -1,6 +1,11 @@
 import { Draggable } from '@dnd-kit/dom';
 import { DragDropManager } from '@dnd-kit/dom';
-import { canScroll, detectScrollIntent, ScrollDirection } from '@dnd-kit/dom/utilities';
+import {
+  canScroll,
+  detectScrollIntent,
+  getVisibleBoundingRectangle,
+  ScrollDirection,
+} from '@dnd-kit/dom/utilities';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReorderAutoScroller, runReorderAutoscrollFrame } from './ReorderAutoScroller';
 
@@ -10,11 +15,13 @@ vi.mock('@dnd-kit/dom/utilities', async (importOriginal) => {
     ...actual,
     detectScrollIntent: vi.fn(),
     canScroll: vi.fn(),
+    getVisibleBoundingRectangle: vi.fn(),
   };
 });
 
 const mockedDetectScrollIntent = vi.mocked(detectScrollIntent);
 const mockedCanScroll = vi.mocked(canScroll);
+const mockedGetVisibleBoundingRectangle = vi.mocked(getVisibleBoundingRectangle);
 
 const idleIntent = {
   direction: { x: ScrollDirection.Idle, y: ScrollDirection.Idle },
@@ -54,6 +61,9 @@ const createElement = (parent: Element = document.body): HTMLElement => {
 beforeEach(() => {
   mockedDetectScrollIntent.mockReset().mockReturnValue(idleIntent);
   mockedCanScroll.mockReset().mockReturnValue(alwaysScrollable);
+  mockedGetVisibleBoundingRectangle
+    .mockReset()
+    .mockImplementation((element) => element.getBoundingClientRect());
 });
 
 afterEach(() => {
@@ -61,26 +71,55 @@ afterEach(() => {
 });
 
 describe('runReorderAutoscrollFrame', () => {
+  it('uses real dnd-kit intent detection at a clipped visible edge outside the old full-rectangle zone', async () => {
+    const actualUtilities =
+      await vi.importActual<typeof import('@dnd-kit/dom/utilities')>('@dnd-kit/dom/utilities');
+    mockedDetectScrollIntent.mockImplementation(actualUtilities.detectScrollIntent);
+
+    const container = createElement();
+    stubRect(container, { top: 0, bottom: 1000, left: 0, right: 100 });
+    mockedGetVisibleBoundingRectangle.mockReturnValue({
+      top: 100,
+      bottom: 200,
+      left: 0,
+      right: 100,
+      width: 100,
+      height: 100,
+    });
+    Object.defineProperties(container, {
+      clientHeight: { configurable: true, value: 1000 },
+      scrollHeight: { configurable: true, value: 2000 },
+      clientWidth: { configurable: true, value: 100 },
+      scrollWidth: { configurable: true, value: 100 },
+    });
+
+    const source = { element: container.appendChild(document.createElement('div')) };
+    const manager = { dragOperation: { position: { current: { x: 50, y: 190 } }, source } };
+
+    runReorderAutoscrollFrame(manager, container, [container]);
+
+    // y=190 is far outside the old full-rectangle bottom zone (800..1000), but is 90% through
+    // the visible 100..200 slice and therefore projects to y=900 in that same full rectangle.
+    expect(container.scrollTop).toBeGreaterThan(0);
+  });
+
   it('applies both axes through one combined instant scrollTo call', () => {
     const container = createElement();
     stubRect(container, { top: 100, bottom: 200, left: 0, right: 200 });
-
-    const candidate = createElement();
-    stubRect(candidate, { top: 100, bottom: 200, left: 0, right: 200 });
-    candidate.scrollTop = 5;
-    candidate.scrollLeft = 3;
+    container.scrollTop = 5;
+    container.scrollLeft = 3;
 
     mockedDetectScrollIntent.mockReturnValue({
       direction: { x: ScrollDirection.Forward, y: ScrollDirection.Forward },
       speed: { x: 4, y: 10 },
     });
 
-    const scrollToSpy = vi.spyOn(candidate, 'scrollTo');
+    const scrollToSpy = vi.spyOn(container, 'scrollTo');
 
     const source = { element: container.appendChild(document.createElement('div')) };
     const manager = { dragOperation: { position: { current: { x: 0, y: 0 } }, source } };
 
-    runReorderAutoscrollFrame(manager, container, [candidate]);
+    runReorderAutoscrollFrame(manager, container, [container]);
 
     expect(scrollToSpy).toHaveBeenCalledTimes(1);
     expect(scrollToSpy).toHaveBeenCalledWith({ left: 7, top: 15, behavior: 'instant' });

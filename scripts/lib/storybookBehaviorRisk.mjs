@@ -54,6 +54,8 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/reorderConfig.ts',
       'src/shared/lib/reorder/ReorderSurface.vue',
       'src/shared/lib/reorder/useReorderItem.ts',
+      'src/shared/lib/reorder/ReorderActivation.stories.ts',
+      'src/shared/lib/reorder/ReorderActivationStoryHarness.vue',
       'src/shared/lib/reorder/ReorderSelfScrollable.stories.ts',
       'src/shared/lib/reorder/ReorderSelfScrollableStoryHarness.vue',
       'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',

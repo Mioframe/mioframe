@@ -1,12 +1,21 @@
 <script setup lang="ts" generic="TId extends ReorderItemId">
-import { DragDropProvider, type DragEndEvent, type DragStartEvent } from '@dnd-kit/vue';
+import {
+  type BeforeDragStartEvent,
+  DragDropProvider,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/vue';
 import { isSortableOperation } from '@dnd-kit/vue/sortable';
 import { computed, provide, ref, shallowRef } from 'vue';
 import { getReorderPlugins, REORDER_MODIFIERS, REORDER_SENSORS } from './reorderConfig';
 import { reorderSurfaceInjectionKey } from './reorderSurfaceContext';
 import { attemptTouchHapticFeedback, scheduleTouchDragCleanup } from './touchDragCleanup';
 import type { ReorderCommitRequest, ReorderItemId } from './types';
-import { assertUniqueItemIds, resolveReorderDragEnd } from './validateReorderSurface';
+import {
+  assertUniqueItemIds,
+  hasUniqueItemIds,
+  resolveReorderDragEnd,
+} from './validateReorderSurface';
 
 const props = defineProps<{
   /**
@@ -38,9 +47,13 @@ assertUniqueItemIds(props.itemIds);
 const dragStartSnapshot = shallowRef<readonly TId[] | null>(null);
 const activePointerType = ref<string | undefined>(undefined);
 
-const onDragStart = (event: DragStartEvent) => {
-  assertUniqueItemIds(props.itemIds);
+const onBeforeDragStart = (event: BeforeDragStartEvent) => {
+  if (!hasUniqueItemIds(props.itemIds)) {
+    event.preventDefault();
+  }
+};
 
+const onDragStart = (event: DragStartEvent) => {
   dragStartSnapshot.value = [...props.itemIds];
 
   const pointerType =
@@ -79,6 +92,7 @@ const onDragEnd = (event: DragEndEvent) => {
     :sensors="REORDER_SENSORS"
     :plugins="getReorderPlugins"
     :modifiers="REORDER_MODIFIERS"
+    @before-drag-start="onBeforeDragStart"
     @drag-start="onDragStart"
     @drag-end="onDragEnd"
   >

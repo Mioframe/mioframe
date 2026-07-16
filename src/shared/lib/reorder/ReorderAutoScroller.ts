@@ -4,6 +4,8 @@ import {
   canScroll,
   detectScrollIntent,
   getBoundingRectangle,
+  getFrameTransform,
+  getViewportBoundingRectangle,
   getVisibleBoundingRectangle,
   ScrollDirection,
 } from '@dnd-kit/dom/utilities';
@@ -11,7 +13,10 @@ import { getReorderContainer } from './getReorderContainer';
 import { getReorderScrollCandidates } from './getReorderScrollCandidates';
 import { acquireReorderAutoscrollEnvironment } from './reorderAutoscrollEnvironment';
 import type { ReorderScrollCandidateRole } from './reorderAutoscrollGeometry';
-import { resolveReorderScrollDelta } from './reorderAutoscrollGeometry';
+import {
+  projectVisibleScrollIntentInput,
+  resolveReorderScrollDelta,
+} from './reorderAutoscrollGeometry';
 
 /**
  * Base scroll speed multiplier, matching dnd-kit 0.5.0's `AutoScroller` default
@@ -27,6 +32,30 @@ const AUTOSCROLL_THRESHOLD: Readonly<Record<'x' | 'y', number>> = { x: 0.2, y: 0
 
 const isIdle = (direction: Readonly<Record<'x' | 'y', ScrollDirection>>): boolean =>
   direction.x === ScrollDirection.Idle && direction.y === ScrollDirection.Idle;
+
+const transformRectangle = (
+  rectangle: ReturnType<typeof getBoundingRectangle>,
+  transform: ReturnType<typeof getFrameTransform>,
+): ReturnType<typeof getBoundingRectangle> => ({
+  top: rectangle.top * transform.scaleY + transform.y,
+  right: rectangle.right * transform.scaleX + transform.x,
+  bottom: rectangle.bottom * transform.scaleY + transform.y,
+  left: rectangle.left * transform.scaleX + transform.x,
+  width: rectangle.width * transform.scaleX,
+  height: rectangle.height * transform.scaleY,
+});
+
+const getScrollIntentRectangles = (candidate: Element) => {
+  const isDocumentViewport = candidate === candidate.ownerDocument.scrollingElement;
+  const full = isDocumentViewport
+    ? getViewportBoundingRectangle(candidate)
+    : getBoundingRectangle(candidate);
+
+  return {
+    full,
+    visible: isDocumentViewport ? full : getVisibleBoundingRectangle(candidate),
+  };
+};
 
 /**
  * The narrow slice of `DragDropManager['dragOperation']` that the per-frame algorithm reads.
@@ -100,12 +129,25 @@ const applyReorderScrollCandidate = (
   unresolvedX: boolean,
   unresolvedY: boolean,
 ): { movedX: boolean; movedY: boolean } => {
+  const { full: candidateRect, visible: visibleCandidateRect } =
+    getScrollIntentRectangles(candidate);
+  const frameTransform = getFrameTransform(candidate);
+  const intentInput = projectVisibleScrollIntentInput(
+    transformRectangle(candidateRect, frameTransform),
+    transformRectangle(visibleCandidateRect, frameTransform),
+    pointerPosition,
+  );
+  if (!intentInput) {
+    return { movedX: false, movedY: false };
+  }
+
   const { direction, speed } = detectScrollIntent(
     candidate,
-    pointerPosition,
+    intentInput.coordinates,
     undefined,
     AUTOSCROLL_ACCELERATION,
     AUTOSCROLL_THRESHOLD,
+    intentInput.tolerance,
   );
 
   const effectiveDirection = resolveScrollableDirection(
@@ -120,10 +162,9 @@ const applyReorderScrollCandidate = (
   }
 
   const role: ReorderScrollCandidateRole = candidate === container ? 'container' : 'ancestor';
-  const visibleCandidateRect =
-    role === 'ancestor' ? getVisibleBoundingRectangle(candidate) : containerRect;
+  const clampRectangle = role === 'ancestor' ? visibleCandidateRect : containerRect;
 
-  const delta = resolveReorderScrollDelta(role, containerRect, visibleCandidateRect, {
+  const delta = resolveReorderScrollDelta(role, containerRect, clampRectangle, {
     direction: effectiveDirection,
     speed,
   });

@@ -12,6 +12,77 @@ export interface AutoscrollRectangle {
   readonly left: number;
 }
 
+/** Pointer coordinates and tolerance projected into dnd-kit's full candidate rectangle. */
+export interface ProjectedScrollIntentInput {
+  /** Pointer coordinates with each axis' visible relative position mapped into the full axis. */
+  readonly coordinates: { readonly x: number; readonly y: number };
+  /** Orthogonal tolerance scaled so it remains equivalent to visible CSS pixels. */
+  readonly tolerance: { readonly x: number; readonly y: number };
+}
+
+/** dnd-kit 0.5.0's default orthogonal tolerance, expressed in visible CSS pixels. */
+export const AUTOSCROLL_VISIBLE_TOLERANCE_PX = 10;
+
+const projectAxis = (
+  coordinate: number,
+  fullStart: number,
+  fullEnd: number,
+  visibleStart: number,
+  visibleEnd: number,
+): { coordinate: number; scale: number } | null => {
+  const fullSize = fullEnd - fullStart;
+  const visibleSize = visibleEnd - visibleStart;
+  if (fullSize <= 0 || visibleSize <= 0) {
+    return null;
+  }
+
+  const scale = fullSize / visibleSize;
+  return {
+    coordinate: fullStart + (coordinate - visibleStart) * scale,
+    scale,
+  };
+};
+
+/**
+ * Projects a real pointer from a clipped candidate rectangle into the equivalent relative
+ * position in dnd-kit's full candidate rectangle. This lets dnd-kit's existing threshold,
+ * acceleration, inversion, and scroll-limit algorithm operate relative to the visible area.
+ * @param fullRect - Candidate rectangle in the coordinate space used by `detectScrollIntent`.
+ * @param visibleRect - Actually visible candidate rectangle in the same coordinate space.
+ * @param pointerPosition - Real pointer coordinates in that coordinate space.
+ * @param visibleTolerance - dnd-kit's orthogonal tolerance measured in visible CSS pixels.
+ * @returns Projected coordinates and tolerance, or `null` when either visible axis is empty.
+ */
+export const projectVisibleScrollIntentInput = (
+  fullRect: AutoscrollRectangle,
+  visibleRect: AutoscrollRectangle,
+  pointerPosition: { readonly x: number; readonly y: number },
+  visibleTolerance: number = AUTOSCROLL_VISIBLE_TOLERANCE_PX,
+): ProjectedScrollIntentInput | null => {
+  const x = projectAxis(
+    pointerPosition.x,
+    fullRect.left,
+    fullRect.right,
+    visibleRect.left,
+    visibleRect.right,
+  );
+  const y = projectAxis(
+    pointerPosition.y,
+    fullRect.top,
+    fullRect.bottom,
+    visibleRect.top,
+    visibleRect.bottom,
+  );
+  if (!x || !y) {
+    return null;
+  }
+
+  return {
+    coordinates: { x: x.coordinate, y: y.coordinate },
+    tolerance: { x: visibleTolerance * x.scale, y: visibleTolerance * y.scale },
+  };
+};
+
 /** One axis' detected scroll direction and magnitude, as returned by `detectScrollIntent`. */
 export interface ReorderScrollIntent {
   /** Detected scroll direction per axis. */

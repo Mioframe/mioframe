@@ -4,6 +4,8 @@ import { ReorderSurface } from '.';
 import type { ReorderCommitRequest } from './types';
 import ReorderSelfScrollableStoryItem from './ReorderSelfScrollableStoryItem.vue';
 
+defineProps<{ clipped?: boolean }>();
+
 const itemIds = ref<string[]>(Array.from({ length: 20 }, (_, index) => `row-${index}`));
 
 const onReorder = (request: ReorderCommitRequest<string>) => {
@@ -19,7 +21,11 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
       aria-label="Reorder scroll ancestor"
       class="reorder-self-scrollable-story-harness__ancestor"
     >
-      <div class="reorder-self-scrollable-story-harness__ancestor-spacer-top" aria-hidden="true" />
+      <div
+        class="reorder-self-scrollable-story-harness__ancestor-spacer-top"
+        :class="{ 'reorder-self-scrollable-story-harness__ancestor-spacer-top_clipped': clipped }"
+        aria-hidden="true"
+      />
       <ReorderSurface :item-ids="itemIds" @reorder="onReorder">
         <div
           role="list"
@@ -31,6 +37,7 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
             :key="id"
             :item-id="id"
             :index="index"
+            :snap="!clipped"
           />
         </div>
       </ReorderSurface>
@@ -68,6 +75,11 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
 .reorder-self-scrollable-story-harness__ancestor-spacer-top {
   height: 80px;
   scroll-snap-align: start;
+}
+
+.reorder-self-scrollable-story-harness__ancestor-spacer-top_clipped {
+  height: 220px;
+  scroll-snap-align: none;
 }
 
 .reorder-self-scrollable-story-harness__ancestor-spacer-bottom {

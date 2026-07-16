@@ -68,16 +68,16 @@ component emits one typed `reorder` event per completed, changed, valid drag.
 
 - **Setup**: duplicate initial `itemIds` throw `ReorderSurface: itemIds must contain unique
 values.` deterministically when the component is created.
-- **Drag start**: the same check runs again before any other drag-start work (snapshot, pointer
-  tracking, haptics), so a duplicate introduced by a background mutation since setup or since the
-  last drag is rejected before a new drag can activate.
+- **Before drag start**: a duplicate introduced later causes the next cancelable dnd-kit
+  `beforeDragStart` event to be prevented. This safely rejects activation without throwing and
+  before snapshot creation, dragged state, autoscroll, pointer tracking, or haptics can begin.
 - **Drag end**: a completed drag is ignored, emitting nothing, if either the drag-start snapshot
   or the current controlled `itemIds` contains a duplicate. This never throws — a completion can
   legitimately arrive after external state changed, and the safe response is to ignore it.
 
 `ReorderSurface` does not continuously observe `itemIds` in between these points, and it never
-mutates, repairs, or rolls back the caller's list. A consumer that corrects a duplicate before its
-next drag attempt resumes normal operation without remounting.
+mutates, repairs, or rolls back the caller's list. Correcting duplicate ids restores normal drag
+operation on the same mounted surface; remounting is not required.
 
 The surface also ignores a completed drag's operation, emitting nothing, if the controlled order
 changed during the drag: `itemIds` no longer matches the order observed at drag start, the dragged
@@ -109,6 +109,13 @@ even if the pointer is still held near its own edge — top, bottom, left, and r
 independently, and X and Y can move different ancestors within the same drag. The container's own
 overflow scrolling, if it has any, keeps standard, unrestricted autoscroll: that is what reveals
 hidden sortable items.
+
+Edge intent is measured against each candidate's actually visible rectangle after overflow and
+viewport clipping. The real pointer's relative X/Y position is projected independently into
+dnd-kit's full candidate rectangle, including a corresponding projection of its orthogonal pixel
+tolerance. dnd-kit therefore retains its existing acceleration, percentage threshold,
+scroll-limit, and inverted-axis behavior while those calculations operate relative to visible
+client area. The same visible rectangle is used for the project-specific outer-ancestor clamp.
 
 dnd-kit 0.5.0's default `AutoScroller` has no notion of the reorder container's bounds, so it keeps
 autoscrolling an outer ancestor even once that ancestor can no longer reveal more of the container.

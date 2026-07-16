@@ -52,6 +52,17 @@ const dispatchDragStart = (wrapper: VueWrapper) => {
   });
 };
 
+const dispatchBeforeDragStart = (wrapper: VueWrapper) => {
+  const preventDefault = vi.fn();
+  wrapper.findComponent(DragDropProvider).vm.$emit('beforeDragStart', {
+    cancelable: true,
+    defaultPrevented: false,
+    preventDefault,
+    operation: { source: null, target: null },
+  });
+  return preventDefault;
+};
+
 const dispatchDragEnd = (
   wrapper: VueWrapper,
   options: { canceled?: boolean; source?: unknown } = {},
@@ -259,36 +270,33 @@ describe('ReorderSurface', () => {
     expect(() => mountSurface(['a', 'b', 'a'])).toThrow(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
   });
 
-  it('rejects an in-place duplicate mutation when a drag attempts to start, without emitting', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('cancels an in-place duplicate mutation before drag start, without emitting', () => {
     const { wrapper, itemIds } = mountReactiveSurface(['a', 'b', 'c']);
     const element = wrapper.get('li').element;
 
     itemIds[2] = 'a';
 
-    expect(() => {
-      dispatchDragStart(wrapper);
-    }).toThrow(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
+    const preventDefault = dispatchBeforeDragStart(wrapper);
 
-    // The rejected attempt never captured a drag-start snapshot, so even a stray completion
-    // event for it must resolve to nothing.
+    expect(preventDefault).toHaveBeenCalledOnce();
+
+    // dnd-kit does not emit dragStart after cancellation. A later stray dragEnd therefore has no
+    // captured snapshot from this rejected activation and must resolve to nothing.
     dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 2) });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
 
-  it('resumes normal operation once the reactive list is corrected after a rejected drag start', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('resumes normal operation once the reactive list is corrected after rejected activation', () => {
     const { wrapper, itemIds } = mountReactiveSurface(['a', 'b', 'c']);
     const element = wrapper.get('li').element;
 
     itemIds[2] = 'a';
-    expect(() => {
-      dispatchDragStart(wrapper);
-    }).toThrow(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
+    expect(dispatchBeforeDragStart(wrapper)).toHaveBeenCalledOnce();
 
     itemIds[2] = 'c';
 
+    expect(dispatchBeforeDragStart(wrapper)).not.toHaveBeenCalled();
     dispatchDragStart(wrapper);
     dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 2) });
 

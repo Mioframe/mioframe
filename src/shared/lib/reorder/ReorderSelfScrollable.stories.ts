@@ -20,3 +20,6 @@ type Story = StoryObj<typeof meta>;
  * screenshot coverage applies here; the library owns no visual contract.
  */
 export const Default: Story = {};
+
+/** The inner reorder container begins substantially clipped below the ancestor's visible edge. */
+export const ClippedByAncestor: Story = { args: { clipped: true } };

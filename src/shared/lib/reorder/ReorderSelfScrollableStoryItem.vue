@@ -5,6 +5,7 @@ import { useReorderItem } from './useReorderItem';
 const props = defineProps<{
   itemId: string;
   index: number;
+  snap?: boolean;
 }>();
 
 const rootRef = useTemplateRef<HTMLDivElement>('root');
@@ -23,7 +24,10 @@ const { isDragging } = useReorderItem({
     role="listitem"
     :aria-label="itemId"
     class="reorder-self-scrollable-story-item"
-    :class="{ 'reorder-self-scrollable-story-item_dragging': isDragging }"
+    :class="{
+      'reorder-self-scrollable-story-item_dragging': isDragging,
+      'reorder-self-scrollable-story-item_snap': snap !== false,
+    }"
   >
     {{ itemId }}
   </div>
@@ -38,6 +42,9 @@ const { isDragging } = useReorderItem({
   border: 1px solid #a5b4fc;
   border-radius: 4px;
   cursor: grab;
+}
+
+.reorder-self-scrollable-story-item_snap {
   scroll-snap-align: start;
 }
 

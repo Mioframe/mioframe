@@ -18,9 +18,9 @@ export const hasUniqueItemIds = (itemIds: readonly ReorderItemId[]): boolean =>
 
 /**
  * Throws {@link REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE} when `itemIds` contains a duplicate.
- * `ReorderSurface` calls this at setup and at the start of every drag, so a controlled-list
- * contract violation fails deterministically at its source instead of producing ambiguous drag
- * targeting.
+ * `ReorderSurface` calls this at setup so an invalid initial controlled-list contract fails
+ * deterministically at its source instead of producing ambiguous drag targeting. Later invalid
+ * mutations are handled non-throwingly at dnd-kit's cancelable activation boundary.
  * @param itemIds - The surface's current item id list.
  */
 export const assertUniqueItemIds = (itemIds: readonly ReorderItemId[]): void => {

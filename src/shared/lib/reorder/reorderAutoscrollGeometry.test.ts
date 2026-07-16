@@ -1,7 +1,10 @@
 import { ScrollDirection } from '@dnd-kit/dom/utilities';
 import { describe, expect, it } from 'vitest';
 import type { AutoscrollRectangle, ReorderScrollIntent } from './reorderAutoscrollGeometry';
-import { resolveReorderScrollDelta } from './reorderAutoscrollGeometry';
+import {
+  projectVisibleScrollIntentInput,
+  resolveReorderScrollDelta,
+} from './reorderAutoscrollGeometry';
 
 const rect = (partial: Partial<AutoscrollRectangle>): AutoscrollRectangle => ({
   top: 0,
@@ -19,6 +22,78 @@ const idleIntent: ReorderScrollIntent = {
 const intent = (partial: Partial<ReorderScrollIntent>): ReorderScrollIntent => ({
   ...idleIntent,
   ...partial,
+});
+
+describe('projectVisibleScrollIntentInput', () => {
+  const full = rect({});
+
+  it('keeps coordinates and tolerance unchanged when the full rectangle is visible', () => {
+    expect(projectVisibleScrollIntentInput(full, full, { x: 25, y: 75 })).toEqual({
+      coordinates: { x: 25, y: 75 },
+      tolerance: { x: 10, y: 10 },
+    });
+  });
+
+  it('projects relative Y position when clipped at the start', () => {
+    expect(projectVisibleScrollIntentInput(full, rect({ top: 50 }), { x: 50, y: 75 })).toEqual({
+      coordinates: { x: 50, y: 50 },
+      tolerance: { x: 10, y: 20 },
+    });
+  });
+
+  it('projects relative Y position when clipped at the end', () => {
+    expect(projectVisibleScrollIntentInput(full, rect({ bottom: 50 }), { x: 50, y: 45 })).toEqual({
+      coordinates: { x: 50, y: 90 },
+      tolerance: { x: 10, y: 20 },
+    });
+  });
+
+  it('projects relative X position when clipped horizontally', () => {
+    expect(
+      projectVisibleScrollIntentInput(full, rect({ left: 20, right: 60 }), { x: 40, y: 50 }),
+    ).toEqual({
+      coordinates: { x: 50, y: 50 },
+      tolerance: { x: 25, y: 10 },
+    });
+  });
+
+  it('projects both axes independently when clipped on both axes', () => {
+    expect(
+      projectVisibleScrollIntentInput(full, rect({ left: 20, right: 60, top: 40, bottom: 80 }), {
+        x: 30,
+        y: 70,
+      }),
+    ).toEqual({
+      coordinates: { x: 25, y: 75 },
+      tolerance: { x: 25, y: 25 },
+    });
+  });
+
+  it('returns null for zero visible width', () => {
+    expect(
+      projectVisibleScrollIntentInput(full, rect({ left: 50, right: 50 }), { x: 50, y: 50 }),
+    ).toBeNull();
+  });
+
+  it('returns null for zero visible height', () => {
+    expect(
+      projectVisibleScrollIntentInput(full, rect({ top: 50, bottom: 50 }), { x: 50, y: 50 }),
+    ).toBeNull();
+  });
+
+  it('keeps orthogonal tolerance equivalent to visible CSS pixels', () => {
+    const projected = projectVisibleScrollIntentInput(
+      full,
+      rect({ left: 25, right: 75, top: 20, bottom: 70 }),
+      { x: 20, y: 75 },
+    );
+
+    expect(projected).not.toBeNull();
+    // Five visible pixels outside each visible edge become ten projected pixels outside the
+    // corresponding full edge, so a scaled 20px tolerance still means 10 visible CSS pixels.
+    expect(projected?.coordinates).toEqual({ x: -10, y: 110 });
+    expect(projected?.tolerance).toEqual({ x: 20, y: 20 });
+  });
 });
 
 describe('resolveReorderScrollDelta', () => {
