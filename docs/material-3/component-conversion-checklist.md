@@ -1,21 +1,23 @@
-# Material 3 component authoring checklist
+# Material 3 Expressive component authoring checklist
 
 Use for every new, migrated, or materially changed public Material component. The canonical family blueprint remains in `component-architecture.md`; this checklist does not add contract fields.
 
 ## 1. Authoring and source
 
 - [ ] Recorded `standard-authoring`, `handoff-authoring`, `blocked`, or valid strict-local `Architecture impact: none`.
+- [ ] Targeted the current official Material 3 Expressive contract.
 - [ ] Used `material3` MCP first and cache fallback only when needed.
 - [ ] Recorded exact documentation pages and snapshot.
-- [ ] Used official Material Design Kit evidence when published docs could not resolve exact visual geometry/state composition.
+- [ ] Used the current official Material Design Kit Expressive component set when published docs could not resolve exact visual geometry/state composition.
 - [ ] Recorded Design Kit file/version and component-set reference when used.
+- [ ] Recorded any unavailable Expressive surface, baseline fallback, extension, or deviation explicitly.
 - [ ] Used `partial`/`blocked` instead of inferring missing visual evidence from an existing baseline.
 - [ ] Kept discovery bounded to required scenarios and applicable foundation domains.
 
 ## 2. Scope and usage
 
 - [ ] Started from named scenarios and affected consumers.
-- [ ] Used canonical Material default usage only when no scenario was supplied.
+- [ ] Used the current canonical Expressive default only when no scenario was supplied.
 - [ ] Added optional variants, sizes, shapes, modes, anatomy, or behavior only for current requirements.
 - [ ] Included every reachable API, state, accessibility, usage, foundation, and verification contract of the supported surface.
 - [ ] Recorded unsupported official capabilities instead of implementing them speculatively.
@@ -39,6 +41,7 @@ Use for every new, migrated, or materially changed public Material component. Th
 
 - [ ] Created/updated the complete family README blueprint before production code.
 - [ ] Filled every canonical section from `component-architecture.md` or explicitly recorded `none`/`not applicable`.
+- [ ] Recorded current Expressive sources and any unavailable/unsupported/deviated surface.
 - [ ] Recorded `Unresolved: none` and `Readiness: ready` only after source, ownership, dependencies, visual routes, files, and review requirements were resolved.
 - [ ] No second document or task text adds hidden mandatory blueprint fields.
 - [ ] Implementation contains no decision absent from the ready blueprint or approved handoff.
@@ -81,7 +84,8 @@ Use for every new, migrated, or materially changed public Material component. Th
 
 ## 8. Tokens and property routing
 
-- [ ] Every public `--md-comp-*` maps mechanically to an exact official path.
+- [ ] Every public `--md-comp-*` maps mechanically to an exact current official path.
+- [ ] Expressive token/geometry/state contracts are used where officially available; baseline values are not retained silently.
 - [ ] Every canonical token has one owner.
 - [ ] Token files are independent of active configuration/state and contain no routing, state selectors, private/app tokens, or rendering properties.
 - [ ] Routes exist only for configuration selection.
@@ -110,41 +114,45 @@ Use for every new, migrated, or materially changed public Material component. Th
 - [ ] Added real-input Storybook browser tests for focus, keyboard, pointer/touch, drag, overlay, responsive, lifecycle, or motion behavior as applicable.
 - [ ] Added focused pure tests when helpers/composables exist.
 - [ ] Added changed-consumer preservation checks.
-- [ ] Automated agent reports human visual review as `required`, not `passed`.
-- [ ] Accepted human review PR/date and source snapshot are persisted after approval.
 
-## 10. Validation and review
+## 10. Autonomous evidence review
 
-### Static/structured
+- [ ] Added the `AUTONOMOUS MATERIAL REVIEW` report from `autonomous-review.md`.
+- [ ] Architecture and ownership review is `passed`.
+- [ ] Material 3 Expressive contract review is `passed`.
+- [ ] Accessibility and behavior review is `passed`.
+- [ ] Foundation status and exact relevant gaps are non-blocking.
+- [ ] Source interpretation, state/property routes, route grouping, matrix completeness, and proof-layer ownership were reviewed by the agent rather than deferred to the operator.
+- [ ] Migration completeness, obsolete-path removal, inventory, roadmap, registries, and map updates are `passed` or not applicable.
+- [ ] No non-visual blocker is hidden behind pending visual acceptance.
+
+## 11. Operator visual acceptance
+
+- [ ] Prepared the canonical `StateMatrix` story id, bounded screenshot, and visual diff.
+- [ ] Named the official documentation snapshot and Design Kit component-set reference when required.
+- [ ] Listed expected matches, accepted deviations, and intentionally unsupported visual surface.
+- [ ] Operator is asked only to compare visible fidelity, not API, semantics, accessibility, ownership, source interpretation, migration, or test coverage.
+- [ ] Automated agent reports operator visual acceptance as `required`/`blocked`, never `accepted`.
+- [ ] Accepted operator review PR/date and source snapshot are persisted after approval.
+
+## 12. Validation and simplicity
 
 - [ ] Location, dependency direction, imports, exports, profile files, style order, token syntax, required blueprint sections, registry/map references, story identity, tests, snapshots, and risk registration pass enforceable checks.
 - [ ] `verified` foundation records have a concrete snapshot and named verification.
 - [ ] No automation claims to prove free-form architecture reasoning or visual correctness.
-
-### Review blocking
-
-- [ ] Family and foundation ownership are justified.
-- [ ] Supported surface is minimum complete for required scenarios.
-- [ ] Official source interpretation and deviations are correct.
-- [ ] State/property routes and grouping equivalence are correct.
-- [ ] Matrix distinct-route completeness and readability are confirmed.
-- [ ] Initial/changed visual baseline is compared with official docs and Design Kit when required.
-- [ ] Verification is proportionate and does not duplicate framework/browser/foundation ownership.
-
-## 11. Simplicity and migration
-
 - [ ] Reused native semantics, accepted foundation contracts, generic infrastructure, and existing test infrastructure.
 - [ ] Added no universal base, runtime registry, generic resolver, CSS DSL, cross-family state machine, duplicate theme/overlay system, production matrix component, generic test DSL, package, or publication infrastructure without a current requirement.
 - [ ] Added no compatibility alias without exact consumers and removal target.
-- [ ] Updated all consumers, exports, stories, tests, snapshots, risk registrations, registries, and migration map atomically.
+- [ ] Updated all consumers, exports, stories, tests, snapshots, risk registrations, registries, inventory, roadmap, and migration map atomically.
 - [ ] Removed obsolete paths and parallel logic.
 
-## 12. Completion
+## 13. Completion
 
-- [ ] Blueprint, library map, registries, owner contracts, code, exports, Storybook, tests, snapshots, risk registration, and consumers agree.
+- [ ] Blueprint, library map, registries, inventory, roadmap, owner contracts, code, exports, Storybook, tests, snapshots, risk registration, and consumers agree.
 - [ ] Unsupported capabilities and deviations are explicit.
 - [ ] No unresolved source, ownership, dependency, visual-route, or verification decision is hidden as a workaround.
-- [ ] Required human review is passed or remains an explicit merge blocker.
+- [ ] Agent evidence review is `passed`.
+- [ ] Required operator visual acceptance is `accepted` or remains an explicit merge blocker.
 - [ ] Final repository verification follows `AGENTS.md`.
 
-Do not mark a component aligned, migrated, verified, or architecture-complete while an applicable blocking item remains unresolved.
+Do not mark a component aligned, migrated, verified, architecture-complete, or Expressive-complete while an applicable blocking item remains unresolved.
