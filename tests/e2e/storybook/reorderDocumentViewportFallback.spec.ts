@@ -1,24 +1,10 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { openStory } from './storybook.testUtils';
 
 const STORY_ID = 'shared-lib-reorder-reorderdocumentviewportstoryharness--default';
 
-// Samples a scrollable element's `scrollTop` across consecutive rendered animation frames, so a
-// value that moves during the sampled window (not just at its tail) is caught rather than missed.
-const sampleScrollTop = async (
-  page: Page,
-  scrollable: Locator,
-  frameCount = 10,
-): Promise<number[]> => {
-  const samples: number[] = [];
-  for (let frame = 0; frame < frameCount; frame += 1) {
-    // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-    // eslint-disable-next-line no-await-in-loop -- sampling must happen in order, one per frame
-    samples.push(await scrollable.evaluate((el) => el.scrollTop));
-  }
-  return samples;
-};
+const CONTAINER_SELECTOR = '[aria-label="Document viewport reorder items"]';
+const ANCESTOR_SELECTOR = '[aria-label="Reorder scroll ancestor"]';
 
 const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): void => {
   for (const sample of samples) {
@@ -29,27 +15,184 @@ const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): vo
   }
 };
 
-// Waits for a scrollable element's `scrollTop` to hold steady across several consecutive polls,
-// not just one, before treating it as settled.
-const waitForStableScrollTop = async (
-  scrollable: Locator,
-  requiredStableReads = 3,
-): Promise<number> => {
-  let previous = await scrollable.evaluate((el) => el.scrollTop);
-  let stableCount = 1;
-  await expect
-    .poll(
-      async () => {
-        const current = await scrollable.evaluate((el) => el.scrollTop);
-        stableCount = current === previous ? stableCount + 1 : 1;
-        previous = current;
-        return stableCount >= requiredStableReads;
-      },
-      { timeout: 10000, intervals: [200] },
-    )
-    .toBe(true);
-  return previous;
+// A live autoscroll loop advances `scrollTop` on every rendered frame for as long as the pointer
+// stays near the edge, so the sampled window's last reading must clear its first by more than
+// ordinary layout rounding noise, proving the loop was still running (not just settled) at the
+// moment the sample was taken.
+const assertScrollTopProgressed = (samples: number[]): void => {
+  const first = samples.at(0);
+  const last = samples.at(-1);
+  expect(first).not.toBeUndefined();
+  expect(last).not.toBeUndefined();
+  expect((last ?? 0) - (first ?? 0), `scrollTop samples: ${samples.join(', ')}`).toBeGreaterThan(1);
 };
+
+interface DragProgressionResult {
+  /** Real rendered frames spent waiting for the container's `scrollTop` to first move. */
+  containerMoveFrames: number;
+  /** Real rendered frames spent waiting for the container to reach its own native scroll limit. */
+  containerMaxFrames: number;
+  /** Real rendered frames spent waiting for the ancestor's `scrollTop` to first move. */
+  ancestorMoveFrames: number;
+  /** Real rendered frames spent waiting for the ancestor to reach its own native scroll limit. */
+  ancestorMaxFrames: number;
+  /** Real rendered frames spent waiting for `document.body.scrollTop` to first move. */
+  documentMoveFrames: number;
+  /** `document.body`'s remaining native scroll room the instant its movement was first detected. */
+  remainingRoom: number;
+  /** Whether the reorder container's bottom edge still sat below the visible viewport at that instant. */
+  containerStillHidden: boolean;
+  /** `document.body.scrollTop` sampled once per rendered frame, starting from the first detected move. */
+  samples: number[];
+}
+
+/**
+ * Drives and observes the whole drag progression — container scrolls and maxes out, ancestor
+ * scrolls and maxes out, the document scrolls, then samples it for a few more frames — as one
+ * continuous native loop inside the page, driven only by the page's own `requestAnimationFrame`.
+ *
+ * The autoscroll loop itself runs as fast as the page can render; a real per-frame progression
+ * can advance, and even fully converge, faster than a single Node-to-browser round trip (e.g. an
+ * `expect.poll` check, or a fresh `page.evaluate` call per step) takes to complete. Splitting this
+ * across several round trips leaves gaps in which the loop keeps running unobserved, so by the
+ * time a later step starts watching, an earlier one may already be long finished. Running the
+ * whole sequence in one round trip removes every such gap.
+ * @param page - The Playwright page driving the drag.
+ * @param args - Baseline scroll positions, viewport height, and per-phase frame budgets.
+ * @returns Per-phase frame counts, the document's remaining room and hidden state at first
+ * movement, and the sampled `document.body.scrollTop` trace.
+ */
+const observeDragProgression = (
+  page: Page,
+  args: {
+    containerScrollTopStart: number;
+    ancestorScrollTopStart: number;
+    documentScrollTopStart: number;
+    viewportHeight: number;
+    extraFrames: number;
+    maxFramesPerPhase: number;
+  },
+): Promise<DragProgressionResult> =>
+  page.evaluate(
+    (p) => {
+      const containerEl = document.querySelector(p.containerSelector);
+      const ancestorEl = document.querySelector(p.ancestorSelector);
+      if (!containerEl || !ancestorEl) {
+        throw new Error('missing reorder container or ancestor element');
+      }
+      const docEl = document.body;
+
+      const nextFrame = () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+
+      const waitForCondition = async (isDone: () => boolean): Promise<number> => {
+        let frames = 0;
+        while (!isDone() && frames < p.maxFramesPerPhase) {
+          frames += 1;
+          // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
+          await nextFrame();
+        }
+        return frames;
+      };
+
+      const isAtNativeLimit = (el: Element): boolean =>
+        Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight)) <= 1;
+
+      return (async () => {
+        // 1. The inner reorder container scrolls first...
+        const containerMoveFrames = await waitForCondition(
+          () => containerEl.scrollTop > p.containerScrollTopStart,
+        );
+        // 2. ...and reaches its own native limit.
+        const containerMaxFrames = await waitForCondition(() => isAtNativeLimit(containerEl));
+
+        // 3. The scrollable ancestor then scrolls...
+        const ancestorMoveFrames = await waitForCondition(
+          () => ancestorEl.scrollTop > p.ancestorScrollTopStart,
+        );
+        // 4. ...and reaches its own native limit.
+        const ancestorMaxFrames = await waitForCondition(() => isAtNativeLimit(ancestorEl));
+
+        // 5. The document viewport then scrolls.
+        const documentMoveFrames = await waitForCondition(
+          () => docEl.scrollTop > p.documentScrollTopStart,
+        );
+
+        const remainingRoom = docEl.scrollHeight - docEl.clientHeight - docEl.scrollTop;
+        const containerStillHidden =
+          containerEl.getBoundingClientRect().bottom > p.viewportHeight + 1;
+
+        // 6. A live autoscroll loop keeps advancing it every subsequent frame.
+        const samples: number[] = [docEl.scrollTop];
+        for (let frame = 1; frame < p.extraFrames; frame += 1) {
+          // eslint-disable-next-line no-await-in-loop -- sampling must happen in order, one per frame
+          await nextFrame();
+          samples.push(docEl.scrollTop);
+        }
+
+        return {
+          containerMoveFrames,
+          containerMaxFrames,
+          ancestorMoveFrames,
+          ancestorMaxFrames,
+          documentMoveFrames,
+          remainingRoom,
+          containerStillHidden,
+          samples,
+        };
+      })();
+    },
+    { containerSelector: CONTAINER_SELECTOR, ancestorSelector: ANCESTOR_SELECTOR, ...args },
+  );
+
+interface ReleaseScrollSamples {
+  container: number[];
+  ancestor: number[];
+  document: number[];
+}
+
+// Samples the container's, ancestor's, and `document.body`'s `scrollTop` together, once per
+// rendered frame, for `frameCount` frames — all inside one `page.evaluate` call so the first
+// reading is captured as close to call time as a Node<->browser round trip allows, and every
+// later reading lines up with a real animation frame rather than a separately-timed Node-side
+// poll.
+const sampleReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseScrollSamples> =>
+  page.evaluate(
+    (args) => {
+      const containerEl = document.querySelector(args.containerSelector);
+      const ancestorEl = document.querySelector(args.ancestorSelector);
+      if (!containerEl || !ancestorEl) {
+        throw new Error('missing reorder container or ancestor element');
+      }
+      const docEl = document.body;
+
+      const nextFrame = () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+
+      return (async () => {
+        const container: number[] = [];
+        const ancestor: number[] = [];
+        const documentSamples: number[] = [];
+        for (let frame = 0; frame < args.frameCount; frame += 1) {
+          container.push(containerEl.scrollTop);
+          ancestor.push(ancestorEl.scrollTop);
+          documentSamples.push(docEl.scrollTop);
+          // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
+          await nextFrame();
+        }
+        return { container, ancestor, document: documentSamples };
+      })();
+    },
+    { containerSelector: CONTAINER_SELECTOR, ancestorSelector: ANCESTOR_SELECTOR, frameCount },
+  );
 
 test.describe('document viewport autoscroll fallback', () => {
   test('a drag drains the container, then its ancestor, then the real document viewport, and release stops all three', async ({
@@ -84,8 +227,9 @@ test.describe('document viewport autoscroll fallback', () => {
     }
 
     const centerX = itemBox.x + itemBox.width / 2;
-    const documentScrollTopStart = await documentViewport.evaluate((el) => el.scrollTop);
+    const containerScrollTopStart = await container.evaluate((el) => el.scrollTop);
     const ancestorScrollTopStart = await ancestor.evaluate((el) => el.scrollTop);
+    const documentScrollTopStart = await documentViewport.evaluate((el) => el.scrollTop);
 
     await page.mouse.move(centerX, itemBox.y + itemBox.height / 2);
     await page.mouse.down();
@@ -96,56 +240,61 @@ test.describe('document viewport autoscroll fallback', () => {
     // the container's and the ancestor's own lower visible edge.
     await page.mouse.move(centerX, viewportSize.height - 2, { steps: 4 });
 
-    // 1. The inner reorder container scrolls first...
-    const containerScrollTopBeforeDown = await container.evaluate((el) => el.scrollTop);
-    await expect
-      .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 5000 })
-      .toBeGreaterThan(containerScrollTopBeforeDown);
+    // Matches the previous per-step Node-side timeouts (5s/10s at a nominal 60fps), translated to
+    // rendered-frame budgets so the whole 1-6 progression can be driven and observed without a
+    // Node<->browser round trip between any of its steps.
+    const progression = await observeDragProgression(page, {
+      containerScrollTopStart,
+      ancestorScrollTopStart,
+      documentScrollTopStart,
+      viewportHeight: viewportSize.height,
+      extraFrames: 10,
+      maxFramesPerPhase: 600,
+    });
 
-    // 2. ...and reaches its own native limit. The container is the nearest candidate and is
-    // always resolved before any farther candidate within the same animation frame, so this
-    // never leaves it short of its own true native limit.
-    await expect
-      .poll(
-        () =>
-          container.evaluate((el) => Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight))),
-        { timeout: 10000 },
-      )
-      .toBeLessThanOrEqual(1);
+    expect(progression.containerMoveFrames, 'container scrollTop never moved').toBeLessThan(600);
+    expect(
+      progression.containerMaxFrames,
+      'container scrollTop never reached its native limit',
+    ).toBeLessThan(600);
+    expect(progression.ancestorMoveFrames, 'ancestor scrollTop never moved').toBeLessThan(600);
+    expect(
+      progression.ancestorMaxFrames,
+      'ancestor scrollTop never reached its native limit',
+    ).toBeLessThan(600);
+    expect(
+      progression.documentMoveFrames,
+      'document scrollTop never exceeded its starting value',
+    ).toBeLessThan(600);
 
-    // 3. The scrollable ancestor then scrolls...
-    await expect
-      .poll(() => ancestor.evaluate((el) => el.scrollTop), { timeout: 5000 })
-      .toBeGreaterThan(ancestorScrollTopStart);
+    // Sanity: at the instant document movement was first detected, the document scroller still
+    // had meaningful remaining native scroll room, and the reorder container's own bottom edge
+    // still sat below the visible viewport. Otherwise the sample below would not actually prove a
+    // live document-level autoscroll loop — it would just catch the tail of one that already
+    // finished.
+    expect(progression.remainingRoom).toBeGreaterThan(4);
+    expect(progression.containerStillHidden).toBe(true);
+    assertScrollTopProgressed(progression.samples);
 
-    // 4. ...and reaches its own native limit.
-    await expect
-      .poll(
-        () =>
-          ancestor.evaluate((el) => Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight))),
-        { timeout: 10000 },
-      )
-      .toBeLessThanOrEqual(1);
-
-    // 5. The document viewport then scrolls.
-    await expect
-      .poll(() => documentViewport.evaluate((el) => el.scrollTop), { timeout: 5000 })
-      .toBeGreaterThan(documentScrollTopStart);
-
-    const documentScrollTopSettled = await waitForStableScrollTop(documentViewport);
-    const containerScrollTopBeforeRelease = await container.evaluate((el) => el.scrollTop);
-    const ancestorScrollTopBeforeRelease = await ancestor.evaluate((el) => el.scrollTop);
-
-    // 6. Releasing the pointer stops all later scrolling, at every level.
+    // 7. Releasing the pointer while document-level autoscroll is still active must stop all
+    // three levels immediately — no fixed sleep or wait for a settled position beforehand.
     await page.mouse.up();
 
-    const containerReleaseSamples = await sampleScrollTop(page, container);
-    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
+    const releaseSamples = await sampleReleaseScrollTops(page);
 
-    const ancestorReleaseSamples = await sampleScrollTop(page, ancestor);
-    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
+    const containerBaseline = releaseSamples.container.at(0);
+    const ancestorBaseline = releaseSamples.ancestor.at(0);
+    const documentBaseline = releaseSamples.document.at(0);
+    if (
+      containerBaseline === undefined ||
+      ancestorBaseline === undefined ||
+      documentBaseline === undefined
+    ) {
+      throw new Error('missing post-release scrollTop baseline');
+    }
 
-    const documentReleaseSamples = await sampleScrollTop(page, documentViewport);
-    assertScrollTopHoldsAtBaseline(documentReleaseSamples, documentScrollTopSettled);
+    assertScrollTopHoldsAtBaseline(releaseSamples.container, containerBaseline);
+    assertScrollTopHoldsAtBaseline(releaseSamples.ancestor, ancestorBaseline);
+    assertScrollTopHoldsAtBaseline(releaseSamples.document, documentBaseline);
   });
 });

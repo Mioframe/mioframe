@@ -9,14 +9,22 @@ export const REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE =
   'ReorderSurface: itemIds must contain unique values.';
 
 /**
+ * Whether `itemIds` contains no duplicate values.
+ * @param itemIds - The surface's current item id list.
+ * @returns `true` when every id in `itemIds` is unique.
+ */
+export const hasUniqueItemIds = (itemIds: readonly ReorderItemId[]): boolean =>
+  new Set(itemIds).size === itemIds.length;
+
+/**
  * Throws {@link REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE} when `itemIds` contains a duplicate.
- * `ReorderSurface` calls this both at setup and on every reactive `itemIds` change, so a
- * controlled-list contract violation fails deterministically at its source instead of producing
- * ambiguous drag targeting.
+ * `ReorderSurface` calls this at setup and at the start of every drag, so a controlled-list
+ * contract violation fails deterministically at its source instead of producing ambiguous drag
+ * targeting.
  * @param itemIds - The surface's current item id list.
  */
 export const assertUniqueItemIds = (itemIds: readonly ReorderItemId[]): void => {
-  if (new Set(itemIds).size !== itemIds.length) {
+  if (!hasUniqueItemIds(itemIds)) {
     throw new Error(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
   }
 };
@@ -47,8 +55,9 @@ export interface ReorderDragEndInput<TId extends ReorderItemId> {
  * Resolves a completed drag into a guarded reorder request, or `null` when the operation must be
  * ignored: cancelled, not sortable, stale (`currentItemIds` no longer matches `snapshot`),
  * identity-inconsistent (`source.id` no longer matches `snapshot` at `source.initialIndex`), out
- * of range, or a no-op move. This is controlled-contract validation only — it never mutates or
- * rolls back the caller's list.
+ * of range, a no-op move, or either `snapshot` or `currentItemIds` contains a duplicate id. This is
+ * controlled-contract validation only — it never throws, mutates, or rolls back the caller's list;
+ * a completion that arrives after the controlled list became invalid is simply ignored.
  * @param input - The drag-end snapshot, current props, and dnd-kit operation outcome.
  * @returns A guarded reorder request, or `null` when the operation must be ignored.
  */
@@ -59,6 +68,10 @@ export const resolveReorderDragEnd = <TId extends ReorderItemId>({
   source,
 }: ReorderDragEndInput<TId>): ReorderCommitRequest<TId> | null => {
   if (canceled || !snapshot || !source) {
+    return null;
+  }
+
+  if (!hasUniqueItemIds(snapshot) || !hasUniqueItemIds(currentItemIds)) {
     return null;
   }
 

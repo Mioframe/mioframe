@@ -285,10 +285,14 @@ test('the trailing settings action stays independently clickable and never start
   // The drag-shaped gesture must not have opened the settings menu either.
   await expect(renameMenuItem).toBeHidden();
 
-  // The trailing action remains an ordinary independent click target.
+  // The trailing action remains an ordinary independent click target: a normal click opens the
+  // menu, and a second click on the same trigger closes it again.
   await settingsButton.click();
+  await expect(settingsButton).toHaveAttribute('aria-expanded', 'true');
   await expect(renameMenuItem).toBeVisible();
-  await page.keyboard.press('Escape');
+
+  await settingsButton.click();
+  await expect(settingsButton).toHaveAttribute('aria-expanded', 'false');
   await expect(renameMenuItem).toBeHidden();
 
   await closeBottomSheet(page, /database views sheet/i);

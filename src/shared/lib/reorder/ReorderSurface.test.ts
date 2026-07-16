@@ -1,6 +1,6 @@
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, inject } from 'vue';
+import { defineComponent, h, inject, reactive } from 'vue';
 import { DragDropProvider } from '@dnd-kit/vue';
 import { isSortableOperation } from '@dnd-kit/vue/sortable';
 import ReorderSurface from './ReorderSurface.vue';
@@ -61,6 +61,24 @@ const dispatchDragEnd = (
     canceled: options.canceled ?? false,
     suspend: () => ({ resume: () => undefined, abort: () => undefined }),
   });
+};
+
+// Mounts `ReorderSurface` behind a reactive array owned by the test, so a later in-place
+// mutation (e.g. `itemIds[i] = ...`) reaches the surface exactly as a real consumer's mutation
+// would, without remounting or replacing the array reference.
+const mountReactiveSurface = (initialItemIds: string[]) => {
+  const itemIds = reactive([...initialItemIds]);
+  const wrapper = mount(ReorderSurface, {
+    attachTo: document.body,
+    props: { itemIds },
+    slots: {
+      default: () =>
+        itemIds.map((id, index) =>
+          h(ReorderTestItem, { key: `${id}-${String(index)}`, id, index }),
+        ),
+    },
+  });
+  return { wrapper, itemIds };
 };
 
 describe('ReorderSurface', () => {
@@ -241,18 +259,67 @@ describe('ReorderSurface', () => {
     expect(() => mountSurface(['a', 'b', 'a'])).toThrow(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
   });
 
-  it('throws the same deterministic error when a reactive change introduces duplicate itemIds', async () => {
-    const errorHandler = vi.fn();
-    const wrapper = mountSurface(['a', 'b', 'c']);
-    wrapper.vm.$.appContext.app.config.errorHandler = errorHandler;
+  it('rejects an in-place duplicate mutation when a drag attempts to start, without emitting', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { wrapper, itemIds } = mountReactiveSurface(['a', 'b', 'c']);
+    const element = wrapper.get('li').element;
 
-    await wrapper.setProps({ itemIds: ['a', 'b', 'b'] });
+    itemIds[2] = 'a';
 
-    expect(errorHandler).toHaveBeenCalledWith(
-      expect.objectContaining({ message: REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE }),
-      expect.anything(),
-      expect.any(String),
-    );
+    expect(() => {
+      dispatchDragStart(wrapper);
+    }).toThrow(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
+
+    // The rejected attempt never captured a drag-start snapshot, so even a stray completion
+    // event for it must resolve to nothing.
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('resumes normal operation once the reactive list is corrected after a rejected drag start', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { wrapper, itemIds } = mountReactiveSurface(['a', 'b', 'c']);
+    const element = wrapper.get('li').element;
+
+    itemIds[2] = 'a';
+    expect(() => {
+      dispatchDragStart(wrapper);
+    }).toThrow(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
+
+    itemIds[2] = 'c';
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toHaveLength(1);
+    expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
+      expectedOrderedIds: ['a', 'b', 'c'],
+      orderedIds: ['b', 'c', 'a'],
+    });
+  });
+
+  it('ignores a drag completion that arrives after the controlled list became a duplicate', () => {
+    const { wrapper, itemIds } = mountReactiveSurface(['a', 'b', 'c']);
+    const element = wrapper.get('li').element;
+
+    dispatchDragStart(wrapper);
+    itemIds[2] = 'a';
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+
+    // Restoring a valid, unique order lets a later drag emit normally again, without remounting.
+    itemIds[2] = 'c';
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toHaveLength(1);
+    expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
+      expectedOrderedIds: ['a', 'b', 'c'],
+      orderedIds: ['b', 'c', 'a'],
+    });
   });
 
   it('emits nothing when the controlled itemIds changed during an active drag', async () => {

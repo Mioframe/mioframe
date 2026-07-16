@@ -52,14 +52,16 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
  * turn:
  *
  * 1. The container's own overflow (many items in a short box) reveals hidden rows.
- * 2. The container's own box (300px) is deliberately taller than the ancestor's own box (150px)
+ * 2. The container's own box (500px) is deliberately taller than the ancestor's own box (350px)
  *    and there is no ancestor content after it, so the ancestor's native scroll limit and "the
  *    container is now fully revealed within me" coincide exactly: the ancestor drains its own
  *    real scroll room to reveal the rest of the container.
  * 3. The page spacer above the ancestor leaves only part of the ancestor's own box inside the
  *    browser viewport on load. The ancestor's own on-page position never changes as it scrolls
  *    internally, so fully revealing it (and the container inside it) needs the real document to
- *    scroll too.
+ *    scroll too. The ancestor's own box is tall enough that revealing it fully takes a second or
+ *    more of real document scrolling, leaving a comfortable margin to sample active autoscroll
+ *    before it converges on its native limit.
  */
 .reorder-document-viewport-story-harness {
   width: 100%;
@@ -78,7 +80,7 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
 .reorder-document-viewport-story-harness__ancestor {
   width: 100%;
   max-width: 320px;
-  max-height: 150px;
+  max-height: 350px;
   overflow: auto;
   scroll-behavior: smooth;
   border: 1px solid #ccc;
@@ -93,7 +95,7 @@ const onReorder = (request: ReorderCommitRequest<string>) => {
   flex-direction: column;
   gap: 6px;
   padding: 8px;
-  max-height: 300px;
+  max-height: 500px;
   overflow: auto;
   scroll-behavior: smooth;
   border: 1px dashed #999;

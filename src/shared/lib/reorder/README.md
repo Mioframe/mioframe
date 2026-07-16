@@ -64,10 +64,20 @@ component emits one typed `reorder` event per completed, changed, valid drag.
 
 ## Controlled-list contract
 
-`itemIds` must contain unique values. A duplicate — in the initial props or introduced by a later
-reactive change — throws `ReorderSurface: itemIds must contain unique values.` deterministically;
-no drag can start or emit from an invalid surface. This is controlled-contract validation, not
-persistence or session recovery: `ReorderSurface` never mutates or rolls back the caller's list.
+`itemIds` must contain unique values. This is validated at three points, not continuously:
+
+- **Setup**: duplicate initial `itemIds` throw `ReorderSurface: itemIds must contain unique
+values.` deterministically when the component is created.
+- **Drag start**: the same check runs again before any other drag-start work (snapshot, pointer
+  tracking, haptics), so a duplicate introduced by a background mutation since setup or since the
+  last drag is rejected before a new drag can activate.
+- **Drag end**: a completed drag is ignored, emitting nothing, if either the drag-start snapshot
+  or the current controlled `itemIds` contains a duplicate. This never throws — a completion can
+  legitimately arrive after external state changed, and the safe response is to ignore it.
+
+`ReorderSurface` does not continuously observe `itemIds` in between these points, and it never
+mutates, repairs, or rolls back the caller's list. A consumer that corrects a duplicate before its
+next drag attempt resumes normal operation without remounting.
 
 The surface also ignores a completed drag's operation, emitting nothing, if the controlled order
 changed during the drag: `itemIds` no longer matches the order observed at drag start, the dragged
