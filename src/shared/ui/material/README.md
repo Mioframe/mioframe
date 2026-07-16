@@ -15,6 +15,8 @@ Canonical architecture:
 - `docs/material-3/component-architecture.md`;
 - `docs/material-3/component-testing.md`.
 
+Operational progress, blockers, and the single next action are tracked in `docs/material-3/library-roadmap.md`.
+
 Policy and source-evidence documents remain under `docs/material-3`. This directory owns runtime/library artifacts and their local contracts.
 
 ## Ownership map
@@ -88,7 +90,7 @@ Using an external generic utility does not transfer its ownership into Material.
 
 ## Physical migration map
 
-This table tracks physical ownership only. Foundation/component alignment and verification status remain in their registries and family blueprints.
+This table tracks physical ownership only. Foundation/component alignment and verification status remain in their registries and family blueprints. Milestone sequencing and progress remain in `docs/material-3/library-roadmap.md`.
 
 | Area                              | Current production owner                                                       | Canonical owner                                                                     | Migration status              |
 | --------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ----------------------------- |
