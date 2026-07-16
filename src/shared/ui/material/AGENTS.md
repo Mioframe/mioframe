@@ -1,17 +1,25 @@
 # src/shared/ui/material
 
-Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material library boundary.
+Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 Expressive library boundary.
 
 ## Routing
 
 - Use `material-component-authoring` for creating, migrating, aligning, or materially changing an official public component family.
 - Use `material-foundation` for cross-family Material foundation changes.
-- Use `material3-guidelines` for official sources, component choice, usage, composition, and minimum supported surface.
+- Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and minimum supported surface.
 - Use `vue-component-implementation` only for Vue mechanics after the Material blueprint is ready.
 - Use the specialized testing skills and `verification` for their owned proof layers.
+- Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
 - Use `docs/material-3` as the durable source of schemas and invariants.
 
 Do not use `shared-ui-implementation` as the authoring workflow for an official Material family. This file owns scoped boundaries and routing; `material-component-authoring` owns execution order and stop conditions.
+
+## Canonical target
+
+- Official components implement the current official Material 3 Expressive contract where one exists.
+- Baseline Material 3 is not a silent fallback and may remain only when current official sources provide no Expressive contract for the supported surface or an explicit deviation is approved.
+- Existing Mioframe rendering, old snapshots, another implementation, and memory are not Material authority.
+- Missing or conflicting source evidence is a blocker, not a visual-review task.
 
 ## Contains
 
@@ -64,11 +72,15 @@ material library → project-specific shared UI and product layers
 - Existing Material code outside this directory is legacy, not a template for new ownership.
 - Strict local repairs may remain at legacy paths only under a valid `Architecture impact: none` decision.
 - Migrate one cohesive family or foundation domain per focused PR.
-- A migration must update all affected consumers, exports, contracts, registries, stories, tests, snapshots, risk registration, and the migration map, then remove obsolete paths.
+- A migration must update all affected consumers, exports, contracts, registries, inventory, roadmap, stories, tests, snapshots, risk registration, and the migration map, then remove obsolete paths.
 - Temporary compatibility requires exact consumers, no new usage, and a removal target.
 
-## Verification boundary
+## Verification and review boundary
 
-Automation may enforce deterministic repository facts. Architecture, Material interpretation, route equivalence, and visual correctness remain explicit review gates.
+- Automation enforces deterministic repository facts and test outcomes.
+- The coding agent owns source-backed architecture, Material contract, accessibility, behavior, route-equivalence, migration, and proof-layer evidence review.
+- The operator normally owns only final comparison of prepared `StateMatrix` screenshots with named official sources.
+- The agent must not report operator visual acceptance as accepted.
+- Unresolved architecture, source, foundation, compatibility, product-deviation, or behavior decisions remain explicit blockers and are not delegated to screenshot review.
 
-Do not claim that automation proves free-form architecture decisions or human visual correctness. Final completion requires repository verification.
+Do not claim that automation alone proves free-form architecture or visual correctness. Final completion requires agent evidence review, applicable operator visual acceptance, and repository verification.
