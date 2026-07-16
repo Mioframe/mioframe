@@ -5,7 +5,7 @@ description: 'Use before non-trivial implementation work to resolve owners, publ
 
 # Implementation preflight
 
-Use before non-trivial code edits. Keep the artifact short and bounded. Do not repeat scoped repository policy or copy complete domain blueprints into the preflight.
+Use before non-trivial code edits. Keep the artifact short and bounded. Do not repeat scoped repository policy or copy complete domain contracts into the preflight.
 
 ## Activation
 
@@ -31,11 +31,11 @@ Proceed without a separate architecture handoff only when an applicable reposito
 
 Stop when:
 
-- a required handoff is missing/not ready;
+- a required handoff is missing or not ready;
 - the deterministic path remains `blocked`;
 - ownership, source of truth, final state, compatibility, or verification is unresolved;
 - a narrower design satisfies the same acceptance criteria;
-- planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, or testing framework lacks a current requirement.
+- a planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, or testing framework lacks a current requirement.
 
 Do not hide the same complexity by splitting it across more files.
 
@@ -49,61 +49,44 @@ For persisted formats, public APIs, shared UI, Material library/foundation, serv
 - applicable edge cases;
 - verification per distinct consumer path.
 
-## Material work
+## Workflow routing
 
-For Material-related work use `material3-guidelines` and the canonical architecture documents.
+Use the domain workflow as the primary execution contract:
 
-The preflight records only:
+- official public Material component family: `material-component-authoring`;
+- Material foundation contract: `material-foundation`;
+- project-specific or generic shared UI primitive: `shared-ui-implementation`;
+- Material component choice, usage, composition, or product UI/UX: `material3-guidelines`;
+- storage/service/worker/provider: applicable scoped rules and `crdt-storage`;
+- diagnostics: `diagnostic-events`;
+- ordinary Vue implementation mechanics: `vue-component-implementation`.
 
-- authoring mode;
-- family/foundation owner and change mode;
-- canonical blueprint or registry record being changed;
-- unresolved blockers;
-- affected consumers;
-- required proof and review gates.
+The preflight records only task-specific owners, risks, pass order, and proof. It must not restate a family blueprint, foundation registry schema, Material migration workflow, state-matrix rules, or validator checklist.
 
-Do not restate the complete family blueprint, foundation registry schema, state-matrix rules, or validator checklist here.
+### Material component work
 
-### Public Material component
+When `material-component-authoring` applies, record only:
 
-Before production edits confirm:
+- selected authoring and component change mode;
+- canonical family blueprint path and readiness;
+- affected family, foundation domains, exports, and consumers;
+- safe implementation passes;
+- highest-risk contract/browser/visual proof;
+- unresolved blockers and review gates.
 
-- the complete canonical family blueprint in `component-architecture.md` is ready;
-- supported scenarios and surface are bounded;
-- current/canonical paths, exports, and consumer migration are resolved;
-- foundation dependencies are non-blocking and correctly classified;
-- the smallest architecture profile is selected;
-- API, native semantics, state/DOM ownership, token routes, and files are resolved;
-- the standard test profile covers distinct component-owned visual routes and applicable browser behavior;
-- required architecture, Material, and human visual review is identified.
+Do not reconstruct the Material workflow here. A ready family blueprint and `material-component-authoring` define it.
 
-A separate handoff is unnecessary when all of these are source-resolved. Use `blocked` when official guidance, Design Kit evidence, ownership, extension semantics, compatibility, foundation capability, distinct visual-route coverage, generic infrastructure, or required browser proof remains unresolved.
+### Material foundation work
 
-### Material foundation
-
-Apply `material-foundation` and record:
+When `material-foundation` applies, record only:
 
 - registry domain/status/snapshot;
 - current/canonical owner and migration status;
 - public/private/testing contract delta;
-- mode: `none`, `library-relocation-only`, `additive`, `correction`, `replacement`, or `refresh`;
+- selected change mode;
 - consumers and representative verification.
 
 Physical relocation must not hide a correction or replacement.
-
-### Material migration
-
-For family/domain relocation record:
-
-- one cohesive owner;
-- complete source/consumer import inventory;
-- public export plan;
-- contract/story/test/snapshot/risk-registration updates;
-- registry and migration-map updates;
-- obsolete-path removal;
-- any temporary compatibility contract and removal target.
-
-Do not combine unrelated moves, broad cleanup, foundation corrections, and visual alignment in one migration PR.
 
 ## Scoped rule application
 
@@ -111,7 +94,7 @@ Use nested `AGENTS.md` and domain skills as detailed policy.
 
 - Storage/service/worker/provider work: record fact owner, public path, error/recovery owner, and forbidden UI reconstruction.
 - FSD cross-layer work: record model/read/action/composition split and public APIs.
-- Shared UI: record consumer blast radius and the applicable Material/browser/visual proof.
+- Shared UI: record consumer blast radius and applicable contract/browser/visual proof.
 - Diagnostics: record only the safe boundary and privacy contract.
 
 A scoped-rule conflict is blocking.
@@ -155,4 +138,4 @@ Search only enough to identify the current owner and reusable mechanism. Do not 
 
 ## Output discipline
 
-Keep the written preflight usually within 8–15 short lines plus verification. Before completion, confirm the diff still matches the ready handoff or canonical blueprint and that owners, exports, registry/map records, tests, and review status remain consistent.
+Keep the written preflight usually within 8–15 short lines plus verification. Before completion, confirm the diff still matches the ready handoff or deterministic workflow and that owners, exports, registry/map records, tests, and review status remain consistent.
