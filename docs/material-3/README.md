@@ -4,10 +4,11 @@ This directory defines the project contract for the standalone Material library 
 
 ## Policy set
 
-Library boundary and migration:
+Library boundary, inventory, and migration:
 
 - [Library architecture](./library-architecture.md)
 - [Library implementation roadmap](./library-roadmap.md) — current milestone, blockers, next action, and progress
+- [Shared UI library inventory](./ui-library-inventory.md) — exhaustive classification, priority, queue state, and terminal outcome for every shared UI artifact
 - [`src/shared/ui/material` library map](../../src/shared/ui/material/README.md)
 
 Foundation architecture and status:
@@ -43,6 +44,8 @@ Component and completion policies:
 
 - Architecture documents own durable schemas and invariants.
 - `AGENTS.md` files own scoped hard boundaries and routing.
+- `library-roadmap.md` owns milestone state, blockers, dependencies, and the single next action.
+- `ui-library-inventory.md` owns exhaustive shared-UI classification, evidence-backed priority, queue state, and terminal outcome.
 - `material-component-authoring` owns execution order and stop conditions for creating, migrating, aligning, or materially changing official public component families, including legacy `MD*` components.
 - `material-foundation` owns execution order for cross-family foundation changes.
 - `material3-guidelines` owns official source lookup, component choice, usage, composition, and product-facing Material decisions.
@@ -56,26 +59,30 @@ No skill or secondary policy may add mandatory fields to the canonical family bl
 ## Goals
 
 1. `src/shared/ui/material` is the canonical location for new Material implementation.
-2. Official documentation and the official Material Design Kit, when required, explain the supported surface and visual contract.
-3. Storybook documents the supported surface, extensions, deviations, and one canonical matrix per component.
-4. Every new or migrated component follows one proof profile: architecture, contract, matrix visual regression, browser behavior when applicable, pure behavior when applicable, and required review.
-5. Every distinct supported component-owned visible route is readable in the canonical matrix; non-visual state contracts remain in contract/browser tests.
-6. Public `--md-*` tokens and `MD*` APIs use verified Material vocabulary.
-7. Generic infrastructure, foundation, families, patterns, project UI, and product layers have distinct owners.
-8. Project-specific UI remains outside official component families.
-9. Usage, tokens, units, API, accessibility, interaction, anatomy, ownership, adaptivity, testing, and review are all part of alignment.
-10. A coding agent can author a standard component from a concise request using one complete family blueprint.
-11. Requests without detailed scenarios fall back to canonical Material default usage rather than speculative scope.
-12. Configuration routing and state resolution remain independent so components receive only required layers.
-13. Foundation contracts expand on demand and remain registry-backed.
-14. Existing Material code migrates family-by-family/domain-by-domain without permanent compatibility paths.
-15. Automation catches deterministic drift; architecture and visual correctness remain explicit review gates.
+2. Every shared UI artifact is classified as official Material, project-specific, generic, retained, consolidated, or removed; no artifact is forced into Material merely because it is UI.
+3. Migration priority is evidence-backed by consumer reach, critical workflows, interaction frequency, foundation leverage, risk, and dependency readiness.
+4. Official documentation and the official Material Design Kit, when required, explain the supported surface and visual contract.
+5. Storybook documents the supported surface, extensions, deviations, and one canonical matrix per component.
+6. Every new or migrated component follows one proof profile: architecture, contract, matrix visual regression, browser behavior when applicable, pure behavior when applicable, and required review.
+7. Every distinct supported component-owned visible route is readable in the canonical matrix; non-visual state contracts remain in contract/browser tests.
+8. Public `--md-*` tokens and `MD*` APIs use verified Material vocabulary.
+9. Generic infrastructure, foundation, families, patterns, project UI, and product layers have distinct owners.
+10. Project-specific UI remains outside official component families.
+11. Usage, tokens, units, API, accessibility, interaction, anatomy, ownership, adaptivity, testing, and review are all part of alignment.
+12. A coding agent can author a standard component from a concise request using one complete family blueprint.
+13. Requests without detailed scenarios fall back to canonical Material default usage rather than speculative scope.
+14. Configuration routing and state resolution remain independent so components receive only required layers.
+15. Foundation contracts expand on demand and remain registry-backed.
+16. Existing Material code migrates family-by-family/domain-by-domain without permanent compatibility paths.
+17. Automation catches deterministic drift; architecture, priority, and visual correctness remain explicit review gates.
 
 ## Scope
 
-Existing code is not automatically compliant, consistently tested, visually reviewed, or physically migrated.
+Existing code is not automatically compliant, consistently tested, visually reviewed, physically migrated, or correctly classified.
 
 New Material artifacts use the canonical library and test architecture immediately. Existing code outside the library is legacy and may receive only strict local repairs until focused migration.
+
+Project-specific and generic shared UI may remain outside `src/shared/ui/material` permanently when the inventory records the correct owner and classification.
 
 A local repair may use `Architecture impact: none` only when it preserves component/foundation contracts, location, public imports, testing surface, behavior, and unrelated output.
 
@@ -83,12 +90,13 @@ A local repair may use `Architecture impact: none` only when it preserves compon
 
 The current operational state and single next action are tracked in [Library implementation roadmap](./library-roadmap.md).
 
-1. Keep source, library, foundation, component, testing, registry, validation, and verification policies consistent.
+1. Keep source, library, foundation, component, testing, registry, inventory, validation, and verification policies consistent.
 2. Implement static library-boundary and test-artifact checks for new work and active migrations.
 3. Implement structured blueprint/registry reference checks without a semantic Markdown DSL.
-4. Validate minimum Button foundation domains and exact snapshots.
-5. Relocate/migrate `MDButton` with its canonical matrix and no intentional behavior change.
-6. Complete remaining Button alignment separately and perform human visual review.
-7. Validate the same architecture independently on `MDSwitch`.
-8. Prove autonomous authoring on a genuinely new required component.
-9. Migrate further families and improve foundation domains only from confirmed needs.
+4. Populate the exhaustive shared UI inventory and establish an evidence-backed migration queue.
+5. Validate minimum Button foundation domains and exact snapshots after confirming the first pilot order.
+6. Relocate/migrate `MDButton` with its canonical matrix and no intentional behavior change.
+7. Complete remaining Button alignment separately and perform human visual review.
+8. Validate the architecture on an independent high-priority stateful family, with `MDSwitch` as the default candidate.
+9. Prove autonomous authoring on a genuinely new required component.
+10. Migrate further families and foundations by inventory priority until every row is migrated, retained, or removed.
