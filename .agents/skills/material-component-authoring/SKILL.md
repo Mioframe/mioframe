@@ -2,10 +2,7 @@
 name: material-component-authoring
 description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family, including legacy MD* components outside the canonical library. Owns the complete execution order from task classification and source lookup through blueprint readiness, implementation passes, migration, verification, and review.'
 paths:
-  - 'src/shared/ui/material/**'
-  - 'docs/material-3/**'
-  - 'tests/e2e/visual/**'
-  - 'tests/e2e/storybook/**'
+  - 'src/shared/ui/material/components/**'
 ---
 
 # Material component authoring
