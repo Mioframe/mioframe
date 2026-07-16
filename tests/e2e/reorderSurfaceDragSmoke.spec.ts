@@ -906,3 +906,183 @@ test.describe('activation isolation', () => {
     await closeBottomSheet(page, /database views sheet/i);
   });
 });
+
+test.describe('bottom sheet scroll stability during activation and release', () => {
+  test('grabbing and releasing a row near the top edge does not move the bottom sheet', async ({
+    page,
+  }) => {
+    test.slow();
+    await launchApp(page);
+    await openOpfs(page);
+
+    const directoryName = await createDirectory(page, createUniqueName('scroll stability lab'));
+    await openDirectory(page, directoryName);
+
+    const documentName = await createDatabaseDocument(
+      page,
+      createUniqueName('scroll stability catalog'),
+    );
+    await openDocumentFromExplorer(page, documentName);
+
+    const propertyName = await createStringProperty(page, createUniqueName('title'));
+    await addDatabaseItem(page, propertyName, createUniqueName('row'));
+
+    // Enough views to overflow the sheet's own open-reveal height and create meaningful
+    // bottom-sheet scroll room.
+    const viewNames: string[] = [];
+    for (let index = 0; index < 18; index += 1) {
+      const viewName = createUniqueName(`view stability ${String(index).padStart(2, '0')}`);
+      // eslint-disable-next-line no-await-in-loop -- each view must be created before the next
+      viewNames.push(await addView(page, viewName));
+    }
+
+    const sheet = await openViewsSheet(page);
+    const list = sheet.getByRole('list');
+    const dragHandle = sheet.getByRole('button', { name: /close sheet|expand sheet/i });
+
+    // The sheet opens itself to a non-zero scrollTop; wait for that open animation to settle
+    // before arranging the rest of the scenario.
+    const openedScrollTop = await waitForStableScrollTop(sheet);
+    expect(openedScrollTop).toBeGreaterThan(0);
+
+    // Scroll a little further, as a user browsing past the header to reach a row further down a
+    // long list would, until the drag handle has just scrolled out of view while a reorder row's
+    // top edge is still visible: the exact "row near the top edge of the screen, no autoscroll
+    // needed" geometry from the bug report.
+    await expect
+      .poll(
+        async () => {
+          const handleBox = await dragHandle.boundingBox();
+          if (handleBox && handleBox.y + handleBox.height <= 0) {
+            return true;
+          }
+          await sheet.evaluate((el) => {
+            el.scrollTo({ top: el.scrollTop + 8, behavior: 'instant' });
+          });
+          return false;
+        },
+        { timeout: 10000, intervals: [30] },
+      )
+      .toBe(true);
+
+    await waitForStableScrollTop(sheet);
+
+    // The reorder container's own top edge must already be visible: no autoscroll should be
+    // needed to reveal it before or during this gesture.
+    const listBoxBeforeDrag = await list.boundingBox();
+    if (!listBoxBeforeDrag) {
+      throw new Error('missing bounding box for reorder container');
+    }
+    expect(listBoxBeforeDrag.y).toBeGreaterThanOrEqual(-1);
+
+    // Find the row closest to (but not above) the top edge of the viewport.
+    const allRows = list.locator(':scope > *');
+    const rowCount = await allRows.count();
+    const rowBoxes: {
+      index: number;
+      box: { x: number; y: number; width: number; height: number };
+    }[] = [];
+    for (let i = 0; i < rowCount; i += 1) {
+      // eslint-disable-next-line no-await-in-loop -- geometry must be read row by row in order
+      const box = await allRows.nth(i).boundingBox();
+      if (box) {
+        rowBoxes.push({ index: i, box });
+      }
+    }
+    const chosen = rowBoxes
+      .filter((r) => r.box.y >= 0)
+      .sort((a, b) => a.box.y - b.box.y)
+      .at(0);
+    if (!chosen) {
+      throw new Error('no visible reorder row found near the top edge');
+    }
+    expect(chosen.box.y).toBeLessThan(50);
+
+    const draggedRow = allRows.nth(chosen.index);
+    const rowCenterX = chosen.box.x + chosen.box.width / 2;
+    const rowCenterY = chosen.box.y + chosen.box.height / 2;
+
+    // Baseline geometry snapshot: a small fractional tolerance absorbs layout rounding, but any
+    // larger deviation is a real, user-visible jump.
+    const scrollTopBeforeDrag = await sheet.evaluate((el) => el.scrollTop);
+    const scrollTolerance = 1;
+
+    const assertNoJump = async (label: string) => {
+      const current = await sheet.evaluate((el) => el.scrollTop);
+      expect(Math.abs(current - scrollTopBeforeDrag), label).toBeLessThanOrEqual(scrollTolerance);
+    };
+
+    // Autoscroll guard: the container's top is already visible and the pointer has not entered
+    // a scroll-triggering edge zone, so the reorder plugin must not request scrim movement yet.
+    await assertNoJump('scrollTop before activation');
+
+    // Pointer-down on the row's real primary-action button.
+    await page.mouse.move(rowCenterX, rowCenterY);
+    await page.mouse.down();
+    await assertNoJump('scrollTop right after pointerdown');
+
+    // Cross the mouse activation distance by only a small amount.
+    await page.mouse.move(rowCenterX, rowCenterY + 8, { steps: 4 });
+    await expect(draggedRow).toHaveClass(/md-state_dragged/);
+    await assertNoJump('scrollTop right after activation');
+
+    // Sample several animation frames: a jump that happens and later settles back must still be
+    // caught, not just the tail end of the gesture.
+    const activationSamples = await sampleScrollTop(page, sheet);
+    assertScrollTopHoldsAtBaseline(activationSamples, scrollTopBeforeDrag);
+
+    // Slightly move the row without requiring ancestor autoscroll.
+    await page.mouse.move(rowCenterX, rowCenterY + 20, { steps: 4 });
+    await assertNoJump('scrollTop after a small in-place move');
+
+    // Trigger a real sortable DOM displacement: move far enough to cross past a neighboring row.
+    await page.mouse.move(rowCenterX, rowCenterY + chosen.box.height * 2, { steps: 8 });
+    await assertNoJump('scrollTop after a real sortable displacement');
+
+    const displaceSamples = await sampleScrollTop(page, sheet);
+    assertScrollTopHoldsAtBaseline(displaceSamples, scrollTopBeforeDrag);
+
+    // Release the pointer; release must not change the sheet position either.
+    await page.mouse.up();
+    await assertNoJump('scrollTop right after release');
+
+    const releaseSamples = await sampleScrollTop(page, sheet);
+    assertScrollTopHoldsAtBaseline(releaseSamples, scrollTopBeforeDrag);
+
+    // Drag cleanup completes: no row is left in the dragged state.
+    await expect(sheet.locator('.md-state_dragged')).toHaveCount(0);
+
+    // Focus remains inside the modal bottom sheet, and the focus trap keeps cycling focus
+    // within it instead of leaking out to the surrounding page.
+    const isFocusInsideSheet = () =>
+      page.evaluate(() => {
+        const scrim = document.querySelector('.md-bottom-sheet__scrim');
+        return !!scrim && scrim.contains(document.activeElement);
+      });
+    expect(await isFocusInsideSheet()).toBe(true);
+
+    for (let i = 0; i < 5; i += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each Tab must land before the next is sent
+      await page.keyboard.press('Tab');
+      // eslint-disable-next-line no-await-in-loop -- containment must be checked after each Tab
+      expect(await isFocusInsideSheet(), `focus stayed trapped after Tab #${i + 1}`).toBe(true);
+    }
+
+    // The focus trap remains functional for its other documented behavior too: Escape still
+    // closes the modal sheet.
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+
+    // Ordinary intentional bottom-sheet scrolling still works after all of this.
+    const reopenedSheet = await openViewsSheet(page);
+    await waitForStableScrollTop(reopenedSheet);
+    const scrollTopBeforeWheel = await reopenedSheet.evaluate((el) => el.scrollTop);
+    await reopenedSheet.hover();
+    await page.mouse.wheel(0, 200);
+    await expect
+      .poll(() => reopenedSheet.evaluate((el) => el.scrollTop))
+      .not.toBe(scrollTopBeforeWheel);
+
+    await closeBottomSheet(page, /database views sheet/i);
+  });
+});

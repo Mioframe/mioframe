@@ -89,8 +89,14 @@ const onClickScrim = () => {
 
 const ariaHidden = useModalAriaHidden();
 
+// preventScroll stops the trap's internal focus() calls (initial activation and its
+// mutation-driven fallback redirect when the previously focused element leaves the DOM,
+// e.g. during a reorder drag) from triggering the browser's native scroll-into-view, which
+// would otherwise move this component's own scrollable scrim — the sheet's positioning
+// mechanism — out from under the user.
 const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(containerEl, {
   allowOutsideClick: true,
+  preventScroll: true,
 });
 
 watch(
