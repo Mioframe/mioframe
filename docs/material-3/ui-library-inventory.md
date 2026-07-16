@@ -94,21 +94,21 @@ Use exactly one status:
 
 The exhaustive inventory table created during roadmap milestone M3 must contain:
 
-| Field | Meaning |
-| --- | --- |
-| Artifact/family | Stable row identity |
-| Current owner | Current production path or public entry point |
-| Public surfaces | Components, composables, directives, styles, and exports covered by the row |
-| Consumer evidence | Direct consumers and important product flows |
-| Official Material mapping | Official family/pattern/foundation mapping, or `none` |
-| Classification | One target classification from this document |
-| Canonical owner | Accepted target path or retained current owner |
-| Priority | `P0`–`P3` or `pending` |
-| Priority rationale | Concise evidence-backed reason |
-| Dependencies | Foundation/family/consumer prerequisites |
-| Queue status | Current migration state |
-| Completion evidence | PR, tests, registry/blueprint/map records, or removal evidence |
-| Blocker/next decision | Named unresolved item or `none` |
+| Field                     | Meaning                                                                     |
+| ------------------------- | --------------------------------------------------------------------------- |
+| Artifact/family           | Stable row identity                                                         |
+| Current owner             | Current production path or public entry point                               |
+| Public surfaces           | Components, composables, directives, styles, and exports covered by the row |
+| Consumer evidence         | Direct consumers and important product flows                                |
+| Official Material mapping | Official family/pattern/foundation mapping, or `none`                       |
+| Classification            | One target classification from this document                                |
+| Canonical owner           | Accepted target path or retained current owner                              |
+| Priority                  | `P0`–`P3` or `pending`                                                      |
+| Priority rationale        | Concise evidence-backed reason                                              |
+| Dependencies              | Foundation/family/consumer prerequisites                                    |
+| Queue status              | Current migration state                                                     |
+| Completion evidence       | PR, tests, registry/blueprint/map records, or removal evidence              |
+| Blocker/next decision     | Named unresolved item or `none`                                             |
 
 ## Inventory completion gate
 
