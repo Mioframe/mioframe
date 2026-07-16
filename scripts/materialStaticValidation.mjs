@@ -11,10 +11,10 @@ import { fileURLToPath } from 'node:url';
 // new official components, empty canonical directories, and empty
 // placeholder artifacts. It does not parse imports/exports, infer
 // architecture profiles, or validate story/visual content. Dependency-
-// direction rules live in .oxlintrc.json (ESLint/oxlint no-restricted-
-// imports), not here. See docs/material-3/token-validation.md for the
-// checks this baseline intentionally defers until real component migrations
-// establish stable conventions.
+// direction and public-import boundaries are not automated; they remain
+// review-driven until real component migrations establish a stable public
+// entry-point contract. See docs/material-3/token-validation.md for the
+// checks this baseline intentionally defers.
 
 export const MATERIAL_ROOT = 'src/shared/ui/material';
 const RUNTIME_NAMESPACES = ['foundation', 'components', 'patterns'];

@@ -9,7 +9,6 @@ import skipFormatting from 'eslint-config-prettier/flat';
 import comments from '@eslint-community/eslint-plugin-eslint-comments/configs';
 import { jsdoc } from 'eslint-plugin-jsdoc';
 import tsdoc from 'eslint-plugin-tsdoc';
-import { localRulesPlugin } from './scripts/lib/noRestrictedDynamicImportsRule.mjs';
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
@@ -30,11 +29,6 @@ export default defineConfigWithVueTs(
   {
     files: ['**/*.{vue,ts,mts,tsx}'],
     name: 'app/files-to-lint',
-  },
-
-  {
-    plugins: { local: localRulesPlugin },
-    name: 'app/local-rules',
   },
 
   includeIgnoreFile(gitignorePath),
@@ -121,60 +115,6 @@ export default defineConfigWithVueTs(
             },
           ],
         },
-      ],
-    },
-  },
-
-  {
-    files: ['src/shared/ui/material/**/*.{ts,mts,tsx,vue}'],
-    name: 'app/material-no-dynamic-product-layer-imports',
-    rules: {
-      'local/no-restricted-dynamic-imports': [
-        'error',
-        [
-          {
-            regex:
-              '^(?:@(?:feature|entity|widget|page)/|@/(?:app|pages|widgets|features|entities|processes)(?:/|$))',
-            message:
-              'The Material library must not import product layers (app, pages, widgets, features, entities, processes) by alias.',
-          },
-        ],
-      ],
-    },
-  },
-
-  {
-    files: ['src/**/*.{ts,mts,tsx,vue}', 'tests/**/*.ts'],
-    ignores: ['src/shared/ui/material/**', 'src/shared/lib/**'],
-    name: 'app/no-dynamic-deep-material-imports',
-    rules: {
-      'local/no-restricted-dynamic-imports': [
-        'error',
-        [
-          {
-            regex: '^(?:@shared/ui/material/|(?:\\.\\./)+shared/ui/material/)',
-            message:
-              "Import the Material library's public entry point (@shared/ui/material) instead of a deep internal path.",
-          },
-        ],
-      ],
-    },
-  },
-
-  {
-    files: ['src/shared/lib/**/*.{ts,mts,tsx,vue}'],
-    ignores: ['src/shared/lib/md/**'],
-    name: 'app/shared-lib-no-dynamic-material-imports',
-    rules: {
-      'local/no-restricted-dynamic-imports': [
-        'error',
-        [
-          {
-            regex: '^(?:@shared/ui/material(?:/|$)|(?:\\.\\./)+shared/ui/material(?:/|$))',
-            message:
-              'Generic shared/lib infrastructure must not import the Material library or gain component-family ownership.',
-          },
-        ],
       ],
     },
   },
