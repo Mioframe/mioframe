@@ -44,24 +44,24 @@ Current milestone: `M0 — architecture and operating model`
 
 Current status: `active`
 
-Current blocker: none; PR #149 has passed final verification and still needs to be made ready and merged.
+Current blocker: final verification is pending on the roadmap and instruction-routing update to PR #149.
 
-Next action: mark PR #149 ready for review and merge it into `develop`.
+Next action: complete final verification, then mark PR #149 ready for review and merge it into `develop`.
 
 ## Milestone overview
 
-| ID  | Milestone                                  | Status    | Depends on                             | Exit gate                                                                                                                                                                   |
-| --- | ------------------------------------------ | --------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Architecture and operating model           | `active`  | none                                   | PR #149 merged; canonical policies, scoped routing, skills, registries, migration map, and roadmap available from `develop`                                                 |
-| M1  | Static Material architecture validation    | `planned` | M0                                     | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work          |
-| M2  | Structured Material consistency validation | `planned` | M1                                     | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference                                                |
-| M3  | Button foundation readiness                | `planned` | M2                                     | every foundation domain required by the supported Button surface has an exact owner, snapshot/status, accepted contract, change mode, verification, and no hidden blocker   |
-| M4  | Required Button foundation changes         | `planned` | M3                                     | every change identified by M3 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required                  |
-| M5  | `MDButton` architecture migration          | `planned` | M3 and applicable M4 work              | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed                                 |
-| M6  | `MDButton` Material alignment              | `planned` | M5                                     | documented Button deviations are corrected or accepted, visual evidence is current, and required human Material review is recorded                                          |
-| M7  | `MDSwitch` independent migration pilot     | `planned` | M2 and applicable foundation readiness | Switch validates controlled state, interaction, cancellation, anatomy, property coexistence, browser proof, and visual-matrix separation without Button-specific exceptions |
-| M8  | Autonomous new-component proof             | `planned` | M6 and M7                              | one genuinely required new official component is authored directly in the library from sources and scenarios without bespoke architecture correction rounds                 |
-| M9  | Incremental library population             | `planned` | M8                                     | further families, foundations, and patterns migrate only from confirmed product need, one cohesive owner at a time                                                          |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | Architecture and operating model | `active` | none | PR #149 merged; canonical policies, scoped routing, skills, registries, migration map, and roadmap available from `develop` |
+| M1 | Static Material architecture validation | `planned` | M0 | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work |
+| M2 | Structured Material consistency validation | `planned` | M1 | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference |
+| M3 | Button foundation readiness | `planned` | M2 | every foundation domain required by the supported Button surface has an exact owner, snapshot/status, accepted contract, change mode, verification, and no hidden blocker |
+| M4 | Required Button foundation changes | `planned` | M3 | every change identified by M3 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required |
+| M5 | `MDButton` architecture migration | `planned` | M3 and applicable M4 work | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed |
+| M6 | `MDButton` Material alignment | `planned` | M5 | documented Button deviations are corrected or accepted, visual evidence is current, and required human Material review is recorded |
+| M7 | `MDSwitch` independent migration pilot | `planned` | M2 and applicable foundation readiness | Switch validates controlled state, interaction, cancellation, anatomy, property coexistence, browser proof, and visual-matrix separation without Button-specific exceptions |
+| M8 | Autonomous new-component proof | `planned` | M6 and M7 | one genuinely required new official component is authored directly in the library from sources and scenarios without bespoke architecture correction rounds |
+| M9 | Incremental library population | `planned` | M8 | further families, foundations, and patterns migrate only from confirmed product need, one cohesive owner at a time |
 
 ## Milestone details
 
@@ -80,8 +80,8 @@ Do not add production Material artifacts in M0.
 Completion evidence:
 
 - PR #149;
-- final `pnpm verify` passed;
-- merge into `develop` pending.
+- previous architecture head passed final `pnpm verify`;
+- final roadmap/instruction head verification and merge into `develop` pending.
 
 ### M1 — Static Material architecture validation
 
@@ -203,9 +203,9 @@ M9 remains ongoing until the required Material surface of the product is canonic
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date       | Milestone | Change                                                        | Evidence                       |
-| ---------- | --------- | ------------------------------------------------------------- | ------------------------------ |
-| 2026-07-16 | M0        | Architecture baseline completed in code review; merge remains | PR #149, final `verify` passed |
+| Date | Milestone | Change | Evidence |
+| --- | --- | --- | --- |
+| 2026-07-16 | M0 | Architecture baseline and operational roadmap completed; final verification and merge remain | PR #149; previous architecture head passed `verify` |
 
 ## Update protocol
 
