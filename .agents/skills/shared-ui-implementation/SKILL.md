@@ -1,10 +1,6 @@
 ---
 name: shared-ui-implementation
 description: 'Use for project-specific or generic src/shared/ui primitives outside official Material component families. Enforces owner boundaries, explicit DOM/native contracts, minimal Vue structure, public API discipline, consumer blast-radius review, and focused verification.'
-paths:
-  - 'src/shared/ui/**'
-  - 'tests/e2e/visual/**'
-  - 'tests/e2e/storybook/**'
 ---
 
 # Shared UI implementation
