@@ -115,7 +115,9 @@ viewport clipping. The real pointer's relative X/Y position is projected indepen
 dnd-kit's full candidate rectangle, including a corresponding projection of its orthogonal pixel
 tolerance. dnd-kit therefore retains its existing acceleration, percentage threshold,
 scroll-limit, and inverted-axis behavior while those calculations operate relative to visible
-client area. The same visible rectangle is used for the project-specific outer-ancestor clamp.
+client area. Projection controls activation relative to that visible area, while per-frame speed
+saturates at the configured maximum acceleration on each axis. The same visible rectangle is used
+for the project-specific outer-ancestor clamp.
 
 dnd-kit 0.5.0's default `AutoScroller` has no notion of the reorder container's bounds, so it keeps
 autoscrolling an outer ancestor even once that ancestor can no longer reveal more of the container.

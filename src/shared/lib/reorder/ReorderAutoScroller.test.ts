@@ -71,36 +71,114 @@ afterEach(() => {
 });
 
 describe('runReorderAutoscrollFrame', () => {
-  it('uses real dnd-kit intent detection at a clipped visible edge outside the old full-rectangle zone', async () => {
+  const useRealScrollIntentDetection = async (): Promise<void> => {
     const actualUtilities =
       await vi.importActual<typeof import('@dnd-kit/dom/utilities')>('@dnd-kit/dom/utilities');
     mockedDetectScrollIntent.mockImplementation(actualUtilities.detectScrollIntent);
+  };
 
+  const createStronglyClippedContainer = () => {
     const container = createElement();
-    stubRect(container, { top: 0, bottom: 1000, left: 0, right: 100 });
+    stubRect(container, { top: 0, bottom: 1000, left: 0, right: 1000 });
     mockedGetVisibleBoundingRectangle.mockReturnValue({
       top: 100,
       bottom: 200,
-      left: 0,
-      right: 100,
+      left: 100,
+      right: 200,
       width: 100,
       height: 100,
     });
     Object.defineProperties(container, {
       clientHeight: { configurable: true, value: 1000 },
       scrollHeight: { configurable: true, value: 2000 },
-      clientWidth: { configurable: true, value: 100 },
-      scrollWidth: { configurable: true, value: 100 },
+      clientWidth: { configurable: true, value: 1000 },
+      scrollWidth: { configurable: true, value: 2000 },
     });
 
     const source = { element: container.appendChild(document.createElement('div')) };
-    const manager = { dragOperation: { position: { current: { x: 50, y: 190 } }, source } };
+    return { container, source };
+  };
+
+  it('uses real dnd-kit intent detection at a clipped visible edge outside the old full-rectangle zone', async () => {
+    await useRealScrollIntentDetection();
+
+    const { container, source } = createStronglyClippedContainer();
+    const manager = { dragOperation: { position: { current: { x: 150, y: 190 } }, source } };
 
     runReorderAutoscrollFrame(manager, container, [container]);
 
     // y=190 is far outside the old full-rectangle bottom zone (800..1000), but is 90% through
     // the visible 100..200 slice and therefore projects to y=900 in that same full rectangle.
     expect(container.scrollTop).toBeGreaterThan(0);
+    expect(container.scrollTop).toBeLessThan(25);
+  });
+
+  it('bounds real projected speed at and beyond a strongly clipped visible edge', async () => {
+    await useRealScrollIntentDetection();
+    const { container, source } = createStronglyClippedContainer();
+
+    const runAt = (x: number, y: number): { x: number; y: number } => {
+      container.scrollLeft = 0;
+      container.scrollTop = 0;
+      runReorderAutoscrollFrame(
+        { dragOperation: { position: { current: { x, y } }, source } },
+        container,
+        [container],
+      );
+      return { x: container.scrollLeft, y: container.scrollTop };
+    };
+
+    expect(runAt(150, 200).y).toBeLessThanOrEqual(25);
+    expect(runAt(150, 202).y).toBe(25);
+  });
+
+  it('caps X and Y independently before resolving the frame delta', () => {
+    const { container, source } = createStronglyClippedContainer();
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Forward, y: ScrollDirection.Forward },
+      speed: { x: 40, y: 10 },
+    });
+
+    runReorderAutoscrollFrame(
+      { dragOperation: { position: { current: { x: 200, y: 200 } }, source } },
+      container,
+      [container],
+    );
+
+    expect({ x: container.scrollLeft, y: container.scrollTop }).toEqual({ x: 25, y: 10 });
+  });
+
+  it('lets the outer-ancestor visibility clamp reduce bounded speed further', () => {
+    const container = createElement();
+    stubRect(container, { top: 0, bottom: 103, left: 0, right: 100 });
+    const ancestor = createElement();
+    stubRect(ancestor, { top: 0, bottom: 100, left: 0, right: 100 });
+    mockedDetectScrollIntent.mockReturnValue({
+      direction: { x: ScrollDirection.Idle, y: ScrollDirection.Forward },
+      speed: { x: 0, y: 100 },
+    });
+    const source = { element: container.appendChild(document.createElement('div')) };
+
+    runReorderAutoscrollFrame(
+      { dragOperation: { position: { current: { x: 50, y: 100 } }, source } },
+      container,
+      [ancestor],
+    );
+
+    expect(ancestor.scrollTop).toBe(2);
+  });
+
+  it('preserves dnd-kit orthogonal tolerance for projected coordinates outside the candidate', async () => {
+    await useRealScrollIntentDetection();
+    const { container, source } = createStronglyClippedContainer();
+
+    runReorderAutoscrollFrame(
+      { dragOperation: { position: { current: { x: 80, y: 202 } }, source } },
+      container,
+      [container],
+    );
+
+    expect(container.scrollTop).toBe(0);
   });
 
   it('applies both axes through one combined instant scrollTo call', () => {

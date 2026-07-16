@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { openStory } from './storybook.testUtils';
 
 const STORY_ID = 'shared-lib-reorder-reorderselfscrollablestoryharness--default';
@@ -8,25 +8,38 @@ const ACTIVATION_STORY_ID = 'shared-lib-reorder-reorderactivationstoryharness--d
 
 // Samples a scrollable element's `scrollTop` across consecutive rendered animation frames, so a
 // value that moves during the sampled window (not just at its tail) is caught rather than missed.
-const sampleScrollTop = async (
-  page: Page,
-  scrollable: Locator,
-  frameCount = 10,
-): Promise<number[]> => {
-  const samples: number[] = [];
-  for (let frame = 0; frame < frameCount; frame += 1) {
-    // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-    // eslint-disable-next-line no-await-in-loop -- sampling must happen in order, one per frame
-    samples.push(await scrollable.evaluate((el) => el.scrollTop));
-  }
-  return samples;
-};
+const sampleScrollTop = async (scrollable: Locator, frameCount = 10): Promise<number[]> =>
+  scrollable.evaluate(async (el, count) => {
+    const samples: number[] = [];
+    for (let frame = 0; frame < count; frame += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each sample must follow exactly one rendered frame
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      samples.push(el.scrollTop);
+    }
+    return samples;
+  }, frameCount);
 
 const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): void => {
   for (const sample of samples) {
     expect(sample, `scrollTop samples: ${samples.join(', ')}, baseline: ${baseline}`).toBe(
       baseline,
+    );
+  }
+};
+
+const assertBoundedSmoothAutoscroll = (samples: number[], maximumDelta: number): void => {
+  const deltas = samples.slice(1).map((sample, index) => sample - (samples[index] ?? sample));
+  expect(
+    deltas.some((delta) => delta > 0),
+    `scrollTop samples: ${samples.join(', ')}`,
+  ).toBe(true);
+  expect(
+    (samples.at(-1) ?? 0) - (samples[0] ?? 0),
+    `scrollTop samples: ${samples.join(', ')}`,
+  ).toBeGreaterThan(0);
+  for (const delta of deltas) {
+    expect(Math.abs(delta), `scrollTop samples: ${samples.join(', ')}`).toBeLessThanOrEqual(
+      maximumDelta,
     );
   }
 };
@@ -119,7 +132,7 @@ test.describe('self-scrollable reorder container', () => {
     await expect(list.getByRole('listitem')).toHaveText(['bravo', 'charlie', 'alpha']);
   });
 
-  test('a pointer at the clipped visible edge autoscrolls the inner container only and cleanup stops it', async ({
+  test('a pointer beyond the clipped visible edge autoscrolls at bounded frame speed and cleanup stops it', async ({
     page,
   }) => {
     await openStory(page, CLIPPED_STORY_ID);
@@ -135,7 +148,7 @@ test.describe('self-scrollable reorder container', () => {
       if (!ancestorRect) throw new Error('missing scroll ancestor');
       const visibleBottom = Math.min(full.bottom, ancestorRect.bottom, window.innerHeight);
       const visibleTop = Math.max(full.top, ancestorRect.top, 0);
-      const pointerY = visibleBottom - 2;
+      const pointerY = visibleBottom + 2;
       return {
         fullTop: full.top,
         fullBottom: full.bottom,
@@ -164,11 +177,11 @@ test.describe('self-scrollable reorder container', () => {
     await assertSuppressedDuringDrag(ancestor);
     const ancestorStart = await ancestor.evaluate((el) => el.scrollTop);
 
-    // Observe the first rendered autoscroll frame while the inner candidate still has ample
-    // remaining extent. Waiting for it to drain would legitimately hand the axis to the ancestor.
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-    expect(await container.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-    expect(await container.evaluate((el) => el.scrollTop)).toBeLessThan(
+    // Sample consecutive rendered frames while the inner candidate still has ample remaining
+    // extent. The fractional allowance covers browser geometry and scrollTop representation.
+    const scrollingSamples = await sampleScrollTop(container, 8);
+    assertBoundedSmoothAutoscroll(scrollingSamples, 25.5);
+    expect(scrollingSamples.at(-1)).toBeLessThan(
       await container.evaluate((el) => el.scrollHeight - el.clientHeight),
     );
     expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorStart);
@@ -181,7 +194,7 @@ test.describe('self-scrollable reorder container', () => {
     await expect
       .poll(() => ancestor.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe(ancestorSnapshot.inlineValue);
-    assertScrollTopHoldsAtBaseline(await sampleScrollTop(page, container), containerAtRelease);
+    assertScrollTopHoldsAtBaseline(await sampleScrollTop(container), containerAtRelease);
     expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorStart);
   });
 
@@ -260,7 +273,7 @@ test.describe('self-scrollable reorder container', () => {
 
     // Continued holding at the same edge moves neither the container past its limit nor the
     // ancestor at all: sample several frames and assert both stay put.
-    const holdSamples = await sampleScrollTop(page, ancestor);
+    const holdSamples = await sampleScrollTop(ancestor);
     assertScrollTopHoldsAtBaseline(holdSamples, ancestorScrollTopStart);
     expect(await container.evaluate((el) => el.scrollTop)).toBe(containerScrollTopAtLowerLimit);
 
@@ -276,7 +289,7 @@ test.describe('self-scrollable reorder container', () => {
       .poll(() => container.evaluate((el) => el.scrollTop), { timeout: 10000 })
       .toBeLessThanOrEqual(1);
 
-    const upperHoldSamples = await sampleScrollTop(page, ancestor);
+    const upperHoldSamples = await sampleScrollTop(ancestor);
     assertScrollTopHoldsAtBaseline(upperHoldSamples, ancestorScrollTopStart);
 
     // Suppression is still in effect for both candidates right up to release.
@@ -322,10 +335,10 @@ test.describe('self-scrollable reorder container', () => {
     );
     expect(ancestorSnapshotAfterDrag.computedScrollBehavior).toBe('smooth');
 
-    const containerReleaseSamples = await sampleScrollTop(page, container);
+    const containerReleaseSamples = await sampleScrollTop(container);
     assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
 
-    const ancestorReleaseSamples = await sampleScrollTop(page, ancestor);
+    const ancestorReleaseSamples = await sampleScrollTop(ancestor);
     assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
   });
 });

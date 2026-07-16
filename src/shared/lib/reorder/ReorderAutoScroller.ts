@@ -149,6 +149,10 @@ const applyReorderScrollCandidate = (
     AUTOSCROLL_THRESHOLD,
     intentInput.tolerance,
   );
+  const boundedSpeed = {
+    x: Math.min(speed.x, AUTOSCROLL_ACCELERATION),
+    y: Math.min(speed.y, AUTOSCROLL_ACCELERATION),
+  };
 
   const effectiveDirection = resolveScrollableDirection(
     candidate,
@@ -166,7 +170,7 @@ const applyReorderScrollCandidate = (
 
   const delta = resolveReorderScrollDelta(role, containerRect, clampRectangle, {
     direction: effectiveDirection,
-    speed,
+    speed: boundedSpeed,
   });
 
   const previousLeft = candidate.scrollLeft;
