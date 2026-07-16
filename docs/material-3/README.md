@@ -42,7 +42,11 @@ Component and completion policies:
 
 - Architecture documents own durable schemas and invariants.
 - `AGENTS.md` files own scoped hard boundaries and routing.
-- Skills own execution order and stop conditions.
+- `material-component-authoring` owns execution order and stop conditions for creating, migrating, aligning, or materially changing official public component families, including legacy `MD*` components.
+- `material-foundation` owns execution order for cross-family foundation changes.
+- `material3-guidelines` owns official source lookup, component choice, usage, composition, and product-facing Material decisions.
+- `shared-ui-implementation` owns project-specific and generic shared UI outside official Material families.
+- Specialized testing skills own only their proof layers.
 - The authoring checklist owns operational completion review.
 - Validation owns enforceable static/structured checks and explicit review gates.
 
