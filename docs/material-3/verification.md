@@ -14,9 +14,11 @@ New, migrated, and materially changed public Material components follow `compone
 pnpm verify --only material-static
 ```
 
-This runs a standalone, deterministic validator (`scripts/materialStaticValidation.mjs`) over `src/shared/ui/material`. It checks repository facts only: canonical paths and namespaces, dependency direction, import/export boundaries, component production-file profiles and CSS layer order, required static proof artifacts (contract test, `StateMatrix` story, visual spec), new-legacy-ownership prevention, and mechanically detectable completed-migration residue.
+This runs a minimal, deterministic filesystem validator (`scripts/materialStaticValidation.mjs`) over `src/shared/ui/material`. It is a filesystem-only baseline, not a complete architecture framework: new official Material components must be created under the canonical `components/<family>` directory, empty canonical directories and empty/premature barrel files are rejected, and paths already unambiguously deprecated by repository documentation are rejected from a small explicit list. It does not parse imports, exports, CSS, or Vue/TypeScript source.
 
-It is a cheap, blocking check that runs in every `pnpm verify` invocation — focused and full/release — right after formatting and linting, before type-checking and any browser/visual/mutation check. It never claims to verify semantic Material correctness, visual equivalence, blueprint meaning, or source interpretation; see `token-validation.md` for the complete rule catalogue and validation-class model.
+Dependency-direction rules (Material must not import product layers; generic `shared/lib` must not depend on Material; external consumers must use the Material public API) are enforced through ESLint/oxlint `no-restricted-imports` overrides in `.oxlintrc.json`, as part of the existing `oxlint`/`eslint` verify steps, not this validator.
+
+It is a cheap, blocking check that runs in every `pnpm verify` invocation — focused and full/release — right after formatting and linting, before type-checking and any browser/visual/mutation check. It never claims to verify semantic Material correctness, visual equivalence, blueprint meaning, source interpretation, architecture profiles, production-file completeness, CSS layer order, test-artifact/story identity, or migration-residue completeness; see `token-validation.md` for the complete rule catalogue, validation-class model, and which checks remain review-driven until real migrations justify automating them.
 
 ## Standard component verification profile
 

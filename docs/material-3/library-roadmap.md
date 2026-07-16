@@ -61,25 +61,25 @@ Current milestone: `M1 — Static Material architecture validation`
 
 Current status: `active`
 
-Current blocker: this milestone's implementation is complete on `feat/material-static-architecture-validation`; the remaining blocker is finishing full repository verification and merging the PR into `develop`.
+Current blocker: PR 151 landed only a minimal filesystem architecture baseline (new-component placement, empty canonical directories/barrels, explicitly documented obsolete paths) plus ESLint/oxlint dependency-direction boundaries. This is not the complete M1 exit gate; broader checks (architecture profiles, exact production file sets, CSS layer order, test-artifact/story-identity, migration-residue detection) remain unimplemented and review-driven until real component migrations establish stable conventions to encode.
 
-Next action: finish `pnpm verify`, then merge `feat/material-static-architecture-validation` into `develop`.
+Next action: finish `pnpm verify`, then merge the minimal-baseline branch into `develop`. Do not resume broader static-check implementation until M6 (`MDButton` migration) or another real migration provides evidence for which additional checks are worth automating.
 
 ## Milestone overview
 
-| ID  | Milestone                                             | Status    | Depends on                                  | Exit gate                                                                                                                                                                                                                        |
-| --- | ----------------------------------------------------- | --------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Architecture and operating model                      | `done`    | none                                        | PR #149 merged; canonical Expressive source target, architecture, review-role contract, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop`                              |
-| M1  | Static Material architecture validation               | `active`  | M0                                          | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work                                                               |
-| M2  | Structured Material consistency validation            | `planned` | M1                                          | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference                                                                                                     |
-| M3  | Shared UI inventory and prioritized migration backlog | `planned` | M2                                          | every in-scope shared UI artifact is classified exactly once, consumers and target owners are recorded, and an ordered evidence-backed `P0`/`P1` queue exists                                                                    |
-| M4  | Button foundation readiness                           | `planned` | M2 and M3                                   | every foundation domain required by the accepted Button surface has an exact owner, current Expressive snapshot/status, contract, change mode, verification, and no hidden blocker                                               |
-| M5  | Required Button foundation changes                    | `planned` | M4                                          | every change identified by M4 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required                                                                       |
-| M6  | `MDButton` architecture migration                     | `planned` | M4 and applicable M5 work                   | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed                                                                                      |
-| M7  | `MDButton` Material 3 Expressive alignment            | `planned` | M6                                          | Button agent evidence review is passed, documented deviations are corrected or accepted, visual evidence is current, and operator visual acceptance is recorded                                                                  |
-| M8  | Independent stateful migration pilot                  | `planned` | M2, M3, and applicable foundation readiness | a high-priority stateful family—default candidate `MDSwitch`—validates controlled state, interaction/cancellation, anatomy, property coexistence, autonomous evidence review, browser proof, and operator-only visual acceptance |
-| M9  | Autonomous new-component proof                        | `planned` | M7 and M8                                   | one genuinely required new official component is authored directly from current Expressive sources, closes every non-visual gate autonomously, and reaches operator-ready visual handoff without bespoke architecture rounds     |
-| M10 | Priority-driven incremental library population        | `planned` | M9                                          | inventory rows progress by accepted priority until every row is `migrated`, `retained`, or `removed`, with Material-owned artifacts canonical and legacy owners eliminated                                                       |
+| ID  | Milestone                                             | Status    | Depends on                                  | Exit gate                                                                                                                                                                                                                                                                                                                                           |
+| --- | ----------------------------------------------------- | --------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model                      | `done`    | none                                        | PR #149 merged; canonical Expressive source target, architecture, review-role contract, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop`                                                                                                                                                 |
+| M1  | Static Material architecture validation               | `active`  | M0                                          | minimal deterministic filesystem checks (new-component placement, empty canonical directories/barrels, documented obsolete paths) plus ESLint/oxlint dependency-direction boundaries block invalid new work; broader profile/style/test-artifact/story-identity/migration-residue checks are explicitly deferred until real migrations justify them |
+| M2  | Structured Material consistency validation            | `planned` | M1                                          | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference                                                                                                                                                                                                                        |
+| M3  | Shared UI inventory and prioritized migration backlog | `planned` | M2                                          | every in-scope shared UI artifact is classified exactly once, consumers and target owners are recorded, and an ordered evidence-backed `P0`/`P1` queue exists                                                                                                                                                                                       |
+| M4  | Button foundation readiness                           | `planned` | M2 and M3                                   | every foundation domain required by the accepted Button surface has an exact owner, current Expressive snapshot/status, contract, change mode, verification, and no hidden blocker                                                                                                                                                                  |
+| M5  | Required Button foundation changes                    | `planned` | M4                                          | every change identified by M4 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required                                                                                                                                                                                          |
+| M6  | `MDButton` architecture migration                     | `planned` | M4 and applicable M5 work                   | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed                                                                                                                                                                                                         |
+| M7  | `MDButton` Material 3 Expressive alignment            | `planned` | M6                                          | Button agent evidence review is passed, documented deviations are corrected or accepted, visual evidence is current, and operator visual acceptance is recorded                                                                                                                                                                                     |
+| M8  | Independent stateful migration pilot                  | `planned` | M2, M3, and applicable foundation readiness | a high-priority stateful family—default candidate `MDSwitch`—validates controlled state, interaction/cancellation, anatomy, property coexistence, autonomous evidence review, browser proof, and operator-only visual acceptance                                                                                                                    |
+| M9  | Autonomous new-component proof                        | `planned` | M7 and M8                                   | one genuinely required new official component is authored directly from current Expressive sources, closes every non-visual gate autonomously, and reaches operator-ready visual handoff without bespoke architecture rounds                                                                                                                        |
+| M10 | Priority-driven incremental library population        | `planned` | M9                                          | inventory rows progress by accepted priority until every row is `migrated`, `retained`, or `removed`, with Material-owned artifacts canonical and legacy owners eliminated                                                                                                                                                                          |
 
 ## Milestone details
 
@@ -106,19 +106,24 @@ Completion evidence:
 
 Implement only deterministic repository checks. Do not parse architecture meaning or introduce component-specific exceptions.
 
-Minimum outcome:
+PR 151 delivered a minimal baseline, not the complete milestone. Implemented now:
 
-- canonical locations for new Material artifacts;
-- downward dependency direction;
-- forbidden product and private cross-family imports;
-- curated public exports and forbidden implementation/testing deep imports;
-- selected component profile matches the exact production file set;
-- applicable style order is valid;
-- required test artifacts and one canonical `StateMatrix` identity exist for new/migrating families;
-- legacy paths cannot acquire new Material ownership;
-- obsolete paths and permanent compatibility exports are rejected for completed migrations.
+- new official Material components must be created under the canonical `components/<family>` directory (diff-aware, grandfathers pre-existing legacy files);
+- empty canonical directories and empty/premature barrel files are rejected;
+- explicitly documented obsolete paths are rejected from a small explicit list (currently empty — no migration has completed yet);
+- dependency-direction boundaries (Material must not import product layers; generic `shared/lib` must not depend on Material; external consumers must use the Material public API) are enforced through ESLint/oxlint `no-restricted-imports`, not a bespoke validator.
 
-Implementation status: complete on `feat/material-static-architecture-validation` as `scripts/materialStaticValidation.mjs`, wired into `pnpm verify` as the `material-static` label. Remaining work is finishing full repository verification and merging the PR into `develop`.
+Deliberately not implemented yet, and not required for this milestone to remain `active`:
+
+- architecture profile validation and exact production file sets;
+- CSS layer/route/state order and composition checks;
+- required test-artifact and `StateMatrix` story-identity checks;
+- migration-completeness and legacy-residue detection;
+- any Markdown/blueprint parsing.
+
+These remain review-driven — checked by the coding agent and human review, not automation — until several real component migrations (starting with `MDButton` in M6) establish which conventions are stable enough to encode mechanically. Introduce additional automation only after repeated migrations demonstrate a stable invariant and a meaningful risk of regression; see `docs/material-3/token-validation.md` for the full deferred-check catalogue.
+
+Implementation status: minimal baseline implemented as `scripts/materialStaticValidation.mjs`, wired into `pnpm verify` as the `material-static` label, plus `.oxlintrc.json` boundary rules. Remaining work before this milestone can be marked `done` is proving the deferred checks are unnecessary, or implementing the ones that repeated migrations show are actually needed.
 
 ### M2 — Structured Material consistency validation
 
@@ -255,11 +260,12 @@ M10 remains ongoing until every inventory row has a terminal status and all Mate
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date       | Milestone | Change                                                                                                               | Evidence                                            |
-| ---------- | --------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 2026-07-16 | M0        | Added canonical Expressive target and autonomous agent/operator review contract; final verification and merge remain | PR #149; previous architecture head passed `verify` |
-| 2026-07-16 | M0        | PR #149 merged into `develop`; marked `done`                                                                         | `develop` HEAD is PR #149's merge commit            |
-| 2026-07-16 | M1        | Started; implemented `material-static` static architecture validator and wired it into `pnpm verify`                 | `feat/material-static-architecture-validation`      |
+| Date       | Milestone | Change                                                                                                                                                                                                                                                       | Evidence                                            |
+| ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| 2026-07-16 | M0        | Added canonical Expressive target and autonomous agent/operator review contract; final verification and merge remain                                                                                                                                         | PR #149; previous architecture head passed `verify` |
+| 2026-07-16 | M0        | PR #149 merged into `develop`; marked `done`                                                                                                                                                                                                                 | `develop` HEAD is PR #149's merge commit            |
+| 2026-07-16 | M1        | Started; implemented `material-static` static architecture validator and wired it into `pnpm verify`                                                                                                                                                         | `feat/material-static-architecture-validation`      |
+| 2026-07-16 | M1        | Reduced PR 151 to a minimal filesystem baseline plus ESLint/oxlint dependency-direction boundaries; broader profile/style/test-artifact/story-identity/migration-residue checks explicitly deferred as review-driven, not automated, pending real migrations | `feat/material-static-architecture-validation`      |
 
 ## Update protocol
 

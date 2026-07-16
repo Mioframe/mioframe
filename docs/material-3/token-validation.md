@@ -14,6 +14,14 @@ Validation is split into three classes:
 
 The implemented validator should expose the class of every finding.
 
+## Implementation status
+
+This document describes the target validation-class model, not what is currently automated.
+
+`scripts/materialStaticValidation.mjs` (the `material-static` verify step) implements only a minimal filesystem baseline: canonical placement of new official components, empty canonical directories/barrels, and an explicit obsolete-path list. `.oxlintrc.json` enforces dependency-direction boundaries (Material must not import product layers; generic `shared/lib` must not depend on Material; external consumers must use the Material public API) through ESLint/oxlint `no-restricted-imports`.
+
+Everything else below — architecture profiles, exact production file sets, behavior helper structure, CSS route/state split, `StateMatrix` structure, story and visual-test ownership, migration completeness and legacy residue, and permanent public export structure — is not automated. It remains a **review-blocking** concern for the coding agent and human review until several real component migrations (starting with `MDButton` in M6) establish stable, repeated conventions worth encoding mechanically. Do not implement a check from this catalogue speculatively; add it only after repeated migrations demonstrate the invariant is stable and a meaningful risk of regression exists without automation.
+
 ## Canonical inputs
 
 Use:
@@ -299,12 +307,11 @@ A missing validator rule may be recorded as an explicit verification gap during 
 
 ## Rollout
 
-1. Implement static library-boundary and standard-test-profile checks for new work and active migrations.
-2. Implement structured blueprint/registry reference checks.
-3. Validate minimum Button foundation domains.
-4. Migrate `MDButton` and `MDSwitch` without component-specific validator exceptions.
-5. Add review checklists/evidence fields for semantic decisions rather than encoding them in a Markdown parser.
-6. Introduce shared validator or Storybook helpers only after both pilots prove the same concrete need.
+1. Implement the minimal filesystem library-boundary baseline and ESLint/oxlint dependency-direction rules for new work — done (PR 151).
+2. Migrate `MDButton` and `MDSwitch` under the minimal baseline, without inventing component-specific validator exceptions.
+3. Only after those migrations show a repeated, stable, high-risk pattern, add the specific static or structured check that pattern justifies — standard-test-profile, blueprint/registry reference, or otherwise. Do not implement the full catalogue speculatively ahead of that evidence.
+4. Add review checklists/evidence fields for semantic decisions rather than encoding them in a Markdown parser.
+5. Introduce shared validator or Storybook helpers only after multiple migrations prove the same concrete need.
 
 ## Material PR report
 
