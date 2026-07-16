@@ -57,8 +57,13 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/ReorderSelfScrollable.stories.ts',
       'src/shared/lib/reorder/ReorderSelfScrollableStoryHarness.vue',
       'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',
+      'src/shared/lib/reorder/ReorderDocumentViewport.stories.ts',
+      'src/shared/lib/reorder/ReorderDocumentViewportStoryHarness.vue',
     ],
-    specs: ['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts'],
+    specs: [
+      'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
+      'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
+    ],
   },
   {
     name: 'reorder generic layout support',
@@ -67,6 +72,11 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/useReorderItem.ts',
       'src/shared/lib/reorder/reorderConfig.ts',
       'src/shared/lib/reorder/reorderArray.ts',
+      // getReorderContainer.ts also owns RestrictToElement's direct-parent drag bounds (see
+      // reorderConfig.ts's REORDER_MODIFIERS), not just autoscroll container resolution, so a
+      // change here must select this bounds spec in addition to the autoscroll-container scope
+      // below.
+      'src/shared/lib/reorder/getReorderContainer.ts',
       'src/shared/lib/reorder/ReorderWrap.stories.ts',
       'src/shared/lib/reorder/ReorderWrapStoryHarness.vue',
       'src/shared/lib/reorder/ReorderWrapStoryItem.vue',

@@ -246,11 +246,15 @@ test('the trailing settings action stays independently clickable and never start
   const firstRow = findListRow(sheet, firstViewName);
   await firstRow.scrollIntoViewIfNeeded();
 
+  const rowsBeforeGesture = await sheet.getByRole('list').locator(':scope > *').allTextContents();
+
   const settingsButton = firstRow.getByRole('button', { name: /settings view/i });
   const settingsBox = await settingsButton.boundingBox();
   if (!settingsBox) {
     throw new Error('missing bounding box for trailing settings action');
   }
+
+  const renameMenuItem = page.getByRole('menuitem', { name: /^rename$/i });
 
   // A drag-shaped gesture starting on the trailing action must not start a reorder session.
   await page.mouse.move(
@@ -265,16 +269,24 @@ test('the trailing settings action stays independently clickable and never start
       steps: 8,
     },
   );
+
+  // The row wrapper must never enter the dragged state while the gesture-holding pointer is
+  // still down, since the trailing action is outside the reorder handle boundary.
+  await expect(firstRow).not.toHaveClass(/md-state_dragged/);
+
   await page.mouse.up();
 
   const rowsAfterGesture = await sheet.getByRole('list').locator(':scope > *').allTextContents();
+  expect(rowsAfterGesture).toEqual(rowsBeforeGesture);
   expect(indexOfRow(rowsAfterGesture, firstViewName)).toBeLessThan(
     indexOfRow(rowsAfterGesture, secondViewName),
   );
 
+  // The drag-shaped gesture must not have opened the settings menu either.
+  await expect(renameMenuItem).toBeHidden();
+
   // The trailing action remains an ordinary independent click target.
   await settingsButton.click();
-  const renameMenuItem = page.getByRole('menuitem', { name: /^rename$/i });
   await expect(renameMenuItem).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(renameMenuItem).toBeHidden();
@@ -762,18 +774,23 @@ test.describe('activation isolation', () => {
       throw new Error('missing bounding box for view row');
     }
 
-    const dragSurfaceX = firstBox.x + firstBox.width / 2;
+    const dragSurfaceX = secondBox.x + secondBox.width / 2;
 
-    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2);
+    // Drag the second (not the currently selected first) view: this is the only way a later
+    // "release did not activate a row" assertion actually exercises isolation between the
+    // dragged row and the selected row, rather than trivially holding because they're the same.
+    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2 + 8, { steps: 4 });
-    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2, { steps: 12 });
+    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2 - 8, { steps: 4 });
+    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2, { steps: 12 });
     await page.mouse.up();
 
-    const rowsAfterDrag = await sheet.getByRole('list').locator(':scope > *').allTextContents();
-    expect(indexOfRow(rowsAfterDrag, secondViewName)).toBeLessThan(
-      indexOfRow(rowsAfterDrag, firstViewName),
-    );
+    await expect
+      .poll(async () => {
+        const rows = await sheet.getByRole('list').locator(':scope > *').allTextContents();
+        return indexOfRow(rows, secondViewName) < indexOfRow(rows, firstViewName);
+      })
+      .toBe(true);
 
     // The drag release must not have activated/selected any row: the view selected before the
     // drag stays current, regardless of where the dragged row now sits in the list.
@@ -823,7 +840,7 @@ test.describe('activation isolation', () => {
     const secondRow = sheet.getByRole('button', { name: secondViewName });
     // `md-state_dragged` lives on the row's list-item wrapper, not the inner primary-action
     // button that `getByRole('button', ...)` resolves to.
-    const firstRowWrapper = findListRow(sheet, firstViewName);
+    const secondRowWrapper = findListRow(sheet, secondViewName);
 
     await secondRow.scrollIntoViewIfNeeded();
     await firstRow.scrollIntoViewIfNeeded();
@@ -836,19 +853,22 @@ test.describe('activation isolation', () => {
       throw new Error('missing bounding box for view row');
     }
 
-    const dragSurfaceX = firstBox.x + firstBox.width / 2;
+    const dragSurfaceX = secondBox.x + secondBox.width / 2;
 
-    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2);
+    // Drag the second (not the currently selected first) view, matching the completed-drag
+    // scenario above: cancelling the non-selected row's drag is the meaningful isolation check.
+    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2);
     await page.mouse.down();
     // Cross the mouse activation distance so the drag actually activates before cancelling it.
-    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2 + 8, { steps: 4 });
-    await expect(firstRowWrapper).toHaveClass(/md-state_dragged/);
+    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2 - 8, { steps: 4 });
+    await expect(secondRowWrapper).toHaveClass(/md-state_dragged/);
 
-    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2, { steps: 8 });
+    // Move far enough that a reorder would otherwise be possible.
+    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2, { steps: 8 });
 
     // Escape cancels the active drag while the physical mouse button is still held down.
     await page.keyboard.press('Escape');
-    await expect(firstRowWrapper).not.toHaveClass(/md-state_dragged/);
+    await expect(secondRowWrapper).not.toHaveClass(/md-state_dragged/);
 
     await page.mouse.up();
 

@@ -306,13 +306,36 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
   });
 
-  it('focuses the self-scrollable-container spec for a reorderAutoscrollEnvironment change', () => {
+  it('focuses the self-scrollable-container and document-viewport specs for a reorderAutoscrollEnvironment change', () => {
     const plan = resolveStorybookBehaviorPlan([
       'src/shared/lib/reorder/reorderAutoscrollEnvironment.ts',
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts']);
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
+      'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
+    ]);
+  });
+
+  it('selects both the self-scrollable/document-viewport autoscroll specs and the wrap-layout bounds spec for a getReorderContainer.ts change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/getReorderContainer.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
+      'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
+      'tests/e2e/storybook/reorderWrapLayout.spec.ts',
+    ]);
+  });
+
+  it('focuses the wrap-layout spec for a wrap-layout fixture source change', () => {
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/lib/reorder/ReorderWrapStoryHarness.vue',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/storybook/reorderWrapLayout.spec.ts']);
   });
 
   it('does not run the full lane for an arbitrary unrelated src change', () => {

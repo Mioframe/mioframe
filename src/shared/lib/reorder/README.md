@@ -62,6 +62,18 @@ const { isDragging } = useReorderItem({
 slot props: render the list from whatever ids you already own. There are no callback props; the
 component emits one typed `reorder` event per completed, changed, valid drag.
 
+## Controlled-list contract
+
+`itemIds` must contain unique values. A duplicate — in the initial props or introduced by a later
+reactive change — throws `ReorderSurface: itemIds must contain unique values.` deterministically;
+no drag can start or emit from an invalid surface. This is controlled-contract validation, not
+persistence or session recovery: `ReorderSurface` never mutates or rolls back the caller's list.
+
+The surface also ignores a completed drag's operation, emitting nothing, if the controlled order
+changed during the drag: `itemIds` no longer matches the order observed at drag start, the dragged
+item's id no longer matches its drag-start position, or either index is out of range. A later,
+consistent drag still emits normally.
+
 ## Ownership
 
 - **Shared** (`ReorderSurface`, `useReorderItem`): drag interaction only — activation, transition,

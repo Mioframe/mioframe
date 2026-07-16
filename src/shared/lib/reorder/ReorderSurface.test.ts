@@ -6,6 +6,7 @@ import { isSortableOperation } from '@dnd-kit/vue/sortable';
 import ReorderSurface from './ReorderSurface.vue';
 import { reorderSurfaceInjectionKey } from './reorderSurfaceContext';
 import { ReorderTestItem } from './ReorderSurface.testUtils';
+import { REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE } from './validateReorderSurface';
 
 vi.mock('@dnd-kit/vue/sortable', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dnd-kit/vue/sortable')>();
@@ -37,8 +38,9 @@ const mountSurface = (itemIds: string[], disabled = false) =>
     },
   });
 
-const fakeSortableSource = (element: Element, initialIndex: number, index: number) => ({
+const fakeSortableSource = (element: Element, id: string, initialIndex: number, index: number) => ({
   element,
+  id,
   initialIndex,
   index,
 });
@@ -92,7 +94,7 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 2) });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 2) });
 
     expect(wrapper.emitted('reorder')).toHaveLength(1);
     expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
@@ -107,7 +109,7 @@ describe('ReorderSurface', () => {
     dispatchDragStart(wrapper);
     dispatchDragEnd(wrapper, {
       canceled: true,
-      source: fakeSortableSource(wrapper.get('li').element, 0, 2),
+      source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 2),
     });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
@@ -117,7 +119,7 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 0) });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 0) });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
@@ -126,7 +128,9 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, -1, 1) });
+    dispatchDragEnd(wrapper, {
+      source: fakeSortableSource(wrapper.get('li').element, 'a', -1, 1),
+    });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
@@ -135,7 +139,9 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 1, -1) });
+    dispatchDragEnd(wrapper, {
+      source: fakeSortableSource(wrapper.get('li').element, 'b', 1, -1),
+    });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
@@ -144,7 +150,9 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 3, 1) });
+    dispatchDragEnd(wrapper, {
+      source: fakeSortableSource(wrapper.get('li').element, 'a', 3, 1),
+    });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
@@ -153,7 +161,9 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 1, 3) });
+    dispatchDragEnd(wrapper, {
+      source: fakeSortableSource(wrapper.get('li').element, 'b', 1, 3),
+    });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
@@ -164,11 +174,11 @@ describe('ReorderSurface', () => {
     dispatchDragStart(wrapper);
     dispatchDragEnd(wrapper, {
       canceled: true,
-      source: fakeSortableSource(wrapper.get('li').element, 0, 2),
+      source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 2),
     });
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 2) });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 2) });
 
     expect(wrapper.emitted('reorder')).toHaveLength(1);
     expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
@@ -181,10 +191,12 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 5, 1) });
+    dispatchDragEnd(wrapper, {
+      source: fakeSortableSource(wrapper.get('li').element, 'a', 5, 1),
+    });
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 2) });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 2) });
 
     expect(wrapper.emitted('reorder')).toHaveLength(1);
     expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
@@ -198,7 +210,7 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 2) });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 2) });
 
     expect(wrapper.emitted('reorder')).toBeUndefined();
   });
@@ -213,11 +225,84 @@ describe('ReorderSurface', () => {
     const wrapper = mountSurface(['a', 'b', 'c']);
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 0, 1) });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 1) });
 
     dispatchDragStart(wrapper);
-    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 1, 2) });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'b', 1, 2) });
 
     expect(wrapper.emitted('reorder')).toHaveLength(2);
+  });
+
+  it('throws a deterministic error for duplicate initial itemIds', () => {
+    // Vue logs a "missing template or render function" dev warning once setup() throws before
+    // returning its render function; that is expected noise for this contract, not a regression.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(() => mountSurface(['a', 'b', 'a'])).toThrow(REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE);
+  });
+
+  it('throws the same deterministic error when a reactive change introduces duplicate itemIds', async () => {
+    const errorHandler = vi.fn();
+    const wrapper = mountSurface(['a', 'b', 'c']);
+    wrapper.vm.$.appContext.app.config.errorHandler = errorHandler;
+
+    await wrapper.setProps({ itemIds: ['a', 'b', 'b'] });
+
+    expect(errorHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ message: REORDER_SURFACE_DUPLICATE_ITEM_IDS_MESSAGE }),
+      expect.anything(),
+      expect.any(String),
+    );
+  });
+
+  it('emits nothing when the controlled itemIds changed during an active drag', async () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+    const element = wrapper.get('li').element;
+
+    dispatchDragStart(wrapper);
+    await wrapper.setProps({ itemIds: ['c', 'a', 'b'] });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('emits nothing when the active id was removed from itemIds during an active drag', async () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+    const element = wrapper.get('li').element;
+
+    dispatchDragStart(wrapper);
+    await wrapper.setProps({ itemIds: ['b', 'c'] });
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(element, 'a', 0, 1) });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('emits nothing when source.id does not match the snapshot at initialIndex', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, {
+      source: { element: wrapper.get('li').element, id: 'z', initialIndex: 0, index: 2 },
+    });
+
+    expect(wrapper.emitted('reorder')).toBeUndefined();
+  });
+
+  it('emits normally for a valid drag after an ignored identity-inconsistent operation', () => {
+    const wrapper = mountSurface(['a', 'b', 'c']);
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, {
+      source: { element: wrapper.get('li').element, id: 'z', initialIndex: 0, index: 2 },
+    });
+
+    dispatchDragStart(wrapper);
+    dispatchDragEnd(wrapper, { source: fakeSortableSource(wrapper.get('li').element, 'a', 0, 2) });
+
+    expect(wrapper.emitted('reorder')).toHaveLength(1);
+    expect(wrapper.emitted('reorder')?.[0]?.[0]).toEqual({
+      expectedOrderedIds: ['a', 'b', 'c'],
+      orderedIds: ['b', 'c', 'a'],
+    });
   });
 });

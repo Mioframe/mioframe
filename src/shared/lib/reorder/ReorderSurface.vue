@@ -1,12 +1,12 @@
 <script setup lang="ts" generic="TId extends ReorderItemId">
 import { DragDropProvider, type DragEndEvent, type DragStartEvent } from '@dnd-kit/vue';
 import { isSortableOperation } from '@dnd-kit/vue/sortable';
-import { computed, provide, ref, shallowRef } from 'vue';
+import { computed, provide, ref, shallowRef, watch } from 'vue';
 import { getReorderPlugins, REORDER_MODIFIERS, REORDER_SENSORS } from './reorderConfig';
 import { reorderSurfaceInjectionKey } from './reorderSurfaceContext';
-import { moveItem } from './reorderArray';
 import { attemptTouchHapticFeedback, scheduleTouchDragCleanup } from './touchDragCleanup';
 import type { ReorderCommitRequest, ReorderItemId } from './types';
+import { assertUniqueItemIds, resolveReorderDragEnd } from './validateReorderSurface';
 
 const props = defineProps<{
   /**
@@ -32,6 +32,10 @@ provide(reorderSurfaceInjectionKey, {
   disabled: computed(() => Boolean(props.disabled)),
 });
 
+// `flush: 'sync'` so a reactive `itemIds` change that introduces a duplicate throws immediately,
+// before any subsequent drag can start or emit from the now-invalid controlled list.
+watch(() => props.itemIds, assertUniqueItemIds, { immediate: true, flush: 'sync' });
+
 const dragStartSnapshot = shallowRef<readonly TId[] | null>(null);
 const activePointerType = ref<string | undefined>(undefined);
 
@@ -56,27 +60,16 @@ const onDragEnd = (event: DragEndEvent) => {
 
   scheduleTouchDragCleanup(pointerType, source?.element);
 
-  if (!snapshot || event.canceled || !source) {
-    return;
-  }
-
-  const fromIndex = source.initialIndex;
-  const toIndex = source.index;
-
-  if (
-    fromIndex === toIndex ||
-    fromIndex < 0 ||
-    fromIndex >= snapshot.length ||
-    toIndex < 0 ||
-    toIndex >= snapshot.length
-  ) {
-    return;
-  }
-
-  emit('reorder', {
-    expectedOrderedIds: snapshot,
-    orderedIds: moveItem(snapshot, fromIndex, toIndex),
+  const request = resolveReorderDragEnd({
+    canceled: event.canceled,
+    snapshot,
+    currentItemIds: props.itemIds,
+    source,
   });
+
+  if (request) {
+    emit('reorder', request);
+  }
 };
 </script>
 
