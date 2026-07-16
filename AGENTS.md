@@ -46,10 +46,11 @@ Dependency rules:
 
 Use the applicable skill instead of duplicating its rules in the task:
 
-- `material3-guidelines`: user-visible UI/UX, Material component choice, usage, and composition decisions;
+- `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
+- `material-component-authoring`: creation, migration, alignment, or material change of an official public Material component family, including legacy `MD*` components outside the canonical library;
 - `material-foundation`: Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, overlays, accessibility, density, and adaptive foundation contracts;
 - `vue-component-implementation`: `.vue` components and UI composables;
-- `shared-ui-implementation`: public or materially changed `src/shared/ui` primitives, paired with Material guidance;
+- `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
 - `test-first`: reproducible behavior changes, bug fixes, migrations, storage semantics, and transformations;
 - `component-contract-testing`: small Vue render/props/emits/slots/wiring contracts;
 - `ui-browser-behavior`: layout, focus, keyboard, pointer/touch, scrolling, overlays, browser APIs, and mobile behavior;
