@@ -91,6 +91,34 @@ describe('new official component placement (diff-aware)', () => {
     expect(findings[0].path).toBe('src/shared/ui/Button/MDButton.vue');
   });
 
+  it('rejects a new component created directly under components/ without a family directory', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/components/MDButton.vue': '<template><button /></template>\n',
+    });
+    const findings = validateMaterialLibrary({
+      repoRoot: root,
+      baseRef: 'HEAD',
+      spawn: fakeSpawnWithFiles([]),
+    });
+
+    expect(findingCodes(findings)).toContain(CODES.MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY);
+    expect(findings[0].path).toBe('src/shared/ui/material/components/MDButton.vue');
+  });
+
+  it('rejects a new component created directly at the Material root', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/MDButton.vue': '<template><button /></template>\n',
+    });
+    const findings = validateMaterialLibrary({
+      repoRoot: root,
+      baseRef: 'HEAD',
+      spawn: fakeSpawnWithFiles([]),
+    });
+
+    expect(findingCodes(findings)).toContain(CODES.MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY);
+    expect(findings[0].path).toBe('src/shared/ui/material/MDButton.vue');
+  });
+
   it('grandfathers a pre-existing legacy component that already existed at the base ref', () => {
     const root = tempRepo({
       'src/shared/ui/Button/MDButton.vue': '<template><button /></template>\n',
@@ -175,16 +203,7 @@ describe('empty canonical directories', () => {
   });
 });
 
-describe('premature or empty root barrel', () => {
-  it('rejects a root barrel created before any real artifact is migrated', () => {
-    const root = tempRepo({
-      'src/shared/ui/material/index.ts': "export { MDButton } from './components/button';\n",
-    });
-    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-
-    expect(findingCodes(findings)).toContain(CODES.MATERIAL_PREMATURE_ROOT_BARREL);
-  });
-
+describe('empty root barrel', () => {
   it('rejects an empty root barrel', () => {
     const root = tempRepo({
       'src/shared/ui/material/index.ts': '   \n',
@@ -192,58 +211,19 @@ describe('premature or empty root barrel', () => {
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
     expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
-    expect(findingCodes(findings)).not.toContain(CODES.MATERIAL_PREMATURE_ROOT_BARREL);
   });
 
-  it('accepts a root barrel backed by a real migrated artifact', () => {
+  it('accepts a non-empty root barrel', () => {
     const root = tempRepo({
       'src/shared/ui/material/index.ts': "export { MDButton } from './components/button';\n",
       'src/shared/ui/material/components/button/MDButton.vue': '<template><button /></template>\n',
     });
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
-    expect(findingCodes(findings)).not.toContain(CODES.MATERIAL_PREMATURE_ROOT_BARREL);
+    expect(findings).toEqual([]);
   });
 
   it('does not require a root barrel to exist', () => {
-    const root = tempRepo({
-      'src/shared/ui/material/README.md': '# Material library\n',
-    });
-    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-
-    expect(findings).toEqual([]);
-  });
-});
-
-describe('explicitly listed obsolete paths', () => {
-  it('rejects a path on the explicit obsolete-path list', () => {
-    const root = tempRepo({
-      'src/shared/ui/OldMenu/MDMenu.vue': '<template><div /></template>\n',
-    });
-    const findings = validateMaterialLibrary({
-      repoRoot: root,
-      baseRef: null,
-      obsoletePaths: ['src/shared/ui/OldMenu'],
-    });
-
-    expect(findingCodes(findings)).toContain(CODES.MATERIAL_OBSOLETE_PATH);
-    expect(findings[0].path).toBe('src/shared/ui/OldMenu');
-  });
-
-  it('does not reject a path absent from the explicit list', () => {
-    const root = tempRepo({
-      'src/shared/ui/OldMenu/MDMenu.vue': '<template><div /></template>\n',
-    });
-    const findings = validateMaterialLibrary({
-      repoRoot: root,
-      baseRef: null,
-      obsoletePaths: ['src/shared/ui/SomeOtherLegacyOwner'],
-    });
-
-    expect(findingCodes(findings)).not.toContain(CODES.MATERIAL_OBSOLETE_PATH);
-  });
-
-  it('defaults to an empty obsolete-path list', () => {
     const root = tempRepo({
       'src/shared/ui/material/README.md': '# Material library\n',
     });

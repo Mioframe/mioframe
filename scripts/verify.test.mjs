@@ -411,19 +411,6 @@ describe('material-static verify integration', () => {
     expect(entry.kind).toBe('run');
   });
 
-  it('is excluded when buildCommands is used in fix-only scope (early return before it is pushed)', () => {
-    // isFixOnlyMode is a module-level constant derived from this test
-    // process's own argv, so it is always false here; this test instead
-    // proves material-static is pushed strictly after the fix-only early
-    // return in buildCommands, by construction (see scripts/verify.mjs).
-    const commands = buildCommands([], { fullMode: false });
-    const labels = commands.map((entry) => entry.label);
-
-    expect(labels).toContain('oxlint');
-    expect(labels).toContain('eslint');
-    expect(labels).toContain('material-static');
-  });
-
   it('passes the resolved comparison base ref as --base-ref', () => {
     const commands = buildCommands([], { fullMode: false, comparisonBaseRef: 'origin/develop' });
     const entry = commands.find((item) => item.label === 'material-static');

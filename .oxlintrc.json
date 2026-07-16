@@ -50,6 +50,15 @@
                   "**/shared/service/**"
                 ],
                 "message": "Import from @shared/service instead of directly importing service implementation modules."
+              },
+              {
+                "group": [
+                  "@shared/ui/material/*",
+                  "@shared/ui/material/**",
+                  "**/shared/ui/material/*",
+                  "**/shared/ui/material/**"
+                ],
+                "message": "Import the Material library's public entry point (@shared/ui/material) instead of a deep internal path."
               }
             ]
           }
@@ -90,9 +99,15 @@
                   "**/src/widgets/**",
                   "**/src/features/**",
                   "**/src/entities/**",
-                  "**/src/processes/**"
+                  "**/src/processes/**",
+                  "**/app/**",
+                  "**/pages/**",
+                  "**/widgets/**",
+                  "**/features/**",
+                  "**/entities/**",
+                  "**/processes/**"
                 ],
-                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes)."
+                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes), by alias or by relative path."
               }
             ]
           }
@@ -125,7 +140,15 @@
     },
     {
       "files": ["src/**/*.{ts,tsx,vue}", "tests/**/*.ts"],
-      "excludeFiles": ["src/shared/ui/material/**", "src/shared/lib/**"],
+      "excludeFiles": [
+        "src/shared/ui/material/**",
+        "src/shared/lib/**",
+        "src/app/**",
+        "src/pages/**",
+        "src/widgets/**",
+        "src/features/**",
+        "src/entities/**"
+      ],
       "rules": {
         "eslint/no-restricted-imports": [
           "error",

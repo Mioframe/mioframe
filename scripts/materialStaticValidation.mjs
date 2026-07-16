@@ -8,13 +8,13 @@ import { fileURLToPath } from 'node:url';
 //
 // This validator proves only repository facts that are already justified by
 // current repository structure and documentation: canonical placement of
-// new official components, empty canonical directories, a premature root
-// barrel, and explicitly documented obsolete paths. It does not parse
-// imports/exports, infer architecture profiles, or validate story/visual
-// content. Dependency-direction rules live in .oxlintrc.json (ESLint/oxlint
-// no-restricted-imports), not here. See docs/material-3/token-validation.md
-// for the checks this baseline intentionally defers until real component
-// migrations establish stable conventions.
+// new official components, empty canonical directories, and empty
+// placeholder artifacts. It does not parse imports/exports, infer
+// architecture profiles, or validate story/visual content. Dependency-
+// direction rules live in .oxlintrc.json (ESLint/oxlint no-restricted-
+// imports), not here. See docs/material-3/token-validation.md for the
+// checks this baseline intentionally defers until real component migrations
+// establish stable conventions.
 
 export const MATERIAL_ROOT = 'src/shared/ui/material';
 const RUNTIME_NAMESPACES = ['foundation', 'components', 'patterns'];
@@ -22,19 +22,10 @@ const GOVERNANCE_BASENAMES = new Set(['README.md', 'AGENTS.md', 'CLAUDE.md']);
 const IGNORED_DIR_NAMES = new Set(['node_modules', 'dist', '.git']);
 const OFFICIAL_COMPONENT_FILENAME = /^MD[A-Z][A-Za-z0-9]*\.vue$/;
 
-// Paths already unambiguously deprecated by repository documentation, e.g. a
-// completed migration whose blueprint/roadmap names the exact legacy path as
-// removed. Add an entry only when repository documentation already names
-// that exact path as obsolete; do not infer obsolescence from naming,
-// exports, prefixes, stories, or neighboring directories.
-export const OBSOLETE_MATERIAL_PATHS = [];
-
 export const CODES = Object.freeze({
   MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY: 'MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY',
   MATERIAL_EMPTY_DIRECTORY: 'MATERIAL_EMPTY_DIRECTORY',
   MATERIAL_PLACEHOLDER_ARTIFACT: 'MATERIAL_PLACEHOLDER_ARTIFACT',
-  MATERIAL_PREMATURE_ROOT_BARREL: 'MATERIAL_PREMATURE_ROOT_BARREL',
-  MATERIAL_OBSOLETE_PATH: 'MATERIAL_OBSOLETE_PATH',
 });
 
 function finding(code, filePath, message) {
@@ -151,6 +142,10 @@ export function getFilesAtRef(baseRef, { repoRoot = process.cwd(), spawn = spawn
 
 // ---- invariant 1: new official components must be canonically placed ----
 
+const CANONICAL_COMPONENT_PATH = new RegExp(
+  `^${MATERIAL_ROOT}/components/[^/]+/MD[A-Z][A-Za-z0-9]*\\.vue$`,
+);
+
 function checkNewOfficialComponentPlacement(repoRoot, fsApi, filesAtBaseRef) {
   const findings = [];
 
@@ -158,10 +153,8 @@ function checkNewOfficialComponentPlacement(repoRoot, fsApi, filesAtBaseRef) {
     return findings;
   }
 
-  const canonicalComponentsDir = `${MATERIAL_ROOT}/components/`;
-
   for (const filePath of collectFilesRecursive(repoRoot, 'src', fsApi)) {
-    if (filePath.startsWith(canonicalComponentsDir)) {
+    if (CANONICAL_COMPONENT_PATH.test(filePath)) {
       continue;
     }
 
@@ -177,7 +170,7 @@ function checkNewOfficialComponentPlacement(repoRoot, fsApi, filesAtBaseRef) {
       finding(
         CODES.MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY,
         filePath,
-        `New official Material component file must be created under ${canonicalComponentsDir}<family>/, not at this path.`,
+        `New official Material component file must be created under ${MATERIAL_ROOT}/components/<family>/, not at this path.`,
       ),
     );
   }
@@ -271,29 +264,9 @@ function checkEmptyAndPlaceholderArtifacts(repoRoot, fsApi) {
   return findings;
 }
 
-// ---- invariant 3 (continued): premature root barrel ----
+// ---- invariant 3 (continued): empty root barrel ----
 
-function hasRealProductionArtifact(repoRoot, fsApi) {
-  for (const namespace of RUNTIME_NAMESPACES) {
-    const namespaceDir = path.posix.join(MATERIAL_ROOT, namespace);
-
-    for (const filePath of collectFilesRecursive(repoRoot, namespaceDir, fsApi)) {
-      const basename = path.posix.basename(filePath);
-
-      if (GOVERNANCE_BASENAMES.has(basename) || basename === '.gitkeep') {
-        continue;
-      }
-
-      if (readFile(repoRoot, filePath, fsApi).trim().length > 0) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-function checkPrematureRootBarrel(repoRoot, fsApi) {
+function checkEmptyRootBarrel(repoRoot, fsApi) {
   const rootBarrel = `${MATERIAL_ROOT}/index.ts`;
 
   if (!fileExists(repoRoot, rootBarrel, fsApi)) {
@@ -310,40 +283,7 @@ function checkPrematureRootBarrel(repoRoot, fsApi) {
     ];
   }
 
-  if (!hasRealProductionArtifact(repoRoot, fsApi)) {
-    return [
-      finding(
-        CODES.MATERIAL_PREMATURE_ROOT_BARREL,
-        rootBarrel,
-        'The root Material barrel exists before any migrated component, foundation, or pattern artifact. Remove it until at least one real artifact is migrated.',
-      ),
-    ];
-  }
-
   return [];
-}
-
-// ---- invariant 4: explicitly documented obsolete paths ----
-
-function checkObsoletePaths(repoRoot, fsApi, obsoletePaths) {
-  const findings = [];
-
-  for (const obsoletePath of obsoletePaths) {
-    if (
-      fileExists(repoRoot, obsoletePath, fsApi) ||
-      directoryExists(repoRoot, obsoletePath, fsApi)
-    ) {
-      findings.push(
-        finding(
-          CODES.MATERIAL_OBSOLETE_PATH,
-          obsoletePath,
-          'This path is explicitly deprecated by repository documentation. A canonical owner already replaced it; remove this path.',
-        ),
-      );
-    }
-  }
-
-  return findings;
 }
 
 // ---- entry point ----
@@ -357,7 +297,6 @@ function checkObsoletePaths(repoRoot, fsApi, obsoletePaths) {
  * diff-aware new-component-placement check.
  * @param [options.fsApi] Injectable `fs` module, for tests.
  * @param [options.spawn] Injectable `spawnSync`, for tests.
- * @param [options.obsoletePaths] Explicit obsolete-path list, for tests.
  * @returns Sorted findings; empty when the repository is valid.
  */
 export function validateMaterialLibrary({
@@ -365,15 +304,13 @@ export function validateMaterialLibrary({
   baseRef = null,
   fsApi = fs,
   spawn = spawnSync,
-  obsoletePaths = OBSOLETE_MATERIAL_PATHS,
 } = {}) {
   const filesAtBaseRef = baseRef === null ? null : getFilesAtRef(baseRef, { repoRoot, spawn });
 
   const findings = [
     ...checkNewOfficialComponentPlacement(repoRoot, fsApi, filesAtBaseRef),
     ...checkEmptyAndPlaceholderArtifacts(repoRoot, fsApi),
-    ...checkPrematureRootBarrel(repoRoot, fsApi),
-    ...checkObsoletePaths(repoRoot, fsApi, obsoletePaths),
+    ...checkEmptyRootBarrel(repoRoot, fsApi),
   ];
 
   return sortFindings(findings);
