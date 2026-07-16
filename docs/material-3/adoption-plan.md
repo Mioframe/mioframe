@@ -2,7 +2,7 @@
 
 ## Principle
 
-Adopt Material incrementally through `src/shared/ui/material`.
+Adopt Material incrementally through `src/shared/ui/material` while classifying the complete shared UI library.
 
 Standard components should be authored from required scenarios, official sources, accepted foundation contracts, native semantics, the complete canonical family blueprint, and the standard testing contract.
 
@@ -10,12 +10,15 @@ Use architecture escalation only for genuine ambiguity, public extensions, owner
 
 Do not build a complete design-system framework, generic test DSL, or mass source-tree migration in advance.
 
+Not every shared UI artifact belongs inside the Material library. Official components, patterns, and foundations become canonical Material owners; project-specific and generic UI remain outside; duplicates and obsolete surfaces are removed or consolidated.
+
 ## Phase 1: keep one coherent policy system
 
 Maintain:
 
 - source authority including official Design Kit use for unresolved exact visual decisions;
 - Material library boundary and migration rules;
+- exhaustive shared UI inventory and evidence-backed priority model;
 - foundation architecture and current registry;
 - one complete canonical family blueprint schema;
 - deterministic component profiles and property routing;
@@ -23,7 +26,7 @@ Maintain:
 - static/structured validation separated from review blocking;
 - component/foundation registries, deviations, and review metadata.
 
-Architecture documents own durable schemas. Scoped `AGENTS.md` route work. Skills define execution order. The checklist defines operational completion. Validation does not add parallel architecture.
+Architecture documents own durable schemas. Scoped `AGENTS.md` route work. Skills define execution order. The checklist defines operational completion. The roadmap owns current sequence. The inventory owns classification and priority. Validation does not add parallel architecture.
 
 ## Phase 2: establish the library boundary
 
@@ -58,7 +61,7 @@ Required blueprint/registry sections, enum values, real file/story/export refere
 
 ### Review blocking
 
-Family ownership, scenario sufficiency, Material source interpretation, property-route correctness, visual-route equivalence, matrix readability, deviations, and human visual comparison.
+Family ownership, scenario sufficiency, Material source interpretation, property-route correctness, visual-route equivalence, matrix readability, deviations, priority decisions, and human visual comparison.
 
 Do not implement a semantic Markdown DSL that claims to prove review decisions.
 
@@ -93,7 +96,7 @@ Before promoting a domain to `verified`, require:
 
 Implement static/structured checks for registered exports/tokens/bridges/adapters, no family knowledge, no duplicate owners, current/canonical path consistency, and deprecated contracts unused by new code.
 
-Start with domains required by `MDButton` rather than validating every legacy owner at once.
+Start with domains required by the first accepted high-priority pilot rather than validating every legacy owner at once.
 
 ### Legacy additive rule
 
@@ -113,9 +116,29 @@ Implement static/structured checks for:
 - visual spec/snapshot/risk-registration consistency;
 - obsolete parallel routes and legacy exports.
 
-Architecture review, not automation, confirms family rationale, supported surface, state/DOM ownership, rendered-property routes, and visual-route grouping.
+Architecture review, not automation, confirms family rationale, supported surface, state/DOM ownership, rendered-property routes, visual-route grouping, and migration priority.
 
-## Phase 7: Button foundation preparation
+## Phase 7: exhaustive shared UI inventory and priority queue
+
+Populate `ui-library-inventory.md` before committing to the long-term migration order.
+
+Inventory every public component, composable, directive, style owner, helper, and export under `src/shared/ui`, plus external shared UI-facing owners that hold Material foundation behavior.
+
+For every row record:
+
+- current owner and public surfaces;
+- direct consumers and critical user flows;
+- official Material mapping or `none`;
+- target classification and canonical/retained owner;
+- priority with evidence;
+- dependencies and blockers;
+- queue status and completion evidence.
+
+Priority uses tiers rather than a synthetic numeric score. Consider consumer reach, critical repeated workflows, interaction frequency, foundation leverage, current risk, dependency readiness, migration blast radius, and whether removal/consolidation is more valuable than migration.
+
+The phase is complete only when no artifact remains unclassified or unresolved, an ordered `P0`/`P1` queue exists, and Button plus the independent stateful pilot are confirmed or replaced with evidence-backed alternatives.
+
+## Phase 8: Button foundation preparation
 
 Before moving `MDButton`, validate the minimum consumed domains:
 
@@ -136,9 +159,11 @@ For each domain choose:
 
 Do not split a monolithic owner merely to match the target directory diagram.
 
-## Phase 8: `MDButton` migration pilot
+## Phase 9: `MDButton` migration pilot
 
-Use `MDButton` to prove:
+Use `MDButton` as the default first pilot because it is expected to combine high reach with broad foundation leverage. The exhaustive inventory must confirm this before production migration; otherwise update the roadmap with an evidence-backed replacement.
+
+The pilot proves:
 
 - canonical family ownership;
 - complete blueprint authoring;
@@ -151,35 +176,37 @@ Use `MDButton` to prove:
 - static/structured validation without Button-specific exceptions;
 - required human visual review.
 
-The migration must preserve API, behavior, token values, and rendered output unless an explicit alignment delta says otherwise. Remove old files/exports and update all consumers, stories, tests, snapshots, registries, risk registration, and migration map.
+The migration must preserve API, behavior, token values, and rendered output unless an explicit alignment delta says otherwise. Remove old files/exports and update all consumers, stories, tests, snapshots, registries, inventory, risk registration, and migration map.
 
 Do not mix remaining visual alignment or unrelated foundation corrections into the migration.
 
-## Phase 9: `MDButton` alignment
+## Phase 10: `MDButton` alignment
 
 After migration, address documented deviations only.
 
-Every intentional visible change updates affected routes, matrix cells, baselines, review evidence, and registry status. A discovered foundation correction uses its own focused mode and consumer review.
+Every intentional visible change updates affected routes, matrix cells, baselines, review evidence, inventory completion evidence, and registry status. A discovered foundation correction uses its own focused mode and consumer review.
 
-## Phase 10: `MDSwitch` independent pilot
+## Phase 11: independent stateful migration pilot
 
-Migrate `MDSwitch` independently to validate:
+Select a high-priority stateful family with a materially different interaction model. `MDSwitch` is the default candidate unless the inventory identifies a higher-value family that proves the same architectural contracts.
 
-- controlled selected/unselected state;
+The pilot validates:
+
+- controlled state;
 - disabled and presentation contracts;
-- keyboard activation and pointer drag/cancellation;
+- keyboard and pointer/touch behavior, including cancellation where applicable;
 - multiple anatomy/DOM owners;
 - property-specific coexistence;
 - focus/ripple/motion/shape/color/accessibility/target-area dependencies;
-- separation of visual matrix from real drag/keyboard behavior.
+- separation of visual matrix from real browser behavior.
 
-Only after Button and Switch reveal the same concrete fixture/validator need may a shared helper be considered.
+Only after two pilots reveal the same concrete fixture/validator need may a shared helper be considered.
 
 If the architecture requires repeated exceptions, component-specific validator logic, private cross-family imports, local foundation workarounds, or family-specific forced states, revise it before continuing.
 
-## Phase 11: autonomous new-component proof
+## Phase 12: autonomous new-component proof
 
-Create one genuinely required new Material component directly in the library.
+Create one genuinely required high-priority Material component directly in the library.
 
 The coding agent must be able to:
 
@@ -195,19 +222,23 @@ The coding agent must be able to:
 10. create the standard test profile;
 11. cover distinct visible routes without meaningless cells;
 12. pass static/structured validation;
-13. leave review-only decisions truthfully pending until accepted;
-14. finish without architecture correction rounds.
+13. update inventory and migration records;
+14. leave review-only decisions truthfully pending until accepted;
+15. finish without architecture correction rounds.
 
 A successful legacy relocation alone does not prove autonomous authoring.
 
-## Phase 12: incremental migration
+## Phase 13: priority-driven incremental migration
 
-After Button, Switch, and the new-component proof:
+After the pilots:
 
-- migrate one cohesive family/domain at a time from product need;
-- update blueprint/contracts, owners, exports, consumers, stories, tests, snapshots, risk registration, and maps atomically;
+- select each batch from the highest accepted ready inventory priority;
+- migrate one cohesive family/domain at a time;
+- update inventory, blueprint/contracts, owners, exports, consumers, stories, tests, snapshots, risk registration, and maps atomically;
 - use relocation, architecture, alignment, and foundation modes intentionally;
 - remove old paths and avoid permanent compatibility exports;
+- retain project-specific and generic UI outside Material explicitly;
+- remove or consolidate low-value duplicates rather than migrating them automatically;
 - improve foundations only from confirmed needs;
 - persist accepted visual-review metadata.
 
@@ -215,12 +246,17 @@ After Button, Switch, and the new-component proof:
 
 The workflow succeeds when:
 
-- one canonical location and owner exists for every new Material artifact;
+- every in-scope shared UI artifact has exactly one inventory row and accepted terminal outcome;
+- no artifact remains unclassified or unresolved;
+- every Material-owned artifact has one canonical location and owner;
+- project-specific and generic UI remain outside official families with explicit ownership;
+- migration order is evidence-backed and highest-value ready work is not displaced by discussion order;
 - one complete family blueprint is sufficient for normal agent implementation;
 - foundation, families, patterns, project UI, and generic infrastructure remain separate;
 - components consume accepted foundation contracts;
 - all new/migrated components use the same understandable proof profile;
 - distinct supported visual routes are human-readable without multiplying non-visual/equivalent states;
-- automation blocks deterministic drift without pretending to replace architecture/visual review;
+- automation blocks deterministic drift without pretending to replace architecture, priority, or visual review;
 - migrations remove legacy owners rather than accumulating compatibility layers;
-- new components can be authored without bespoke architecture correction rounds.
+- new components can be authored without bespoke architecture correction rounds;
+- the program ends with every inventory row `migrated`, `retained`, or `removed`, not with every possible Material component implemented.
