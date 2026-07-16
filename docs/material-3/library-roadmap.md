@@ -9,13 +9,15 @@ It answers four questions for a new session:
 3. What blocks the active work?
 4. What is the single next action?
 
-Durable architecture and workflow rules remain in the canonical Material policy documents and skills. This roadmap does not redefine component blueprints, foundation records, testing contracts, validation rules, inventory classifications, or migration semantics.
+Durable architecture and workflow rules remain in the canonical Material policy documents and skills. This roadmap does not redefine component blueprints, foundation records, testing contracts, validation rules, review roles, inventory classifications, or migration semantics.
 
 ## Sources of truth
 
 Use this document only for sequencing and progress.
 
 - `adoption-plan.md` owns the strategic rollout rationale and phase descriptions.
+- `source-of-truth.md` owns the current canonical Material 3 Expressive target and source hierarchy.
+- `autonomous-review.md` owns agent evidence review, operator visual acceptance, and the review merge gate.
 - `ui-library-inventory.md` owns exhaustive shared-UI classification, evidence-backed priority, queue state, and candidate ordering.
 - `foundation-registry.md` owns foundation status, evidence, contracts, owners, gaps, and verification.
 - `component-registry.md` owns official Material surface alignment and verification status.
@@ -31,9 +33,11 @@ The program does not require moving every shared UI artifact into `src/shared/ui
 
 It is complete when every in-scope shared UI artifact is classified and reaches one accepted terminal outcome:
 
-- canonical official Material component, pattern, or foundation owner;
+- canonical current Material 3 Expressive component, pattern, or foundation owner;
 - explicitly retained project-specific or generic shared UI owner outside Material;
 - removed or consolidated obsolete/duplicate owner.
+
+For an official component, completion additionally requires source-backed agent review of every non-visual contract and operator acceptance only of prepared visual evidence. Baseline Material 3 must not remain as a silent substitute for an available Expressive contract.
 
 The migration order is evidence-driven. After the architecture pilots, work follows the highest accepted ready priority in `ui-library-inventory.md`, based on consumer reach, critical workflows, interaction frequency, foundation leverage, risk, and dependency readiness.
 
@@ -47,7 +51,7 @@ Use exactly one status per milestone:
 - `done` — exit gate passed and the completing PR is merged into `develop`;
 - `skipped` — milestone proved unnecessary, with evidence recorded.
 
-Only one milestone should normally be `active`. Parallel work is allowed only when milestones have no shared production, migration, inventory, or verification ownership.
+Only one milestone should normally be `active`. Parallel work is allowed only when milestones have no shared production, migration, inventory, review, or verification ownership.
 
 ## Current state
 
@@ -57,25 +61,25 @@ Current milestone: `M0 — architecture and operating model`
 
 Current status: `active`
 
-Current blocker: final verification is pending on the roadmap, inventory, and instruction-routing update to PR #149.
+Current blocker: final verification is pending on the Material 3 Expressive target, autonomous-review, testing, checklist, roadmap, inventory, and instruction-routing update to PR #149.
 
 Next action: complete final verification, then mark PR #149 ready for review and merge it into `develop`.
 
 ## Milestone overview
 
-| ID  | Milestone                                             | Status    | Depends on                                  | Exit gate                                                                                                                                                                                                                        |
-| --- | ----------------------------------------------------- | --------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Architecture and operating model                      | `active`  | none                                        | PR #149 merged; canonical policies, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop`                                                                                  |
-| M1  | Static Material architecture validation               | `planned` | M0                                          | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work                                                               |
-| M2  | Structured Material consistency validation            | `planned` | M1                                          | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference                                                                                                     |
-| M3  | Shared UI inventory and prioritized migration backlog | `planned` | M2                                          | every in-scope shared UI artifact is classified exactly once, consumers and target owners are recorded, and an ordered evidence-backed `P0`/`P1` queue exists                                                                    |
-| M4  | Button foundation readiness                           | `planned` | M2 and M3                                   | every foundation domain required by the accepted Button surface has an exact owner, snapshot/status, contract, change mode, verification, and no hidden blocker                                                                  |
-| M5  | Required Button foundation changes                    | `planned` | M4                                          | every change identified by M4 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required                                                                       |
-| M6  | `MDButton` architecture migration                     | `planned` | M4 and applicable M5 work                   | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed                                                                                      |
-| M7  | `MDButton` Material alignment                         | `planned` | M6                                          | documented Button deviations are corrected or accepted, visual evidence is current, and required human Material review is recorded                                                                                               |
-| M8  | Independent stateful migration pilot                  | `planned` | M2, M3, and applicable foundation readiness | a high-priority stateful family—default candidate `MDSwitch`—validates controlled state, interaction/cancellation, anatomy, property coexistence, browser proof, and visual-matrix separation without Button-specific exceptions |
-| M9  | Autonomous new-component proof                        | `planned` | M7 and M8                                   | one genuinely required new official component is authored directly in the library from sources and scenarios without bespoke architecture correction rounds                                                                      |
-| M10 | Priority-driven incremental library population        | `planned` | M9                                          | inventory rows progress by accepted priority until every row is `migrated`, `retained`, or `removed`, with Material-owned artifacts canonical and legacy owners eliminated                                                       |
+| ID  | Milestone                                             | Status    | Depends on                                  | Exit gate                                                                                                                                                                                                                         |
+| --- | ----------------------------------------------------- | --------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model                      | `active`  | none                                        | PR #149 merged; canonical Expressive source target, architecture, review-role contract, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop`                              |
+| M1  | Static Material architecture validation               | `planned` | M0                                          | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work                                                                |
+| M2  | Structured Material consistency validation            | `planned` | M1                                          | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference                                                                                                      |
+| M3  | Shared UI inventory and prioritized migration backlog | `planned` | M2                                          | every in-scope shared UI artifact is classified exactly once, consumers and target owners are recorded, and an ordered evidence-backed `P0`/`P1` queue exists                                                                     |
+| M4  | Button foundation readiness                           | `planned` | M2 and M3                                   | every foundation domain required by the accepted Button surface has an exact owner, current Expressive snapshot/status, contract, change mode, verification, and no hidden blocker                                               |
+| M5  | Required Button foundation changes                    | `planned` | M4                                          | every change identified by M4 is completed through focused foundation PRs, or this milestone is explicitly `skipped` when no production change is required                                                                        |
+| M6  | `MDButton` architecture migration                     | `planned` | M4 and applicable M5 work                   | Button family is canonical, behavior-preserving migration is complete, consumers and proof artifacts agree, and legacy ownership is removed                                                                                       |
+| M7  | `MDButton` Material 3 Expressive alignment             | `planned` | M6                                          | Button agent evidence review is passed, documented deviations are corrected or accepted, visual evidence is current, and operator visual acceptance is recorded                                                                   |
+| M8  | Independent stateful migration pilot                  | `planned` | M2, M3, and applicable foundation readiness | a high-priority stateful family—default candidate `MDSwitch`—validates controlled state, interaction/cancellation, anatomy, property coexistence, autonomous evidence review, browser proof, and operator-only visual acceptance |
+| M9  | Autonomous new-component proof                        | `planned` | M7 and M8                                   | one genuinely required new official component is authored directly from current Expressive sources, closes every non-visual gate autonomously, and reaches operator-ready visual handoff without bespoke architecture rounds        |
+| M10 | Priority-driven incremental library population        | `planned` | M9                                          | inventory rows progress by accepted priority until every row is `migrated`, `retained`, or `removed`, with Material-owned artifacts canonical and legacy owners eliminated                                                        |
 
 ## Milestone details
 
@@ -83,7 +87,9 @@ Next action: complete final verification, then mark PR #149 ready for review and
 
 Scope:
 
-- canonical library, foundation, component, testing, source, validation, and migration policies;
+- canonical Material 3 Expressive source target;
+- canonical library, foundation, component, testing, validation, and migration policies;
+- agent evidence review and operator-only visual-acceptance contract;
 - scoped `AGENTS.md` routing and hard boundaries;
 - `material-component-authoring`, `material-foundation`, and supporting skill ownership;
 - foundation/component registries and physical migration map;
@@ -95,7 +101,7 @@ Completion evidence:
 
 - PR #149;
 - previous architecture head passed final `pnpm verify`;
-- final roadmap/inventory/instruction head verification and merge into `develop` pending.
+- final Expressive/autonomous-review/instruction head verification and merge into `develop` pending.
 
 ### M1 — Static Material architecture validation
 
@@ -123,8 +129,8 @@ Minimum outcome:
 - enum values are accepted;
 - named files, exports, stories, specs, snapshots, owners, and map records exist;
 - `verified` foundation records have exact snapshots and named verification;
-- migration status agrees across blueprint, registry, and physical map;
-- validation does not claim to prove family rationale, Material interpretation, visual-route equivalence, priority, or human visual correctness.
+- migration status agrees across blueprint, registry, inventory, and physical map;
+- validation does not claim to prove family rationale, Material interpretation, visual-route equivalence, priority, agent evidence reasoning, or visual correctness.
 
 ### M3 — Shared UI inventory and prioritized migration backlog
 
@@ -151,7 +157,7 @@ Audit only domains required by the accepted Button supported surface.
 
 For every applicable domain record:
 
-- official source and exact snapshot;
+- current official Expressive source and exact snapshot;
 - current and canonical owner;
 - registry and migration status;
 - minimum contract required by Button;
@@ -192,11 +198,17 @@ Required outcome:
 
 Do not mix remaining visual alignment into this milestone.
 
-### M7 — `MDButton` Material alignment
+### M7 — `MDButton` Material 3 Expressive alignment
 
 Correct only named deviations discovered or retained during M6.
 
-Every visible change updates affected blueprint routes, matrix cases, baselines, source evidence, inventory completion evidence, and review status. Foundation corrections follow their own change mode and consumer review.
+Required outcome:
+
+- current official Expressive sources and Design Kit evidence are resolved;
+- agent architecture, Material contract, accessibility, behavior, and migration evidence review is `passed`;
+- every visible change updates blueprint routes, matrix cases, baselines, source evidence, inventory completion evidence, and review status;
+- operator receives only the prepared screenshot package and records `accepted`, `rejected`, or `blocked`;
+- foundation corrections follow their own change mode and consumer review.
 
 ### M8 — Independent stateful migration pilot
 
@@ -209,7 +221,8 @@ The pilot must prove:
 - multiple anatomy/DOM owners;
 - property-specific winner/coexistence rules;
 - interaction, motion, shape, color, accessibility, and target-area dependencies;
-- visual-state proof remains separate from real browser behavior.
+- all non-visual gates can be closed by the agent;
+- visual-state proof remains separate from real browser behavior and operator visual acceptance.
 
 Do not introduce shared helpers only because two families look similar. Require the same concrete need in both pilots.
 
@@ -217,7 +230,7 @@ Do not introduce shared helpers only because two families look similar. Require 
 
 Choose one genuinely required high-priority component that has no legacy implementation to relocate.
 
-Success means the standard authoring workflow can derive sources, supported surface, blueprint, dependencies, profile, production implementation, exports, proof layers, inventory state, and truthful review state without a bespoke architecture redesign.
+Success means the standard authoring workflow can derive current Expressive sources, supported surface, blueprint, dependencies, profile, production implementation, exports, proof layers, inventory state, agent evidence review, and operator-ready screenshot package without a bespoke architecture redesign.
 
 ### M10 — Priority-driven incremental library population
 
@@ -229,20 +242,21 @@ Rules:
 - migrate one cohesive family or foundation domain per focused PR;
 - create patterns only after the official-pattern gate passes;
 - update inventory, blueprint/contracts, owners, exports, consumers, stories, tests, snapshots, risk registration, registries, and maps atomically;
+- require agent evidence review before operator visual handoff;
 - remove old owners instead of accumulating compatibility layers;
 - improve foundation contracts only from confirmed needs;
 - retain project-specific and generic UI outside Material explicitly rather than forcing migration;
 - remove or consolidate low-value duplicates where that is better than canonicalizing them.
 
-M10 remains ongoing until every inventory row has a terminal status and all Material-owned artifacts have canonical owners. It does not require implementing every optional component or capability published by Material.
+M10 remains ongoing until every inventory row has a terminal status and all Material-owned artifacts have canonical current owners. It does not require implementing every optional component or capability published by Material.
 
 ## Progress log
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date       | Milestone | Change                                                                                                                         | Evidence                                            |
-| ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| 2026-07-16 | M0        | Architecture baseline, operational roadmap, and full-library inventory contract completed; final verification and merge remain | PR #149; previous architecture head passed `verify` |
+| Date       | Milestone | Change                                                                                                                                                         | Evidence                                            |
+| ---------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 2026-07-16 | M0        | Added canonical Expressive target and autonomous agent/operator review contract; final verification and merge remain                                          | PR #149; previous architecture head passed `verify` |
 
 ## Update protocol
 
@@ -258,13 +272,12 @@ Update only:
 4. a concise progress-log row;
 5. dependencies only when new evidence changes them.
 
-Do not rewrite completed milestone details to match a later implementation. Record the new decision in the owning architecture, registry, blueprint, inventory, or migration document and update only the roadmap consequence here.
+Do not rewrite completed milestone details to match a later implementation. Record the new decision in the owning source, architecture, review, registry, blueprint, or migration document and update only the roadmap consequence here.
 
 Before starting a new Material session:
 
 1. read `Current state` and `Next action`;
 2. confirm the active milestone against merged repository state;
 3. inspect only the owning documents linked by that milestone;
-4. consult `ui-library-inventory.md` before selecting or reprioritizing a family;
-5. do not skip ahead while an exit gate or blocker remains;
-6. update the roadmap and affected inventory rows when the session changes progress.
+4. do not skip ahead while an exit gate or blocker remains;
+5. update this roadmap when the session changes progress.
