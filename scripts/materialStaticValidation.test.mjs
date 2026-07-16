@@ -9,6 +9,7 @@ import {
   formatFinding,
   getFilesAtRef,
   MATERIAL_ROOT,
+  parseCliArgs,
   validateMaterialLibrary,
 } from './materialStaticValidation.mjs';
 
@@ -375,6 +376,34 @@ describe('getFilesAtRef', () => {
   });
 });
 
+describe('parseCliArgs', () => {
+  it('returns baseRef null when --base-ref is not passed', () => {
+    expect(parseCliArgs([])).toEqual({ baseRef: null });
+  });
+
+  it('parses a valid --base-ref <ref>', () => {
+    expect(parseCliArgs(['--base-ref', 'origin/develop'])).toEqual({ baseRef: 'origin/develop' });
+  });
+
+  it('parses a valid --base-ref=<ref>', () => {
+    expect(parseCliArgs(['--base-ref=origin/develop'])).toEqual({ baseRef: 'origin/develop' });
+  });
+
+  it('rejects --base-ref with no following value', () => {
+    expect(() => parseCliArgs(['--base-ref'])).toThrow(/--base-ref requires a non-empty Git ref/);
+  });
+
+  it('rejects --base-ref=', () => {
+    expect(() => parseCliArgs(['--base-ref='])).toThrow(/--base-ref requires a non-empty Git ref/);
+  });
+
+  it('rejects --base-ref immediately followed by another option', () => {
+    expect(() => parseCliArgs(['--base-ref', '--other-option'])).toThrow(
+      /--base-ref requires a non-empty Git ref/,
+    );
+  });
+});
+
 describe('CLI behavior', () => {
   it('exits 0 for a valid repository', () => {
     const root = tempRepo({
@@ -418,6 +447,21 @@ describe('CLI behavior', () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('nonexistent-ref');
+    expect(result.stdout).not.toContain('architecture findings');
+  });
+
+  it.each([
+    [['--base-ref'], 'no value'],
+    [['--base-ref='], 'empty value'],
+    [['--base-ref', '--other-option'], 'followed by another option'],
+  ])('rejects --base-ref with %s (%s) as a CLI usage error', (args) => {
+    const root = tempRepo({
+      'src/shared/ui/material/README.md': '# Material library\n',
+    });
+    const result = spawnSync('node', [SCRIPT_PATH, ...args], { cwd: root, encoding: 'utf8' });
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('--base-ref requires a non-empty Git ref');
     expect(result.stdout).not.toContain('architecture findings');
   });
 });

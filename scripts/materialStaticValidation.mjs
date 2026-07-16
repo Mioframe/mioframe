@@ -345,15 +345,37 @@ export function formatFinding({ code, path: findingPath, message }) {
   return `[static-blocking][${code}] ${findingPath}:\n${message}`;
 }
 
-function parseCliArgs(argv) {
+/**
+ * Parse `--base-ref` from CLI args. Throws a concise usage error when
+ * `--base-ref` is supplied without a non-empty value, so a malformed
+ * invocation fails loudly instead of silently disabling the diff-aware
+ * placement check.
+ * @param argv CLI arguments, excluding the node binary and script path.
+ * @returns The parsed base ref, or `null` when `--base-ref` was not passed.
+ */
+export function parseCliArgs(argv) {
   let baseRef = null;
 
   for (let index = 0; index < argv.length; index += 1) {
-    if (argv[index] === '--base-ref') {
-      baseRef = argv[index + 1] ?? baseRef;
+    const arg = argv[index];
+
+    if (arg === '--base-ref') {
+      const value = argv[index + 1];
+
+      if (value === undefined || value.startsWith('--')) {
+        throw new Error('material-static: --base-ref requires a non-empty Git ref.');
+      }
+
+      baseRef = value;
       index += 1;
-    } else if (argv[index].startsWith('--base-ref=')) {
-      baseRef = argv[index].slice('--base-ref='.length);
+    } else if (arg.startsWith('--base-ref=')) {
+      const value = arg.slice('--base-ref='.length);
+
+      if (value.length === 0) {
+        throw new Error('material-static: --base-ref requires a non-empty Git ref.');
+      }
+
+      baseRef = value;
     }
   }
 

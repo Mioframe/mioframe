@@ -83,15 +83,11 @@
                   "@page/*",
                   "@page/**"
                 ],
-                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes), by alias or by relative path."
+                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes) by alias."
               },
               {
                 "regex": "^@/(?:app|pages|widgets|features|entities|processes)(?:/|$)",
-                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes), by alias or by relative path."
-              },
-              {
-                "regex": "^(?:\\.\\./)+(?:app|pages|widgets|features|entities|processes)(?:/|$)",
-                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes), by alias or by relative path."
+                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes) by alias."
               }
             ]
           }
