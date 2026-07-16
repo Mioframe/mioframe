@@ -27,6 +27,10 @@ describe('classifyCommandWeight', () => {
     expect(classifyCommandWeight({ label: 'release-config' })).toBe('light');
     expect(classifyCommandWeight({ label: 'build' })).toBe('medium');
   });
+
+  it('keeps material-static light, matching the other cheap static checks', () => {
+    expect(classifyCommandWeight({ label: 'material-static' })).toBe('light');
+  });
 });
 
 describe('resolveEslintConcurrency', () => {

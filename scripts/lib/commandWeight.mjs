@@ -14,6 +14,7 @@ export function classifyCommandWeight({ label, fileCount = 0, isFullRepo = false
   switch (label) {
     case 'format':
     case 'oxlint':
+    case 'material-static':
       return 'light';
     case 'eslint':
       return classifyFileScopedWeight(commandWeightConfig.eslint, fileCount, isFullRepo);

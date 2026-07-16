@@ -57,20 +57,20 @@ Only one milestone should normally be `active`. Parallel work is allowed only wh
 
 Last updated: 2026-07-16
 
-Current milestone: `M0 — architecture and operating model`
+Current milestone: `M1 — Static Material architecture validation`
 
 Current status: `active`
 
-Current blocker: final verification is pending on the Material 3 Expressive target, autonomous-review, testing, checklist, roadmap, inventory, and instruction-routing update to PR #149.
+Current blocker: this milestone's implementation is complete on `feat/material-static-architecture-validation`; the remaining blocker is finishing full repository verification and merging the PR into `develop`.
 
-Next action: complete final verification, then mark PR #149 ready for review and merge it into `develop`.
+Next action: finish `pnpm verify`, then merge `feat/material-static-architecture-validation` into `develop`.
 
 ## Milestone overview
 
 | ID  | Milestone                                             | Status    | Depends on                                  | Exit gate                                                                                                                                                                                                                        |
 | --- | ----------------------------------------------------- | --------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Architecture and operating model                      | `active`  | none                                        | PR #149 merged; canonical Expressive source target, architecture, review-role contract, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop`                              |
-| M1  | Static Material architecture validation               | `planned` | M0                                          | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work                                                               |
+| M0  | Architecture and operating model                      | `done`    | none                                        | PR #149 merged; canonical Expressive source target, architecture, review-role contract, scoped routing, skills, registries, migration map, roadmap, and inventory contract available from `develop`                              |
+| M1  | Static Material architecture validation               | `active`  | M0                                          | deterministic path, dependency, import/export, profile-file, style-order, test-artifact, story-identity, and obsolete-path checks block invalid new/migrating work                                                               |
 | M2  | Structured Material consistency validation            | `planned` | M1                                          | blueprint/registry/map sections, enums, snapshots, and repository references are checked without semantic Markdown inference                                                                                                     |
 | M3  | Shared UI inventory and prioritized migration backlog | `planned` | M2                                          | every in-scope shared UI artifact is classified exactly once, consumers and target owners are recorded, and an ordered evidence-backed `P0`/`P1` queue exists                                                                    |
 | M4  | Button foundation readiness                           | `planned` | M2 and M3                                   | every foundation domain required by the accepted Button surface has an exact owner, current Expressive snapshot/status, contract, change mode, verification, and no hidden blocker                                               |
@@ -99,9 +99,8 @@ Do not add production Material artifacts in M0.
 
 Completion evidence:
 
-- PR #149;
-- previous architecture head passed final `pnpm verify`;
-- final Expressive/autonomous-review/instruction head verification and merge into `develop` pending.
+- PR #149 merged into `develop`;
+- previous architecture head passed final `pnpm verify`.
 
 ### M1 — Static Material architecture validation
 
@@ -118,6 +117,8 @@ Minimum outcome:
 - required test artifacts and one canonical `StateMatrix` identity exist for new/migrating families;
 - legacy paths cannot acquire new Material ownership;
 - obsolete paths and permanent compatibility exports are rejected for completed migrations.
+
+Implementation status: complete on `feat/material-static-architecture-validation` as `scripts/materialStaticValidation.mjs`, wired into `pnpm verify` as the `material-static` label. Remaining work is finishing full repository verification and merging the PR into `develop`.
 
 ### M2 — Structured Material consistency validation
 
@@ -257,6 +258,8 @@ Add one row only when a milestone changes status or its exit gate materially cha
 | Date       | Milestone | Change                                                                                                               | Evidence                                            |
 | ---------- | --------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | 2026-07-16 | M0        | Added canonical Expressive target and autonomous agent/operator review contract; final verification and merge remain | PR #149; previous architecture head passed `verify` |
+| 2026-07-16 | M0        | PR #149 merged into `develop`; marked `done`                                                                         | `develop` HEAD is PR #149's merge commit            |
+| 2026-07-16 | M1        | Started; implemented `material-static` static architecture validator and wired it into `pnpm verify`                 | `feat/material-static-architecture-validation`      |
 
 ## Update protocol
 

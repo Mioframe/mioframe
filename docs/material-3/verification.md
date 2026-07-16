@@ -8,6 +8,16 @@ Visual screenshots alone are insufficient. Verification covers source evidence, 
 
 New, migrated, and materially changed public Material components follow `component-testing.md`.
 
+## Static architecture validation
+
+```bash
+pnpm verify --only material-static
+```
+
+This runs a standalone, deterministic validator (`scripts/materialStaticValidation.mjs`) over `src/shared/ui/material`. It checks repository facts only: canonical paths and namespaces, dependency direction, import/export boundaries, component production-file profiles and CSS layer order, required static proof artifacts (contract test, `StateMatrix` story, visual spec), new-legacy-ownership prevention, and mechanically detectable completed-migration residue.
+
+It is a cheap, blocking check that runs in every `pnpm verify` invocation — focused and full/release — right after formatting and linting, before type-checking and any browser/visual/mutation check. It never claims to verify semantic Material correctness, visual equivalence, blueprint meaning, or source interpretation; see `token-validation.md` for the complete rule catalogue and validation-class model.
+
 ## Standard component verification profile
 
 | Layer                 | Verification                                                                                                                                                      |

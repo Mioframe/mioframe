@@ -27,11 +27,12 @@ const isVerboseMode = process.argv.includes('--verbose');
 const isFullMode = process.argv.includes('--full');
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
-const VERIFY_LABELS = [
+export const VERIFY_LABELS = [
   'agent-environment',
   'format',
   'oxlint',
   'eslint',
+  'material-static',
   'type-check',
   'unit-tests',
   'e2e-install',
@@ -401,8 +402,8 @@ function getChangedFiles() {
       changedFiles: uniqSorted(cliFilesOverride),
       scope: 'explicit-files',
       baseRef: null,
-      // No reliable single base ref for an explicit --files list.
-      packageJsonOldRef: null,
+      // No reliable single comparison ref for an explicit --files list.
+      comparisonBaseRef: null,
     };
   }
 
@@ -410,7 +411,7 @@ function getChangedFiles() {
   const envBaseRef = getVerifyBaseRef();
   let changedFiles = [];
   let scope = 'local-changes';
-  let packageJsonOldRef = 'HEAD';
+  let comparisonBaseRef = 'HEAD';
 
   if (githubBaseRef) {
     const mergeBase = runGitCommand(['merge-base', 'HEAD', `origin/${githubBaseRef}`], {
@@ -430,7 +431,7 @@ function getChangedFiles() {
       ),
       scope: `github-base origin/${githubBaseRef}`,
       baseRef: `origin/${githubBaseRef}`,
-      packageJsonOldRef: mergeBase,
+      comparisonBaseRef: mergeBase,
     };
   } else if (cliBaseRef || envBaseRef) {
     const baseRef = cliBaseRef ?? envBaseRef;
@@ -450,7 +451,7 @@ function getChangedFiles() {
       ),
       scope: `local-base ${baseRef}`,
       baseRef,
-      packageJsonOldRef: forkPoint,
+      comparisonBaseRef: forkPoint,
     };
   } else {
     changedFiles = [
@@ -468,7 +469,7 @@ function getChangedFiles() {
         '--',
       ]);
       scope = 'local-last-commit';
-      packageJsonOldRef = 'HEAD~1';
+      comparisonBaseRef = 'HEAD~1';
     }
   }
 
@@ -478,7 +479,7 @@ function getChangedFiles() {
     ),
     scope,
     baseRef: null,
-    packageJsonOldRef,
+    comparisonBaseRef,
   };
 }
 
@@ -1400,15 +1401,16 @@ function addReleaseOnlyCommands(commands) {
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Build options.
  * @param [options.fullMode] Full-project release mode; defaults to the `--full` CLI flag.
- * @param [options.packageJsonOldRef] Git ref to compare the current
- * `package.json` against, for the version-only visual impact refinement.
+ * @param [options.comparisonBaseRef] Git ref to compare the current working
+ * tree against, used both for the `package.json` version-only visual impact
+ * refinement and as the Material static validator's diff-aware base ref.
  * Pass `null` when no reliable base ref is known; that fails closed to
- * visual-relevant.
+ * visual-relevant and disables the Material validator's diff-aware checks.
  * @returns Command entries in run order.
  */
 export function buildCommands(
   changedFiles,
-  { fullMode = isFullMode, packageJsonOldRef = null } = {},
+  { fullMode = isFullMode, comparisonBaseRef = null } = {},
 ) {
   const existingChangedFiles = changedFiles.filter(fileExists);
   const formatLintFiles = existingChangedFiles.filter((filePath) => !isFormatLintIgnored(filePath));
@@ -1426,11 +1428,13 @@ export function buildCommands(
   const isPackageJsonVisualRelevant =
     !fullMode &&
     changedFiles.includes('package.json') &&
-    isVisualRelevantPackageJsonChange({ oldRef: packageJsonOldRef });
+    isVisualRelevantPackageJsonChange({ oldRef: comparisonBaseRef });
   const hasVisualRelevantChanges =
     changedFiles.some(isVisualRelevantFile) || isPackageJsonVisualRelevant;
-  const appE2EPlan = resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
-  const storybookBehaviorPlan = resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
+  const appE2EPlan = resolveAppE2EPlan(changedFiles, { packageJsonOldRef: comparisonBaseRef });
+  const storybookBehaviorPlan = resolveStorybookBehaviorPlan(changedFiles, {
+    packageJsonOldRef: comparisonBaseRef,
+  });
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
@@ -1527,6 +1531,17 @@ export function buildCommands(
   if (isFixOnlyMode) {
     return commands;
   }
+
+  commands.push({
+    kind: 'run',
+    label: 'material-static',
+    command: 'node',
+    args: [
+      'scripts/materialStaticValidation.mjs',
+      ...(comparisonBaseRef === null ? [] : ['--base-ref', comparisonBaseRef]),
+    ],
+    weight: classifyCommandWeight({ label: 'material-static' }),
+  });
 
   if (fullMode || changedFiles.some(isTypeCheckTarget)) {
     commands.push({
@@ -1900,8 +1915,8 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
   }
 
   const verifyProcessEnv = getVerifyProcessEnv(process.env);
-  const { changedFiles, scope, baseRef, packageJsonOldRef } = getChangedFiles();
-  const commands = selectOnlyCommands(buildCommands(changedFiles, { packageJsonOldRef }));
+  const { changedFiles, scope, baseRef, comparisonBaseRef } = getChangedFiles();
+  const commands = selectOnlyCommands(buildCommands(changedFiles, { comparisonBaseRef }));
   const results = [];
   let hasFailed = false;
   const runnableCommands = commands.filter((entry) => entry.kind === 'run');

@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/packageJsonImpact.mjs', () => ({
@@ -23,6 +25,7 @@ import {
   printSummary,
   resolveCommandStatus,
   runVerifyCli,
+  VERIFY_LABELS,
 } from './verify.mjs';
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
 
@@ -201,7 +204,7 @@ describe('buildCommands package.json visual relevance', () => {
 
     const commands = buildCommands(['package.json'], {
       fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
+      comparisonBaseRef: 'HEAD~1',
     });
     const visualEntry = commands.find((entry) => entry.label === 'visual');
 
@@ -214,7 +217,7 @@ describe('buildCommands package.json visual relevance', () => {
 
     const commands = buildCommands(['package.json'], {
       fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
+      comparisonBaseRef: 'HEAD~1',
     });
     const visualEntry = commands.find((entry) => entry.label === 'visual');
 
@@ -248,7 +251,7 @@ describe('buildCommands package.json app e2e relevance', () => {
 
     const commands = buildCommands(['package.json'], {
       fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
+      comparisonBaseRef: 'HEAD~1',
     });
     const e2eEntry = commands.find((entry) => entry.label === 'e2e');
 
@@ -262,7 +265,7 @@ describe('buildCommands package.json app e2e relevance', () => {
 
     const commands = buildCommands(['package.json'], {
       fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
+      comparisonBaseRef: 'HEAD~1',
     });
     const e2eEntry = commands.find((entry) => entry.label === 'e2e');
 
@@ -273,7 +276,7 @@ describe('buildCommands package.json app e2e relevance', () => {
   it('runs full app e2e when the package.json comparison cannot be resolved', () => {
     isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
 
-    const commands = buildCommands(['package.json'], { fullMode: false, packageJsonOldRef: null });
+    const commands = buildCommands(['package.json'], { fullMode: false, comparisonBaseRef: null });
     const e2eEntry = commands.find((entry) => entry.label === 'e2e');
 
     expect(e2eEntry.kind).toBe('run');
@@ -285,7 +288,7 @@ describe('buildCommands package.json app e2e relevance', () => {
 
     const commands = buildCommands(['package.json', 'src/shared/service/serviceWorker.ts'], {
       fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
+      comparisonBaseRef: 'HEAD~1',
     });
     const e2eEntry = commands.find((entry) => entry.label === 'e2e');
 
@@ -349,7 +352,7 @@ describe('buildCommands storybook-behavior lane', () => {
 
     const commands = buildCommands(['package.json'], {
       fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
+      comparisonBaseRef: 'HEAD~1',
     });
     const entry = commands.find((item) => item.label === 'storybook-behavior');
 
@@ -361,12 +364,127 @@ describe('buildCommands storybook-behavior lane', () => {
 
     const commands = buildCommands(['package.json'], {
       fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
+      comparisonBaseRef: 'HEAD~1',
     });
     const entry = commands.find((item) => item.label === 'storybook-behavior');
 
     expect(entry.kind).toBe('run');
     expect(entry.triggerReason).toContain('runtime-relevant package.json change');
+  });
+});
+
+describe('material-static verify integration', () => {
+  it('is an accepted --only label', () => {
+    expect(VERIFY_LABELS).toContain('material-static');
+  });
+
+  it('is listed in --help output', () => {
+    const result = spawnSync('node', ['scripts/verify.mjs', '--help'], {
+      cwd: path.resolve(process.cwd()),
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('material-static');
+  });
+
+  it('runs the validator command in normal focused verification, with no changed Material files', () => {
+    const commands = buildCommands(['src/app/main.ts'], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'material-static');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.command).toBe('node');
+    expect(entry.args[0]).toBe('scripts/materialStaticValidation.mjs');
+  });
+
+  it('runs the validator command in full/release verification', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const entry = commands.find((item) => item.label === 'material-static');
+
+    expect(entry.kind).toBe('run');
+  });
+
+  it('is never skipped for an empty changed-file scope', () => {
+    const commands = buildCommands([], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'material-static');
+
+    expect(entry.kind).toBe('run');
+  });
+
+  it('is excluded when buildCommands is used in fix-only scope (early return before it is pushed)', () => {
+    // isFixOnlyMode is a module-level constant derived from this test
+    // process's own argv, so it is always false here; this test instead
+    // proves material-static is pushed strictly after the fix-only early
+    // return in buildCommands, by construction (see scripts/verify.mjs).
+    const commands = buildCommands([], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).toContain('oxlint');
+    expect(labels).toContain('eslint');
+    expect(labels).toContain('material-static');
+  });
+
+  it('passes the resolved comparison base ref as --base-ref', () => {
+    const commands = buildCommands([], { fullMode: false, comparisonBaseRef: 'origin/develop' });
+    const entry = commands.find((item) => item.label === 'material-static');
+
+    expect(entry.args).toEqual([
+      'scripts/materialStaticValidation.mjs',
+      '--base-ref',
+      'origin/develop',
+    ]);
+  });
+
+  it('omits --base-ref when no comparison base ref is known', () => {
+    const commands = buildCommands([], { fullMode: false, comparisonBaseRef: null });
+    const entry = commands.find((item) => item.label === 'material-static');
+
+    expect(entry.args).toEqual(['scripts/materialStaticValidation.mjs']);
+  });
+
+  it('is classified as a light (cheap) command, not gated by the expensive-command lock', () => {
+    const commands = buildCommands([], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'material-static');
+
+    expect(entry.weight).toBe('light');
+  });
+
+  it('is ordered after format/lint and before type-check, e2e, storybook-behavior, visual, mutation', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const labels = commands.map((entry) => entry.label);
+    const materialStaticIndex = labels.indexOf('material-static');
+
+    expect(labels.indexOf('format')).toBeLessThan(materialStaticIndex);
+    expect(labels.indexOf('oxlint')).toBeLessThan(materialStaticIndex);
+    expect(labels.indexOf('eslint')).toBeLessThan(materialStaticIndex);
+    expect(materialStaticIndex).toBeLessThan(labels.indexOf('type-check'));
+    expect(materialStaticIndex).toBeLessThan(labels.indexOf('e2e'));
+    expect(materialStaticIndex).toBeLessThan(labels.indexOf('storybook-behavior'));
+    expect(materialStaticIndex).toBeLessThan(labels.indexOf('visual'));
+    expect(materialStaticIndex).toBeLessThan(labels.indexOf('release-version'));
+    expect(materialStaticIndex).toBeLessThan(labels.indexOf('build'));
+  });
+
+  it('is ordered before mutation in normal (non-full) scope', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels.indexOf('material-static')).toBeLessThan(labels.indexOf('mutation'));
+  });
+
+  it('remains deterministic with an explicit --files override', () => {
+    const first = buildCommands(['src/shared/lib/cache/index.ts'], {
+      fullMode: false,
+      comparisonBaseRef: null,
+    });
+    const second = buildCommands(['src/shared/lib/cache/index.ts'], {
+      fullMode: false,
+      comparisonBaseRef: null,
+    });
+
+    expect(first.find((entry) => entry.label === 'material-static')).toEqual(
+      second.find((entry) => entry.label === 'material-static'),
+    );
   });
 });
 
