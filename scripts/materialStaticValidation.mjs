@@ -18,7 +18,6 @@ import { fileURLToPath } from 'node:url';
 
 export const MATERIAL_ROOT = 'src/shared/ui/material';
 const RUNTIME_NAMESPACES = ['foundation', 'components', 'patterns'];
-const GOVERNANCE_BASENAMES = new Set(['README.md', 'AGENTS.md', 'CLAUDE.md']);
 const IGNORED_DIR_NAMES = new Set(['node_modules', 'dist', '.git']);
 const OFFICIAL_COMPONENT_FILENAME = /^MD[A-Z][A-Za-z0-9]*\.vue$/;
 
@@ -112,15 +111,17 @@ function isEmptyDirectoryRecursive(repoRoot, relativeDir, fsApi) {
 
 /**
  * List every file that exists in a git ref's tree, so the new-component
- * placement check can grandfather pre-existing legacy `MD*.vue` files.
- * Returns `null` when the ref cannot be resolved (e.g. shallow clone,
- * invalid ref); callers must fail closed to "not new" in that case rather
- * than guessing.
+ * placement check can grandfather pre-existing legacy `MD*.vue` files. Throws
+ * when `baseRef` cannot be resolved (e.g. shallow clone, invalid ref):
+ * an explicitly requested comparison ref that cannot be read is a validator
+ * failure, not silent disablement. Callers pass `baseRef: null` upstream to
+ * intentionally disable the diff-aware check instead of calling this
+ * function.
  * @param baseRef Git ref to inspect.
  * @param [options] Injection points for tests.
  * @param [options.repoRoot] Repository root to run git in.
  * @param [options.spawn] Injectable `spawnSync`.
- * @returns Set of POSIX repository-relative paths, or `null`.
+ * @returns Set of POSIX repository-relative paths.
  */
 export function getFilesAtRef(baseRef, { repoRoot = process.cwd(), spawn = spawnSync } = {}) {
   const result = spawn('git', ['ls-tree', '-r', '--name-only', baseRef], {
@@ -129,7 +130,14 @@ export function getFilesAtRef(baseRef, { repoRoot = process.cwd(), spawn = spawn
   });
 
   if (result.status !== 0 || typeof result.stdout !== 'string') {
-    return null;
+    const context =
+      typeof result.stderr === 'string' && result.stderr.trim().length > 0
+        ? result.stderr.trim()
+        : `git exited with status ${String(result.status)}`;
+
+    throw new Error(
+      `material-static: could not read files at base ref "${baseRef}" (${context}). Pass a valid comparison ref, or omit --base-ref to intentionally disable the diff-aware placement check.`,
+    );
   }
 
   return new Set(
@@ -218,10 +226,6 @@ function checkPlaceholderFiles(repoRoot, dir, fsApi) {
   for (const filePath of collectFilesRecursive(repoRoot, dir, fsApi)) {
     const basename = path.posix.basename(filePath);
 
-    if (GOVERNANCE_BASENAMES.has(basename)) {
-      continue;
-    }
-
     if (basename === '.gitkeep') {
       findings.push(
         finding(
@@ -254,6 +258,21 @@ function checkEmptyAndPlaceholderArtifacts(repoRoot, fsApi) {
     const namespaceDir = path.posix.join(MATERIAL_ROOT, namespace);
 
     if (!directoryExists(repoRoot, namespaceDir, fsApi)) {
+      continue;
+    }
+
+    // A namespace root itself (e.g. `material/components`) is an accepted
+    // architecture directory, but only once it holds an artifact; check its
+    // own emptiness explicitly, since checkEmptyDirectories only inspects
+    // its children.
+    if (listChildren(repoRoot, namespaceDir, fsApi).length === 0) {
+      findings.push(
+        finding(
+          CODES.MATERIAL_EMPTY_DIRECTORY,
+          namespaceDir,
+          'Empty speculative directory. Remove it until an accepted artifact is added.',
+        ),
+      );
       continue;
     }
 

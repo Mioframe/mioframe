@@ -140,6 +140,20 @@ describe('new official component placement (diff-aware)', () => {
 
     expect(findingCodes(findings)).not.toContain(CODES.MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY);
   });
+
+  it('fails instead of silently disabling the check when an explicit base ref cannot be read', () => {
+    const root = tempRepo({
+      'src/shared/ui/Button/MDButton.vue': '<template><button /></template>\n',
+    });
+
+    expect(() =>
+      validateMaterialLibrary({
+        repoRoot: root,
+        baseRef: 'nonexistent-ref',
+        spawn: () => ({ status: 128, stdout: '', stderr: 'fatal: bad revision' }),
+      }),
+    ).toThrow(/nonexistent-ref/);
+  });
 });
 
 describe('empty canonical directories', () => {
@@ -200,6 +214,58 @@ describe('empty canonical directories', () => {
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
     expect(findingCodes(findings)).not.toContain(CODES.MATERIAL_EMPTY_DIRECTORY);
+  });
+});
+
+describe('empty governance files', () => {
+  it.each(['README.md', 'AGENTS.md', 'CLAUDE.md'])(
+    'rejects an empty %s as a placeholder artifact',
+    (basename) => {
+      const root = tempRepo({
+        [`src/shared/ui/material/components/button/${basename}`]: '   \n',
+      });
+      const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+
+      expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+    },
+  );
+
+  it('does not treat a directory containing only an empty governance file as valid content', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/components/button/README.md': '',
+    });
+    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+
+    expect(findings).not.toEqual([]);
+    expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+  });
+});
+
+describe('namespace root emptiness', () => {
+  it.each(['components', 'foundation', 'patterns'])(
+    'rejects an empty %s namespace root directly, not only its children',
+    (namespace) => {
+      const root = tempRepo({
+        [`src/shared/ui/material/${namespace}`]: null,
+      });
+      const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+
+      expect(findingCodes(findings)).toContain(CODES.MATERIAL_EMPTY_DIRECTORY);
+      expect(findings[0].path).toBe(`src/shared/ui/material/${namespace}`);
+    },
+  );
+
+  it('still reports the deepest empty child, not the namespace root, when the root is non-empty', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/components/button': null,
+    });
+    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+    const emptyDirFindings = findings.filter(
+      (item) => item.code === CODES.MATERIAL_EMPTY_DIRECTORY,
+    );
+
+    expect(emptyDirFindings).toHaveLength(1);
+    expect(emptyDirFindings[0].path).toBe('src/shared/ui/material/components/button');
   });
 });
 
@@ -284,13 +350,19 @@ describe('formatFinding', () => {
 });
 
 describe('getFilesAtRef', () => {
-  it('returns null when the ref cannot be resolved', () => {
-    expect(
+  it('throws a descriptive error naming the ref when it cannot be resolved', () => {
+    expect(() =>
       getFilesAtRef('nonexistent-ref', {
         repoRoot: '/tmp',
-        spawn: () => ({ status: 128, stdout: '' }),
+        spawn: () => ({ status: 128, stdout: '', stderr: 'fatal: Not a valid object name' }),
       }),
-    ).toBeNull();
+    ).toThrow(/nonexistent-ref/);
+    expect(() =>
+      getFilesAtRef('nonexistent-ref', {
+        repoRoot: '/tmp',
+        spawn: () => ({ status: 128, stdout: '', stderr: 'fatal: Not a valid object name' }),
+      }),
+    ).toThrow(/Not a valid object name/);
   });
 
   it('returns the file set reported by git', () => {
@@ -333,6 +405,20 @@ describe('CLI behavior', () => {
     const result = spawnSync('node', [SCRIPT_PATH], { cwd: root, encoding: 'utf8' });
 
     expect(result.status).toBe(0);
+  });
+
+  it('fails closed, without printing a success result, when an explicit --base-ref cannot be read', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/README.md': '# Material library\n',
+    });
+    const result = spawnSync('node', [SCRIPT_PATH, '--base-ref', 'nonexistent-ref'], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('nonexistent-ref');
+    expect(result.stdout).not.toContain('architecture findings');
   });
 });
 

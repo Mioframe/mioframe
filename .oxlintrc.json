@@ -81,32 +81,16 @@
                   "@widget/*",
                   "@widget/**",
                   "@page/*",
-                  "@page/**",
-                  "@/app/*",
-                  "@/app/**",
-                  "@/pages/*",
-                  "@/pages/**",
-                  "@/widgets/*",
-                  "@/widgets/**",
-                  "@/features/*",
-                  "@/features/**",
-                  "@/entities/*",
-                  "@/entities/**",
-                  "@/processes/*",
-                  "@/processes/**",
-                  "**/src/app/**",
-                  "**/src/pages/**",
-                  "**/src/widgets/**",
-                  "**/src/features/**",
-                  "**/src/entities/**",
-                  "**/src/processes/**",
-                  "**/app/**",
-                  "**/pages/**",
-                  "**/widgets/**",
-                  "**/features/**",
-                  "**/entities/**",
-                  "**/processes/**"
+                  "@page/**"
                 ],
+                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes), by alias or by relative path."
+              },
+              {
+                "regex": "^@/(?:app|pages|widgets|features|entities|processes)(?:/|$)",
+                "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes), by alias or by relative path."
+              },
+              {
+                "regex": "^(?:\\.\\./)+(?:app|pages|widgets|features|entities|processes)(?:/|$)",
                 "message": "The Material library must not import product layers (app, pages, widgets, features, entities, processes), by alias or by relative path."
               }
             ]
