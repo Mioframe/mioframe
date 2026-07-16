@@ -4,25 +4,25 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material lib
 
 ## Routing
 
-- Use `material-component-authoring` as the primary workflow for creating, migrating, aligning, or materially changing an official public component family.
-- Use `material-foundation` as the primary workflow for cross-family foundation changes.
+- Use `material-component-authoring` for creating, migrating, aligning, or materially changing an official public component family.
+- Use `material-foundation` for cross-family Material foundation changes.
 - Use `material3-guidelines` for official sources, component choice, usage, composition, and minimum supported surface.
-- Use `vue-component-implementation` for Vue mechanics after the Material blueprint is ready.
-- Use `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, and `verification` for their owned proof layers.
-- Use the canonical architecture under `docs/material-3` as the durable source of schemas and invariants.
+- Use `vue-component-implementation` only for Vue mechanics after the Material blueprint is ready.
+- Use the specialized testing skills and `verification` for their owned proof layers.
+- Use `docs/material-3` as the durable source of schemas and invariants.
 
-Do not use `shared-ui-implementation` as the authoring workflow for an official Material family. These scoped rules state hard boundaries; `material-component-authoring` owns execution order and stop conditions.
+Do not use `shared-ui-implementation` as the authoring workflow for an official Material family. This file owns scoped boundaries and routing; `material-component-authoring` owns execution order and stop conditions.
 
 ## Contains
 
 Only:
 
 - `foundation`: cross-family Material contracts;
-- `components`: official public Material families;
+- `components`: official public Material component families;
 - `patterns`: accepted reusable official Material compositions;
-- local contracts and curated public entry points.
+- local family/domain contracts and curated public entry points.
 
-Policy and source-evidence documents remain under `docs/material-3`.
+Policy and source-evidence documents remain under `docs/material-3`. Project-specific UI and generic platform infrastructure remain outside this library.
 
 ## Dependency direction
 
@@ -37,93 +37,38 @@ material library → project-specific shared UI and product layers
 ```
 
 - Any Material layer may use a correctly owned generic utility directly.
-- Do not create foundation wrappers only to route generic DOM/event/geometry/lifecycle/teleport/browser behavior.
+- Do not create foundation wrappers only to route generic DOM, event, geometry, lifecycle, teleport, or browser behavior.
 - Foundation must not import components or patterns.
-- Families must not deep-import other families.
-- Patterns use public component/foundation contracts only.
+- Families must not deep-import another family's private files or variables.
+- Patterns use only public component/foundation contracts and correctly owned generic utilities.
 - Library code must not import product layers.
-- Generic infrastructure must not depend on the Material library.
+- Generic infrastructure must not depend on Material component-family knowledge.
 
-## New artifacts
+## New artifacts and ownership
 
 - New official components belong under `components/<family>`.
-- A single component may own a family.
-- Multi-component families require an official relationship and a real current shared contract.
-- Legacy proximity, similar names, repeated CSS, fewer files, or hypothetical reuse do not establish family ownership.
-- New foundation runtime/testing owners belong under `foundation/<domain>`.
-- New patterns require official composition evidence and a current scenario.
-- Do not add empty directories, placeholder files, speculative extension points, or universal bases.
-- Project-specific UI remains outside `components`.
+- New Material foundation runtime or testing owners belong under `foundation/<domain>`.
+- New patterns require official composition evidence, a current scenario, and no narrower owner.
+- A multi-component family requires an official relationship and a real current shared contract.
+- Do not add empty directories, placeholder files, speculative extension points, universal bases, or project-specific UI under official families.
 
 ## Public API
 
 - Product consumers use `@shared/ui/material` after the root entry point exists.
 - Internal library code does not import the root barrel.
-- Components import accepted foundation/family entry points or correctly owned generic utilities.
-- External deep imports into implementation/testing/private files are forbidden.
-- Every public export has one owner, accurate TSDoc, and matching blueprint/registry status.
+- External deep imports into implementation, private, or testing files are forbidden.
+- Every public export has one owner, accurate TSDoc, and matching blueprint or registry status.
 
-## Foundation
+## Migration boundary
 
-- Foundation owners are component-agnostic and registry-backed.
-- Generic bridges expose only minimum cross-family inputs.
-- Do not duplicate theme, tokens, units, typography, state/ripple/focus, motion, icon, overlay, or verification ownership.
-- Generic browser/DOM/teleport utilities remain outside unless the contract itself is Material-owned.
-- Verification adapters belong to the owning foundation testing surface and are never component/product API.
-- Legacy additive changes must keep one active owner; new standalone artifacts require canonical relocation.
+- Existing Material code outside this directory is legacy, not a template for new ownership.
+- Strict local repairs may remain at legacy paths only under a valid `Architecture impact: none` decision.
+- Migrate one cohesive family or foundation domain per focused PR.
+- A migration must update all affected consumers, exports, contracts, registries, stories, tests, snapshots, risk registration, and the migration map, then remove obsolete paths.
+- Temporary compatibility requires exact consumers, no new usage, and a removal target.
 
-## Components
+## Verification boundary
 
-- Each family owns one complete canonical README blueprint and one `layered-v1` profile.
-- Family boundary, state source of truth, and DOM/accessibility owners must be explicit.
-- Controlled semantic state has no hidden component copy.
-- Browser/foundation facts remain browser/foundation-owned.
-- Transient component state is limited to owned gesture, overlay, animation, or native coordination and defines cancellation/cleanup.
-- Product behavior, placement, information architecture, and workflow remain outside the family.
-- Every new or migrated component follows the standard test profile.
-- Exactly one canonical `StateMatrix` covers every distinct supported component-owned visible route.
-- Non-visual state contracts remain in contract/browser tests.
-- Visual regression and real browser behavior are separate proof layers.
-- Automated agents do not claim human visual review passed.
+Automation may enforce deterministic repository facts. Architecture, Material interpretation, route equivalence, and visual correctness remain explicit review gates.
 
-## Testing
-
-Required for new/migrated components:
-
-1. static and structured architecture validation;
-2. colocated Vue Test Utils contract tests;
-3. canonical `StateMatrix`;
-4. Playwright visual regression;
-5. Storybook Playwright behavior tests when applicable;
-6. pure helper/composable tests when applicable;
-7. changed-consumer preservation checks;
-8. required architecture, Material, and human visual review.
-
-Do not verify appearance in Vitest/Vue Test Utils, prove behavior with forced state, add test-only production APIs, create one screenshot per cell, duplicate non-visual states as matrix cells, or build a production matrix/test DSL.
-
-## Patterns
-
-A pattern is allowed only when it:
-
-- maps to official Material composition or canonical/adaptive layout;
-- is independent of one domain/feature;
-- is required by a current scenario;
-- cannot be owned more narrowly;
-- is testable without product data.
-
-## Migration
-
-- Existing Material code outside this directory is legacy, not a template.
-- Strict local repairs may remain under valid `Architecture impact: none`.
-- New Material ownership at legacy paths is forbidden.
-- Migrate one cohesive family/domain per focused PR.
-- Update consumers, exports, blueprints/contracts, registries, stories, tests, snapshots, risk registration, and migration map atomically.
-- Remove obsolete paths; temporary compatibility requires exact consumers, no new usage, and removal target.
-
-## Verification
-
-Automation may block deterministic facts: paths, dependencies, exports, files, token syntax, required blueprint sections, story identity, and test artifacts.
-
-Architecture/Material review confirms family rationale, source interpretation, route correctness, visual-route completeness/equivalence, and matrix readability. Human review confirms visual correctness.
-
-Do not claim that automation proves free-form architecture or visual decisions.
+Do not claim that automation proves free-form architecture decisions or human visual correctness. Final completion requires repository verification.
