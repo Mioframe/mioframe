@@ -7,6 +7,7 @@ This directory defines the project contract for the standalone Material library 
 Library boundary and migration:
 
 - [Library architecture](./library-architecture.md)
+- [Library implementation roadmap](./library-roadmap.md) — current milestone, blockers, next action, and progress
 - [`src/shared/ui/material` library map](../../src/shared/ui/material/README.md)
 
 Foundation architecture and status:
@@ -36,7 +37,7 @@ Component and completion policies:
 - [Storybook](./storybook.md)
 - [Verification](./verification.md)
 - [Deviations](./deviations.md)
-- [Adoption plan](./adoption-plan.md)
+- [Adoption plan](./adoption-plan.md) — strategic rollout rationale and phase definitions
 
 ## Rule ownership
 
@@ -79,6 +80,8 @@ New Material artifacts use the canonical library and test architecture immediate
 A local repair may use `Architecture impact: none` only when it preserves component/foundation contracts, location, public imports, testing surface, behavior, and unrelated output.
 
 ## Implementation order
+
+The current operational state and single next action are tracked in [Library implementation roadmap](./library-roadmap.md).
 
 1. Keep source, library, foundation, component, testing, registry, validation, and verification policies consistent.
 2. Implement static library-boundary and test-artifact checks for new work and active migrations.
