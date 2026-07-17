@@ -1,163 +1,95 @@
-# Autonomous Material review contract
+# Material implementation review
 
-This document separates agent-owned technical review from operator-owned visual acceptance for Material component work.
+This document separates technical review from operator visual comparison.
 
-The agent closes source interpretation, architecture, implementation, semantics, accessibility, migration, and applicable behavior verification. The operator performs final perceptual comparison against named official visual references.
+## Technical review
 
-## Canonical target
+`material-component-review` performs an independent source-backed review and replaces only the family `AUDIT.md` beside implementation.
 
-Official Mioframe Material components target the current applicable Material 3 Expressive contract.
+The reviewer checks:
 
-- Prefer current Expressive usage, anatomy, tokens, geometry, state composition, motion, and adaptive guidance when available.
-- Do not preserve baseline Material 3 merely because it matches current code.
-- Use baseline behavior or geometry only when no applicable Expressive contract exists or an explicit product deviation requires it.
-- Do not silently mix baseline and Expressive contracts.
-- Existing output, old baselines, Material Web, third-party libraries, and memory are not official authority.
+1. current official Material 3 Expressive evidence;
+2. the family README's implemented and unsupported claims;
+3. architecture and physical ownership;
+4. public API, native semantics, and accessibility;
+5. state, token, motion, and final property routing;
+6. applicable foundation/style dependencies;
+7. consumer migration and obsolete ownership;
+8. proportional tests and stories;
+9. all documented and undocumented incomplete work.
 
-## Review ownership
+The reviewer does not modify implementation or the family README.
 
-### Automation
+## Evidence boundary
 
-Repository checks and focused tests prove only the facts they actually exercise, such as:
+Review the project implementation, not browser or framework internals.
 
-- syntax, formatting, types, and existing dependency boundaries;
-- public component contracts and native/ARIA wiring;
-- browser behavior represented by focused tests;
-- bounded visual regression against an accepted repository baseline;
-- consumer preservation represented by current tests.
+- A final route must be real; declarations, aliases, colocation, comments, and equality assertions are insufficient.
+- Ordinary CSS motion is reviewed through official requirement, runtime contract, property ownership, state routing, and conflicting timing.
+- Browser checks are used only for browser-owned behavior or computed behavior that source inspection cannot resolve reliably.
+- Broad root/system token, universal-selector, pseudo-element, or shared-formula changes require cross-family impact evidence.
+- Green tests do not override a demonstrated implementation or documentation defect.
 
-Automation does not decide Material meaning, architecture rationale, source correctness, perceptual motion fidelity, or visual correctness merely because checks pass.
+## Documentation review
 
-### Agent evidence review
+The family README must state honestly:
 
-Before visual handoff, the agent reviews applicable:
+- what is implemented;
+- what official capability is not implemented;
+- what is defective or incomplete;
+- what is provisional or unverified;
+- what requires further work or visual comparison.
 
-1. official Material 3 Expressive sources and snapshot;
-2. supported and unsupported surface, usage, and component choice;
-3. family, foundation, anatomy, DOM, accessibility, property, and physical ownership;
-4. exact token paths and shortest final property routes;
-5. native semantics and component-owned state/lifecycle;
-6. motion contract, property owner, foundation adaptation, state routing, and reduced-motion wiring;
-7. browser-owned behavior only where the component changes or constrains it;
-8. proportional stories and tests;
-9. extensions and deviations;
-10. consumers, migration completeness, obsolete paths, and compatibility;
-11. rule corrections and remaining blockers;
-12. freshness and conclusions of the final family audit.
+An undocumented omission or known mismatch is a finding. A documented optional unsupported feature is not a defect by itself.
 
-Status:
+## Audit result
 
-- `passed` — every applicable agent-owned decision is source-resolved, implemented, and proved at its owning layer;
-- `blocked` — one concrete source, product, architecture, foundation, compatibility, or verification decision remains unresolved.
+Use:
 
-The agent must not infer correctness from existing rendering, endpoint-only assertions, or green CI when the required implementation route is not actually verified.
+- `compliant` — every claimed and required technical contract passes and documentation is truthful;
+- `partially-compliant` — usable, but non-critical defects or documentation/verification gaps remain;
+- `non-compliant` — a critical or high defect invalidates a required or claimed contract;
+- `blocked` — authoritative evidence required for review is unavailable or conflicting.
 
-## Behavior and motion boundary
+The result and findings are stored in the colocated `AUDIT.md`.
 
-Review our implementation; do not retest browser internals.
+## Operator visual review
 
-For ordinary component behavior and CSS motion, the agent verifies:
+Operator visual comparison happens only after technical findings are resolved sufficiently for meaningful comparison.
 
-- the official requirement;
-- the accepted component or foundation owner;
-- the actual DOM property or behavior owner;
-- public API, token, state, and selector routing;
-- absence of conflicting local behavior;
-- focused proof at the owning layer.
+The operator evaluates visible fidelity against named official references, including applicable geometry, spacing, shape, color, typography, elevation, state composition, focus indication, and perceived motion quality.
 
-A shared official-to-Web motion adaptation is proved once by its foundation owner. Each component verifies only that it consumes the accepted contract correctly.
+The operator is not responsible for finding API, semantics, accessibility, ownership, token-routing, or implementation defects.
 
-Do not require frame-by-frame animation analysis, interpolation measurements, overshoot sampling, or duplicate pointer/touch/keyboard tests when the browser and implementation path are the same.
+Visual status is recorded in `AUDIT.md` as:
 
-Use focused browser verification when correctness genuinely depends on browser-owned behavior or cannot be established reliably from source and contract tests, including native focus/input behavior, layout, overlay, scrolling, DOM measurement, JavaScript/WAAPI lifecycle, computed CSS propagation, or a reproducible runtime defect.
+- `not required`;
+- `required`;
+- `accepted`;
+- `blocked`.
 
-A user-visible mismatch remains valid evidence: investigate the implementation and use the narrowest browser reproduction needed to locate the defect. The operator is not responsible for diagnosing technical ownership or routing.
+The automated reviewer does not invent operator acceptance.
 
-## Agent review report
+## Correction loop
 
-Every new, migrated, or alignment-changing component PR includes:
+When the audit finds defects:
 
 ```text
-AUTONOMOUS MATERIAL REVIEW
-Target: current applicable Material 3 Expressive
-Component/family:
-Change mode:
-Official sources and snapshot:
-Design Kit evidence: not required | <file/version and reference>
-Supported surface:
-Unsupported surface:
-Foundation status:
-Architecture and physical ownership review: passed | blocked (<reason>)
-Material contract review: passed | blocked (<reason>)
-Accessibility and behavior review: passed | blocked (<reason>)
-Motion implementation review: not applicable | passed | blocked (<reason>)
-Proportional verification: <named checks and not-applicable layers>
-Fresh family audit: <path and implementation commit>
-Rule refinement: none | <corrected rules and evidence>
-Deviations/extensions: none | <records>
-Migration completeness: not applicable | passed | blocked (<reason>)
-Agent evidence review: passed | blocked (<reason>)
+AUDIT.md findings → material-component <family> → README/code/tests update →
+material-component-review <family> → updated AUDIT.md
 ```
 
-This report summarizes owned evidence and must not become a second family contract.
+The implementation workflow never edits the audit to declare its own work correct.
 
-## Operator visual acceptance
+## Completion gate
 
-The operator reviews prepared visible evidence only after agent review passes.
+A family is ready to leave the active migration state when:
 
-The agent provides applicable:
+- its README and code agree;
+- required technical contracts pass independent review;
+- all unsupported and remaining work is documented;
+- required consumers are migrated and obsolete ownership is removed;
+- applicable local verification passes;
+- required operator visual review is accepted.
 
-- canonical visual story id;
-- bounded screenshot or visual diff;
-- named official documentation snapshot;
-- Design Kit reference when required;
-- intended matches, deviations, and unsupported visual surface;
-- confirmation that every agent-owned gate passed.
-
-The operator checks perceptual fidelity, including applicable geometry, spacing, shape, color, state layers, typography, icon alignment, elevation, outlines, focus indicators, disabled appearance, simultaneous states, and visible motion quality.
-
-API, semantics, accessibility, token ownership, source interpretation, dependency architecture, physical migration, rule correctness, and test sufficiency remain agent-owned.
-
-Visual status:
-
-- `accepted` — supplied evidence matches named official references or recorded deviations;
-- `rejected` — visible mismatches are named for correction;
-- `blocked` — required official visual evidence is unavailable.
-
-An automated coding agent never reports operator acceptance as `accepted`.
-
-## Rule refinement
-
-When implementation evidence conflicts with a project rule:
-
-- determine whether the rule or implementation is wrong;
-- correct an inaccurate, contradictory, incomplete, obsolete, or needlessly complex rule in its owning source;
-- make the smallest evidence-backed change;
-- update only directly affected owners;
-- do not create a family-specific exception.
-
-## Exceptional escalation
-
-Stop with `blocked` only for one concrete unresolved decision, such as:
-
-- conflicting or unavailable official guidance for a required scenario;
-- uncertain family or foundation ownership;
-- incompatible public API or consumer migration;
-- an intentional product deviation;
-- unsafe cross-project or cross-family impact;
-- required verification that cannot be performed reliably;
-- rejected visual evidence requiring correction.
-
-## Merge gate
-
-A component PR is ready only when:
-
-1. agent evidence review is `passed`;
-2. applicable repository and focused checks pass;
-3. a fresh family audit reviews the final implementation commit;
-4. required operator visual acceptance is recorded;
-5. no source, architecture, foundation, compatibility, verification, migration, or rule blocker remains;
-6. code, canonical contract, root export, consumers, applicable stories/tests, physical map, and directly affected records agree;
-7. obsolete ownership and permanent compatibility paths are removed.
-
-A visual rejection returns the named mismatch to implementation. It reopens a technical decision only when the mismatch reveals that the underlying contract, property ownership, state routing, or motion wiring is wrong.
+Do not hide unfinished work behind a successful status.
