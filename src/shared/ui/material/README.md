@@ -1,128 +1,113 @@
 # Mioframe Material library
 
-`src/shared/ui/material` is the canonical source boundary for Mioframe's Material implementation.
+`src/shared/ui/material` is the canonical source boundary for Mioframe's Material 3 Expressive implementation.
 
-The library contains:
-
-- cross-family Material foundation contracts required by current work;
-- official public Material component families;
-- reusable official Material compositions independent of product domains.
-
-Canonical architecture:
-
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-testing.md`.
-
-Operational progress and the next ready family are tracked in `docs/material-3/library-roadmap.md` and `ui-library-inventory.md`.
-
-## Ownership map
+Its navigation mirrors the official Material documentation:
 
 ```text
-material/foundation
-  Cross-family Material tokens, roles, primitives, adapters, and verification helpers.
-
-material/components
-  Official public component families, adaptive contracts, implementations, stories, and focused tests.
-
-material/patterns
-  Reusable official Material compositions required by current scenarios.
+material/
+  foundations/
+  styles/
+  components/
 ```
 
-Generic platform utilities, project-specific shared UI, features, widgets, pages, and app behavior remain outside.
+This is a navigation and ownership map, not a reason to create empty production layers.
 
-## Dependency direction
+## Navigation
+
+### [Foundations](./foundations/README.md)
+
+Cross-component contracts corresponding to the official Foundations navigation, such as accessibility, adaptive/layout, and interaction foundations.
+
+### [Styles](./styles/README.md)
+
+Cross-component visual systems corresponding to the official Styles navigation: color, elevation, icons, motion, shape, and typography.
+
+### [Components](./components/README.md)
+
+Official public component families. Family directories use the official documentation slug.
+
+Example:
 
 ```text
-shared/lib generic infrastructure
-  ├─→ material/foundation
-  ├─→ material/components
-  └─→ material/patterns
-
-material/foundation → material/components → material/patterns
-material library → project-specific shared UI and product layers
+m3.material.io/components/buttons
+→ src/shared/ui/material/components/buttons
 ```
 
-Higher Material layers may use correctly owned generic utilities directly. Do not create foundation wrappers merely to route generic behavior.
+Project-specific compositions, screens, workflows, and generic platform infrastructure remain outside this library.
 
-Product imports inside the Material library, dependency inversion, and private cross-family imports are forbidden.
+## Family layout
+
+```text
+components/<official-docs-slug>/
+  README.md
+  AUDIT.md
+  index.ts
+  <Component>.vue
+  <Component>.test.ts
+  <Component>.stories.ts
+  ... only justified files
+```
+
+- `README.md` documents the current implementation and all omitted, incomplete, unverified, or deviated capability.
+- `AUDIT.md` contains the latest independent review and is maintained by `material-component-review`.
+- Production code, tests, and stories live beside both documents.
+
+The implementing agent updates `README.md` but does not edit `AUDIT.md`. Any material implementation change sets the documented review status to `review required after changes`.
 
 ## Public API
 
-The project-facing entry point:
+Product code uses the curated root entry point:
 
 ```ts
 import { MDButton } from '@shared/ui/material';
 ```
 
-The root `index.ts` exists now that `MDButton` is a real migrated family. Do not add a new export to it until that family or foundation artifact is itself real.
+Internal implementation, stories, tests, documentation, and audit files are not public API.
 
-Now that it exists:
+## Dependency direction
 
-- product consumers use the root entry point by default;
-- internal library modules use owning family, foundation, or generic entry points;
-- private implementation and testing files remain private.
+```text
+shared generic infrastructure
+  → material/foundations and material/styles
+  → material/components
+  → project-specific shared UI and product layers
+```
 
-## New implementation
+- foundations and styles do not import component families;
+- families do not deep-import another family's private files;
+- Material code does not import product layers;
+- generic infrastructure does not contain component-family knowledge.
 
-- Create new official Material components under `components/<family>`.
-- Create new foundation artifacts under `foundation/<domain>` only when current work proves the cross-family need.
-- Create patterns under `patterns/<pattern>` only after the pattern conditions pass.
-- Treat legacy directories as existing owners, not templates for new ownership.
-- Create no placeholder files, empty structural layers, or speculative abstractions.
+## New component work
 
-Every new public component includes:
+1. Resolve the official Material documentation path and family.
+2. Create or update `components/<official-docs-slug>/README.md`.
+3. Implement the minimum complete surface required by current consumers.
+4. Record official capability left unimplemented.
+5. Record every known defect, provisional implementation, missing verification, and required follow-up.
+6. Add proportional tests and a canonical visual story.
+7. Migrate consumers and remove obsolete ownership when applicable.
+8. Run `material-component-review <family>` to create or replace the colocated `AUDIT.md`.
 
-- the mandatory adaptive family-contract core;
-- only conditional contract sections applicable to the component;
-- colocated component-contract tests;
-- one stable canonical visual story when it has visible output;
-- `StateMatrix` only when multiple distinct visual routes exist;
-- browser, pure, consumer, visual-regression, and operator-review layers only when applicable.
+Do not hide unfinished work to obtain a successful status.
 
-## Physical migration map
+## Current physical state
 
-This table tracks physical ownership only. Material alignment belongs to component and foundation contracts and registries. Program sequencing belongs to the roadmap.
+| Area | Current owner | Canonical owner | State |
+| --- | --- | --- | --- |
+| Button family | `material/components/buttons` after this PR's path normalization | `material/components/buttons` | active migration; see family `README.md` and `AUDIT.md` |
+| Other existing official `MD*` families | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<official-docs-slug>` | legacy until migrated |
+| Color/theme tokens | `src/shared/lib/md/tokens.css` | `material/styles/color` when migrated | legacy |
+| Elevation | `src/shared/lib/md/tokens.css` | `material/styles/elevation` when migrated | legacy |
+| Motion | `src/shared/lib/md/tokens.css` | `material/styles/motion` when migrated | legacy |
+| Shape | current token/style owners | `material/styles/shape` when migrated | legacy |
+| Typography | `src/shared/lib/md` | `material/styles/typography` when migrated | legacy |
+| Material Symbols | `src/shared/ui/Icon` | `material/styles/icons` when migrated | legacy |
+| State layer, ripple, focus | `src/shared/ui/State` | `material/foundations/interaction` when migrated | legacy |
 
-| Area                                   | Current production owner                            | Canonical owner                                                                     | Migration status              |
-| -------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
-| Reference/system tokens and theme      | `src/shared/lib/md/tokens.css`                      | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
-| Typography utilities                   | `src/shared/lib/md`                                 | `material/foundation/typography`                                                    | `legacy`                      |
-| State layer, ripple, and focus         | `src/shared/ui/State`                               | `material/foundation/interaction`                                                   | `legacy`                      |
-| Material Symbols                       | `src/shared/ui/Icon`                                | `material/foundation/icon`                                                          | `legacy`                      |
-| Material overlay contract              | `src/shared/ui/Overlay` plus generic dependencies   | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
-| Button family (`MDButton`)             | none (migrated)                                     | `material/components/button`                                                        | `migrated`                    |
-| Other existing official `MD*` families | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<family>`                                                      | `legacy`                      |
-| New official Material family           | none                                                | `material/components/<family>`                                                      | create directly as `migrated` |
-| Reusable Material patterns             | scattered or missing compositions                   | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
+The family documentation is the detailed state owner. This table remains a compact navigation aid and must not duplicate every finding.
 
-Do not split a valid cohesive owner merely to match this table. Migration follows confirmed ownership and reviewable boundaries.
+## Anti-overengineering
 
-## Migration status
-
-- `legacy` — current code remains accepted for existing consumers but is not a template for new work;
-- `migrating` — one active family or domain migration owns the applicable implementation and consumer changes;
-- `migrated` — the canonical owner is active, obsolete paths are removed, proportional proof exists, and required agent/operator review is complete.
-
-A domain must not have parallel permanent legacy and canonical owners. Temporary compatibility requires exact consumers and a removal target.
-
-## Migration rules
-
-Use one cohesive end-to-end family migration by default:
-
-1. inspect the current family and consumers;
-2. resolve the supported Expressive contract;
-3. correct inaccurate applicable rules;
-4. change only required foundations;
-5. implement the canonical family;
-6. migrate consumers and public exports;
-7. add proportional proof;
-8. remove obsolete ownership;
-9. update only records whose owned facts changed;
-10. complete agent review and required operator visual acceptance;
-11. update the queue and continue to the next ready family.
-
-Split work only when shared blast radius, compatibility, reviewability, or a safer independently valid state justifies it.
-
-The program sequence is `MDButton`, an independent stateful pilot such as `MDSwitch`, then autonomous priority-driven migration. A genuinely new component is added when the product requires it, not as a process gate.
+Do not create placeholder implementation folders, fixed file profiles, runtime registries, broad wrappers, or a second metadata system. The official-documentation hierarchy exists to make the library easy to navigate and review.
