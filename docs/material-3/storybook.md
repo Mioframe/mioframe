@@ -2,55 +2,117 @@
 
 ## Principle
 
-Storybook is the project documentation surface for shared UI. For Material components used by the app, Storybook should read like the corresponding official Material 3 documentation adapted to the project implementation.
-
-Storybook is not the source of truth for Material 3. It documents how the project implements the official guidance checked through MCP or `m3-docs-cache`.
+Storybook is the isolated documentation, browser-fixture, and visual-evidence surface for the Material library. It documents the accepted Mioframe contract; official authority comes from `source-of-truth.md`.
 
 ## Story hierarchy
 
-Use a hierarchy that separates official Material-aligned components from project-specific UI:
-
 ```text
-Material 3/Components/<Component>/<Story>
+Material 3/Components/<Family>/<Component>/<Story>
+Material 3/Patterns/<Pattern>/<Story>
 Project UI/<Component>/<Story>
 ```
 
-Use `Material 3/Components` only for components that intentionally implement an official Material 3 component or pattern.
+Use official Material namespaces only for accepted official components and patterns. App-specific surfaces remain under `Project UI`.
 
-Use `Project UI` for components such as markdown renderers, repository-specific navigation helpers, and other app-specific surfaces.
+## Component story set
 
-## Required story sections for Material components
+A new or migrated public Material component normally exposes only applicable stories:
 
-A mature Material component story set should cover:
+- `Overview`, `Default`, or another canonical representative story;
+- `Variants`, `Configurations`, or `Sizes` when supported axes need explanation;
+- `StateMatrix` when multiple distinct component-owned visual routes exist;
+- focused browser-behavior fixtures when Playwright requires a deterministic initial surface;
+- usage, accessibility, token, supported/unsupported, extension, and deviation notes as applicable.
 
-- Overview;
-- Variants;
-- Configurations;
-- Anatomy when useful;
-- States;
-- Accessibility notes;
-- Tokens and supported override points;
-- Do / Don't or usage notes when the official docs include them;
-- Project deviations or unsupported official variants;
-- Visual regression surfaces when the component is a shared primitive or has high visual risk.
+Do not create optional stories mechanically.
 
-Do not add every section mechanically in the first pass. Add the sections that make the component understandable and verifyable, then expand during the component's parity work.
+## Canonical visual story
+
+Every component with visible output has one stable canonical visual story recorded by the family contract.
+
+Use:
+
+- `StateMatrix` for multiple distinct component-owned visual routes;
+- a bounded `Overview`, `Default`, or equivalent story when one representative route is sufficient.
+
+Tag screenshot-ready stories with `visual` and keep accepted titles, export names, and bounded anchors stable.
+
+## `StateMatrix`
+
+Follow `component-testing.md`.
+
+A matrix must:
+
+- show every supported configuration or state that produces distinct component-owned visible output;
+- include simultaneous states only when they produce a distinct visible winner or coexistence result;
+- omit non-visual states and equivalent cases;
+- use the minimum readable rows, columns, and sections rather than a Cartesian product;
+- use visible labels and stable representative content;
+- use accepted verification-only foundation adapters without changing production API.
+
+When one image would be unreadable, keep one story with labelled bounded sections. Do not create one story or snapshot per cell.
+
+A simple component with one meaningful visual route must not receive a ceremonial matrix.
 
 ## Story rules
 
 - Keep stories deterministic and fixture-driven.
-- Do not connect product stores, storage flows, diagnostics, routing lifecycle, Google Drive integration, live network calls, or app bootstrap side effects.
-- Do not change public component APIs only to satisfy Storybook.
-- Do not put business logic in stories.
-- Use the same public props and tokens that product code uses.
-- Tag screenshot-ready stories with `visual`.
+- Do not connect product stores, storage, diagnostics, routing lifecycle, account/network state, or app bootstrap effects.
+- Do not change public component API for Storybook.
+- Do not place business logic in stories.
+- Use the same public props, slots, native semantics, and tokens as product code.
+- Keep verification-only adapters outside the public component contract.
+- Remove obsolete duplicate visual stories after the canonical reference covers their accepted purpose.
 
-## Visual documentation
+## Browser-behavior fixtures
 
-For components that are used as visual regression surfaces, prefer stable gallery stories that show Material-relevant states and configurations in one bounded locator screenshot.
+Create a fixture only when a focused Playwright test needs deterministic initial data or layout for real browser interaction.
 
-Do not add visual snapshots for every story. Use visual coverage for shared primitives, important Material states, responsive layout surfaces, CSS-heavy components, and previously broken states.
+The test acquires focus, hover, press, drag, open, or other behavior through real input. Forced visual state never proves acquisition, cancellation, cleanup, or browser behavior.
+
+## Additional visual stories
+
+Add a visual story only for a distinct supported geometry or context that the canonical story should not multiply, such as:
+
+- supported size or configuration galleries;
+- responsive or container contexts;
+- typography-specific surfaces;
+- target-area or clipping diagnostics;
+- a focused previously broken case.
+
+Do not snapshot every story.
+
+## Visual regression
+
+Use bounded screenshots when the canonical visual contract is stable and regression protection is material.
+
+A screenshot baseline detects change; it does not establish official correctness. Initial baselines and intentional visible changes require operator comparison with named official sources.
+
+## Operator handoff
+
+When visual acceptance is required, provide:
+
+- canonical visual story id;
+- bounded screenshot and diff;
+- official documentation snapshot;
+- Design Kit reference when required;
+- intended matches, explicit deviations, and unsupported surface;
+- confirmation that non-visual agent review passed.
+
+Persist accepted review metadata in the family contract only when the visual contract requires it.
 
 ## Documentation notes
 
-Each Material component's Storybook docs should name the checked official Material 3 pages or cache paths. If a feature is project-specific or unsupported, say so in the Storybook notes rather than implying official Material support.
+Component stories and docs should name applicable:
+
+- official sources and snapshot;
+- intended and prohibited usage;
+- supported and unsupported surface;
+- public API and native semantics;
+- foundation dependencies;
+- tokens and override points;
+- accessibility behavior;
+- extensions and deviations;
+- canonical visual coverage.
+
+Do not imply official support for project-specific or unsupported behavior.

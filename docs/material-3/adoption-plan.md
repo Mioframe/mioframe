@@ -2,129 +2,176 @@
 
 ## Principle
 
-Adopt Material 3 incrementally through foundation-first, component-family work. Do not perform broad visual rewrites without first defining the token, API, Storybook, verification, and deviation contract.
+Adopt Material incrementally through real component migrations.
 
-## Phase 1: Policies
+Do not build a complete validation framework, exhaustive migration database, generic test DSL, or mass source-tree migration before the first canonical families prove what is actually needed.
 
-Add and review the Material 3 foundation and implementation policies:
+Every in-scope shared UI artifact must eventually reach one accepted terminal outcome:
 
-- source of truth;
-- units;
-- tokens;
-- baseline theme;
-- component tokens;
-- token validation;
-- component registry;
-- component conversion checklist;
-- interaction states;
-- accessibility;
-- layout and adaptive behavior;
-- density and spacing;
-- iconography;
-- overlays;
-- shared UI API;
-- Storybook;
-- verification;
-- deviations.
+- canonical official Material component, pattern, or foundation owner;
+- explicitly retained project-specific or generic UI owner outside Material;
+- removed or consolidated obsolete or duplicate owner.
 
-This phase should not reorganize shared UI source files or change component behavior.
+The operating model, source hierarchy, ownership rules, blueprint contract, testing layers, agent evidence review, and operator visual acceptance were established by PR #149. Later work should use and improve those contracts rather than add another preparatory architecture phase.
 
-Resolved foundation decisions:
+## Default migration loop
 
-- `sp` is the target Material typography authoring unit; existing Material typography `pt` usage is legacy and should be migrated during the foundation audit.
-- `dp` remains the target Material measurement authoring unit.
-- `--app-*` is the neutral namespace for app-specific CSS custom properties outside Material token vocabulary.
-- Canonical `--md-comp-*` tokens are defined at the component definition boundary.
-- Start with a tokenized Material baseline theme with mandatory light and dark schemes.
-- Future base palette customization must update reference/system tokens rather than component CSS.
-- Do not keep old shared UI APIs only for internal compatibility; update in-repository consumers in the same focused migration.
-- Overlay containment ownership already exists through `useOverlayContainer`, `TeleportContainer`, child teleported container registration, and outside-interaction containment. Preserve and reuse that model instead of introducing a numeric z-index ownership model by default.
+Each family migration follows one practical loop:
 
-## Phase 2: Foundation audit
+1. inspect the current owner, public API, consumers, user flows, tests, stories, and known defects;
+2. resolve the current official Material 3 Expressive contract and the minimum supported surface;
+3. audit only the foundation domains required by that family;
+4. verify that applicable project rules are accurate, coherent, and sufficient for the real migration;
+5. correct inaccurate, contradictory, incomplete, or unnecessarily complex rules before relying on them;
+6. make focused foundation changes only when the migration proves they are necessary;
+7. implement the canonical family and migrate consumers;
+8. align the family with the accepted Expressive contract;
+9. update tests, Storybook evidence, snapshots, registries, inventory rows, risk registration, and migration maps that are actually affected;
+10. complete agent evidence review;
+11. hand prepared visual evidence to the operator when visual acceptance is required;
+12. record process lessons and add automation only when a stable repeated need has been demonstrated.
 
-Audit existing implementation against the policies:
+The default unit of work is one cohesive family end to end. Split work into separate PRs only when a broad foundation blast radius, reviewability, or the need for a safe independently valid intermediate state justifies it.
 
-- `src/shared/lib/md/tokens.css`;
-- PostCSS custom unit handling, including adding `sp` support before typography migration relies on it;
-- `MDState` and state layer primitives;
-- icon primitives and Material Symbols handling;
-- overlay primitives: `useOverlayContainer`, `TeleportContainer`, teleported container registry, outside-interaction containment, escape/back stacking, focus trap behavior, and any remaining local z-index usage;
-- public `MD*` component props;
-- Storybook story hierarchy and coverage;
-- visual regression coverage.
+## Phase 0: operating model
 
-The audit must produce:
+Status: complete.
 
-- an expanded component registry;
-- a token inventory and validation plan;
-- a typography token migration from legacy `pt` to Material `sp`;
-- a baseline light/dark theme plan;
-- an overlay containment review based on the existing shared overlay primitives, with focused follow-ups only for gaps;
-- a shared UI API migration list without compatibility-only aliases unless technically necessary;
-- a Storybook coverage plan;
-- a prioritized component-family conversion order.
+PR #149 established:
 
-## Phase 3: Buttons pilot
+- the canonical Material 3 Expressive source hierarchy;
+- the `src/shared/ui/material` ownership target;
+- component and foundation contracts;
+- the family blueprint and testing model;
+- agent evidence review and operator-only visual acceptance;
+- registries, inventory ownership, migration-map ownership, and scoped agent instructions.
 
-Use Buttons as the first component family because the current implementation already maps closely to the Material 3 button model.
+No additional validator or full-library inventory gate is required before the first pilot.
 
-Pilot scope:
+## Phase 1: first end-to-end pilot — `MDButton`
 
-- `MDButton`;
-- `MDIconButton`;
-- `MDFab` and related FAB helpers;
-- deprecated button compatibility exports.
+Use Button as the first pilot unless current consumer evidence proves another family is a materially better starting point.
 
-The pilot must establish the practical pattern for:
+The pilot includes, in one milestone:
 
-- component tokens defined at the component boundary;
-- token validation;
-- public prop naming;
-- icon handling;
-- density, spacing, and target area handling;
-- invalid Material combinations;
-- Storybook documentation;
-- visual regression surfaces;
-- documented deviations.
+- current implementation and consumer audit;
+- exact supported Material 3 Expressive surface;
+- only the foundation readiness work required by Button;
+- canonical Button family ownership;
+- API, native semantics, accessibility, interaction, token, state, anatomy, and DOM ownership;
+- consumer migration;
+- Material alignment;
+- contract, browser, pure, consumer, and visual proof as applicable;
+- removal of obsolete Button owners and exports;
+- agent evidence review and operator visual acceptance.
 
-Use [Component conversion checklist](./component-conversion-checklist.md) as the pilot completion gate.
+Focused preparatory or foundation PRs are allowed, but they do not become permanent roadmap phases and do not complete the pilot by themselves.
 
-## Phase 4: Core components
+At the end of the pilot, record which rules were accurate, which required correction, which documents duplicated work, which foundation gaps were real, and which defects could have been prevented by a small precise check.
 
-After the Buttons pilot is accepted, convert component families in dependency and usage order:
+## Phase 2: independent stateful pilot
 
-1. Lists;
-2. Dialogs;
-3. Text fields and selection controls;
-4. Chips and menus;
-5. Navigation, app bars, toolbars, and sheets;
-6. Cards, progress indicators, tooltips, dividers, and project-specific surfaces.
+Migrate a high-priority stateful family with a materially different interaction model. `MDSwitch` is the default candidate unless current evidence identifies a stronger alternative.
 
-Every converted component family must update [Component registry](./component-registry.md) and document remaining deviations.
+The second pilot must challenge the process with:
 
-## Phase 5: Structure cleanup
+- controlled state without hidden copies;
+- keyboard and pointer/touch behavior;
+- cancellation and cleanup where applicable;
+- disabled and presentation contracts;
+- multiple anatomy or DOM owners;
+- property-specific coexistence;
+- focus, ripple, motion, shape, color, accessibility, and target-area dependencies;
+- separation of visual-state proof from real browser behavior.
 
-Only after the policies and pilot prove the pattern should the code structure be reorganized.
+After two pilots, consolidate only the workflow and automation that both migrations prove to be stable and valuable.
 
-Possible later structure:
+## Phase 3: autonomous sequential migration
+
+After the pilots, maintain a short evidence-backed `P0`/`P1` queue rather than requiring exhaustive classification before work begins.
+
+The agent selects the highest-priority `ready` family whose dependencies are satisfied. After one family reaches its accepted terminal state, the agent updates the queue and proceeds to the next ready family without requiring a new architecture-planning phase or manual component selection.
+
+Priority considers:
+
+- consumer reach;
+- critical repeated workflows;
+- interaction frequency;
+- Material and foundation leverage;
+- current correctness or maintenance risk;
+- dependency readiness;
+- migration blast radius;
+- whether removal or consolidation is more valuable than migration.
+
+Inventory work is just in time:
+
+- fully inspect and update the family selected for the next migration;
+- keep directly affected rows current;
+- add newly discovered shared UI owners as they become relevant;
+- progressively classify the remaining library without blocking high-value migrations.
+
+The continuous migration loop remains:
 
 ```text
-src/shared/lib/md/
-  index.css
-  units.css
-  tokens/
-    ref.css
-    sys.color.css
-    sys.typescale.css
-    sys.shape.css
-    sys.elevation.css
-    sys.motion.css
-    sys.state.css
-    comp/
-      button.css
-      icon-button.css
-      list.css
-      dialog.css
+discovery → accepted contract → rule refinement → required foundation work →
+implementation → consumer migration → proof → agent review →
+operator visual acceptance → queue update → next ready family
 ```
 
-Do not perform this reorganization before the foundation audit unless a focused change requires it.
+A genuinely new component without a legacy owner is implemented when the product needs it. It is not a gate before normal migration can continue.
+
+## Rule refinement
+
+Project rules are durable working contracts, not immutable assumptions.
+
+When a migration reveals that a rule is inaccurate, contradictory, incomplete, ambiguous, obsolete, or creates complexity without protecting a real contract, the agent must:
+
+1. identify the concrete migration case and evidence that exposes the problem;
+2. identify the document, skill, checklist, registry, or scoped instruction that owns the rule;
+3. determine whether official Material sources, repository architecture, or product behavior provides the authoritative answer;
+4. make the smallest correction that resolves the real case without weakening unrelated contracts;
+5. update every directly affected rule source in the same PR, or in a focused prerequisite PR when the correction has wider scope;
+6. record the reason, evidence, affected scope, and any migration consequence;
+7. resume implementation only after the applicable rules are coherent.
+
+The agent must not:
+
+- silently violate a documented rule;
+- preserve an inaccurate rule through a component-specific exception;
+- duplicate a corrected rule in another document;
+- broaden the correction into an unrelated architecture rewrite;
+- delegate a resolvable technical inconsistency to operator visual review.
+
+Escalate only when the conflict requires a genuine product decision, official sources are materially unresolved, or correcting the rule would change a public cross-project contract beyond the migration scope.
+
+## Evidence-driven automation
+
+Automation is a consequence of migration evidence, not a prerequisite for migration.
+
+Add a guard only when all of the following are true:
+
+- it protects a stable accepted contract demonstrated by real work;
+- the failure is repeated or has a clearly material regression risk;
+- the check is precise and has a low false-positive rate;
+- existing repository tooling can express it without a parallel architecture system;
+- maintenance cost is lower than the review burden it removes.
+
+Do not add automation merely because a future mistake is imaginable.
+
+Static or structured checks may be introduced inside a migration or follow-up PR when these conditions are met. They do not require their own roadmap milestone.
+
+## Foundation changes
+
+Audit foundation domains only for the selected family.
+
+Reuse an existing owner when it is sufficient and remains the single accepted owner. Create a focused foundation PR when a correction, replacement, relocation, or additive extension has wider consumer impact than the component migration can safely review.
+
+Do not relocate every foundation owner in advance and do not split a cohesive legacy owner merely to match the target directory structure.
+
+## Program completion
+
+The program is complete when every in-scope shared UI artifact has a terminal outcome and every Material-owned artifact has one canonical current owner.
+
+Exhaustive inventory is therefore a completion requirement, not a prerequisite for starting useful migrations.
+
+The program does not require implementing every optional component or capability published by Material.

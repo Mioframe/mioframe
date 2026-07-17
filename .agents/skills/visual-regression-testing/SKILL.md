@@ -1,171 +1,165 @@
 ---
 name: visual-regression-testing
-description: 'Use this skill when adding or reviewing visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage. Use Playwright screenshots against Storybook stories; do not use Vitest, happy-dom, or Vue Test Utils for appearance.'
+description: 'Use when adding or reviewing screenshot-based appearance checks, Material state matrices, canonical visual stories, responsive visual surfaces, or baseline updates. Use Playwright against isolated Storybook stories; do not use Vitest, happy-dom, or Vue Test Utils for appearance.'
 ---
 
 # Visual regression testing
 
-Use this skill only for appearance regressions. Visual tests are a narrow browser verification layer, not a replacement for unit, component contract, or e2e behavior tests.
+Visual tests prove rendered appearance only. They do not replace component-contract, browser-behavior, pure logic, consumer, agent, or operator review.
 
-## Core rule
+For public Material components, follow `docs/material-3/component-testing.md`.
 
-Use Playwright screenshot assertions for visual appearance.
+## Harness
 
-Do not use Vitest, happy-dom, or Vue Test Utils to verify appearance, layout, responsive behavior, Material state visuals, or browser-rendered styling.
+Use isolated Storybook stories with:
 
-## Harness rule
+- deterministic fixture data;
+- only dependencies needed for rendering;
+- no business logic or product orchestration;
+- no app bootstrap, storage, network, diagnostics, or navigation side effects.
 
-Use Storybook as the preferred visual test harness.
+Storybook is a rendering harness, not an alternate application.
 
-The visual runtime must not inherit product app effects from the normal root app, such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or other product lifecycle behavior.
+## Material backdrop
 
-Required boundaries:
+Use `.visual-checker-backdrop` when transparency, shape, elevation, or state-layer output must remain visible against a neutral fixture surface.
 
-- Add or reuse a colocated Storybook story for the component surface under test.
-- Keep stories deterministic and fixture-driven.
-- Reuse application styles and shared UI infrastructure required to render the component correctly.
-- Isolate product runtime behavior from Storybook rendering. Do not import `MainApp.vue`, call `setupApp`, or add route-based conditionals to disable product effects.
-- Do not put business logic, storage orchestration, network behavior, diagnostics, optional integrations, or permission prompts into stories.
+Do not duplicate the checkerboard, derive it from theme tokens, apply it to production UI, or hide transparent output behind an implicit solid surface.
 
-Storybook is intended for stable component surfaces and visual states. It should stay a rendering harness, not an alternate product application or an e2e runner.
+A simple opaque component may use another deterministic bounded fixture when the checkerboard adds no value.
 
-## Material component backdrop
+## Canonical visual identity
 
-Every Storybook demonstration or visual fixture for a shared Material `MD*` component must expose the rendered component against the canonical neutral checkerboard backdrop.
+A visible component records one stable canonical visual story and bounded anchor.
 
-Required contract:
+Use:
 
-- Reuse `.visual-checker-backdrop` from `.storybook/visual.css` on the fixture root, or the shared Storybook decorator/wrapper that applies the same canonical class.
-- Do not add new uses of the legacy `.visual-list-backdrop` alias.
-- Do not duplicate the checkerboard gradient inline, create component-family-specific checkerboards, or derive the checker colors from `--md-sys-color-*` tokens.
-- Apply the checkerboard only to Storybook fixture wrappers, never to production components or product pages.
-- Keep the component's own background, transparency, shape, elevation, and state-layer ownership unchanged; the fixture must not add a solid Material surface merely to make the component look correct.
-- Surface-context, inheritance, and contrast scenarios must keep the checkerboard as the outer fixture and place the explicit semantic Material surfaces being tested inside it.
-- When touching an existing Material visual story, migrate its fixture root to the canonical checkerboard in the same change and intentionally review any resulting baseline update.
+- `StateMatrix` and `data-testid="visual-<component-kebab>-state-matrix"` when multiple distinct component-owned visual routes exist;
+- a bounded `Overview`, `Default`, or equivalent story and stable anchor when one representative route is sufficient.
 
-Reject a new or changed Material component demonstration or visual snapshot when its fixture hides the component on a flat implicit background instead of the canonical checkerboard.
-
-## Story identity contract
-
-When a visual spec opens a Storybook story by id, the story `title` and story export name are part of the visual test contract.
-
-Do not rename Storybook titles, story exports, or visual `data-testid` anchors in touched visual stories unless the matching visual specs and snapshots are intentionally updated in the same pass.
-
-Prefer keeping existing story ids stable when only component internals, tokens, or visual states change. If a story id must change, update the Playwright `openStory` call and prove the story still renders the expected stable screenshot surface before refreshing baselines.
-
-## Isolation review
-
-Before adding visual snapshots, check whether the story is rendered under an isolated Storybook runtime. If it depends on the normal product root app, refactor the setup so the screenshot cannot be affected by product effects.
-
-Reject or refactor the setup when visual tests can be affected by:
-
-- onboarding, permission, diagnostics, or storage dialogs;
-- snackbars or error reporting side effects;
-- optional integration setup;
-- background writes, workers, timers, or unload guards;
-- live performance overlays;
-- network or account state;
-- route guards or product navigation state unrelated to the component surface.
-
-Do not solve isolation by sprinkling `if Storybook` or route checks through product features. Keep the isolation in Storybook config and story fixtures.
+Keep accepted ids stable. Rename only with matching specs and snapshots.
 
 ## Test location
 
-Place visual Playwright specs under the existing Playwright tree so current verification can discover focused changes:
+Use:
 
 ```text
 tests/e2e/visual/<surface>.spec.ts
 ```
 
-Prefer one spec per stable visual surface or component family. Do not mix unrelated components in one visual spec unless they intentionally share a single visual gallery.
+For Material families prefer:
 
-Storybook is the harness, not evidence that a test belongs here. Pointer, touch, scrolling, focus, and browser lifecycle assertions against a Storybook story belong in `tests/e2e/storybook` (`playwright.storybook.config.ts`) instead, even though they render through the same static Storybook build.
+```text
+tests/e2e/visual/material/<family>.spec.ts
+```
 
-## When to add visual tests
+Pointer, touch, scrolling, focus acquisition, overlay lifecycle, and behavior assertions belong in Storybook browser specs, not visual specs.
 
-Add visual tests for:
+## `StateMatrix`
 
-- shared UI primitives and Material-style surfaces;
-- important component states such as enabled, disabled, selected, checked, unchecked, error, loading, focus-visible, hover, or pressed;
-- mobile and desktop layout regressions;
-- previously broken visual states;
-- CSS-heavy components where visual regressions are likely and costly.
+Use a matrix only for multiple distinct supported visual routes.
 
-Do not add visual tests for every component by default.
+It covers applicable:
+
+- configurations or states producing distinct visible results;
+- disabled or unavailable appearances that differ visually;
+- simultaneous states with distinct winner or coexistence output;
+- visual extensions and deviations.
+
+A non-visual state does not need a cell. Do not build a Cartesian product of equivalent sizes, labels, icons, content, or configurations.
+
+Use visible row, column, and section labels. Prefer one bounded screenshot and split only when readability requires labelled sections. Do not create one snapshot per cell.
+
+## Simple visual components
+
+When one representative route is sufficient:
+
+- use one bounded canonical story;
+- screenshot the component or meaningful fixture root;
+- do not create a ceremonial matrix or artificial rows and columns.
 
 ## Snapshot scope
 
-Prefer surface screenshots over full-page screenshots.
+Prefer a bounded stable surface:
 
-Good targets:
+- a complete matrix or labelled section;
+- one simple canonical component story;
+- one dialog, sheet, or menu surface;
+- one responsive layout context;
+- one focused regression case with a clear invariant.
 
-- a single component gallery container;
-- one dialog/sheet/menu surface;
-- one responsive layout surface;
-- one stable visual state group.
+Avoid full-page screenshots unless page layout itself is the contract.
 
-Avoid full-page screenshots unless the page layout itself is the behavior under test.
+## Determinism
 
-## Manual-review labels
+Before capture:
 
-For galleries intended for manual comparison, a reviewer must be able to identify every case
-directly from the screenshot. Give icon-only controls visible fixture-only external labels and
-prefer row/column headings for matrices. Invisible tooltips, accessible names, test IDs, and
-source order are insufficient. Labels must not alter or obscure the production component; avoid
-redundant captions when the component's own visible content already identifies the complete case.
+1. use stable data and viewport;
+2. settle or disable animation appropriately;
+3. avoid live dates, randomness, network, storage, uncontrolled timers, and loading state;
+4. wait for fonts, icons, async rendering, and deterministic state setup;
+5. mask only unavoidable dynamic regions;
+6. keep the screenshot readable;
+7. update baselines only from the canonical environment;
+8. do not hide text or raise thresholds merely to suppress noise.
 
-## Determinism checklist
+## Visual-state setup
 
-Before adding or updating snapshots:
+- Use the real public contract for semantic and disabled appearance.
+- Generic transient appearance may use an accepted foundation testing adapter.
+- Use minimal real Playwright input when no adapter accurately represents the visible state.
+- Capture only after the visible state is stable.
 
-1. Use stable fixture data.
-2. Use a fixed viewport or explicit Playwright project viewport.
-3. Disable or settle animations and transitions when possible.
-4. Avoid live dates, random IDs, timers, network content, loading spinners, and progress indicators.
-5. Wait for fonts, icons, and async rendering to settle before taking the screenshot.
-6. Mask dynamic regions when they cannot be made deterministic.
-7. Keep screenshots small enough for reviewers to understand the diff.
-8. Accept or refresh baselines only from stable Linux/Chromium rendering such as CI or the canonical pinned Playwright container flow; treat local host-rendered diffs from other environments as advisory.
-9. Do not refresh baselines from headed mode, hide ordinary text, or raise screenshot thresholds only to suppress text anti-aliasing noise.
+Forced state proves appearance only. Real acquisition, transition, cancellation, cleanup, and user-visible outcomes require browser tests.
 
-## Interaction state rule
+Do not add test-only public API, production branches, or family-local forced-state systems.
 
-For visual states such as hover, pressed, focused, checked, expanded, or open:
+## Operator Material review
 
-- prefer explicit deterministic state props when the component exposes them;
-- otherwise use Playwright interaction APIs in a minimal setup step;
-- capture the smallest stable surface after the state is reached.
+Automated screenshots compare against a baseline; they do not prove that the baseline matches Material.
 
-Do not assert business behavior in visual tests. Use e2e tests for behavior and visual tests for rendered appearance.
+Operator comparison with named official evidence is required for applicable:
+
+- a component's first accepted canonical visual reference;
+- an intentional visible-contract or baseline change;
+- a foundation change intentionally altering rendered output.
+
+Report:
+
+```text
+Canonical visual story: <story id>
+Visual coverage: complete | incomplete (<gap>)
+Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
+Operator visual acceptance: required | accepted | rejected | blocked (<reason>)
+```
+
+An automated agent never reports operator acceptance as accepted.
 
 ## Commands
 
-Run the visual gate through the repository verification entry point:
+Run through repository verification:
 
 ```bash
 pnpm verify --only visual --files <changed-source-story-or-visual-spec-paths...>
 ```
 
-Update snapshots only when the visual change is intentional and after inspecting the diff:
+Update snapshots only for intentional changes after inspecting the diff:
 
 ```bash
 pnpm test:visual:update
 pnpm verify --only visual --files <changed-source-story-or-visual-spec-paths...>
 ```
 
-Do not invoke Playwright directly as a verification substitute. Final completion still requires the read-only `pnpm verify` defined by the `verification` skill.
+Do not use direct Playwright invocation as a substitute for repository verification.
 
-If a test intentionally verifies typography or text rendering, keep it explicit and separate from general-purpose visual baselines.
+## Reject when
 
-## Review checklist
-
-Reject or rewrite a visual test when:
-
-1. It can be covered better by a pure unit test or component contract test.
-2. It captures a broad page without a clear visual invariant.
-3. It depends on random, time-based, network, storage, or loading state.
-4. It renders through `MainApp.vue`, the product `/playground`, or any other product route instead of Storybook stories.
-5. It inherits product app behavior that can affect screenshots.
-6. It updates snapshots without explaining the intended visual change.
-7. It duplicates an e2e behavior assertion instead of checking appearance.
-8. A shared Material `MD*` component fixture does not use the canonical checkerboard outer backdrop or duplicates that backdrop locally.
+- a unit, browser, or consumer test is the correct owner;
+- the screenshot is broad without a clear visual invariant;
+- the fixture depends on uncontrolled product, time, network, or storage state;
+- a baseline changes without explanation and inspection;
+- behavior is asserted instead of appearance;
+- equivalent combinations create snapshot bloat;
+- forced states are presented as behavior proof;
+- a simple component receives a meaningless matrix;
+- a component with multiple distinct visual routes lacks readable canonical coverage.
