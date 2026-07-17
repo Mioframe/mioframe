@@ -2,6 +2,12 @@
 
 Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/sortable` and its descendants until a deeper `AGENTS.md` refines it.
 
+## Status
+
+Legacy. `@shared/lib/reorder` is the canonical reorder implementation; this module is retained
+only for its remaining unmigrated production consumer (`DatabaseItemSortingListSection.vue`). Do
+not add new consumers or features here — migrate to `@shared/lib/reorder` instead.
+
 ## Contains
 
 - Generic reorder surfaces, SortableJS integration, gesture profiling, and Storybook story or focused test support.

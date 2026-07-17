@@ -2,9 +2,17 @@
 
 Generic reorder primitives for Vue surfaces.
 
-This module is the shared drag-to-reorder layer used by feature and entity UIs.
-It does not know anything about database views, sorting rules, or any other
-business data. Its contract is simple:
+## Status
+
+**Legacy.** `@shared/lib/reorder` is the canonical reorder implementation for new consumers. This
+module is retained only for its remaining unmigrated production consumer,
+`src/features/databaseItemSorting/DatabaseItemSortingListSection.vue`, plus its own
+`ReorderSurfacePlayground.vue` dev playground. It is closed to new consumers and feature
+additions, and is planned for removal once that consumer migrates to `@shared/lib/reorder`.
+
+This module is a generic reorder primitive: it does not know anything about database views,
+sorting rules, or any other business data. It is not the current shared drag-to-reorder layer —
+see the Status section above — but its remaining consumer still relies on this contract:
 
 - the caller provides a stable ordered list of string ids;
 - the library renders and previews reorder sessions against those ids;

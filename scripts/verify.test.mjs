@@ -12,6 +12,7 @@ import {
 import {
   buildCommandEnv,
   buildCommands,
+  COMMAND_TIMEOUT_MS_BY_LABEL,
   getCiProfileRisk,
   getActionRequired,
   getBlockingLogIssue,
@@ -20,11 +21,88 @@ import {
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
   getVerifyBaseRef,
+  PLAYWRIGHT_COMMAND_OVERHEAD_MS,
   printSummary,
   resolveCommandStatus,
+  resolvePlaywrightCommandTimeoutMs,
   runVerifyCli,
 } from './verify.mjs';
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
+import toolingConfig from '../config/tooling.json' with { type: 'json' };
+
+describe('resolvePlaywrightCommandTimeoutMs', () => {
+  it('derives the outer timeout from a given container timeout plus the fixed allowance', () => {
+    expect(resolvePlaywrightCommandTimeoutMs('900')).toBe(
+      900 * 1000 + PLAYWRIGHT_COMMAND_OVERHEAD_MS,
+    );
+  });
+
+  it('is strictly greater than the container timeout by exactly the documented allowance', () => {
+    const containerTimeoutMs = 900 * 1000;
+
+    expect(resolvePlaywrightCommandTimeoutMs('900') - containerTimeoutMs).toBe(
+      PLAYWRIGHT_COMMAND_OVERHEAD_MS,
+    );
+  });
+
+  it('changes correspondingly when the input container timeout changes', () => {
+    expect(resolvePlaywrightCommandTimeoutMs('600')).toBe(
+      600 * 1000 + PLAYWRIGHT_COMMAND_OVERHEAD_MS,
+    );
+    expect(resolvePlaywrightCommandTimeoutMs('1200')).toBe(
+      1200 * 1000 + PLAYWRIGHT_COMMAND_OVERHEAD_MS,
+    );
+  });
+
+  it('defaults to config/tooling.json verification.playwrightContainer.timeoutSeconds', () => {
+    expect(resolvePlaywrightCommandTimeoutMs()).toBe(
+      Number(toolingConfig.verification.playwrightContainer.timeoutSeconds) * 1000 +
+        PLAYWRIGHT_COMMAND_OVERHEAD_MS,
+    );
+  });
+
+  it('rejects a non-numeric container timeout', () => {
+    expect(() => resolvePlaywrightCommandTimeoutMs('not-a-number')).toThrow();
+  });
+
+  it('rejects a zero or negative container timeout', () => {
+    expect(() => resolvePlaywrightCommandTimeoutMs('0')).toThrow();
+    expect(() => resolvePlaywrightCommandTimeoutMs('-5')).toThrow();
+  });
+});
+
+describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
+  const playwrightBackedLabels = ['e2e', 'storybook-behavior', 'visual', 'release-smoke'];
+  const unrelatedLabelsWithFixedLimits = {
+    'e2e-install': 10 * 60 * 1000,
+    mutation: 20 * 60 * 1000,
+    build: 10 * 60 * 1000,
+    artifact: 8 * 60 * 1000,
+  };
+
+  it('derives Playwright-backed lane timeouts from the canonical container timeout', () => {
+    const expected = resolvePlaywrightCommandTimeoutMs();
+
+    for (const label of playwrightBackedLabels) {
+      expect(COMMAND_TIMEOUT_MS_BY_LABEL[label]).toBe(expected);
+    }
+  });
+
+  it('keeps every Playwright-backed lane timeout strictly greater than the container timeout', () => {
+    const containerTimeoutMs =
+      Number(toolingConfig.verification.playwrightContainer.timeoutSeconds) * 1000;
+
+    for (const label of playwrightBackedLabels) {
+      expect(COMMAND_TIMEOUT_MS_BY_LABEL[label]).toBeGreaterThan(containerTimeoutMs);
+    }
+  });
+
+  it('leaves unrelated command limits unchanged', () => {
+    for (const [label, expectedMs] of Object.entries(unrelatedLabelsWithFixedLimits)) {
+      expect(COMMAND_TIMEOUT_MS_BY_LABEL[label]).toBe(expectedMs);
+    }
+  });
+});
 
 describe('getAllSiblingTestFiles', () => {
   it('maps scripts production .mjs files to sibling .test.mjs', () => {

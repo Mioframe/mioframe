@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { useDatabaseViews } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import {
-  zodDatabaseViewId,
-  type DatabaseView,
-  type DatabaseViewId,
-} from '@shared/lib/databaseDocument';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import { useReorderSurface, vReorderItem } from '@shared/lib/sortable';
-import { MDList, MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs, useTemplateRef } from 'vue';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import { ReorderSurface } from '@shared/lib/reorder';
+import { MDList } from '@shared/ui/Lists';
+import { computed, toRefs } from 'vue';
+import DatabaseViewSortableListItem from './DatabaseViewSortableListItem.vue';
+import { useDatabaseViewReorderState } from './useDatabaseViewReorderState';
 
 const props = defineProps<{
   directoryPath: string;
@@ -33,48 +30,12 @@ const { directoryPath: path, documentId } = toRefs(props);
 
 const { reorder, views: viewList } = useDatabaseViews(path, documentId);
 
-const viewListEl = useTemplateRef<InstanceType<typeof MDList>>('viewListEl');
-const viewListContainerEl = computed(() => viewListEl.value?.$el ?? null);
-
 const viewMap = computed(() => new Map(viewList.value ?? []));
+const canonicalIds = computed(() => (viewList.value ?? []).map(([id]) => id));
 
-const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(
-  viewListContainerEl,
-  {
-    itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
-    onCommit: ({ orderedIds }) => {
-      const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
+const { displayIds, isPending, onReorder } = useDatabaseViewReorderState(canonicalIds, reorder);
 
-      if (nextOrderedIds.length !== orderedIds.length) {
-        return;
-      }
-
-      return reorder(nextOrderedIds);
-    },
-  },
-);
-
-const displayViewIdList = computed(() =>
-  displayItemIdList.value.filter((id) => zodIs(id, zodDatabaseViewId)),
-);
-const draggedViewId = computed(() => {
-  const itemId = draggedId.value;
-
-  return itemId && zodIs(itemId, zodDatabaseViewId) ? itemId : undefined;
-});
-
-const orderedViewList = computed(() =>
-  displayViewIdList.value.reduce<Array<readonly [DatabaseViewId, DatabaseView]>>((result, id) => {
-    const view = viewMap.value.get(id);
-
-    if (!view) {
-      return result;
-    }
-
-    result.push([id, view] as const);
-    return result;
-  }, []),
-);
+const getViewName = (id: DatabaseViewId): string => viewMap.value.get(id)?.name ?? '';
 
 const onClickView = (id: DatabaseViewId) => {
   emit('clickView', id);
@@ -82,28 +43,26 @@ const onClickView = (id: DatabaseViewId) => {
 </script>
 
 <template>
-  <MDList ref="viewListEl" list-style="segmented" class="db-view-map-edit">
-    <MDListItem
-      v-for="[id, view] in orderedViewList"
-      :key="id"
-      v-reorder-item="id"
-      :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
-      :label-text="view.name"
-      :dragged="draggedViewId === id"
-      :aria-current="id === currentViewId ? 'true' : undefined"
-      class="db-view-map-edit__view-item"
-      :class="{
-        'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
-      }"
-      @action="onClickView(id)"
-    >
-      <template v-if="!!slots.leading" #leading>
-        <slot name="leading" :view-id="id" />
-      </template>
+  <ReorderSurface :item-ids="displayIds" :disabled="isPending" @reorder="onReorder">
+    <MDList list-style="segmented" class="db-view-map-edit">
+      <DatabaseViewSortableListItem
+        v-for="(id, index) in displayIds"
+        :key="id"
+        :view-id="id"
+        :index="index"
+        :label-text="getViewName(id)"
+        :mode="!!slots.trailingAction ? 'multi-action' : 'single-action'"
+        :aria-current="id === currentViewId ? 'true' : undefined"
+        @action="onClickView(id)"
+      >
+        <template v-if="!!slots.leading" #leading>
+          <slot name="leading" :view-id="id" />
+        </template>
 
-      <template v-if="!!slots.trailingAction" #trailingAction>
-        <slot name="trailingAction" :view-id="id" />
-      </template>
-    </MDListItem>
-  </MDList>
+        <template v-if="!!slots.trailingAction" #trailingAction>
+          <slot name="trailingAction" :view-id="id" />
+        </template>
+      </DatabaseViewSortableListItem>
+    </MDList>
+  </ReorderSurface>
 </template>
