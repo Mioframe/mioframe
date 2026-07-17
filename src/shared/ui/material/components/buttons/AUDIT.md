@@ -2,6 +2,8 @@
 
 Reviewed: 2026-07-17
 Result: non-compliant
+Official capability inventory: incomplete
+Official coverage: partial
 Project implementation documentation: `README.md`
 Visual review: blocked
 
@@ -21,7 +23,45 @@ Visual review: blocked
 - Material motion guidance applicable to the Button pressed-shape contract.
 - Verified fallback snapshot: `Vyachean/m3-docs-cache` commit `49ffae58a61f86c28b23720696dc9d07b6945483`, captured `2026-07-13T12:48:04.850Z`.
 - Official pressed-shape source values: fast-spatial spring stiffness `800`, damping `0.6`.
-- Button guidelines evidence remains inconsistent in project records and is listed as a Stage 2 finding.
+- Button guidelines evidence remains inconsistent, so the official family inventory cannot yet be certified complete.
+
+## Official capability coverage
+
+### Implemented and verified
+
+- Common `MDButton` surface with elevated, filled, tonal, outlined, and text styles.
+- Extra-small, small, medium, large, and extra-large sizes.
+- Round and square shapes.
+- Default action and controlled toggle modes.
+- Native button ownership, type, disabled behavior, accessible name, controlled `aria-pressed`, and loading `aria-busy`.
+- Canonical ownership, public export, consumer migration, and legacy MDButton removal.
+
+### Partial / defective / unverified
+
+- Expressive pressed-shape motion: official spring evidence exists, but the current runtime dependency model is defective.
+- Elevation shadow-color routing: Button output works, but the shared universal-selector impact is not sufficiently reviewed.
+- Numeric loading extension at `0`: accepted API and rendered behavior are not coherent.
+- Full source-backed Buttons usage/guidelines interpretation: not independently reconciled.
+
+### Not implemented
+
+Current independently confirmed absent capability:
+
+- Text-style toggle buttons.
+- Split Button.
+- Standard Button Group.
+- Connected Button Group.
+
+This list is mandatory regardless of current Mioframe consumer demand. It is not certified exhaustive while the canonical capability inventory remains incomplete.
+
+### Unresolved evidence
+
+- Complete current official Buttons family capability inventory across every applicable family page.
+- Exact conclusions from current Button guidelines.
+
+### Outside this family boundary
+
+- None confirmed by the current review. Any capability proven to belong to a separate official family must be moved to this category rather than silently removed from coverage accounting.
 
 ## Stage 1 — implementation vs project documentation
 
@@ -69,14 +109,26 @@ Required correction: define and test determinate zero behavior, or narrow the ac
 - Native button ownership, `nativeType`, disabled state, accessible name, controlled `aria-pressed`, and loading `aria-busy` are represented in implementation and colocated contract coverage.
 - Canonical Button ownership and the curated `@shared/ui/material` export exist.
 - The legacy MDButton implementation/export is removed and direct consumers are migrated.
-- The README explicitly records unsupported text-toggle usage, Split Button, Standard Button Group, and Connected Button Group.
-- The README does not hide the current motion, elevation, loading-zero, source-evidence, or visual-review gaps.
+- The README explicitly records the currently known absent text-toggle, Split Button, Standard Button Group, and Connected Button Group capability.
+- The README does not hide the current motion, elevation, loading-zero, capability-inventory, source-evidence, or visual-review gaps.
 
 ## Stage 2 — project documentation vs Material 3 Expressive
 
 ### Findings
 
-#### 1. Canonical source record for Button guidelines is inconsistent
+#### 1. Official Button capability inventory is incomplete
+
+Severity: medium
+
+Material 3 Expressive requirement: the project documentation must classify the complete official family surface, including capability not currently needed by Mioframe.
+
+Project documentation claim: the README lists the currently known absent text-toggle, Split Button, Standard Button Group, and Connected Button Group capability, but explicitly marks the official inventory incomplete.
+
+Project-to-Material mismatch: the project has not yet independently reconstructed every current official Buttons capability from all applicable family pages, so additional absent, partial, or out-of-boundary capability may remain unclassified.
+
+Required correction: inspect every current Buttons family page, reconstruct the complete contract-level capability inventory, and classify every item as implemented, partial/unverified, not implemented, unresolved, or outside the family boundary. Current consumer need must not remove an item from the inventory.
+
+#### 2. Canonical source record for Button guidelines is inconsistent
 
 Severity: medium
 
@@ -91,14 +143,14 @@ Required correction: inspect the current Button guidelines once, record the exac
 ### Verified agreement
 
 - The project documentation maps the implementation to the official `components/buttons` family.
-- Elevated, filled, tonal, outlined, and text styles; five documented sizes; round/square shape routes; and controlled toggle behavior are represented as the supported project surface.
+- Elevated, filled, tonal, outlined, and text styles; five documented sizes; round/square shape routes; and controlled toggle behavior are represented as the implemented project surface.
 - The documentation distinguishes canonical Material behavior from the Mioframe `loading` extension.
-- Text-toggle and Button Group capabilities outside the supported surface are named explicitly rather than implied as implemented.
-- The documentation now distinguishes official spring values from the unresolved Web runtime adaptation instead of treating equality of aliases as canonical spring execution.
-- No confirmed undocumented canonical deviation was found beyond the unresolved evidence and implementation findings listed above.
+- Currently known absent text-toggle and Button Group capability is named explicitly rather than implied as implemented.
+- The documentation distinguishes official spring values from the unresolved Web runtime adaptation instead of treating equality of aliases as canonical spring execution.
 
 ## Evidence gaps
 
+- Complete current official Buttons capability inventory.
 - Cross-family safety of the universal elevation declarations.
 - Corrected runtime motion adaptation and its actual consumption.
 - One consistent inspection record for current Button guidelines.
@@ -106,9 +158,10 @@ Required correction: inspect the current Button guidelines once, record the exac
 
 ## Required next work
 
-1. Correct the motion implementation to match the documented honest Web adaptation contract.
-2. Narrow the elevation implementation or add the project-required shared impact contract and representative proof.
-3. Reconcile the project Button source record with current Material 3 Expressive guidelines.
-4. Resolve the numeric loading-zero extension contract in implementation and documentation.
-5. Update `README.md`, run applicable local verification, and rerun `material-component-review Button`.
-6. Perform operator visual review only after the high Stage 1 findings are closed.
+1. Reconstruct and document the complete official Buttons capability inventory, including every unimplemented capability regardless of current consumer demand.
+2. Correct the motion implementation to match the documented honest Web adaptation contract.
+3. Narrow the elevation implementation or add the project-required shared impact contract and representative proof.
+4. Reconcile the project Button source record with current Material 3 Expressive guidelines.
+5. Resolve the numeric loading-zero extension contract in implementation and documentation.
+6. Update `README.md`, run applicable local verification, and rerun `material-component-review Button`.
+7. Perform operator visual review only after the high Stage 1 findings are closed.
