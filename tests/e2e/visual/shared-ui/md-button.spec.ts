@@ -1257,6 +1257,45 @@ test('MDButton container shadow-color override reaches the private elevation bri
   await assertShadowColorBridgeAndLevel('shadow-override-tonal-hover', '--md-sys-elevation-level1');
 });
 
+test('MDButton inverse-surface/inverse-on-surface system tokens invert correctly between light and dark theme', async ({
+  page,
+}) => {
+  // MDButton's outlined selected-toggle route consumes `--md-sys-color-inverse-surface` and
+  // `--md-sys-color-inverse-on-surface` directly. These are shared system-color-role tokens
+  // (`src/shared/lib/md/tokens.css`), not Button-specific, but this is the concrete scenario that
+  // exposed the previous defect: the dark-theme block assigned the same `neutral20`/`neutral95`
+  // pair as light theme instead of actually inverting.
+  await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
+
+  const [lightInverseSurface, lightInverseOnSurface, lightNeutral20, lightNeutral95] =
+    await Promise.all([
+      getSysColorValue(page, '--md-sys-color-inverse-surface'),
+      getSysColorValue(page, '--md-sys-color-inverse-on-surface'),
+      getSysColorValue(page, '--md-ref-palette-neutral20'),
+      getSysColorValue(page, '--md-ref-palette-neutral95'),
+    ]);
+
+  expect(lightInverseSurface).toBe(lightNeutral20);
+  expect(lightInverseOnSurface).toBe(lightNeutral95);
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+
+  const [darkInverseSurface, darkInverseOnSurface, darkNeutral90, darkNeutral20] =
+    await Promise.all([
+      getSysColorValue(page, '--md-sys-color-inverse-surface'),
+      getSysColorValue(page, '--md-sys-color-inverse-on-surface'),
+      getSysColorValue(page, '--md-ref-palette-neutral90'),
+      getSysColorValue(page, '--md-ref-palette-neutral20'),
+    ]);
+
+  // The official Material dark scheme maps inverse-surface to a light `neutral90` tone and
+  // inverse-on-surface to a dark `neutral20` tone — genuinely different from the light-theme pair.
+  expect(darkInverseSurface).toBe(darkNeutral90);
+  expect(darkInverseOnSurface).toBe(darkNeutral20);
+  expect(darkInverseSurface).not.toBe(lightInverseSurface);
+  expect(darkInverseOnSurface).not.toBe(lightInverseOnSurface);
+});
+
 test('MDButton per-size spring component tokens resolve to the fast-spatial system tokens', async ({
   page,
 }) => {

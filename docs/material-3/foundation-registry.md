@@ -73,10 +73,10 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Public contract: `--md-sys-color-*` mapped from reference tokens; light defaults and dark media override.
 - Private bridge contract: none.
 - Verification-only contract: deterministic Storybook theme context.
-- Known consumers: Material components and product surfaces using system roles.
+- Known consumers: Material components and product surfaces using system roles (including `MDButton`, `MDIconButton`, `MDPlainTooltip`, and `MDSnackbar` for `inverse-surface`/`inverse-on-surface` specifically).
 - Known gaps: complete role parity, app-controlled theme context, and deprecated surface-tint compatibility removal.
-- Verification: token graph, computed scheme checks, and representative visuals.
-- Last reviewed: 2026-07-16.
+- Verification: token graph, computed scheme checks, and representative visuals. `--md-sys-color-inverse-surface`/`--md-sys-color-inverse-on-surface` are now verified to invert correctly between light and dark theme (`tests/e2e/visual/shared-ui/md-button.spec.ts`); a dark-theme defect where both tokens repeated their light-theme values was found and corrected during the `MDButton` M1 alignment pass (`docs/material-3/audits/button.md`, 2026-07-17).
+- Last reviewed: 2026-07-17.
 
 ## Typography
 

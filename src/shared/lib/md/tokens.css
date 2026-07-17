@@ -481,9 +481,9 @@
       --md-ref-palette-neutral4,
       var(--app-debug-unknown-color)
     );
-    --md-sys-color-inverse-surface: var(--md-ref-palette-neutral20, var(--app-debug-unknown-color));
+    --md-sys-color-inverse-surface: var(--md-ref-palette-neutral90, var(--app-debug-unknown-color));
     --md-sys-color-inverse-on-surface: var(
-      --md-ref-palette-neutral95,
+      --md-ref-palette-neutral20,
       var(--app-debug-unknown-color)
     );
     --md-sys-color-surface-tint: var(--md-ref-palette-primary80, var(--app-debug-unknown-color));
