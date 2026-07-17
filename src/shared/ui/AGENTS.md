@@ -14,6 +14,8 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 A one-name invocation is sufficient input for `material-component` and `material-component-review`; do not require the user to supply variants, API, files, tests, foundations, consumers, or expected defects before repository and source discovery.
 
+A completed `material-component-review` run must create or replace `docs/material-3/audits/<family-slug>.md`. Review-only means no implementation, test, registry, family-contract, or policy changes; the durable audit artifact is required.
+
 Do not assemble an official Material component workflow from generic shared UI rules. `material-component-authoring` remains the primary execution contract after target resolution.
 
 ## Contains
@@ -32,7 +34,7 @@ Do not assemble an official Material component workflow from generic shared UI r
 - New Material ownership at a legacy path is forbidden.
 - Shared UI must not import product layers or domain models.
 
-Detailed generic component rules belong to `shared-ui-implementation`. Material target resolution belongs to `material-component`; review-only compliance assessment belongs to `material-component-review`; detailed execution belongs to `material-component-authoring` and `src/shared/ui/material/AGENTS.md`.
+Detailed generic component rules belong to `shared-ui-implementation`. Material target resolution belongs to `material-component`; review-only compliance assessment and durable audit creation belong to `material-component-review`; detailed execution belongs to `material-component-authoring` and `src/shared/ui/material/AGENTS.md`.
 
 ## Verification
 
