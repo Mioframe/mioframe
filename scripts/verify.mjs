@@ -27,7 +27,7 @@ const isVerboseMode = process.argv.includes('--verbose');
 const isFullMode = process.argv.includes('--full');
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
-export const VERIFY_LABELS = [
+const VERIFY_LABELS = [
   'agent-environment',
   'format',
   'oxlint',

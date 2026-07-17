@@ -157,127 +157,73 @@ describe('new official component placement (diff-aware)', () => {
   });
 });
 
-describe('empty canonical directories', () => {
-  it('rejects an empty canonical component directory', () => {
+describe('placeholder files', () => {
+  it('rejects a root-level .gitkeep', () => {
     const root = tempRepo({
-      'src/shared/ui/material/components/button': null,
+      'src/shared/ui/material/.gitkeep': '',
     });
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
-    expect(findingCodes(findings)).toContain(CODES.MATERIAL_EMPTY_DIRECTORY);
-    expect(findings[0].path).toBe('src/shared/ui/material/components/button');
+    expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+    expect(findings[0].path).toBe('src/shared/ui/material/.gitkeep');
   });
 
-  it('accepts a component directory containing real content', () => {
-    const root = tempRepo({
-      'src/shared/ui/material/components/button/MDButton.vue': '<template><button /></template>\n',
-    });
-    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-
-    expect(findingCodes(findings)).not.toContain(CODES.MATERIAL_EMPTY_DIRECTORY);
-  });
-
-  it('reports only the outermost empty directory for nested empty directories', () => {
-    const root = tempRepo({
-      'src/shared/ui/material/components/button/nested/deeper': null,
-    });
-    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-    const emptyDirFindings = findings.filter(
-      (item) => item.code === CODES.MATERIAL_EMPTY_DIRECTORY,
-    );
-
-    expect(emptyDirFindings).toHaveLength(1);
-    expect(emptyDirFindings[0].path).toBe('src/shared/ui/material/components/button');
-  });
-
-  it('rejects a .gitkeep placeholder file', () => {
+  it('rejects a nested .gitkeep', () => {
     const root = tempRepo({
       'src/shared/ui/material/components/button/.gitkeep': '',
     });
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
     expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+    expect(findings[0].path).toBe('src/shared/ui/material/components/button/.gitkeep');
   });
 
-  it('rejects an empty non-governance production file', () => {
+  it('rejects a root-level empty README.md', () => {
     const root = tempRepo({
-      'src/shared/ui/material/components/button/MDButton.vue': '   \n',
+      'src/shared/ui/material/README.md': '',
     });
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
     expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+    expect(findings[0].path).toBe('src/shared/ui/material/README.md');
   });
 
-  it('allows a governance-only directory without flagging it as empty', () => {
+  it('rejects a root-level whitespace-only AGENTS.md', () => {
     const root = tempRepo({
-      'src/shared/ui/material/components/button/README.md': '# Button blueprint\n',
-    });
-    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-
-    expect(findingCodes(findings)).not.toContain(CODES.MATERIAL_EMPTY_DIRECTORY);
-  });
-});
-
-describe('empty governance files', () => {
-  it.each(['README.md', 'AGENTS.md', 'CLAUDE.md'])(
-    'rejects an empty %s as a placeholder artifact',
-    (basename) => {
-      const root = tempRepo({
-        [`src/shared/ui/material/components/button/${basename}`]: '   \n',
-      });
-      const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-
-      expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
-    },
-  );
-
-  it('does not treat a directory containing only an empty governance file as valid content', () => {
-    const root = tempRepo({
-      'src/shared/ui/material/components/button/README.md': '',
-    });
-    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-
-    expect(findings).not.toEqual([]);
-    expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
-  });
-});
-
-describe('namespace root emptiness', () => {
-  it.each(['components', 'foundation', 'patterns'])(
-    'rejects an empty %s namespace root directly, not only its children',
-    (namespace) => {
-      const root = tempRepo({
-        [`src/shared/ui/material/${namespace}`]: null,
-      });
-      const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-
-      expect(findingCodes(findings)).toContain(CODES.MATERIAL_EMPTY_DIRECTORY);
-      expect(findings[0].path).toBe(`src/shared/ui/material/${namespace}`);
-    },
-  );
-
-  it('still reports the deepest empty child, not the namespace root, when the root is non-empty', () => {
-    const root = tempRepo({
-      'src/shared/ui/material/components/button': null,
-    });
-    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
-    const emptyDirFindings = findings.filter(
-      (item) => item.code === CODES.MATERIAL_EMPTY_DIRECTORY,
-    );
-
-    expect(emptyDirFindings).toHaveLength(1);
-    expect(emptyDirFindings[0].path).toBe('src/shared/ui/material/components/button');
-  });
-});
-
-describe('empty root barrel', () => {
-  it('rejects an empty root barrel', () => {
-    const root = tempRepo({
-      'src/shared/ui/material/index.ts': '   \n',
+      'src/shared/ui/material/AGENTS.md': '   \n',
     });
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
     expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+    expect(findings[0].path).toBe('src/shared/ui/material/AGENTS.md');
+  });
+
+  it('rejects a nested empty production file', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/foundation/tokens/index.ts': '   \n',
+    });
+    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+
+    expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+    expect(findings[0].path).toBe('src/shared/ui/material/foundation/tokens/index.ts');
+  });
+
+  it('accepts a non-empty governance file', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/README.md': '# Material library\n',
+    });
+    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+
+    expect(findings).toEqual([]);
+  });
+
+  it('accepts a non-empty production file', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/components/button/MDButton.vue': '<template><button /></template>\n',
+    });
+    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+
+    expect(findings).toEqual([]);
   });
 
   it('accepts a non-empty root barrel', () => {
@@ -297,6 +243,16 @@ describe('empty root barrel', () => {
     const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
 
     expect(findings).toEqual([]);
+  });
+
+  it('rejects a whitespace-only root barrel via the general recursive check', () => {
+    const root = tempRepo({
+      'src/shared/ui/material/index.ts': '   \n',
+    });
+    const findings = validateMaterialLibrary({ repoRoot: root, baseRef: null });
+
+    expect(findingCodes(findings)).toContain(CODES.MATERIAL_PLACEHOLDER_ARTIFACT);
+    expect(findings[0].path).toBe('src/shared/ui/material/index.ts');
   });
 });
 
@@ -321,16 +277,23 @@ describe('unrelated files', () => {
 describe('deterministic ordering', () => {
   it('sorts findings by path, then code, then message', () => {
     const root = tempRepo({
-      'src/shared/ui/material/components/zeta': null,
-      'src/shared/ui/material/components/alpha': null,
+      'src/shared/ui/material/zeta.ts': '',
+      'src/shared/ui/material/alpha.ts': '',
+      'src/shared/ui/Button/MDButton.vue': '<template><button /></template>\n',
     });
-    const run = () => validateMaterialLibrary({ repoRoot: root, baseRef: null });
+    const run = () =>
+      validateMaterialLibrary({
+        repoRoot: root,
+        baseRef: 'HEAD',
+        spawn: fakeSpawnWithFiles([]),
+      });
     const first = run();
     const second = run();
     const manuallySorted = [...first].sort(
       (left, right) => left.path.localeCompare(right.path) || left.code.localeCompare(right.code),
     );
 
+    expect(first.length).toBeGreaterThan(1);
     expect(first).toEqual(second);
     expect(first.map((item) => item.path)).toEqual(manuallySorted.map((item) => item.path));
   });
@@ -339,13 +302,13 @@ describe('deterministic ordering', () => {
 describe('formatFinding', () => {
   it('formats the required [static-blocking][<CODE>] <path>: block', () => {
     const output = formatFinding({
-      code: 'MATERIAL_EMPTY_DIRECTORY',
-      path: 'src/shared/ui/material/components/button',
-      message: 'Empty speculative directory.',
+      code: 'MATERIAL_PLACEHOLDER_ARTIFACT',
+      path: 'src/shared/ui/material/.gitkeep',
+      message: 'Placeholder .gitkeep files are forbidden in the Material library.',
     });
 
     expect(output).toBe(
-      '[static-blocking][MATERIAL_EMPTY_DIRECTORY] src/shared/ui/material/components/button:\nEmpty speculative directory.',
+      '[static-blocking][MATERIAL_PLACEHOLDER_ARTIFACT] src/shared/ui/material/.gitkeep:\nPlaceholder .gitkeep files are forbidden in the Material library.',
     );
   });
 });
@@ -417,12 +380,12 @@ describe('CLI behavior', () => {
 
   it('exits 1 and reports findings without an unhandled stack trace', () => {
     const root = tempRepo({
-      'src/shared/ui/material/components/button': null,
+      'src/shared/ui/material/.gitkeep': '',
     });
     const result = spawnSync('node', [SCRIPT_PATH], { cwd: root, encoding: 'utf8' });
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain(`[static-blocking][${CODES.MATERIAL_EMPTY_DIRECTORY}]`);
+    expect(result.stdout).toContain(`[static-blocking][${CODES.MATERIAL_PLACEHOLDER_ARTIFACT}]`);
     expect(result.stderr).toBe('');
     expect(result.stdout).not.toContain(' at ');
   });

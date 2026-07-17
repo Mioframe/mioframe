@@ -25,7 +25,6 @@ import {
   printSummary,
   resolveCommandStatus,
   runVerifyCli,
-  VERIFY_LABELS,
 } from './verify.mjs';
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
 
@@ -374,10 +373,6 @@ describe('buildCommands storybook-behavior lane', () => {
 });
 
 describe('material-static verify integration', () => {
-  it('is an accepted --only label', () => {
-    expect(VERIFY_LABELS).toContain('material-static');
-  });
-
   it('is listed in --help output', () => {
     const result = spawnSync('node', ['scripts/verify.mjs', '--help'], {
       cwd: path.resolve(process.cwd()),

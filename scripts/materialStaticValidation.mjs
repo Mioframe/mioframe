@@ -6,24 +6,22 @@ import { fileURLToPath } from 'node:url';
 // Minimal, deterministic Material 3 architecture baseline (see
 // docs/material-3/library-roadmap.md, milestone M1).
 //
-// This validator proves only repository facts that are already justified by
-// current repository structure and documentation: canonical placement of
-// new official components, empty canonical directories, and empty
-// placeholder artifacts. It does not parse imports/exports, infer
-// architecture profiles, or validate story/visual content. Dependency-
-// direction and public-import boundaries are not automated; they remain
-// review-driven until real component migrations establish a stable public
-// entry-point contract. See docs/material-3/token-validation.md for the
-// checks this baseline intentionally defers.
+// This validator proves only repository facts that Git can actually
+// preserve: canonical placement of new official components, and tracked
+// placeholder files under the Material root. It does not parse
+// imports/exports, infer architecture profiles, or validate story/visual
+// content. Dependency-direction and public-import boundaries are not
+// automated; they remain review-driven until real component migrations
+// establish a stable public entry-point contract. See
+// docs/material-3/token-validation.md for the checks this baseline
+// intentionally defers.
 
 export const MATERIAL_ROOT = 'src/shared/ui/material';
-const RUNTIME_NAMESPACES = ['foundation', 'components', 'patterns'];
 const IGNORED_DIR_NAMES = new Set(['node_modules', 'dist', '.git']);
 const OFFICIAL_COMPONENT_FILENAME = /^MD[A-Z][A-Za-z0-9]*\.vue$/;
 
 export const CODES = Object.freeze({
   MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY: 'MATERIAL_OFFICIAL_COMPONENT_OUTSIDE_LIBRARY',
-  MATERIAL_EMPTY_DIRECTORY: 'MATERIAL_EMPTY_DIRECTORY',
   MATERIAL_PLACEHOLDER_ARTIFACT: 'MATERIAL_PLACEHOLDER_ARTIFACT',
 });
 
@@ -49,11 +47,6 @@ function toPosixPath(filePath) {
 function directoryExists(repoRoot, relativePath, fsApi) {
   const absolute = path.join(repoRoot, relativePath);
   return fsApi.existsSync(absolute) && fsApi.statSync(absolute).isDirectory();
-}
-
-function fileExists(repoRoot, relativePath, fsApi) {
-  const absolute = path.join(repoRoot, relativePath);
-  return fsApi.existsSync(absolute) && fsApi.statSync(absolute).isFile();
 }
 
 function readFile(repoRoot, relativePath, fsApi) {
@@ -101,10 +94,6 @@ function collectFilesRecursive(repoRoot, relativeDir, fsApi) {
   }
 
   return files.sort((left, right) => left.localeCompare(right));
-}
-
-function isEmptyDirectoryRecursive(repoRoot, relativeDir, fsApi) {
-  return collectFilesRecursive(repoRoot, relativeDir, fsApi).length === 0;
 }
 
 // ---- git helper (diff-aware new-file detection) ----
@@ -186,39 +175,7 @@ function checkNewOfficialComponentPlacement(repoRoot, fsApi, filesAtBaseRef) {
   return findings;
 }
 
-// ---- invariants 2/3: empty directories and placeholder artifacts ----
-
-function checkEmptyDirectories(repoRoot, dir, fsApi) {
-  const findings = [];
-  const stack = [dir];
-
-  while (stack.length > 0) {
-    const current = stack.pop();
-    const children = listChildren(repoRoot, current, fsApi);
-
-    for (const child of children) {
-      if (!child.isDirectory()) {
-        continue;
-      }
-
-      const childPath = path.posix.join(current, child.name);
-
-      if (isEmptyDirectoryRecursive(repoRoot, childPath, fsApi)) {
-        findings.push(
-          finding(
-            CODES.MATERIAL_EMPTY_DIRECTORY,
-            childPath,
-            'Empty speculative directory. Remove it until an accepted artifact is added.',
-          ),
-        );
-      } else {
-        stack.push(childPath);
-      }
-    }
-  }
-
-  return findings;
-}
+// ---- invariant 2: placeholder files under the Material root ----
 
 function checkPlaceholderFiles(repoRoot, dir, fsApi) {
   const findings = [];
@@ -251,60 +208,6 @@ function checkPlaceholderFiles(repoRoot, dir, fsApi) {
   return findings;
 }
 
-function checkEmptyAndPlaceholderArtifacts(repoRoot, fsApi) {
-  const findings = [];
-
-  for (const namespace of RUNTIME_NAMESPACES) {
-    const namespaceDir = path.posix.join(MATERIAL_ROOT, namespace);
-
-    if (!directoryExists(repoRoot, namespaceDir, fsApi)) {
-      continue;
-    }
-
-    // A namespace root itself (e.g. `material/components`) is an accepted
-    // architecture directory, but only once it holds an artifact; check its
-    // own emptiness explicitly, since checkEmptyDirectories only inspects
-    // its children.
-    if (listChildren(repoRoot, namespaceDir, fsApi).length === 0) {
-      findings.push(
-        finding(
-          CODES.MATERIAL_EMPTY_DIRECTORY,
-          namespaceDir,
-          'Empty speculative directory. Remove it until an accepted artifact is added.',
-        ),
-      );
-      continue;
-    }
-
-    findings.push(...checkEmptyDirectories(repoRoot, namespaceDir, fsApi));
-    findings.push(...checkPlaceholderFiles(repoRoot, namespaceDir, fsApi));
-  }
-
-  return findings;
-}
-
-// ---- invariant 3 (continued): empty root barrel ----
-
-function checkEmptyRootBarrel(repoRoot, fsApi) {
-  const rootBarrel = `${MATERIAL_ROOT}/index.ts`;
-
-  if (!fileExists(repoRoot, rootBarrel, fsApi)) {
-    return [];
-  }
-
-  if (readFile(repoRoot, rootBarrel, fsApi).trim().length === 0) {
-    return [
-      finding(
-        CODES.MATERIAL_PLACEHOLDER_ARTIFACT,
-        rootBarrel,
-        'The root Material barrel is empty. Remove it until it has a real export.',
-      ),
-    ];
-  }
-
-  return [];
-}
-
 // ---- entry point ----
 
 /**
@@ -328,8 +231,7 @@ export function validateMaterialLibrary({
 
   const findings = [
     ...checkNewOfficialComponentPlacement(repoRoot, fsApi, filesAtBaseRef),
-    ...checkEmptyAndPlaceholderArtifacts(repoRoot, fsApi),
-    ...checkEmptyRootBarrel(repoRoot, fsApi),
+    ...checkPlaceholderFiles(repoRoot, MATERIAL_ROOT, fsApi),
   ];
 
   return sortFindings(findings);
