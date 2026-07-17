@@ -1,140 +1,123 @@
-# Shared UI library inventory and migration backlog
+# Shared UI inventory and Material migration backlog
 
-This document is the exhaustive classification and priority backlog for `src/shared/ui` and any shared UI-facing artifact that may own Material behavior.
+This document owns exhaustive classification, priority, and queue state for shared UI artifacts.
 
-Its purpose is to ensure that gradual Material adoption does not lose components, migrate project-specific UI into the official library, or choose work only from memory.
+It prevents gradual migration from losing legacy owners, forcing project-specific UI into the official library, or selecting work only from memory.
 
-## Program outcome
+## Accepted outcomes
 
-The program is complete only when every in-scope shared UI artifact has exactly one accepted outcome:
+Every in-scope shared UI artifact eventually has one outcome:
 
-- migrated to `src/shared/ui/material/components/<family>` as an official Material component family;
-- migrated to `src/shared/ui/material/patterns/<pattern>` as an accepted official Material composition;
-- migrated to `src/shared/ui/material/foundation/<domain>` as a cross-family Material foundation owner;
-- retained outside the Material library as project-specific shared UI;
-- retained outside the Material library as generic UI/platform infrastructure;
-- removed or consolidated as duplicate, obsolete, or compatibility-only code.
+- canonical official Material component under `src/shared/ui/material/components/<official-docs-slug>`;
+- canonical shared Material foundation under `src/shared/ui/material/foundations/<official-docs-slug>`;
+- canonical shared Material style under `src/shared/ui/material/styles/<official-docs-slug>`;
+- retained project-specific shared UI outside the official library;
+- retained generic UI/platform infrastructure outside the official library;
+- removed or consolidated obsolete, duplicate, or compatibility-only code.
 
-“Move the whole UI library to Material” therefore means classify the whole shared UI surface and canonicalize every Material-owned artifact. It does not mean placing every shared UI component under `src/shared/ui/material`.
+There is no generic `material/patterns` target. Product-specific compositions remain outside the official Material library unless current official documentation gives them a concrete component, foundation, or style owner.
 
-## Sources of truth
+## Fact ownership
 
-- `library-roadmap.md` owns the active milestone and execution sequence.
-- This inventory owns exhaustive shared-UI classification, migration priority, queue state, and the next candidate families after the architecture pilots.
-- `component-registry.md` owns official Material surface alignment and verification status.
-- `foundation-registry.md` owns foundation contracts, owners, gaps, and verification.
-- `src/shared/ui/material/README.md` owns physical migration status.
-- Family blueprints own accepted family contracts.
+- `library-roadmap.md` owns the active milestone and next action.
+- This inventory owns classification, priority, queue state, dependencies, and next candidates.
+- `component-registry.md` and `foundation-registry.md` are compact program indexes.
+- A canonical family/domain README beside implementation owns detailed current state.
+- A colocated AUDIT owns the latest independent review.
 
-When an inventory row conflicts with an owning registry, blueprint, or migration map, update the stale inventory row. Do not redefine architecture here.
+When a summary conflicts with local canonical documentation, update the stale summary rather than duplicating local details here.
 
 ## Inventory scope
 
 Include:
 
 - every public component, composable, directive, helper, style owner, and public export under `src/shared/ui`;
-- shared UI-facing owners outside that directory when they own Material tokens, interaction, icon, overlay, typography, or other UI foundation behavior;
-- legacy aliases and compatibility exports that affect migration completion;
-- grouped family rows only when the grouped artifacts share one accepted official family or one cohesive migration owner.
+- Material-facing owners outside that directory, including tokens, typography, interaction, icons, overlays, and build-time units;
+- legacy aliases and compatibility exports affecting migration completion;
+- grouped rows only when artifacts share one official family or one cohesive retained/removal owner.
 
-Do not omit an artifact because it appears internal, rarely used, or already visually similar to Material.
+Do not omit an artifact because it is internal, rarely used, or already visually similar to Material.
 
-## Target classification
+## Classification
 
-Use exactly one classification:
+Use one:
 
-- `official-component` — maps to an official public Material component family;
-- `official-pattern` — maps to a reusable official Material composition and passes the pattern gate;
-- `material-foundation` — owns a cross-family Material contract;
-- `project-specific` — shared product UI that may compose Material but is not an official Material surface;
+- `official-component` — maps to an official Material component family;
+- `material-foundation` — maps to an official Material Foundations domain;
+- `material-style` — maps to an official Material Styles domain;
+- `project-specific` — product UI that may compose Material but is not itself an official surface;
 - `generic-ui` — framework/browser/UI infrastructure without Material ownership;
-- `remove` — duplicate, obsolete, dead, or compatibility-only surface with an accepted removal path;
-- `unresolved` — classification requires named source, ownership, or consumer evidence.
+- `remove` — duplicate, obsolete, dead, or compatibility-only surface;
+- `unresolved` — exact official mapping or retained/removal ownership still requires evidence.
 
-`unresolved` is temporary and cannot remain when the inventory milestone exits.
+`unresolved` is temporary.
 
-## Priority model
+## Priority
 
-Use priority tiers rather than an artificial numeric score:
+Use:
 
-- `P0` — architecture blocker, very high consumer reach, critical repeated user interaction, or foundation leverage that unlocks several high-value families;
-- `P1` — widely used component or critical workflow surface with clear dependencies and high product value;
-- `P2` — specialized or moderate-reach surface that should follow the common foundations and families it depends on;
-- `P3` — low-reach, legacy, replaceable, or likely-removal surface that should not displace higher-value work;
-- `pending` — evidence has not yet been collected.
+- `P0` — architecture blocker, very high reach, critical repeated interaction, or shared-domain leverage;
+- `P1` — widely used family or critical workflow with clear dependencies;
+- `P2` — moderate/specialized reach following common dependencies;
+- `P3` — low reach, replaceable, likely removal, or compatibility-only;
+- `pending` — evidence not collected.
 
-Priority must be justified by recorded evidence, not visual prominence or component-name familiarity.
-
-Consider:
-
-- direct consumer count and breadth across features/pages;
-- presence in critical or frequently repeated user flows;
-- interaction frequency and user-visible failure cost;
-- foundation/family leverage for later migrations;
-- current Material deviation, defect, or maintenance risk;
-- dependency readiness and migration blast radius;
-- whether consolidation/removal yields more value than migration.
-
-High migration complexity alone does not increase priority. Low complexity alone does not justify migrating a low-value surface first.
+Priority uses consumer reach, workflow criticality, interaction frequency, correctness risk, shared leverage, dependency readiness, blast radius, and consolidation value. Difficulty alone does not raise priority.
 
 ## Queue status
 
-Use exactly one status:
+Use:
 
-- `unclassified` — discovered but not yet assessed;
-- `assessed` — classification, target owner, evidence, and priority are recorded;
-- `queued` — accepted for an upcoming migration batch;
-- `active` — one current PR or milestone owns the work;
-- `migrated` — canonical Material owner is active and legacy ownership is removed;
-- `retained` — accepted project-specific or generic owner remains outside Material;
-- `removed` — obsolete/duplicate surface and public paths are gone;
-- `blocked` — a named source, ownership, dependency, or compatibility blocker prevents progress.
+- `unclassified` — discovered, not assessed;
+- `assessed` — mapping, owner, evidence, and priority recorded;
+- `queued` — accepted for upcoming migration;
+- `active` — current family/domain work;
+- `migrated` — canonical owner active, obsolete ownership removed, local documentation and required review complete;
+- `retained` — accepted outside the official library;
+- `removed` — obsolete surface and public paths gone;
+- `blocked` — named evidence, dependency, ownership, or compatibility blocker.
 
 ## Required row fields
 
-The exhaustive inventory table created during roadmap milestone M3 must contain:
+| Field | Meaning |
+| --- | --- |
+| Artifact/family | Stable identity |
+| Current owner | Current production path or public entry point |
+| Public surfaces | Covered components/composables/directives/styles/exports |
+| Consumer evidence | Direct consumers and important flows |
+| Official Material mapping | Exact component/foundation/style path or `none` |
+| Classification | One value from this document |
+| Canonical or retained owner | Official-docs-slug target or retained current owner |
+| Priority | `P0`–`P3` or `pending` |
+| Priority rationale | Concise evidence-backed reason |
+| Dependencies | Required families/domains/consumer decisions |
+| Queue status | Current migration state |
+| Completion evidence | Local README/AUDIT, tests, removal evidence, or retained decision |
+| Blocker/next decision | Exact unresolved item or `none` |
 
-| Field                     | Meaning                                                                     |
-| ------------------------- | --------------------------------------------------------------------------- |
-| Artifact/family           | Stable row identity                                                         |
-| Current owner             | Current production path or public entry point                               |
-| Public surfaces           | Components, composables, directives, styles, and exports covered by the row |
-| Consumer evidence         | Direct consumers and important product flows                                |
-| Official Material mapping | Official family/pattern/foundation mapping, or `none`                       |
-| Classification            | One target classification from this document                                |
-| Canonical owner           | Accepted target path or retained current owner                              |
-| Priority                  | `P0`–`P3` or `pending`                                                      |
-| Priority rationale        | Concise evidence-backed reason                                              |
-| Dependencies              | Foundation/family/consumer prerequisites                                    |
-| Queue status              | Current migration state                                                     |
-| Completion evidence       | PR, tests, registry/blueprint/map records, or removal evidence              |
-| Blocker/next decision     | Named unresolved item or `none`                                             |
+## Completion gate
 
-## Inventory completion gate
+The inventory is complete when:
 
-Roadmap milestone M3 is complete only when:
-
-- all in-scope artifacts and public exports are represented exactly once;
-- family grouping is explicit and does not hide unrelated ownership;
+- every in-scope artifact and public export appears exactly once;
+- grouped rows do not hide unrelated ownership;
 - no row remains `unclassified` or `unresolved`;
-- every row has a target classification and canonical/retained owner;
-- direct consumers and critical product flows are recorded sufficiently to prioritize work;
-- an ordered `P0`/`P1` migration queue exists;
-- Button is confirmed as the first architecture pilot or the roadmap records an evidence-backed replacement;
-- likely removals and consolidations are identified instead of automatically migrated;
-- project-specific and generic UI are explicitly retained outside the official Material library;
-- the roadmap’s next migration milestone matches the highest accepted ready priority, except for an explicitly documented architecture pilot.
+- each row has an accepted classification and canonical/retained owner;
+- consumer evidence is sufficient for priority;
+- a short ordered `P0`/`P1` queue exists;
+- likely removals and consolidations are recorded instead of automatically migrated;
+- project-specific and generic UI are explicitly retained outside the official library.
 
-## Update protocol
+## Update rule
 
-Every PR that changes a shared UI artifact’s classification, priority, public owner, queue status, dependencies, or completion evidence must update the affected inventory row in the same PR.
+Update an affected row whenever classification, priority, owner, dependencies, queue state, or completion evidence changes.
 
-Do not reorder the backlog merely because a component is currently being discussed. Change priority only when consumer, product, dependency, or risk evidence changes.
+Do not copy detailed implementation findings from local family/domain documentation into this inventory. Do not reorder priority merely because a component is currently being discussed.
 
-## Current inventory state
+## Current state
 
 Status: `planned`
 
-Population owner: roadmap milestone `M3 — shared UI inventory and prioritized migration backlog`.
+Population owner: roadmap milestone `M3 — Sequential migration`.
 
-No complete priority claim is made before M3. Button and Switch are accepted architecture-pilot candidates; the exhaustive inventory must still confirm their product reach, dependencies, and place in the migration queue.
+Buttons and Switch remain accepted pilot families. Exhaustive inventory population is a program completion requirement, not a blocker for completing the active Button pilot.
