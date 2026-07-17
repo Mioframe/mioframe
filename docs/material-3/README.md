@@ -32,6 +32,7 @@ This directory defines Mioframe's contract for building and migrating the Materi
 - [Component architecture](./component-architecture.md) — adaptive family contract and production ownership
 - [Component testing](./component-testing.md) — proportional proof and visual evidence
 - [Autonomous review](./autonomous-review.md) — agent evidence review and operator visual acceptance
+- [Component audits](./audits/README.md) — durable latest compliance audit per family
 - [Component tokens](./component-tokens.md)
 - [Shared UI API](./shared-ui-api.md)
 - [Component registry](./component-registry.md)
@@ -50,13 +51,14 @@ This directory defines Mioframe's contract for building and migrating the Materi
 - `source-of-truth.md` owns source hierarchy and the current Expressive target.
 - `autonomous-review.md` owns agent/operator review-role separation.
 - `material-component` owns one-name invocation, official target resolution, and automatic change-mode selection.
-- `material-component-review` owns one-name review-only orchestration and the evidence-backed compliance-report format.
+- `material-component-review` owns one-name review orchestration, compliance evaluation, and creation of the durable family audit.
 - `material-component-authoring` owns the canonical execution order after the family is resolved.
 - `material-foundation` owns execution order for cross-family foundation changes.
 - The family `README.md` owns the accepted contract for one family.
+- `audits/<family-slug>.md` owns the latest completed source-backed compliance evaluation for one family.
 - Validation policy defines when automation is justified; actual tooling owns only checks that exist.
 
-When a real migration exposes an inaccurate rule, correct the owning source rather than adding an exception or duplicating a replacement.
+An audit does not override the family contract, registry, inventory, or roadmap. When a real migration exposes an inaccurate rule, correct the owning source rather than adding an exception or duplicating a replacement.
 
 ## One-name component entry point
 
@@ -66,7 +68,7 @@ A user may start component work with only:
 material-component <component-or-family-name>
 ```
 
-The component name is sufficient input. The entrypoint resolves the official Material surface, owning family, existing implementation, consumers, change mode, minimum supported Expressive surface, applicable foundations, and proof layers before running `material-component-authoring` end to end.
+The component name is sufficient input. The entrypoint resolves the official Material surface, owning family, existing implementation, consumers, change mode, minimum supported Expressive surface, applicable foundations, proof layers, and current family audit before running `material-component-authoring` end to end.
 
 Existing consumers define required scenarios. When no consumer exists, implement the current canonical Expressive default and record optional official capabilities as unsupported. Ask the user only when a genuine product decision or materially unresolved official ambiguity remains.
 
@@ -80,7 +82,15 @@ material-component-review <component-or-family-name>
 
 The review entrypoint resolves the component, official Material 3 Expressive sources, claimed supported surface, current owners, consumers, stories, tests, and visual evidence. It reports a clear compliance result plus confirmed source-backed findings, evidence gaps, rule defects, verified areas, and the recommended next action.
 
-The review is read-only by default. Current code, family documentation, registry status, tests, snapshots, and rendering are claims to verify rather than proof of Material correctness. Production fixes begin only through a separate `material-component` or `material-component-authoring` task.
+Every completed review creates or replaces:
+
+```text
+docs/material-3/audits/<family-slug>.md
+```
+
+The filename is stable and uses the resolved owning-family slug. Later reviews replace the same file; Git history preserves earlier audits. The audit records the implementation ref and commit reviewed, so consumers can detect when it is stale.
+
+The review is read-only for implementation and policy. Its only required repository change is the family audit artifact. Current code, family documentation, registry status, tests, snapshots, prior audits, and rendering are claims to verify rather than proof of Material correctness. Production fixes begin only through a separate `material-component` or `material-component-authoring` task.
 
 `compliant` requires all claimed and required non-visual contracts to pass, one canonical owner to remain, required evidence to exist, and any required operator visual acceptance to be durably recorded. Otherwise the result distinguishes technical compliance awaiting visual review, partial compliance, non-compliance, or blocked official evidence.
 
@@ -99,7 +109,8 @@ The review is read-only by default. Current code, family documentation, registry
 11. Rules and automation improve from repeated real migration evidence.
 12. Existing migrations remove obsolete owners instead of accumulating compatibility layers.
 13. A component name alone can start a complete source-backed implementation or migration without a separate architecture task.
-14. A component name alone can start an independent source-backed compliance review without changing production code.
+14. A component name alone can start an independent source-backed compliance review without changing production implementation.
+15. Every completed compliance review leaves one durable, current, source-backed audit file for the resolved family.
 
 ## Scope
 
