@@ -8,17 +8,17 @@ Prove the accepted family contract with the smallest non-duplicative set of arti
 
 ## Required proof model
 
-| Proof | Requirement | Purpose |
-| --- | --- | --- |
-| Component contract | Mandatory for every new or migrated public component | Public API, native owner, explicit attributes, ARIA ownership, defaults, slots, emits, controlled state, invalid combinations, normalization, and non-browser foundation wiring |
-| Canonical visual story | Mandatory when the component renders visible output | One stable readable reference for the accepted visible contract |
-| State matrix | Required only when multiple distinct component-owned visual routes exist | Compare configurations, semantic states, transient appearances, simultaneous-state precedence, extensions, and deviations without a Cartesian product |
-| Visual regression | Required when the canonical visible contract is stable and regression would be material | Detect unintended changes in the bounded canonical reference |
-| Browser behavior | Required only when the component owns browser-dependent interaction | Real focus, keyboard, pointer, touch, drag, scrolling, overlay, responsive, motion, cancellation, and cleanup behavior |
-| Pure behavior | Required only when extracted component or foundation logic owns deterministic decisions | State transitions, timing, cancellation, cleanup, and derivations outside Vue rendering |
-| Consumer preservation | Required when imports, public API, wrappers, composition, or shared output change | Preserve representative affected product usage without running unrelated suites |
-| Agent evidence review | Mandatory for every new or migrated family | Close source, architecture, accessibility, behavior, migration, and proof decisions before operator handoff |
-| Operator visual acceptance | Required when accepted visible output is created or intentionally changed | Compare prepared canonical evidence with named official Material sources |
+| Proof                      | Requirement                                                                             | Purpose                                                                                                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Component contract         | Mandatory for every new or migrated public component                                    | Public API, native owner, explicit attributes, ARIA ownership, defaults, slots, emits, controlled state, invalid combinations, normalization, and non-browser foundation wiring |
+| Canonical visual story     | Mandatory when the component renders visible output                                     | One stable readable reference for the accepted visible contract                                                                                                                 |
+| State matrix               | Required only when multiple distinct component-owned visual routes exist                | Compare configurations, semantic states, transient appearances, simultaneous-state precedence, extensions, and deviations without a Cartesian product                           |
+| Visual regression          | Required when the canonical visible contract is stable and regression would be material | Detect unintended changes in the bounded canonical reference                                                                                                                    |
+| Browser behavior           | Required only when the component owns browser-dependent interaction                     | Real focus, keyboard, pointer, touch, drag, scrolling, overlay, responsive, motion, cancellation, and cleanup behavior                                                          |
+| Pure behavior              | Required only when extracted component or foundation logic owns deterministic decisions | State transitions, timing, cancellation, cleanup, and derivations outside Vue rendering                                                                                         |
+| Consumer preservation      | Required when imports, public API, wrappers, composition, or shared output change       | Preserve representative affected product usage without running unrelated suites                                                                                                 |
+| Agent evidence review      | Mandatory for every new or migrated family                                              | Close source, architecture, accessibility, behavior, migration, and proof decisions before operator handoff                                                                     |
+| Operator visual acceptance | Required when accepted visible output is created or intentionally changed               | Compare prepared canonical evidence with named official Material sources                                                                                                        |
 
 A proof layer may be omitted only because the component does not own that contract, not because the correct test is difficult to write.
 

@@ -61,16 +61,16 @@ When two tests protect the same contract, keep the test at the owning layer and 
 
 ## Test lanes and ownership
 
-| Lane | Location | Owns |
-| --- | --- | --- |
-| Unit and pure behavior | colocated `*.test.ts` / script `*.test.mjs` | Pure helpers, schemas, migrations, state transitions, services, storage helpers, CRDT operations, validation, normalization, filtering, sorting, matching, and transformations |
-| Component contract | colocated `<Component>.test.ts` | Public props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and simple child/foundation wiring |
-| Storybook browser behavior | `tests/e2e/storybook/` | Isolated reusable UI behavior requiring real focus, keyboard, pointer, touch, drag, scrolling, overlay, geometry, responsive, motion, or browser lifecycle semantics |
-| App e2e | `tests/e2e/*.spec.ts` excluding specialized lanes | Complete user scenarios through product surfaces, navigation, feature composition, workers/services, persistence, reload, import/export, permissions, and provider integration |
-| Visual regression | `tests/e2e/visual/` | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices |
-| Release smoke | `tests/e2e/release/` | Production artifact bootstrap, routing, service worker/channel isolation, and release-only invariants |
-| Mutation audit | explicit focused run | Whether focused unit or integration tests reject incorrect high-risk logic |
-| Operator visual review | prepared canonical stories and official evidence | Whether an intentional visible Material contract matches the current canonical source |
+| Lane                       | Location                                          | Owns                                                                                                                                                                           |
+| -------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unit and pure behavior     | colocated `*.test.ts` / script `*.test.mjs`       | Pure helpers, schemas, migrations, state transitions, services, storage helpers, CRDT operations, validation, normalization, filtering, sorting, matching, and transformations |
+| Component contract         | colocated `<Component>.test.ts`                   | Public props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and simple child/foundation wiring             |
+| Storybook browser behavior | `tests/e2e/storybook/`                            | Isolated reusable UI behavior requiring real focus, keyboard, pointer, touch, drag, scrolling, overlay, geometry, responsive, motion, or browser lifecycle semantics           |
+| App e2e                    | `tests/e2e/*.spec.ts` excluding specialized lanes | Complete user scenarios through product surfaces, navigation, feature composition, workers/services, persistence, reload, import/export, permissions, and provider integration |
+| Visual regression          | `tests/e2e/visual/`                               | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices                                                                             |
+| Release smoke              | `tests/e2e/release/`                              | Production artifact bootstrap, routing, service worker/channel isolation, and release-only invariants                                                                          |
+| Mutation audit             | explicit focused run                              | Whether focused unit or integration tests reject incorrect high-risk logic                                                                                                     |
+| Operator visual review     | prepared canonical stories and official evidence  | Whether an intentional visible Material contract matches the current canonical source                                                                                          |
 
 ## Lane boundaries
 
@@ -132,20 +132,20 @@ Do not run mutation testing for UI component behavior, browser-only flows, refac
 
 ## Required proof by change type
 
-| Change | Minimum expected proof |
-| --- | --- |
-| Pure/domain/service/storage behavior | Focused unit tests |
-| High-risk pure/domain/service/storage behavior with changed tests | Focused unit tests, then explicit narrow mutation audit |
-| Public Vue API or semantic wiring | Component contract test |
-| Focus, keyboard, pointer, touch, scroll, layout, overlay, responsive, or browser API behavior owned by reusable UI | Storybook browser behavior test |
-| Complete product scenario or cross-boundary integration | App e2e |
-| Intentional visible contract change | Bounded visual regression; operator visual review when Material applies |
-| Shared foundation behavior | Foundation-owned tests plus narrow wiring checks in affected consumers |
-| Public import, wrapper, or API migration | Contract tests plus representative affected-consumer preservation |
-| Reproducible bug | One focused regression test at the owning layer |
-| Behavior-preserving refactor | Existing relevant coverage; no mandatory new test |
-| Verify, resolver, or test infrastructure change | Focused unit tests for resolution logic and verification of each changed command mode |
-| Release/bootstrap behavior | Release smoke |
+| Change                                                                                                             | Minimum expected proof                                                                |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Pure/domain/service/storage behavior                                                                               | Focused unit tests                                                                    |
+| High-risk pure/domain/service/storage behavior with changed tests                                                  | Focused unit tests, then explicit narrow mutation audit                               |
+| Public Vue API or semantic wiring                                                                                  | Component contract test                                                               |
+| Focus, keyboard, pointer, touch, scroll, layout, overlay, responsive, or browser API behavior owned by reusable UI | Storybook browser behavior test                                                       |
+| Complete product scenario or cross-boundary integration                                                            | App e2e                                                                               |
+| Intentional visible contract change                                                                                | Bounded visual regression; operator visual review when Material applies               |
+| Shared foundation behavior                                                                                         | Foundation-owned tests plus narrow wiring checks in affected consumers                |
+| Public import, wrapper, or API migration                                                                           | Contract tests plus representative affected-consumer preservation                     |
+| Reproducible bug                                                                                                   | One focused regression test at the owning layer                                       |
+| Behavior-preserving refactor                                                                                       | Existing relevant coverage; no mandatory new test                                     |
+| Verify, resolver, or test infrastructure change                                                                    | Focused unit tests for resolution logic and verification of each changed command mode |
+| Release/bootstrap behavior                                                                                         | Release smoke                                                                         |
 
 A layer may be omitted because the changed owner has no such contract. It must not be omitted merely because the correct test is difficult to write.
 
