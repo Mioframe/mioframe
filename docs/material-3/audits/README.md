@@ -56,7 +56,7 @@ Use explicit `none` values instead of omitting empty sections.
 
 - `material-component-review` creates or replaces the family audit in its review branch.
 - The review is incomplete until the audit file is written and its path is reported.
-- Review-only work may change this audit file and this directory's documentation, but not production code, tests, stories, snapshots, registries, family contracts, or rules.
+- The family audit is the only repository file changed by a review-only run; production code, tests, stories, snapshots, registries, family contracts, policy documents, and this directory's README remain unchanged.
 - `material-component` and `material-component-authoring` must inspect the current family audit when one exists.
 - Confirmed findings remain actionable until resolved or shown to be stale using newer official or implementation evidence.
 - After fixes, rerun `material-component-review` to replace the audit with a current result.
