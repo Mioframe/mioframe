@@ -1,6 +1,6 @@
 ---
 name: material3-guidelines
-description: 'Use for official Material source lookup, component choice, usage, composition, minimum supported surface, accessibility, adaptive behavior, and product-facing Material UI/UX decisions. For authoring an official public component family, pair with material-component-authoring as the primary workflow.'
+description: 'Use for official Material source lookup, component choice, usage, composition, minimum supported surface, accessibility, adaptive behavior, and product-facing Material UI/UX decisions. Pair with material-component-authoring for official public component work.'
 paths:
   - 'src/**/*.vue'
   - 'src/shared/ui/**'
@@ -18,81 +18,78 @@ Use for decisions about:
 - intended and prohibited usage;
 - component hierarchy and placement;
 - official source interpretation;
-- minimum supported surface;
+- minimum complete supported surface;
 - accessibility, interaction, adaptive behavior, and visual evidence;
-- whether a surface is official Material, a documented pattern, or project-specific UI.
+- whether a surface is official Material, a pattern, or project-specific UI.
 
-For creating, migrating, aligning, or materially changing an official public component family, use `material-component-authoring` as the primary execution workflow. This skill supplies source and usage decisions; it does not own the family blueprint, production file plan, migration order, or completion process.
-
-Canonical source, architecture, autonomous review, and operator visual-acceptance rules live in `docs/material-3`.
+For an official public component family, `material-component-authoring` owns execution, migration, proportional proof, rule refinement, and completion. This skill supplies source and usage decisions.
 
 ## Canonical target
 
-Official Mioframe Material components target the current official **Material 3 Expressive** contract.
+Official Mioframe Material components target the current applicable Material 3 Expressive contract.
 
-- Prefer current Expressive guidance, tokens, measurements, state composition, motion, and Design Kit component sets whenever they exist for the supported surface.
+- Prefer current Expressive guidance, tokens, measurements, state composition, motion, and Design Kit component sets when available for the supported surface.
 - Do not preserve baseline Material 3 merely because it matches current code.
-- Use baseline behavior or geometry only when no official Expressive contract exists for the supported surface, or when an explicit product requirement records a deviation.
-- Do not silently combine baseline and Expressive contracts in one supported surface.
+- Use baseline behavior or geometry only when no applicable Expressive contract exists or an explicit product deviation requires it.
+- Do not silently combine baseline and Expressive contracts.
 - `Canonical Material default` means the current Expressive default when available.
 
 ## No-impact path
 
-For a change preserving component choice, usage, location, public imports, API, foundation dependencies, tokens, anatomy, states, accessibility, testing surface, behavior, and rendered output, record:
+For a change preserving component choice, usage, ownership, public imports, API, foundations, tokens, anatomy, states, accessibility, proof surface, behavior, and rendered output, record:
 
 ```text
 Material impact: none
 ```
 
-A public contract, visual contract, component choice, foundation, or state-model change is not `none`.
+A public, visual, foundation, ownership, or state-model change is not `none`.
 
 ## Source workflow
 
 1. Use the `material3` MCP server first.
 2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete for the required page.
-3. Use the current official Material Design Kit Expressive component set only when published documentation cannot resolve exact visual geometry, anatomy, expressive measurements, or state composition.
-4. Record exact page names, snapshot metadata, and Design Kit file/component-set reference when applicable.
-5. Stop source lookup when the required decisions are resolved.
+3. Use the current official Material Design Kit Expressive component set only when published documentation cannot resolve an applicable visual decision.
+4. Record exact page names, snapshot metadata, and Design Kit references when used.
+5. Stop source lookup when required decisions are resolved.
 
-Do not use Material Web, generic web search, screenshots without official provenance, older Material versions, third-party libraries, existing Mioframe rendering, or memory as Material authority.
+Do not use Material Web, generic web search, unproven screenshots, older Material versions, third-party libraries, existing Mioframe rendering, or memory as Material authority.
 
-Material Web or another implementation may be inspected only after the official contract is resolved and only as a non-authoritative implementation reference.
+Another implementation may be inspected only after the official contract is resolved and only as a non-authoritative implementation reference.
 
-When required evidence is unavailable or contradictory:
+When evidence is unavailable or contradictory:
 
 - identify the exact unresolved decision;
 - narrow unsupported scope when required scenarios remain satisfied;
 - otherwise report `blocked`;
-- do not infer correctness from an existing baseline or another library.
+- do not infer correctness from an existing baseline.
 
 ## Component choice and usage
 
-Start from the user scenario and current official Material guidance, not from the component already present in the repository.
+Start from the user scenario and current official guidance, not from the component already present.
 
-Confirm:
+Confirm applicable:
 
-- intended scenario;
-- scenarios where the component must not be used;
-- action/content hierarchy;
+- intended and prohibited scenarios;
+- action or content hierarchy;
 - allowed Material compositions;
 - placement constraints;
-- adaptive behavior and its owner;
+- adaptive behavior and owner;
 - whether product composition or a reusable Material pattern owns the relationship.
 
 Prefer an existing official component or documented composition when it covers the need.
 
-Do not create an `MD*` surface for a project-specific workflow merely because it visually resembles Material.
+Do not create an `MD*` surface for a project-specific workflow merely because it resembles Material visually.
 
 ## Minimum complete surface
 
 - Start from named scenarios and affected consumers.
-- When no scenario is supplied, use the current canonical Expressive default usage only.
+- Use the current canonical Expressive default only when no narrower scenario is supplied.
 - Add variants, sizes, shapes, modes, anatomy, and behavior only for a current scenario or consumer.
-- Include every reachable state, accessibility requirement, and applicable foundation dependency of the supported surface.
+- Include every reachable state, accessibility requirement, and applicable dependency of the supported surface.
 - Record remaining official capabilities as unsupported.
 - Add no Mioframe extension without an explicit requirement, owner, and deviation record.
 
-Minimum scope is not partial correctness: every reachable contract of the chosen supported surface must be complete.
+Minimum scope is not partial correctness.
 
 ## Product and library ownership
 
@@ -100,40 +97,44 @@ Product layers own:
 
 - information architecture;
 - workflow and domain behavior;
-- component choice and placement for a concrete screen;
+- component choice and placement for a screen;
 - product-level adaptive composition;
-- consumer content and data.
+- consumer data and content.
 
-Official Material component families own only their documented usage contract, API, native semantics, anatomy, state meaning, tokens, behavior, and rendering.
+Official component families own only their supported usage, public API, native semantics, anatomy, states, tokens, behavior, and rendering.
 
-Reusable compositions belong in `material/patterns` only when official evidence defines the composition, it is independent of one feature/domain, a current scenario requires it, and it can be tested without product data.
+Reusable compositions belong in `material/patterns` only when official evidence defines them, a current scenario requires them, they are independent of one product domain, and they can be tested without product data.
 
 ## Accessibility and interaction
 
-Material alignment includes:
+Material alignment includes applicable:
 
-- native semantics where applicable;
-- accessible names and meaningful state exposure;
+- native semantics;
+- accessible names and state exposure;
 - keyboard and focus behavior;
-- pointer/touch behavior;
+- pointer and touch behavior;
 - target areas;
 - disabled and readonly semantics;
 - contrast-safe role pairings;
-- modal focus and dismissal behavior;
-- reduced-motion behavior where contractual.
+- overlay focus and dismissal behavior;
+- reduced motion.
 
 Visual similarity alone is not alignment.
+
+## Rule refinement
+
+When real source evidence or implementation proves a project rule inaccurate or needlessly complex, correct the owning rule through `material-component-authoring`. Do not work around it with a component-specific exception.
 
 ## Review and verification
 
 For product-facing Material changes, name:
 
 - official sources checked;
-- resulting component-choice, usage, placement, accessibility, or adaptive decision;
-- deliberate deviation or unresolved evidence;
-- affected existing Material component contracts;
-- focused browser, visual, accessibility, or consumer proof required.
+- resulting component-choice, usage, accessibility, or adaptive decision;
+- deviations or unresolved evidence;
+- affected official component contracts;
+- applicable browser, visual, accessibility, or consumer proof.
 
-For official component-family implementation and migration, `material-component-authoring` owns the standard test profile and completion gate, and `docs/material-3/autonomous-review.md` owns review-role separation.
+For official component work, `material-component-authoring` owns adaptive family contracts, proportional proof, migration completion, and continuation to the next ready family. `autonomous-review.md` owns agent/operator role separation.
 
-A coding agent may mark the source-backed architecture and Material evidence review as `passed` only when every non-visual decision is resolved and proved. It must never report operator visual acceptance as accepted. Routine operator work is limited to the prepared screenshot comparison; unresolved source, architecture, compatibility, or product decisions remain explicit blockers rather than being deferred to visual review.
+The agent may mark non-visual evidence review `passed` only when every applicable decision is resolved and proved. It never reports operator visual acceptance as accepted.
