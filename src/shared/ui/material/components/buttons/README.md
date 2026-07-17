@@ -6,6 +6,8 @@
 - Official path: `m3.material.io/components/buttons`.
 - Pages used: `overview.md`, `specs.md`, `accessibility.md`; usage and placement guidance must be reconciled consistently with `guidelines.md` before that page is claimed as reviewed everywhere.
 - Verified fallback snapshot: `Vyachean/m3-docs-cache` commit `49ffae58a61f86c28b23720696dc9d07b6945483`, captured `2026-07-13T12:48:04.850Z`.
+- Official capability inventory: `incomplete` — current Button guidelines and the complete official family surface have not yet been independently reconciled.
+- Official coverage: `partial`.
 
 ## Implemented
 
@@ -22,15 +24,20 @@
 
 ## Not implemented
 
+Current confirmed absent official capability:
+
 - Text-style toggle buttons: the verified token graph contains no supported text-toggle color route; this combination normalizes to the default variant with a development warning.
 - Split Button.
 - Standard Button Group.
 - Connected Button Group.
 
-These official capabilities are outside the current supported surface because no current consumer requires them and they have separate official contracts.
+These entries are listed independently of current consumer demand. No current consumer requires them, but that affects implementation priority only.
+
+This list is not yet accepted as exhaustive because the complete current official Buttons capability inventory has not been independently reconstructed from every applicable family page. Any additional official capability found during review must be added here even when Mioframe does not currently need it.
 
 ## Known issues and required follow-up
 
+- **Capability inventory:** reconstruct and classify the complete official Buttons family surface. Do not claim complete documentation or full implementation until every official capability is classified.
 - **Motion:** per-size stiffness/damping tokens do not derive the runtime duration/easing. Current aliases still resolve to the pre-existing shared Web approximation. The implementation must either treat stiffness/damping only as source evidence and document one honest runtime adaptation, or introduce a real conversion owner. Tests comparing equal aliases do not close this issue.
 - **Elevation:** local shadow-color overrides reach the final `box-shadow` by declaring all elevation-level formulas on `*, ::before, ::after`. This has a broad cross-family cascade and inheritance impact that requires narrowing or representative cross-family validation.
 - **Documentation consistency:** all source claims must agree on whether Button guidelines were inspected.
@@ -83,7 +90,7 @@ Invalid combinations and out-of-range loading values are normalized with develop
 - Public export: `MDButton` from `@shared/ui/material`.
 - The legacy MDButton implementation and export are removed.
 - Direct consumers are migrated.
-- Physical ownership migration is complete; Material alignment remains incomplete while the known findings above are open.
+- Physical ownership migration is complete; Material alignment and official family coverage remain incomplete while the known findings above are open.
 
 ## Verification
 
@@ -92,9 +99,10 @@ Invalid combinations and out-of-range loading values are normalized with develop
 - Focused browser/visual coverage exists for token routes, geometry, accessibility, and final computed shadow behavior.
 - Existing motion alias-equality tests do not prove a real spring dependency and require correction with the implementation.
 - Local verification must be rerun after the path normalization and technical fixes.
+- No verification currently establishes exhaustive official family coverage; the independent audit must reconstruct it from canonical sources.
 
 ## Review status
 
 Reviewed — see `AUDIT.md`.
 
-Current audit result: `non-compliant`. Implementation correction is required before another visual review.
+Current audit result: `non-compliant`. Official capability inventory remains incomplete, official coverage remains partial, and implementation correction is required before another visual review.
