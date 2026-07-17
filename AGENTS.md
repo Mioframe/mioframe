@@ -97,7 +97,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - Use `implementation-preflight` to resolve exact `TEST IMPACT` before non-trivial edits and `verification` to execute it.
 - Inferred verify scope is an optimization. A skipped or empty lane is not proof that it is unnecessary.
-- A new, moved, or removed Playwright spec must update its owning impact registry in the same change. Shared Playwright config/helpers or unknown impact use full owning-lane fallback.
+- A new, moved, or removed Playwright spec must update its owning impact mapping or justified standalone entry in the same change. Standalone is valid only when no truthful stable source mapping exists and must include a concrete reason. Shared Playwright config/helpers or unknown impact use full owning-lane fallback.
 - Use `pnpm verify --fix` only when safe automatic formatting, lint fixes, or instruction compatibility generation are useful.
 - Before reporting completion after edits, run final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
 - Use `pnpm verify --only <label> --files ...` for focused feedback when supported. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks.
