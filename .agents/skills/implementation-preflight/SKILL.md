@@ -9,7 +9,7 @@ Use before non-trivial code edits. Keep the artifact short and bounded. Do not r
 
 ## Activation
 
-Use when work may change production code, tests, tooling, CI, configuration, storage semantics, diagnostics, browser behavior, or user-visible UI.
+Use when work may change production code, tests, tooling, CI, configuration, storage semantics, diagnostics, browser behavior, performance, or user-visible UI.
 
 Skip only for trivial typo, formatting, comment, or mechanical rename work with no ownership, behavior, test-impact, or verification decision.
 
@@ -23,9 +23,9 @@ Record:
 3. **Reuse** — existing helpers, components, configs, schemas, services, tests, and dependencies already owning nearby behavior.
 4. **Minimum sufficient design** — every planned concept mapped to a current requirement or boundary; simpler alternative compared explicitly.
 5. **Acceptance matrix** — only reachable happy, boundary, failure, cancellation, conflict, and recovery states required by the contract.
-6. **Risk matrix** — only applicable browser, lifecycle, async, data, accessibility, visual, CI, tooling, release, or platform risks.
+6. **Risk matrix** — only applicable browser, lifecycle, async, data, accessibility, visual, performance, CI, tooling, release, or platform risks.
 7. **Breadth and passes** — independent domains and safe implementation order.
-8. **TEST IMPACT** — exact changed contracts, proof paths, impact-resolution mode, projects, and mutation applicability using `docs/testing/architecture.md`.
+8. **TEST IMPACT** — exact changed contracts, proof paths, impact-resolution mode, projects, performance evidence, and mutation applicability using `docs/testing/architecture.md`.
 9. **Verification** — focused proof for the highest risk plus final repository verification.
 
 Proceed without a separate architecture handoff only when an applicable repository policy defines a deterministic authoring path and every required decision is resolved from authoritative sources.
@@ -34,9 +34,9 @@ Stop when:
 
 - a required handoff is missing or not ready;
 - the deterministic path remains `blocked`;
-- ownership, source of truth, final state, compatibility, test ownership, or verification is unresolved;
+- ownership, source of truth, final state, compatibility, test ownership, performance evidence, or verification is unresolved;
 - a narrower design satisfies the same acceptance criteria;
-- a planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, test framework, registry, or helper lacks a current requirement.
+- a planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, test framework, registry, benchmark framework, or helper lacks a current requirement.
 
 Do not hide the same complexity by splitting it across more files.
 
@@ -55,6 +55,7 @@ Required proof:
 - e2e: <spec paths | not applicable: reason>
 - visual: <spec paths | not applicable: reason>
 - release: <checks | not applicable: reason>
+- performance: <metric/check/measurement | not applicable: reason>
 
 Impact resolution:
 - unit: related import graph | direct test | full-lane fallback
@@ -74,6 +75,8 @@ Rules:
 - name exact existing or new test/spec paths before production edits;
 - update the owning Playwright impact registry in the same change when a spec is added, moved, removed, or gains a stable source relation;
 - select full-lane fallback for shared config/helpers, dynamic-import boundaries, or unknown impact rather than pretending scope is empty;
+- name a representative metric, scenario/dataset, environment, and budget/baseline for any performance or optimization claim;
+- do not create permanent benchmark infrastructure for one task;
 - do not add tests solely because a production file changed;
 - do not use a less faithful test type because it is easier to run;
 - if implementation changes the planned contracts or impact, update preflight before continuing.
@@ -143,4 +146,4 @@ Search only enough to identify the current owner, existing proof, and reusable m
 
 ## Output discipline
 
-Keep the written preflight usually within 10–20 short lines plus `TEST IMPACT`. Before completion, confirm the diff still matches the ready handoff or deterministic workflow and that owners, exports, impact mappings, tests, and review status remain consistent.
+Keep the written preflight usually within 10–20 short lines plus `TEST IMPACT`. Before completion, confirm the diff still matches the ready handoff or deterministic workflow and that owners, exports, impact mappings, tests, performance evidence, and review status remain consistent.
