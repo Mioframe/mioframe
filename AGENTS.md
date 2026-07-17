@@ -8,6 +8,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Read the root and applicable nested `AGENTS.md` files before editing. Use the relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
+- `docs/testing/architecture.md` is the canonical project-wide testing policy. Skills define how to apply it; verification scripts select and run checks but do not decide whether the proof for a change is sufficient.
 - For Material library, foundation, component, migration, or validation work, read `docs/material-3/library-roadmap.md`, align with its active milestone and single `Next action`, and update it in the same PR when milestone status, blockers, dependencies, or next action change.
 - Official Material components target the current canonical Material 3 Expressive contract. Follow `docs/material-3/source-of-truth.md` and `docs/material-3/autonomous-review.md`: the coding agent must close every non-visual evidence gate, while the operator normally performs only prepared screenshot comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
 - When a PR adds, removes, consolidates, reclassifies, reprioritizes, or changes the public owner of a shared UI artifact, update the affected row in `docs/material-3/ui-library-inventory.md` in the same PR. Project-specific and generic UI are valid retained outcomes and must not be forced into the Material library.
@@ -58,14 +59,14 @@ Use the applicable skill instead of duplicating its rules in the task:
 - `material-foundation`: Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, overlays, accessibility, density, and adaptive foundation contracts;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
-- `test-first`: reproducible behavior changes, bug fixes, migrations, storage semantics, and transformations;
-- `component-contract-testing`: small Vue render/props/emits/slots/wiring contracts;
-- `ui-browser-behavior`: layout, focus, keyboard, pointer/touch, scrolling, overlays, browser APIs, and mobile behavior;
-- `visual-regression-testing`: appearance and screenshot coverage;
-- `mutation-testing`: high-risk pure/domain/service logic when applicable;
+- `test-first`: decide whether changed behavior needs one focused regression test and perform the narrow red/green workflow;
+- `component-contract-testing`: Vue public render, props, emits, slots, native-owner, ARIA, and non-browser wiring contracts;
+- `ui-browser-behavior`: choose and verify real browser behavior in isolated Storybook or complete app e2e according to ownership;
+- `visual-regression-testing`: canonical visual stories, bounded screenshots, baseline updates, and operator visual handoff;
+- `mutation-testing`: explicit narrow audit of changed tests for high-risk pure/domain/service/storage logic;
 - `crdt-storage`: Automerge, VFS, storage, repository lifecycle, and managed resources;
 - `diagnostic-events`: Sentry-backed diagnostics, privacy, and error reporting;
-- `verification`: focused checks, failure handling, and final task/verify reporting.
+- `verification`: focused command execution, failure handling, and final task/verify reporting; it does not choose the owning test layer.
 
 ## Implementation quality
 
@@ -75,6 +76,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Separate behavior-preserving extraction from behavior changes when practical. Remove obsolete paths, exports, tests, and comments when their replacement is introduced unless compatibility is explicitly required.
 - Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc. Prefer IDs, primitives, small typed records, explicit props, emits, slots, and actions over broad configuration or mixed read/write objects.
 - Keep validation, parsing, and extraction close to the boundary that defines them. Use typed collection helpers for typed records instead of local assertions that paper over `Object.keys`, `Object.values`, or `Object.entries` typing.
+- Follow `docs/testing/architecture.md`: test contracts rather than implementation, give each contract one primary test owner, use the lowest faithful layer, and add only proof proportionate to the changed risk.
 - Keep unit tests and their helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels; create shared test utilities only after unrelated modules need the same helper.
 - Test files may be larger when scenarios remain uniform. Split them by behavior when setup becomes conditional, fixtures stop being local, or failures no longer identify one behavior.
 - `!important` is forbidden. Shared UI changes require consumer and blast-radius review.
@@ -93,9 +95,11 @@ Use the applicable skill instead of duplicating its rules in the task:
 ## Mandatory verification
 
 - Use the `verification` skill for targeted checks, fix mode, failure interpretation, and the final report.
+- Select required test proof from `docs/testing/architecture.md`; inferred verify scope is an execution optimization and must not be treated as evidence that no additional focused lane is required.
 - Use `pnpm verify --fix` only when safe automatic formatting or lint fixes are useful.
 - Before reporting completion after edits, run the final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
 - Use `pnpm verify --only <label> --files ...` for focused feedback when supported. Do not substitute raw underlying test, lint, visual, mutation, or e2e commands for verify-managed checks.
+- Run mutation testing only through the explicit `mutation-testing` activation check and a narrow `pnpm verify --only mutation --files ...` scope. Do not use mutation score as a general completion target.
 - A minimum check named in a nested `AGENTS.md` describes required coverage, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
 - Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active.
 - If final verification fails or required verification is missing, do not claim the task is complete. Report the exact failure and remaining work.
