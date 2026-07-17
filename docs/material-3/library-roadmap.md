@@ -65,12 +65,12 @@ Next action: complete and merge the focused Button contract work in PR #150, the
 
 ## Milestone overview
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | Architecture and operating model | `done` | none | PR #149 merged; canonical Expressive source target, ownership, authoring, testing, review, registry, migration-map, inventory, and scoped agent contracts are available from `develop` |
-| M1 | `MDButton` end-to-end pilot | `active` | M0 | Button family has one canonical Material owner, accepted Expressive alignment, required foundation gaps only, migrated consumers and proof artifacts, removed legacy ownership, passed agent evidence review, and recorded operator visual acceptance |
-| M2 | Independent stateful pilot | `planned` | M1 | one high-priority stateful family validates controlled state, interaction and cancellation, multiple anatomy owners, accessibility, browser proof, agent review, and operator visual acceptance without bespoke architecture |
-| M3 | Priority-driven incremental library population | `planned` | M2 | a maintained evidence-backed `P0`/`P1` queue drives repeated family migrations until every inventory row reaches `migrated`, `retained`, or `removed` and every Material artifact has one canonical owner |
+| ID  | Milestone                                      | Status    | Depends on | Exit gate                                                                                                                                                                                                                                             |
+| --- | ---------------------------------------------- | --------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model               | `done`    | none       | PR #149 merged; canonical Expressive source target, ownership, authoring, testing, review, registry, migration-map, inventory, and scoped agent contracts are available from `develop`                                                                |
+| M1  | `MDButton` end-to-end pilot                    | `active`  | M0         | Button family has one canonical Material owner, accepted Expressive alignment, required foundation gaps only, migrated consumers and proof artifacts, removed legacy ownership, passed agent evidence review, and recorded operator visual acceptance |
+| M2  | Independent stateful pilot                     | `planned` | M1         | one high-priority stateful family validates controlled state, interaction and cancellation, multiple anatomy owners, accessibility, browser proof, agent review, and operator visual acceptance without bespoke architecture                          |
+| M3  | Priority-driven incremental library population | `planned` | M2         | a maintained evidence-backed `P0`/`P1` queue drives repeated family migrations until every inventory row reaches `migrated`, `retained`, or `removed` and every Material artifact has one canonical owner                                             |
 
 ## Milestone details
 
@@ -192,10 +192,10 @@ Do not automate hypothetical future mistakes. A migration may introduce a focuse
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date | Milestone | Change | Evidence |
-| --- | --- | --- | --- |
-| 2026-07-16 | M0 | Architecture and operating model completed | PR #149 |
-| 2026-07-17 | M1 | Replaced validator-first and exhaustive-preparation gates with a real end-to-end Button pilot; foundation, inventory, and automation now follow confirmed migration needs | roadmap simplification PR |
+| Date       | Milestone | Change                                                                                                                                                                    | Evidence                  |
+| ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                | PR #149                   |
+| 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with a real end-to-end Button pilot; foundation, inventory, and automation now follow confirmed migration needs | roadmap simplification PR |
 
 ## Update protocol
 
