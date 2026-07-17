@@ -65,12 +65,12 @@ Current progress:
 
 ## Milestones
 
-| ID | Milestone | Status | Exit gate |
-| --- | --- | --- | --- |
-| M0 | Architecture and operating model | `done` | Official source hierarchy, documentation-shaped library navigation, authoring/review skills, roadmap, and inventory ownership are defined. |
-| M1 | Buttons end-to-end pilot | `active` | Canonical Button owner, truthful README, compliant independent audit, migrated consumers, no obsolete owner, applicable local verification, and accepted visual review. |
-| M2 | Independent stateful pilot | `planned` | One materially different stateful family validates controlled state, input/cancellation, accessibility, multiple anatomy owners, truthful documentation, independent audit, and visual review. |
-| M3 | Sequential migration | `planned` | Each selected family follows the same implementation/documentation/review loop until the inventory has no unresolved Material-owned artifact. |
+| ID  | Milestone                        | Status    | Exit gate                                                                                                                                                                                      |
+| --- | -------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model | `done`    | Official source hierarchy, documentation-shaped library navigation, authoring/review skills, roadmap, and inventory ownership are defined.                                                     |
+| M1  | Buttons end-to-end pilot         | `active`  | Canonical Button owner, truthful README, compliant independent audit, migrated consumers, no obsolete owner, applicable local verification, and accepted visual review.                        |
+| M2  | Independent stateful pilot       | `planned` | One materially different stateful family validates controlled state, input/cancellation, accessibility, multiple anatomy owners, truthful documentation, independent audit, and visual review. |
+| M3  | Sequential migration             | `planned` | Each selected family follows the same implementation/documentation/review loop until the inventory has no unresolved Material-owned artifact.                                                  |
 
 ## M1 — Buttons pilot
 
