@@ -192,10 +192,10 @@ Do not automate hypothetical future mistakes. A migration may introduce a focuse
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date       | Milestone | Change                                                                                                                                                                    | Evidence                  |
-| ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                | PR #149                   |
-| 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with a real end-to-end Button pilot; foundation, inventory, and automation now follow confirmed migration needs | roadmap simplification PR |
+| Date       | Milestone | Change                                                                                                                                                                    | Evidence |
+| ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                | PR #149  |
+| 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with a real end-to-end Button pilot; foundation, inventory, and automation now follow confirmed migration needs | PR #152  |
 
 ## Update protocol
 
