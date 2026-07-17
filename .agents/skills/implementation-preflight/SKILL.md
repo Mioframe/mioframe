@@ -59,7 +59,7 @@ Required proof:
 
 Impact resolution:
 - unit: related import graph | direct test | full-lane fallback
-- Playwright: existing mapping | mapping update | full-lane fallback
+- Playwright: existing mapping | mapping update | justified standalone | full-lane fallback
 
 Projects:
 - canonical | canonical + mobile (<risk>)
@@ -73,7 +73,8 @@ Rules:
 
 - one production file may require several proof types;
 - name exact existing or new test/spec paths before production edits;
-- update the owning Playwright impact registry in the same change when a spec is added, moved, removed, or gains a stable source relation;
+- update the owning Playwright mapping or justified standalone entry in the same change when a spec is added, moved, removed, or its stable source relation changes;
+- use standalone only when no truthful stable source mapping exists, and record a concrete reason;
 - select full-lane fallback for shared config/helpers, dynamic-import boundaries, or unknown impact rather than pretending scope is empty;
 - name a representative metric, scenario/dataset, environment, and budget/baseline for any performance or optimization claim;
 - do not create permanent benchmark infrastructure for one task;
