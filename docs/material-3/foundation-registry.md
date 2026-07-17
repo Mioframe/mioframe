@@ -21,26 +21,26 @@ This registry is a compact migration index for shared Material domains. It does 
 
 ## Foundations
 
-| Official domain | Current owner | Canonical owner | Status | Known program-level gap |
-| --- | --- | --- | --- | --- |
-| Accessibility | policy and component-local behavior | `material/foundations/accessibility` only when a shared runtime owner is required | `legacy` | consolidate only proven cross-family contracts |
-| Adaptive design / layout | project layout infrastructure and policy | `material/foundations/adaptive-design` when migrated | `legacy` | exact official slug and shared runtime scope resolved during focused work |
-| Interaction | `src/shared/ui/State`, state/ripple/focus utilities, system state tokens | `material/foundations/interaction` | `legacy` | ownership, reduced-motion interaction, and representative family coverage |
-| Units | `postcss.config.js` and shared unit variables | retain generic tooling; document Material-facing contract under the applicable foundation/style owner | `legacy` | future `sp` scaling and legacy `pt` removal |
-| Target area / density policy | component and accessibility policy | local family or official shared foundation when proven | `legacy` | do not create a runtime manager without current consumers |
-| Overlay-related Material behavior | `src/shared/ui/Overlay` plus generic infrastructure | official foundation owner only for genuinely shared Material behavior | `legacy` | keep generic overlay mechanics outside Material |
+| Official domain                   | Current owner                                                            | Canonical owner                                                                                       | Status   | Known program-level gap                                                   |
+| --------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------- |
+| Accessibility                     | policy and component-local behavior                                      | `material/foundations/accessibility` only when a shared runtime owner is required                     | `legacy` | consolidate only proven cross-family contracts                            |
+| Adaptive design / layout          | project layout infrastructure and policy                                 | `material/foundations/adaptive-design` when migrated                                                  | `legacy` | exact official slug and shared runtime scope resolved during focused work |
+| Interaction                       | `src/shared/ui/State`, state/ripple/focus utilities, system state tokens | `material/foundations/interaction`                                                                    | `legacy` | ownership, reduced-motion interaction, and representative family coverage |
+| Units                             | `postcss.config.js` and shared unit variables                            | retain generic tooling; document Material-facing contract under the applicable foundation/style owner | `legacy` | future `sp` scaling and legacy `pt` removal                               |
+| Target area / density policy      | component and accessibility policy                                       | local family or official shared foundation when proven                                                | `legacy` | do not create a runtime manager without current consumers                 |
+| Overlay-related Material behavior | `src/shared/ui/Overlay` plus generic infrastructure                      | official foundation owner only for genuinely shared Material behavior                                 | `legacy` | keep generic overlay mechanics outside Material                           |
 
 ## Styles
 
-| Official domain | Current owner | Canonical owner | Status | Known program-level gap |
-| --- | --- | --- | --- | --- |
-| Color | `src/shared/lib/md/tokens.css` and theme roles | `material/styles/color` | `legacy` | complete role/source documentation and app-controlled theme contract |
-| Elevation | `src/shared/lib/md/tokens.css` | `material/styles/elevation` | `legacy` | Button audit currently questions the universal-selector implementation's cross-family cascade impact |
-| Icons | `src/shared/ui/Icon` and `MDSymbol` | `material/styles/icons` | `legacy` | public contract and family-specific icon verification |
-| Motion | `src/shared/lib/md/tokens.css` and private Web adaptations | `material/styles/motion` | `legacy` | validate honest official-to-Web adaptation, reduced-motion policy, and per-family consumption |
-| Shape | system shape tokens and component-local routes | `material/styles/shape` | `legacy` | exact role parity and unit consistency |
-| Typography | `src/shared/lib/md`, `MD_TYPESCALE`, and global type-scale utilities | `material/styles/typography` | `legacy` | exact source parity and future `sp` policy |
-| Reference tokens / palette | `src/shared/lib/md/tokens.css` | applicable `material/styles/color` and `material/styles/typography` owners | `legacy` | do not create a generic token bucket disconnected from official style ownership |
+| Official domain            | Current owner                                                        | Canonical owner                                                            | Status   | Known program-level gap                                                                              |
+| -------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| Color                      | `src/shared/lib/md/tokens.css` and theme roles                       | `material/styles/color`                                                    | `legacy` | complete role/source documentation and app-controlled theme contract                                 |
+| Elevation                  | `src/shared/lib/md/tokens.css`                                       | `material/styles/elevation`                                                | `legacy` | Button audit currently questions the universal-selector implementation's cross-family cascade impact |
+| Icons                      | `src/shared/ui/Icon` and `MDSymbol`                                  | `material/styles/icons`                                                    | `legacy` | public contract and family-specific icon verification                                                |
+| Motion                     | `src/shared/lib/md/tokens.css` and private Web adaptations           | `material/styles/motion`                                                   | `legacy` | validate honest official-to-Web adaptation, reduced-motion policy, and per-family consumption        |
+| Shape                      | system shape tokens and component-local routes                       | `material/styles/shape`                                                    | `legacy` | exact role parity and unit consistency                                                               |
+| Typography                 | `src/shared/lib/md`, `MD_TYPESCALE`, and global type-scale utilities | `material/styles/typography`                                               | `legacy` | exact source parity and future `sp` policy                                                           |
+| Reference tokens / palette | `src/shared/lib/md/tokens.css`                                       | applicable `material/styles/color` and `material/styles/typography` owners | `legacy` | do not create a generic token bucket disconnected from official style ownership                      |
 
 ## Source evidence
 

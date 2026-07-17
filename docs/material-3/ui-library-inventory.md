@@ -79,21 +79,21 @@ Use:
 
 ## Required row fields
 
-| Field | Meaning |
-| --- | --- |
-| Artifact/family | Stable identity |
-| Current owner | Current production path or public entry point |
-| Public surfaces | Covered components/composables/directives/styles/exports |
-| Consumer evidence | Direct consumers and important flows |
-| Official Material mapping | Exact component/foundation/style path or `none` |
-| Classification | One value from this document |
-| Canonical or retained owner | Official-docs-slug target or retained current owner |
-| Priority | `P0`–`P3` or `pending` |
-| Priority rationale | Concise evidence-backed reason |
-| Dependencies | Required families/domains/consumer decisions |
-| Queue status | Current migration state |
-| Completion evidence | Local README/AUDIT, tests, removal evidence, or retained decision |
-| Blocker/next decision | Exact unresolved item or `none` |
+| Field                       | Meaning                                                           |
+| --------------------------- | ----------------------------------------------------------------- |
+| Artifact/family             | Stable identity                                                   |
+| Current owner               | Current production path or public entry point                     |
+| Public surfaces             | Covered components/composables/directives/styles/exports          |
+| Consumer evidence           | Direct consumers and important flows                              |
+| Official Material mapping   | Exact component/foundation/style path or `none`                   |
+| Classification              | One value from this document                                      |
+| Canonical or retained owner | Official-docs-slug target or retained current owner               |
+| Priority                    | `P0`–`P3` or `pending`                                            |
+| Priority rationale          | Concise evidence-backed reason                                    |
+| Dependencies                | Required families/domains/consumer decisions                      |
+| Queue status                | Current migration state                                           |
+| Completion evidence         | Local README/AUDIT, tests, removal evidence, or retained decision |
+| Blocker/next decision       | Exact unresolved item or `none`                                   |
 
 ## Completion gate
 
