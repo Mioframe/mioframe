@@ -2,147 +2,146 @@
 
 This document defines review ownership for autonomous creation, migration, and alignment of Mioframe Material components.
 
-Its goal is that the coding agent completes and proves every non-visual contract, while the operator normally performs only final visual comparison of prepared screenshots against named official references.
-
-This document does not replace component architecture, testing, foundation, source, inventory, or migration rules. It defines who closes their review gates and what evidence must be handed off.
+The coding agent closes every non-visual contract. The operator normally performs only final visual comparison of prepared evidence against named official references.
 
 ## Canonical target
 
-Official Mioframe Material components target the current official **Material 3 Expressive** contract.
+Official Mioframe Material components target the current applicable Material 3 Expressive contract.
 
-When official sources distinguish Expressive from baseline Material 3:
+- Prefer current Expressive usage, anatomy, tokens, geometry, state composition, motion, and adaptive guidance when available for the supported surface.
+- Do not preserve baseline Material 3 merely because it matches current code.
+- Use baseline behavior or geometry only when no applicable Expressive contract exists or an explicit product deviation requires it.
+- Do not silently combine baseline and Expressive contracts.
+- Existing output, old baselines, Material Web, third-party libraries, and memory are not official authority.
 
-- current Expressive usage, anatomy, tokens, geometry, state composition, motion, and adaptive guidance are canonical;
-- baseline Material 3 must not be selected merely because it is simpler, already implemented, or more familiar;
-- baseline behavior or geometry may remain only when the current official component has no Expressive contract for the supported surface, or when an explicit product compatibility requirement records it as a deviation;
-- one component must not silently mix baseline and Expressive contracts;
-- the family blueprint records the exact Expressive sources used and any unavailable, unsupported, or deliberately deviated surface.
+## Review ownership
 
-Existing Mioframe rendering, old baselines, Material Web, third-party libraries, and memory are never evidence that an implementation is canonically Expressive.
+### Existing automation
 
-## Review layers
+Repository checks and focused tests prove only objective facts and behavior represented by actual tooling, such as:
 
-### Deterministic automation
-
-Static and structured validators plus repository tests prove objective facts such as:
-
-- allowed locations and dependency direction;
-- profile/file consistency and style order;
-- exports, imports, references, snapshots, and migration records;
+- syntax, formatting, types, and existing dependency boundaries;
 - public component contracts and native/ARIA wiring;
-- real browser behavior, cancellation, cleanup, reduced motion, and consumer preservation;
-- bounded visual regression against the accepted repository baseline.
+- browser behavior, cancellation, cleanup, and consumer preservation;
+- bounded visual regression against an accepted repository baseline.
 
-Automation does not decide Material meaning or visual correctness.
+There is no assumption that a standalone static or structured Material validator exists. Automation does not decide Material meaning, architecture rationale, or visual correctness.
 
 ### Agent evidence review
 
-The coding agent owns the routine architecture and Material review for a source-resolved component.
+Before visual handoff, the agent reviews applicable:
 
-Before visual handoff, the agent must inspect the finished implementation and record an evidence-backed review covering:
-
-1. current official Material 3 Expressive sources and verified snapshot;
+1. official Material 3 Expressive sources and snapshot;
 2. supported and unsupported surface, usage, and component choice;
-3. family, foundation, state, anatomy, DOM, accessibility, and rendered-property ownership;
-4. exact component/system token paths and the shortest valid property pipeline;
-5. native semantics, keyboard, focus, pointer/touch, target area, disabled/readonly, cancellation, cleanup, and reduced-motion behavior;
-6. Storybook coverage of every distinct supported visual route;
-7. deviations and Mioframe extensions;
+3. family, foundation, state, anatomy, DOM, accessibility, and property ownership;
+4. exact token paths and shortest applicable property routes;
+5. native semantics and owned keyboard, focus, pointer, touch, target-area, disabled, cancellation, cleanup, and reduced-motion behavior;
+6. proportional Storybook and visual coverage;
+7. extensions and deviations;
 8. consumers, migration completeness, obsolete-path removal, and compatibility state;
-9. completed static, structured, contract, browser, visual-regression, pure, and consumer verification;
-10. remaining blockers, if any.
+9. applicable contract, browser, pure, consumer, visual-regression, and repository checks;
+10. rule corrections made from real migration evidence;
+11. remaining blockers.
 
-The agent review status is exactly one of:
+The agent review status is:
 
-- `passed` — every non-visual decision is source-resolved, implemented, and proved;
-- `blocked` — an exact source, architecture, foundation, compatibility, or verification decision remains unresolved.
+- `passed` — every applicable non-visual decision is source-resolved, implemented, and proved;
+- `blocked` — a concrete source, product, architecture, foundation, compatibility, or verification decision remains unresolved.
 
-The agent must not use `passed` when evidence is missing, contradictory, inferred from existing rendering, or deferred to the operator.
+The agent must not report `passed` when evidence is missing, contradictory, inferred from existing rendering, or delegated to the operator.
 
-## Required agent review report
+## Agent review report
 
-Every new, migrated, or alignment-changing component PR includes this concise report in the PR description or a durable review note:
+Every new, migrated, or alignment-changing component PR includes a concise report:
 
 ```text
 AUTONOMOUS MATERIAL REVIEW
-Target: current Material 3 Expressive
+Target: current applicable Material 3 Expressive
 Component/family:
 Change mode:
 Official sources and snapshot:
-Design Kit evidence: not required | <file/version and component-set reference>
+Design Kit evidence: not required | <file/version and reference>
 Supported surface:
 Unsupported surface:
 Foundation status:
 Architecture and ownership review: passed | blocked (<reason>)
 Material contract review: passed | blocked (<reason>)
 Accessibility and behavior review: passed | blocked (<reason>)
-Verification: <named passing checks>
+Proportional verification: <named checks and not-applicable layers>
+Rule refinement: none | <corrected rules and evidence>
 Deviations/extensions: none | <records>
 Migration completeness: not applicable | passed | blocked (<reason>)
 Agent evidence review: passed | blocked (<reason>)
 ```
 
-This report summarizes evidence already owned by the blueprint, registries, tests, and migration records. It must not create a second component contract.
+This report summarizes existing owned evidence. It must not become a second family contract.
 
 ## Operator visual acceptance
 
-The operator normally reviews only prepared visual evidence after the agent evidence review is `passed`.
+The operator reviews prepared visible evidence only after agent review is `passed`.
 
-The agent provides:
+The agent provides applicable:
 
-- canonical `StateMatrix` story id;
-- bounded current screenshot artifact and visual diff;
+- canonical visual story id;
+- bounded screenshot and visual diff;
 - named official documentation snapshot;
-- official Design Kit file/version and component-set reference when required;
-- a concise list of intended matches, accepted deviations, and intentionally unsupported visual surface;
-- confirmation that all non-visual gates passed.
+- Design Kit reference when required;
+- intended matches, explicit deviations, and unsupported visual surface;
+- confirmation that every non-visual gate passed.
 
-The operator checks only visible fidelity of the supported surface, including applicable:
+The canonical story may be a `StateMatrix` or a simpler bounded story when the component has one meaningful visual route.
 
-- geometry and spacing;
-- shape;
-- color and state layers;
-- typography;
-- icons and anatomy alignment;
-- elevation, outlines, focus indicators, and disabled appearance;
-- simultaneous-state composition;
-- visual readability of the matrix.
+The operator checks visible fidelity, including applicable geometry, spacing, shape, color, state layers, typography, icon alignment, elevation, outlines, focus indicators, disabled appearance, and simultaneous-state composition.
 
-Behavior, semantics, accessibility, token ownership, source interpretation, dependency architecture, migration completeness, and test sufficiency are agent-owned and must not be deferred to screenshot review.
+Behavior, semantics, accessibility, token ownership, source interpretation, dependency architecture, migration completeness, rule correctness, and test sufficiency remain agent-owned.
 
-Motion timing, acquisition/release, cancellation, cleanup, and reduced-motion behavior are proved by source-backed implementation review and browser tests. The operator reviews only motion-related static appearance represented in the matrix or supplied visual artifact.
+Motion acquisition, release, cancellation, cleanup, and reduced-motion behavior are proved by source-backed review and browser tests. The operator reviews only supplied visible motion evidence.
 
-The visual acceptance status is exactly one of:
+Visual status is:
 
-- `accepted` — screenshots match the named official references or recorded deviations;
-- `rejected` — the operator names visible mismatches for correction;
+- `accepted` — evidence matches named official references or recorded deviations;
+- `rejected` — visible mismatches are named for correction;
 - `blocked` — required official visual evidence is unavailable.
 
-An automated coding agent must never report operator visual acceptance as `accepted`.
+An automated coding agent never reports operator acceptance as `accepted`.
+
+## Rule refinement
+
+When implementation evidence conflicts with a project rule, the agent must determine whether the rule or component is wrong.
+
+If the rule is inaccurate, contradictory, incomplete, obsolete, or needlessly complex:
+
+- identify the owning source and concrete case;
+- make the smallest evidence-backed correction;
+- update only directly affected rule owners;
+- record the reason and migration consequence;
+- do not create a family-specific exception.
+
+A resolvable rule conflict is not an operator visual task.
 
 ## Exceptional escalation
 
-Operator-only screenshot review is the normal path, not a license to guess unresolved contracts.
+Stop with `blocked` only for a concrete unresolved decision such as:
 
-The agent must stop with `blocked` and request an architecture/product decision when any of these remain unresolved:
-
-- conflicting or unavailable official guidance that affects a required scenario;
+- conflicting or unavailable official guidance affecting a required scenario;
 - uncertain family or foundation ownership;
 - incompatible public API or consumer migration requirement;
-- an intentional product deviation from Material;
-- unavailable required Design Kit evidence;
-- a required behavior that cannot be proved reliably.
+- an intentional product deviation;
+- an unsafe cross-project contract change;
+- required behavior that cannot be proved reliably;
+- rejected visible evidence requiring correction.
 
-Such escalation is exceptional and names one concrete decision. It must not become a routine broad manual review of the implementation.
+Escalation names one decision. It must not become broad manual re-review of the implementation.
 
 ## Merge gate
 
-A normal component PR is ready to merge only when:
+A component PR is ready to merge only when:
 
 1. agent evidence review is `passed`;
-2. all required automated and repository verification passes;
-3. operator visual acceptance is `accepted`, or a relocation-only change validly reuses an unchanged previously accepted matrix;
-4. no source, architecture, foundation, compatibility, or migration blocker remains;
-5. blueprint, registries, inventory, roadmap, code, exports, consumers, stories, tests, snapshots, and migration map agree.
+2. every applicable existing repository and focused check passes;
+3. required operator visual acceptance is `accepted`, or the change validly requires no new visual acceptance;
+4. no source, product, architecture, foundation, compatibility, migration, or rule blocker remains;
+5. code, family contract, exports, consumers, applicable stories/tests/evidence, physical map, and directly affected records agree;
+6. obsolete ownership and permanent compatibility paths are removed.
 
-A visual rejection returns only the named visible mismatches to the agent. It does not reopen already proved non-visual contracts unless the mismatch reveals evidence that one of them is wrong.
+A visual rejection returns the named visible mismatches to the agent. It reopens a non-visual decision only when the mismatch supplies evidence that the underlying contract is wrong.
