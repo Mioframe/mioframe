@@ -1,251 +1,62 @@
-# Material 3 foundation registry
+# Material foundations and styles registry
 
-This registry is the current status source for Material foundation domains. It complements `foundation-architecture.md`.
+This registry is a compact migration index for shared Material domains. It does not duplicate detailed implementation contracts or audits.
 
-Historical audits remain evidence only. Update the affected record whenever source meaning, snapshot, owner, migration status, contract, consumers, gaps, or verification changes.
+## Fact ownership
 
-## Status
+- Current legacy ownership and target navigation live here.
+- An implemented or actively migrated shared domain owns its detailed state in a colocated `README.md`.
+- Its latest independent review lives in a colocated `AUDIT.md`.
+- Component-specific findings remain in the affected family README/AUDIT.
+- Historical foundation audits are evidence only, not current authority.
 
-- `missing`: no accepted contract exists.
-- `partial`: an owner exists, but source coverage, completeness, consistency, or verification has known gaps.
-- `verified`: the supported contract is source-backed, implemented, and verified against an exact recorded snapshot.
-- `deviated`: the accepted Mioframe contract intentionally differs from current Material guidance.
-- `blocked`: required source guidance or ownership is unresolved.
+## Status values
 
-A legacy `partial` record may use `Verified snapshot: not yet recorded — legacy owner`. A record must not use `verified` without a concrete snapshot and named verification.
+- `missing` — no accepted implementation exists.
+- `legacy` — implementation exists outside the canonical Material library.
+- `active` — migration or correction is in progress; read the local README/AUDIT.
+- `verified` — canonical shared owner, truthful documentation, independent review, and applicable verification are complete.
+- `deviated` — Mioframe intentionally differs from current official guidance and documents the reason.
+- `blocked` — a named evidence or ownership issue prevents progress.
 
-## Official source evidence
+## Foundations
 
-- Status: `partial`.
-- Official sources: `material3` MCP; `Vyachean/m3-docs-cache` fallback; official Material Design Kit for exact visual decisions unresolved by published docs.
-- Verified snapshot: source hierarchy reviewed 2026-07-16; domain snapshots remain record-specific.
-- Current production owner: policy/tooling outside application runtime.
-- Canonical library owner: none; policy remains under `docs/material-3`.
-- Migration status: `migrated`.
-- Public contract: bounded authority order, exact snapshot recording, Design Kit role, and explicit `partial`/`blocked` handling.
-- Private bridge contract: none.
-- Verification-only contract: none.
-- Known consumers: every Material foundation, component, pattern, and review decision.
-- Known gaps: historical domains need exact snapshots when revalidated.
-- Verification: policy review plus source records in family blueprints and domain changes.
-- Last reviewed: 2026-07-16.
+| Official domain | Current owner | Canonical owner | Status | Known program-level gap |
+| --- | --- | --- | --- | --- |
+| Accessibility | policy and component-local behavior | `material/foundations/accessibility` only when a shared runtime owner is required | `legacy` | consolidate only proven cross-family contracts |
+| Adaptive design / layout | project layout infrastructure and policy | `material/foundations/adaptive-design` when migrated | `legacy` | exact official slug and shared runtime scope resolved during focused work |
+| Interaction | `src/shared/ui/State`, state/ripple/focus utilities, system state tokens | `material/foundations/interaction` | `legacy` | ownership, reduced-motion interaction, and representative family coverage |
+| Units | `postcss.config.js` and shared unit variables | retain generic tooling; document Material-facing contract under the applicable foundation/style owner | `legacy` | future `sp` scaling and legacy `pt` removal |
+| Target area / density policy | component and accessibility policy | local family or official shared foundation when proven | `legacy` | do not create a runtime manager without current consumers |
+| Overlay-related Material behavior | `src/shared/ui/Overlay` plus generic infrastructure | official foundation owner only for genuinely shared Material behavior | `legacy` | keep generic overlay mechanics outside Material |
 
-## Authoring units
+## Styles
 
-- Status: `partial`.
-- Official sources: Material unit usage in component and typography specs.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `postcss.config.js` and shared base-unit variables.
-- Canonical library owner: Material-facing contract under `material/foundation`; generic build infrastructure may remain outside.
-- Migration status: `legacy`.
-- Public contract: `dp` for Material dimensions, `sp` for typography, `step` for app layout, `pt` legacy-only.
-- Private bridge contract: centralized build-time custom-unit conversion.
-- Verification-only contract: none.
-- Known consumers: all Material CSS using custom units.
-- Known gaps: `--one-sp: 1px` preserves rendering; future scaling and `pt` removal remain unresolved.
-- Verification: PostCSS transform tests and representative typography/shape/layout checks.
-- Last reviewed: 2026-07-16.
+| Official domain | Current owner | Canonical owner | Status | Known program-level gap |
+| --- | --- | --- | --- | --- |
+| Color | `src/shared/lib/md/tokens.css` and theme roles | `material/styles/color` | `legacy` | complete role/source documentation and app-controlled theme contract |
+| Elevation | `src/shared/lib/md/tokens.css` | `material/styles/elevation` | `legacy` | Button audit currently questions the universal-selector implementation's cross-family cascade impact |
+| Icons | `src/shared/ui/Icon` and `MDSymbol` | `material/styles/icons` | `legacy` | public contract and family-specific icon verification |
+| Motion | `src/shared/lib/md/tokens.css` and private Web adaptations | `material/styles/motion` | `legacy` | validate honest official-to-Web adaptation, reduced-motion policy, and per-family consumption |
+| Shape | system shape tokens and component-local routes | `material/styles/shape` | `legacy` | exact role parity and unit consistency |
+| Typography | `src/shared/lib/md`, `MD_TYPESCALE`, and global type-scale utilities | `material/styles/typography` | `legacy` | exact source parity and future `sp` policy |
+| Reference tokens / palette | `src/shared/lib/md/tokens.css` | applicable `material/styles/color` and `material/styles/typography` owners | `legacy` | do not create a generic token bucket disconnected from official style ownership |
 
-## Reference palette and typeface tokens
+## Source evidence
 
-- Status: `partial`.
-- Official sources: Material reference palette and typeface-token docs.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/tokens` when focused migration occurs.
-- Migration status: `legacy`.
-- Public contract: verified `--md-ref-palette-*` and `--md-ref-typeface-*` tokens only.
-- Private bridge contract: none.
-- Verification-only contract: none.
-- Known consumers: system color and typography roles.
-- Known gaps: complete tone/role inventory is not mechanically validated; no generated palette contract.
-- Verification: vocabulary/ownership checks and representative theme surfaces.
-- Last reviewed: 2026-07-16.
+Official source hierarchy remains policy under `source-of-truth.md`; it is not a runtime foundation directory.
 
-## Theme and system color roles
+Every local shared-domain README records the exact official pages and source snapshot used for its current contract.
 
-- Status: `partial`.
-- Official sources: Material color roles, schemes, and deprecation guidance.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/theme` plus token owner as proven by migration.
-- Migration status: `legacy`.
-- Public contract: `--md-sys-color-*` mapped from reference tokens; light defaults and dark media override.
-- Private bridge contract: none.
-- Verification-only contract: deterministic Storybook theme context.
-- Known consumers: Material components and product surfaces using system roles (including `MDButton`, `MDIconButton`, `MDPlainTooltip`, and `MDSnackbar` for `inverse-surface`/`inverse-on-surface` specifically).
-- Known gaps: complete role parity, app-controlled theme context, and deprecated surface-tint compatibility removal.
-- Verification: token graph, computed scheme checks, and representative visuals. `--md-sys-color-inverse-surface`/`--md-sys-color-inverse-on-surface` are now verified to invert correctly between light and dark theme (`tests/e2e/visual/shared-ui/md-button.spec.ts`); a dark-theme defect where both tokens repeated their light-theme values was found and corrected during the `MDButton` M1 alignment pass (`docs/material-3/audits/button.md`, 2026-07-17).
-- Last reviewed: 2026-07-17.
+## Update rule
 
-## Typography
+When shared-domain migration starts:
 
-- Status: `partial`.
-- Official sources: Material type-scale and unit guidance.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/lib/md/tokens.css`, `typography.ts`, `MD_TYPESCALE`, and `.md-typescale-*` utilities.
-- Canonical library owner: `src/shared/ui/material/foundation/typography` when focused migration occurs.
-- Migration status: `legacy`.
-- Public contract: components use system type-scale roles/shared utilities instead of local type declarations.
-- Private bridge contract: none.
-- Verification-only contract: stable font readiness for visual tests.
-- Known consumers: shared UI and product text using Material typography.
-- Known gaps: exact source parity and future `sp` scaling policy.
-- Verification: token/utility tests, generated CSS, and representative text visuals.
-- Last reviewed: 2026-07-16.
+1. resolve whether the official navigation places it under Foundations or Styles;
+2. create the canonical official-slug directory only when implementation work begins;
+3. add a truthful local README with implemented, not implemented, known issues, consumers, and verification;
+4. set this registry row to `active` and link the local documentation;
+5. run an independent review to create the colocated AUDIT;
+6. set `verified` only after the local completion gates pass.
 
-## Shape roles
-
-- Status: `partial`.
-- Official sources: Material shape roles and component-specific shape specs.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/shape` when focused migration occurs.
-- Migration status: `legacy`.
-- Public contract: `--md-sys-shape-corner-*`; published component shapes route through component tokens.
-- Private bridge contract: none.
-- Verification-only contract: none.
-- Known consumers: shaped Material surfaces.
-- Known gaps: mixed unit authoring and complete role parity.
-- Verification: token checks and representative computed-radius/visual checks.
-- Last reviewed: 2026-07-16.
-
-## Elevation
-
-- Status: `partial`.
-- Official sources: Material elevation and surface-tint guidance.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/elevation` when focused migration occurs.
-- Migration status: `legacy`.
-- Public contract: `--md-sys-elevation-level0` through `level5`.
-- Private bridge contract: `--md-private-elevation-shadow-color`.
-- Verification-only contract: none.
-- Known consumers: elevated components/surfaces.
-- Known gaps: dark behavior, component routing, and deprecated tint prevention. (Bridge verification is resolved: `--md-sys-elevation-level0`–`level5` are declared on a universal selector, not only `:root`, so a component-level `--md-private-elevation-shadow-color` override reaches the final rendered `box-shadow` color — verified by `MDButton`'s shadow-color test in `tests/e2e/visual/shared-ui/md-button.spec.ts`, 2026-07-17.)
-- Verification: token checks, computed owner checks, and representative elevated surfaces.
-- Last reviewed: 2026-07-17.
-
-## Motion
-
-- Status: `partial`.
-- Official sources: Material motion guidance and family-specific Expressive motion pages.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/lib/md/tokens.css` and documented private Web adaptations.
-- Canonical library owner: `src/shared/ui/material/foundation/motion` when focused migration occurs.
-- Migration status: `legacy`.
-- Public contract: verified `--md-sys-motion-*` values only.
-- Private bridge contract: documented `--md-private-motion-expressive-*` adaptations when CSS cannot express the official model directly.
-- Verification-only contract: deterministic settling and reduced-motion setup.
-- Known consumers: components with Material transitions/motion.
-- Known gaps: token parity, reduced-motion policy, adaptation validation, and per-family use beyond `MDButton`. (`MDButton`'s per-size pressed-corner spring component tokens (`stiffness`/`damping`) are colocated with, and now route through, the documented fast-spatial adaptation instead of being declared without consumption — verified per size, 2026-07-17.)
-- Verification: static token checks, browser motion/reduced-motion checks, and representative assertions.
-- Last reviewed: 2026-07-17.
-
-## Interaction state, state layer, ripple, focus, and visual verification
-
-- Status: `partial`.
-- Official sources: Material interaction-state, state-layer, focus, and family-specific state guidance.
-- Verified snapshot: reviewed through 2026-07-16; consolidated domain snapshot remains for migration.
-- Current production owner: `src/shared/ui/State/` plus system state tokens in `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/interaction` after focused migration.
-- Migration status: `legacy`.
-- Public contract: `MDStateLayer`, `useStateLayer`, `useRipple`, host focus/activation semantics, and system state/focus tokens.
-- Private bridge contract: generic `--md-private-state-*` and state-layer inputs documented by the current owner.
-- Verification-only contract: `src/shared/ui/State/testing` and `MDStateLayerForcedStateProvider` render deterministic generic transient appearance only.
-- Known consumers: interactive Material components and their matrices.
-- Known gaps: ripple policy, focus-indicator ownership, reduced-motion interaction, dragged/focus verification, and family coverage.
-- Verification: foundation tests, real browser focus/pointer/touch checks, deterministic appearance, and representative host integration.
-- Last reviewed: 2026-07-16.
-
-## Iconography
-
-- Status: `partial`.
-- Official sources: Material Symbols and family-specific icon guidance.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/ui/Icon/` and `MDSymbol`.
-- Canonical library owner: `src/shared/ui/material/foundation/icon` after focused migration.
-- Migration status: `legacy`.
-- Public contract: shared Material Symbol primitive with explicit size, fill, weight, grade, optical size, and accessibility behavior.
-- Private bridge contract: none.
-- Verification-only contract: deterministic icon/font readiness.
-- Known consumers: icon-bearing components and product actions.
-- Known gaps: public API strategy and exact family-specific icon sizing/state verification.
-- Verification: primitive contract tests and representative component browser/visual checks.
-- Last reviewed: 2026-07-16.
-
-## Density, spacing, and target area
-
-- Status: `partial`.
-- Official sources: component measurements, density/layout guidance, and accessibility target requirements.
-- Verified snapshot: not yet recorded — policy and family evidence are mixed.
-- Current production owner: `density-spacing.md`; each component owns supported measurements and target box.
-- Canonical library owner: policy remains under `docs/material-3`; runtime owner is component-specific unless a shared artifact is required.
-- Migration status: `migrated`.
-- Public contract: exact component specs first, layout guidance second, app `step` only when no exact Material measure exists.
-- Private bridge contract: none.
-- Verification-only contract: browser geometry and hit-target checks.
-- Known consumers: all Material components and app layout.
-- Known gaps: complete family target-area and compact-behavior inventory.
-- Verification: component geometry/hit testing and representative visuals.
-- Last reviewed: 2026-07-16.
-
-## Accessibility
-
-- Status: `partial`.
-- Official sources: Material accessibility pages, native HTML semantics, and repository policy.
-- Verified snapshot: not yet recorded as one exact policy snapshot.
-- Current production owner: `accessibility.md`; components/overlays/focus owners implement it.
-- Canonical library owner: policy remains under `docs/material-3`.
-- Migration status: `migrated`.
-- Public contract: accessible names, native semantics first, focus-visible, keyboard behavior, target areas, contrast-safe roles, modal focus, and meaningful state exposure.
-- Private bridge contract: none.
-- Verification-only contract: focused accessibility/browser checks.
-- Known consumers: all interactive/semantic Material components and product composition.
-- Known gaps: exact policy snapshot and family compliance.
-- Verification: component contract, browser behavior, and focused accessibility checks.
-- Last reviewed: 2026-07-16.
-
-## Overlay containment and lifecycle
-
-- Status: `partial`.
-- Official sources: overlay component guidance plus project containment policy.
-- Verified snapshot: not yet recorded — legacy owner.
-- Current production owner: `src/shared/ui/Overlay` plus generic teleport/outside-interaction dependencies.
-- Canonical library owner: `src/shared/ui/material/foundation/overlay`; generic dependencies remain outside.
-- Migration status: `legacy`.
-- Public contract: nearest Material overlay container, nested registration, and shared interaction boundaries.
-- Private bridge contract: overlay context/container and child-stack internals.
-- Verification-only contract: isolated Storybook overlay fixtures.
-- Known consumers: menus, dialogs, sheets, tooltips, FAB helpers, and transient surfaces.
-- Known gaps: lifecycle consistency, escape/back stacking, focus trap, scroll lock, and nested behavior.
-- Verification: browser focus, outside interaction, nested teleport, escape/back, scrim, scroll lock, and responsive checks.
-- Last reviewed: 2026-07-16.
-
-## Layout and adaptivity
-
-- Status: `partial`.
-- Official sources: Material window classes, canonical layouts, navigation adaptation, pane, app bar, sheet, and toolbar guidance.
-- Verified snapshot: not yet recorded — policy and product evidence are mixed.
-- Current production owner: `layout-adaptive.md` plus current layout primitives and product composition.
-- Canonical library owner: policy remains under `docs/material-3`; concrete component/pattern owners are added only from current needs.
-- Migration status: `legacy`.
-- Public contract: compact/medium/expanded decisions, canonical-layout choice, pane ownership, and navigation choice based on product information architecture.
-- Private bridge contract: current layout contexts and scroll-container contracts where implemented.
-- Verification-only contract: deterministic Storybook/browser surfaces at affected sizes.
-- Known consumers: pages, panes, navigation, sheets, app bars, and responsive components.
-- Known gaps: no complete app-wide adaptive-switching contract; component adaptation remains family-specific.
-- Verification: responsive browser/story checks and product-flow verification for layout/component choice.
-- Last reviewed: 2026-07-16.
-
-## Update rules
-
-For every foundation change:
-
-1. update the affected record before claiming completion;
-2. record exact official pages and snapshot when meaning/status changes;
-3. keep current/canonical owner and migration status accurate;
-4. keep public/private/testing contracts aligned with code/exports;
-5. inventory consumers for corrections/replacements;
-6. update verification, visual impact, and remaining gaps honestly;
-7. keep unrelated records unchanged.
+Do not use this registry as proof that a shared implementation is correct. Do not duplicate component-family findings here.
