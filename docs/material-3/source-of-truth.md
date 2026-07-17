@@ -14,20 +14,30 @@ When official sources distinguish Expressive from baseline Material 3:
 
 `Canonical Material default` means the current Expressive default when an official Expressive contract exists.
 
-## Authority order
+## Official authority
 
-Use the narrowest official source that resolves the decision.
+Use the narrowest current official source that resolves the decision.
+
+1. Current published Material 3 Expressive documentation on `m3.material.io` owns documented component usage, anatomy, behavior, accessibility, tokens, foundations, motion, and adaptive guidance.
+2. The current official Material Design Kit in Figma owns exact visual geometry, state composition, expressive measurements, and component anatomy only when published documentation does not resolve the visual decision.
+3. Current repository code and tests are evidence of existing Mioframe behavior, never proof of Material correctness.
+
+The MCP server and documentation cache are access mechanisms for official documentation, not independent design authorities. A task handoff or previous audit may describe an accepted delta, but it is not a substitute for the current official source and repository contract.
+
+## Documentation access order
+
+Access the official published documentation in this order:
 
 1. `material3` MCP server from `Vyachean/m3-docs-mcp`.
 2. `Vyachean/m3-docs-cache` when MCP is unavailable or incomplete for the required page.
-3. The official Material Design Kit in Figma when exact visual geometry, state composition, expressive measurements, or component anatomy cannot be resolved from the published documentation alone.
-4. Current repository code and tests only as evidence of existing Mioframe behavior, never as proof of Material correctness.
+3. Direct verification against the current official published page when MCP or cache evidence is missing, stale, internally inconsistent, or marked suspicious and the environment can access the page.
+4. The official Material Design Kit only for an applicable visual decision that the published documentation does not resolve.
 
-A task handoff or previous audit may describe an accepted delta, but it is not a substitute for the current official source and repository contract.
+An access mechanism does not gain authority merely because it is first in the lookup order. Stop source lookup when the required decisions are resolved by current, traceable official evidence.
 
 ## Documentation source
 
-Before planning or implementing Material work, check the relevant official pages through MCP. Prefer only pages that resolve the touched surface:
+Before planning or implementing Material work, check the relevant official pages. Prefer only pages that resolve the touched surface:
 
 - component overview, specs, guidelines, and accessibility;
 - current Expressive component guidance and tokens when published separately;
@@ -35,7 +45,7 @@ Before planning or implementing Material work, check the relevant official pages
 - interaction-state, motion, color, typography, shape, elevation, layout, and adaptive guidance;
 - current deprecation or migration guidance.
 
-Record stable page names and the verified snapshot or capture date in the family blueprint or foundation registry.
+Record stable page names and the verified snapshot, capture date, or direct verification date in the family blueprint or foundation registry.
 
 ## Cache fallback
 
@@ -43,7 +53,7 @@ Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete.
 
 The cache is a readable snapshot of `m3.material.io`, not an independent design system. Prefer files under `pages/` and inspect `index.json` for capture metadata, failed URLs, redirects, and suspicious pages.
 
-A cache-backed decision records the exact cache snapshot and path.
+Do not rely on a cache page whose capture metadata is missing, stale for the decision, failed, redirected unexpectedly, or marked suspicious without resolving that limitation through another current official source. A cache-backed decision records the exact cache snapshot and path.
 
 ## Official Material Design Kit
 
@@ -92,7 +102,7 @@ Do not use the following as Material authority:
 
 ## Unavailable or conflicting guidance
 
-When required official guidance is unavailable, incomplete, or contradictory:
+When required official guidance is unavailable, incomplete, stale, suspicious, or contradictory:
 
 1. identify the exact unresolved decision;
 2. determine whether the supported surface can be narrowed without losing a required scenario;
@@ -113,6 +123,6 @@ Material PR descriptions or review notes name the exact sources used, for exampl
 - `styles/color/roles`;
 - official Design Kit file/version and component-set reference when visual evidence was required.
 
-Use stable page names, snapshot metadata, and Design Kit references instead of raw screenshots or generic source descriptions.
+Use stable page names, snapshot metadata, direct verification dates, and Design Kit references instead of raw screenshots or generic source descriptions.
 
 Review ownership and the required agent/operator evidence handoff are defined in `autonomous-review.md`.
