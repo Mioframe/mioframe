@@ -58,8 +58,8 @@ Required proof:
 - performance: <metric/check/measurement | not applicable: reason>
 
 Impact resolution:
-- unit: related import graph | direct test | full-lane fallback
-- Playwright: existing mapping | mapping update | justified standalone | full-lane fallback
+- unit: related import graph | direct test | owning snapshot | full-lane fallback
+- Playwright: existing mapping | mapping update | owning visual snapshot | justified standalone | full-lane fallback
 
 Projects:
 - canonical | canonical + mobile (<risk>)
@@ -75,7 +75,8 @@ Rules:
 - name exact existing or new test/spec paths before production edits;
 - update the owning Playwright mapping or justified standalone entry in the same change when a spec is added, moved, removed, or its stable source relation changes;
 - use standalone only when no truthful stable source mapping exists, and record a concrete reason;
-- select full-lane fallback for shared config/helpers, dynamic-import boundaries, or unknown impact rather than pretending scope is empty;
+- resolve changed snapshots/baselines to their owning test/spec; use full owning-lane fallback when that relation is not deterministic;
+- select full-lane fallback for shared config/helpers, deleted dependencies, dynamic-import boundaries, or unknown impact rather than pretending scope is empty;
 - name a representative metric, scenario/dataset, environment, and budget/baseline for any performance or optimization claim;
 - do not create permanent benchmark infrastructure for one task;
 - do not add tests solely because a production file changed;
