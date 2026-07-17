@@ -201,3 +201,113 @@ describe('MDBottomSheetContainer2 focus-trap scroll safety', () => {
     wrapper.unmount();
   });
 });
+
+describe('MDBottomSheetContainer2 keyboard focus visibility frame ownership', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+    capturedOptions = undefined;
+    vi.restoreAllMocks();
+  });
+
+  it('cancels the previous frame when Tab is pressed again before it runs', async () => {
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+    const cafSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+
+    const wrapper = mountSheet();
+    await nextTick();
+    await nextTick();
+
+    const scrim = wrapper.get('.md-bottom-sheet__scrim');
+
+    await scrim.trigger('keydown', { key: 'Tab' });
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    expect(cafSpy).not.toHaveBeenCalled();
+
+    await scrim.trigger('keydown', { key: 'Tab' });
+    expect(rafSpy).toHaveBeenCalledTimes(2);
+    // The first scheduled frame's id (mocked to 1) must be the one cancelled.
+    expect(cafSpy).toHaveBeenCalledExactlyOnceWith(1);
+
+    // Only the latest scheduled callback may still call scrollIntoView.
+    const scrollIntoViewSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+    const latestCallback = rafSpy.mock.calls[1]?.[0];
+    latestCallback?.(0);
+    expect(scrollIntoViewSpy).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('cancels the pending frame and skips scrollIntoView once the sheet starts closing', async () => {
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(7);
+    const cafSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+
+    const wrapper = mountSheet();
+    await nextTick();
+    await nextTick();
+
+    await wrapper.get('.md-bottom-sheet__scrim').trigger('keydown', { key: 'Tab' });
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    const staleCallback = rafSpy.mock.calls[0]?.[0];
+
+    await wrapper.setProps({ open: false });
+    await nextTick();
+    await nextTick();
+
+    expect(cafSpy).toHaveBeenCalledExactlyOnceWith(7);
+
+    const scrollIntoViewSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+    // Invoke the stale callback manually: cancelAnimationFrame is mocked, so it would otherwise
+    // still run in a real browser environment without this explicit check.
+    staleCallback?.(0);
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('cancels the pending frame on unmount and skips scrollIntoView', async () => {
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(9);
+    const cafSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+
+    const wrapper = mountSheet();
+    await nextTick();
+    await nextTick();
+
+    await wrapper.get('.md-bottom-sheet__scrim').trigger('keydown', { key: 'Tab' });
+    const staleCallback = rafSpy.mock.calls[0]?.[0];
+
+    wrapper.unmount();
+
+    expect(cafSpy).toHaveBeenCalledExactlyOnceWith(9);
+
+    const scrollIntoViewSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+    staleCallback?.(0);
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+  });
+
+  it('still restores visible keyboard focus for a normal Tab correction', async () => {
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(3);
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+
+    const wrapper = mountSheet('<button id="target" type="button">row action</button>');
+    await nextTick();
+    await nextTick();
+
+    const target = wrapper.find<HTMLButtonElement>('#target').element;
+    target.focus({ preventScroll: true });
+    expect(document.activeElement).toBe(target);
+
+    const scrollIntoViewSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+
+    await wrapper.get('.md-bottom-sheet__scrim').trigger('keydown', { key: 'Tab' });
+    const callback = rafSpy.mock.calls.at(-1)?.[0];
+    callback?.(0);
+
+    expect(scrollIntoViewSpy).toHaveBeenCalledExactlyOnceWith({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'auto',
+    });
+
+    wrapper.unmount();
+  });
+});

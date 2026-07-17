@@ -99,6 +99,20 @@ const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(containerE
   preventScroll: true,
 });
 
+// preventScroll above also suppresses the scroll-into-view a browser would normally perform when
+// focus-trap wraps keyboard focus (Tab from the last focusable element to the first, or
+// Shift+Tab from the first to the last). Restore just that one case, narrowly, for keyboard
+// input only: after focus-trap's own synchronous Tab handling has run, wait one animation frame
+// and bring the newly focused element into view if it isn't already.
+let focusVisibilityFrame: number | undefined;
+
+const cancelFocusVisibilityFrame = () => {
+  if (focusVisibilityFrame !== undefined) {
+    cancelAnimationFrame(focusVisibilityFrame);
+    focusVisibilityFrame = undefined;
+  }
+};
+
 watch(
   [openModel, containerEl],
   async ([showModel]) => {
@@ -108,27 +122,36 @@ watch(
         lockFocus();
       }
     } else {
+      cancelFocusVisibilityFrame();
       unlockFocus();
     }
   },
   { immediate: true, flush: 'post' },
 );
 
-tryOnBeforeUnmount(unlockFocus);
+tryOnBeforeUnmount(() => {
+  cancelFocusVisibilityFrame();
+  unlockFocus();
+});
 
-// preventScroll above also suppresses the scroll-into-view a browser would normally perform when
-// focus-trap wraps keyboard focus (Tab from the last focusable element to the first, or
-// Shift+Tab from the first to the last). Restore just that one case, narrowly, for keyboard
-// input only: after focus-trap's own synchronous Tab handling has run, wait one animation frame
-// and bring the newly focused element into view if it isn't already.
 const onContainerKeydown = (event: KeyboardEvent) => {
-  if (event.key !== 'Tab') {
+  if (event.key !== 'Tab' || !openModel.value) {
     return;
   }
 
-  requestAnimationFrame(() => {
+  cancelFocusVisibilityFrame();
+
+  focusVisibilityFrame = requestAnimationFrame(() => {
+    focusVisibilityFrame = undefined;
+
+    if (!openModel.value) {
+      return;
+    }
+
+    const container = containerEl.value;
     const { activeElement } = document;
-    if (activeElement instanceof HTMLElement && containerEl.value?.contains(activeElement)) {
+
+    if (activeElement instanceof HTMLElement && container?.contains(activeElement)) {
       activeElement.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
     }
   });
