@@ -68,7 +68,7 @@ Prefer focused pure tests plus one faithful product scenario when both algorithm
 pnpm verify --only unit-tests --files <source-or-test-paths...>
 ```
 
-The verifier runs changed tests directly and may use Vitest related-test selection for changed existing production or local test-support modules imported by tests. Deleted/renamed dependencies, config/setup, global test utilities, dynamic-import boundaries, generated aliases, and unknown relations require full-lane fallback as defined by `docs/testing/architecture.md`.
+The verifier runs changed tests directly, resolves changed snapshots to their owning tests, and may use Vitest related-test selection for changed existing production or local test-support modules imported by tests. An unresolved snapshot, deleted/renamed dependency, config/setup, global test utility, dynamic-import boundary, generated alias, or unknown relation requires full-lane fallback as defined by `docs/testing/architecture.md`.
 
 ## Forbidden
 
