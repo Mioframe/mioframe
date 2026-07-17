@@ -40,8 +40,8 @@ If you skip this skill, the implementation preflight must name the deterministic
 Keep the handoff compact.
 
 - Prefer short bullet points over prose.
-- For small but non-trivial tasks, the handoff should usually fit in 20-40 lines.
-- Do not expand stable repository rules, FSD explanations, or Material rules unless directly relevant.
+- For small but non-trivial tasks, the handoff should usually fit in 20–40 lines.
+- Do not expand stable repository rules, FSD explanations, Material rules, or testing policy unless directly relevant.
 - Use `N/A` for genuinely inapplicable sections.
 - Do not create a handoff when a deterministic policy already provides the complete implementation contract.
 
@@ -72,6 +72,12 @@ Record:
 - Shared UI blast radius
 - Acceptance matrix
 - Risk matrix
+- Required test proof:
+  - changed contracts or scenarios
+  - required proof types from `docs/testing/architecture.md`
+  - accessibility, browser, visual, data-safety, release, and platform risks that apply
+  - whether mutation may be applicable
+  - exact test/spec paths and resolver changes are deferred to implementation preflight
 - Required verification
 - Forbidden
 - Implementation readiness:
@@ -90,11 +96,11 @@ Stop before production edits when:
 
 - claimed current behavior is unconfirmed, or a new requirement lacks a confirmed source, unless the task is explicitly investigation;
 - ownership, source of truth, or expected final state is unclear;
-- an unresolved decision can change behavior, ownership, boundaries, state shape, public contracts, or verification;
+- an unresolved decision can change behavior, ownership, boundaries, state shape, public contracts, test proof, or verification;
 - required dependencies, inputs, or agent-access boundaries are unclear or unavailable;
 - shared UI would change only to patch one feature without blast-radius review;
 - unrelated domains are combined without explicit pass order;
-- the design adds abstractions, extension points, compatibility paths, stronger guarantees, recovery mechanisms, or optimizations without a current requirement, consumer, invariant, platform constraint, or measured need;
+- the design adds abstractions, extension points, compatibility paths, stronger guarantees, recovery mechanisms, optimizations, or test infrastructure without a current requirement, consumer, invariant, platform constraint, or measured need;
 - a narrower contract or fewer concepts satisfy the same acceptance criteria;
 - implementation readiness is `not ready`;
 - a deterministic standard-authoring workflow reports `blocked`.
@@ -106,18 +112,19 @@ When blocked, resolve the handoff first. Do not patch forward and expect review 
 - Treat the ready handoff as upstream input for tasking, preflight, coding, PR description, and review.
 - When the skill is legitimately skipped, treat the repository-backed deterministic workflow and its ready contract as the equivalent implementation contract.
 - Do not implement while the applicable contract is `not ready` or `blocked`.
-- Do not ask the coding agent to resolve product or architecture decisions left open by the applicable contract.
+- Do not ask the coding agent to resolve product, architecture, or test-ownership decisions left open by the applicable contract.
 - Restate only implementation-relevant decisions downstream.
 - If new facts invalidate the contract, stop and update it before continuing.
-- Do not silently replace rejected approaches, move ownership, or expand boundaries.
+- Do not silently replace rejected approaches, move ownership, expand boundaries, or weaken required proof.
 
 ## Review contract after implementation
 
 Review the full implementation against the applicable handoff or deterministic workflow contract.
 
 - Do not review only the latest fix or latest changed files.
-- Check goal, non-goals, scenarios, ownership, dependency direction, state shape, API, public contracts, shared UI blast radius, verification, simplicity, proportionality, and future safety.
+- Check goal, non-goals, scenarios, ownership, dependency direction, state shape, API, public contracts, shared UI blast radius, test proof, verification, simplicity, proportionality, and future safety.
 - Confirm every added concept is justified and nothing can be removed without losing an acceptance criterion or invariant.
+- Confirm implementation preflight resolved exact `TEST IMPACT` and the resulting tests still match the changed contracts.
 - Preserve unresolved findings in one consolidated list.
 - If repeated rounds add concepts, protocols, branches, configuration, recovery paths, or abstractions, stop patching and simplify the architecture.
 - If repeated rounds show ownership drift or mixed responsibilities, stop patching and redo the architecture decision.
