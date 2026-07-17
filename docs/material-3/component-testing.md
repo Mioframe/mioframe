@@ -15,17 +15,17 @@ Tests prove contracts the component or changed foundation actually owns. They do
 
 ## Proof layers
 
-| Layer | Use when | Purpose |
-| --- | --- | --- |
-| Component contract | Every new or migrated public component | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and static foundation wiring |
-| Canonical visual story | Visible output exists | One stable reference for accepted appearance |
-| `StateMatrix` | Multiple distinct component-owned visual routes exist | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product |
-| Visual regression | A stable visual contract has material regression risk | Detect unintended changes against a bounded accepted baseline |
-| Browser behavior | The component changes or constrains browser-owned behavior | Focus, input, layout, overlay, scrolling, responsive, cancellation, or runtime lifecycle |
-| Pure behavior | Extracted logic or lifecycle exists | Helpers, composables, state transitions, timing, cancellation, and cleanup |
-| Consumer preservation | Imports, wrappers, or product usage change | Preserve affected integration contracts |
-| Independent two-stage audit | Every new or migrated family | Compare implementation with project documentation, then project documentation with Material 3 Expressive |
-| Operator visual acceptance | Visible output is created or intentionally changed | Compare prepared evidence with named official sources |
+| Layer                       | Use when                                                   | Purpose                                                                                                               |
+| --------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Component contract          | Every new or migrated public component                     | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and static foundation wiring |
+| Canonical visual story      | Visible output exists                                      | One stable reference for accepted appearance                                                                          |
+| `StateMatrix`               | Multiple distinct component-owned visual routes exist      | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product                         |
+| Visual regression           | A stable visual contract has material regression risk      | Detect unintended changes against a bounded accepted baseline                                                         |
+| Browser behavior            | The component changes or constrains browser-owned behavior | Focus, input, layout, overlay, scrolling, responsive, cancellation, or runtime lifecycle                              |
+| Pure behavior               | Extracted logic or lifecycle exists                        | Helpers, composables, state transitions, timing, cancellation, and cleanup                                            |
+| Consumer preservation       | Imports, wrappers, or product usage change                 | Preserve affected integration contracts                                                                               |
+| Independent two-stage audit | Every new or migrated family                               | Compare implementation with project documentation, then project documentation with Material 3 Expressive              |
+| Operator visual acceptance  | Visible output is created or intentionally changed         | Compare prepared evidence with named official sources                                                                 |
 
 A layer may be omitted because the component does not own that contract. Difficulty alone is not a reason to omit an owned contract.
 
