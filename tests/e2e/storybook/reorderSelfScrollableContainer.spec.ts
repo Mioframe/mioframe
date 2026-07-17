@@ -7,6 +7,10 @@ const CLIPPED_STORY_ID =
   'shared-lib-reorder-reorderselfscrollablestoryharness--clipped-by-ancestor';
 const ACTIVATION_STORY_ID = 'shared-lib-reorder-reorderactivationstoryharness--default';
 
+// Browser-reported scrollTop/scrollHeight/clientHeight are rounded layout values, so the inner
+// container's native scroll limit can be off by up to one CSS pixel from independent measurements.
+const SCROLL_LIMIT_TOLERANCE_PX = 1;
+
 const lifecycleSamplesSchema = z.array(
   z.object({
     inner: z.number(),
@@ -163,7 +167,7 @@ test.describe('self-scrollable reorder container', () => {
     const itemBox = await firstItem.boundingBox();
     if (!itemBox) throw new Error('missing first item bounding box');
     const pointerX = itemBox.x + itemBox.width / 2;
-    const innerLimit = await container.evaluate((el) => {
+    const innerLimit = await container.evaluate((el, scrollLimitTolerancePx) => {
       const outer = el.parentElement;
       if (!outer) throw new Error('missing scroll ancestor');
       const nativeLimit = el.scrollHeight - el.clientHeight;
@@ -183,7 +187,8 @@ test.describe('self-scrollable reorder container', () => {
           top: rect.top,
           bottom: rect.bottom,
         });
-        framesAtLimit = Math.abs(el.scrollTop - nativeLimit) <= 1 ? framesAtLimit + 1 : 0;
+        framesAtLimit =
+          Math.abs(el.scrollTop - nativeLimit) <= scrollLimitTolerancePx ? framesAtLimit + 1 : 0;
         frame += 1;
         if (frame < 300 && framesAtLimit < 12) {
           requestAnimationFrame(sample);
@@ -193,7 +198,7 @@ test.describe('self-scrollable reorder container', () => {
       };
       requestAnimationFrame(sample);
       return nativeLimit;
-    });
+    }, SCROLL_LIMIT_TOLERANCE_PX);
     await page.mouse.move(pointerX, itemBox.y + itemBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(pointerX, itemBox.y + itemBox.height / 2 + 8, { steps: 4 });
@@ -219,7 +224,11 @@ test.describe('self-scrollable reorder container', () => {
     const outerAtReveal = stableSamples[0]?.outer ?? 0;
     const bottomAtReveal = stableSamples[0]?.bottom ?? 0;
     expect(stableSamples.some((sample) => sample.inner > 1)).toBe(true);
-    expect(stableSamples.at(-1)?.inner).toBeCloseTo(innerLimit, 0);
+    const lastStableSample = stableSamples.at(-1);
+    if (!lastStableSample) throw new Error('missing last stable sample');
+    expect(Math.abs(lastStableSample.inner - innerLimit)).toBeLessThanOrEqual(
+      SCROLL_LIMIT_TOLERANCE_PX,
+    );
     for (const sample of stableSamples) {
       expect(sample.outer).toBe(outerAtReveal);
       expect(Math.abs(sample.bottom - bottomAtReveal)).toBeLessThanOrEqual(1);
@@ -228,11 +237,15 @@ test.describe('self-scrollable reorder container', () => {
     const holdSamples = samples.slice(-10);
     expect(holdSamples).toHaveLength(10);
     for (const sample of holdSamples) {
-      expect(sample.inner).toBeCloseTo(innerLimit, 0);
+      expect(Math.abs(sample.inner - innerLimit)).toBeLessThanOrEqual(SCROLL_LIMIT_TOLERANCE_PX);
       expect(sample.outer).toBe(outerAtReveal);
       expect(Math.abs(sample.bottom - bottomAtReveal)).toBeLessThanOrEqual(1);
       expect(Math.abs(sample.bottom - geometry.pointerY)).toBeLessThan(5);
     }
+    const holdInnerValues = holdSamples.map((sample) => sample.inner);
+    expect(Math.max(...holdInnerValues) - Math.min(...holdInnerValues)).toBeLessThanOrEqual(
+      SCROLL_LIMIT_TOLERANCE_PX,
+    );
 
     await page.mouse.up();
     const containerAtRelease = await container.evaluate((el) => el.scrollTop);
