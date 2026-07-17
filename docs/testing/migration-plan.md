@@ -8,10 +8,11 @@ The migration must preserve these decisions:
 
 - proof types and execution lanes remain separate;
 - every non-trivial change records `TEST IMPACT` before implementation;
-- `unit-tests` run directly changed tests plus Vitest related-test selection over static imports for existing source and local test-support modules;
-- deleted/renamed unit dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, and unknown unit impact use full-unit fallback;
+- `unit-tests` run directly changed tests, owning tests for changed snapshots, and Vitest related-test selection over static imports for existing source and local test-support modules;
+- unresolved snapshots, deleted/renamed unit dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, and unknown unit impact use full-unit fallback;
 - Storybook behavior, app E2E, and visual use separate small impact registries with shared mechanical schemas and validation;
 - every Playwright spec has a source mapping or a justified standalone entry;
+- changed visual baselines resolve to their owning visual specs or use full visual fallback;
 - matching Playwright mappings are unioned and deduplicated;
 - changed specs select themselves;
 - common lane config/helpers and unknown Playwright impact select the full owning lane;
@@ -51,21 +52,23 @@ These mismatches do not invalidate current CI gates until replacements are imple
 
 ## Phase 1: establish deterministic impact infrastructure
 
-### 1. Vitest related selection
+### 1. Vitest related and snapshot selection
 
 Implement `unit-tests` planning as:
 
 1. include directly changed test files;
-2. pass changed existing production and local test-support modules to Vitest related-test selection in run mode;
-3. union and deduplicate direct and related tests;
-4. run the full unit lane for deleted or renamed non-test modules, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, or an unrepresentable relation;
-5. keep empty scope only when no unit proof is required by changed paths and `TEST IMPACT` does not name explicit tests.
+2. resolve added, changed, or deleted Vitest snapshots to their owning tests through the configured snapshot convention;
+3. pass changed existing production and local test-support modules to Vitest related-test selection in run mode;
+4. union and deduplicate direct, snapshot-owned, and related tests;
+5. run the full unit lane for an unresolved snapshot, deleted or renamed non-test module, Vitest config/setup, global test utility, known dynamic-import boundary, generated alias, or an unrepresentable relation;
+6. keep empty scope only when no unit proof is required by changed paths and `TEST IMPACT` does not name explicit tests.
 
 Acceptance:
 
 - a changed source, local fixture, or `testUtils` module selects statically importing tests, not only a sibling;
 - a changed test always runs directly;
-- deleted/renamed dependencies cannot silently lose proof;
+- a changed snapshot runs its owning test;
+- unresolved snapshots and deleted/renamed dependencies cannot silently lose proof;
 - fallback categories are explicit and unit-tested;
 - dynamic-import and global setup changes cannot silently skip unit proof;
 - no custom dependency graph is introduced.
@@ -97,14 +100,18 @@ Use standalone only when no truthful stable source mapping exists, such as lane-
 
 Entry names, arrays, specs, and reasons are non-empty. Validation rejects missing specs, duplicate mapping names, duplicate paths within one entry, duplicate standalone specs, empty reasons, invalid paths, and uncovered discovered specs. Overlapping source prefixes and a spec referenced by multiple mappings are valid; planning unions and deduplicates all matches.
 
+Visual planning additionally resolves added, changed, or deleted baselines to their owning visual specs through the configured Playwright snapshot convention. An unresolved baseline selects the full visual lane.
+
 Acceptance:
 
 - a changed spec selects itself;
+- a changed visual baseline selects its owning visual spec;
 - a changed mapped source selects the union of registered specs;
 - every discovered spec has a mapping or justified standalone entry;
 - a new/moved/removed spec requires a matching mapping or standalone update;
 - overlapping valid mappings do not fail or duplicate execution;
 - standalone entries cannot hide known stable impact;
+- unresolved baselines cannot silently skip visual proof;
 - broken registry integrity fails before test execution;
 - the contracts contain no product semantics or cross-lane orchestration.
 
@@ -115,6 +122,7 @@ For each Playwright lane:
 - lane config, global setup, global fixture, or shared common helper selects the whole lane;
 - known helpers with explicit complete consumer lists may select only those consumers;
 - unknown production impact selects the complete potentially affected lane;
+- an unresolved visual baseline selects the complete visual lane;
 - an empty inferred scope does not override explicit `TEST IMPACT` paths.
 
 Acceptance:
@@ -226,8 +234,8 @@ Acceptance:
 Migration is complete when:
 
 - agents consistently produce `TEST IMPACT` before non-trivial edits;
-- unit selection uses direct tests plus Vitest static-import related selection with tested deletion/dynamic/global fallbacks;
-- all Playwright lanes use validated small mappings, justified standalone entries, union/deduplication, complete spec coverage, and safe full-lane fallback;
+- unit selection uses direct tests, snapshot ownership, and Vitest static-import related selection with tested snapshot/deletion/dynamic/global fallbacks;
+- all Playwright lanes use validated small mappings, justified standalone entries, union/deduplication, complete spec coverage, visual baseline ownership, and safe full-lane fallback;
 - visual specs prove appearance only;
 - reusable browser behavior and product scenarios have distinct ownership;
 - mobile execution is tag-driven and proportional;
