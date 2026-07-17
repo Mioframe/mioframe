@@ -8,14 +8,16 @@ The migration must preserve these decisions:
 
 - proof types and execution lanes remain separate;
 - every non-trivial change records `TEST IMPACT` before implementation;
-- `unit-tests` use direct changed tests plus Vitest related-test selection over static imports;
-- Vitest config/setup, global test utilities, known dynamic-import boundaries, and unknown unit impact use full-unit fallback;
+- `unit-tests` run directly changed tests plus Vitest related-test selection over static imports for existing source and local test-support modules;
+- deleted/renamed unit dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, and unknown unit impact use full-unit fallback;
 - Storybook behavior, app E2E, and visual use separate small impact registries with one shared schema and validator;
+- matching Playwright mappings are unioned and deduplicated;
 - changed specs select themselves;
 - common lane config/helpers and unknown Playwright impact select the full owning lane;
 - app E2E canonical project runs all selected scenarios;
 - mobile project runs only `@mobile` and `@critical` scenarios;
 - mutation is an explicit narrow audit selected in `TEST IMPACT`, not inferred from paths;
+- performance evidence remains task-specific until repeated work proves a stable automated lane is needed;
 - no generic dependency graph, production test annotations, test DSL, or cross-lane registry.
 
 ## Migration rules
@@ -53,15 +55,16 @@ These mismatches do not invalidate current CI gates until replacements are imple
 Implement `unit-tests` planning as:
 
 1. include directly changed test files;
-2. pass changed production files to Vitest related-test selection in run mode;
+2. pass changed existing production and local test-support modules to Vitest related-test selection in run mode;
 3. union and deduplicate direct and related tests;
-4. run the full unit lane when changed paths include Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, or an unrepresentable relation;
+4. run the full unit lane for deleted or renamed non-test modules, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, or an unrepresentable relation;
 5. keep empty scope only when no unit proof is required by changed paths and `TEST IMPACT` does not name explicit tests.
 
 Acceptance:
 
-- a changed source selects statically importing tests, not only its sibling;
+- a changed source, local fixture, or `testUtils` module selects statically importing tests, not only a sibling;
 - a changed test always runs directly;
+- deleted/renamed dependencies cannot silently lose proof;
 - fallback categories are explicit and unit-tested;
 - dynamic-import and global setup changes cannot silently skip unit proof;
 - no custom dependency graph is introduced.
@@ -84,13 +87,14 @@ Registry owners:
 - app E2E registry;
 - visual registry.
 
-Validator must reject missing specs, duplicate entry names, invalid paths, and conflicting duplicate source/spec records that would make planning ambiguous.
+Entry names and arrays are non-empty. The validator rejects missing specs, duplicate entry names, duplicate paths within one entry, and invalid paths. Overlapping source prefixes and a spec referenced by multiple entries are valid; planning unions and deduplicates all matches.
 
 Acceptance:
 
 - a changed spec selects itself;
-- a changed mapped source selects registered specs;
+- a changed mapped source selects the union of registered specs;
 - a new/moved/removed spec requires a matching registry update;
+- overlapping valid mappings do not fail or duplicate execution;
 - broken registry integrity fails before test execution;
 - the schema contains no product semantics or cross-lane abstraction.
 
@@ -212,8 +216,8 @@ Acceptance:
 Migration is complete when:
 
 - agents consistently produce `TEST IMPACT` before non-trivial edits;
-- unit selection uses direct tests plus Vitest static-import related selection with tested fallbacks;
-- all Playwright lanes use validated small impact registries and safe full-lane fallback;
+- unit selection uses direct tests plus Vitest static-import related selection with tested deletion/dynamic/global fallbacks;
+- all Playwright lanes use validated small impact registries, union/deduplication, and safe full-lane fallback;
 - visual specs prove appearance only;
 - reusable browser behavior and product scenarios have distinct ownership;
 - mobile execution is tag-driven and proportional;
