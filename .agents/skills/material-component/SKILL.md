@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use when the user provides only a Material component or family name and wants it created, implemented, migrated, or aligned. Resolve the official family, repository ownership, change mode, consumers, and minimum supported surface, then run material-component-authoring end to end.'
+description: 'Use when the user provides only a Material component or family name and wants it created, implemented, migrated, or aligned. Resolve the official family, repository ownership, change mode, consumers, current audit, and minimum supported surface, then run material-component-authoring end to end.'
 ---
 
 # Material component
@@ -35,7 +35,7 @@ Do not ask the user to predefine variants, API, scenarios, foundations, files, t
 Before implementation:
 
 1. normalize the supplied name against current official Material 3 Expressive terminology;
-2. inspect existing `MD*` implementations, public exports, direct consumers, the component registry, UI inventory, migration map, and roadmap;
+2. inspect existing `MD*` implementations, public exports, direct consumers, the latest `docs/material-3/audits/<family-slug>.md` when present, the component registry, UI inventory, migration map, and roadmap;
 3. resolve the official component surface and smallest cohesive owning family;
 4. identify current and canonical owners;
 5. identify current consumers and required compatibility;
@@ -51,6 +51,19 @@ Choose:
 An explicit component name selects the target for this run instead of automatic queue selection. Read the roadmap for real prerequisite blockers, but do not treat queue priority alone as a blocker.
 
 Accept common names, plural names, official names, and repository `MD*` names. Ask one precise question only when source and repository inspection still leave two materially different official targets unresolved.
+
+## Use the latest family audit
+
+When a family audit exists:
+
+- compare its recorded implementation ref and commit with the implementation under work;
+- treat confirmed findings as required investigation inputs, not unquestioned truth;
+- resolve each still-current finding through implementation, contract, proof, migration, or rule correction;
+- record why a finding is stale when newer official or implementation evidence invalidates it;
+- do not copy the audit into the family contract;
+- do not mark the audit current after code changes; a fresh `material-component-review` run owns the replacement audit.
+
+An absent audit is not a blocker for implementation.
 
 ## Resolve the supported surface
 
@@ -101,6 +114,8 @@ Change mode:
 Canonical owner:
 Supported surface:
 Unsupported surface:
+Audit consumed: none | docs/material-3/audits/<family-slug>.md
+Audit findings resolved or invalidated: none | <summary>
 Consumers migrated:
 Foundation changes:
 Rule refinements: none | <summary>
