@@ -42,32 +42,32 @@ Tests use deterministic setup and observable outcomes. Do not hide defects with 
 
 Proof types describe what is proved. They are architectural ownership, not command names.
 
-| Proof type                 | Owns                                                                                                                                                                        |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pure behavior              | Pure helpers, schemas, state transitions, domain/service/storage/CRDT behavior, validation, migration, normalization, filtering, sorting, matching, and transformations     |
-| Component contract         | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser child/foundation wiring |
-| Reusable browser behavior  | Isolated reusable UI focus, keyboard, pointer, touch, drag, layout, scrolling, overlays, responsive behavior, motion lifecycle, and browser APIs                            |
-| Product scenario           | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries     |
-| Visual appearance          | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices                                                                          |
-| Release behavior           | Production artifact bootstrap, routing, service-worker/channel isolation, and release-only invariants                                                                       |
-| Performance evidence       | Explicit performance, memory, startup, main-thread, or bundle-size requirements measured against a named budget or baseline                                                 |
-| Mutation audit             | Whether changed focused tests reject incorrect high-risk pure/domain/service/storage logic                                                                                  |
-| Operator visual acceptance | Whether intentional Material output matches named canonical Material evidence                                                                                               |
+| Proof type | Owns |
+| --- | --- |
+| Pure behavior | Pure helpers, schemas, state transitions, domain/service/storage/CRDT behavior, validation, migration, normalization, filtering, sorting, matching, and transformations |
+| Component contract | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser child/foundation wiring |
+| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer, touch, drag, layout, scrolling, overlays, responsive behavior, motion lifecycle, and browser APIs |
+| Product scenario | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries |
+| Visual appearance | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices |
+| Release behavior | Production artifact bootstrap, routing, service-worker/channel isolation, and release-only invariants |
+| Performance evidence | Explicit performance, memory, startup, main-thread, or bundle-size requirements measured against a named budget or baseline |
+| Mutation audit | Whether changed focused tests reject incorrect high-risk pure/domain/service/storage logic |
+| Operator visual acceptance | Whether intentional Material output matches named canonical Material evidence |
 
 ## Execution lanes
 
 Execution lanes describe how repository checks run.
 
-| Verify label or process   | Executes                                                                                           |
-| ------------------------- | -------------------------------------------------------------------------------------------------- |
-| `unit-tests`              | Pure behavior and component-contract tests through Vitest                                          |
-| `storybook-behavior`      | Reusable browser behavior through Playwright against isolated Storybook                            |
-| `e2e`                     | Product scenarios through application Playwright tests                                             |
-| `visual`                  | Screenshot regression through Playwright against canonical Storybook stories                       |
-| release verification      | Release behavior against the built production artifact                                             |
+| Verify label or process | Executes |
+| --- | --- |
+| `unit-tests` | Pure behavior and component-contract tests through Vitest |
+| `storybook-behavior` | Reusable browser behavior through Playwright against isolated Storybook |
+| `e2e` | Product scenarios through application Playwright tests |
+| `visual` | Screenshot regression through Playwright against canonical Storybook stories |
+| release verification | Release behavior against the built production artifact |
 | task-specific measurement | Existing benchmark/build check or reproducible measurement for an explicit performance requirement |
-| `mutation`                | Explicit narrow mutation audit after focused tests pass                                            |
-| operator review           | Manual Material comparison; never inferred as accepted by automation                               |
+| `mutation` | Explicit narrow mutation audit after focused tests pass |
+| operator review | Manual Material comparison; never inferred as accepted by automation |
 
 A proof type may be absent because the changed contract does not own it. It must not be omitted merely because the correct proof is difficult to implement.
 
@@ -118,21 +118,21 @@ Formatting, linting, and type-checking are mandatory static verification gates. 
 
 ## Required proof by change type
 
-| Change                                                                                  | Minimum expected proof                                                                                   |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Pure/domain/service/storage behavior                                                    | Pure behavior tests                                                                                      |
-| High-risk pure/domain/service/storage behavior with changed tests                       | Pure behavior tests, then explicit narrow mutation audit                                                 |
-| Public Vue API or semantic wiring                                                       | Component contract                                                                                       |
-| Reusable focus/keyboard/pointer/touch/scroll/layout/overlay/responsive/browser behavior | Reusable browser behavior                                                                                |
-| Complete product scenario or cross-boundary integration                                 | Product scenario                                                                                         |
-| Intentional visible contract change                                                     | Visual appearance; operator visual acceptance when Material applies                                      |
-| Shared foundation behavior                                                              | Foundation-owned proof plus narrow affected-consumer wiring                                              |
-| Public import, wrapper, or API migration                                                | Owning contract proof plus representative consumer preservation                                          |
-| Reproducible defect                                                                     | One initial focused regression at the owning proof type, followed by the minimum complete acceptance set |
-| Behavior-preserving refactor                                                            | Existing relevant proof; no mandatory new test                                                           |
-| Performance-sensitive change or optimization claim                                      | Performance evidence against a named metric and representative scenario                                  |
-| Verify/resolver/test infrastructure                                                     | Resolver unit tests and every affected command mode                                                      |
-| Release/bootstrap behavior                                                              | Release behavior                                                                                         |
+| Change | Minimum expected proof |
+| --- | --- |
+| Pure/domain/service/storage behavior | Pure behavior tests |
+| High-risk pure/domain/service/storage behavior with changed tests | Pure behavior tests, then explicit narrow mutation audit |
+| Public Vue API or semantic wiring | Component contract |
+| Reusable focus/keyboard/pointer/touch/scroll/layout/overlay/responsive/browser behavior | Reusable browser behavior |
+| Complete product scenario or cross-boundary integration | Product scenario |
+| Intentional visible contract change | Visual appearance; operator visual acceptance when Material applies |
+| Shared foundation behavior | Foundation-owned proof plus narrow affected-consumer wiring |
+| Public import, wrapper, or API migration | Owning contract proof plus representative consumer preservation |
+| Reproducible defect | One initial focused regression at the owning proof type, followed by the minimum complete acceptance set |
+| Behavior-preserving refactor | Existing relevant proof; no mandatory new test |
+| Performance-sensitive change or optimization claim | Performance evidence against a named metric and representative scenario |
+| Verify/resolver/test infrastructure | Resolver unit tests and every affected command mode |
+| Release/bootstrap behavior | Release behavior |
 
 ## Required TEST IMPACT artifact
 
@@ -153,7 +153,7 @@ Required proof:
 
 Impact resolution:
 - unit: related import graph | direct test | full-lane fallback
-- Playwright: existing mapping | mapping update | full-lane fallback
+- Playwright: existing mapping | mapping update | justified standalone | full-lane fallback
 
 Projects:
 - canonical | canonical + mobile (<risk>)
@@ -183,9 +183,7 @@ Related selection follows static imports and does not cover dynamic imports. Res
 
 ### Playwright: small lane-specific impact registries
 
-Maintain separate registries for `storybook-behavior`, `e2e`, and `visual`, using one small shared schema and validator. A mapping records only mechanical source-to-spec impact; it must not duplicate product architecture.
-
-A registry entry contains:
+Maintain separate registries for `storybook-behavior`, `e2e`, and `visual`, using shared mechanical schemas and validation. A mapping records only source-to-spec impact; it must not duplicate product architecture.
 
 ```ts
 interface TestImpactEntry {
@@ -193,18 +191,26 @@ interface TestImpactEntry {
   readonly sourcePrefixes: readonly string[];
   readonly specs: readonly string[];
 }
+
+interface StandaloneSpecEntry {
+  readonly spec: string;
+  readonly reason: string;
+}
 ```
 
-Entry names and arrays are non-empty. Rules:
+Use a standalone entry only when a spec has no truthful stable source mapping, such as lane-infrastructure smoke. Do not use it to avoid maintaining known impact.
+
+Entry names, arrays, specs, and reasons are non-empty. Rules:
 
 1. a changed spec selects itself;
 2. a changed mapped source selects the union of all matching registered specs;
-3. a new, moved, or removed Playwright spec updates its owning registry in the same change;
-4. a shared lane config, global fixture, or common helper selects the complete owning lane unless all consumers are explicit and validated;
-5. unknown production impact selects the complete potentially affected lane;
-6. missing specs, duplicate entry names, duplicate paths within one entry, invalid paths, or broken registry integrity fail closed;
-7. overlapping source prefixes and the same spec referenced by multiple entries are valid; planning unions and deduplicates their output;
-8. do not create a cross-lane dependency graph, production annotations, or a generic test DSL.
+3. every discovered spec is covered by a mapping or a justified standalone entry;
+4. a new, moved, or removed Playwright spec updates its owning mapping or standalone list in the same change;
+5. a shared lane config, global fixture, or common helper selects the complete owning lane unless all consumers are explicit and validated;
+6. unknown production impact selects the complete potentially affected lane;
+7. missing specs, duplicate mapping names, duplicate paths within one entry, duplicate standalone specs, empty reasons, invalid paths, or broken registry coverage fail closed;
+8. overlapping source prefixes and the same spec referenced by multiple mappings are valid; planning unions and deduplicates their output;
+9. do not create a cross-lane dependency graph, production annotations, or a generic test DSL.
 
 ### Desktop and mobile projects
 
@@ -258,7 +264,8 @@ Reject or revise proof when:
 8. mutation is broad, automatic, or unrelated to changed high-risk tests;
 9. desktop/mobile duplication has no platform-specific or critical-smoke reason;
 10. a performance or optimization claim has no representative metric and baseline/budget;
-11. a new framework, DSL, registry, validator, or abstraction has no repeated demonstrated need.
+11. a standalone spec has a known stable source mapping or no concrete reason;
+12. a new framework, DSL, registry, validator, or abstraction has no repeated demonstrated need.
 
 ## Existing-suite migration
 
