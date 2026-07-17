@@ -82,6 +82,8 @@ The review entrypoint resolves the component, official Material 3 Expressive sou
 
 The review is read-only by default. Current code, family documentation, registry status, tests, snapshots, and rendering are claims to verify rather than proof of Material correctness. Production fixes begin only through a separate `material-component` or `material-component-authoring` task.
 
+`compliant` requires all claimed and required non-visual contracts to pass, one canonical owner to remain, required evidence to exist, and any required operator visual acceptance to be durably recorded. Otherwise the result distinguishes technical compliance awaiting visual review, partial compliance, non-compliance, or blocked official evidence.
+
 ## Goals
 
 1. `src/shared/ui/material` is the canonical owner for new official Material implementation.
