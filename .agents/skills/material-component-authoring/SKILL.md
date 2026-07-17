@@ -44,6 +44,13 @@ Record one change mode:
 - `library-relocation-only`;
 - `alignment-only`.
 
+Resolve physical ownership before selecting the mode.
+
+- `src/shared/ui/material/components/<family>` is the canonical owner for an official public component family.
+- Any production implementation under an existing `src/shared/ui/<LegacyFamily>` directory remains a legacy owner even when it is the only implementation and already satisfies much of the Material contract.
+- When a legacy owner exists, use `end-to-end-migration` by default. Do not downgrade to `alignment-only` because the legacy file is mature, because a previous PR was scoped narrowly, or because a prior audit called it canonical.
+- Existing PR title, body, branch name, and historical task scope are context only. An explicit `material-component <family>` invocation requests the complete applicable migration. Expand the current PR or report one exact technical reason that a separate branch is required.
+
 Use `end-to-end-migration` by default for sequential legacy migration. Split work only when a wider foundation blast radius, public compatibility decision, reviewability, or a safer independently valid intermediate state justifies it.
 
 Do not mix unrelated families or broad shared cleanup.
@@ -66,7 +73,7 @@ When a current or stale audit exists:
 - record evidence when a finding is obsolete or invalidated by newer sources or implementation;
 - do not treat the audit as Material authority;
 - do not silently delete or rewrite the audit during implementation;
-- require a later `material-component-review` run to publish the new current compliance state.
+- require a final `material-component-review` run to publish the compliance state of the completed implementation commit.
 
 An absent audit does not block authoring.
 
@@ -87,7 +94,15 @@ Do not silently violate a rule, preserve it through a family-specific exception,
 
 ## 4. Complete the adaptive family contract
 
-Before production edits, create or update the family `README.md` using `component-architecture.md`.
+Before production edits, create or update:
+
+```text
+src/shared/ui/material/components/<family>/README.md
+```
+
+using `component-architecture.md`.
+
+A README beside the legacy implementation does not satisfy this gate for an end-to-end migration. The contract must name both the current legacy owner and final canonical owner until migration completes.
 
 Resolve the mandatory core:
 
@@ -108,7 +123,7 @@ Add conditional sections only when the family owns those concerns:
 - token and property routing;
 - configuration routes;
 - browser behavior;
-- visual evidence;
+- visual and motion evidence;
 - consumer migration;
 - foundation change.
 
@@ -126,18 +141,21 @@ For every applicable foundation domain:
 
 Use a focused foundation PR when its blast radius is materially wider than the family migration. Do not create a local substitute or parallel owner.
 
+A component-level invocation must not silently ignore a required foundation defect. Either fix the shared owner through `material-foundation`, split it with an exact blocker and dependency, or report the family blocked. A public token or motion contract that reaches an intermediate variable but does not affect final rendered behavior is a defect, not merely an evidence gap.
+
 ## 6. Plan the end-to-end passes
 
 Use a compact pass order without repeating the family contract:
 
 1. source-backed contract and directly affected records;
 2. required foundation work or accepted dependency wiring;
-3. production family and public export;
+3. canonical production family and public export;
 4. consumer migration;
-5. proportional contract, browser, pure, consumer, and visual proof;
+5. proportional contract, browser, pure, consumer, visual, and motion proof;
 6. obsolete-path removal;
-7. agent evidence review and operator visual package when required;
-8. queue and roadmap update.
+7. agent evidence review and fresh final compliance audit;
+8. operator visual package when required;
+9. queue and roadmap update.
 
 Run focused verification after risky passes. Reorder or split passes only when repository dependencies require it.
 
@@ -153,18 +171,23 @@ Run focused verification after risky passes. Reorder or split passes only when r
 - Use separate files only when they materially improve clarity or focused verification.
 - Create no empty layers, universal bases, runtime registries, generic resolvers, CSS DSLs, cross-family state machines, broad option bags, or speculative extension points.
 
+For official spring-driven motion, token names or endpoint geometry are not enough. The implementation must use the official spring model or a traceable Web adaptation whose derivation and observed trajectory are verified. An undocumented duration/easing approximation must not be described as Material-compliant spring motion.
+
 ## 8. Migrate consumers and ownership
 
 For an end-to-end migration:
 
-1. create the canonical family owner;
-2. migrate every affected in-repository consumer and public export;
-3. preserve accepted product behavior except for named deltas;
-4. remove obsolete files and legacy exports;
-5. allow a temporary compatibility path only when atomic migration is technically unsafe, with exact consumers, no new usage, and a removal target;
-6. update only documents and records whose owned facts changed.
+1. create the canonical family owner under `src/shared/ui/material/components/<family>`;
+2. create or update the canonical Material root export;
+3. migrate every affected in-repository consumer and public export;
+4. preserve accepted product behavior except for named deltas;
+5. remove obsolete component files and legacy exports;
+6. allow a temporary compatibility path only when atomic migration is technically unsafe, with exact consumers, no new usage, and a removal target;
+7. update only documents and records whose owned facts changed.
 
-Do not report a family migrated while an active obsolete owner or undocumented parallel path remains.
+A sibling legacy directory may remain for other official families, but it must no longer own or export the migrated component.
+
+Do not report a family migrated while an active obsolete owner, legacy public export, undocumented parallel path, or direct legacy consumer remains.
 
 ## 9. Build proportional proof
 
@@ -181,6 +204,14 @@ Add other layers only when applicable:
 
 Use real browser input to prove focus, keyboard, pointer, touch, overlay, motion, cancellation, and cleanup behavior. Forced state proves appearance only.
 
+For visible interactive motion:
+
+- run real acquisition and release input on the canonical story or product surface;
+- inspect at least resting, onset, one meaningful intermediate sample, release, and settled state;
+- verify actual property ownership, interruption, cancellation, and reduced-motion behavior;
+- for spring-driven motion, prove the real trajectory or traceable Web approximation rather than only final values, CSS declarations, or transition metadata;
+- fail the proof when the interaction visibly behaves incorrectly even if screenshots and endpoint assertions pass.
+
 Do not build a generic test DSL or family-specific forced-state system.
 
 ## 10. Review and visual handoff
@@ -189,17 +220,21 @@ Perform the source-backed agent review defined by `autonomous-review.md`.
 
 Confirm:
 
-- architecture and ownership;
+- architecture and physical ownership;
 - Material 3 Expressive contract;
 - native semantics and accessibility;
-- state, lifecycle, and browser behavior;
-- foundation dependencies;
+- state, lifecycle, browser behavior, and empirical interaction motion;
+- foundation dependencies and final rendered property routes;
 - proportional proof;
 - consumer migration and obsolete-path removal;
 - rule coherence;
 - every applicable audit finding is resolved or evidence-backed as stale.
 
-After all non-visual gates pass, prepare operator visual evidence when visible acceptance is required. The operator checks visible fidelity only.
+Do not accept existing tests as proof that they cover the right contract. Reproduce visible interactions yourself in a real browser. The operator must not be used to discover agent-owned motion, behavior, ownership, or token-routing defects.
+
+After implementation and final repository verification, run `material-component-review <family>` against the final implementation commit. If the fresh audit reports a still-current critical, high, or required non-visual defect, continue the implementation loop. If it reports unavailable required evidence, report blocked. Do not complete with an audit that points to an earlier commit.
+
+After all agent-owned gates pass, prepare operator visual evidence when visible acceptance is required. The operator checks final visible fidelity only.
 
 The agent reports operator acceptance as `required` or `blocked`, never `accepted`.
 
@@ -209,12 +244,14 @@ Before completion:
 
 - use `component-conversion-checklist.md`;
 - run existing applicable focused checks and final repository verification;
-- ensure code, contract, exports, consumers, applicable tests, stories, map, and directly affected records agree;
+- ensure code, canonical family contract, root export, consumers, applicable tests, stories, map, and directly affected records agree;
+- ensure the final family audit records the final implementation commit and contains empirical interaction evidence when applicable;
 - summarize audit findings resolved or invalidated;
-- state that any pre-existing audit is stale after implementation changes until `material-component-review` replaces it;
 - ensure required operator visual acceptance is recorded;
 - update the selected family to its terminal queue state.
 
-After completion, select the next highest-priority ready family without creating another architecture-planning milestone.
+`complete` is forbidden while the component remains physically owned by a legacy path, the final audit is stale, real interaction motion is unreviewed, a required final rendered route is broken, or obsolete ownership remains.
 
-Escalate only for a genuine product decision, materially unresolved official source, cross-project public-contract change, unsafe foundation blast radius, unresolved verification failure, or rejected operator visual evidence.
+After completion, select the next highest-priority ready family without starting another implementation cycle in the same PR.
+
+Escalate only for a genuine product decision, materially unresolved official source, cross-project public-contract change, unsafe foundation blast radius, unresolved verification failure, unavailable required empirical evidence, or rejected operator visual evidence.
