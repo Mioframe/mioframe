@@ -1,188 +1,223 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` defines the target and durable ownership model. This plan records known repository mismatches and the order in which to correct them. It is not permission to expand unrelated product work into test-suite cleanup.
+`docs/testing/architecture.md` defines the durable target. This plan applies that already-resolved architecture to the current repository. It must not be used to redesign test ownership or impact resolution during implementation.
+
+## Fixed target
+
+The migration must preserve these decisions:
+
+- proof types and execution lanes remain separate;
+- every non-trivial change records `TEST IMPACT` before implementation;
+- `unit-tests` use direct changed tests plus Vitest related-test selection over static imports;
+- Vitest config/setup, global test utilities, known dynamic-import boundaries, and unknown unit impact use full-unit fallback;
+- Storybook behavior, app E2E, and visual use separate small impact registries with one shared schema and validator;
+- changed specs select themselves;
+- common lane config/helpers and unknown Playwright impact select the full owning lane;
+- app E2E canonical project runs all selected scenarios;
+- mobile project runs only `@mobile` and `@critical` scenarios;
+- mutation is an explicit narrow audit selected in `TEST IMPACT`, not inferred from paths;
+- no generic dependency graph, production test annotations, test DSL, or cross-lane registry.
 
 ## Migration rules
 
-- Migrate incrementally in focused PRs.
-- Preserve required regression protection before removing or relocating a test.
-- Keep production behavior unchanged unless a migration exposes a real product defect that receives its own resolved scope.
-- Do not add generic dependency graphs, DSLs, validators, registries, or test abstractions without repeated demonstrated need.
-- Prefer deleting duplicate or invalid assertions over translating every assertion to another lane.
-- A broad conservative resolver fallback may remain temporarily, but known ownership should progressively receive explicit focused mapping.
-- Final `pnpm verify` remains mandatory throughout migration even when the current verifier executes broader legacy scope than the architecture requires.
+- Use focused PRs and preserve regression protection before removing or relocating tests.
+- Keep production behavior unchanged unless migration exposes a real defect that receives separate resolved scope.
+- Prefer deleting invalid or duplicate assertions over translating every assertion to another lane.
+- Keep broad fail-closed fallback until its focused replacement is implemented and tested.
+- Final `pnpm verify` remains mandatory throughout migration, even while it executes broader legacy scope.
+- Remove this plan when all completion criteria are satisfied; durable rules remain in `docs/testing/architecture.md`.
 
-## Current known mismatches
+## Current mismatches
 
-### Test ownership
+### Proof ownership
 
-- Some visual specs contain click, drag, focus, keyboard, geometry, state-layer, ripple, or other browser-behavior assertions.
-- Some visual specs reproduce large component token and geometry tables through computed-style assertions instead of relying on bounded canonical visual evidence.
-- Generic Material foundation behavior is repeated across multiple component-family browser tests instead of being owned once by foundation with narrow family wiring checks.
-- Some broad component tests reconstruct page or product behavior through many global stubs, creating pseudo-integration coverage that is less faithful than focused pure tests plus app e2e.
-- Some test helpers silently recover from missing expected state or use fallback actions that can hide product defects.
+- visual specs contain browser-behavior and computed token/geometry assertions;
+- generic Material foundation behavior is repeated across component families;
+- broad component tests reconstruct product behavior through global stubs;
+- some test helpers silently recover from missing expected state.
 
-### Verification selection
+### Impact execution
 
-- Default mutation selection currently infers applicability from changed source files and sibling tests rather than the explicit high-risk activation conditions.
-- Focused unit selection primarily resolves changed tests and colocated sibling tests; it does not always include affected tests owned by consumers or shared public contracts.
-- Visual selection currently treats broad shared UI and foundation areas as requiring the whole visual lane rather than focused canonical visual scenarios.
-- App e2e uses conservative full-suite fallback for broad shared, app, service, and unmapped source areas.
-- App e2e currently duplicates every selected scenario across desktop and mobile projects even when no platform-specific risk exists.
+- mutation applicability is inferred from changed files and sibling tests;
+- unit selection is mainly changed tests plus colocated siblings rather than static import impact;
+- visual selection treats broad shared UI/foundation paths as full-lane changes;
+- app E2E uses broad full-suite fallback for many known source areas;
+- every selected app E2E scenario is duplicated across desktop and mobile.
 
-These mismatches describe migration work; they do not invalidate current required CI gates before their replacements are implemented and verified.
+These mismatches do not invalidate current CI gates until replacements are implemented and verified.
 
-## Phase 1: correct invalid ownership and hidden failures
+## Phase 1: establish deterministic impact infrastructure
 
-Goal: stop tests from proving contracts in the wrong lane or hiding defects.
+### 1. Vitest related selection
 
-### 1. Reclassify behavior from visual specs
+Implement `unit-tests` planning as:
 
-- Identify behavior assertions under `tests/e2e/visual/`.
-- Preserve only bounded screenshot preparation and capture in visual specs.
-- Move reusable component behavior to focused `tests/e2e/storybook/` specs.
-- Move complete product scenarios to app e2e only when product composition is the actual owner.
-- Delete duplicate behavior assertions already owned elsewhere.
+1. include directly changed test files;
+2. pass changed production files to Vitest related-test selection in run mode;
+3. union and deduplicate direct and related tests;
+4. run the full unit lane when changed paths include Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, or an unrepresentable relation;
+5. keep empty scope only when no unit proof is required by changed paths and `TEST IMPACT` does not name explicit tests.
 
 Acceptance:
 
-- visual specs contain no behavioral success criteria;
-- screenshots remain deterministic and preserve material visual regressions;
-- relocated behavior uses real public browser input.
+- a changed source selects statically importing tests, not only its sibling;
+- a changed test always runs directly;
+- fallback categories are explicit and unit-tested;
+- dynamic-import and global setup changes cannot silently skip unit proof;
+- no custom dependency graph is introduced.
 
-### 2. Make action helpers strict
+### 2. Shared Playwright impact schema
 
-- Separate strict action/assertion helpers from optional cleanup helpers.
-- Remove silent returns, repeated fallback delivery, and fixed-delay recovery that can turn a product failure into a passing test.
-- Make required preconditions and outcomes fail with clear diagnostics.
+Create one small reusable schema/validator used by three independent registries:
 
-Acceptance:
+```ts
+interface TestImpactEntry {
+  readonly name: string;
+  readonly sourcePrefixes: readonly string[];
+  readonly specs: readonly string[];
+}
+```
 
-- a required action cannot silently become a no-op;
-- cleanup helpers are clearly named and never used as behavioral evidence;
-- existing product defects are reported rather than masked.
+Registry owners:
 
-### 3. Align mutation execution with explicit applicability
+- Storybook browser behavior registry;
+- app E2E registry;
+- visual registry.
 
-- Stop default changed-file inference from treating every source file with sibling tests as mutation-applicable.
-- Keep `pnpm verify --only mutation --files ...` as the supported narrow audit.
-- Preserve any explicitly documented high-risk merge gate only when its scope and ownership are stable.
-- Add resolver tests proving that ordinary UI, refactor, documentation, and low-risk source changes do not schedule mutation.
-
-Acceptance:
-
-- mutation is required only after the skill activation check passes;
-- explicit narrow mutation remains available and fail-closed;
-- final development verification does not spend mutation time on unrelated ordinary changes.
-
-## Phase 2: make impact selection proportional
-
-Goal: retain fail-closed safety while reducing permanently broad execution.
-
-### 4. Add focused visual impact mapping
-
-- Map canonical stories, visual specs, foundation surfaces, and stable shared consumers where ownership is known.
-- Run the full visual lane only for visual infrastructure or genuinely unknown broad impact.
-- Do not build a generic dependency graph; use a small readable registry only if current mappings demonstrate stable value.
+Validator must reject missing specs, duplicate entry names, invalid paths, and conflicting duplicate source/spec records that would make planning ambiguous.
 
 Acceptance:
 
-- a local component visual change selects its canonical visual proof;
-- foundation changes select affected canonical families or the full lane only when blast radius is genuinely broad;
-- registry integrity fails closed.
+- a changed spec selects itself;
+- a changed mapped source selects registered specs;
+- a new/moved/removed spec requires a matching registry update;
+- broken registry integrity fails before test execution;
+- the schema contains no product semantics or cross-lane abstraction.
 
-### 5. Improve focused unit impact without a generic dependency graph
+### 3. Full-lane fallback rules
 
-Start with the simplest safe policy:
+For each Playwright lane:
 
-- changed tests and colocated siblings remain selected;
-- changes to known shared public contracts or test utilities select explicit affected suites;
-- broad full-unit fallback is used only where impact cannot be represented safely;
-- add mappings only from observed real dependencies.
-
-Acceptance:
-
-- shared contract changes do not silently miss known consumers;
-- local implementation changes remain focused;
-- selection logic stays readable and testable.
-
-### 6. Narrow app e2e fallback by ownership
-
-- Keep full app e2e for bootstrap, cross-cutting service/worker protocols, e2e infrastructure, and genuinely unknown impact.
-- Add scenario mappings for known shared UI, feature, entity, page, service-client, and helper ownership as changes occur.
-- Resolve support helpers to known consumer specs when the relation is explicit.
+- lane config, global setup, global fixture, or shared common helper selects the whole lane;
+- known helpers with explicit complete consumer lists may select only those consumers;
+- unknown production impact selects the complete potentially affected lane;
+- an empty inferred scope does not override explicit `TEST IMPACT` paths.
 
 Acceptance:
 
-- mapped source changes run representative owning scenarios;
-- unknown source impact still fails closed to a safe broad run;
-- the registry does not become a second architecture model.
+- no known shared helper silently misses a consumer;
+- unknown impact remains safe;
+- broad fallback is not used for already-mapped local changes.
 
-### 7. Introduce proportional desktop/mobile projects
+## Phase 2: correct lane ownership
 
-- Define a small critical smoke set that runs on both desktop and mobile.
-- Run both projects for touch, viewport, responsive, overlay, mobile-browser, and capability-specific risks.
-- Run platform-independent product scenarios on one canonical project.
-- Keep responsive reusable UI checks in focused Storybook tests with explicit viewports.
+### 4. Remove behavior from visual specs
 
-Acceptance:
-
-- mobile-specific regressions retain direct coverage;
-- platform-independent scenarios are not duplicated without reason;
-- project selection is explicit and testable.
-
-## Phase 3: reduce duplicated and pseudo-integration coverage
-
-Goal: simplify the suite after ownership and selection are reliable.
-
-### 8. Consolidate foundation behavior
-
-- Identify generic focus, state-layer, ripple, elevation, motion, and transient-state behavior repeated across component families.
-- Keep complete behavior and visual precedence at the foundation owner.
-- Retain only family-specific wiring, anatomy, extension, deviation, and unique outcome checks.
+- keep only deterministic story preparation and bounded screenshots under `tests/e2e/visual/`;
+- move reusable browser behavior to `tests/e2e/storybook/`;
+- move complete product scenarios to app E2E only when product composition is the owner;
+- delete duplicate behavior already proved elsewhere;
+- update all affected impact registries.
 
 Acceptance:
 
-- foundation defects still fail focused tests;
-- component families no longer repeat identical generic behavior matrices;
-- Material canonical visual evidence remains complete.
+- visual specs contain no behavior success criteria or token-table matrices;
+- relocated tests use real public browser input;
+- visual baselines retain meaningful regression protection.
 
-### 9. Decompose large mocked component tests
+### 5. Make action helpers strict
 
-For each touched pseudo-integration suite:
-
-- identify pure decisions and their real owner;
-- keep narrow component contracts only where public Vue wiring matters;
-- preserve complete product outcomes in existing or focused app e2e;
-- delete broad stubs and assertions that duplicate those owners.
+- split required action/assertion helpers from optional cleanup helpers;
+- remove silent returns, repeated fallback delivery, and fixed-delay recovery;
+- make missing preconditions and outcomes fail with clear diagnostics;
+- register shared helper consumers or use full owning-lane fallback.
 
 Acceptance:
 
-- tests become smaller and failures identify a contract;
-- fewer global stubs are required;
-- no user scenario loses meaningful regression protection.
+- required actions cannot become silent no-ops;
+- cleanup is never used as behavior evidence;
+- product defects are exposed rather than masked.
 
-### 10. Remove redundant resolver and infrastructure assertions
+### 6. Align mutation execution
 
-- Keep tests that prove resolver behavior, fail-closed integrity, and command planning.
-- Remove manually enumerated assertions already guaranteed by a dynamic registry validation test.
-- Avoid asserting implementation structure of the resolver when output planning is the contract.
+- remove default mutation applicability based on path or sibling-test existence;
+- retain explicit `pnpm verify --only mutation --files ...`;
+- schedule mutation only when `TEST IMPACT` and the mutation skill activation both apply;
+- remove the unconditional ordinary-development mutation step after default planning no longer relies on it;
+- preserve any named high-risk merge policy only with an explicit narrow scope.
 
 Acceptance:
 
-- broken registries and unsafe skips still fail;
-- infrastructure tests do not duplicate the same inventory contract.
+- UI, refactor, documentation, and ordinary low-risk changes do not schedule mutation;
+- explicit narrow mutation remains fail-closed;
+- final development verification does not spend mutation time on unrelated changes.
+
+## Phase 3: proportional project and consumer selection
+
+### 7. App E2E mobile tags
+
+- keep one canonical project for all selected scenarios;
+- tag real mobile-risk scenarios `@mobile`;
+- tag only the small essential cross-platform smoke set `@critical`;
+- configure the mobile project with project-level filtering for those tags;
+- keep reusable responsive behavior in Storybook with explicit viewports.
+
+Acceptance:
+
+- platform-independent scenarios run once;
+- mobile-specific and critical smoke coverage remains direct;
+- every mobile duplication has a visible tag and reason.
+
+### 8. Replace broad known-path fallback
+
+As real changes occur, add stable source-to-spec mappings for known shared UI, feature, entity, page, service-client, foundation, and helper ownership.
+
+Keep full app E2E for bootstrap, cross-cutting worker/service protocols, E2E infrastructure, and genuinely unknown impact.
+
+Acceptance:
+
+- mapped local source changes run representative owning scenarios;
+- unknown impact remains fail-closed;
+- registries remain small mechanical maps rather than a second architecture model.
+
+### 9. Consolidate foundation proof
+
+- move complete generic focus, state-layer, ripple, elevation, motion, and transient-state proof to foundation owners;
+- retain family-specific routing, anatomy, deviations, and unique outcomes;
+- update visual and Storybook impact mappings for foundation consumers.
+
+Acceptance:
+
+- foundation defects still fail focused proof;
+- component families no longer duplicate identical generic matrices;
+- canonical Material evidence remains complete.
+
+### 10. Decompose pseudo-integration unit suites
+
+For each touched broad mocked suite:
+
+- move deterministic decisions to `unit-testing` at the real owner;
+- retain narrow Vue public wiring in component contract tests;
+- retain complete product outcome in app E2E when needed;
+- delete broad stubs and duplicate assertions.
+
+Acceptance:
+
+- failures identify a contract;
+- global stubs decrease;
+- no user scenario loses meaningful protection.
 
 ## Completion criteria
 
 Migration is complete when:
 
-- each existing test lane follows `docs/testing/architecture.md`;
+- agents consistently produce `TEST IMPACT` before non-trivial edits;
+- unit selection uses direct tests plus Vitest static-import related selection with tested fallbacks;
+- all Playwright lanes use validated small impact registries and safe full-lane fallback;
 - visual specs prove appearance only;
-- reusable browser behavior and product e2e have distinct ownership;
-- mutation is an explicit narrow high-risk audit;
-- focused selection is safe and proportionate;
-- desktop/mobile duplication maps to real platform risk;
+- reusable browser behavior and product scenarios have distinct ownership;
+- mobile execution is tag-driven and proportional;
+- mutation is explicit and narrow;
 - foundation behavior is not repeated by every consumer;
-- broad mocked pseudo-integration suites no longer substitute for faithful owners;
-- full release verification and focused development verification remain green and diagnostically useful.
+- broad mocked pseudo-integration suites no longer substitute for faithful proof;
+- focused development and full release verification remain green and diagnostically useful.
