@@ -64,8 +64,8 @@ m3.material.io/components/buttons
 - `library-roadmap.md` owns the active milestone and next action.
 - `ui-library-inventory.md` owns classification, priority, and queue state.
 - `source-of-truth.md` owns official source hierarchy.
-- The family `README.md` beside implementation owns current implementation state.
-- The family `AUDIT.md` beside implementation owns the latest independent review.
+- The family `README.md` beside implementation owns current project implementation documentation.
+- The family `AUDIT.md` beside implementation owns the latest independent two-stage review.
 - Registries are program summaries and must not override more specific family documentation.
 
 ## Family documentation
@@ -90,7 +90,12 @@ src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
 
 The implementing workflow updates `README.md` and never edits `AUDIT.md`.
 
-`AUDIT.md` is created or replaced only by `material-component-review`. It checks both implementation and README claims. It contains no source-control or repository-hosting metadata.
+`AUDIT.md` is created or replaced only by `material-component-review`. It performs two comparisons in order:
+
+1. actual implementation against project documentation;
+2. project documentation against canonical Material 3 Expressive.
+
+This makes implementation defects and project-documentation defects visible separately. Project documentation is the intended Mioframe contract, but it is not treated as Material authority. The audit contains no source-control or repository-hosting metadata.
 
 ## Entrypoints
 
@@ -108,7 +113,7 @@ The workflow resolves the official documentation family, uses its official slug,
 material-component-review <component-or-family-name>
 ```
 
-The review changes only the colocated `AUDIT.md` and reports `compliant`, `partially-compliant`, `non-compliant`, or `blocked`.
+The review changes only the colocated `AUDIT.md`, reports both comparison stages, and returns `compliant`, `partially-compliant`, `non-compliant`, or `blocked`.
 
 ### Continue the program
 
@@ -130,8 +135,8 @@ Reads roadmap, inventory, registries, and colocated family documentation without
 
 ```text
 discovery → family README → required shared work → implementation →
-consumer migration → proportional proof → local verification → family audit →
-operator visual review when required → queue update
+consumer migration → proportional proof → local verification →
+two-stage family audit → operator visual review when required → queue update
 ```
 
 ## Required behavior
