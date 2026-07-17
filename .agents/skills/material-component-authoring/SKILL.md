@@ -28,6 +28,7 @@ Use:
 - `component-contract-testing`, `ui-browser-behavior`, and `visual-regression-testing` only for applicable proof layers;
 - `verification` for focused and final repository checks;
 - `docs/material-3/autonomous-review.md` for agent review and operator visual handoff;
+- `docs/material-3/audits/README.md` and the current family audit when one exists;
 - `library-roadmap.md` and `ui-library-inventory.md` for active work and queue state.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
@@ -47,15 +48,27 @@ Use `end-to-end-migration` by default for sequential legacy migration. Split wor
 
 Do not mix unrelated families or broad shared cleanup.
 
-## 2. Resolve sources and supported scope
+## 2. Resolve sources, audit findings, and supported scope
 
-1. Inspect the current family, public exports, direct consumers, stories, tests, and known defects.
-2. Start from named scenarios and affected consumers.
-3. Resolve the current official Material 3 Expressive contract.
-4. Use the official Design Kit only for applicable visual decisions unresolved by published guidance.
-5. Define the minimum complete supported surface.
-6. Record unused official capability as unsupported.
-7. Add no Mioframe extension without an explicit requirement and owner.
+1. Inspect the current family, public exports, direct consumers, stories, tests, known defects, and `docs/material-3/audits/<family-slug>.md` when present.
+2. Compare any audit metadata with the implementation ref and commit under work.
+3. Start from named scenarios and affected consumers.
+4. Resolve the current official Material 3 Expressive contract.
+5. Use the official Design Kit only for applicable visual decisions unresolved by published guidance.
+6. Define the minimum complete supported surface.
+7. Record unused official capability as unsupported.
+8. Add no Mioframe extension without an explicit requirement and owner.
+
+When a current or stale audit exists:
+
+- investigate every confirmed finding;
+- resolve findings that remain valid;
+- record evidence when a finding is obsolete or invalidated by newer sources or implementation;
+- do not treat the audit as Material authority;
+- do not silently delete or rewrite the audit during implementation;
+- require a later `material-component-review` run to publish the new current compliance state.
+
+An absent audit does not block authoring.
 
 Stop only when a genuine product, source, ownership, compatibility, or required foundation decision remains unresolved.
 
@@ -183,7 +196,8 @@ Confirm:
 - foundation dependencies;
 - proportional proof;
 - consumer migration and obsolete-path removal;
-- rule coherence.
+- rule coherence;
+- every applicable audit finding is resolved or evidence-backed as stale.
 
 After all non-visual gates pass, prepare operator visual evidence when visible acceptance is required. The operator checks visible fidelity only.
 
@@ -196,6 +210,8 @@ Before completion:
 - use `component-conversion-checklist.md`;
 - run existing applicable focused checks and final repository verification;
 - ensure code, contract, exports, consumers, applicable tests, stories, map, and directly affected records agree;
+- summarize audit findings resolved or invalidated;
+- state that any pre-existing audit is stale after implementation changes until `material-component-review` replaces it;
 - ensure required operator visual acceptance is recorded;
 - update the selected family to its terminal queue state.
 
