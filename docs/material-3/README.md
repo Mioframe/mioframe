@@ -50,6 +50,7 @@ This directory defines Mioframe's contract for building and migrating the Materi
 - `source-of-truth.md` owns source hierarchy and the current Expressive target.
 - `autonomous-review.md` owns agent/operator review-role separation.
 - `material-component` owns one-name invocation, official target resolution, and automatic change-mode selection.
+- `material-component-review` owns one-name review-only orchestration and the evidence-backed compliance-report format.
 - `material-component-authoring` owns the canonical execution order after the family is resolved.
 - `material-foundation` owns execution order for cross-family foundation changes.
 - The family `README.md` owns the accepted contract for one family.
@@ -69,6 +70,18 @@ The component name is sufficient input. The entrypoint resolves the official Mat
 
 Existing consumers define required scenarios. When no consumer exists, implement the current canonical Expressive default and record optional official capabilities as unsupported. Ask the user only when a genuine product decision or materially unresolved official ambiguity remains.
 
+## One-name compliance review
+
+A user may audit an existing implementation with only:
+
+```text
+material-component-review <component-or-family-name>
+```
+
+The review entrypoint resolves the component, official Material 3 Expressive sources, claimed supported surface, current owners, consumers, stories, tests, and visual evidence. It reports a clear compliance result plus confirmed source-backed findings, evidence gaps, rule defects, verified areas, and the recommended next action.
+
+The review is read-only by default. Current code, family documentation, registry status, tests, snapshots, and rendering are claims to verify rather than proof of Material correctness. Production fixes begin only through a separate `material-component` or `material-component-authoring` task.
+
 ## Goals
 
 1. `src/shared/ui/material` is the canonical owner for new official Material implementation.
@@ -84,6 +97,7 @@ Existing consumers define required scenarios. When no consumer exists, implement
 11. Rules and automation improve from repeated real migration evidence.
 12. Existing migrations remove obsolete owners instead of accumulating compatibility layers.
 13. A component name alone can start a complete source-backed implementation or migration without a separate architecture task.
+14. A component name alone can start an independent source-backed compliance review without changing production code.
 
 ## Scope
 
