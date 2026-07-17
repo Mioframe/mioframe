@@ -1,62 +1,46 @@
 ---
 name: test-first
-description: 'Use when observable behavior, a reproducible defect, migration, persistence semantics, or a data transformation changes and one focused regression test can fail against the current implementation at the existing owning test layer before the fix.'
+description: 'Use when observable behavior, a reproducible defect, migration, persistence semantics, or a data transformation changes and one focused check can fail against the current implementation before the fix.'
 ---
 
 # Test-first workflow
 
-Follow `docs/testing/architecture.md`. This skill decides whether a changed behavior needs a new focused regression test and runs the narrow red/green workflow. It does not create a new test layer or broaden coverage by default.
+Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT` or create a new execution lane.
 
-## Do not use this skill
+## Activation
 
-Skip test-first for:
+Use only when all conditions are true:
 
-- behavior-preserving refactors;
-- type-only edits, formatting, comments, renames, or documentation;
-- internal cleanup with no observable contract change;
-- intentional appearance-only contract changes where a meaningful failing pre-implementation check does not exist;
-- changes for which the only possible test would be broad, speculative, duplicative, or less faithful than an existing owner.
+1. observable behavior, a public contract, persistence/migration semantics, a transformation, or a reproducible defect changes;
+2. `docs/testing/architecture.md` defines a faithful proof type for the expected result;
+3. an existing focused test target can be updated, or a new focused target can be created without broad infrastructure;
+4. the check can fail against the current implementation for the expected behavioral reason before production edits.
 
-Normal relevant coverage and final verification still apply. Appearance changes still follow `visual-regression-testing`; skipping test-first does not skip visual proof.
+Skip for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, and appearance-only changes without a meaningful pre-implementation failure.
 
-## Activation check
-
-Use test-first only when all conditions are true:
-
-1. Observable behavior, a public contract, persistence or migration semantics, a transformation, or a reproducible defect changes.
-2. The expected result has an existing faithful owner under `docs/testing/architecture.md`.
-3. One focused regression test or browser smoke check can be added without expanding the task into unrelated coverage or infrastructure.
-4. The check can fail against the current implementation for the expected behavioral reason before production edits.
-
-If any condition is false, skip test-first and state any material unverified risk.
+Skipping test-first does not skip required proof from `TEST IMPACT` or final verification.
 
 ## Workflow
 
-1. Name the changed contract and its owning layer.
-2. Build the smallest acceptance matrix needed for this task. Include only applicable success, boundary, failure, cancellation, stale-result, invalid-input, or data-safety cases.
-3. Select the highest-risk applicable case.
-4. Add or update one focused test at the owning layer before production edits.
-5. Run the narrow verify-managed target and confirm it fails for the expected reason.
-6. If a faithful failing check cannot be produced quickly, stop expanding coverage. Record the limitation rather than creating a brittle substitute.
-7. Implement the minimum production change.
-8. Rerun the same target and confirm it passes.
-9. Run any additional owner-specific proof required by `docs/testing/architecture.md` and applicable skills.
-10. Run final read-only `pnpm verify` before reporting completion.
+1. Name the changed contract and proof type.
+2. Select the highest-risk applicable acceptance case.
+3. Add or update one focused test before production edits.
+4. Run the owning verify-managed lane and confirm the expected failure.
+5. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
+6. Implement the minimum production change.
+7. Rerun the same target and confirm it passes.
+8. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
+9. Run final read-only `pnpm verify`.
 
-## Choosing the owner
+## Proof routing
 
-- Pure, domain, service, storage, CRDT, validation, migration, or transformation behavior: focused unit test.
-- Vue public API and non-browser wiring: component contract test.
-- Reusable UI focus, keyboard, pointer, touch, layout, scrolling, overlay, responsive, motion, or browser API behavior: Storybook browser test.
-- Complete product scenario crossing page, feature, service, persistence, or navigation boundaries: app e2e.
-
-Appearance is verified by the visual lane after implementation or when reviewing an existing regression; it is not automatically a red/green test-first target.
-
-Use the relevant owning skill for detailed rules.
+- Pure/domain/service/storage/CRDT/validation/migration/transformation: `unit-testing`.
+- Vue public API and non-browser wiring: `component-contract-testing`.
+- Reusable UI focus/keyboard/pointer/touch/layout/scroll/overlay/responsive/browser behavior: `ui-browser-behavior` with Storybook.
+- Complete cross-boundary product scenario: `ui-browser-behavior` with app E2E.
+- Appearance: `visual-regression-testing`; normally not a red/green target.
 
 ## Commands
-
-Use the repository verification entry point:
 
 ```bash
 pnpm verify --only unit-tests --files <paths...>
@@ -64,16 +48,14 @@ pnpm verify --only storybook-behavior --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
 
-A reproducible manual browser smoke check is acceptable only when no suitable existing automated target exists and adding one would broaden the task. Report it as manual evidence, not as an automated gate.
+Raw Vitest or Playwright commands are diagnostic exceptions, not completion gates.
 
-Raw Vitest or Playwright commands are diagnostic exceptions, not substitutes for verify-managed checks.
-
-## Limits
+## Forbidden
 
 - Do not add a test merely because a production file changed.
-- Do not broaden coverage beyond the changed contract.
-- Do not keep a test that protects implementation details rather than behavior.
-- Do not duplicate an existing owner at another layer.
-- Do not create a new test framework, DSL, fixture system, registry, or helper for one case.
-- Do not force a ceremonial red phase when the current implementation cannot meaningfully fail the proposed check.
-- Do not skip required final verification.
+- Do not force a ceremonial red phase.
+- Do not use a less faithful proof type because it is easier.
+- Do not broaden coverage beyond the changed contract and confirmed risk.
+- Do not duplicate an existing owner at another proof type.
+- Do not create a framework, DSL, fixture system, registry, or helper for one case.
+- Do not stop after one passing red/green test when the accepted contract requires additional cases.
