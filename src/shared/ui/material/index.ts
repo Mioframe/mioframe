@@ -1,1 +1,1 @@
-export { MDButton } from './components/button';
+export { MDButton } from './components/buttons';
