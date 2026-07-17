@@ -15,6 +15,8 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 
 A component name is sufficient input for `material-component` and `material-component-review`. Do not require the user to predefine variants, API, foundations, files, tests, consumers, or expected defects. Resolve them from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
 
+A completed `material-component-review` run creates or replaces `docs/material-3/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
+
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
 ## Canonical target
@@ -105,8 +107,9 @@ Escalate only for a genuine product decision, materially unresolved official sou
 
 - Use existing repository checks and focused tests.
 - Add automation only after real migrations prove a stable repeated and precisely detectable need.
-- `material-component-review` treats code, family docs, tests, stories, snapshots, and registry status as claims to verify against official sources, not as proof by themselves.
-- A review-only run reports confirmed defects and evidence gaps without modifying production code or rules.
+- `material-component-review` treats code, family docs, tests, stories, snapshots, prior audits, and registry status as claims to verify against official sources, not as proof by themselves.
+- A review-only run writes the durable family audit and reports confirmed defects and evidence gaps without modifying production implementation or policies.
+- `material-component` and `material-component-authoring` inspect the current family audit when one exists and resolve or invalidate its findings using current evidence.
 - The coding agent owns source-backed architecture, Material, accessibility, behavior, migration, rule, and proof review.
 - The operator owns final comparison of prepared visible evidence when required.
 - The agent never reports operator acceptance as accepted.
