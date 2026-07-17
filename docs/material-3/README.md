@@ -50,6 +50,8 @@ This directory defines Mioframe's contract for building and migrating the Materi
 - `ui-library-inventory.md` owns classification, priority, queue state, and terminal outcome.
 - `source-of-truth.md` owns source hierarchy and the current Expressive target.
 - `autonomous-review.md` owns agent/operator review-role separation.
+- `material-library-status` owns read-only program-state reconciliation and status-report format.
+- `material-library-next` owns automatic selection of exactly one next family and startup of its component workflow.
 - `material-component` owns one-name invocation, official target resolution, and automatic change-mode selection.
 - `material-component-review` owns one-name review orchestration, compliance evaluation, and creation of the durable family audit.
 - `material-component-authoring` owns the canonical execution order after the family is resolved.
@@ -58,7 +60,31 @@ This directory defines Mioframe's contract for building and migrating the Materi
 - `audits/<family-slug>.md` owns the latest completed source-backed compliance evaluation for one family.
 - Validation policy defines when automation is justified; actual tooling owns only checks that exist.
 
-An audit does not override the family contract, registry, inventory, or roadmap. When a real migration exposes an inaccurate rule, correct the owning source rather than adding an exception or duplicating a replacement.
+Status and selection entrypoints do not become new fact owners. They must read roadmap, inventory, registries, migration map, family contracts, audits, and verification state according to the ownership above. An audit does not override the family contract, registry, inventory, or roadmap. When a real migration exposes an inaccurate rule, correct the owning source rather than adding an exception or duplicating a replacement.
+
+## Library status entry point
+
+A user may inspect the program without changing it:
+
+```text
+material-library-status
+```
+
+The status workflow reports the active milestone or prerequisite, single next action, blocker, latest completed family, executable and blocked candidates, audit freshness, pending visual acceptance, relevant foundation gaps, verification state, record inconsistencies, inventory completeness, and one recommended command.
+
+It is strictly read-only. It does not repair stale records, update audits, reorder the queue, implement components, or infer a complete backlog from a partially populated inventory.
+
+## Next-family entry point
+
+A user may continue the program without naming a component:
+
+```text
+material-library-next
+```
+
+The workflow selects exactly one family. During the pilots it follows the active roadmap milestone and its single `Next action`. After the pilots it selects one unblocked `queued` official-component row with satisfied dependencies, preferring accepted `P0` over `P1` evidence.
+
+One invocation completes at most one cohesive family. It records the next candidate after completion but does not start a second family in the same task or PR.
 
 ## One-name component entry point
 
@@ -111,6 +137,7 @@ The review is read-only for implementation and policy. Its only required reposit
 13. A component name alone can start a complete source-backed implementation or migration without a separate architecture task.
 14. A component name alone can start an independent source-backed compliance review without changing production implementation.
 15. Every completed compliance review leaves one durable, current, source-backed audit file for the resolved family.
+16. The program can report its current state without mutation and can select one next family without manual component choice.
 
 ## Scope
 
@@ -129,14 +156,14 @@ The current operational sequence is:
 1. operating model complete;
 2. `MDButton` end-to-end pilot;
 3. independent stateful pilot, normally `MDSwitch`;
-4. autonomous sequential migration of the highest-priority ready family.
+4. autonomous sequential migration of the highest-priority executable family.
 
 Each family follows:
 
 ```text
 discovery → accepted contract → rule refinement → required foundation work →
 implementation → consumer migration → proportional proof → agent review →
-operator visual acceptance when required → queue update → next family
+operator visual acceptance when required → queue update → next candidate
 ```
 
 Do not create a validator phase, exhaustive inventory gate, fixed CSS-file profile, mandatory visual matrix for simple components, or new-component proof before real work demonstrates a need.
