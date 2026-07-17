@@ -15,17 +15,17 @@ Tests prove contracts the component or changed foundation actually owns. They do
 
 ## Proof layers
 
-| Layer                      | Use when                                                   | Purpose                                                                                                               |
-| -------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Component contract         | Every new or migrated public component                     | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and static foundation wiring |
-| Canonical visual story     | Visible output exists                                      | One stable reference for accepted appearance                                                                          |
-| `StateMatrix`              | Multiple distinct component-owned visual routes exist      | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product                         |
-| Visual regression          | A stable visual contract has material regression risk      | Detect unintended changes against a bounded accepted baseline                                                         |
-| Browser behavior           | The component changes or constrains browser-owned behavior | Focus, input, layout, overlay, scrolling, responsive, cancellation, or runtime lifecycle                              |
-| Pure behavior              | Extracted logic or lifecycle exists                        | Helpers, composables, state transitions, timing, cancellation, and cleanup                                            |
-| Consumer preservation      | Imports, wrappers, or product usage change                 | Preserve affected integration contracts                                                                               |
-| Agent review               | Every new or migrated family                               | Source-backed architecture, Material, accessibility, migration, and proof review                                      |
-| Operator visual acceptance | Visible output is created or intentionally changed         | Compare prepared evidence with named official sources                                                                 |
+| Layer | Use when | Purpose |
+| --- | --- | --- |
+| Component contract | Every new or migrated public component | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and static foundation wiring |
+| Canonical visual story | Visible output exists | One stable reference for accepted appearance |
+| `StateMatrix` | Multiple distinct component-owned visual routes exist | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product |
+| Visual regression | A stable visual contract has material regression risk | Detect unintended changes against a bounded accepted baseline |
+| Browser behavior | The component changes or constrains browser-owned behavior | Focus, input, layout, overlay, scrolling, responsive, cancellation, or runtime lifecycle |
+| Pure behavior | Extracted logic or lifecycle exists | Helpers, composables, state transitions, timing, cancellation, and cleanup |
+| Consumer preservation | Imports, wrappers, or product usage change | Preserve affected integration contracts |
+| Independent two-stage audit | Every new or migrated family | Compare implementation with project documentation, then project documentation with Material 3 Expressive |
+| Operator visual acceptance | Visible output is created or intentionally changed | Compare prepared evidence with named official sources |
 
 A layer may be omitted because the component does not own that contract. Difficulty alone is not a reason to omit an owned contract.
 
@@ -66,12 +66,14 @@ A component with no browser-owned behavior may omit this layer with a concise re
 
 Motion is split by ownership:
 
-- official documentation defines the required motion contract;
-- a shared foundation owns any official-to-Web adaptation and its focused proof;
+- official documentation defines the canonical motion requirement;
+- project documentation defines any accepted official-to-Web adaptation;
+- a shared foundation/style owner implements and proves that project runtime contract when it is cross-family;
 - the component owns correct consumption, actual property ownership, state routing, and family-specific behavior;
+- the independent audit checks both implementation-to-project and project-to-Material alignment;
 - the operator owns final perceptual comparison.
 
-For ordinary CSS motion, source review and focused contract tests are sufficient when they prove the accepted foundation route and no conflicting local transition exists.
+For ordinary CSS motion, source review and focused contract tests are sufficient when they prove the documented project route and no conflicting local transition exists.
 
 Do not test browser interpolation frames, overshoot, or equivalent input paths merely to confirm a correctly configured CSS transition.
 
@@ -112,35 +114,50 @@ Prefer one readable screenshot. A baseline is regression evidence, not proof of 
 
 When migration changes imports, API usage, wrappers, or product composition, select focused checks from the actual blast radius. Do not require unrelated product suites merely because a shared component changed.
 
-## Agent evidence review
+## Independent evidence review
 
-Before operator handoff, confirm:
+Before operator handoff, `material-component-review` performs both comparisons.
 
-- official sources resolve the supported contract;
-- component and foundation ownership is coherent;
-- semantics, accessibility, states, lifecycle, tokens, and final property ownership are correct;
-- each distinct visible route is represented when applicable;
-- proof layers are proportional and non-duplicative;
-- changed consumers and obsolete paths are handled;
-- no technical decision is hidden behind visual review.
+### Stage 1 — implementation vs project documentation
+
+Confirm:
+
+- implementation matches the family README and directly applicable project contracts;
+- semantics, accessibility, states, lifecycle, tokens, motion, and final property ownership behave as documented;
+- exports, consumers, tests, stories, and verification claims are accurate;
+- no unfinished, provisional, unverified, or undocumented behavior is hidden;
+- proof layers establish only what the project documentation claims.
+
+### Stage 2 — project documentation vs Material 3 Expressive
+
+Confirm:
+
+- official sources support the documented family scope and contract;
+- canonical component, token, state, semantics, accessibility, and property meanings are interpreted correctly;
+- unsupported official capability is documented;
+- project extensions and deviations are explicit and not presented as canonical Material;
+- project documentation and canonical evidence use one consistent source record.
+
+No technical or documentation decision may be hidden behind visual review.
 
 ## Operator visual acceptance
 
-Operator comparison is required when a PR creates a visible component or intentionally changes visible tokens, shape, color, elevation, typography, icon geometry, focus, ripple, motion appearance, layout, or a rendered foundation contract.
+Operator comparison is required when a change creates a visible component or intentionally changes visible tokens, shape, color, elevation, typography, icon geometry, focus, ripple, motion appearance, layout, or a rendered shared contract.
 
-The agent prepares:
+The audit prepares:
 
 ```text
 Canonical visual story: <story id>
 Visual coverage: complete | incomplete (<gap>)
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
-Agent evidence review: passed | blocked (<reason>)
+Stage 1 audit: passed | findings | blocked
+Stage 2 audit: passed | findings | blocked
 Official visual sources: <snapshot and Design Kit reference when required>
-Expected deviations: none | <records>
+Expected extensions/deviations: none | <records>
 Operator visual acceptance: required | accepted | rejected | blocked (<reason>)
 ```
 
-The operator checks visible fidelity. API, semantics, accessibility, source interpretation, ownership, migration, and test sufficiency remain agent responsibilities. An automated agent never reports operator acceptance as `accepted`.
+The operator checks visible fidelity. API, semantics, accessibility, source interpretation, ownership, migration, test sufficiency, and project-documentation correctness remain reviewer responsibilities. An automated reviewer never reports operator acceptance as `accepted` without an operator decision.
 
 ## Automation and anti-overengineering
 
@@ -158,4 +175,4 @@ Do not create:
 
 ## Completion
 
-Proof is complete when applicable contracts are covered at the correct layers, visible evidence is readable and proportional, browser behavior is tested only where owned, changed consumers are preserved, agent review passes, required operator acceptance is recorded, and repository verification passes.
+Proof is complete when applicable contracts are covered at the correct layers, the two-stage audit passes or records exact remaining work, visible evidence is readable and proportional, browser behavior is tested only where owned, changed consumers are preserved, required operator acceptance is recorded, and applicable local verification passes.
