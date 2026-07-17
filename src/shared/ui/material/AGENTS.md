@@ -4,6 +4,8 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 
 ## Routing
 
+- Use `material-library-status` for a read-only reconciliation of roadmap, inventory, registries, audits, visual acceptance, and verification state.
+- Use `material-library-next` when the user wants the program to continue without naming a family; it resolves and runs exactly one next family.
 - Use `material-component` when the user supplies a Material component or family name and expects autonomous creation, migration, or alignment from that name alone.
 - Use `material-component-review` when the user supplies a Material component or family name and expects a source-backed compliance review without production changes.
 - Use `material-component-authoring` as the canonical end-to-end execution workflow after the target family is resolved, or directly when the task already provides explicit family scope.
@@ -11,9 +13,11 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 - Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and supported surface.
 - Use Vue and testing skills only for applicable implementation and proof layers.
 - Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
-- Use `library-roadmap.md` and `ui-library-inventory.md` to select and advance sequential migration work when the user did not explicitly select a component.
+- Use `library-roadmap.md` and `ui-library-inventory.md` through `material-library-next` to select sequential migration work when the user did not explicitly select a component.
 
 A component name is sufficient input for `material-component` and `material-component-review`. Do not require the user to predefine variants, API, foundations, files, tests, consumers, or expected defects. Resolve them from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
+
+`material-library-next` requires no component name. It follows the active roadmap milestone first and, after the pilots, selects one unblocked `queued` official-component family with satisfied dependencies. It must not start a second family in the same task or PR. `material-library-status` never modifies repository files.
 
 A completed `material-component-review` run creates or replaces `docs/material-3/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
 
@@ -107,6 +111,7 @@ Escalate only for a genuine product decision, materially unresolved official sou
 
 - Use existing repository checks and focused tests.
 - Add automation only after real migrations prove a stable repeated and precisely detectable need.
+- `material-library-status` reports conflicts between owning records instead of silently reconciling them.
 - `material-component-review` treats code, family docs, tests, stories, snapshots, prior audits, and registry status as claims to verify against official sources, not as proof by themselves.
 - A review-only run writes the durable family audit and reports confirmed defects and evidence gaps without modifying production implementation or policies.
 - `material-component` and `material-component-authoring` inspect the current family audit when one exists and resolve or invalidate its findings using current evidence.
@@ -115,4 +120,4 @@ Escalate only for a genuine product decision, materially unresolved official sou
 - The agent never reports operator acceptance as accepted.
 - Automation must not claim to prove free-form architecture or visual correctness.
 
-After a family reaches its accepted terminal state, update the queue and proceed to the next highest-priority ready family.
+After a family reaches its accepted terminal state, update the queue and record the next candidate. Start that next family only through a new `material-library-next` or explicit `material-component` run.
