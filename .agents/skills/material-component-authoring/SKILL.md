@@ -1,13 +1,13 @@
 ---
 name: material-component-authoring
-description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family. Owns the end-to-end execution order from source lookup and adaptive family contract through implementation, consumer migration, proportional proof, rule refinement, evidence review, and operator visual handoff.'
+description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family. Owns the implementation workflow from source lookup and family contract through migration, proportional proof, workspace review, and external-gate handoff.'
 paths:
   - 'src/shared/ui/material/components/**'
 ---
 
 # Material component authoring
 
-Use this as the primary workflow for official public Material component work.
+Use this as the primary implementation workflow for official public Material component work.
 
 It applies to a new public `MD*` component, migration of a legacy family, Expressive alignment of a canonical family, or a material change to its public or visible contract. It does not apply to project-specific shared UI or a strict legacy repair that truthfully records `Architecture impact: none`.
 
@@ -19,12 +19,30 @@ Use:
 - `material-foundation` only when a cross-family foundation contract changes;
 - `vue-component-implementation` for Vue mechanics;
 - `component-contract-testing`, `ui-browser-behavior`, and `visual-regression-testing` only for applicable proof layers;
-- `verification` for focused and final repository checks;
+- `verification` for focused and final local repository checks;
 - `docs/material-3/autonomous-review.md` for agent/operator review ownership;
 - the current family audit when one exists;
 - roadmap and inventory for active program state.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
+
+## Execution capability boundary
+
+The coding agent may not have `git`, GitHub, PR metadata, or CI access.
+
+- Inspect and modify the current workspace directly.
+- Never invent or infer a commit SHA, branch state, PR state, CI result, review state, or merge readiness.
+- Never describe local `pnpm verify` as CI.
+- Do not fail implementation merely because `git` or GitHub is unavailable.
+- Do not certify terminal program state without direct evidence.
+
+When commit/GitHub evidence is unavailable, the highest valid coding-agent outcome is:
+
+```text
+implementation-ready-for-external-gates
+```
+
+External GitHub-enabled review owns commit binding, current-head CI, operator acceptance, terminal registry/roadmap state, and merge readiness.
 
 ## 1. Select the family and change mode
 
@@ -42,12 +60,12 @@ Resolve physical ownership first:
 - a legacy owner defaults to `end-to-end-migration`;
 - prior PR scope, branch name, or audit claims do not downgrade a complete `material-component <family>` invocation.
 
-Split work only for wider foundation blast radius, a public compatibility decision, reviewability, or a safer independently valid intermediate state. Do not mix unrelated families or broad cleanup.
+Split work only for a genuinely wider foundation blast radius, a public compatibility decision, reviewability, or a safer independently valid intermediate state. Do not mix unrelated families or broad cleanup.
 
 ## 2. Resolve sources, audit, and supported scope
 
 1. Inspect the current family, exports, consumers, stories, tests, known defects, and current audit.
-2. Compare audit metadata with the implementation under work.
+2. Treat audit commit metadata as unavailable when the agent cannot verify it directly.
 3. Start from named scenarios and affected consumers.
 4. Resolve the current official Material 3 Expressive contract.
 5. Use the Design Kit only for visual decisions unresolved by published guidance.
@@ -55,7 +73,7 @@ Split work only for wider foundation blast radius, a public compatibility decisi
 7. Record unused official capability as unsupported.
 8. Add no Mioframe extension without an explicit requirement and owner.
 
-Investigate every audit finding. Resolve it, prove it stale, or report an exact blocker. Do not treat the audit as Material authority or rewrite it during implementation. A final `material-component-review` publishes the completed state.
+Investigate every audit finding. Resolve it, prove it stale, or report an exact blocker. Do not treat the audit as Material authority or rewrite it during implementation. A later review publishes the current workspace evaluation.
 
 ## 3. Refine applicable rules
 
@@ -105,25 +123,45 @@ For each applicable domain:
 
 A component invocation must not hide a required foundation defect. Fix it, split it with an exact dependency, or report the family blocked. A public token or contract that changes only an intermediate variable but not its final owned result is defective unless the public contract is explicitly narrowed.
 
-For shared motion:
+### Actual dependency rule
 
-- foundation owns the official-to-Web adaptation and its focused proof;
-- the component owns only correct consumption, property ownership, state routing, and any family-specific behavior;
-- do not re-test browser interpolation or re-prove the shared adaptation in every family.
+A contract is consumed only when changing its source input can change the final owned output through a real implementation dependency.
+
+The following do **not** establish consumption:
+
+- placing declarations next to each other;
+- adding an alias that resolves to the same old constant;
+- asserting that two unrelated values are equal;
+- naming an existing duration/easing as the adaptation of a newly declared spring;
+- adding a test that restates the implementation without proving the route.
+
+When CSS cannot consume official numeric spring parameters directly, keep stiffness/damping as source evidence unless the project has a real conversion owner. Do not expose dead runtime tokens or fabricate a data flow. The accepted Web adaptation is the runtime contract; the component wires the animated property to that contract.
+
+### Foundation blast-radius rule
+
+Changes to `:root`, universal selectors, pseudo-elements, system tokens, or shared foundation formulas affect multiple families.
+
+Before making such a change:
+
+- identify every affected contract class, not only the triggering component;
+- prefer a scoped owner or local composition when sufficient;
+- do not move large token sets onto `*`, `::before`, or `::after` solely to make one component test pass;
+- add representative cross-family proof when the shared change is retained;
+- split the foundation change or report a blocker when the blast radius cannot be reviewed safely in the current task.
 
 ## 6. Execute the end-to-end passes
 
 Use this compact order:
 
-1. source-backed family contract and directly affected records;
+1. source-backed family contract and factual non-terminal records;
 2. required foundation work or accepted dependency wiring;
 3. canonical production family and root public export;
 4. consumer migration;
 5. proportional contract, browser, pure, consumer, and visual proof;
 6. obsolete-path removal;
-7. agent evidence review and fresh final audit;
-8. operator visual package when required;
-9. queue and roadmap update.
+7. agent evidence review and workspace audit;
+8. operator visual package preparation when required;
+9. external-gate handoff.
 
 Run focused verification after risky passes.
 
@@ -139,16 +177,16 @@ Run focused verification after risky passes.
 - Use separate files only when they reduce current complexity or selector ambiguity.
 - Create no empty layers, universal bases, runtime registries, generic resolvers, CSS DSLs, cross-family state machines, broad option bags, or speculative extension points.
 
-For motion, verify implementation correctness:
+For motion, verify:
 
-- exact official motion requirement;
-- accepted foundation role or documented family-local contract;
-- actual animated property owner;
+- the exact official requirement;
+- the accepted foundation or family-local runtime contract;
+- the actual animated property owner;
 - state selectors and acquisition/release wiring;
 - absence of conflicting arbitrary timing;
 - reduced-motion route when applicable.
 
-Declaring stiffness/damping tokens without consuming them is not implementation. A documented shared Web adaptation may be consumed directly; the component does not need frame-by-frame trajectory tests.
+Do not claim that numeric source tokens drive runtime motion unless there is a real derivation or lookup from those inputs. Do not re-test browser interpolation for ordinary CSS motion.
 
 ## 8. Migrate consumers and ownership
 
@@ -160,9 +198,18 @@ For `end-to-end-migration`:
 4. preserve accepted product behavior except for named deltas;
 5. remove obsolete files and legacy exports;
 6. use a temporary compatibility path only when atomic migration is unsafe, with exact consumers and a removal target;
-7. update only records whose facts changed.
+7. update only records whose current facts changed.
 
-Do not report migration complete while a legacy owner, legacy public export, undocumented parallel path, or direct legacy consumer remains.
+Do not report migration execution complete while a legacy owner, legacy public export, undocumented parallel path, or direct legacy consumer remains.
+
+During a coding-agent run, use non-terminal program states:
+
+- physical migration map: `migrating` until external gates pass;
+- component registry: `partial` or equivalent non-terminal state;
+- roadmap milestone: `active`;
+- audit operator status: `required` or `blocked`.
+
+Do not write `migrated`, `aligned`, milestone `done`, or operator `accepted` without direct external evidence.
 
 ## 9. Build proportional proof
 
@@ -181,7 +228,7 @@ For ordinary CSS motion, prove the component/foundation wiring and state route. 
 
 Use focused browser verification when correctness depends on native interaction, computed CSS propagation, layout, overlay, capture/cancellation, JavaScript/WAAPI lifecycle, or another behavior that source and contract tests cannot establish reliably.
 
-Forced state proves appearance only. Do not build a generic test DSL or family-specific forced-state system.
+A test cannot repair or legitimize a missing implementation dependency. Reject tests whose only purpose is to compare aliases that are already defined as equal.
 
 ## 10. Review and visual handoff
 
@@ -193,7 +240,7 @@ Confirm:
 - Material contract;
 - native semantics and accessibility;
 - state, lifecycle, and applicable browser behavior;
-- motion implementation and foundation wiring;
+- motion implementation and real foundation wiring;
 - final rendered property routes;
 - proportional proof;
 - consumer migration and obsolete-path removal;
@@ -202,24 +249,32 @@ Confirm:
 
 Existing tests are evidence, not proof that they cover the correct contract. Inspect the implementation and add focused browser reproduction only where the owning test layer requires it.
 
-After implementation and final repository verification, run `material-component-review <family>` against the final implementation commit. Continue the implementation loop for a still-current critical/high or required non-visual finding. Do not complete with a stale audit.
+After implementation and local repository verification, run `material-component-review <family>` against the current workspace. When the agent cannot verify a commit, the audit is provisional workspace evidence and must say so explicitly.
 
-After agent-owned gates pass, prepare operator visual evidence. The agent reports visual acceptance as `required` or `blocked`, never `accepted`.
+After agent-owned gates pass, prepare operator visual evidence. The coding agent reports visual review as `prepared`, `required`, or `blocked`, never `accepted`.
 
-## 11. Completion
+## 11. Completion and external handoff
 
-Before completion:
+Before coding-agent completion:
 
 - use `component-conversion-checklist.md`;
-- run applicable focused checks and final repository verification;
+- run applicable focused checks and final local repository verification;
 - ensure code, canonical contract, root export, consumers, tests, stories, map, and directly affected records agree;
-- ensure the final audit references the final implementation commit;
+- ensure the workspace audit is honest about its binding;
 - summarize findings resolved or invalidated;
-- ensure required operator visual acceptance is recorded;
-- update the selected family to its terminal queue state.
+- list external gates not available to the agent.
 
-`complete` is forbidden while the family remains in a legacy path, the final audit is stale, a required contract or browser-owned behavior is unverified, a final public route is broken, or obsolete ownership remains.
+The coding-agent result is exactly one of:
 
-After completion, report the next ready family without starting another implementation cycle in the same PR.
+- `implementation-ready-for-external-gates`;
+- `blocked (<exact reason>)`.
 
-Escalate only for a genuine product decision, materially unresolved official source, public-contract incompatibility, unsafe foundation blast radius, unresolved verification failure, or rejected operator visual evidence.
+External gates are:
+
+1. bind the review to the actual PR head commit;
+2. verify current-head CI;
+3. perform operator visual acceptance when required;
+4. update `migrated` / `aligned` / milestone `done` terminal records;
+5. perform merge review.
+
+The absence of `git` or GitHub access is not an implementation blocker and must not be disguised by invented metadata. It is an explicit external-gate boundary.
