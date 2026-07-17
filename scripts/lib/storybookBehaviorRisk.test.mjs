@@ -315,7 +315,6 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
       'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
-      'tests/e2e/storybook/reorderReducedMotion.spec.ts',
       'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
     ]);
   });
@@ -327,7 +326,6 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
       'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
-      'tests/e2e/storybook/reorderReducedMotion.spec.ts',
       'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
       'tests/e2e/storybook/reorderWrapLayout.spec.ts',
     ]);

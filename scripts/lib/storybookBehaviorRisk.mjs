@@ -68,7 +68,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
       'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
       'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
-      'tests/e2e/storybook/reorderReducedMotion.spec.ts',
     ],
   },
   {
