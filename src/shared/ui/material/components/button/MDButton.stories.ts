@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDButton from './MDButton.vue';
 import MDButtonOverrideContractVisualStory from './MDButtonOverrideContractVisualStory.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
-import { MDStateLayerForcedStateProvider } from '../State/testing';
-import { useFocusIndicator } from '../State/useFocusIndicator';
+import { MDStateLayerForcedStateProvider } from '@shared/ui/State/testing';
+import { useFocusIndicator } from '@shared/ui/State/useFocusIndicator';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDButton',
@@ -1124,10 +1124,8 @@ export const OverrideContractRoutes: Story = {
 };
 
 // Container shadow-color overrides applied via a render-time inline `style` attribute (not a
-// dynamic post-mount mutation). See the corresponding e2e test for the discovered limitation:
-// the private bridge variable reliably carries the override, but the shared
-// `--md-sys-elevation-levelN` formula's `rgb(from var(...))` does not always re-derive the final
-// `box-shadow` color from it in this browser — an out-of-scope, shared-token-architecture gap.
+// dynamic post-mount mutation). See the corresponding e2e test: the override reaches both the
+// private bridge variable and the final rendered `box-shadow` color.
 export const ShadowColorOverrideRoutes: Story = {
   render: () => ({
     components: { MDButton, MDStateLayerForcedStateProvider },

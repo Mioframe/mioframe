@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { MDButton, MDIconButton } from '../Button';
+import { MDIconButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
 import MDSymbol from '../Icon/MDSymbol.vue';
 
 defineProps<{

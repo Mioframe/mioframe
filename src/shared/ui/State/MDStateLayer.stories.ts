@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed, defineComponent, ref } from 'vue';
-import MDButton from '../Button/MDButton.vue';
+import { MDButton } from '@shared/ui/material';
 import MDStateLayer from './MDStateLayer.vue';
 import { useRipple } from './useRipple';
 import { useStateLayer } from './useStateLayer';

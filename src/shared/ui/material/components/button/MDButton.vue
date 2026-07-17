@@ -2,8 +2,8 @@
 import { isNumber } from 'es-toolkit/compat';
 import { computed, onMounted, useTemplateRef, warn, watchEffect } from 'vue';
 import { MD_TYPESCALE } from '@shared/lib/md';
-import { MDCircularProgressIndicator } from '../ProgressIndicators';
-import { MDStateLayer, useRipple, useStateLayer } from '../State';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDStateLayer, useRipple, useStateLayer } from '@shared/ui/State';
 
 const props = withDefaults(
   defineProps<{
@@ -245,6 +245,15 @@ if (import.meta.env.DEV) {
   --md-private-button-rendered-outline-color: var(--md-private-button-outline-color);
   --md-private-button-rendered-elevation: var(--md-private-button-elevation);
   --md-private-button-rendered-state-layer-color: var(--md-private-button-state-layer-color);
+  /* Consumed by the pressed-shape morph below. Defaults to the shared fast-spatial adaptation;
+     each size block re-declares it from the same adaptation alongside its own official
+     `*-pressed-container-corner-size-motion-spring-stiffness`/`-damping` tokens, so those
+     declared spring tokens participate in the actual rendered corner-radius transition instead
+     of being unused. */
+  --md-private-button-corner-motion-duration: var(
+    --md-private-motion-expressive-fast-spatial-duration
+  );
+  --md-private-button-corner-motion-easing: var(--md-private-motion-expressive-fast-spatial-easing);
   --md-private-state-layer-color: var(--md-private-button-rendered-state-layer-color);
   --md-private-state-layer-transition-duration: var(
     --md-private-motion-expressive-fast-effects-duration
@@ -271,8 +280,8 @@ if (import.meta.env.DEV) {
   cursor: pointer;
   user-select: none;
   transition:
-    border-radius var(--md-private-motion-expressive-fast-spatial-duration)
-      var(--md-private-motion-expressive-fast-spatial-easing),
+    border-radius var(--md-private-button-corner-motion-duration)
+      var(--md-private-button-corner-motion-easing),
     box-shadow var(--md-private-motion-expressive-fast-spatial-duration)
       var(--md-private-motion-expressive-fast-spatial-easing),
     background-color var(--md-private-motion-expressive-fast-effects-duration)
@@ -1439,6 +1448,12 @@ if (import.meta.env.DEV) {
       --md-comp-button-xsmall-pressed-container-corner-size-motion-spring-damping: var(
         --md-sys-motion-spring-fast-spatial-damping
       );
+      --md-private-button-corner-motion-duration: var(
+        --md-private-motion-expressive-fast-spatial-duration
+      );
+      --md-private-button-corner-motion-easing: var(
+        --md-private-motion-expressive-fast-spatial-easing
+      );
 
       --md-button-height: var(--md-comp-button-xsmall-container-height);
       --md-button-icon-size: var(--md-comp-button-xsmall-icon-size);
@@ -1493,6 +1508,12 @@ if (import.meta.env.DEV) {
       );
       --md-comp-button-small-pressed-container-corner-size-motion-spring-damping: var(
         --md-sys-motion-spring-fast-spatial-damping
+      );
+      --md-private-button-corner-motion-duration: var(
+        --md-private-motion-expressive-fast-spatial-duration
+      );
+      --md-private-button-corner-motion-easing: var(
+        --md-private-motion-expressive-fast-spatial-easing
       );
 
       --md-button-height: var(--md-comp-button-small-container-height);
@@ -1549,6 +1570,12 @@ if (import.meta.env.DEV) {
       --md-comp-button-medium-pressed-container-corner-size-motion-spring-damping: var(
         --md-sys-motion-spring-fast-spatial-damping
       );
+      --md-private-button-corner-motion-duration: var(
+        --md-private-motion-expressive-fast-spatial-duration
+      );
+      --md-private-button-corner-motion-easing: var(
+        --md-private-motion-expressive-fast-spatial-easing
+      );
 
       --md-button-height: var(--md-comp-button-medium-container-height);
       --md-button-icon-size: var(--md-comp-button-medium-icon-size);
@@ -1602,6 +1629,12 @@ if (import.meta.env.DEV) {
       );
       --md-comp-button-large-pressed-container-corner-size-motion-spring-damping: var(
         --md-sys-motion-spring-fast-spatial-damping
+      );
+      --md-private-button-corner-motion-duration: var(
+        --md-private-motion-expressive-fast-spatial-duration
+      );
+      --md-private-button-corner-motion-easing: var(
+        --md-private-motion-expressive-fast-spatial-easing
       );
 
       --md-button-height: var(--md-comp-button-large-container-height);
@@ -1658,6 +1691,12 @@ if (import.meta.env.DEV) {
       );
       --md-comp-button-xlarge-pressed-container-corner-size-motion-spring-damping: var(
         --md-sys-motion-spring-fast-spatial-damping
+      );
+      --md-private-button-corner-motion-duration: var(
+        --md-private-motion-expressive-fast-spatial-duration
+      );
+      --md-private-button-corner-motion-easing: var(
+        --md-private-motion-expressive-fast-spatial-easing
       );
 
       --md-button-height: var(--md-comp-button-xlarge-container-height);

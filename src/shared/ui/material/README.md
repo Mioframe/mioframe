@@ -50,15 +50,15 @@ Product imports inside the Material library, dependency inversion, and private c
 
 ## Public API
 
-The intended project-facing entry point is:
+The project-facing entry point:
 
 ```ts
 import { MDButton } from '@shared/ui/material';
 ```
 
-Do not create the root production `index.ts` until at least one real family or foundation artifact can be exported honestly.
+The root `index.ts` exists now that `MDButton` is a real migrated family. Do not add a new export to it until that family or foundation artifact is itself real.
 
-After it exists:
+Now that it exists:
 
 - product consumers use the root entry point by default;
 - internal library modules use owning family, foundation, or generic entry points;
@@ -85,16 +85,17 @@ Every new public component includes:
 
 This table tracks physical ownership only. Material alignment belongs to component and foundation contracts and registries. Program sequencing belongs to the roadmap.
 
-| Area                              | Current production owner                            | Canonical owner                                                                     | Migration status              |
-| --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
-| Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                      | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
-| Typography utilities              | `src/shared/lib/md`                                 | `material/foundation/typography`                                                    | `legacy`                      |
-| State layer, ripple, and focus    | `src/shared/ui/State`                               | `material/foundation/interaction`                                                   | `legacy`                      |
-| Material Symbols                  | `src/shared/ui/Icon`                                | `material/foundation/icon`                                                          | `legacy`                      |
-| Material overlay contract         | `src/shared/ui/Overlay` plus generic dependencies   | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
-| Existing official `MD*` families  | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<family>`                                                      | `legacy`                      |
-| New official Material family      | none                                                | `material/components/<family>`                                                      | create directly as `migrated` |
-| Reusable Material patterns        | scattered or missing compositions                   | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
+| Area                                   | Current production owner                            | Canonical owner                                                                     | Migration status              |
+| -------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
+| Reference/system tokens and theme      | `src/shared/lib/md/tokens.css`                      | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
+| Typography utilities                   | `src/shared/lib/md`                                 | `material/foundation/typography`                                                    | `legacy`                      |
+| State layer, ripple, and focus         | `src/shared/ui/State`                               | `material/foundation/interaction`                                                   | `legacy`                      |
+| Material Symbols                       | `src/shared/ui/Icon`                                | `material/foundation/icon`                                                          | `legacy`                      |
+| Material overlay contract              | `src/shared/ui/Overlay` plus generic dependencies   | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
+| Button family (`MDButton`)             | none (migrated)                                     | `material/components/button`                                                        | `migrated`                    |
+| Other existing official `MD*` families | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<family>`                                                      | `legacy`                      |
+| New official Material family           | none                                                | `material/components/<family>`                                                      | create directly as `migrated` |
+| Reusable Material patterns             | scattered or missing compositions                   | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
 
 Do not split a valid cohesive owner merely to match this table. Migration follows confirmed ownership and reviewable boundaries.
 

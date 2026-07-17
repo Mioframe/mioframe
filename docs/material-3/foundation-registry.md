@@ -122,9 +122,9 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Private bridge contract: `--md-private-elevation-shadow-color`.
 - Verification-only contract: none.
 - Known consumers: elevated components/surfaces.
-- Known gaps: shadow definitions, dark behavior, component routing, bridge verification, and deprecated tint prevention.
+- Known gaps: dark behavior, component routing, and deprecated tint prevention. (Bridge verification is resolved: `--md-sys-elevation-level0`–`level5` are declared on a universal selector, not only `:root`, so a component-level `--md-private-elevation-shadow-color` override reaches the final rendered `box-shadow` color — verified by `MDButton`'s shadow-color test in `tests/e2e/visual/shared-ui/md-button.spec.ts`, 2026-07-17.)
 - Verification: token checks, computed owner checks, and representative elevated surfaces.
-- Last reviewed: 2026-07-16.
+- Last reviewed: 2026-07-17.
 
 ## Motion
 
@@ -138,9 +138,9 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Private bridge contract: documented `--md-private-motion-expressive-*` adaptations when CSS cannot express the official model directly.
 - Verification-only contract: deterministic settling and reduced-motion setup.
 - Known consumers: components with Material transitions/motion.
-- Known gaps: token parity, reduced-motion policy, adaptation validation, and per-family use.
+- Known gaps: token parity, reduced-motion policy, adaptation validation, and per-family use beyond `MDButton`. (`MDButton`'s per-size pressed-corner spring component tokens (`stiffness`/`damping`) are colocated with, and now route through, the documented fast-spatial adaptation instead of being declared without consumption — verified per size, 2026-07-17.)
 - Verification: static token checks, browser motion/reduced-motion checks, and representative assertions.
-- Last reviewed: 2026-07-16.
+- Last reviewed: 2026-07-17.
 
 ## Interaction state, state layer, ripple, focus, and visual verification
 

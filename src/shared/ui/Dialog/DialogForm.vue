@@ -5,7 +5,7 @@ import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnBackNavigationStacked } from '@shared/lib/onBackNavigation';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
-import { MDButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
 import { tryOnBeforeUnmount } from '@vueuse/core';
 import { useMonitorOpenDialog } from './Alert';
 

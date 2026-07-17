@@ -213,22 +213,13 @@
      the shadow color token without duplicating the full box-shadow value. Defaults to
      --md-sys-color-shadow (#000), preserving existing visual output for all consumers. */
   --md-private-elevation-shadow-color: var(--md-sys-color-shadow, #000);
-  --md-sys-elevation-level0: none;
-  --md-sys-elevation-level1:
-    0px 1px 3px 1px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15),
-    0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3);
-  --md-sys-elevation-level2:
-    0px 2px 6px 2px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15),
-    0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3);
-  --md-sys-elevation-level3:
-    0px 1px 3px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
-    0px 4px 8px 3px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
-  --md-sys-elevation-level4:
-    0px 2px 3px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
-    0px 6px 10px 4px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
-  --md-sys-elevation-level5:
-    0px 4px 4px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
-    0px 8px 12px 6px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
+  /* --md-sys-elevation-level0..5 are declared on the universal selector below, not here. A
+     custom property's `rgb(from var(...))` is resolved once, using the value of its dependency
+     on the element where the property is declared; declaring it only on :root freezes that
+     color at :root's default and a descendant overriding --md-private-elevation-shadow-color
+     only inherits the already-resolved (frozen) string instead of recomputing it. Declaring the
+     same property again on `*` makes every element compute its own value locally, so a
+     component-level shadow-color override reaches the final rendered box-shadow color. */
 
   /* md.sys.typescale */
   /* md.sys.typescale.display-large */
@@ -402,7 +393,11 @@
    * documented Web conversion of the fast-spatial and fast-effects springs, not a dynamic
    * regeneration of the curve from the --md-sys-motion-spring-* values. Not public
    * --md-sys-* duration/easing tokens because Material 3 Expressive Web publishes no such
-   * public alias for spring-driven motion.
+   * public alias for spring-driven motion. A family that declares a per-size
+   * `*-motion-spring-stiffness`/`*-motion-spring-damping` component token equal to
+   * `--md-sys-motion-spring-fast-spatial-*` must route the actual transitioned property through
+   * this exact adaptation at the same size scope, so the declared spring tokens participate in
+   * the rendered motion instead of being dead declarations.
    */
   --md-private-motion-expressive-fast-spatial-duration: 350ms;
   --md-private-motion-expressive-fast-spatial-easing: cubic-bezier(0.42, 1.67, 0.21, 0.9);
@@ -410,6 +405,30 @@
   --md-private-motion-expressive-fast-effects-easing: cubic-bezier(0.31, 0.94, 0.34, 1);
 
   --md-comp-progress-indicator-active-indicator-color: var(--md-sys-color-primary);
+}
+
+/* md.sys.elevation levels: declared on the universal selector (not :root) so every element
+   recomputes its own rgb(from var(--md-private-elevation-shadow-color) ...) locally. See the
+   comment beside --md-private-elevation-shadow-color above for why :root alone is insufficient. */
+*,
+::before,
+::after {
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1:
+    0px 1px 3px 1px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15),
+    0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3);
+  --md-sys-elevation-level2:
+    0px 2px 6px 2px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15),
+    0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3);
+  --md-sys-elevation-level3:
+    0px 1px 3px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
+    0px 4px 8px 3px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
+  --md-sys-elevation-level4:
+    0px 2px 3px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
+    0px 6px 10px 4px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
+  --md-sys-elevation-level5:
+    0px 4px 4px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
+    0px 8px 12px 6px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -545,12 +564,5 @@
     --md-sys-color-surface-dim: var(--md-ref-palette-neutral6, var(--app-debug-unknown-color));
     --md-sys-color-scrim: var(--md-ref-palette-neutral0, var(--app-debug-unknown-color));
     --md-sys-color-shadow: var(--md-ref-palette-neutral0, var(--app-debug-unknown-color));
-
-    --md-sys-elevation-level1:
-      0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
-      0px 1px 3px 1px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
-    --md-sys-elevation-level2:
-      0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
-      0px 2px 6px 2px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
   }
 }

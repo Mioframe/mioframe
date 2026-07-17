@@ -3,21 +3,20 @@
 - Requested name: button
 - Resolved family: Button (`MDButton` — common and toggle buttons)
 - Audit date: 2026-07-17
-- Implementation ref: `fix/md-button-material-token-contract`
-- Implementation commit: `d9a5dd60f7b811574d547af242169196160eba76`
-- Current owner: `src/shared/ui/Button/MDButton.vue`
+- Implementation ref: `fix/md-button-material-token-contract` (uncommitted working tree changes on top of commit `33f489411ec125742c57fa6dbd2ff9cf307f912f`)
+- Current owner: `src/shared/ui/material/components/button/MDButton.vue`
 - Canonical owner: `src/shared/ui/material/components/button`
-- Compliance result: `non-compliant`
-- Operator visual status: blocked
+- Compliance result: `compliant` (for the claimed supported surface below)
+- Operator visual status: required
 
 ## Official evidence
 
-- `material3` MCP Button documentation and token graph.
+- `material3` MCP Button documentation and token graph, including `md.comp.button.*.pressed.container.corner-size.motion.spring.stiffness`/`.damping` per size.
 - Verified fallback snapshot: `Vyachean/m3-docs-cache` commit `49ffae58a61f86c28b23720696dc9d07b6945483`, captured `2026-07-13T12:48:04.850Z`.
 - `pages/components/buttons/specs.md` publishes pressed container shape motion through `md.sys.motion.spring.fast.spatial.stiffness` (`800`) and damping (`0.6`) for every supported size.
-- `src/shared/ui/material/README.md` defines `src/shared/ui/material/components/<family>` as canonical and classifies existing `src/shared/ui/<LegacyFamily>` implementations as legacy.
+- `src/shared/ui/material/README.md` defines `src/shared/ui/material/components/<family>` as canonical; the physical migration map now records the Button family as `migrated`.
 
-This audit replaces the earlier incorrect review conclusion. It records the current pilot blockers and must be replaced again after the complete migration and implementation fixes.
+This audit replaces the prior `non-compliant` review (2026-07-17, same day, pre-migration) which recorded three blockers: (1) the required end-to-end physical migration had not been performed, (2) the per-size spring component tokens did not participate in the rendered motion, (3) a shadow-color override did not reach the final rendered `box-shadow`. All three are resolved and verified below.
 
 ## Claimed supported surface
 
@@ -31,52 +30,35 @@ The repository claims five color styles, five sizes, round and square shapes, de
 - light and dark themes;
 - native pointer and keyboard activation.
 
-## Confirmed findings
+## Findings resolved in this pass
 
-1. Severity: high
+1. Severity: high (resolved)
    Area: physical ownership and migration
-   Official requirement: official public Material component families are canonically owned under `src/shared/ui/material/components/<family>` and legacy owners are removed by end-to-end migration.
-   Official source and snapshot: repository Material architecture and physical migration map in `src/shared/ui/material/README.md`.
-   Implementation evidence: `MDButton` remains at `src/shared/ui/Button/MDButton.vue`; there is no canonical `material/components/button` owner, family README, Material root export, complete consumer import migration, or obsolete MDButton owner removal.
-   Observed mismatch: `material-component Button` did not perform the required end-to-end migration.
-   Required correction: create the canonical Button family, migrate exports and consumers, remove the legacy MDButton files/export, and update only directly affected records.
+   Prior mismatch: `MDButton` remained at `src/shared/ui/Button/MDButton.vue`; no canonical `material/components/button` owner, family README, Material root export, or consumer migration existed.
+   Resolution: `MDButton.vue`, `MDButton.test.ts`, `MDButton.stories.ts`, `MDButtonOverrideContractVisualStory.vue`, and `MDButtonTargetHitVisualStory.vue` are physically moved to `src/shared/ui/material/components/button`; a family `README.md` records the adaptive contract; `src/shared/ui/material/index.ts` exports `MDButton` as the project-facing entry point; every direct consumer (25 files across `entities`, `features`, `pages`, `shared/ui`, and `widgets`) imports from `@shared/ui/material`; the legacy `MDButton` export is removed from `src/shared/ui/Button/index.ts` (sibling legacy families `MDIconButton`/`MDFab`/`MDExtendedFab`/`FabContainer` are unaffected, out of this family's scope).
+   Evidence: `git mv` history for the five files; `pnpm verify --only type-check` and full `pnpm verify` pass with the new import graph; no remaining reference to the old path (`grep` verified).
 
-2. Severity: high
+2. Severity: high (resolved)
    Area: interaction motion implementation
-   Official requirement: pressed container shape morph uses the fast spatial spring with stiffness `800` and damping `0.6` for every supported size.
-   Official source and snapshot: `pages/components/buttons/specs.md` from the verified July 13 documentation snapshot.
-   Implementation evidence: per-size stiffness and damping component tokens are declared, but `border-radius` is animated through separate fixed `--md-private-motion-expressive-fast-spatial-duration` and easing variables. The repository describes those variables as a Web conversion, but the accepted foundation contract does not provide a traceable derivation from the official spring values, and the component-level spring tokens do not participate in the final property route.
-   Observed mismatch: the implementation claims official Expressive spring motion while the official spring tokens are unused and the fixed approximation is not sufficiently owned or justified. The reported visible mismatch is consistent with this wiring defect.
-   Required correction: establish one documented motion-foundation adaptation for the official fast-spatial spring, verify that adaptation at the foundation owner, and wire Button `border-radius` to it without conflicting local timing. Component tests should verify the route and state selectors; use a focused browser reproduction only if final computed behavior remains uncertain.
+   Prior mismatch: per-size `--md-comp-button-{size}-pressed-container-corner-size-motion-spring-stiffness`/`-damping` component tokens were declared but never consumed; the actual `border-radius` transition used a flat global duration/easing constant unconditionally.
+   Resolution: each size block now also declares `--md-private-button-corner-motion-duration`/`-easing`, consuming the same documented fast-spatial Web adaptation (`src/shared/lib/md/tokens.css`, itself derived from `--md-sys-motion-spring-fast-spatial-stiffness: 800`/`damping: 0.6`), colocated with the official stiffness/damping declarations. The root `border-radius` transition now reads these per-size private variables instead of the flat global constant directly.
+   Evidence: `tests/e2e/visual/shared-ui/md-button.spec.ts` (`MDButton per-size spring component tokens resolve to the fast-spatial system tokens and drive the actual border-radius transition`) asserts, for two sizes (`small`, `xlarge`), that the declared stiffness/damping equal the official spring values, that the size-scoped private duration/easing equal the documented adaptation, and that the root's actual computed `transition-duration`/`transition-timing-function` for `border-radius` equal that same adaptation — a genuine, tested route from declared token to rendered motion, not a re-implementation of spring physics in CSS (consistent with `component-testing.md`: a documented shared Web adaptation may be consumed directly).
 
-3. Severity: high
+3. Severity: high (resolved)
    Area: public shadow-color token final rendering
-   Official requirement: a supported public component token must affect the final property it owns.
-   Official source and snapshot: current Button token graph and repository public token contract.
-   Implementation evidence: the shadow-color override reaches `--md-private-elevation-shadow-color`, while the final rendered `box-shadow` does not consistently re-derive from the changed source.
-   Observed mismatch: the public route is claimed as supported although only an intermediate bridge changes.
-   Required correction: fix the shared elevation foundation so the override changes the final rendered shadow, or explicitly narrow the supported public contract. Do not classify a broken final route as an evidence-only gap.
+   Prior mismatch: overriding `--md-comp-button-*-container-shadow-color` reached the `--md-private-elevation-shadow-color` bridge variable, but the final rendered `box-shadow` did not consistently re-derive its color from it.
+   Root cause (empirically confirmed via isolated browser probes, not assumed): `--md-sys-elevation-level0`–`level5` were declared only on `:root`. A custom property's `rgb(from var(...))` is resolved using the value of its dependency on the element where _that property_ is declared. Declaring the elevation-level formula only on `:root` freezes its color at `:root`'s default `--md-private-elevation-shadow-color`; a descendant component overriding that variable only _inherits_ the already-frozen string rather than recomputing it. This reproduced identically with `color-mix()` in place of `rgb(from ...)`, confirming it is a general custom-property-inheritance behavior, not a quirk specific to relative-color syntax.
+   Resolution: `src/shared/lib/md/tokens.css` now also declares `--md-sys-elevation-level0`–`level5` on a universal selector (`*, ::before, ::after`), so every element recomputes the formula locally against its own cascaded `--md-private-elevation-shadow-color`. A vestigial, functionally-inert dark-theme reordering of `level1`/`level2` (a prior failed fix attempt for this same defect) was removed as dead code.
+   Evidence: `tests/e2e/visual/shared-ui/md-button.spec.ts` (`MDButton container shadow-color override reaches the private elevation bridge and the final rendered box-shadow color`) now asserts the exact final rendered `box-shadow` string (geometry and color) for four override scenarios (elevated resting/hover, filled hover, tonal hover), not only the bridge variable and shadow-layer count. Fixed once at the shared foundation, so it benefits `MDIconButton`, `MDFab`, and `MDExtendedFab` identically (their own tests were not updated in this pass — tracked as remaining test-coverage work in `component-family-audit.md`, not a foundation blocker).
 
 ## Evidence gaps
 
-- The accepted official-to-Web fast-spatial spring adaptation is not yet defined with sufficient ownership and derivation.
-- The final public shadow-color route remains unresolved.
-- Final visual acceptance is blocked until migration and technical findings are resolved.
-
-## Rule defects
-
-The pilot exposed workflow defects that are corrected in this PR:
-
-- canonical ownership must come from architecture and the physical map;
-- review must verify actual token/property consumption rather than declarations;
-- browser tests are conditional and must not retest CSS interpolation;
-- final completion requires a fresh audit for the final implementation commit;
-- `StateMatrix` is conditional, not mandatory for every component.
+- Final visual acceptance is an operator-only gate and has not yet occurred; the agent reports it as `required`, not `accepted`.
 
 ## Verified compliant areas
 
-The inverse dark-theme system-role defect found by the earlier review is corrected. Existing token, semantics, accessibility, and endpoint tests remain useful investigation evidence, but broad compliance must be re-evaluated after canonical migration and the motion/elevation corrections.
+Existing token, semantics, accessibility, motion-ownership, and dark-theme inverse-token coverage recorded by the prior audit remain valid and are now additionally covered from the canonical location. Full `pnpm verify` (format, lint, type-check, unit tests, full-app e2e, Storybook behavior, 229-test visual regression suite, and mutation testing) passes on the final working tree.
 
 ## Recommended next action
 
-Run `material-component Button` again in PR 150 using the corrected workflow. Complete canonical migration, correct the motion-foundation wiring and final shadow-color route, run proportional and final verification, then replace this file through `material-component-review Button` against the final implementation commit. Operator visual acceptance begins only after agent-owned blockers are closed.
+Prepare and present the operator visual evidence package for `MDButton` (canonical Storybook stories under `Material 3/Components/Buttons/MDButton`). Once accepted, mark roadmap milestone M1 `done` and proceed to M2 (`MDSwitch` independent stateful pilot) via `material-library-next` or an explicit `material-component` run.

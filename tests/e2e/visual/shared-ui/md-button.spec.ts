@@ -1195,33 +1195,32 @@ test('MDButton container shadow-color routes an override into the shared elevati
   expect(normalizeColorString(overriddenBridge)).toBe('1 2 3');
 });
 
-test('MDButton container shadow-color override reaches the private elevation bridge while elevation geometry stays the active level', async ({
+test('MDButton container shadow-color override reaches the private elevation bridge and the final rendered box-shadow color', async ({
   page,
 }) => {
   const OVERRIDE_COLOR = 'rgb(9, 40, 12)';
 
   await openStory(page, 'material-3-components-buttons-mdbutton--shadow-color-override-routes');
 
-  // NOTE on scope: this asserts the private bridge variable and the elevation *level* (geometry),
-  // which is everything reliably observable for this route. A prior investigation confirmed the
-  // override correctly reaches `--md-private-elevation-shadow-color` (this assertion), but the
-  // browser does not re-derive the final `box-shadow` color through the shared
-  // `--md-sys-elevation-levelN` formula's nested `rgb(from var(...))` when only the color source
-  // changes and the elevation level itself stays on its `var(..., fallback)` branch — a discovered
-  // limitation in the shared elevation token architecture (`src/shared/lib/md/tokens.css`, used
-  // identically by `MDIconButton`/`MDFab`/`MDExtendedFab`), not something owned or fixable inside
-  // `MDButton.vue`. See `docs/material-3/component-family-audit.md` for the recorded follow-up.
-  const expectedShadowForLevel = (elevationVar: string) =>
-    page.evaluate((variable) => {
-      const probe = document.createElement('div');
-      probe.style.boxShadow = `var(${variable})`;
-      document.body.appendChild(probe);
-      const computed = getComputedStyle(probe).boxShadow;
-      probe.remove();
-      return computed;
-    }, elevationVar);
+  // `--md-sys-elevation-levelN` is declared on the universal selector in
+  // `src/shared/lib/md/tokens.css`, not only on `:root`, so every element (including this probe)
+  // recomputes its `rgb(from var(--md-private-elevation-shadow-color) ...)` locally instead of
+  // inheriting an already-resolved value frozen at `:root`'s default shadow color.
+  const expectedShadowForLevel = (elevationVar: string, overrideColor: string) =>
+    page.evaluate(
+      ({ variable, color }) => {
+        const probe = document.createElement('div');
+        probe.style.setProperty('--md-private-elevation-shadow-color', color);
+        probe.style.boxShadow = `var(${variable})`;
+        document.body.appendChild(probe);
+        const computed = getComputedStyle(probe).boxShadow;
+        probe.remove();
+        return computed;
+      },
+      { variable: elevationVar, color: overrideColor },
+    );
 
-  const assertShadowColorBridgeAndLevel = async (testId: string, elevationVar: string) => {
+  const assertShadowColorReachesFinalRoute = async (testId: string, elevationVar: string) => {
     const { renderedShadow, bridgeValue } = await page.getByTestId(testId).evaluate((el) => {
       const style = getComputedStyle(el);
       return {
@@ -1229,32 +1228,33 @@ test('MDButton container shadow-color override reaches the private elevation bri
         bridgeValue: style.getPropertyValue('--md-private-elevation-shadow-color').trim(),
       };
     });
-    const expectedShadowGeometry = await expectedShadowForLevel(elevationVar);
+    const expectedShadow = await expectedShadowForLevel(elevationVar, OVERRIDE_COLOR);
 
     expect(
       normalizeColorString(bridgeValue),
       `${testId} private shadow-color bridge variable carries the override`,
     ).toBe(normalizeColorString(OVERRIDE_COLOR));
-    // Geometry (blur/spread/offset counts) stays pinned to the active elevation level regardless
-    // of the shadow-color override.
-    expect(renderedShadow.split(',').length, `${testId} elevation level shadow-layer count`).toBe(
-      expectedShadowGeometry.split(',').length,
-    );
+    // The final rendered box-shadow must actually re-derive its color from the override, not only
+    // the intermediate bridge variable.
+    expect(renderedShadow, `${testId} final rendered box-shadow color`).toBe(expectedShadow);
   };
 
-  await assertShadowColorBridgeAndLevel(
+  await assertShadowColorReachesFinalRoute(
     'shadow-override-elevated-resting',
     '--md-sys-elevation-level1',
   );
-  await assertShadowColorBridgeAndLevel(
+  await assertShadowColorReachesFinalRoute(
     'shadow-override-elevated-hover',
     '--md-sys-elevation-level2',
   );
-  await assertShadowColorBridgeAndLevel(
+  await assertShadowColorReachesFinalRoute(
     'shadow-override-filled-hover',
     '--md-sys-elevation-level1',
   );
-  await assertShadowColorBridgeAndLevel('shadow-override-tonal-hover', '--md-sys-elevation-level1');
+  await assertShadowColorReachesFinalRoute(
+    'shadow-override-tonal-hover',
+    '--md-sys-elevation-level1',
+  );
 });
 
 test('MDButton inverse-surface/inverse-on-surface system tokens invert correctly between light and dark theme', async ({
@@ -1296,31 +1296,108 @@ test('MDButton inverse-surface/inverse-on-surface system tokens invert correctly
   expect(darkInverseOnSurface).not.toBe(lightInverseOnSurface);
 });
 
-test('MDButton per-size spring component tokens resolve to the fast-spatial system tokens', async ({
+test('MDButton per-size spring component tokens resolve to the fast-spatial system tokens and drive the actual border-radius transition', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--size-geometry-matrix');
-  const button = page.getByTestId('geometry-small-round');
 
-  const [stiffness, damping] = await button.evaluate((el) => {
+  const readRoute = (testId: string, size: string) =>
+    page.getByTestId(testId).evaluate((el, sizeName) => {
+      const style = getComputedStyle(el);
+      return {
+        stiffness: style
+          .getPropertyValue(
+            `--md-comp-button-${sizeName}-pressed-container-corner-size-motion-spring-stiffness`,
+          )
+          .trim(),
+        damping: style
+          .getPropertyValue(
+            `--md-comp-button-${sizeName}-pressed-container-corner-size-motion-spring-damping`,
+          )
+          .trim(),
+        cornerMotionDuration: style
+          .getPropertyValue('--md-private-button-corner-motion-duration')
+          .trim(),
+        cornerMotionEasing: style
+          .getPropertyValue('--md-private-button-corner-motion-easing')
+          .trim(),
+        fastSpatialDuration: style
+          .getPropertyValue('--md-private-motion-expressive-fast-spatial-duration')
+          .trim(),
+        fastSpatialEasing: style
+          .getPropertyValue('--md-private-motion-expressive-fast-spatial-easing')
+          .trim(),
+      };
+    }, size);
+
+  const assertSpringRoutesToBorderRadiusMotion = async (testId: string, size: string) => {
+    const route = await readRoute(testId, size);
+
+    expect(route.stiffness, `${testId} declared spring stiffness`).toBe('800');
+    // Chromium serializes a bare custom-property number token without its leading zero.
+    expect(route.damping, `${testId} declared spring damping`).toBe('.6');
+    // The size-scoped private duration/easing — colocated with the official stiffness/damping
+    // declarations — must equal the documented fast-spatial Web adaptation of that same spring,
+    // establishing a traceable route from the declared token to the value actually consumed.
+    expect(route.cornerMotionDuration, `${testId} corner-motion duration route`).toBe(
+      route.fastSpatialDuration,
+    );
+    expect(route.cornerMotionEasing, `${testId} corner-motion easing route`).toBe(
+      route.fastSpatialEasing,
+    );
+  };
+
+  await assertSpringRoutesToBorderRadiusMotion('geometry-small-round', 'small');
+  await assertSpringRoutesToBorderRadiusMotion('geometry-extra-large-round', 'xlarge');
+
+  // The root-owned `border-radius` transition must actually consume the per-size private
+  // corner-motion variables (not a flat global constant hardcoded independently of size).
+  // Comparing against a probe element's own computed `transition-duration`/`-timing-function`
+  // (rather than the raw custom-property text) keeps both sides in the same serialization format
+  // — Chromium serializes a raw custom-property duration without a leading zero (".35s") but
+  // always includes it on the computed `transitionDuration` longhand ("0.35s").
+  const borderRadiusTransition = await page.getByTestId('geometry-small-round').evaluate((el) => {
+    // `transitionTimingFunction` values such as `cubic-bezier(0.42, 1.67, 0.21, 0.9)` contain
+    // internal commas, so a plain top-level split must only break on commas outside parens.
+    const splitTopLevel = (value: string) => {
+      const parts: string[] = [];
+      let depth = 0;
+      let current = '';
+      for (const char of value) {
+        if (char === '(') depth += 1;
+        if (char === ')') depth -= 1;
+        if (char === ',' && depth === 0) {
+          parts.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      parts.push(current.trim());
+      return parts;
+    };
     const style = getComputedStyle(el);
-    return [
-      style
-        .getPropertyValue(
-          '--md-comp-button-small-pressed-container-corner-size-motion-spring-stiffness',
-        )
-        .trim(),
-      style
-        .getPropertyValue(
-          '--md-comp-button-small-pressed-container-corner-size-motion-spring-damping',
-        )
-        .trim(),
-    ];
+    const properties = splitTopLevel(style.transitionProperty);
+    const index = properties.indexOf('border-radius');
+    return {
+      duration: splitTopLevel(style.transitionDuration)[index],
+      easing: splitTopLevel(style.transitionTimingFunction)[index],
+    };
   });
-
-  expect(stiffness).toBe('800');
-  // Chromium serializes a bare custom-property number token without its leading zero.
-  expect(damping).toBe('.6');
+  const expectedFastSpatialTransition = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.transitionProperty = 'border-radius';
+    probe.style.transitionDuration = 'var(--md-private-motion-expressive-fast-spatial-duration)';
+    probe.style.transitionTimingFunction =
+      'var(--md-private-motion-expressive-fast-spatial-easing)';
+    document.body.appendChild(probe);
+    const style = getComputedStyle(probe);
+    const result = { duration: style.transitionDuration, easing: style.transitionTimingFunction };
+    probe.remove();
+    return result;
+  });
+  expect(borderRadiusTransition.duration).toBe(expectedFastSpatialTransition.duration);
+  expect(borderRadiusTransition.easing).toBe(expectedFastSpatialTransition.easing);
 });
 
 test('MDButton root-owned spatial and color-effect transitions use the documented Expressive Web motion durations, and the root does not own a color transition', async ({

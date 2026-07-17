@@ -5,7 +5,7 @@ import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { MD_TYPESCALE } from '@shared/lib/md';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';

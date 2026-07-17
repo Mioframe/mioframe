@@ -52,15 +52,14 @@ Verification boundary:
 
 - resting, hover, focus, pressed, disabled, selected/unselected, enabled selected-plus-pressed, disabled selected forced-pressed, geometry, target, and default/inline/class/inherited token routes are covered for the supported public subset;
 - rendered label/icon color motion is verified on the child elements that own those colors;
-- shadow-color override verification asserts the private `--md-private-elevation-shadow-color` bridge variable and the active elevation level's shadow-layer geometry for elevated resting, elevated hover, filled hover, and tonal hover. It does not assert the final rendered `box-shadow` color: investigation confirmed the override reliably reaches the bridge variable, but the browser does not consistently re-derive the final `box-shadow` color through the shared `--md-sys-elevation-levelN` formula's `rgb(from var(...))` when only the color source changes. This is a discovered limitation in the shared elevation token architecture (`src/shared/lib/md/tokens.css`, used identically by `MDIconButton`/`MDFab`/`MDExtendedFab`), not something owned or fixable inside `MDButton.vue`.
+- shadow-color override verification asserts the private `--md-private-elevation-shadow-color` bridge variable and the final rendered `box-shadow` color for elevated resting, elevated hover, filled hover, and tonal hover. A prior investigation found the browser did not re-derive the final `box-shadow` color through the shared `--md-sys-elevation-levelN` formula's `rgb(from var(...))` when only the color source changed; this was root-caused (2026-07-17) to `--md-sys-elevation-levelN` being declared only on `:root`, so a custom property's `rgb(from var(...))` freezes at `:root`'s default shadow color and a descendant override is only inherited, not recomputed. `src/shared/lib/md/tokens.css` now also declares `--md-sys-elevation-level0`–`level5` on a universal selector (`*, ::before, ::after`), so every element recomputes the formula locally against its own cascaded shadow-color variable. Fixed once at the foundation, benefiting `MDButton`, `MDIconButton`, `MDFab`, and `MDExtendedFab` identically;
+- per-size `--md-comp-button-{size}-pressed-container-corner-size-motion-spring-stiffness`/`-damping` component tokens are colocated with a private per-size duration/easing pair consuming the same documented fast-spatial Web adaptation, and the root's `border-radius` transition consumes that per-size pair instead of a flat global constant — establishing a traceable, tested route from the declared spring tokens to the actual rendered corner-radius motion (previously the tokens were declared but never consumed).
 
 Former external foundation dependency (now fixed): the repository's dark-theme `--md-sys-color-inverse-surface`/`--md-sys-color-inverse-on-surface` tokens previously resolved to the same values in both light and dark theme blocks (`src/shared/lib/md/tokens.css`), so they did not actually invert under dark theme. `MDButton`'s outlined selected-toggle route consumes these system tokens by design. The `docs/material-3/audits/button.md` review (2026-07-17) independently confirmed this defect against the official Material dark-scheme mapping (`inverse-surface` → `neutral90`, `inverse-on-surface` → `neutral20`, cross-checked against the icon-buttons/tooltip token specs); the dark-theme block now assigns those correct references, and `tests/e2e/visual/shared-ui/md-button.spec.ts` (`MDButton inverse-surface/inverse-on-surface system tokens invert correctly between light and dark theme`) proves both theme values against the reference palette directly. This was foundation-owned work, not a change inside `MDButton.vue`, and it applies to every consumer of these two system tokens (also `MDIconButton`, `MDPlainTooltip`, `MDSnackbar`), not only `MDButton`.
 
-Also outside this component's ownership: the shared elevation-shadow-color bridge's final-`box-shadow` re-derivation gap noted above affects the whole Button family equally and should be tracked as a `src/shared/lib/md/tokens.css` follow-up, not a per-component fix.
-
 Unsupported official surfaces do not block this subset: Split Button, Standard Button Group, and Connected Button Group.
 
-Verdict: `MDButton`'s own token graph, override contract, motion ownership, shape precedence, and loading accessibility are now verified against the Button-family scope of this component, and the former dark-theme inverse system-token blocker is resolved; the family-level status stays `partial` because `MDIconButton`/`MDFab`/`MDExtendedFab` retain unfinished Stage 1–3 work below.
+Verdict: `MDButton`'s own token graph, override contract, motion ownership (including the per-size spring-to-transition route), shape precedence, loading accessibility, and shadow-color final route are now verified against the Button-family scope of this component; the former dark-theme inverse system-token blocker and the shared elevation final-route defect are both resolved. The family-level status stays `partial` because `MDIconButton`/`MDFab`/`MDExtendedFab` retain unfinished Stage 1–2 work below.
 
 ## Icon buttons: `MDIconButton`
 
@@ -105,7 +104,7 @@ Confirmed current state:
 Verification boundary:
 
 - focus-indicator routing is verified only for a representative override and default-role coverage, not yet for both FAB components, every published property, and all three plain styles;
-- shadow-color tests confirm the component-token-to-private bridge but do not consistently assert the final computed shadow;
+- shadow-color tests confirm the component-token-to-private bridge but do not yet assert the final computed shadow; the underlying `src/shared/lib/md/tokens.css` formula that previously blocked this (see the Buttons section above) is fixed at the foundation, so this is now a `MDFab`/`MDExtendedFab` test-coverage gap rather than a foundation limitation;
 - visible label/icon color motion is not yet verified on the child elements that own those colors.
 
 Unsupported surfaces do not block this subset: FAB Menu, legacy Small FAB, and lowered/surface FAB variants.
@@ -121,7 +120,7 @@ Implemented foundation:
 - private Web fast-effects conversion: `150ms`, `cubic-bezier(0.31, 0.94, 0.34, 1)`;
 - `MDStateLayer` consumes a generic private transition contract and retains the legacy fallback for non-Button consumers.
 
-This foundation is present. `MDButton` now applies and verifies the transition on every actual owning element (root spatial/color-effect properties, label/icon color/opacity). The Button family remains `partial` because `MDIconButton`, `MDFab`, and `MDExtendedFab` do not yet consistently apply or verify the transition on their actual owning elements.
+This foundation is present. `MDButton` now applies and verifies the transition on every actual owning element (root spatial/color-effect properties, label/icon color/opacity), and its per-size official `*-pressed-container-corner-size-motion-spring-stiffness`/`-damping` component tokens are colocated with a private duration/easing pair that the root `border-radius` transition actually consumes (verified per size), instead of those tokens being declared without participating in the rendered motion. The Button family remains `partial` because `MDIconButton`, `MDFab`, and `MDExtendedFab` do not yet consistently apply or verify the transition on their actual owning elements.
 
 ## Remaining Button-family alignment work
 
@@ -159,17 +158,17 @@ Classification: contract edge case; not a current production interaction blocker
 
 ### Stage 3 — Override verification completion
 
-Scope: browser tests only unless a test proves a concrete production defect. `MDButton`'s motion-owning-element assertions are complete. `MDButton`'s shadow-color verification is complete for what the shared elevation token architecture actually supports (private bridge variable plus elevation-level geometry); the final-`box-shadow`-color gap below turned out to be a shared-architecture limitation, not a per-component gap, so it is tracked once here rather than duplicated per component.
+Scope: browser tests only unless a test proves a concrete production defect. `MDButton`'s motion-owning-element assertions are complete. `MDButton`'s shadow-color verification now asserts the final rendered `box-shadow` color, not only the private bridge variable and elevation-level geometry: the shared `src/shared/lib/md/tokens.css` elevation formula was root-caused and fixed (2026-07-17) — see the Buttons section above.
 
-Current gaps:
+Remaining gaps:
 
-- the shared `--md-private-elevation-shadow-color` → `--md-sys-elevation-levelN` bridge does not reliably re-derive the final rendered `box-shadow` color when only the shadow-color source changes (discovered while implementing `MDButton`'s Stage 3 work: the bridge variable itself updates correctly, but the browser does not consistently recompute `box-shadow` through the nested `rgb(from var(...))` formula). This affects `MDButton`, `MDIconButton`, `MDFab`, and `MDExtendedFab` identically, since they share the same `src/shared/lib/md/tokens.css` elevation formula;
+- `MDFab` and `MDExtendedFab` shadow-color tests were not updated in this pass to assert the final rendered color; the underlying formula is already fixed, so this is now test-coverage work, not a foundation blocker;
 - FAB focus-indicator verification does not yet cover both FAB components, color/thickness/offset, and all three plain styles;
 - some `MDIconButton`/`MDFab`/`MDExtendedFab` motion assertions inspect root elements rather than actual property owners.
 
 Expected result:
 
-- the shared elevation formula in `src/shared/lib/md/tokens.css` is restructured (or a working alternative is found) so a shadow-color override reaches both the private bridge and the final rendered shadow, verified by a browser test; this is `tokens.css`/foundation work, not a Button-family component change;
+- `MDFab` and `MDExtendedFab` shadow-color tests assert the final rendered `box-shadow` color, matching the pattern used by `MDButton`'s test;
 - `MDFab` and `MDExtendedFab` verify focus-indicator color, thickness, and offset for `primary`, `secondary`, and `tertiary`;
 - motion assertions inspect the actual owning elements;
 - production code changes only when an exact test proves a routing defect.

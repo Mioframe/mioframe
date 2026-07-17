@@ -59,9 +59,18 @@ Current milestone: `M1 — MDButton end-to-end pilot`
 
 Current status: `active`
 
-Current blocker: none.
+Current blocker: operator visual acceptance of prepared screenshot evidence (agent-owned gates are complete).
 
-Next action: complete and merge the focused Button contract work in PR #150, then start the canonical end-to-end Button migration from current `develop`; correct any inaccurate applicable rule discovered by the migration instead of adding an exception or a speculative validator.
+Next action: an operator reviews and accepts (or rejects) the prepared `MDButton` visual evidence; once accepted, mark M1 `done` and start M2 (`MDSwitch` independent stateful pilot) via `material-library-next` or an explicit `material-component` run.
+
+Agent-owned M1 work completed in this pass:
+
+- `MDButton` physically migrated end-to-end from `src/shared/ui/Button/MDButton.vue` to the canonical `src/shared/ui/material/components/button`, with a family `README.md`, a root `@shared/ui/material` public export, every direct consumer migrated to the new import path, and the legacy `MDButton`-specific files/export removed (sibling legacy families `MDIconButton`/`MDFab`/`MDExtendedFab`/`FabContainer` remain untouched, out of this family's scope).
+- Two confirmed high-severity findings from `docs/material-3/audits/button.md` (2026-07-17 pre-migration audit) are fixed and verified, not deferred:
+  - the shared elevation shadow-color bridge now reliably reaches the final rendered `box-shadow` color (`src/shared/lib/md/tokens.css`: `--md-sys-elevation-level0`–`level5` declared on a universal selector instead of only `:root`, root-caused to a real CSS custom-property inheritance/freezing behavior, not a browser limitation) — benefits `MDButton`, `MDIconButton`, `MDFab`, and `MDExtendedFab` identically;
+  - `MDButton`'s per-size pressed-corner spring component tokens (`stiffness`/`damping`) now route through a colocated private duration/easing pair actually consumed by the root `border-radius` transition, instead of being declared without participating in the rendered motion.
+- Full `pnpm verify` (format, lint, type-check, unit, full-app e2e, Storybook behavior, visual regression, mutation) passes on the final working tree.
+- A fresh `material-component-review` audit replaced the prior non-compliant one at `docs/material-3/audits/button.md`.
 
 ## Milestone overview
 
