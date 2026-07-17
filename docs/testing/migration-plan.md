@@ -10,7 +10,8 @@ The migration must preserve these decisions:
 - every non-trivial change records `TEST IMPACT` before implementation;
 - `unit-tests` run directly changed tests plus Vitest related-test selection over static imports for existing source and local test-support modules;
 - deleted/renamed unit dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, and unknown unit impact use full-unit fallback;
-- Storybook behavior, app E2E, and visual use separate small impact registries with one shared schema and validator;
+- Storybook behavior, app E2E, and visual use separate small impact registries with shared mechanical schemas and validation;
+- every Playwright spec has a source mapping or a justified standalone entry;
 - matching Playwright mappings are unioned and deduplicated;
 - changed specs select themselves;
 - common lane config/helpers and unknown Playwright impact select the full owning lane;
@@ -69,15 +70,20 @@ Acceptance:
 - dynamic-import and global setup changes cannot silently skip unit proof;
 - no custom dependency graph is introduced.
 
-### 2. Shared Playwright impact schema
+### 2. Shared Playwright impact contracts
 
-Create one small reusable schema/validator used by three independent registries:
+Create small reusable contracts used by three independent lane registries:
 
 ```ts
 interface TestImpactEntry {
   readonly name: string;
   readonly sourcePrefixes: readonly string[];
   readonly specs: readonly string[];
+}
+
+interface StandaloneSpecEntry {
+  readonly spec: string;
+  readonly reason: string;
 }
 ```
 
@@ -87,16 +93,20 @@ Registry owners:
 - app E2E registry;
 - visual registry.
 
-Entry names and arrays are non-empty. The validator rejects missing specs, duplicate entry names, duplicate paths within one entry, and invalid paths. Overlapping source prefixes and a spec referenced by multiple entries are valid; planning unions and deduplicates all matches.
+Use standalone only when no truthful stable source mapping exists, such as lane-infrastructure smoke. It is not an alternative to maintaining known impact.
+
+Entry names, arrays, specs, and reasons are non-empty. Validation rejects missing specs, duplicate mapping names, duplicate paths within one entry, duplicate standalone specs, empty reasons, invalid paths, and uncovered discovered specs. Overlapping source prefixes and a spec referenced by multiple mappings are valid; planning unions and deduplicates all matches.
 
 Acceptance:
 
 - a changed spec selects itself;
 - a changed mapped source selects the union of registered specs;
-- a new/moved/removed spec requires a matching registry update;
+- every discovered spec has a mapping or justified standalone entry;
+- a new/moved/removed spec requires a matching mapping or standalone update;
 - overlapping valid mappings do not fail or duplicate execution;
+- standalone entries cannot hide known stable impact;
 - broken registry integrity fails before test execution;
-- the schema contains no product semantics or cross-lane abstraction.
+- the contracts contain no product semantics or cross-lane orchestration.
 
 ### 3. Full-lane fallback rules
 
@@ -217,7 +227,7 @@ Migration is complete when:
 
 - agents consistently produce `TEST IMPACT` before non-trivial edits;
 - unit selection uses direct tests plus Vitest static-import related selection with tested deletion/dynamic/global fallbacks;
-- all Playwright lanes use validated small impact registries, union/deduplication, and safe full-lane fallback;
+- all Playwright lanes use validated small mappings, justified standalone entries, union/deduplication, complete spec coverage, and safe full-lane fallback;
 - visual specs prove appearance only;
 - reusable browser behavior and product scenarios have distinct ownership;
 - mobile execution is tag-driven and proportional;
