@@ -5,6 +5,8 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Routing
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component families.
+- Use `material-library-status` for a read-only Material program status report.
+- Use `material-library-next` when the user wants Material library work to continue without selecting a component; it selects exactly one family.
 - Use `material-component` when the user provides only a Material component or family name and expects autonomous creation, migration, or alignment.
 - Use `material-component-review` when the user provides a Material component or family name and wants an evidence-backed compliance review without implementation changes.
 - Use `material-component-authoring` as the canonical execution workflow after the Material family is resolved, including legacy `MD*` components outside `src/shared/ui/material`.
@@ -12,7 +14,7 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 - Use `material3-guidelines` for official source lookup, component choice, usage, composition, and product-facing Material decisions.
 - Inside `src/shared/ui/material`, follow `src/shared/ui/material/AGENTS.md` and the canonical architecture under `docs/material-3`.
 
-A one-name invocation is sufficient input for `material-component` and `material-component-review`; do not require the user to supply variants, API, files, tests, foundations, consumers, or expected defects before repository and source discovery.
+A one-name invocation is sufficient input for `material-component` and `material-component-review`; do not require the user to supply variants, API, files, tests, foundations, consumers, or expected defects before repository and source discovery. `material-library-next` requires no component name and must select only one family per run. `material-library-status` is read-only.
 
 A completed `material-component-review` run must create or replace `docs/material-3/audits/<family-slug>.md`. Review-only means no implementation, test, registry, family-contract, or policy changes; the durable audit artifact is required.
 
@@ -34,7 +36,7 @@ Do not assemble an official Material component workflow from generic shared UI r
 - New Material ownership at a legacy path is forbidden.
 - Shared UI must not import product layers or domain models.
 
-Detailed generic component rules belong to `shared-ui-implementation`. Material target resolution belongs to `material-component`; review-only compliance assessment and durable audit creation belong to `material-component-review`; detailed execution belongs to `material-component-authoring` and `src/shared/ui/material/AGENTS.md`.
+Detailed generic component rules belong to `shared-ui-implementation`. Material program status belongs to `material-library-status`; automatic next-family selection belongs to `material-library-next`; target resolution belongs to `material-component`; review-only compliance assessment and durable audit creation belong to `material-component-review`; detailed execution belongs to `material-component-authoring` and `src/shared/ui/material/AGENTS.md`.
 
 ## Verification
 
