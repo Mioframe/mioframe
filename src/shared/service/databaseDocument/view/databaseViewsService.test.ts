@@ -170,6 +170,42 @@ describe('setupDatabaseViewsService', () => {
       expect(stateSubject.value?.views[viewCId]?.order).toBe(2);
     });
 
+    it('does not partially mutate the document when orderedIds has a different length than expectedOrderedIds', async () => {
+      const { stateSubject, viewAId, viewBId, viewCId } = createThreeViewState();
+      const changeDatabase = createChangeDatabase(stateSubject);
+      const service = setupDatabaseViewsService(() => stateSubject.asObservable(), changeDatabase);
+      const documentId = createDocumentId();
+
+      await expect(
+        service.reorder('/db', documentId, {
+          expectedOrderedIds: [viewAId, viewBId, viewCId],
+          orderedIds: [viewAId, viewBId],
+        }),
+      ).rejects.toThrow();
+
+      expect(stateSubject.value?.views[viewAId]?.order).toBe(0);
+      expect(stateSubject.value?.views[viewBId]?.order).toBe(1);
+      expect(stateSubject.value?.views[viewCId]?.order).toBe(2);
+    });
+
+    it('does not partially mutate the document when orderedIds contains a duplicate id', async () => {
+      const { stateSubject, viewAId, viewBId, viewCId } = createThreeViewState();
+      const changeDatabase = createChangeDatabase(stateSubject);
+      const service = setupDatabaseViewsService(() => stateSubject.asObservable(), changeDatabase);
+      const documentId = createDocumentId();
+
+      await expect(
+        service.reorder('/db', documentId, {
+          expectedOrderedIds: [viewAId, viewBId, viewCId],
+          orderedIds: [viewAId, viewAId, viewCId],
+        }),
+      ).rejects.toThrow();
+
+      expect(stateSubject.value?.views[viewAId]?.order).toBe(0);
+      expect(stateSubject.value?.views[viewBId]?.order).toBe(1);
+      expect(stateSubject.value?.views[viewCId]?.order).toBe(2);
+    });
+
     it('keeps the applied order observable through the canonical view-list query', async () => {
       const { stateSubject, viewAId, viewBId, viewCId } = createThreeViewState();
       const changeDatabase = createChangeDatabase(stateSubject);

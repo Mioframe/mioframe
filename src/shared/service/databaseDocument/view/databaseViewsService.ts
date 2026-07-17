@@ -152,10 +152,19 @@ export const setupDatabaseViewsService = (
   const isPermutation = (
     candidate: readonly DatabaseViewId[],
     reference: readonly DatabaseViewId[],
-  ) =>
-    candidate.length === reference.length &&
-    new Set(candidate).size === candidate.length &&
-    candidate.every((id) => reference.includes(id));
+  ): boolean => {
+    if (candidate.length !== reference.length) {
+      return false;
+    }
+
+    const candidateIds = new Set(candidate);
+    if (candidateIds.size !== candidate.length) {
+      return false;
+    }
+
+    const referenceIds = new Set(reference);
+    return candidate.every((id) => referenceIds.has(id));
+  };
 
   /**
    * Reorders views by explicit identifier order, guarded by the canonical order the caller

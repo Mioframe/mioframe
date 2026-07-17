@@ -143,6 +143,34 @@ const canRevealContainerEdge = (
 };
 
 /**
+ * Checks whether any candidate farther outward than `startIndex` can reveal the requested
+ * physical container edge, without allocating a sliced copy of `candidates` per call.
+ * @param candidates - The full precomputed scroll candidate chain, nearest to farthest.
+ * @param startIndex - Index of the first outer candidate to inspect (exclusive of nearer ones).
+ * @param containerRect - The reorder container's bounding rectangle this frame.
+ * @param axis - Which axis is being checked.
+ * @param direction - The scroll direction being checked.
+ * @returns Whether an outer candidate can reveal the requested edge.
+ */
+const canOuterCandidateRevealEdge = (
+  candidates: readonly Element[],
+  startIndex: number,
+  containerRect: ReturnType<typeof getBoundingRectangle>,
+  axis: 'x' | 'y',
+  direction: ScrollDirection,
+): boolean => {
+  for (let index = startIndex; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+
+    if (candidate && canRevealContainerEdge(candidate, containerRect, axis, direction)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
  * Resolves and applies one candidate's scroll delta for the current frame, returning which axes
  * it owns after visibility and scrollability are considered.
  * @param candidate - The scroll candidate being evaluated this frame.
@@ -151,8 +179,10 @@ const canRevealContainerEdge = (
  * @param pointerPosition - The current pointer position.
  * @param unresolvedX - Whether the X axis is still unresolved by a nearer candidate.
  * @param unresolvedY - Whether the Y axis is still unresolved by a nearer candidate.
- * @param ancestors - Candidates farther outward than `candidate`, used to defer inner scrolling
- * while one of them can reveal the requested physical container edge.
+ * @param candidates - The full precomputed scroll candidate chain, nearest to farthest.
+ * @param candidateIndex - `candidate`'s index within `candidates`; candidates farther outward
+ * (index + 1 onward) are used to defer inner scrolling while one of them can reveal the
+ * requested physical container edge.
  * @returns Which axes `candidate` resolved this frame.
  */
 const applyReorderScrollCandidate = (
@@ -162,7 +192,8 @@ const applyReorderScrollCandidate = (
   pointerPosition: { x: number; y: number },
   unresolvedX: boolean,
   unresolvedY: boolean,
-  ancestors: readonly Element[],
+  candidates: readonly Element[],
+  candidateIndex: number,
 ): { resolvedX: boolean; resolvedY: boolean } => {
   const { full: candidateRect, visible: visibleCandidateRect } =
     getScrollIntentRectangles(candidate);
@@ -197,18 +228,28 @@ const applyReorderScrollCandidate = (
   );
 
   if (candidate === container) {
+    const outerStartIndex = candidateIndex + 1;
+
     if (
       effectiveDirection.x !== ScrollDirection.Idle &&
-      ancestors.some((ancestor) =>
-        canRevealContainerEdge(ancestor, containerRect, 'x', effectiveDirection.x),
+      canOuterCandidateRevealEdge(
+        candidates,
+        outerStartIndex,
+        containerRect,
+        'x',
+        effectiveDirection.x,
       )
     ) {
       effectiveDirection.x = ScrollDirection.Idle;
     }
     if (
       effectiveDirection.y !== ScrollDirection.Idle &&
-      ancestors.some((ancestor) =>
-        canRevealContainerEdge(ancestor, containerRect, 'y', effectiveDirection.y),
+      canOuterCandidateRevealEdge(
+        candidates,
+        outerStartIndex,
+        containerRect,
+        'y',
+        effectiveDirection.y,
       )
     ) {
       effectiveDirection.y = ScrollDirection.Idle;
@@ -273,9 +314,14 @@ export const runReorderAutoscrollFrame = (
   let unresolvedX = true;
   let unresolvedY = true;
 
-  for (const [candidateIndex, candidate] of candidates.entries()) {
+  for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
     if (!unresolvedX && !unresolvedY) {
       break;
+    }
+
+    const candidate = candidates[candidateIndex];
+    if (!candidate) {
+      continue;
     }
 
     const { resolvedX, resolvedY } = applyReorderScrollCandidate(
@@ -285,7 +331,8 @@ export const runReorderAutoscrollFrame = (
       pointerPosition,
       unresolvedX,
       unresolvedY,
-      candidates.slice(candidateIndex + 1),
+      candidates,
+      candidateIndex,
     );
 
     if (unresolvedX && resolvedX) {
