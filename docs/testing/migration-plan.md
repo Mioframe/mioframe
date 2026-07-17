@@ -11,11 +11,12 @@ The migration must preserve these decisions:
 - `unit-tests` run directly changed tests, owning tests for changed snapshots, and Vitest related-test selection over static imports for existing source and local test-support modules;
 - unresolved snapshots, deleted/renamed unit dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, and unknown unit impact use full-unit fallback;
 - Storybook behavior, app E2E, and visual use separate small impact registries with shared mechanical schemas and validation;
+- every Playwright lane declares stable relevance prefixes and full-lane paths;
 - every Playwright spec has a source mapping or a justified standalone entry;
 - changed visual baselines resolve to their owning visual specs or use full visual fallback;
 - matching Playwright mappings are unioned and deduplicated;
-- changed specs select themselves;
-- common lane config/helpers and unknown Playwright impact select the full owning lane;
+- an unmapped source inside a lane’s relevance domain selects the full lane; paths outside that domain do not select it;
+- common lane config/helpers select the full owning lane;
 - app E2E canonical project runs all selected scenarios;
 - mobile project runs only `@mobile` and `@critical` scenarios;
 - mutation is an explicit narrow audit selected in `TEST IMPACT`, not inferred from paths;
@@ -90,23 +91,41 @@ interface StandaloneSpecEntry {
 }
 ```
 
+Each lane owns:
+
+- its spec directory;
+- broad stable `relevantSourcePrefixes`;
+- exact files and prefixes that always select the full lane;
+- mappings and justified standalone specs.
+
 Registry owners:
 
 - Storybook browser behavior registry;
 - app E2E registry;
 - visual registry.
 
-Use standalone only when no truthful stable source mapping exists, such as lane-infrastructure smoke. It is not an alternative to maintaining known impact.
+Use standalone only when no truthful stable source mapping exists, such as lane-infrastructure smoke. It is not an alternative to maintaining known impact. Add a relevance prefix only for a stable source domain, never to patch one task.
 
-Entry names, arrays, specs, and reasons are non-empty. Validation rejects missing specs, duplicate mapping names, duplicate paths within one entry, duplicate standalone specs, empty reasons, invalid paths, and uncovered discovered specs. Overlapping source prefixes and a spec referenced by multiple mappings are valid; planning unions and deduplicates all matches.
+Entry names, arrays, specs, and reasons are non-empty. Validation rejects missing specs, duplicate mapping names, duplicate paths within one entry, duplicate standalone specs, empty reasons, invalid paths, and uncovered discovered specs. Overlapping source prefixes and a spec referenced by multiple mappings are valid.
 
-Visual planning additionally resolves added, changed, or deleted baselines to their owning visual specs through the configured Playwright snapshot convention. An unresolved baseline selects the full visual lane.
+Resolve each changed path in this order:
+
+1. full-lane exact file/prefix;
+2. changed spec plus mappings matching that spec path;
+3. visual baseline owner plus mappings matching the owning spec, or full visual fallback when unresolved;
+4. matching source mappings;
+5. unmapped source under `relevantSourcePrefixes` → full lane;
+6. path outside the lane’s domains → no lane selection.
+
+Across changed paths, union and deduplicate selected specs; full-lane selection wins.
 
 Acceptance:
 
-- a changed spec selects itself;
+- a changed spec selects itself and any intentionally grouped specs;
 - a changed visual baseline selects its owning visual spec;
 - a changed mapped source selects the union of registered specs;
+- an unmapped relevant source safely selects the full lane;
+- an irrelevant path does not schedule the lane;
 - every discovered spec has a mapping or justified standalone entry;
 - a new/moved/removed spec requires a matching mapping or standalone update;
 - overlapping valid mappings do not fail or duplicate execution;
@@ -121,14 +140,15 @@ For each Playwright lane:
 
 - lane config, global setup, global fixture, or shared common helper selects the whole lane;
 - known helpers with explicit complete consumer lists may select only those consumers;
-- unknown production impact selects the complete potentially affected lane;
+- an unmapped path under the lane’s relevance prefixes selects the complete lane;
 - an unresolved visual baseline selects the complete visual lane;
 - an empty inferred scope does not override explicit `TEST IMPACT` paths.
 
 Acceptance:
 
 - no known shared helper silently misses a consumer;
-- unknown impact remains safe;
+- unknown relevant impact remains safe;
+- irrelevant paths do not run unrelated lanes;
 - broad fallback is not used for already-mapped local changes.
 
 ## Phase 2: correct lane ownership
@@ -194,12 +214,13 @@ Acceptance:
 
 As real changes occur, add stable source-to-spec mappings for known shared UI, feature, entity, page, service-client, foundation, and helper ownership.
 
-Keep full app E2E for bootstrap, cross-cutting worker/service protocols, E2E infrastructure, and genuinely unknown impact.
+Keep broad relevance prefixes for safe unknown fallback, but narrow them only when stable mappings prove the source domain is fully understood. Keep full app E2E for bootstrap, cross-cutting worker/service protocols, E2E infrastructure, and genuinely broad impact.
 
 Acceptance:
 
 - mapped local source changes run representative owning scenarios;
-- unknown impact remains fail-closed;
+- unmapped relevant impact remains fail-closed;
+- irrelevant source domains do not schedule the lane;
 - registries remain small mechanical maps rather than a second architecture model.
 
 ### 9. Consolidate foundation proof
@@ -235,7 +256,7 @@ Migration is complete when:
 
 - agents consistently produce `TEST IMPACT` before non-trivial edits;
 - unit selection uses direct tests, snapshot ownership, and Vitest static-import related selection with tested snapshot/deletion/dynamic/global fallbacks;
-- all Playwright lanes use validated small mappings, justified standalone entries, union/deduplication, complete spec coverage, visual baseline ownership, and safe full-lane fallback;
+- all Playwright lanes use validated mappings, justified standalone entries, declared relevance/full-lane domains, deterministic resolution order, union/deduplication, complete spec coverage, visual baseline ownership, and safe fallback;
 - visual specs prove appearance only;
 - reusable browser behavior and product scenarios have distinct ownership;
 - mobile execution is tag-driven and proportional;
