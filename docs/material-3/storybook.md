@@ -2,9 +2,7 @@
 
 ## Principle
 
-Storybook is the documentation and isolated verification surface for the Material library. It documents the supported Mioframe contract; it is not the source of Material truth.
-
-Official authority comes from the source hierarchy in `source-of-truth.md`.
+Storybook is the isolated documentation, browser-fixture, and visual-evidence surface for the Material library. It documents the accepted Mioframe contract; official authority comes from `source-of-truth.md`.
 
 ## Story hierarchy
 
@@ -14,97 +12,107 @@ Material 3/Patterns/<Pattern>/<Story>
 Project UI/<Component>/<Story>
 ```
 
-Use `Material 3/Components` only for official Material component families, `Material 3/Patterns` only for accepted reusable Material compositions, and `Project UI` for app-specific surfaces.
+Use official Material namespaces only for accepted official components and patterns. App-specific surfaces remain under `Project UI`.
 
-## Canonical component story set
+## Component story set
 
-A new or migrated public Material component normally exposes:
+A new or migrated public Material component normally exposes only applicable stories:
 
-- `Overview` or `Default`;
-- `Variants`, `Configurations`, or `Sizes` only for supported axes needing explanation;
-- exactly one canonical `StateMatrix`;
-- focused browser-behavior fixtures when tests require them;
-- documentation for usage, accessibility, tokens, supported/unsupported surface, extensions, and deviations.
+- `Overview`, `Default`, or another canonical representative story;
+- `Variants`, `Configurations`, or `Sizes` when supported axes need explanation;
+- `StateMatrix` when multiple distinct component-owned visual routes exist;
+- focused browser-behavior fixtures when Playwright requires a deterministic initial surface;
+- usage, accessibility, token, supported/unsupported, extension, and deviation notes as applicable.
 
-Do not create optional sections mechanically. `StateMatrix` is mandatory for every new or migrated public Material component.
+Do not create optional stories mechanically.
 
-## Canonical `StateMatrix`
+## Canonical visual story
+
+Every component with visible output has one stable canonical visual story recorded by the family contract.
+
+Use:
+
+- `StateMatrix` for multiple distinct component-owned visual routes;
+- a bounded `Overview`, `Default`, or equivalent story when one representative route is sufficient.
+
+Tag screenshot-ready stories with `visual` and keep accepted titles, export names, and bounded anchors stable.
+
+## `StateMatrix`
 
 Follow `component-testing.md`.
 
-The matrix must:
+A matrix must:
 
-- show every supported state/configuration that produces a distinct component-owned visible output;
-- cover every distinct visible route and simultaneous visual result from the rendered-property matrix;
-- omit semantic or interaction states with no distinct visible output;
-- use the minimum rows required for different configuration/anatomy routes rather than the full Cartesian product;
-- use visible row, column, and section headings;
-- use the canonical checkerboard outer backdrop;
-- keep representative content stable unless content/anatomy is the tested axis;
-- expose `data-testid="visual-<component-kebab>-state-matrix"`;
+- show every supported configuration or state that produces distinct component-owned visible output;
+- include simultaneous states only when they produce a distinct visible winner or coexistence result;
+- omit non-visual states and equivalent cases;
+- use the minimum readable rows, columns, and sections rather than a Cartesian product;
+- use visible labels and stable representative content;
 - use accepted verification-only foundation adapters without changing production API.
 
-When one bounded image would be unreadable, keep one story with labelled bounded sections and screenshot those sections separately. Do not create one story or snapshot per cell.
+When one image would be unreadable, keep one story with labelled bounded sections. Do not create one story or snapshot per cell.
 
-After migration, remove separate `VisualStates` and `VisualInteractionStates` stories when the canonical matrix represents the visual contract clearly.
+A simple component with one meaningful visual route must not receive a ceremonial matrix.
 
 ## Story rules
 
 - Keep stories deterministic and fixture-driven.
 - Do not connect product stores, storage, diagnostics, routing lifecycle, account/network state, or app bootstrap effects.
-- Do not change component APIs for Storybook.
+- Do not change public component API for Storybook.
 - Do not place business logic in stories.
 - Use the same public props, slots, native semantics, and tokens as product code.
-- Verification-only adapters remain outside the public component contract.
-- Tag screenshot-ready stories with `visual`.
-- Keep accepted titles, export names, and visual anchors stable.
+- Keep verification-only adapters outside the public component contract.
+- Remove obsolete duplicate visual stories after the canonical reference covers their accepted purpose.
 
 ## Browser-behavior fixtures
 
-Create a fixture only when a focused Playwright test needs a deterministic initial surface for real browser interaction.
+Create a fixture only when a focused Playwright test needs deterministic initial data or layout for real browser interaction.
 
-The fixture may provide stable data and public initial props. The test must acquire focus, hover, press, drag, open, or other behavior through real browser input. Forced matrix state is never behavior proof.
+The test acquires focus, hover, press, drag, open, or other behavior through real input. Forced visual state never proves acquisition, cancellation, cleanup, or browser behavior.
 
 ## Additional visual stories
 
-The matrix is the primary visual regression and manual-review surface.
+Add a visual story only for a distinct supported geometry or context that the canonical story should not multiply, such as:
 
-Additional visual stories are allowed for distinct geometry or contexts the matrix should not multiply, such as:
-
-- size/configuration galleries;
-- responsive/container contexts;
+- supported size or configuration galleries;
+- responsive or container contexts;
 - typography-specific surfaces;
 - target-area or clipping diagnostics;
-- previously broken focused cases.
+- a focused previously broken case.
 
 Do not snapshot every story.
 
-## Human review
+## Visual regression
 
-Initial matrices and intentional visual baseline changes require human comparison with the official documentation and, when required, the official Material Design Kit references recorded by the family blueprint.
+Use bounded screenshots when the canonical visual contract is stable and regression protection is material.
 
-A screenshot baseline is only a regression reference. Storybook cannot decide whether the baseline is materially correct.
+A screenshot baseline detects change; it does not establish official correctness. Initial baselines and intentional visible changes require operator comparison with named official sources.
 
-Persist accepted review metadata in the family blueprint:
+## Operator handoff
 
-```text
-Last accepted visual review: <PR/date>
-Source snapshot: <documentation and Design Kit snapshot>
-```
+When visual acceptance is required, provide:
+
+- canonical visual story id;
+- bounded screenshot and diff;
+- official documentation snapshot;
+- Design Kit reference when required;
+- intended matches, explicit deviations, and unsupported surface;
+- confirmation that non-visual agent review passed.
+
+Persist accepted review metadata in the family contract only when the visual contract requires it.
 
 ## Documentation notes
 
-Component docs should name:
+Component stories and docs should name applicable:
 
-- official documentation pages and snapshot;
-- Design Kit evidence when used;
-- intended/prohibited usage;
+- official sources and snapshot;
+- intended and prohibited usage;
 - supported and unsupported surface;
 - public API and native semantics;
 - foundation dependencies;
 - tokens and override points;
 - accessibility behavior;
 - extensions and deviations;
-- canonical distinct visual-route coverage.
+- canonical visual coverage.
 
 Do not imply official support for project-specific or unsupported behavior.
