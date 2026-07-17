@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use when the user provides only a Material component or family name and wants it created, implemented, migrated, or aligned. Resolve the official family, repository ownership, change mode, consumers, current audit, and minimum supported surface, then run material-component-authoring end to end.'
+description: 'Use when the user provides only a Material component or family name and wants it created, implemented, migrated, or aligned. Resolve the official family, repository ownership, change mode, consumers, current audit, and minimum supported surface, then run material-component-authoring.'
 ---
 
 # Material component
@@ -27,6 +27,18 @@ material-component Button
 ```
 
 Do not ask the user to predefine variants, API, scenarios, foundations, files, tests, or consumers.
+
+## Execution capability boundary
+
+The coding agent may have repository-file and command access without `git`, GitHub, PR metadata, or CI access.
+
+- Do not invoke unavailable tools.
+- Do not invent a branch, commit, PR state, CI result, review state, or merge readiness.
+- A local `pnpm verify` result is local verification, not CI.
+- Missing `git` or GitHub access does not block implementation work.
+- It does prevent the coding agent from certifying commit-bound audit freshness, green CI, operator acceptance, terminal program status, or merge readiness.
+
+When external repository state is unavailable, the workflow ends as `implementation-ready-for-external-gates`, not `complete`.
 
 ## Resolve the target
 
@@ -55,7 +67,7 @@ Choose:
 
 An explicit component name selects the target instead of automatic queue selection. Roadmap prerequisites may block; queue priority alone does not.
 
-Existing branch or PR scope is context, not authority. `material-component <family>` requests the complete applicable workflow. Expand the current branch or report one exact technical reason a separate branch is required.
+Existing branch or PR scope is context, not authority. `material-component <family>` requests the complete applicable implementation workflow. Expand the current workspace or report one exact technical reason a separate change is required.
 
 Ask one precise question only when official and repository evidence still leave two materially different targets unresolved.
 
@@ -63,14 +75,14 @@ Ask one precise question only when official and repository evidence still leave 
 
 When an audit exists:
 
-- compare its implementation ref and commit with the implementation under work;
+- inspect whether it is commit-bound or provisional workspace evidence;
 - investigate findings rather than accepting them blindly;
 - resolve each current finding through implementation, contract, proof, migration, or rule correction;
 - record why a finding is stale when newer evidence invalidates it;
 - do not copy the audit into the family contract;
-- require a fresh `material-component-review` after implementation changes.
+- require a new `material-component-review` after implementation changes.
 
-An absent audit is not a blocker.
+An absent or provisional audit is not an implementation blocker.
 
 ## Resolve the supported surface
 
@@ -89,7 +101,7 @@ Do not ask the user to decide scope that official sources and repository evidenc
 
 Load and execute `material-component-authoring` for the resolved family and mode.
 
-Do not stop after research, audit, plan, or family contract. Continue through implementation, physical migration, consumer migration, proportional proof, obsolete-owner removal, rule refinement, agent review, fresh final audit, visual handoff, and progress updates.
+Do not stop after research, audit, plan, or family contract. Continue through implementation, physical migration, consumer migration, proportional proof, obsolete-owner removal, rule refinement, workspace review, visual handoff preparation, and progress updates.
 
 Use `material-foundation` only when a cross-family foundation contract changes. Use specialized Vue and testing skills only for applicable layers.
 
@@ -104,8 +116,8 @@ Escalate only for a genuine blocker defined by the authoring workflow, such as:
 - intentional Mioframe deviation;
 - incompatible public contract;
 - unsafe cross-family foundation change;
-- unresolved verification failure;
-- rejected operator visual evidence.
+- unresolved local verification failure;
+- rejected operator visual evidence reported back to the implementation workflow.
 
 A blocker names one exact decision, evidence already gathered, and the safest recommended default.
 
@@ -123,15 +135,16 @@ Canonical owner:
 Supported surface:
 Unsupported surface:
 Audit consumed: none | docs/material-3/audits/<family-slug>.md
-Fresh final audit: docs/material-3/audits/<family-slug>.md @ <implementation commit>
+Workspace audit: none | provisional | commit-bound
 Audit findings resolved or invalidated: none | <summary>
 Consumers migrated:
 Foundation changes:
 Rule refinements: none | <summary>
-Verification:
+Local verification:
 Legacy owner removal: not applicable | complete | blocked
-Operator visual acceptance: not applicable | required | blocked
-Status: complete | blocked (<exact reason>)
+Operator visual review: not applicable | prepared | blocked
+External gates still required: none | commit binding, CI, operator acceptance, terminal records, merge review
+Status: implementation-ready-for-external-gates | blocked (<exact reason>)
 ```
 
-`complete` requires all authoring gates, canonical physical ownership and public export, obsolete-owner removal, proportional proof at the owning layers, and a fresh audit of the final implementation commit. A stale audit, legacy owner, broken final public route, or unverified motion contract/wiring blocks completion; frame-level browser analysis is not required for ordinary CSS motion.
+The coding agent must not report `complete`, `aligned`, `migrated`, milestone `done`, green CI, or merge readiness without direct access to the evidence required for that statement. External GitHub-enabled review owns those gates.
