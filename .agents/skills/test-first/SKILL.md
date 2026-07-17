@@ -1,6 +1,6 @@
 ---
 name: test-first
-description: 'Use when observable behavior, a reproducible defect, migration, persistence semantics, or a data transformation changes and one focused regression test can be added at the existing owning test layer before implementation.'
+description: 'Use when observable behavior, a reproducible defect, migration, persistence semantics, or a data transformation changes and one focused regression test can fail against the current implementation at the existing owning test layer before the fix.'
 ---
 
 # Test-first workflow
@@ -14,9 +14,10 @@ Skip test-first for:
 - behavior-preserving refactors;
 - type-only edits, formatting, comments, renames, or documentation;
 - internal cleanup with no observable contract change;
+- intentional appearance-only contract changes where a meaningful failing pre-implementation check does not exist;
 - changes for which the only possible test would be broad, speculative, duplicative, or less faithful than an existing owner.
 
-Normal relevant coverage and final verification still apply.
+Normal relevant coverage and final verification still apply. Appearance changes still follow `visual-regression-testing`; skipping test-first does not skip visual proof.
 
 ## Activation check
 
@@ -25,6 +26,7 @@ Use test-first only when all conditions are true:
 1. Observable behavior, a public contract, persistence or migration semantics, a transformation, or a reproducible defect changes.
 2. The expected result has an existing faithful owner under `docs/testing/architecture.md`.
 3. One focused regression test or browser smoke check can be added without expanding the task into unrelated coverage or infrastructure.
+4. The check can fail against the current implementation for the expected behavioral reason before production edits.
 
 If any condition is false, skip test-first and state any material unverified risk.
 
@@ -47,7 +49,8 @@ If any condition is false, skip test-first and state any material unverified ris
 - Vue public API and non-browser wiring: component contract test.
 - Reusable UI focus, keyboard, pointer, touch, layout, scrolling, overlay, responsive, motion, or browser API behavior: Storybook browser test.
 - Complete product scenario crossing page, feature, service, persistence, or navigation boundaries: app e2e.
-- Appearance: visual regression. A screenshot does not prove behavior.
+
+Appearance is verified by the visual lane after implementation or when reviewing an existing regression; it is not automatically a red/green test-first target.
 
 Use the relevant owning skill for detailed rules.
 
@@ -59,7 +62,6 @@ Use the repository verification entry point:
 pnpm verify --only unit-tests --files <paths...>
 pnpm verify --only storybook-behavior --files <paths...>
 pnpm verify --only e2e --files <paths...>
-pnpm verify --only visual --files <paths...>
 ```
 
 A reproducible manual browser smoke check is acceptable only when no suitable existing automated target exists and adding one would broaden the task. Report it as manual evidence, not as an automated gate.
@@ -73,4 +75,5 @@ Raw Vitest or Playwright commands are diagnostic exceptions, not substitutes for
 - Do not keep a test that protects implementation details rather than behavior.
 - Do not duplicate an existing owner at another layer.
 - Do not create a new test framework, DSL, fixture system, registry, or helper for one case.
+- Do not force a ceremonial red phase when the current implementation cannot meaningfully fail the proposed check.
 - Do not skip required final verification.
