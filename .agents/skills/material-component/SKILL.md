@@ -22,11 +22,14 @@ The component name is sufficient. Do not ask the user to predefine variants, API
 1. Resolve the current official Material family and documentation path.
 2. Use the official documentation slug as the canonical directory name.
 3. Inspect current implementations, public exports, consumers, family `README.md`, colocated `AUDIT.md`, tests, and stories.
-4. Select:
+4. Reconstruct the complete official capability inventory for the resolved family from current Material 3 Expressive documentation.
+5. Select:
    - `new-component` when no implementation exists;
    - `end-to-end-migration` when a legacy owner exists;
    - `alignment-only` when the canonical owner exists but is incomplete or incorrect.
-5. Resolve the minimum complete supported surface required by current consumers.
+6. Resolve the minimum complete implementation surface required by current consumers.
+
+Current consumer need determines implementation priority and scope. It does not determine documentation coverage. Every official family capability must be classified even when the project does not need it now.
 
 Example:
 
@@ -44,8 +47,10 @@ Before implementation, create or update the family `README.md` using `docs/mater
 The README must state explicitly:
 
 - official pages used;
+- whether the official capability inventory is complete;
 - implemented surface;
-- official capability not implemented;
+- every official capability not implemented, regardless of current consumer demand;
+- partially implemented, unverified, ambiguous, or defective capability;
 - known issues and required follow-up;
 - API, semantics, states, tokens, and dependencies;
 - extensions and deviations;
@@ -53,7 +58,9 @@ The README must state explicitly:
 - verification;
 - `Review status: review required after changes`.
 
-Do not hide an incomplete item to make the result appear successful.
+Do not hide an incomplete item to make the result appear successful. Do not describe the family as fully implemented while any official capability remains unimplemented, partial, unverified, or unresolved.
+
+The inventory should be complete at the contract level without becoming a token-by-token dump. Group coherent variants, states, behaviors, and subcomponents when that preserves full traceability.
 
 ## Run the authoring workflow
 
@@ -76,8 +83,11 @@ Resolved official family:
 Official documentation path:
 Canonical implementation path:
 Change mode:
+Official capability inventory: complete | incomplete (<exact gap>)
+Official coverage: full | partial | unresolved
 Implemented:
 Not implemented:
+Partial / unverified:
 Known issues / follow-up:
 Consumers migrated:
 Foundation/style changes:
@@ -87,4 +97,4 @@ Review required: yes | no
 Status: implementation finished | blocked (<exact reason>)
 ```
 
-`implementation finished` means the code and family README agree and applicable local verification passed. It does not mean the independent audit is successful.
+`implementation finished` means the current implementation task, family README, and applicable local verification agree. It does not mean full official capability coverage or a successful independent audit.
