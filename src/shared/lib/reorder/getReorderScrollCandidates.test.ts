@@ -8,6 +8,17 @@ const createElement = (styles: Partial<CSSStyleDeclaration>, parent: Element): H
   return element;
 };
 
+// happy-dom does not implement `offsetParent` (no real layout engine), so
+// `getNearestViewportFixedAncestor`'s browser-resolved containing-block check has nothing to read
+// by default. Stub it explicitly per scenario, the same way this suite already fakes CSS via
+// inline `style` assignment.
+const stubOffsetParent = (element: HTMLElement, offsetParent: Element | null): void => {
+  Object.defineProperty(element, 'offsetParent', {
+    value: offsetParent,
+    configurable: true,
+  });
+};
+
 afterEach(() => {
   document.body.replaceChildren();
 });
@@ -25,8 +36,9 @@ describe('getReorderScrollCandidates', () => {
     ]);
   });
 
-  it('removes the document candidate but keeps scrollable descendants inside a fixed-position boundary', () => {
+  it('removes the document candidate but keeps scrollable descendants inside a viewport-fixed boundary', () => {
     const fixedBoundary = createElement({ position: 'fixed', overflow: 'auto' }, document.body);
+    stubOffsetParent(fixedBoundary, null);
     const innerScrollable = createElement({ overflow: 'auto' }, fixedBoundary);
     const container = createElement({}, innerScrollable);
 
@@ -34,6 +46,31 @@ describe('getReorderScrollCandidates', () => {
 
     expect(candidates).toEqual([innerScrollable, fixedBoundary]);
     expect(candidates).not.toContain(document.scrollingElement);
+  });
+
+  it('does not truncate outside candidates when the fixed element has a non-viewport containing block', () => {
+    const transformedAncestor = createElement(
+      { transform: 'translateZ(0)', overflow: 'auto' },
+      document.body,
+    );
+    const fixedElement = createElement(
+      { position: 'fixed', overflow: 'auto' },
+      transformedAncestor,
+    );
+    // A fixed element whose containing block is `transformedAncestor` (e.g. via `transform`)
+    // resolves its `offsetParent` to that ancestor instead of `null`.
+    stubOffsetParent(fixedElement, transformedAncestor);
+    const innerScrollable = createElement({ overflow: 'auto' }, fixedElement);
+    const container = createElement({}, innerScrollable);
+
+    const candidates = getReorderScrollCandidates(container);
+
+    expect(candidates).toEqual([
+      innerScrollable,
+      fixedElement,
+      transformedAncestor,
+      document.scrollingElement,
+    ]);
   });
 
   it('includes the container itself when the container is scrollable', () => {

@@ -116,6 +116,24 @@ watch(
 
 tryOnBeforeUnmount(unlockFocus);
 
+// preventScroll above also suppresses the scroll-into-view a browser would normally perform when
+// focus-trap wraps keyboard focus (Tab from the last focusable element to the first, or
+// Shift+Tab from the first to the last). Restore just that one case, narrowly, for keyboard
+// input only: after focus-trap's own synchronous Tab handling has run, wait one animation frame
+// and bring the newly focused element into view if it isn't already.
+const onContainerKeydown = (event: KeyboardEvent) => {
+  if (event.key !== 'Tab') {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    const { activeElement } = document;
+    if (activeElement instanceof HTMLElement && containerEl.value?.contains(activeElement)) {
+      activeElement.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    }
+  });
+};
+
 const paneContainer = usePaneScrollContainer();
 
 const { left: paneLeft, width: paneWidth } = useElementBounding(paneContainer, {
@@ -156,6 +174,7 @@ useOnBackNavigationStackedWhen(openModel, () => {
     :aria-hidden="ariaHidden"
     :style="scrimStyle"
     @click.self="onClickScrim"
+    @keydown="onContainerKeydown"
   >
     <div ref="bodyEl" class="md md-bottom-sheet__body" :style="bodyStyle">
       <div class="md-bottom-sheet__header">

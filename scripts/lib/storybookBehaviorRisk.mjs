@@ -61,10 +61,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',
       'src/shared/lib/reorder/ReorderDocumentViewport.stories.ts',
       'src/shared/lib/reorder/ReorderDocumentViewportStoryHarness.vue',
+      'src/shared/lib/reorder/ReorderFixedBoundary.stories.ts',
+      'src/shared/lib/reorder/ReorderFixedBoundaryStoryHarness.vue',
     ],
     specs: [
       'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
       'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
+      'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
+      'tests/e2e/storybook/reorderReducedMotion.spec.ts',
     ],
   },
   {
@@ -102,6 +106,15 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'tests/e2e/storybook/md-button-family.spec.ts',
     ],
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
+  },
+  {
+    name: 'bottom sheet keyboard focus wrap visibility',
+    sourcePrefixes: [
+      'src/shared/ui/Sheets/MDBottomSheetContainer2.vue',
+      'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScroll.stories.ts',
+      'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScrollStoryHarness.vue',
+    ],
+    specs: ['tests/e2e/storybook/mdBottomSheetContainerKeyboardScroll.spec.ts'],
   },
 ];
 

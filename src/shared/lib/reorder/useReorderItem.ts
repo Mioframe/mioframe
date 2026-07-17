@@ -1,6 +1,5 @@
 import { useSortable } from '@dnd-kit/vue/sortable';
 import { inject, type MaybeRefOrGetter } from 'vue';
-import { REORDER_TRANSITION } from './reorderConfig';
 import { reorderSurfaceInjectionKey } from './reorderSurfaceContext';
 
 /** Reactive inputs for one reorderable row registered with a `ReorderSurface`. */
@@ -17,8 +16,8 @@ export interface UseReorderItemOptions {
 
 /**
  * Registers one row as a reorderable item within the nearest ancestor `ReorderSurface`.
- * Applies the surface's centralized pointer sensor, plugin set, and Material transition, and
- * disables drag activation while that surface has an unresolved reorder commit.
+ * Applies the surface's centralized pointer sensor, plugin set, and shared reduced-motion-aware
+ * transition, and disables drag activation while that surface has an unresolved reorder commit.
  * @param options - Reactive id, index, element, and handle for this row.
  * @returns Whether this item is currently the active drag source.
  * @throws Error - When called without an ancestor `ReorderSurface`.
@@ -36,7 +35,7 @@ export const useReorderItem = ({ id, index, element, handle }: UseReorderItemOpt
     element,
     handle,
     disabled: surface.disabled,
-    transition: REORDER_TRANSITION,
+    transition: surface.reorderTransition,
   });
 
   return { isDragging };
