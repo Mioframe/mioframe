@@ -1,121 +1,69 @@
-# Material 3 component registry
+# Material component registry
 
-## Principle
+This registry is a compact program index. It does not duplicate family implementation documentation or audit findings.
 
-The shared UI kit must be tracked as a registry that maps official Material 3 surfaces to project components, Storybook pages, tokens, verification, and deviations.
+## Fact ownership
 
-Do not migrate components only by local inspection. Use the registry to keep the UI kit coherent and avoid duplicating or partially reimplementing the same Material surface in multiple places.
-
-## Source basis
-
-Unless a row says otherwise, Material rows reference the `material3` MCP snapshot captured at `2026-06-30T05:53:04.916Z`. Historical fallback evidence from `Vyachean/m3-docs-cache` captured at `2026-05-19T05:56:22.642Z` remains a separate source.
-
-The Button-family rows instead use the verified `Vyachean/m3-docs-cache` snapshot:
-
-- commit: `49ffae58a61f86c28b23720696dc9d07b6945483`
-- capturedAt: `2026-07-13T12:48:04.850Z`
-- failedPageCount: `0`
-- suspiciousPageCount: `0`
-- coverageHealth: `verified`
-
-See [Component family audit](./component-family-audit.md) for the detailed Button-family findings and follow-up stages.
-
-## Related audit documents
-
-- [Material 3 foundation audit](./foundation-audit.md)
-- [Foundation audit details](./foundation-audit-details.md)
-- [Component family audit](./component-family-audit.md)
-- [Secondary component family audit](./secondary-component-family-audit.md)
+- Migrated or actively migrated family state lives in its colocated `README.md`.
+- The latest independent family review lives in its colocated `AUDIT.md`.
+- This file owns only the official-family mapping, current program status, and navigation pointer.
+- Historical pre-pilot detail may remain in `component-family-audit.md` but is not current implementation authority.
 
 ## Status values
 
-Use these values consistently:
+- `missing` — no implementation exists.
+- `legacy` — implementation exists outside the canonical Material library and has not started migration.
+- `active` — implementation or alignment is currently in progress; read the local README/AUDIT.
+- `aligned` — canonical implementation has a truthful README, compliant audit, required verification, and accepted visual review when applicable.
+- `project-specific` — not an official Material component family.
+- `deprecated` — compatibility-only surface awaiting removal.
+- `blocked` — required official evidence or a named dependency prevents progress.
 
-- `missing`: no project component exists.
-- `partial`: project component exists but is not fully aligned or verified.
-- `aligned`: component has docs-backed API, tokens, Storybook, verification, and documented deviations.
-- `project-specific`: component is not an official Material component but uses Material foundations.
-- `deprecated`: component remains only as a compatibility surface.
-- `blocked`: Material guidance is missing, conflicting, or unavailable.
+## Official component families
 
-## Registry row fields
+| Official family | Current Mioframe surface | Status | Current state owner |
+| --- | --- | --- | --- |
+| Buttons | `MDButton` | `active` | [`src/shared/ui/material/components/buttons/README.md`](../../src/shared/ui/material/components/buttons/README.md) and [`AUDIT.md`](../../src/shared/ui/material/components/buttons/AUDIT.md) |
+| Icon buttons | `MDIconButton` | `legacy` | current legacy implementation until migration starts |
+| Floating action buttons | `MDFab`, `MDExtendedFab` | `legacy` | current legacy implementation until migration starts |
+| Button groups | none | `missing` | future family documentation when a consumer requires it |
+| Lists | `MDList`, `MDListItem`, `MDListSelectionItem` | `legacy` | current legacy implementation until migration starts |
+| Dialogs | shared Dialog surfaces | `legacy` | current legacy implementation until migration starts |
+| Text fields | `MDTextField`, `MDFieldContainer` | `legacy` | current legacy implementation until migration starts |
+| Checkbox | `MDCheckbox`, `MDCheckboxField` | `legacy` | current legacy implementation until migration starts |
+| Switch | `MDSwitch` | `legacy` | planned independent stateful pilot after Buttons |
+| Chips | `MDChipBase` and wrappers | `legacy` | current legacy implementation until migration starts |
+| Menus | `MDMenuBase`, `MDMenuItemBase`, related surfaces | `legacy` | current legacy implementation until migration starts |
+| Bottom sheets | `MDBottomSheet*` | `legacy` | current legacy implementation until migration starts |
+| Cards | `MDCard` | `legacy` | previously aligned implementation remains outside the canonical library until migrated and locally documented |
+| Progress indicators | shared circular/linear surfaces | `legacy` | current legacy implementation until migration starts |
+| Tooltips | `MDPlainTooltip` and related tooltip surfaces | `legacy` | official-family mapping must be resolved during migration; project-specific tooltip surfaces remain outside |
+| Snackbar | `MDSnackbar` | `legacy` | current legacy implementation until migration starts |
+| Navigation bar | `MDNavigationBar` | `legacy` | current legacy implementation until migration starts |
+| Navigation rail | `MDNavigationRail` | `legacy` | current legacy implementation until migration starts |
+| Navigation drawer | `MDNavigationDrawer` | `legacy` | current legacy implementation until migration starts |
+| Tabs | `MDTabs` and tab surfaces | `legacy` | current legacy implementation until migration starts |
+| Top app bars | `MDTopAppBar`, `MDAppBar` | `legacy` | exact official-family ownership resolved during migration |
+| Sliders | slider surfaces | `legacy` | current legacy implementation until migration starts |
+| Search | search surfaces | `legacy` | current legacy implementation until migration starts |
+| Dividers | divider surfaces | `legacy` | current legacy implementation until migration starts |
+| Badges | badge surfaces | `legacy` | current legacy implementation until migration starts |
+| Segmented buttons | segmented-button surfaces | `legacy` | current legacy implementation until migration starts |
 
-Each row should record:
+## Project-specific surfaces
 
-- Material surface;
-- project component or components;
-- status;
-- Material docs checked;
-- token and public API status;
-- Storybook and browser verification status;
-- deviations or unsupported features.
+Project-specific compositions and helpers do not become official component families merely because they use Material components or styles. Their classification remains in `ui-library-inventory.md`.
 
-## Foundation audit snapshot
+Examples include placement containers, product toolbars, workflow-specific rows, and compositions not represented by an official Material component page.
 
-Rows below are intentionally conservative. `partial` does not mean Material 3 alignment. It means the implementation still has explicitly recorded alignment or verification work.
+## Update rule
 
-### Primary official surfaces
+When a family migration starts:
 
-- Buttons: `MDButton` is `aligned`.
-  Canonical owner: `src/shared/ui/material/components/button` (migrated from the legacy `src/shared/ui/Button/MDButton.vue`; public export `MDButton` from `@shared/ui/material`).
-  Material docs checked: `pages/components/buttons/overview.md`, `pages/components/buttons/specs.md`, `pages/components/buttons/accessibility.md`, `pages/components/buttons/guidelines.md`, `pages/styles/motion/overview/how-it-works.md`, and `pages/styles/motion/overview/specs.md` via the July 13 verified fallback snapshot plus a live `material3` MCP token-graph and doc check recorded in [`docs/material-3/audits/button.md`](./audits/button.md) (2026-07-17). `guidelines` was checked and found to be consumer/product usage guidance (button choice, hierarchy, placement) with no additional component-API requirement.
-  Current state: five styles, five sizes, two shapes, default/toggle variants, native form semantics, selected/disabled state routing, accessibility, Storybook, and core browser verification are implemented. Text toggle is unsupported and normalizes to default. Every supported public `--md-comp-button-*` token routes through a private variable with a Material/system fallback instead of a direct default assignment, verified for inline-style, ordinary-CSS-class, and ancestor-inherited overrides. Ten previously invented token names were removed and six real official tokens were added; outlined/text elevation is a private-only constant (no public token); the outlined selected outline follows the selected container color instead of a fabricated token. The root owns spatial/color-effect transitions only (no root `color` transition); label/icon own their `color`/`opacity` transitions, verified on those elements. Reachable state combinations, enabled selected-plus-pressed precedence, and the disabled-plus-forced-pressed shape combination are all verified. Loading (Mioframe extension) clamps numeric values to `[0, 1]` with development warnings for invalid input, exposes `aria-busy`, and marks the progress indicator `aria-hidden` with disabled-opacity-aware coloring. The icon slot is typed optional. Per-size pressed-corner spring component tokens (`stiffness`/`damping`) are colocated with a private duration/easing pair consuming the documented fast-spatial Web adaptation, and the root `border-radius` transition consumes that pair, so the declared spring tokens participate in the rendered motion (verified per size).
-  Remaining work: none scoped to `MDButton`. The dark-theme inverse system-token defect (`--md-sys-color-inverse-surface`/`--md-sys-color-inverse-on-surface` not actually inverting under dark theme), reported by [`docs/material-3/audits/button.md`](./audits/button.md), is fixed in `src/shared/lib/md/tokens.css` and covered by a dedicated browser test. The shared elevation-shadow-color bridge final-route gap (private bridge variable updated correctly, but the final rendered `box-shadow` did not consistently re-derive from it) is also fixed at the foundation: `--md-sys-elevation-level0`–`level5` are now declared on a universal selector instead of only `:root`, so every element recomputes the formula against its own cascaded shadow-color variable; verified by a browser test asserting the exact final rendered color. Split Button and Button Groups are unsupported.
-  Details: [Component family audit § Buttons](./component-family-audit.md#buttons-mdbutton) and [remaining Button-family alignment work](./component-family-audit.md#remaining-button-family-alignment-work).
+1. resolve its official documentation slug;
+2. create the canonical family directory and README;
+3. set the registry row to `active` and link the local documentation;
+4. keep detailed implemented, unsupported, incomplete, and audit state out of this registry;
+5. set `aligned` only after the family-local completion gates pass.
 
-- Icon buttons: `MDIconButton` is `partial`.
-  Material docs checked: `pages/components/icon-buttons/overview.md`, `pages/components/icon-buttons/specs.md`, `pages/styles/motion/overview/how-it-works.md`, and `pages/styles/motion/overview/specs.md` via the July 13 verified fallback snapshot. No Icon Button accessibility page is claimed as checked in this review.
-  Current state: official `filled` default, four styles, five sizes, three widths, two shapes, default/toggle variants, selected/disabled routing, component tokens, accessibility, Storybook, and core browser verification are implemented. Existing low-emphasis consumers explicitly request `standard`. Built-in `MDSymbol` selection treatment is component-owned; arbitrary custom icon content remains consumer-owned. Reachable states and enabled selected-plus-pressed precedence are verified; the artificial disabled-plus-forced-pressed combination remains follow-up work.
-  Remaining work: icon-color motion ownership and final override verification. Loading and rich tooltip behavior are Mioframe extensions. Split Button and Button Groups are unsupported.
-  Details: [Component family audit § Icon buttons](./component-family-audit.md#icon-buttons-mdiconbutton) and [remaining Button-family alignment work](./component-family-audit.md#remaining-button-family-alignment-work).
-
-- Floating action buttons: `MDFab` and `MDExtendedFab` are `partial`; `FabContainer` is `project-specific`.
-  Material docs checked: `pages/components/floating-action-button/overview.md`, `pages/components/floating-action-button/specs.md`, `pages/components/extended-fab/overview.md`, `pages/components/extended-fab/specs.md`, `pages/styles/motion/overview/how-it-works.md`, and `pages/styles/motion/overview/specs.md` via the July 13 verified fallback snapshot. No FAB or Extended FAB accessibility page is claimed as checked in this review.
-  Current state: six colors, supported sizes, exact component-token surfaces, independent FAB width/height, independent Extended FAB leading/trailing space, state/elevation routing, accessibility, Storybook, and core browser verification are implemented. Plain `primary`/`secondary`/`tertiary` focus-indicator component tokens route into the generic focus contract; their defaults match system defaults. The three `*-container` styles have no distinct published focus component tokens and use the generic fallback.
-  Remaining work: child label/icon motion ownership and complete rendered-shadow/focus-indicator verification. Loading is a Mioframe extension. FAB disabled state, FAB Menu, legacy Small FAB, and lowered/surface FAB are unsupported. `FabContainer` owns placement only.
-  Details: [Component family audit § FAB](./component-family-audit.md#fab-mdfab-mdextendedfab-fabcontainer) and [remaining Button-family alignment work](./component-family-audit.md#remaining-button-family-alignment-work).
-
-- Lists: `MDList`, `MDListItem`, and `MDListSelectionItem` are `partial`.
-  Material docs checked: `components/lists/overview.md`, `components/lists/specs.md`, `components/lists/guidelines.md`, `components/lists/accessibility.md`, `foundations/design-tokens/overview.md`, and `foundations/interaction/states/state-layers.md`.
-  Surface-context status: Lists use inherited foundation surface-context tokens `--md-current-container-color` and `--md-current-content-color`, which default to `--md-container-color` and `--md-content-color`. Standard lists and default rows stay transparent; segmented lists establish their own grouped surface context only within the list bounds.
-  Token status: list surfaces reuse the exact documented Material token path such as `--md-comp-list-list-item-label-text-color`, `--md-comp-list-list-item-supporting-text-color`, `--md-comp-list-list-item-leading-icon-color`, and `--md-comp-list-list-item-trailing-icon-color`; the resolved per-state interaction color is wired through the private `--md-private-list-item-state-layer-color` since Material documents state-layer color per interaction state rather than as one generic token.
-  Shape status: `MDList` owns `standard` and `segmented` list styles. Expressive list items use a 4dp default container/action shape, expand to 12dp on hover, and expand to 16dp for focused, pressed, dragged, and selected states. Segmented style adds grouped 16dp outer shape, 2dp inter-item gaps, and first/middle/last rounding. The legacy `baseline` style remains intentionally unsupported in this PR, but it is not the reason one-line rows use 56dp.
-  Public API status: `MDList` exposes `listStyle: 'standard' | 'segmented'`, list semantics via `div[role=list]` by default or `ul` when requested, and controlled list-level selection through `selectionMode` plus `modelValue`. There is no public `variant` prop — the current Material / Expressive row geometry is the only supported implementation. `MDListItem` supports `static`, `single-action`, and `multi-action` modes plus Material anatomy slots `leading`, `overline`, `supportingText`, `trailing`, and `trailingAction`. `single-action` requires either an `@action` listener or an `href`; `multi-action` requires both a primary action and a `#trailingAction` slot.
-  Interaction contract status: static rows never imply a row action. Single-action rows render one internal button/link surface. Multi-action rows render one primary action plus an independent trailing action. Non-selection `single-action`/`multi-action` rows share an `MDList`-owned keyboard contract: `ArrowDown`/`ArrowUp` move within the same action column, `ArrowLeft`/`ArrowRight` move between a multi-action row's primary and trailing action, and `Home`/`End` move to the first/last enabled row in the current column. `disabled` on a row disables the whole action topology (Option A): the primary action is disabled, the consumer-owned trailing action is made `inert`, and keyboard traversal skips both columns of the disabled row. Repository, local file-system, Google session, and database-property list consumers select the intended Material list style through `MDList`.
-  DOM structure status: within `MDList`, non-selectable lists render list semantics on the container and stable listitem wrappers on each item. Single-action and multi-action rows render internal action elements inside the wrapper, so the final list contract is no longer `button[role=listitem]` or `a[role=listitem]`. Inside a selection list, `MDListItem` renders `role="none"` and suppresses both its primary action surface and any trailing action slot to prevent invalid interactive controls inside a listbox. Selection lists render `role="listbox"` with `role="option"` items, disabled-aware roving tab stops, and selected-state indicators that do not rely on color alone. `MDListSelectionItem` outside a selection list renders `role="presentation"` with no state layer, ripple, pointer cursor, or `tabindex` to avoid orphaned `role="option"` and false interactivity without a listbox parent. Secondary controls remain outside the primary action surface.
-  Anatomy implementation status: shared List-family anatomy CSS (`listItemAnatomy.css`) is imported non-scoped by both MDListItem and MDListSelectionItem, eliminating duplicated token definitions, state modifier remaps, layout, and typography.
-  Multi-action state-layer status: multi-action rows stack the primary action and the trailing action in the same CSS grid cell (`grid-area: 1 / 1`) so the primary action covers the full visual row, with its own `MDStateLayer` inside; the trailing action container is grid-stacked with `pointer-events: none` on the background so empty trailing padding and hover fall through to the primary action hit target; direct slot content (icon button) restores `pointer-events: auto` via a CSS child selector; the trailing slot content keeps its own independent state layer. Browser tests verify primary-area hover activates row state, trailing-target hover removes row state, and empty trailing padding hover falls through to primary action.
-  Size status: current Expressive row heights are 56dp / 72dp / 88dp (one/two/three-line). Layout is content-driven by default, and explicit `lineCount` is limited to supported Material one-line, two-line, and three-line cases. `--md-private-list-item-min-container-height` is restricted/internal compatibility-only documentation, not a public sizing API.
-  CSS unit status: `dp` units remain confined to PostCSS-processed scoped styles. Runtime sizing is passed as px-backed CSS variables where needed.
-  Selection support: controlled single-select and multi-select listbox behavior is supported for primitive item values. The current selection list contract is a vertical listbox: `ArrowDown` and `ArrowUp` move roving focus between enabled options, `Home` and `End` move to the first/last enabled option, and `ArrowLeft`/`ArrowRight` are intentionally not handled as vertical navigation. Shared checkbox or radio selection controls are not yet part of the list primitive; the shared indicator is currently a check icon.
-  Storybook status: `Material 3/Components/Lists/MDListItem` documents standard and segmented list styles, interaction states (including full-row multi-action state layer and independent trailing action hover), trailing-action geometry, DOM contract, selection modes, surface-context (standard List transparency on different parent surfaces and through intermediate wrappers), the Repository Explorer documents header regression case, and consumer patterns (Home actions, Google Drive profile row, Settings checkbox row, repository/file rows) using Material terminology. Baseline stories have been removed. `--md-private-list-item-min-container-height` is marked restricted/internal, and sizing guidance explains that `lineCount` is limited to supported one/two/three-line layouts rather than arbitrary height tuning.
-  Visual or browser verification status: visual stories cover configurations, state geometry (including multi-action full-row hover via grid-stacked primary-action and independent trailing action hover), trailing actions, selection modes, surface context, wrapper inheritance, the Repository Explorer segmented-header regression, and real consumer patterns; browser tests cover DOM roles, no nested native actions, segmented wrapper rounding, independent trailing actions, trailing-padding-fires-primary geometry (now a hard assertion — no silent skip), primary-area hover state, trailing-target hover removal of row state (now a hard assertion), trailing empty-padding hover falls through to primary action (now a hard assertion), standard-list transparent background, standard-list transparent container, wrapper inheritance, segmented-list grouped surface scoping, Home actions two-line layout enforcement, Settings checkbox row no nested controls, disabled checkbox row no pointer cursor, consumer patterns no nested buttons, trailing action suppression in selection lists, orphan selection item state layer absence, disabled-aware listbox navigation, selected indicators, and trailing-action 48dp targets.
-  Deviations or unsupported features: `baseline` is legacy/reference-only and intentionally unsupported; live Figma node verification was blocked by Figma MCP plan limits, expressive row-height verification should be re-checked against the Design Kit when Figma MCP access is available, selection rows currently use a shared checkmark indicator instead of Material-specific radio or checkbox controls, and expandable/swipe list variants remain unsupported. Lists remain `partial`.
-- Dialogs: shared `Dialog/*` surfaces are `partial`. Verify modal semantics, actions, focus, scroll, adaptive layout, and destructive flows.
-- Text fields: `MDTextField` and `MDFieldContainer` are `partial`. Verify labels, supporting/error text, value contract, slots, and states.
-- Selection controls: `MDCheckbox`, `MDCheckboxField`, and `MDSelectBase` are `partial`. Verify checkbox/select semantics, keyboard behavior, menu ownership, and accessibility.
-- Switch: `MDSwitch` is `partial`.
-  Material docs checked: `components/switch/specs.md`, `components/switch/guidelines.md`, `components/switch/accessibility.md`; token tables from the official Material 3 MCP token graph (2026-06-30).
-  Token status: `--md-comp-switch-*` layer implemented — track (width/height/shape/outline, all colors), handle (sizes: 16dp unselected, 20dp interactive, 24dp selected/with-icon, 28dp pressed; all colors and disabled opacities including the shared `--md-comp-switch-disabled-handle-opacity: 0.38`; `--md-comp-switch-disabled-unselected-handle-opacity` uses the shared token; `--md-comp-switch-disabled-selected-handle-opacity: 1` matches official Material token), handle elevation (`--md-sys-elevation-level1/level0`), handle shadow-color (`--md-comp-switch-handle-shadow-color` connected through the elevation foundation's `--md-private-elevation-shadow-color` bridge), focus indicator (`--md-comp-switch-focus-indicator-color/thickness/offset` forwarded to generic `--md-focus-indicator-*` vars consumed by the global focus indicator), icon (16dp size; `primary` selected, `surface-container-highest` unselected; all state colors), state-layer (40dp, all colors and opacities). Icon color is forwarded through `--md-content-color` on `.md-switch__icon` so `MDSymbol` receives the computed color.
-  Public API: `selected`, `disabled`, `id`, `ariaLabel`, `ariaLabelledby`, `autofocus`, `tabIndex`, `presentation` props; `selected-icon` and `unselected-icon` slots; `update:selected` and `change` (emits next selected boolean) emits.
-  Interaction: focusable `<label role="switch">` handles click/Enter/Space, pointer drag (`pointerdown`/`pointerup`/`pointercancel`; pointer drag uses the Pointer Events pointer capture API and releases capture on pointerup/pointercancel), 48dp target layer, 40dp state-layer on handle. `md-switch_with-current-icon` is applied in both interactive and presentation modes when the current state has an icon. Presentation mode: non-interactive `aria-hidden` div, no input/state-layer/ripple.
-  Focus indicator: the global `useFocusIndicator` composable reads generic `--md-focus-indicator-color/thickness/offset` from the focused host and applies them as inline styles on the indicator element; MDSwitch forwards its component tokens to those generic vars on the host element; `data-md-focus-indicator-target` on the handle sets the bounding box source; no Switch-specific branches in `useFocusIndicator`. Browser test added (`FocusIndicatorTarget` story + Playwright test in `shared-ui.spec.ts`) and pending CI confirmation.
-  Verification: `MDSwitch.test.ts` covers ARIA, disabled, presentation (including `md-switch_with-current-icon` in both modes), autofocus, click/keyboard (`update:selected` + `change` emits verified), drag/cancel, icon slots, and with-current-icon class toggling; `SettingsSwitchListItem.test.ts` covers the row-owned presentation-switch contract; `tests/e2e/visual/shared-ui.spec.ts` covers visual state galleries, interaction-state galleries, icon states, 48dp target, drag-to-select, drag-to-deselect, and focus indicator handle target geometry (pending CI for baseline update).
-  Storybook: `shared/ui/MDSwitch` — default/on/disabled, with-icon variants, labeled example, drag story, focus indicator target story, visual state galleries (checker backdrop), interaction-state galleries (forced-state provider).
-  Deviations: focus indicator browser verification pending CI; no other known deviations from official Material 3 token or interaction spec.
-- Chips: `MDChipBase` and chip wrappers are `partial`. Verify strict chip type contracts and invalid combinations.
-- Menus: `MDMenuBase`, `MDMenuItemBase`, and `MDContextMenuButton` are `partial`. Verify positioning, keyboard, focus, selection, and context-menu extension.
-- Bottom sheets: `MDBottomSheet*` surfaces are `partial`. Verify modal/persistent behavior, drag handle, focus, scroll, back behavior, and duplicate `*2` surfaces.
-- Cards: `MDCard` is `aligned` as a Material card container/surface component.
-  Material docs checked: `components/cards/overview.md`, `components/cards/specs.md`, `components/cards/guidelines.md`, `components/cards/accessibility.md`, and the card component token graph (`md.comp.{elevated,filled,outlined}-card.*`) via the Material3 MCP cache (captured 2026-06-30).
-  Scope: Material Cards docs describe a card as a container/surface, plus example content shown inside it (media, headline/subhead/supporting text, buttons, lists, selection controls, linked text, overflow menus). `MDCard` owns only the container/surface: variants, card component tokens, surface context, static-vs-actionable interaction model, state layer, ripple, focus, disabled, and dragged. All example card content is consumer-owned composition inside the default slot, not missing `MDCard` API.
-  Token status: `--md-comp-{elevated,filled,outlined}-card-*` implemented per variant for container (color, shape, elevation, shadow-color, surface-tint-layer color), disabled (container color/opacity for elevated/filled, outline color/opacity for outlined, container elevation for all three), focus indicator (color/thickness/offset), and hover/focus/pressed/dragged (state-layer color/opacity for all three; outline color for outlined only). Container elevation resolves to `--md-sys-elevation-levelN`; `container.surface-tint-layer.color` maps to `--md-sys-color-surface-tint` (exposed as a component token; the project has no existing tonal-elevation overlay mechanism to render it against, so no overlay formula was invented); state-layer color/opacity forward into `MDStateLayer`'s generic `--md-private-state-layer-color`/`--md-state-*-layer-opacity` contract; focus indicator tokens forward into the generic `--md-focus-indicator-*` vars read by the global focus indicator. Icon-part tokens (`icon.size`/`icon.color`) are not applicable — `MDCard` has no icon anatomy, since icons are consumer-owned content.
-  Public API status: `variant: 'elevated' | 'filled' | 'outlined'` (default `filled`), `mode: 'static' | 'button' | 'link'` (default `static`), `href`, `disabled`, `dragged`, `nativeType` props; `action` emit; default slot only. `static` renders a non-actionable `div` (no role, no tabindex, no state layer/ripple) for rich content including internal buttons/links; `button`/`link` render a native `button`/`a[href]` that is the actionable surface itself, with `MDStateLayer` + `useRipple` and native keyboard activation.
-  Interaction contract status: actionable cards do not support nested actionable descendants as a documented pattern because Material's accessibility guidance avoids stacking actionable surfaces. `mode="button"` renders the card as a native `<button>`, whose content model only accepts safe phrasing content; MDCard warns in development (`cardDevWarnings.ts`) when rendered content includes a tag outside that allow list. The warning guards simple button-card content; it is not the source of the nested-action rule. `mode="link"` has no equivalent native content-model restriction (`<a>` accepts flow content), but nested actionable descendants remain unsupported there too for the same accessibility reason. Disabled `button` cards use native `disabled`; disabled `link` cards omit `href`, use `aria-disabled="true"` + `tabindex="-1"`, and restore `href` when re-enabled.
-  Surface context status: MDCard is a Material surface owner — its root maps the resolved container color to `--md-container-color`, sets `--md-content-color` to `--md-sys-color-on-surface` (no documented card content-color token exists), and derives `--md-current-container-color`/`--md-current-content-color` from those so nested Material primitives read the card's surface instead of the pane/page surface underneath it. The actionable ripple (`useRipple`/`ripple.css`) falls back to `--md-content-color`, which now resolves to on-surface — the same value as every variant's documented `*.pressed.state-layer.color` — so the ripple renders in the correct pressed state-layer color without a card-specific override in `shared/ui/State`.
-  Typography content pattern: `MDCard` has no headline/supporting-text slots or `title`/`description` props. Consumers keep their own semantic tags (`h1`-`h3`, `p`, `span`) and apply the global `.md-typescale-*` type scale utility classes from `shared/lib/md/typography.css`. This is the documented pattern for all consumer-owned card content, not a gap in `MDCard`.
-  Storybook status: `shared/ui/MDCard` documents variants, a static card with internal actions using the `.md-typescale-*` typography pattern, actionable button/link cards, an action/keyboard-behavior story with observable click counters, disabled actionable cards, a dragged card, a root-level forced interaction-state gallery (`md-state_*` class fallthrough per variant, including dragged) per variant, and a visual state gallery (static/actionable/disabled/dragged per variant).
-  Visual or browser verification status: `MDCard.test.ts` covers default variant/mode, per-variant modifier classes, static non-actionable behavior (no role/tabindex/state layer, no `action` emit), button mode (native `button`, `type`, `action` emit, disabled), link mode (native anchor, `href`, `action` emit, disabled aria-disabled/tabindex/no `href`, and `href` restoration on re-enable), state-layer presence gated by mode, and the button-mode phrasing-content dev warning (fires for block content, silent for phrasing content, silent for static/link modes). `tests/e2e/visual/shared-ui.spec.ts` covers the visual state gallery, the root-level forced interaction-state gallery, static-card non-actionable DOM contract (including no direct-child state layer/ripple), actionable button-card click/Enter/Space activation with an observable counter, actionable link-card click/Enter activation with an observable counter and fragment navigation, disabled link-card blocked-navigation/no-action semantics including omitted `href`, and root-level Material surface-context token propagation. Verified through the canonical Podman container flow (`pnpm test:visual`); the interaction-state baseline (`md-card-interaction-states-linux.png`) was regenerated through `pnpm test:visual:update` and inspected to confirm it now shows real root-level elevation and outline changes, not only the nested state layer.
-  Deviations or unsupported features: no support for nested actionable content inside an actionable card (documented, and caught in development by the button-mode phrasing-content warning for `mode="button"`); internal padding/gap (16dp padding, 8dp content gap) is a project layout default, not an official Material token. Media, headline/supporting-text anatomy, action rows, lists, selection controls, linked text, and overflow menus are consumer-owned composition per Material's own card-content examples, not `MDCard` deviations.
-- Progress indicators: shared progress indicator surfaces are `partial`. Expand beyond the current single progress component token.
-- Tooltips: `MDPlainTooltip`, `MDRichTooltip`, and `MDOverlayTooltip` are `partial`. Verify plain/rich contracts, trigger ownership, delay, and overlay containment.
+Do not use this registry as proof that an implementation is correct.
