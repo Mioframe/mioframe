@@ -1,96 +1,100 @@
 ---
 name: mutation-testing
-description: 'Use this skill after focused unit/integration tests pass for high-risk pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations. Do not use it for UI component behavior, Playwright/e2e-only flows, refactors, type-only edits, formatting, comments, renames, or documentation.'
+description: 'Use explicitly after changed focused tests pass for high-risk pure, domain, service, storage, CRDT, validation, migration, filtering, sorting, matching, or transformation logic. Never use as an automatic general gate or UI coverage target.'
 ---
 
 # Mutation testing workflow
 
-Use this skill to check whether focused unit or integration tests are strong enough to catch incorrect implementations.
-
-Mutation testing is expensive. Use it narrowly and only after the relevant normal tests pass.
+Follow `docs/testing/architecture.md`. Mutation testing audits whether already-passing focused tests reject incorrect high-risk logic. It is expensive, narrow, and explicit. It is not a behavior layer, a coverage target, or a default requirement for files that happen to have sibling tests.
 
 ## Do not use this skill
 
-Do not use this skill for UI component behavior, Playwright/e2e-only flows, refactors, type-only edits, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
+Do not use mutation testing for:
 
-Do not use this skill before the focused unit or integration tests for the touched behavior pass.
+- UI component behavior or Playwright/e2e-only flows;
+- refactors or internal cleanup with no observable change;
+- type-only edits, formatting, comments, renames, or documentation;
+- code without changed focused tests for the relevant behavior;
+- broad source areas that cannot be selected narrowly.
 
-Do not use a full mutation run by default.
+Do not run a full mutation suite by default.
 
 ## Activation check
 
 Use this workflow only when all conditions are true:
 
-1. The task changes high-risk pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations.
-2. Focused unit or integration tests were added or changed for that behavior.
-3. The focused tests already pass.
-4. A narrow mutation scope can be selected for the changed source files or their sibling tests.
+1. The task changes high-risk pure, domain, service, storage, CRDT, validation, migration, normalization, filtering, sorting, matching, or transformation logic.
+2. Focused unit or integration tests were added or changed for that exact behavior.
+3. Those focused tests already pass.
+4. A narrow mutation scope can be selected from the changed source files or their sibling tests.
+5. A survived mutant would provide useful evidence about a missing behavioral assertion rather than framework, UI, or equivalent implementation detail.
 
-If any condition is false, skip mutation testing and use the normal verification rules.
+If any condition is false, mutation testing does not apply. Use normal owner-specific proof and final verification.
 
 ## Workflow
 
-1. Run the focused unit or integration tests through `pnpm verify --only unit-tests --files ...` and confirm they pass.
+1. Run the focused tests through verify and confirm they pass.
 2. Select the narrowest changed source or sibling test paths that identify the intended mutation scope.
-3. Run the mutation gate through `pnpm verify --only mutation --files ...`.
-4. Inspect survived mutants before editing more code.
-5. Strengthen tests only when a survived mutant exposes a missing behavior assertion.
-6. Treat equivalent or irrelevant mutants as findings, not as a reason to add brittle tests.
+3. Run the focused mutation audit.
+4. Inspect survived, no-coverage, timeout, and runner-failure results before editing tests.
+5. Strengthen a test only when a meaningful survived mutant exposes a missing behavior assertion.
+6. Keep the assertion at the existing owning test layer and focused on an accepted outcome or boundary.
 7. Do not change production behavior only to kill a mutant.
-8. Rerun the focused tests after test changes.
-9. Rerun the same verify-managed mutation scope when the test was strengthened.
-10. Run final read-only `pnpm verify` before reporting completion.
+8. Treat equivalent or irrelevant mutants as findings, not as reasons for brittle tests.
+9. Rerun the focused normal tests after test changes.
+10. Rerun the same narrow mutation scope when the test was strengthened.
+11. Run final read-only `pnpm verify` before reporting completion.
 
 ## Commands
 
-Focused tests:
+Focused normal tests:
 
 ```bash
 pnpm verify --only unit-tests --files <changed-source-or-test-paths...>
 ```
 
-Preferred narrow mutation run:
+Explicit narrow mutation audit:
 
 ```bash
 pnpm verify --only mutation --files <changed-source-or-test-paths...>
 ```
 
-The verify runner derives the mutation source scope from changed source files and sibling tests. If the resulting mutation scope is empty, do not bypass it with an arbitrary broader Stryker glob; correct the file selection or report that mutation testing does not apply.
+The verify runner may derive source candidates from selected files. If the resulting scope is empty or includes unrelated files, correct the explicit file selection or report that mutation testing does not apply. Do not bypass an empty scope with an arbitrary broader Stryker glob.
 
-A standalone full mutation command is allowed only when explicitly requested or when a specific high-risk merge requires a mode the verify runner does not provide. Treat it as an additional diagnostic run, not a replacement for verify-managed checks, and still run final `pnpm verify`.
+A standalone full mutation command is allowed only when explicitly requested or when a named high-risk merge requires a mode the verify runner cannot express. Treat it as additional diagnostic evidence, not as a replacement for focused tests or final verification.
 
 ## Reading results
 
-- `Killed` means the tests caught the mutation.
-- `Survived` means the tests did not catch the changed behavior.
-- `No coverage` means no relevant test executed the mutated code.
-- `Timeout` or runner failures need investigation before drawing conclusions.
+- `Killed`: the selected tests rejected the mutation.
+- `Survived`: the selected tests did not reject the changed behavior.
+- `No coverage`: no selected test executed the mutated code.
+- `Timeout` or runner failure: investigate execution before drawing conclusions.
 
-## Handling survived mutants
+A mutation score alone is not an acceptance criterion.
+
+## Meaningful survived mutants
 
 For each meaningful survived mutant:
 
-1. Identify the behavior that should have failed.
-2. Add or tighten the smallest relevant assertion.
-3. Keep the assertion behavior-focused, not implementation-focused.
-4. Rerun the focused test.
-5. Rerun the same narrow mutation scope.
+1. Name the accepted behavior that should have failed.
+2. Add or tighten the smallest assertion at the owning layer.
+3. Prefer boundaries and outcomes such as empty versus non-empty, valid versus invalid, cancellation versus failure, error precedence, inclusion versus exclusion, direction, fallback, or persistence result.
+4. Rerun the focused normal test.
+5. Rerun the same mutation scope.
 
-Useful mutation fixes usually assert boundaries, branches, and outcomes that already matter: empty vs non-empty input, valid vs invalid input, cancellation vs failure, error precedence, filtering inclusion/exclusion, sorting direction, and fallback behavior.
+If mutants cluster in a large UI component, do not add brittle component tests. Extract pure logic only when it has a coherent owner and the extraction decreases total complexity; otherwise mutation testing does not apply to that behavior.
 
-If survived mutants cluster in a large UI component, do not add brittle component tests against implementation details. First extract the pure derivation or decision logic into a helper or composable owned by the correct layer, then cover that extracted logic with focused tests.
+## Equivalent or irrelevant mutants
 
-If the mutation report points at unrelated files, narrow the file selection or revert unrelated changes. Do not broaden production changes to satisfy a mutation report that was scoped too widely.
-
-For equivalent or irrelevant mutants:
-
-- Do not add brittle tests.
-- State why the mutant is equivalent or irrelevant in the final response.
-- Use Stryker disable comments only when explicitly requested or when the project already uses them nearby.
+- Do not add brittle implementation-detail assertions.
+- Record why the mutant does not represent a distinct accepted behavior.
+- Use disable comments only when explicitly requested or when an established nearby project convention applies.
+- Narrow the scope when unrelated files appear; do not broaden production changes to satisfy a mis-scoped report.
 
 ## Limits
 
-- Do not use mutation testing as a replacement for focused tests, type checking, linting, e2e checks, or final `pnpm verify`.
-- Do not broaden mutation scope to unrelated files to improve the score.
-- Do not chase mutation score by testing implementation details.
-- Do not run full mutation testing automatically during small tasks.
+- Do not infer mutation applicability merely from file location or the existence of a sibling test.
+- Do not run mutation automatically for ordinary tasks or as part of a general score target.
+- Do not use mutation as a replacement for focused tests, type checking, linting, browser checks, or final verification.
+- Do not broaden scope to unrelated files.
+- Do not test implementation details or change production behavior to kill mutants.
