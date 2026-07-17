@@ -49,12 +49,25 @@ This directory defines Mioframe's contract for building and migrating the Materi
 - `ui-library-inventory.md` owns classification, priority, queue state, and terminal outcome.
 - `source-of-truth.md` owns source hierarchy and the current Expressive target.
 - `autonomous-review.md` owns agent/operator review-role separation.
-- `material-component-authoring` owns execution order for official component families.
+- `material-component` owns one-name invocation, official target resolution, and automatic change-mode selection.
+- `material-component-authoring` owns the canonical execution order after the family is resolved.
 - `material-foundation` owns execution order for cross-family foundation changes.
 - The family `README.md` owns the accepted contract for one family.
 - Validation policy defines when automation is justified; actual tooling owns only checks that exist.
 
 When a real migration exposes an inaccurate rule, correct the owning source rather than adding an exception or duplicating a replacement.
+
+## One-name component entry point
+
+A user may start component work with only:
+
+```text
+material-component <component-or-family-name>
+```
+
+The component name is sufficient input. The entrypoint resolves the official Material surface, owning family, existing implementation, consumers, change mode, minimum supported Expressive surface, applicable foundations, and proof layers before running `material-component-authoring` end to end.
+
+Existing consumers define required scenarios. When no consumer exists, implement the current canonical Expressive default and record optional official capabilities as unsupported. Ask the user only when a genuine product decision or materially unresolved official ambiguity remains.
 
 ## Goals
 
@@ -70,6 +83,7 @@ When a real migration exposes an inaccurate rule, correct the owning source rath
 10. Agents close all non-visual review gates and prepare bounded visual evidence for the operator when required.
 11. Rules and automation improve from repeated real migration evidence.
 12. Existing migrations remove obsolete owners instead of accumulating compatibility layers.
+13. A component name alone can start a complete source-backed implementation or migration without a separate architecture task.
 
 ## Scope
 
