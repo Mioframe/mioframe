@@ -12,7 +12,7 @@ Every in-scope shared UI artifact must eventually reach one accepted terminal ou
 - explicitly retained project-specific or generic UI owner outside Material;
 - removed or consolidated obsolete or duplicate owner.
 
-The operating model, source hierarchy, ownership rules, blueprint contract, testing layers, agent evidence review, and operator visual acceptance were established by PR #149. Later work should use those contracts rather than add another preparatory architecture phase.
+The operating model, source hierarchy, ownership rules, blueprint contract, testing layers, agent evidence review, and operator visual acceptance were established by PR #149. Later work should use and improve those contracts rather than add another preparatory architecture phase.
 
 ## Default migration loop
 
@@ -21,13 +21,15 @@ Each family migration follows one practical loop:
 1. inspect the current owner, public API, consumers, user flows, tests, stories, and known defects;
 2. resolve the current official Material 3 Expressive contract and the minimum supported surface;
 3. audit only the foundation domains required by that family;
-4. make focused foundation changes only when the migration proves they are necessary;
-5. implement the canonical family and migrate consumers;
-6. align the family with the accepted Expressive contract;
-7. update tests, Storybook evidence, snapshots, registries, inventory rows, risk registration, and migration maps that are actually affected;
-8. complete agent evidence review;
-9. hand prepared visual evidence to the operator when visual acceptance is required;
-10. record process lessons and add automation only when a stable repeated need has been demonstrated.
+4. verify that applicable project rules are accurate, coherent, and sufficient for the real migration;
+5. correct inaccurate, contradictory, incomplete, or unnecessarily complex rules before relying on them;
+6. make focused foundation changes only when the migration proves they are necessary;
+7. implement the canonical family and migrate consumers;
+8. align the family with the accepted Expressive contract;
+9. update tests, Storybook evidence, snapshots, registries, inventory rows, risk registration, and migration maps that are actually affected;
+10. complete agent evidence review;
+11. hand prepared visual evidence to the operator when visual acceptance is required;
+12. record process lessons and add automation only when a stable repeated need has been demonstrated.
 
 The default unit of work is one cohesive family end to end. Split work into separate PRs only when a broad foundation blast radius, reviewability, or the need for a safe independently valid intermediate state justifies it.
 
@@ -65,7 +67,7 @@ The pilot includes, in one milestone:
 
 Focused preparatory or foundation PRs are allowed, but they do not become permanent roadmap phases and do not complete the pilot by themselves.
 
-At the end of the pilot, record which rules were useful, which documents duplicated work, and which defects could have been prevented by a small precise check.
+At the end of the pilot, record which rules were accurate, which required correction, which documents duplicated work, which foundation gaps were real, and which defects could have been prevented by a small precise check.
 
 ## Phase 2: independent stateful pilot
 
@@ -84,9 +86,11 @@ The second pilot must challenge the process with:
 
 After two pilots, consolidate only the workflow and automation that both migrations prove to be stable and valuable.
 
-## Phase 3: priority queue and continuous migration
+## Phase 3: autonomous sequential migration
 
 After the pilots, maintain a short evidence-backed `P0`/`P1` queue rather than requiring exhaustive classification before work begins.
+
+The agent selects the highest-priority `ready` family whose dependencies are satisfied. After one family reaches its accepted terminal state, the agent updates the queue and proceeds to the next ready family without requiring a new architecture-planning phase or manual component selection.
 
 Priority considers:
 
@@ -109,11 +113,36 @@ Inventory work is just in time:
 The continuous migration loop remains:
 
 ```text
-discovery → accepted contract → required foundation work → implementation →
-consumer migration → proof → agent review → operator visual acceptance → lessons
+discovery → accepted contract → rule refinement → required foundation work →
+implementation → consumer migration → proof → agent review →
+operator visual acceptance → queue update → next ready family
 ```
 
 A genuinely new component without a legacy owner is implemented when the product needs it. It is not a gate before normal migration can continue.
+
+## Rule refinement
+
+Project rules are durable working contracts, not immutable assumptions.
+
+When a migration reveals that a rule is inaccurate, contradictory, incomplete, ambiguous, obsolete, or creates complexity without protecting a real contract, the agent must:
+
+1. identify the concrete migration case and evidence that exposes the problem;
+2. identify the document, skill, checklist, registry, or scoped instruction that owns the rule;
+3. determine whether official Material sources, repository architecture, or product behavior provides the authoritative answer;
+4. make the smallest correction that resolves the real case without weakening unrelated contracts;
+5. update every directly affected rule source in the same PR, or in a focused prerequisite PR when the correction has wider scope;
+6. record the reason, evidence, affected scope, and any migration consequence;
+7. resume implementation only after the applicable rules are coherent.
+
+The agent must not:
+
+- silently violate a documented rule;
+- preserve an inaccurate rule through a component-specific exception;
+- duplicate a corrected rule in another document;
+- broaden the correction into an unrelated architecture rewrite;
+- delegate a resolvable technical inconsistency to operator visual review.
+
+Escalate only when the conflict requires a genuine product decision, official sources are materially unresolved, or correcting the rule would change a public cross-project contract beyond the migration scope.
 
 ## Evidence-driven automation
 
