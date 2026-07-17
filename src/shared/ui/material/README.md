@@ -4,7 +4,7 @@
 
 The library contains:
 
-- cross-family Material foundation contracts;
+- cross-family Material foundation contracts required by current work;
 - official public Material component families;
 - reusable official Material compositions independent of product domains.
 
@@ -15,18 +15,16 @@ Canonical architecture:
 - `docs/material-3/component-architecture.md`;
 - `docs/material-3/component-testing.md`.
 
-Operational progress, blockers, and the single next action are tracked in `docs/material-3/library-roadmap.md`.
-
-Policy and source-evidence documents remain under `docs/material-3`. This directory owns runtime/library artifacts and their local contracts.
+Operational progress and the next ready family are tracked in `docs/material-3/library-roadmap.md` and `ui-library-inventory.md`.
 
 ## Ownership map
 
 ```text
 material/foundation
-  Cross-family Material tokens, roles, primitives, adapters, and verification-only helpers.
+  Cross-family Material tokens, roles, primitives, adapters, and verification helpers.
 
 material/components
-  Official public component families, blueprints, implementations, stories, and focused tests.
+  Official public component families, adaptive contracts, implementations, stories, and focused tests.
 
 material/patterns
   Reusable official Material compositions required by current scenarios.
@@ -46,9 +44,9 @@ material/foundation → material/components → material/patterns
 material library → project-specific shared UI and product layers
 ```
 
-Higher Material layers may use correctly owned generic utilities directly. Do not create foundation wrappers only to route generic DOM, event, geometry, lifecycle, teleport, or browser helpers.
+Higher Material layers may use correctly owned generic utilities directly. Do not create foundation wrappers merely to route generic behavior.
 
-Product imports inside the Material library, higher-to-lower dependency inversions, and private cross-family imports are forbidden.
+Product imports inside the Material library, dependency inversion, and private cross-family imports are forbidden.
 
 ## Public API
 
@@ -58,82 +56,72 @@ The intended project-facing entry point is:
 import { MDButton } from '@shared/ui/material';
 ```
 
-Do not create the root production `index.ts` until at least one real family or foundation artifact is migrated.
+Do not create the root production `index.ts` until at least one real family or foundation artifact can be exported honestly.
 
 After it exists:
 
 - product consumers use the root entry point by default;
-- internal library modules use owning family/foundation entry points or correctly owned generic utilities;
-- deep imports into implementation or testing files are forbidden.
+- internal library modules use owning family, foundation, or generic entry points;
+- private implementation and testing files remain private.
 
-## New implementation rule
+## New implementation
 
-- New official Material components are created under `components/<family>`.
-- New Material foundation runtime/testing artifacts are created under `foundation/<domain>`.
-- New Material patterns are created under `patterns/<pattern>` only after the pattern gate passes.
-- Legacy Material directories may receive strict local repairs but no new Material ownership.
+- Create new official Material components under `components/<family>`.
+- Create new foundation artifacts under `foundation/<domain>` only when current work proves the cross-family need.
+- Create patterns under `patterns/<pattern>` only after the pattern conditions pass.
+- Treat legacy directories as existing owners, not templates for new ownership.
+- Create no placeholder files, empty structural layers, or speculative abstractions.
 
 Every new public component includes:
 
-- the complete canonical family blueprint;
-- a colocated component-contract test;
-- exactly one canonical Storybook `StateMatrix`;
-- a Playwright visual regression for that matrix;
-- real browser-behavior tests when applicable;
-- pure helper/composable tests when applicable.
-
-The matrix covers every distinct supported component-owned visible route. Non-visual state contracts remain in component/browser tests. Equivalent size, label, icon, and content combinations are not duplicated.
-
-Empty placeholder directories/files are forbidden. A directory appears only with an accepted artifact.
-
-Using an external generic utility does not transfer its ownership into Material.
+- the mandatory adaptive family-contract core;
+- only conditional contract sections applicable to the component;
+- colocated component-contract tests;
+- one stable canonical visual story when it has visible output;
+- `StateMatrix` only when multiple distinct visual routes exist;
+- browser, pure, consumer, visual-regression, and operator-review layers only when applicable.
 
 ## Physical migration map
 
-This table tracks physical ownership only. Foundation/component alignment and verification status remain in their registries and family blueprints. Milestone sequencing and progress remain in `docs/material-3/library-roadmap.md`.
+This table tracks physical ownership only. Material alignment belongs to component and foundation contracts and registries. Program sequencing belongs to the roadmap.
 
-| Area                              | Current production owner                                                       | Canonical owner                                                                     | Migration status              |
-| --------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ----------------------------- |
-| Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                                                 | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
-| Typography utilities              | `src/shared/lib/md`                                                            | `material/foundation/typography`                                                    | `legacy`                      |
-| State layer, ripple, and focus    | `src/shared/ui/State`                                                          | `material/foundation/interaction`                                                   | `legacy`                      |
-| Material Symbols                  | `src/shared/ui/Icon`                                                           | `material/foundation/icon`                                                          | `legacy`                      |
-| Material overlay contract         | `src/shared/ui/Overlay` plus generic teleport/outside-interaction dependencies | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
-| Existing official `MD*` families  | existing `src/shared/ui/<LegacyFamily>` directories                            | `material/components/<family>`                                                      | `legacy`                      |
-| New official Material family      | none                                                                           | `material/components/<family>`                                                      | create directly as `migrated` |
-| Reusable Material patterns        | scattered or missing compositions                                              | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
+| Area                              | Current production owner                            | Canonical owner                                                                     | Migration status              |
+| --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
+| Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                      | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
+| Typography utilities              | `src/shared/lib/md`                                 | `material/foundation/typography`                                                    | `legacy`                      |
+| State layer, ripple, and focus    | `src/shared/ui/State`                               | `material/foundation/interaction`                                                   | `legacy`                      |
+| Material Symbols                  | `src/shared/ui/Icon`                                | `material/foundation/icon`                                                          | `legacy`                      |
+| Material overlay contract         | `src/shared/ui/Overlay` plus generic dependencies   | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
+| Existing official `MD*` families  | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<family>`                                                      | `legacy`                      |
+| New official Material family      | none                                                | `material/components/<family>`                                                      | create directly as `migrated` |
+| Reusable Material patterns        | scattered or missing compositions                   | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
 
-Do not split a valid monolithic owner merely to match this table. Migration follows confirmed ownership and reviewable boundaries.
+Do not split a valid cohesive owner merely to match this table. Migration follows confirmed ownership and reviewable boundaries.
 
-## Migration status meanings
+## Migration status
 
-- `legacy`: current code remains accepted for existing consumers but is not a template for new work;
-- `migrating`: one focused PR owns relocation and all consumer/export/contract/test/map updates;
-- `migrated`: the canonical owner is active, legacy paths are removed, the applicable component or foundation verification profile exists, and architecture validation is blocking.
+- `legacy` — current code remains accepted for existing consumers but is not a template for new work;
+- `migrating` — one active family or domain migration owns the applicable implementation and consumer changes;
+- `migrated` — the canonical owner is active, obsolete paths are removed, proportional proof exists, and required agent/operator review is complete.
 
-A domain must not have parallel active legacy and canonical production owners without an explicit temporary migration contract naming consumers and removal target.
-
-## Legacy additive changes
-
-An existing file in a legacy foundation owner may receive a source-backed additive capability only when:
-
-- it remains the single active owner;
-- the change satisfies `foundation-additive` conditions;
-- no new standalone owner is created at the legacy path;
-- the registry records the delta and remaining migration status.
-
-A new standalone runtime/testing artifact requires relocating the cohesive owner to the canonical domain first or in the same explicit migration.
+A domain must not have parallel permanent legacy and canonical owners. Temporary compatibility requires exact consumers and a removal target.
 
 ## Migration rules
 
-Each migration handles one cohesive family or foundation domain and must:
+Use one cohesive end-to-end family migration by default:
 
-1. preserve behavior unless a stricter alignment/correction mode is explicit;
-2. update all in-repository consumers;
-3. expose the accepted public API through the Material library;
-4. remove old files and exports;
-5. update blueprints/contracts, registries, Storybook, tests, snapshots, risk registration, and this map;
-6. add or consolidate the canonical matrix for migrated components;
-7. avoid permanent compatibility re-exports.
+1. inspect the current family and consumers;
+2. resolve the supported Expressive contract;
+3. correct inaccurate applicable rules;
+4. change only required foundations;
+5. implement the canonical family;
+6. migrate consumers and public exports;
+7. add proportional proof;
+8. remove obsolete ownership;
+9. update only records whose owned facts changed;
+10. complete agent review and required operator visual acceptance;
+11. update the queue and continue to the next ready family.
 
-A mass move is forbidden. Migration is demand-driven: minimum Button foundation domains, `MDButton`, `MDSwitch`, then a genuinely new component authored directly in the library.
+Split work only when shared blast radius, compatibility, reviewability, or a safer independently valid state justifies it.
+
+The program sequence is `MDButton`, an independent stateful pilot such as `MDSwitch`, then autonomous priority-driven migration. A genuinely new component is added when the product requires it, not as a process gate.
