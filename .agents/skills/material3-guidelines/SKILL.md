@@ -44,19 +44,29 @@ Material impact: none
 
 A public, visual, foundation, ownership, or state-model change is not `none`.
 
-## Source workflow
+## Official authority
 
-1. Use the `material3` MCP server first.
+Use the source hierarchy in `docs/material-3/source-of-truth.md`.
+
+- Current published Material 3 Expressive documentation is authoritative for documented usage, anatomy, behavior, accessibility, tokens, foundations, motion, and adaptive guidance.
+- The current official Material Design Kit is authoritative only for applicable visual decisions that published documentation does not resolve.
+- MCP and cache are access mechanisms for official documentation, not independent authorities.
+- Repository code, tests, stories, snapshots, prior audits, and other implementations are evidence to inspect, not proof of Material correctness.
+
+## Source access workflow
+
+1. Use the `material3` MCP server first to access the relevant official pages.
 2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete for the required page.
-3. Use the current official Material Design Kit Expressive component set only when published documentation cannot resolve an applicable visual decision.
-4. Record exact page names, snapshot metadata, and Design Kit references when used.
-5. Stop source lookup when required decisions are resolved.
+3. Directly verify the current official published page when MCP or cache evidence is missing, stale, internally inconsistent, or marked suspicious and the environment can access it.
+4. Use the current official Material Design Kit Expressive component set only when published documentation cannot resolve an applicable visual decision.
+5. Record exact page names, snapshot or capture metadata, direct verification dates, and Design Kit references when used.
+6. Stop source lookup when required decisions are resolved by current, traceable official evidence.
 
-Do not use Material Web, generic web search, unproven screenshots, older Material versions, third-party libraries, existing Mioframe rendering, or memory as Material authority.
+Do not treat lookup order as authority order. Do not use Material Web, generic web search results, unproven screenshots, older Material versions, third-party libraries, existing Mioframe rendering, or memory as Material authority.
 
 Another implementation may be inspected only after the official contract is resolved and only as a non-authoritative implementation reference.
 
-When evidence is unavailable or contradictory:
+When evidence is unavailable, stale, suspicious, or contradictory:
 
 - identify the exact unresolved decision;
 - narrow unsupported scope when required scenarios remain satisfied;
