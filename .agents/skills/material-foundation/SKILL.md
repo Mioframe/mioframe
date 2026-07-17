@@ -1,8 +1,9 @@
 ---
 name: material-foundation
-description: 'Use when changing Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, verification adapters, icons, overlays, accessibility, density, or adaptive foundation contracts.'
+description: 'Use when changing a real cross-family Material foundation or style contract, including accessibility, adaptive/layout, interaction, color, elevation, icons, motion, shape, typography, theme, or units.'
 paths:
-  - 'src/shared/ui/material/foundation/**'
+  - 'src/shared/ui/material/foundations/**'
+  - 'src/shared/ui/material/styles/**'
   - 'src/shared/lib/md/**'
   - 'src/shared/ui/State/**'
   - 'src/shared/ui/Icon/**'
@@ -14,144 +15,148 @@ paths:
   - 'docs/material-3/source-of-truth.md'
 ---
 
-# Material foundation
+# Material foundations and styles
 
-Canonical rules live in:
+Use this workflow only for a real cross-family Material contract.
 
-- `docs/material-3/source-of-truth.md`;
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/foundation-registry.md`.
+## Official navigation
 
-This skill defines execution order and stop conditions. Do not duplicate registry or domain contracts here.
+Map the domain to the official Material documentation structure:
+
+```text
+material/foundations/<official-slug>
+material/styles/<official-slug>
+```
+
+Use `foundations` for official foundation domains such as accessibility, adaptive/layout, and interaction.
+
+Use `styles` for color, elevation, icons, motion, shape, typography, and other official style domains.
+
+Do not create `material/foundation`, `material/patterns`, or a generic catch-all owner.
 
 ## Preflight
 
 Record only applicable:
 
-- affected registry domain;
-- exact official snapshot and Design Kit evidence when required;
-- current and canonical owners;
-- migration status;
-- required public, private, or verification-only contract;
-- mode: `none`, `library-relocation-only`, `additive`, `correction`, `replacement`, or `refresh`;
-- affected consumers and expected delta;
-- compatibility or migration decision;
-- owner and representative consumer proof.
+- official documentation domain and exact source evidence;
+- current and canonical owner;
+- affected component families and consumers;
+- required public, private, or testing-only contract;
+- change mode: relocation, additive, correction, replacement, or source refresh;
+- expected behavior or rendering delta;
+- known omissions and verification needs.
 
-Use `blocked` when source meaning, ownership, compatibility, consumer impact, or required proof remains unresolved.
+A shared change is blocked when source meaning, ownership, affected consumers, or safe blast radius cannot be resolved.
 
 ## Ownership
 
 ```text
-shared/lib generic infrastructure
-  → material/foundation
+shared generic infrastructure
+  → material/foundations and material/styles
   → material/components
-  → material/patterns
-  → product composition
+  → project-specific UI and product composition
 ```
 
-Foundation remains free of consuming-family knowledge. Generic DOM, browser, event, geometry, lifecycle, and teleport utilities stay in their generic owner; Material foundation may compose narrow Material-facing adapters.
+- foundations and styles contain no component-family or product knowledge;
+- generic browser, event, geometry, lifecycle, and teleport utilities remain in their generic owner;
+- a behavior used by one family remains family-local unless official evidence or multiple real consumers prove shared ownership;
+- foundations and styles do not import component families or the root Material barrel.
 
-Do not create a universal base, runtime token/state registry, generic resolver, cross-family state machine, duplicate theme/overlay system, production state-matrix component, or generic test DSL.
+## Local documentation
 
-## Registry and migration
+Each implemented shared domain owns:
 
-`foundation-registry.md` owns current correctness and status. `src/shared/ui/material/README.md` owns physical migration.
+```text
+README.md
+AUDIT.md  # only after independent review
+```
 
-Update only fields whose owned facts changed:
+The implementing workflow updates README and records:
 
-- status or snapshot;
-- current/canonical owner and migration status;
-- public/private/testing contract;
-- consumers, gaps, verification, or review date.
+- official documentation mapping;
+- implemented contract;
+- not implemented capability;
+- known issues and required follow-up;
+- affected consumers;
+- verification;
+- review status.
 
-A `verified` record requires a concrete snapshot and named verification.
+It does not edit AUDIT.md.
 
-## Change modes
+## Change rules
 
-### `library-relocation-only`
+### Relocation
 
-Move one cohesive owner without changing meaning, values, behavior, rendering, or verification semantics. Migrate affected imports and consumers and remove the old path.
+Move one cohesive owner without changing semantics. Migrate imports and remove the obsolete path.
 
-### `additive`
+### Additive
 
-May share a component PR when source-backed, backward-compatible, owned by one domain, free of a new lifecycle/context/public extension, and small enough for focused review.
+Add the smallest source-backed capability required by current consumers. Do not create a broad catalog or extension framework.
 
-For a legacy domain:
+### Correction
 
-- extend the current owner only when it remains the single active owner;
-- create a new standalone artifact under the canonical owner, relocating the cohesive owner when required;
-- do not create parallel permanent legacy and canonical implementations.
+Document the previous and corrected contract, affected families, expected delta, and representative proof.
 
-### `correction`
+### Replacement
 
-Document old and new contract, affected consumers, expected delta, compatibility decision, and representative proof. Use a focused PR when blast radius exceeds the selected family.
+Replace one owner completely and remove the obsolete implementation and compatibility paths.
 
-### `replacement`
+### Source refresh
 
-Requires a ready architecture decision, complete migration, removal of the old owner, and blocking proof.
+Compare newer official evidence and classify differences before changing behavior. A source refresh does not require a production change.
 
-### `refresh`
+## Actual dependency rule
 
-Compare a newer snapshot and classify differences before changing behavior. Refresh alone does not imply a production change.
+A shared contract is consumed only when changing its source input can affect the final output through a real implementation dependency.
 
-Physical relocation must not hide a correction or replacement.
+Do not treat these as a route:
 
-## Bounded expansion
+- adjacent declarations;
+- aliases to unchanged constants;
+- equality assertions;
+- comments claiming derivation;
+- tests that restate definitions.
 
-Add or expand a foundation capability only when:
+When official numeric spring parameters cannot drive CSS directly, document them as source evidence and expose one honestly documented Web runtime adaptation. Do not invent fake consumption.
 
-- a current component or product scenario requires it;
-- Material or an unavoidable platform/testing boundary defines it as cross-family;
-- the existing mechanism is insufficient;
-- the contract remains family-agnostic;
-- total complexity is lower than local implementations.
+## Blast radius
 
-A verification adapter may be added for a first family when the state is already a generic foundation concern and a family-local substitute would be worse.
+Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, or public shared APIs affect multiple consumers.
 
-Do not prebuild palettes, motion catalogs, adaptive managers, state systems, or testing frameworks.
+Before retaining such a change:
+
+1. identify affected families;
+2. prefer the narrowest valid owner;
+3. document changed cascade, inheritance, or runtime semantics;
+4. add representative cross-family proof;
+5. record remaining uncertainty in the shared-domain README and affected family READMEs.
+
+Do not move large token sets onto `*`, `::before`, or `::after` only to make one component scenario pass.
 
 ## Domain invariants
 
-- Reference/system owners contain no component tokens.
-- Theme contexts override system roles, not component CSS.
+- Reference/system owners contain no component-family tokens.
+- Theme contexts override system roles rather than component CSS.
 - Unit conversion remains centralized.
 - Typography, shape, elevation, and motion use verified roles or documented adaptations.
-- State/ripple/focus own generic capability, not host semantics or component precedence.
-- Verification adapters force generic appearance only and do not prove real behavior.
+- Interaction foundations own generic state/ripple/focus capability, not component semantics or precedence.
 - Icons own symbol rendering, not product icon choice.
-- Overlay foundation owns Material-facing adapters; generic mechanisms may remain outside.
-- Accessibility, density, target area, and adaptivity remain policy until a concrete runtime owner is required.
+- Verification helpers remain testing-only and do not prove real behavior by themselves.
 
-## Public and testing API
+## Proportional proof
 
-- Components consume accepted foundation entry points, not implementation files.
-- Foundation modules do not import the root Material barrel.
-- Product code does not deep-import foundation internals or testing adapters.
-- Public exports require registry ownership.
-- Verification adapters remain testing-only.
-- Temporary legacy exports require exact consumers and a removal target.
+Use only proof owned by the changed contract:
 
-## Rule refinement
+- focused shared-owner tests;
+- computed CSS or browser checks when cascade or platform behavior is genuinely involved;
+- representative component consumers for cross-family changes;
+- bounded visuals when rendered output changes;
+- independent audit after implementation changes.
 
-When a real component or foundation change proves a rule inaccurate or needlessly complex, correct the owning source with the smallest evidence-backed change. Do not add a domain-specific exception merely to preserve the old rule.
-
-## Proportional verification
-
-Use existing repository checks and proof owned by the changed contract:
-
-- focused owner contract tests;
-- real browser checks for focus, pointer/touch, ripple, overlays, viewport behavior, computed tokens, and platform adaptations when applicable;
-- deterministic representative component visuals when rendered output changes;
-- representative consumers for meaningfully different affected paths;
-- agent review for source meaning, ownership, and deviations;
-- operator visual review for intentional rendered changes.
-
-Use existing static or structured checks when they actually exist and apply. Add a new guard only after real work proves a stable repeated and precisely detectable need.
-
-Forced state proves appearance only. Screenshots alone do not prove foundation behavior.
+Do not build a universal validation framework, motion catalog, state machine, theme manager, generic test DSL, or placeholder directory tree.
 
 ## Completion
 
-Foundation work is complete when applicable registry fields, migration map, owner contracts, production/testing code, exports, source evidence, tests, and consumer impact agree. No family-specific knowledge, parallel permanent owner, hidden gap, permanent compatibility path, or local substitute may remain.
+Shared implementation work is finished when code, local README, exports, affected consumers, and applicable local verification agree and every remaining gap is documented.
+
+Set local review status to `review required after changes` and run the independent review separately.
