@@ -26,7 +26,7 @@ index.ts
 
 ## `README.md` ownership
 
-The family `README.md` is the current implementation documentation. The authoring workflow updates it whenever the supported surface or implementation state changes.
+The family `README.md` is the current project implementation documentation. The authoring workflow updates it whenever the supported surface or implementation state changes.
 
 It must contain these sections:
 
@@ -106,6 +106,24 @@ Any production change affecting the documented contract changes this field to `r
 
 `AUDIT.md` is the latest independent compliance review for the family. `material-component-review` creates or replaces only this file.
 
+The audit uses three distinct evidence layers:
+
+1. actual implementation evidence;
+2. project implementation documentation, including the family README and directly applicable project contracts;
+3. canonical Material 3 Expressive evidence.
+
+The project documentation is the intended Mioframe contract, but it is not assumed to be correct relative to Material.
+
+The auditor performs two comparisons in order:
+
+1. **Implementation vs project documentation** — verifies that code, exports, consumers, tests, stories, rendered behavior, and shared dependencies match the documented project contract and that unfinished work is not hidden.
+2. **Project documentation vs Material 3 Expressive** — verifies that the documented project contract correctly interprets canonical Material, names unsupported official capability, and marks Mioframe extensions or intentional deviations explicitly.
+
+This order prevents two opposite failures:
+
+- accepting incorrect implementation merely because local documentation claims it is correct;
+- changing correct implementation to match stale or incorrect local documentation.
+
 It contains:
 
 ```text
@@ -113,28 +131,48 @@ It contains:
 
 Reviewed:
 Result: compliant | partially-compliant | non-compliant | blocked
-Implementation documentation: README.md
+Project implementation documentation: README.md
+Visual review: not required | required | blocked | accepted
 
-## Official evidence
-## Documentation claims reviewed
-## Confirmed findings
+## Evidence
+### Project documentation reviewed
+### Material 3 Expressive evidence
+
+## Stage 1 — implementation vs project documentation
+### Findings
+### Verified agreement
+
+## Stage 2 — project documentation vs Material 3 Expressive
+### Findings
+### Verified agreement
+
 ## Evidence gaps
-## Verified areas
 ## Required next work
 ```
 
-Each finding states:
+A Stage 1 finding states:
 
 ```text
 Severity: critical | high | medium | low
-Official requirement:
+Project requirement:
 Implementation evidence:
-Documentation claim:
-Mismatch:
+Implementation-to-project mismatch:
 Required correction:
 ```
 
-The audit checks both code and documentation. An undocumented omission is a documentation finding; a documented unsupported optional feature is not a defect by itself.
+A Stage 2 finding states:
+
+```text
+Severity: critical | high | medium | low
+Material 3 Expressive requirement:
+Project documentation claim:
+Project-to-Material mismatch:
+Required correction:
+```
+
+When both layers are wrong, the audit records both mismatches and the correction order. When implementation matches Material but project documentation is stale, documentation is corrected rather than regressing implementation.
+
+An undocumented omission is a project-documentation finding. A documented optional unsupported feature is not a defect by itself. A project extension is acceptable only when explicit, coherent, and not presented as canonical Material behavior.
 
 ## Minimum complete surface
 
@@ -172,7 +210,7 @@ Use exact official meanings and the shortest route to the final property owner.
 
 A route exists only when changing its source input can affect the final output through a real dependency. Colocation, aliases to unchanged constants, equality assertions, and comments do not create a dependency.
 
-When official numeric spring parameters cannot be consumed directly on the Web, document them as source evidence and use one honestly documented Web adaptation as the runtime contract. Do not invent fake runtime consumption.
+When official numeric spring parameters cannot be consumed directly on the Web, document them as canonical source evidence and use one honestly documented Web adaptation as the project runtime contract. Do not invent fake runtime consumption or describe the adaptation as the original spring model.
 
 ## Foundation and style dependencies
 
@@ -218,4 +256,4 @@ Implementation work is finished only when:
 - applicable local verification passes;
 - `README.md` says `review required after changes` until the independent audit is rerun.
 
-The auditor, not the implementing agent, decides the result recorded in `AUDIT.md`.
+A family is compliant only when the independent audit confirms both that implementation matches project documentation and that project documentation accurately represents the supported canonical Material 3 Expressive contract plus explicit extensions or deviations.
