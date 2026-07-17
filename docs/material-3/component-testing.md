@@ -15,17 +15,17 @@ Tests must prove the contracts a component actually owns. A fixed artifact set i
 
 ## Proof layers
 
-| Layer | Use when | Purpose |
-| --- | --- | --- |
-| Component contract | Every new or migrated public component | Public API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
-| Canonical visual story | The component has visible output | One stable, readable reference for the accepted visible contract |
-| State matrix | More than one distinct component-owned visual route exists | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product |
-| Visual regression | A stable visual contract exists and regression would be material | Detect unintended changes in a bounded canonical visual reference |
-| Browser behavior | The component constrains browser-owned interaction | Real focus, keyboard, pointer, touch, overlay, responsive, motion, cancellation, and cleanup behavior |
-| Pure behavior | Extracted logic or lifecycle exists outside Vue rendering | Helpers, composables, transitions, timing, cancellation, and cleanup |
-| Consumer preservation | Existing consumers or public imports change | Preserve product-visible usage and integration contracts |
-| Agent evidence review | Every new or migrated family | Source-backed architecture, Material, accessibility, behavior, migration, and proof review |
-| Operator visual acceptance | Visible output is created or intentionally changed | Compare prepared evidence with named official sources |
+| Layer                      | Use when                                                         | Purpose                                                                                                               |
+| -------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Component contract         | Every new or migrated public component                           | Public API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
+| Canonical visual story     | The component has visible output                                 | One stable, readable reference for the accepted visible contract                                                      |
+| State matrix               | More than one distinct component-owned visual route exists       | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product                         |
+| Visual regression          | A stable visual contract exists and regression would be material | Detect unintended changes in a bounded canonical visual reference                                                     |
+| Browser behavior           | The component constrains browser-owned interaction               | Real focus, keyboard, pointer, touch, overlay, responsive, motion, cancellation, and cleanup behavior                 |
+| Pure behavior              | Extracted logic or lifecycle exists outside Vue rendering        | Helpers, composables, transitions, timing, cancellation, and cleanup                                                  |
+| Consumer preservation      | Existing consumers or public imports change                      | Preserve product-visible usage and integration contracts                                                              |
+| Agent evidence review      | Every new or migrated family                                     | Source-backed architecture, Material, accessibility, behavior, migration, and proof review                            |
+| Operator visual acceptance | Visible output is created or intentionally changed               | Compare prepared evidence with named official sources                                                                 |
 
 A layer may be omitted only because the component does not own that contract, not because the contract is difficult to test.
 
