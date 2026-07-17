@@ -59,18 +59,15 @@ Current milestone: `M1 — MDButton end-to-end pilot`
 
 Current status: `active`
 
-Current blocker: operator visual acceptance of prepared screenshot evidence (agent-owned gates are complete).
+Current blocker: unresolved Button technical findings recorded in `docs/material-3/audits/button.md`; operator visual acceptance is not yet actionable.
 
-Next action: an operator reviews and accepts (or rejects) the prepared `MDButton` visual evidence; once accepted, mark M1 `done` and start M2 (`MDSwitch` independent stateful pilot) via `material-library-next` or an explicit `material-component` run.
+Next action: correct the Button motion contract without fake stiffness/damping consumption, narrow or fully validate the shared elevation cascade change, reconcile affected records, run local verification, and produce an honest workspace-reviewed audit. Then a GitHub-enabled reviewer binds the audit to the PR head, verifies current-head CI, and presents visual evidence to the operator.
 
-Agent-owned M1 work completed in this pass:
+Current M1 state:
 
-- `MDButton` physically migrated end-to-end from `src/shared/ui/Button/MDButton.vue` to the canonical `src/shared/ui/material/components/button`, with a family `README.md`, a root `@shared/ui/material` public export, every direct consumer migrated to the new import path, and the legacy `MDButton`-specific files/export removed (sibling legacy families `MDIconButton`/`MDFab`/`MDExtendedFab`/`FabContainer` remain untouched, out of this family's scope).
-- Two confirmed high-severity findings from `docs/material-3/audits/button.md` (2026-07-17 pre-migration audit) are fixed and verified, not deferred:
-  - the shared elevation shadow-color bridge now reliably reaches the final rendered `box-shadow` color (`src/shared/lib/md/tokens.css`: `--md-sys-elevation-level0`–`level5` declared on a universal selector instead of only `:root`, root-caused to a real CSS custom-property inheritance/freezing behavior, not a browser limitation) — benefits `MDButton`, `MDIconButton`, `MDFab`, and `MDExtendedFab` identically;
-  - `MDButton`'s per-size pressed-corner spring component tokens (`stiffness`/`damping`) now route through a colocated private duration/easing pair actually consumed by the root `border-radius` transition, instead of being declared without participating in the rendered motion.
-- Full `pnpm verify` (format, lint, type-check, unit, full-app e2e, Storybook behavior, visual regression, mutation) passes on the final working tree.
-- A fresh `material-component-review` audit replaced the prior non-compliant one at `docs/material-3/audits/button.md`.
+- physical relocation and consumer migration are implemented: `MDButton` is under `src/shared/ui/material/components/button`, the root `@shared/ui/material` export exists, direct consumers use it, and the legacy MDButton implementation/export is removed;
+- terminal status is not reached: motion wiring, elevation foundation blast radius, audit binding, record consistency, current-head CI, and operator visual acceptance remain open;
+- coding agents may finish implementation and local verification without `git` or GitHub, but must report `implementation-ready-for-external-gates` rather than self-certifying `aligned`, `migrated`, milestone `done`, CI, or merge readiness.
 
 ## Milestone overview
 
@@ -121,7 +118,7 @@ The milestone includes:
 
 The default is one end-to-end milestone. Architecture migration and visual alignment may use separate focused PRs only when they preserve a valid intermediate state and materially improve reviewability. They are not permanent sequential milestones.
 
-PR #150 contributes focused current-contract evidence but does not by itself complete M1.
+PR #150 owns the active M1 implementation and workflow calibration. It does not complete M1 until its exit gate passes.
 
 M1 also records process evidence:
 
@@ -159,12 +156,13 @@ After the pilots, maintain a short evidence-backed `P0`/`P1` queue in `ui-librar
 
 The agent must:
 
-1. select the highest-priority `ready` family whose dependencies are satisfied;
+1. select the highest-priority ready family whose dependencies are satisfied;
 2. perform the complete discovery, contract, implementation, migration, proof, and review loop;
 3. correct inaccurate applicable rules in their owning sources when the real migration exposes them;
-4. move the completed family to its accepted terminal state;
-5. update affected inventory rows and the next ready queue position;
-6. continue with the next ready family without requiring a new architecture-planning milestone or manual component selection.
+4. hand the completed implementation to external commit/CI/operator gates when those capabilities are unavailable to the coding agent;
+5. move the family to its terminal state only after those gates pass;
+6. update affected inventory rows and the next ready queue position;
+7. continue with the next ready family without requiring a new architecture-planning milestone or manual component selection.
 
 Select work by:
 
@@ -188,8 +186,8 @@ Each migration repeats one loop:
 
 ```text
 discovery → accepted contract → rule refinement → required foundation work →
-implementation → consumer migration → proof → agent review →
-operator visual acceptance → queue update → next ready family
+implementation → consumer migration → proof → workspace review →
+external commit/CI gates → operator visual acceptance → terminal queue update
 ```
 
 Rules:
@@ -202,7 +200,7 @@ Rules:
 - remove or consolidate low-value duplicates when that is better than canonicalizing them;
 - implement a genuinely new component only when product demand requires it, not as a gate for continued migration;
 - never preserve an inaccurate rule through a component-specific exception;
-- stop only for a genuine product decision, materially unresolved official source, cross-project public-contract change, failed verification that cannot be safely resolved in scope, or rejected operator visual evidence.
+- stop only for a genuine product decision, materially unresolved official source, cross-project public-contract change, unsafe foundation blast radius, failed verification that cannot be safely resolved in scope, or rejected operator visual evidence.
 
 M3 remains active until every in-scope inventory row has a terminal status. Exhaustive inventory is a program completion requirement, not a prerequisite for starting migrations.
 
@@ -237,6 +235,7 @@ Add one row only when a milestone changes status or its exit gate materially cha
 | ---------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                                                | PR #149  |
 | 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with end-to-end pilots and autonomous sequential migration; real migrations now refine inaccurate rules, foundations, inventory, and automation | PR #152  |
+| 2026-07-17 | M1        | Button pilot exposed the coding-agent capability boundary and false completion risk; workspace implementation is now separated from external commit, CI, operator, and terminal-state gates              | PR #150  |
 
 ## Update protocol
 
@@ -255,7 +254,7 @@ Update only:
 Before starting a new Material session:
 
 1. read `Current state` and `Next action`;
-2. confirm the active milestone against merged repository state;
+2. confirm the active milestone against merged repository state when GitHub access exists;
 3. inspect only the documents owned by that milestone and selected family;
 4. correct inaccurate applicable rules instead of creating exceptions or speculative infrastructure;
 5. continue with the highest-priority ready family after the current family reaches its terminal state;
