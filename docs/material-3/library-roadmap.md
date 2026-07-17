@@ -235,7 +235,7 @@ Add one row only when a milestone changes status or its exit gate materially cha
 | ---------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                                                | PR #149  |
 | 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with end-to-end pilots and autonomous sequential migration; real migrations now refine inaccurate rules, foundations, inventory, and automation | PR #152  |
-| 2026-07-17 | M1        | Button pilot exposed the coding-agent capability boundary and false completion risk; workspace implementation is now separated from external commit, CI, operator, and terminal-state gates              | PR #150  |
+| 2026-07-17 | M1        | Button pilot exposed the coding-agent capability boundary and false completion risk; workspace implementation is now separated from external commit, CI, operator, and terminal-state gates               | PR #150  |
 
 ## Update protocol
 
