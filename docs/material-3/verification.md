@@ -2,136 +2,164 @@
 
 ## Principle
 
-Verify each contract at its owning layer.
+Verify each contract at its owning layer and in proportion to the selected family's real surface and risk.
 
-Visual screenshots alone are insufficient. Verification covers source evidence, library/foundation/component ownership, tokens, units, public API, native semantics, state and lifecycle behavior, accessibility, layout, Storybook documentation, distinct visual output, and affected consumers.
+Visual screenshots alone are insufficient. Green automation is necessary but does not prove that an accepted visual baseline matches current Material 3 Expressive.
 
-New, migrated, and materially changed public Material components follow `component-testing.md`.
+## Verification layers
 
-## Standard component verification profile
+| Layer | Expected proof |
+| --- | --- |
+| Repository | Existing format, lint, type, unit, browser, visual, mutation, and build checks applicable to the change |
+| Component contract | Colocated Vue Test Utils tests for public API, native owner, ARIA, defaults, slots, emits, controlled state, and invalid combinations |
+| Browser behavior | Storybook Playwright tests for browser-owned interaction the component changes or constrains |
+| Pure behavior | Focused tests for extracted helpers, composables, transitions, timing, cancellation, and cleanup |
+| Consumer preservation | Focused checks for changed imports, wrappers, or product-visible usage |
+| Canonical visual evidence | One stable bounded story for visible output; `StateMatrix` only when multiple distinct visual routes exist |
+| Visual regression | Bounded screenshots when a stable visual contract and material regression risk justify them |
+| Agent review | Source-backed architecture, Material, accessibility, behavior, migration, rule, and proof review |
+| Operator review | Visible comparison with named official sources when visible output is created or changed |
 
-| Layer                 | Verification                                                                                                                                                      |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Architecture          | Static and structured checks for location, dependency direction, profile files, tokens, exports, blueprint sections, registry/map references, and test artifacts. |
-| Component contract    | Colocated Vue Test Utils tests for public API, native owner, ARIA, slots, emits, defaults, controlled state, and invalid combinations.                            |
-| State matrix          | One canonical Storybook `StateMatrix` containing every distinct supported component-owned visual route.                                                           |
-| Visual regression     | Playwright screenshots of the bounded matrix or labelled sections.                                                                                                |
-| Browser behavior      | Storybook Playwright tests for real keyboard, focus, pointer/touch, hit testing, overlays, responsive behavior, lifecycle, and other browser-owned contracts.     |
-| Pure behavior         | Vitest tests for extracted helpers, composables, transitions, timing, cancellation, and cleanup when applicable.                                                  |
-| Consumer preservation | Focused checks for changed existing consumers.                                                                                                                    |
-| Review                | Architecture/Material review and human visual comparison when required.                                                                                           |
+A layer may be omitted only because the component does not own that contract.
 
-A layer may be `not applicable` only with an ownership-based reason. The canonical matrix and its visual regression are mandatory for every new or migrated public Material component.
+## Verification by changed concern
 
-Non-visual states remain in contract or browser tests rather than creating meaningless matrix cells.
+### Source and supported surface
 
-## Verification matrix
+Verify:
 
-| Changed layer                     | Expected verification                                                                                             |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Source policy/docs                | Check links, source authority, snapshot metadata, and Design Kit references when applicable.                      |
-| Library boundary/relocation       | Static location/dependency checks, complete consumer migration, public exports, and obsolete-path removal.        |
-| Unit conversion                   | Focused PostCSS transform checks or generated CSS inspection.                                                     |
-| Reference/system tokens           | Token diff review and representative rendered consumers when output changes.                                      |
-| Component tokens/state routing    | Static/structured validation, affected distinct matrix routes, and visual baseline.                               |
-| Public API/native semantics       | TypeScript, component-contract tests, browser behavior where constrained, consumer migration, and Storybook docs. |
-| Interaction behavior              | Real browser actions; forced visual state is not behavior proof.                                                  |
-| Interaction appearance            | Deterministic matrix routes and visual regression.                                                                |
-| Accessibility                     | Native/ARIA contract tests plus real keyboard/focus/browser checks where behavior applies.                        |
-| Adaptive layout                   | Responsive browser checks and representative visual contexts.                                                     |
-| Foundation addition               | Owner checks plus affected component proof.                                                                       |
-| Foundation correction/replacement | Complete direct consumers and representative proof for every distinct affected contract path.                     |
-| Visual appearance                 | Matrix screenshot diff plus human comparison with named official sources.                                         |
+- current official documentation snapshot;
+- Design Kit evidence only when applicable visual details are unresolved by published guidance;
+- supported and unsupported surface;
+- explicit extensions and deviations.
 
-## Source evidence
+When evidence is incomplete, narrow the supported surface or report `blocked`. Do not infer full alignment from legacy output.
 
-Use the hierarchy in `source-of-truth.md`:
+### Ownership and migration
 
-1. `material3` MCP;
-2. `m3-docs-cache` fallback;
-3. official Material Design Kit for exact visual decisions unresolved by published docs.
+Verify applicable:
 
-If required evidence is unavailable or incomplete, narrow the supported surface or report `partial`/`blocked`. Do not claim full alignment from an existing baseline.
+- canonical and legacy owners;
+- public exports and affected imports;
+- complete consumer migration;
+- obsolete-path removal;
+- dependency direction;
+- directly affected migration map, registry, inventory, roadmap, story, test, snapshot, and risk records.
 
-## Validation classes
+Do not update records whose owned facts did not change.
 
-### Static blocking
+### API and semantics
 
-Automation proves deterministic repository facts such as:
+Use type checking and component-contract tests for:
 
-- paths, imports, exports, and file sets;
-- token syntax and canonical ownership;
-- required blueprint sections and enum values;
-- story identity and required test artifacts;
-- migration-map, registry, and path references.
+- props, emits, slots, and defaults;
+- native element and action semantics;
+- ARIA, disabled, readonly, and accessible-name ownership;
+- controlled state and invalid combinations.
 
-### Structured consistency
+Use a real browser when the component changes native actionability, focus, keyboard, pointer, touch, target area, overlay, or responsive behavior.
 
-Automation may verify that records exist and point to real artifacts. It must not infer whether free-form architectural reasoning is correct.
+### State and lifecycle
 
-### Review blocking
+Verify the owning layer:
 
-Architecture/Material review confirms:
+- semantic state through public contracts;
+- browser interaction facts through real browser input;
+- component-owned gesture, overlay, animation, timing, cancellation, and cleanup through browser or pure tests as appropriate;
+- visible state output through canonical visual evidence.
 
-- family and foundation ownership;
-- supported-surface sufficiency;
-- source interpretation and deviations;
-- state/property route correctness;
-- matrix route completeness and grouping equivalence;
-- matrix readability;
-- visual correctness against official evidence.
+Forced visual state proves appearance only.
 
-Automation must not claim these conclusions from Markdown or screenshots alone.
+### Tokens and rendering
 
-## Storybook and visual tests
+Verify applicable:
 
-Use Storybook as the preferred isolated harness for Material documentation, browser behavior fixtures, and visual verification.
+- exact official token path and owner;
+- shortest property route;
+- state and configuration ownership;
+- actual DOM property owner;
+- affected visible routes and consumers.
 
-Use Playwright screenshots for appearance and layout. Do not use Vue Test Utils, happy-dom, or Vitest for visual proof.
+Use representative visual evidence when rendered output changes. Do not require a fixed CSS file profile.
 
-Every new or migrated component exposes one canonical `StateMatrix`. It is exhaustive by distinct supported component-owned visible output, not by every state name or equivalent size/content/configuration combination.
+### Foundation changes
 
-Automated screenshots detect regression against an accepted baseline. They do not establish that the baseline is correct.
+For an additive foundation change, verify the owner contract and affected component.
 
-## Manual visual review
+For a correction or replacement, verify complete direct consumers and representative proof for every meaningfully different affected path.
 
-Human Material visual review is a merge requirement when a change:
+Foundation work must not create a family-local substitute or parallel permanent owner.
 
-- creates a component;
-- introduces its first complete matrix;
-- intentionally changes visible output;
-- updates a matrix baseline;
-- changes an applicable foundation contract with rendered impact.
+## Canonical visual evidence
+
+Every visible component has one stable canonical visual story.
+
+Use `StateMatrix` when multiple distinct component-owned visual routes exist. Use a bounded `Overview`, `Default`, or equivalent story when one route is sufficient.
+
+A matrix covers distinct visible output, not every state name or every size, label, icon, and content combination.
+
+Automated screenshots detect regression against an accepted baseline. They do not establish Material correctness.
+
+## Operator visual acceptance
+
+Operator comparison is required when a change:
+
+- creates a visible component;
+- creates its first accepted canonical visual reference;
+- intentionally changes visible tokens, state routing, shape, color, elevation, typography, icon geometry, focus, ripple, motion appearance, or layout;
+- changes a foundation contract with rendered impact;
+- updates a baseline because the accepted visible contract changed.
 
 Report:
 
 ```text
-State matrix story: <story id>
-State coverage: complete | incomplete (<gap>)
+Canonical visual story: <story id>
+Visual coverage: complete | incomplete (<gap>)
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
-Human Material visual review: required | passed | blocked (<reason>)
+Agent evidence review: passed | blocked (<reason>)
+Official visual sources: <snapshot and Design Kit reference when required>
+Operator visual acceptance: required | accepted | rejected | blocked (<reason>)
 ```
 
-An automated coding agent reports `required`, never `passed`.
+An automated agent reports `required` or `blocked`, never `accepted`.
 
-After acceptance, persist the review PR/date and source snapshot in the family blueprint.
+## Automation boundary
+
+Automation proves deterministic repository facts and test outcomes already represented by tooling.
+
+Add a new guard only when real migrations prove a stable, repeated, materially risky, and precisely detectable invariant. Do not require speculative static or structured validators before component work.
+
+Automation must not infer architecture reasoning, source interpretation, route completeness, or visual correctness from prose or screenshots.
+
+## Rule refinement
+
+When verification exposes a conflict between implementation evidence and a project rule:
+
+1. determine whether the component or the rule is defective;
+2. correct the owning rule when it is inaccurate or unnecessarily complex;
+3. update directly affected sources only;
+4. resume verification after the contract is coherent.
+
+Do not create a local exception to keep a defective rule green.
 
 ## Final verification
 
-After implementation, follow the repository verification policy in `AGENTS.md`.
+After implementation:
 
-Documentation-only architecture changes may not require focused browser changes, but the final PR must state what was and was not run. Green CI is necessary but does not replace architecture or visual review.
+- run focused checks for changed contracts;
+- run the final repository verification required by `AGENTS.md`;
+- state what was and was not applicable;
+- complete agent evidence review;
+- record required operator visual acceptance.
 
 ## Review questions
 
 Reviewers should be able to answer:
 
-1. Which official pages, snapshots, and Design Kit references were checked?
-2. Which library, foundation, component, and product owners changed?
-3. Which tokens, APIs, native semantics, property routes, or lifecycle contracts changed?
-4. Which state contracts are non-visual and which distinct visual routes changed?
-5. Does the canonical matrix cover every distinct supported component-owned visual route?
-6. Which contract, browser, visual, pure, and consumer checks prove the change?
-7. Which results are static automation and which require review judgment?
-8. Was every required visual change inspected by a human?
-9. Are unsupported capabilities, deviations, and remaining gaps explicit?
+1. Which official sources and snapshots define the supported surface?
+2. Which owners, consumers, tokens, APIs, semantics, behaviors, or visible routes changed?
+3. Which proof layers apply, and why are omitted layers not owned by this component?
+4. Were any project rules corrected from real evidence?
+5. Are obsolete owners and compatibility paths removed?
+6. Which conclusions come from automation, agent review, and operator visual review?
+7. Are unsupported capabilities, deviations, and remaining blockers explicit?
