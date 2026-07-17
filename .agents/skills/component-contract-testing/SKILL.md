@@ -5,51 +5,50 @@ description: 'Use when adding or reviewing Vue component tests for render, props
 
 # Component contract testing
 
-Use this skill only for narrow Vue component contract tests. These tests are not a replacement for browser behavior or visual verification.
+Use this skill only for narrow Vue component contracts. These tests do not replace browser behavior or visual verification.
 
-For new or migrated public Material components, a colocated `<Component>.test.ts` contract test is mandatory as part of `docs/material-3/component-testing.md`.
+For every new or migrated public Material component, a colocated `<Component>.test.ts` is mandatory under `docs/material-3/component-testing.md`.
 
 ## Allowed scope
 
 Component contract tests may cover:
 
 - canonical defaults;
-- conditional rendering that does not depend on layout;
-- public props, emits, and slots contracts;
+- conditional rendering independent of layout;
+- public props, emits, and slots;
 - native element selection;
 - explicit `href`, `type`, `disabled`, `tabindex`, `role`, and `aria-*` ownership;
-- invalid public combinations and documented normalization;
+- invalid combinations and documented normalization;
 - controlled semantic-state wiring;
-- simple child/foundation-component wiring;
-- connecting extracted composable or helper state to template output;
-- small structural regressions where the assertion is about the component contract, not browser rendering.
+- simple child or foundation wiring;
+- extracted helper/composable state connected to template output;
+- structural regressions that are part of the accepted contract.
 
 ## Forbidden scope
 
-Do not use component contract tests for behavior that needs a real browser:
+Do not use component tests for behavior requiring a real browser:
 
-- focus, focus-visible, keyboard navigation, or accessibility interaction behavior;
-- pointer, mouse, drag, touch, or mobile gestures;
-- layout, scrolling, viewport sizing, sticky or fixed positioning;
-- responsive behavior;
-- teleport, overlay, dialog, sheet, menu, tooltip, or popover behavior;
-- browser APIs, OPFS, persistence, storage permissions, or service workers;
-- Material visual states such as hover, pressed, ripple, focus indicator, disabled appearance, elevation, shape, or motion;
+- focus-visible, keyboard navigation, or accessibility interaction behavior;
+- pointer, drag, touch, or mobile gestures;
+- layout, scrolling, viewport, sticky/fixed, or responsive behavior;
+- teleport, overlay, dialog, sheet, menu, tooltip, or popover lifecycle;
+- browser APIs, storage permissions, or service workers;
+- visual appearance such as hover, pressed, ripple, focus indicator, disabled rendering, elevation, shape, or motion;
 - screenshot or computed-style assertions intended to prove appearance.
 
-Use Playwright Storybook behavior tests or visual tests at the owning layer.
+Use Playwright only when the component changes or constrains browser-owned behavior. Use visual tests only for appearance.
 
-## Tooling rule
+## Tooling
 
-Use `@vue/test-utils` as the approved component contract test tool.
+Use `@vue/test-utils`.
 
-Do not hand-roll mounting with repeated `createApp`, manual `document.body` cleanup, ad hoc inline stubs, and `querySelector`-driven pseudo-e2e assertions.
+Do not hand-roll repeated `createApp`, body cleanup, ad hoc stubs, or `querySelector`-driven pseudo-e2e tests.
 
-Prefer extracting reusable pure behavior into a composable or helper and testing it with Vitest. Add a Playwright check for user-visible browser behavior.
+Prefer pure tests for reusable logic. Add a browser check only for user-visible behavior that cannot be proved at the contract layer.
 
 ## Material component contract
 
-For a new or migrated Material component, cover all applicable blueprint contracts:
+Cover applicable:
 
 - canonical defaults;
 - supported public configuration;
@@ -61,36 +60,34 @@ For a new or migrated Material component, cover all applicable blueprint contrac
 - documented project extensions;
 - non-browser foundation wiring.
 
-Do not reproduce the state matrix in unit tests. The canonical Storybook `StateMatrix` and its Playwright screenshot own visual-state coverage.
+Do not reproduce visual coverage in unit tests. The canonical Storybook story owns accepted appearance: use `StateMatrix` only when multiple distinct visual routes exist, otherwise use one bounded ordinary story.
 
-Do not use forced visual-state providers in component contract tests unless the assertion is narrowly about explicit wiring to an accepted provider and does not claim appearance or behavior.
+Do not use forced visual-state providers unless the assertion is narrowly about explicit wiring to an accepted provider and does not claim appearance or behavior.
 
-## Assertion rule
+## Assertions
 
-Prefer assertions against stable contracts:
+Prefer:
 
 - emitted events;
 - native tag and explicit attributes;
 - props passed to stubbed child components;
 - slot content;
-- accessible text or labels when they are part of the user-visible contract;
-- documented warning/normalization behavior when invalid combinations are accepted by the blueprint.
+- accessible text or labels in the public contract;
+- documented warning or normalization behavior.
 
 Avoid:
 
 - complete rendered-tree snapshots;
 - internal class lists unrelated to public or foundation wiring;
-- test ids added only to make unit testing possible;
-- assertions that duplicate component implementation rather than its contract.
+- test ids added only for unit tests;
+- assertions that duplicate the implementation rather than its contract.
 
-## Review checklist
+## Reject or rewrite when
 
-Reject or rewrite the test when:
-
-1. It simulates a realistic user flow that belongs in Playwright.
-2. It asserts visual output, computed style, layout, focus-visible, or pointer state.
-3. It asserts DOM details unrelated to the accepted component contract.
-4. It duplicates business logic assertions already covered by a composable/helper test.
-5. It relies on happy-dom for behavior it cannot accurately simulate.
+1. A realistic user flow belongs in Playwright.
+2. The test asserts visual output, computed style, layout, focus-visible, or pointer state.
+3. It asserts DOM details unrelated to the accepted contract.
+4. It duplicates logic already covered by a helper/composable test.
+5. It relies on happy-dom for behavior it cannot simulate accurately.
 6. It grows into broad pseudo-e2e coverage.
-7. A new or migrated Material component has no named contract coverage because browser or visual tests exist.
+7. A new or migrated component has no named contract coverage because browser or visual tests exist.
