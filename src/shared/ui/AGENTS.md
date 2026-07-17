@@ -5,12 +5,15 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Routing
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component families.
-- Use `material-component-authoring` for any new, migrated, aligned, or materially changed official public Material component family, including legacy `MD*` components outside `src/shared/ui/material`.
+- Use `material-component` when the user provides only a Material component or family name and expects autonomous creation, migration, or alignment.
+- Use `material-component-authoring` as the canonical execution workflow after the Material family is resolved, including legacy `MD*` components outside `src/shared/ui/material`.
 - Use `material-foundation` for changes to cross-family Material foundation contracts.
 - Use `material3-guidelines` for official source lookup, component choice, usage, composition, and product-facing Material decisions.
 - Inside `src/shared/ui/material`, follow `src/shared/ui/material/AGENTS.md` and the canonical architecture under `docs/material-3`.
 
-Do not assemble an official Material component workflow from generic shared UI rules. `material-component-authoring` is the primary execution contract for that work.
+A one-name invocation is sufficient input for `material-component`; do not require the user to supply variants, API, files, tests, foundations, or consumers before repository and source discovery.
+
+Do not assemble an official Material component workflow from generic shared UI rules. `material-component-authoring` remains the primary execution contract after target resolution.
 
 ## Contains
 
@@ -28,7 +31,7 @@ Do not assemble an official Material component workflow from generic shared UI r
 - New Material ownership at a legacy path is forbidden.
 - Shared UI must not import product layers or domain models.
 
-Detailed generic component rules belong to `shared-ui-implementation`. Detailed Material component rules belong to `material-component-authoring` and `src/shared/ui/material/AGENTS.md`.
+Detailed generic component rules belong to `shared-ui-implementation`. Material target resolution belongs to `material-component`; detailed execution belongs to `material-component-authoring` and `src/shared/ui/material/AGENTS.md`.
 
 ## Verification
 
