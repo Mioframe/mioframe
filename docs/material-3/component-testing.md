@@ -8,17 +8,17 @@ Prove the accepted Material family contract with the smallest non-duplicative se
 
 ## Required family evidence
 
-| Evidence | Requirement |
-| --- | --- |
-| Component contract | Mandatory for every new or migrated public component |
-| Canonical visual story | Mandatory when the component renders visible output |
-| State matrix | Only when multiple distinct component-owned visual routes exist |
-| Visual regression | When the accepted visible contract is stable and regression would be material |
-| Browser behavior | Only when the family owns browser-dependent interaction |
-| Pure behavior | Only when component/foundation logic owns deterministic decisions outside Vue rendering |
-| Consumer preservation | When imports, public API, wrappers, native owners, composition, or shared output change |
-| Agent evidence review | Mandatory before operator handoff |
-| Operator visual acceptance | Required when accepted Material output is created or intentionally changed |
+| Evidence                   | Requirement                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| Component contract         | Mandatory for every new or migrated public component                                    |
+| Canonical visual story     | Mandatory when the component renders visible output                                     |
+| State matrix               | Only when multiple distinct component-owned visual routes exist                         |
+| Visual regression          | When the accepted visible contract is stable and regression would be material           |
+| Browser behavior           | Only when the family owns browser-dependent interaction                                 |
+| Pure behavior              | Only when component/foundation logic owns deterministic decisions outside Vue rendering |
+| Consumer preservation      | When imports, public API, wrappers, native owners, composition, or shared output change |
+| Agent evidence review      | Mandatory before operator handoff                                                       |
+| Operator visual acceptance | Required when accepted Material output is created or intentionally changed              |
 
 Evidence may be omitted only because the family does not own that contract, not because correct proof is difficult.
 
