@@ -2,98 +2,95 @@
 
 Use for every new, migrated, or materially changed public Material component. Apply only items owned by the supported surface and current change.
 
-The checklist summarizes existing architecture; it adds no fields or proof layers.
+## 1. Official family and sources
 
-## 1. Scope and sources
+- [ ] Resolved the current official Material 3 Expressive family and documentation path.
+- [ ] Used the official documentation slug for the canonical family directory.
+- [ ] Started from current consumer scenarios.
+- [ ] Recorded exact official pages, source snapshot metadata, and Design Kit evidence only when used.
+- [ ] Implemented the minimum complete supported surface rather than speculative capability.
 
-- [ ] Started from named scenarios and affected consumers.
-- [ ] Resolved the current official Material 3 Expressive contract for the supported surface.
-- [ ] Used the Design Kit only when published guidance could not resolve an applicable visual decision.
-- [ ] Recorded exact sources, snapshots, and any deviation or unavailable surface.
-- [ ] Implemented the minimum complete surface rather than speculative capability.
-- [ ] Added no Mioframe extension without a requirement and owner.
+## 2. Family documentation
 
-## 2. Family and ownership
+- [ ] Created or updated the colocated family `README.md` before production edits.
+- [ ] Listed only working capability under `Implemented`.
+- [ ] Listed official capability outside the supported surface under `Not implemented`.
+- [ ] Recorded every known defect, provisional route, missing verification, deferred required item, and visible concern under `Known issues and required follow-up`.
+- [ ] Recorded public API, semantics, token/state/property ownership, foundation/style dependencies, extensions, consumers, and verification.
+- [ ] Set `Review status: review required after changes`.
+- [ ] Did not edit the independent `AUDIT.md` during implementation.
 
-- [ ] Selected one cohesive family.
-- [ ] Recorded current owner, canonical owner, migration status, public export, and affected consumers.
+## 3. Family and ownership
+
+- [ ] Selected one cohesive official family.
 - [ ] Kept project-specific UI and generic infrastructure outside official Material ownership.
-- [ ] Avoided private cross-family imports and component-local foundation substitutes.
 - [ ] Created only files and abstractions required by current work.
+- [ ] Kept one owner for each semantic, interactive, accessibility, and rendered-property concern.
+- [ ] Avoided private cross-family imports.
 
-## 3. Adaptive family contract
+## 4. Foundations and styles
 
-- [ ] Completed the mandatory core before production edits.
-- [ ] Added only applicable conditional sections.
-- [ ] Resolved every applicable decision before `Readiness: ready`.
-- [ ] Omitted irrelevant concerns instead of creating ceremonial fields or files.
-- [ ] Kept one owner for each fact.
+- [ ] Mapped shared dependencies to the official `foundations` or `styles` navigation.
+- [ ] Reused an existing accepted owner when sufficient.
+- [ ] Kept family-specific behavior local when no real shared contract exists.
+- [ ] Named every remaining shared dependency gap in the family README.
+- [ ] Assessed affected families before changing root/system tokens, universal selectors, pseudo-elements, or shared formulas.
+- [ ] Preferred the narrowest valid owner.
 
-## 4. Rule refinement
-
-- [ ] Checked that applicable rules describe the real migration correctly.
-- [ ] Corrected inaccurate, contradictory, incomplete, obsolete, or needlessly complex rules in their owner.
-- [ ] Used the smallest evidence-backed correction.
-- [ ] Updated only directly affected rule owners.
-- [ ] Added no family-specific exception.
-
-## 5. Foundation dependencies
-
-- [ ] Listed only required foundation domains.
-- [ ] Reused the accepted owner when sufficient.
-- [ ] Named exact non-blocking gaps.
-- [ ] Treated missing or blocked required capability as a blocker.
-- [ ] Used a focused foundation change when shared blast radius required it.
-- [ ] Created no parallel owner or local substitute.
-
-## 6. API, state, and DOM ownership
+## 5. API, state, and DOM ownership
 
 - [ ] Public props, emits, slots, and native semantics match the supported contract.
-- [ ] Invalid combinations are prevented, normalized by an official rule, or explicitly unsupported.
+- [ ] Invalid combinations are prevented, normalized by an accepted rule, or explicitly unsupported.
 - [ ] Controlled semantic state has no hidden component copy.
 - [ ] Component-owned transient state defines acquisition, release, cancellation, disabled, failure, and cleanup only when applicable.
-- [ ] Each semantic or interactive concern has one DOM, focus, accessible-name, ARIA, target-area, interaction, and rendering owner.
-- [ ] Parent and child components do not implicitly split ownership.
+- [ ] DOM, focus, accessible-name, ARIA, target-area, interaction, and final rendering ownership is explicit.
 
-## 7. Tokens and implementation
+## 6. Tokens and implementation
 
 - [ ] Every public `--md-*` value maps to an exact official meaning.
-- [ ] Every canonical token has one owner.
-- [ ] Static values use the shortest route.
-- [ ] Configuration and state routing remain conceptually clear without empty files.
-- [ ] Additional behavior, context, route, or anatomy files reduce current complexity.
-- [ ] Styles apply final values to the actual DOM owner.
-- [ ] Motion uses the accepted component/foundation contract; declared but unused tokens or conflicting local timing do not remain.
+- [ ] Every supported route reaches the actual final property owner.
+- [ ] A claimed dependency is real: changing its source can affect the final output.
+- [ ] Colocation, aliases to unchanged constants, equality assertions, comments, and tests are not treated as implementation dependencies.
+- [ ] Numeric spring values that cannot drive CSS directly are documented as source evidence rather than fake runtime inputs.
+- [ ] Motion uses one honest runtime contract without conflicting local timing.
+- [ ] Additional files or abstractions reduce current complexity.
 
-## 8. Migration
+## 7. Migration
 
-- [ ] Used `end-to-end-migration` for a legacy family unless a narrower safe scope was justified.
-- [ ] Migrated affected consumers and public exports.
-- [ ] Preserved product behavior except for named accepted deltas.
+- [ ] Used end-to-end migration when a legacy owner existed.
+- [ ] Updated the curated Material export.
+- [ ] Migrated every affected consumer.
+- [ ] Preserved accepted product behavior except for documented changes.
 - [ ] Removed obsolete owners, files, imports, and exports.
-- [ ] Added no permanent compatibility alias.
-- [ ] Updated only records whose facts changed.
+- [ ] Added no permanent compatibility alias without a documented necessity.
+- [ ] Recorded the real migration state in the family README.
 
-## 9. Proportional proof
+## 8. Proportional proof
 
 - [ ] Added or updated colocated component-contract tests.
-- [ ] Used browser tests only for browser-owned behavior the component changes or constrains, or final computed behavior not reliably provable from source.
-- [ ] Did not test browser interpolation or duplicate equivalent input paths.
-- [ ] Added pure tests only for extracted logic or lifecycle.
-- [ ] Added focused consumer-preservation checks when consumers changed.
 - [ ] Created one stable canonical visual story for visible output.
-- [ ] Used `StateMatrix` only for multiple distinct visual routes.
-- [ ] Avoided Cartesian products and equivalent visual cases.
-- [ ] Added bounded visual regression only when it provides material value.
+- [ ] Used browser tests only for browser-owned behavior or uncertain final computed behavior.
+- [ ] Did not test browser interpolation or duplicate equivalent input paths.
+- [ ] Added pure, consumer, `StateMatrix`, and visual-regression proof only when the family owns those risks.
+- [ ] Did not add a test merely to restate equal aliases or declarations.
 
-## 10. Review and completion
+## 9. Implementation completion
 
-- [ ] Agent evidence review passed for architecture, Material contract, accessibility, implementation, migration, and proof proportionality.
-- [ ] No technical blocker is deferred to operator visual review.
-- [ ] Prepared named official visual sources and bounded evidence when operator acceptance is required.
-- [ ] Automated agent reports visual acceptance as `required` or `blocked`, never `accepted`.
-- [ ] A fresh family audit references the final implementation commit.
-- [ ] Code, contract, exports, consumers, applicable tests, stories, map, and affected records agree.
-- [ ] Focused and final repository verification pass.
+- [ ] Code, README, exports, consumers, tests, and stories agree.
+- [ ] All unfinished or unverified work is visible in the README.
+- [ ] Focused checks passed.
+- [ ] Final applicable local repository verification passed.
+- [ ] Implementation result is reported as `implementation finished` or one exact blocker.
+- [ ] Recommended next command is `material-component-review <family>`.
 
-Do not mark a family migrated or Expressive-complete while a blocker, obsolete owner, unresolved rule conflict, stale audit, broken public route, or visual rejection remains.
+## 10. Independent review
+
+Performed separately by `material-component-review`:
+
+- [ ] Reviewer changed only the colocated `AUDIT.md`.
+- [ ] Reviewer checked README claims against official sources and implementation.
+- [ ] Undocumented omissions and defects were reported.
+- [ ] Audit result is `compliant`, `partially-compliant`, `non-compliant`, or `blocked`.
+- [ ] Operator visual review is recorded separately when required.
+
+Do not describe a family as complete while its README hides unfinished work, its audit has unresolved high findings, obsolete ownership remains, required local verification fails, or required visual review is rejected.
