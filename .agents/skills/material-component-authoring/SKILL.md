@@ -21,13 +21,14 @@ Read:
 
 The implementation workflow never edits `AUDIT.md`.
 
-## 1. Resolve family, path, and scope
+## 1. Resolve family, path, scope, and complete capability inventory
 
 1. Resolve the official family and documentation path.
 2. Use the official documentation slug as the canonical directory name.
 3. Select `new-component`, `end-to-end-migration`, or `alignment-only`.
-4. Define the minimum complete supported surface required by current consumers.
-5. Inspect every current audit finding.
+4. Inspect every current official page for the family and reconstruct its complete contract-level capability inventory.
+5. Define the minimum complete implementation surface required by current consumers.
+6. Inspect every current audit finding.
 
 Example:
 
@@ -35,6 +36,12 @@ Example:
 m3.material.io/components/buttons
 → src/shared/ui/material/components/buttons
 ```
+
+Implementation scope may be incremental. Documentation coverage may not be incremental: every official capability in the resolved family must be classified regardless of whether a current consumer needs it.
+
+Inventory contract-level capabilities such as public subcomponents, variants, sizes, shapes, modes, states, semantics, accessibility behavior, configuration, adaptive behavior, and documented interactions. Do not turn the README into a token-by-token dump when a coherent grouped entry preserves full coverage.
+
+When official evidence is unavailable or ambiguous, record the capability as unresolved or unverified. Do not omit it.
 
 ## 2. Update family documentation first
 
@@ -60,11 +67,22 @@ Use these sections:
 
 Set `Review status: review required after changes` before production edits.
 
+Under `Official documentation mapping`, record:
+
+```text
+Official capability inventory: complete | incomplete (<exact missing evidence>)
+Official coverage: full | partial | unresolved
+```
+
 Record exact official pages and source snapshot metadata. Use the Design Kit only when it resolves a visual decision not resolved by published guidance.
 
 A capability belongs under `Implemented` only when its final owned output works. A declaration, alias, placeholder, story, or test is insufficient by itself.
 
-Record every incomplete, provisional, deferred, unverified, visibly questionable, or blocked item. Record optional official capability outside the current surface under `Not implemented`.
+`Not implemented` must enumerate every official capability absent from the implementation, independently of current consumer demand. A reason such as no current consumer may explain prioritization, but it does not permit omission from the inventory.
+
+Record partially implemented, provisional, defective, ambiguous, or unverified capability under `Known issues and required follow-up`. Do not misclassify partial capability as fully implemented or fully absent.
+
+The README must never imply full family implementation while `Official coverage` is `partial` or `unresolved`.
 
 ## 3. Resolve foundations and styles
 
@@ -120,16 +138,20 @@ Add browser, pure, consumer, `StateMatrix`, and visual-regression proof only whe
 
 A test cannot repair a missing implementation dependency. Reject tests that only compare aliases already defined as equal.
 
+Tests are required for implemented capability. Unimplemented capability is documented rather than tested as though it existed.
+
 ## 7. Finish documentation and verification
 
 After implementation:
 
-1. update `Implemented` to match working code;
-2. update `Not implemented` for intentionally omitted official capability;
-3. update `Known issues and required follow-up` with every remaining concern;
-4. name applicable tests and stories under `Verification`;
-5. keep `Review status: review required after changes`;
-6. run focused checks and final applicable local verification.
+1. rebuild the official capability inventory from the current canonical sources;
+2. update `Implemented` to match working code;
+3. update `Not implemented` with every absent official capability;
+4. update `Known issues and required follow-up` with every partial, defective, provisional, ambiguous, or unverified capability;
+5. set `Official capability inventory` and `Official coverage` honestly;
+6. name applicable tests and stories under `Verification`;
+7. keep `Review status: review required after changes`;
+8. run focused checks and final applicable local verification.
 
 Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` remains unchanged until an independent review replaces it.
 
@@ -143,8 +165,11 @@ Official family:
 Official documentation path:
 Canonical implementation path:
 Change mode:
+Official capability inventory: complete | incomplete (<exact gap>)
+Official coverage: full | partial | unresolved
 Implemented:
 Not implemented:
+Partial / unverified:
 Known issues / follow-up:
 Consumers migrated:
 Foundation/style changes:
@@ -154,4 +179,4 @@ Status: implementation finished | blocked (<exact reason>)
 Recommended next command: material-component-review <family>
 ```
 
-Do not report success while family documentation hides unfinished work.
+Do not report success while family documentation hides unfinished or unimplemented official capability. `Implementation finished` describes the current task, not full family coverage.
