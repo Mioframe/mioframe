@@ -4,120 +4,115 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 
 ## Routing
 
-- Use `material-library-status` for a read-only reconciliation of roadmap, inventory, registries, audits, visual acceptance, and verification state.
-- Use `material-library-next` when the user wants the program to continue without naming a family; it resolves and runs exactly one next family.
-- Use `material-component` when the user supplies a Material component or family name and expects autonomous creation, migration, or alignment from that name alone.
-- Use `material-component-review` when the user supplies a Material component or family name and expects a source-backed compliance review without production changes.
-- Use `material-component-authoring` as the canonical end-to-end execution workflow after the target family is resolved, or directly when the task already provides explicit family scope.
-- Use `material-foundation` when a cross-family foundation contract changes.
-- Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and supported surface.
-- Use Vue and testing skills only for applicable implementation and proof layers.
-- Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
-- Use `library-roadmap.md` and `ui-library-inventory.md` through `material-library-next` to select sequential migration work when the user did not explicitly select a component.
+- Use `material-library-status` for a read-only report based on roadmap, inventory, registries, and colocated family documentation/audits.
+- Use `material-library-next` to select and execute exactly one next family.
+- Use `material-component` when the user supplies a component or family name for creation, migration, or alignment.
+- Use `material-component-review` for an independent source-backed review without production changes.
+- Use `material-component-authoring` after the target family is resolved.
+- Use `material-foundation` when a real cross-family foundation or style contract changes.
+- Use `material3-guidelines` for official sources and supported surface.
 
-A component name is sufficient input for `material-component` and `material-component-review`. Do not require the user to predefine variants, API, foundations, files, tests, consumers, or expected defects. Resolve them from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
+A component name is sufficient. Resolve variants, API, consumers, foundations/styles, tests, and omissions from official sources and repository evidence.
 
-`material-library-next` requires no component name. It follows the active roadmap milestone first and, after the pilots, selects one unblocked `queued` official-component family with satisfied dependencies. It must not start a second family in the same task or PR. `material-library-status` never modifies repository files.
+## Canonical navigation
 
-A completed `material-component-review` run creates or replaces `docs/material-3/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
+The library follows the official Material documentation navigation:
 
-Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
+```text
+foundations/
+styles/
+components/
+```
+
+- `foundations/<official-slug>` — official Foundation domains.
+- `styles/<official-slug>` — color, elevation, icons, motion, shape, typography, and other official Style domains.
+- `components/<official-docs-slug>` — official component families.
+
+Use the official documentation slug. Example: Button belongs in `components/buttons`, matching `m3.material.io/components/buttons`.
+
+Do not create a top-level `patterns` tree without an equivalent official documentation owner. Product compositions remain outside the official library.
+
+## Family documentation
+
+Every implemented or actively migrated family owns:
+
+```text
+components/<official-docs-slug>/README.md
+components/<official-docs-slug>/AUDIT.md
+```
+
+- `README.md` is the current implementation documentation and is updated by authoring work.
+- `AUDIT.md` is the latest independent review and is updated only by `material-component-review`.
+
+`README.md` must state:
+
+- official documentation mapping;
+- implemented surface;
+- not implemented official capability;
+- known defects and required follow-up;
+- public API and semantics;
+- token/state/property ownership;
+- foundation/style dependencies;
+- extensions and deviations;
+- consumers and migration state;
+- verification and review status.
+
+Any incomplete, deferred, provisional, unverified, or visibly questionable item must be recorded. Do not claim completion by omission.
+
+A production change sets `Review status: review required after changes`. The implementing agent does not edit `AUDIT.md`.
+
+A review-only run creates or replaces only the colocated `AUDIT.md`; it does not modify implementation, tests, stories, family `README.md`, registries, roadmap, or policy.
 
 ## Canonical target
 
-- Official components implement the current applicable Material 3 Expressive contract.
+- Implement current applicable Material 3 Expressive guidance.
 - Baseline Material 3 is not a silent fallback.
-- Legacy output, existing snapshots, other implementations, and memory are not Material authority.
-- Missing or conflicting source evidence is resolved by narrowing scope, correcting rules, or reporting a genuine blocker.
-
-## Contains
-
-Only:
-
-- `foundation` — cross-family Material contracts required by current work;
-- `components` — official public Material component families;
-- `patterns` — accepted reusable official Material compositions;
-- local family/domain contracts and curated public entry points.
-
-Policy documents remain under `docs/material-3`. Product-specific UI and generic platform infrastructure remain outside.
+- Existing output, snapshots, other implementations, and memory are not Material authority.
+- Unsupported optional capability is acceptable only when documented honestly.
 
 ## Dependency direction
 
 ```text
-shared/lib generic infrastructure
-  ├─→ material/foundation
-  ├─→ material/components
-  └─→ material/patterns
-
-material/foundation → material/components → material/patterns
-material library → project-specific shared UI and product layers
+shared generic infrastructure
+  → material/foundations and material/styles
+  → material/components
+  → product layers
 ```
 
-- Any Material layer may use a correctly owned generic utility directly.
-- Do not create foundation wrappers merely to route generic behavior.
-- Foundation must not import components or patterns.
-- Families must not deep-import another family's private files.
-- Patterns use public component/foundation contracts only.
-- Library code must not import product layers.
-- Generic infrastructure must not depend on Material family knowledge.
+- foundations and styles do not import components;
+- a family does not deep-import another family's private files;
+- Material code does not import product layers;
+- product consumers use `@shared/ui/material`;
+- private implementation, tests, stories, docs, and audits are not public API.
 
-## New artifacts
+## Implementation rules
 
-- New official components belong under `components/<family>`.
-- New foundation artifacts belong under `foundation/<domain>` only when current work proves a cross-family need.
-- New patterns require official composition evidence and a current scenario.
-- Multi-component families require an official relationship and a real current shared contract.
-- Do not add placeholder files, empty structural layers, speculative extension points, universal bases, or project-specific UI under official families.
+- Implement the minimum complete surface required by current consumers.
+- Use exact official token meanings and shortest final property routes.
+- A route exists only when its source can affect the final output through a real dependency.
+- Colocation, aliases to unchanged constants, equality assertions, and comments do not create a route.
+- Keep a behavior family-local unless a real cross-family contract exists.
+- Assess cross-family impact before changing root/system tokens, universal selectors, pseudo-elements, or shared formulas.
+- Create only files and abstractions required by current work.
 
-## Public API
+## Proof
 
-- Product consumers use `@shared/ui/material` after the root entry point exists.
-- Internal library code does not import the root barrel.
-- External deep imports into private implementation or testing files are forbidden.
-- Every public export has one clear owner.
+- Every new or migrated component has colocated component-contract tests.
+- Every visible component has one stable canonical story.
+- Add `StateMatrix`, browser, pure, consumer, and visual-regression layers only when the family owns those risks.
+- Do not test browser interpolation internals for ordinary CSS transitions.
+- Operator visual comparison does not replace technical review.
 
-## Migration boundary
+## Completion behavior
 
-- Existing Material code outside this directory is legacy, not a template for new work.
-- Strict local repairs may remain at legacy paths only under a valid `Architecture impact: none` decision.
-- Use one cohesive end-to-end family migration by default.
-- Split foundation, relocation, or alignment work only when blast radius, reviewability, compatibility, or a safer independent state justifies it.
-- Migrate affected consumers and remove obsolete ownership.
-- Update only contracts, maps, registries, inventory, roadmap, stories, tests, snapshots, and risk records whose owned facts changed.
-- Temporary compatibility requires exact consumers, no new usage, and a removal target.
+The implementing agent finishes by:
 
-## Adaptive contract and proof
+- updating `README.md` truthfully;
+- listing implemented, omitted, known-broken, and unverified items;
+- running applicable local verification;
+- reporting `implementation finished` or one exact blocker;
+- recommending `material-component-review <family>`.
 
-- Resolve the mandatory family-contract core before production edits.
-- Add anatomy, state, token-routing, browser, visual, consumer, and foundation sections only when applicable.
-- Keep responsibilities clear without requiring a fixed number of CSS or helper files.
-- Every new or migrated component has component-contract tests.
-- Use browser, pure, consumer, visual-regression, and operator-review layers only when the component owns those contracts.
-- Use `StateMatrix` only when multiple distinct component-owned visual routes exist; a simple visible component may use one bounded canonical story.
+The reviewing agent records the independent result in `AUDIT.md`.
 
-## Rule refinement
-
-When a real migration exposes an inaccurate, contradictory, incomplete, obsolete, or needlessly complex rule:
-
-- identify the concrete evidence and owning source;
-- make the smallest evidence-backed correction;
-- update only directly affected rule owners;
-- do not preserve the rule through a family-specific exception;
-- continue after the applicable rules are coherent.
-
-Escalate only for a genuine product decision, materially unresolved official source, cross-project public-contract change, unsafe shared blast radius, unresolved verification failure, or rejected visual evidence.
-
-## Verification and review
-
-- Use existing repository checks and focused tests.
-- Add automation only after real migrations prove a stable repeated and precisely detectable need.
-- `material-library-status` reports conflicts between owning records instead of silently reconciling them.
-- `material-component-review` treats code, family docs, tests, stories, snapshots, prior audits, and registry status as claims to verify against official sources, not as proof by themselves.
-- A review-only run writes the durable family audit and reports confirmed defects and evidence gaps without modifying production implementation or policies.
-- `material-component` and `material-component-authoring` inspect the current family audit when one exists and resolve or invalidate its findings using current evidence.
-- The coding agent owns source-backed architecture, Material, accessibility, behavior, migration, rule, and proof review.
-- The operator owns final comparison of prepared visible evidence when required.
-- The agent never reports operator acceptance as accepted.
-- Automation must not claim to prove free-form architecture or visual correctness.
-
-After a family reaches its accepted terminal state, update the queue and record the next candidate. Start that next family only through a new `material-library-next` or explicit `material-component` run.
+Do not include or require branch, commit, pull request, CI, merge, or repository-hosting metadata in component authoring or audit documentation. Those concerns are outside this agent workflow.
