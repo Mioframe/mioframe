@@ -17,9 +17,11 @@ const props = withDefaults(
     disabled?: boolean | undefined;
     /**
      * Loading state for the action. `true` shows an indeterminate progress indicator; a
-     * number shows determinate progress. `0` still renders as an active loading state, but
-     * the underlying `MDCircularProgressIndicator` currently renders `0` through its
-     * indeterminate visual path rather than a determinate ring at zero fill.
+     * number in `(0, 1]` shows determinate progress. `0` is still an active loading state
+     * (`aria-busy` is set and the label/icon hide), but renders the same indeterminate visual
+     * as `true`: `MDCircularProgressIndicator` has no distinct ring for a static zero fill, so
+     * a numeric value that normalizes to `0` is treated as "loading, no measurable progress
+     * yet" rather than forwarded as a fake determinate `0`.
      */
     loading?: number | boolean | undefined;
     /**
@@ -80,19 +82,19 @@ const appliedSelected = computed(() => isToggle.value && !!props.selected);
 
 const isLoading = computed(() => props.loading !== undefined && props.loading !== false);
 /**
- * `MDCircularProgressIndicator` only accepts a `[0, 1]` determinate `progress`; out-of-range or
- * non-finite numeric `loading` values are clamped to a safe determinate value instead of being
- * forwarded as-is.
+ * `MDCircularProgressIndicator` only accepts a `[0, 1]` determinate `progress` and has no
+ * distinct visual for a static zero-fill ring. A numeric `loading` value that clamps to `0`
+ * (including `0` itself, negative values, and non-finite values) is forwarded as `undefined` so
+ * it renders the same indeterminate visual as `loading={true}` instead of a fake determinate
+ * `0`. Values that clamp above `0` render a real determinate ring.
  */
 const normalizedLoadingProgress = computed(() => {
   if (!isNumber(props.loading)) {
     return undefined;
   }
   const value = props.loading;
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.min(1, Math.max(0, value));
+  const clamped = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+  return clamped > 0 ? clamped : undefined;
 });
 const isInvalidLoadingNumber = computed(
   () =>
@@ -245,11 +247,16 @@ if (import.meta.env.DEV) {
   --md-private-button-rendered-outline-color: var(--md-private-button-outline-color);
   --md-private-button-rendered-elevation: var(--md-private-button-elevation);
   --md-private-button-rendered-state-layer-color: var(--md-private-button-state-layer-color);
-  /* Consumed by the pressed-shape morph below. Defaults to the shared fast-spatial adaptation;
-     each size block re-declares it from the same adaptation alongside its own official
-     `*-pressed-container-corner-size-motion-spring-stiffness`/`-damping` tokens, so those
-     declared spring tokens participate in the actual rendered corner-radius transition instead
-     of being unused. */
+  /*
+   * `md.comp.button.{xsmall,small,medium,large,xlarge}.pressed.container.corner-size.motion.spring
+   * .{stiffness,damping}` all alias the same `md.sys.motion.spring.fast-spatial` system spring
+   * (stiffness 800, damping 0.6 per the verified snapshot in the family README) for every size.
+   * CSS transitions cannot consume spring physics directly, so those per-size spring tokens are
+   * documented source evidence only — not a runtime dependency — and are intentionally not
+   * declared as CSS custom properties here (that would imply a route that does not exist). The
+   * border-radius transition below runs on the project's one honest Web adaptation of that
+   * spring: the pre-existing shared expressive fast-spatial duration/easing.
+   */
   --md-private-button-corner-motion-duration: var(
     --md-private-motion-expressive-fast-spatial-duration
   );
@@ -1442,18 +1449,6 @@ if (import.meta.env.DEV) {
       --md-comp-button-xsmall-pressed-container-shape: var(--md-sys-shape-corner-small);
       --md-comp-button-xsmall-selected-container-shape-round: var(--md-sys-shape-corner-medium);
       --md-comp-button-xsmall-selected-container-shape-square: var(--md-sys-shape-corner-full);
-      --md-comp-button-xsmall-pressed-container-corner-size-motion-spring-stiffness: var(
-        --md-sys-motion-spring-fast-spatial-stiffness
-      );
-      --md-comp-button-xsmall-pressed-container-corner-size-motion-spring-damping: var(
-        --md-sys-motion-spring-fast-spatial-damping
-      );
-      --md-private-button-corner-motion-duration: var(
-        --md-private-motion-expressive-fast-spatial-duration
-      );
-      --md-private-button-corner-motion-easing: var(
-        --md-private-motion-expressive-fast-spatial-easing
-      );
 
       --md-button-height: var(--md-comp-button-xsmall-container-height);
       --md-button-icon-size: var(--md-comp-button-xsmall-icon-size);
@@ -1503,18 +1498,6 @@ if (import.meta.env.DEV) {
       --md-comp-button-small-pressed-container-shape: var(--md-sys-shape-corner-small);
       --md-comp-button-small-selected-container-shape-round: var(--md-sys-shape-corner-medium);
       --md-comp-button-small-selected-container-shape-square: var(--md-sys-shape-corner-full);
-      --md-comp-button-small-pressed-container-corner-size-motion-spring-stiffness: var(
-        --md-sys-motion-spring-fast-spatial-stiffness
-      );
-      --md-comp-button-small-pressed-container-corner-size-motion-spring-damping: var(
-        --md-sys-motion-spring-fast-spatial-damping
-      );
-      --md-private-button-corner-motion-duration: var(
-        --md-private-motion-expressive-fast-spatial-duration
-      );
-      --md-private-button-corner-motion-easing: var(
-        --md-private-motion-expressive-fast-spatial-easing
-      );
 
       --md-button-height: var(--md-comp-button-small-container-height);
       --md-button-icon-size: var(--md-comp-button-small-icon-size);
@@ -1564,18 +1547,6 @@ if (import.meta.env.DEV) {
       --md-comp-button-medium-pressed-container-shape: var(--md-sys-shape-corner-medium);
       --md-comp-button-medium-selected-container-shape-round: var(--md-sys-shape-corner-large);
       --md-comp-button-medium-selected-container-shape-square: var(--md-sys-shape-corner-full);
-      --md-comp-button-medium-pressed-container-corner-size-motion-spring-stiffness: var(
-        --md-sys-motion-spring-fast-spatial-stiffness
-      );
-      --md-comp-button-medium-pressed-container-corner-size-motion-spring-damping: var(
-        --md-sys-motion-spring-fast-spatial-damping
-      );
-      --md-private-button-corner-motion-duration: var(
-        --md-private-motion-expressive-fast-spatial-duration
-      );
-      --md-private-button-corner-motion-easing: var(
-        --md-private-motion-expressive-fast-spatial-easing
-      );
 
       --md-button-height: var(--md-comp-button-medium-container-height);
       --md-button-icon-size: var(--md-comp-button-medium-icon-size);
@@ -1624,18 +1595,6 @@ if (import.meta.env.DEV) {
       --md-comp-button-large-pressed-container-shape: var(--md-sys-shape-corner-large);
       --md-comp-button-large-selected-container-shape-round: var(--md-sys-shape-corner-extra-large);
       --md-comp-button-large-selected-container-shape-square: var(--md-sys-shape-corner-full);
-      --md-comp-button-large-pressed-container-corner-size-motion-spring-stiffness: var(
-        --md-sys-motion-spring-fast-spatial-stiffness
-      );
-      --md-comp-button-large-pressed-container-corner-size-motion-spring-damping: var(
-        --md-sys-motion-spring-fast-spatial-damping
-      );
-      --md-private-button-corner-motion-duration: var(
-        --md-private-motion-expressive-fast-spatial-duration
-      );
-      --md-private-button-corner-motion-easing: var(
-        --md-private-motion-expressive-fast-spatial-easing
-      );
 
       --md-button-height: var(--md-comp-button-large-container-height);
       --md-button-icon-size: var(--md-comp-button-large-icon-size);
@@ -1686,18 +1645,6 @@ if (import.meta.env.DEV) {
         --md-sys-shape-corner-extra-large
       );
       --md-comp-button-xlarge-selected-container-shape-square: var(--md-sys-shape-corner-full);
-      --md-comp-button-xlarge-pressed-container-corner-size-motion-spring-stiffness: var(
-        --md-sys-motion-spring-fast-spatial-stiffness
-      );
-      --md-comp-button-xlarge-pressed-container-corner-size-motion-spring-damping: var(
-        --md-sys-motion-spring-fast-spatial-damping
-      );
-      --md-private-button-corner-motion-duration: var(
-        --md-private-motion-expressive-fast-spatial-duration
-      );
-      --md-private-button-corner-motion-easing: var(
-        --md-private-motion-expressive-fast-spatial-easing
-      );
 
       --md-button-height: var(--md-comp-button-xlarge-container-height);
       --md-button-icon-size: var(--md-comp-button-xlarge-icon-size);

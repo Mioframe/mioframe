@@ -40,16 +40,14 @@ describe('MDButton', () => {
     expect(directChildren.every((child) => child.tagName === 'SPAN')).toBe(true);
   });
 
-  it('treats loading=0 as an active loading state', () => {
+  it('treats loading=0 as an active loading state rendered with the indeterminate visual', () => {
     const wrapper = mountButton({
       loading: 0,
     });
 
     expect(wrapper.classes()).toContain('md-button_loading');
-    expect(wrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(true);
-    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
-      '0',
-    );
+    const indicator = wrapper.get('.md-circular-progress-indicator-stub');
+    expect(indicator.attributes('data-progress')).toBeUndefined();
   });
 
   it('does not treat loading=false or absent loading as an active loading state', () => {
@@ -206,16 +204,16 @@ describe('MDButton', () => {
   });
 
   it.each([
-    { loading: 0, expectedProgress: '0', shouldWarn: false },
+    { loading: 0, expectedProgress: undefined, shouldWarn: false },
     { loading: 1, expectedProgress: '1', shouldWarn: false },
     { loading: 0.5, expectedProgress: '0.5', shouldWarn: false },
-    { loading: -1, expectedProgress: '0', shouldWarn: true },
+    { loading: -1, expectedProgress: undefined, shouldWarn: true },
     { loading: 1.5, expectedProgress: '1', shouldWarn: true },
-    { loading: Number.NaN, expectedProgress: '0', shouldWarn: true },
-    { loading: Number.POSITIVE_INFINITY, expectedProgress: '0', shouldWarn: true },
-    { loading: Number.NEGATIVE_INFINITY, expectedProgress: '0', shouldWarn: true },
+    { loading: Number.NaN, expectedProgress: undefined, shouldWarn: true },
+    { loading: Number.POSITIVE_INFINITY, expectedProgress: undefined, shouldWarn: true },
+    { loading: Number.NEGATIVE_INFINITY, expectedProgress: undefined, shouldWarn: true },
   ])(
-    'normalizes numeric loading=$loading to a clamped [0, 1] progress value',
+    'normalizes numeric loading=$loading to a clamped [0, 1] progress value, rendering a clamped 0 as indeterminate',
     ({ loading, expectedProgress, shouldWarn }) => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 

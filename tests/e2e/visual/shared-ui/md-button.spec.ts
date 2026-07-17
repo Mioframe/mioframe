@@ -1296,62 +1296,18 @@ test('MDButton inverse-surface/inverse-on-surface system tokens invert correctly
   expect(darkInverseOnSurface).not.toBe(lightInverseOnSurface);
 });
 
-test('MDButton per-size spring component tokens resolve to the fast-spatial system tokens and drive the actual border-radius transition', async ({
+test('MDButton pressed-shape border-radius transition runs on the documented fast-spatial Web adaptation', async ({
   page,
 }) => {
+  // The official `md.comp.button.*.pressed.container.corner-size.motion.spring.{stiffness,damping}`
+  // tokens (stiffness 800, damping 0.6 — see the family README) are documented source evidence
+  // only: CSS transitions cannot consume spring physics, so MDButton does not declare them as CSS
+  // custom properties, and this spec does not assert their presence or equality. What is verified
+  // here is the one real, rendered route: the pressed-shape `border-radius` transition actually
+  // runs on the project's honest Web adaptation of that spring (the shared expressive
+  // fast-spatial duration/easing), not a flat, independently-hardcoded constant.
   await openStory(page, 'material-3-components-buttons-mdbutton--size-geometry-matrix');
 
-  const readRoute = (testId: string, size: string) =>
-    page.getByTestId(testId).evaluate((el, sizeName) => {
-      const style = getComputedStyle(el);
-      return {
-        stiffness: style
-          .getPropertyValue(
-            `--md-comp-button-${sizeName}-pressed-container-corner-size-motion-spring-stiffness`,
-          )
-          .trim(),
-        damping: style
-          .getPropertyValue(
-            `--md-comp-button-${sizeName}-pressed-container-corner-size-motion-spring-damping`,
-          )
-          .trim(),
-        cornerMotionDuration: style
-          .getPropertyValue('--md-private-button-corner-motion-duration')
-          .trim(),
-        cornerMotionEasing: style
-          .getPropertyValue('--md-private-button-corner-motion-easing')
-          .trim(),
-        fastSpatialDuration: style
-          .getPropertyValue('--md-private-motion-expressive-fast-spatial-duration')
-          .trim(),
-        fastSpatialEasing: style
-          .getPropertyValue('--md-private-motion-expressive-fast-spatial-easing')
-          .trim(),
-      };
-    }, size);
-
-  const assertSpringRoutesToBorderRadiusMotion = async (testId: string, size: string) => {
-    const route = await readRoute(testId, size);
-
-    expect(route.stiffness, `${testId} declared spring stiffness`).toBe('800');
-    // Chromium serializes a bare custom-property number token without its leading zero.
-    expect(route.damping, `${testId} declared spring damping`).toBe('.6');
-    // The size-scoped private duration/easing — colocated with the official stiffness/damping
-    // declarations — must equal the documented fast-spatial Web adaptation of that same spring,
-    // establishing a traceable route from the declared token to the value actually consumed.
-    expect(route.cornerMotionDuration, `${testId} corner-motion duration route`).toBe(
-      route.fastSpatialDuration,
-    );
-    expect(route.cornerMotionEasing, `${testId} corner-motion easing route`).toBe(
-      route.fastSpatialEasing,
-    );
-  };
-
-  await assertSpringRoutesToBorderRadiusMotion('geometry-small-round', 'small');
-  await assertSpringRoutesToBorderRadiusMotion('geometry-extra-large-round', 'xlarge');
-
-  // The root-owned `border-radius` transition must actually consume the per-size private
-  // corner-motion variables (not a flat global constant hardcoded independently of size).
   // Comparing against a probe element's own computed `transition-duration`/`-timing-function`
   // (rather than the raw custom-property text) keeps both sides in the same serialization format
   // — Chromium serializes a raw custom-property duration without a leading zero (".35s") but
