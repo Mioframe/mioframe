@@ -1,220 +1,220 @@
 ---
 name: material-component-authoring
-description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family, including legacy MD* components outside the canonical library. Owns the complete execution order from task classification and source lookup through blueprint readiness, implementation passes, migration, verification, evidence review, and operator visual handoff.'
+description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family. Owns the end-to-end execution order from source lookup and adaptive family contract through implementation, consumer migration, proportional proof, rule refinement, evidence review, and operator visual handoff.'
 paths:
   - 'src/shared/ui/material/components/**'
 ---
 
 # Material component authoring
 
-Use this as the primary execution workflow for official public Material component work.
+Use this as the primary workflow for official public Material component work.
 
 It applies to:
 
 - a new public `MD*` component;
-- migration of a legacy `MD*` component or family into `src/shared/ui/material`;
-- first `layered-v1` architecture conversion;
-- Material alignment of an accepted family;
-- a material change to a migrated component's API, native semantics, anatomy, states, tokens, property routing, behavior, Storybook surface, or verification contract.
+- migration of a legacy `MD*` family into `src/shared/ui/material`;
+- Material 3 Expressive alignment of a canonical family;
+- a material change to a migrated family's public contract or visible behavior.
 
-It does not apply to project-specific shared UI, ordinary product composition, or a strict legacy repair that validly records `Architecture impact: none`.
+It does not apply to project-specific shared UI or a strict legacy repair that truthfully records `Architecture impact: none`.
 
-This skill owns execution order and stop conditions. Canonical schemas, source authority, review ownership, and durable invariants remain in `docs/material-3`.
-
-## Required companion instructions
+## Companion instructions
 
 Use:
 
-- `material3-guidelines` for official source authority, current Material 3 Expressive component choice, usage, and minimum supported surface;
-- `material-foundation` only when a foundation dependency changes;
-- `vue-component-implementation` for Vue implementation mechanics;
-- `component-contract-testing` for public component contracts;
-- `ui-browser-behavior` for real browser-owned behavior;
-- `visual-regression-testing` for canonical matrices and baseline diffs;
+- `material3-guidelines` for current official sources, component choice, usage, and minimum supported surface;
+- `material-foundation` only when a cross-family foundation contract changes;
+- `vue-component-implementation` for Vue mechanics;
+- `component-contract-testing`, `ui-browser-behavior`, and `visual-regression-testing` only for applicable proof layers;
 - `verification` for focused and final repository checks;
-- `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff;
-- `docs/material-3/library-roadmap.md` and `ui-library-inventory.md` for active milestone, priority, and progress updates.
+- `docs/material-3/autonomous-review.md` for agent review and operator visual handoff;
+- `docs/material-3/audits/README.md` and the current family audit when one exists;
+- `library-roadmap.md` and `ui-library-inventory.md` for active work and queue state.
 
-Do not use `shared-ui-implementation` as the authoring workflow for an official Material family. Generic repository and Vue rules still apply where they do not conflict with the Material architecture.
+Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
-## 1. Classify the task
+## 1. Select the family and change mode
 
-Before production edits, record exactly one component change mode:
+Select one cohesive family from the active roadmap or highest-priority ready queue item.
+
+Record one change mode:
 
 - `new-component`;
+- `end-to-end-migration`;
 - `library-relocation-only`;
-- `architecture-only`;
 - `alignment-only`.
 
-Also record the authoring mode:
+Use `end-to-end-migration` by default for sequential legacy migration. Split work only when a wider foundation blast radius, public compatibility decision, reviewability, or a safer independently valid intermediate state justifies it.
 
-- `standard-authoring` when all decisions are source-resolved;
-- `handoff-authoring` when a ready architecture handoff defines the exact delta;
-- `blocked` when a required decision remains unresolved.
+Do not mix unrelated families or broad shared cleanup.
 
-A strict local repair to an unmigrated component may exit this workflow only when it preserves location, imports, public API, native semantics, foundation dependencies, anatomy, states, testing surface, behavior, and unrelated rendered output.
+## 2. Resolve sources, audit findings, and supported scope
 
-Do not combine relocation, architecture conversion, foundation correction, broad cleanup, and visual alignment unless an explicit ready handoff defines the combined scope.
+1. Inspect the current family, public exports, direct consumers, stories, tests, known defects, and `docs/material-3/audits/<family-slug>.md` when present.
+2. Compare any audit metadata with the implementation ref and commit under work.
+3. Start from named scenarios and affected consumers.
+4. Resolve the current official Material 3 Expressive contract.
+5. Use the official Design Kit only for applicable visual decisions unresolved by published guidance.
+6. Define the minimum complete supported surface.
+7. Record unused official capability as unsupported.
+8. Add no Mioframe extension without an explicit requirement and owner.
 
-## 2. Resolve sources and scope
+When a current or stale audit exists:
 
-1. Start from named scenarios and current consumers.
-2. When no scenario is supplied, use the current canonical Material 3 Expressive default usage only.
-3. Check the relevant current official documentation through the source hierarchy.
-4. Use the current official Material Design Kit Expressive component set only when published docs cannot resolve exact visual geometry, anatomy, expressive measurements, or state composition.
-5. Define the minimum complete supported surface.
-6. Record optional official capabilities as unsupported rather than implementing them speculatively.
-7. Add no Mioframe extension without an explicit requirement, owner, and deviation record.
-8. Record any absence of an Expressive contract explicitly; do not silently fall back to baseline Material 3.
+- investigate every confirmed finding;
+- resolve findings that remain valid;
+- record evidence when a finding is obsolete or invalidated by newer sources or implementation;
+- do not treat the audit as Material authority;
+- do not silently delete or rewrite the audit during implementation;
+- require a later `material-component-review` run to publish the new current compliance state.
 
-Stop when required guidance is missing and the surface cannot be narrowed without losing a required scenario.
+An absent audit does not block authoring.
 
-## 3. Inspect current ownership
+Stop only when a genuine product, source, ownership, compatibility, or required foundation decision remains unresolved.
 
-Inspect only the affected family and direct dependencies:
+## 3. Validate and refine applicable rules
 
-- current component files and public exports;
-- family consumers and wrappers;
-- component registry, UI inventory, and deviation records;
-- library roadmap and migration map;
-- applicable foundation registry records and owner contracts;
-- current Storybook, contract, browser, visual, snapshot, and risk-registration artifacts.
+Before relying on project rules:
 
-Do not inspect unrelated families to design a generic abstraction.
+1. identify the documents, skills, checklists, registries, or scoped instructions applicable to the family;
+2. verify that they describe the real migration accurately and coherently;
+3. when a rule is inaccurate, contradictory, incomplete, obsolete, or needlessly complex, identify the concrete evidence and owning source;
+4. make the smallest correction supported by official Material sources, repository architecture, and accepted product behavior;
+5. update only directly affected rule owners;
+6. continue after the applicable rules are coherent.
 
-## 4. Complete the canonical blueprint
+Do not silently violate a rule, preserve it through a family-specific exception, duplicate a replacement elsewhere, or delegate a resolvable technical inconsistency to operator visual review.
 
-Before production code, create or update the family `README.md` using the complete schema from `component-architecture.md`.
+## 4. Complete the adaptive family contract
 
-The blueprint must resolve:
+Before production edits, create or update the family `README.md` using `component-architecture.md`.
 
-- family ownership and library paths;
-- scenarios, usage, supported and unsupported surface;
-- current official Material 3 Expressive source snapshots and Design Kit evidence when required;
-- any unavailable Expressive surface, baseline fallback, extension, or deviation;
-- public API, native semantics, invalid combinations, states, anatomy, and DOM/accessibility owners;
-- foundation dependencies and change modes;
-- smallest architecture profile and exact production files;
-- token ownership and rendered-property routes;
-- exports, consumers, Storybook, tests, snapshots, and review requirements.
+Resolve the mandatory core:
 
-Do not begin production edits until `Unresolved: none` and `Readiness: ready` are truthful.
+- family and ownership;
+- scenarios and non-goals;
+- official sources and snapshot;
+- supported and unsupported surface;
+- public API, native semantics, accessibility, and invalid combinations;
+- applicable foundation dependencies;
+- production/public files, consumers, and applicable proof;
+- extensions or deviations;
+- readiness and unresolved decisions.
+
+Add conditional sections only when the family owns those concerns:
+
+- anatomy and DOM ownership;
+- state ownership and lifecycle;
+- token and property routing;
+- configuration routes;
+- browser behavior;
+- visual evidence;
+- consumer migration;
+- foundation change.
+
+Do not create ceremonial fields or speculative decisions for unsupported capability.
 
 ## 5. Resolve foundation dependencies
 
 For every applicable foundation domain:
 
-1. identify the accepted current owner and canonical owner;
-2. confirm registry status and the exact supported contract required by the component;
-3. reuse the accepted contract when sufficient;
-4. classify any change as `library-relocation-only`, `additive`, `correction`, `replacement`, or `refresh`;
-5. apply `material-foundation` when the contract changes.
+1. identify the accepted owner and required capability;
+2. reuse the accepted contract when sufficient;
+3. name exact non-blocking gaps for partial or deviated status;
+4. treat missing or blocked required capability as a blocker;
+5. use `material-foundation` when the shared contract changes.
 
-`missing` and `blocked` dependencies prevent component readiness. Do not create a family-local substitute.
+Use a focused foundation PR when its blast radius is materially wider than the family migration. Do not create a local substitute or parallel owner.
 
-A foundation correction or replacement should normally be a focused prerequisite unless the small component delta is inseparable and explicitly approved.
+## 6. Plan the end-to-end passes
 
-## 6. Plan implementation passes
+Use a compact pass order without repeating the family contract:
 
-Use `implementation-preflight` only for a compact owner, risk, pass-order, and verification record. Do not repeat the blueprint.
+1. source-backed contract and directly affected records;
+2. required foundation work or accepted dependency wiring;
+3. production family and public export;
+4. consumer migration;
+5. proportional contract, browser, pure, consumer, and visual proof;
+6. obsolete-path removal;
+7. agent evidence review and operator visual package when required;
+8. queue and roadmap update.
 
-Prefer this pass order when applicable:
+Run focused verification after risky passes. Reorder or split passes only when repository dependencies require it.
 
-1. source-backed blueprint and registry/inventory/map updates;
-2. foundation prerequisite or accepted dependency wiring;
-3. production family files and public export;
-4. consumer/import migration;
-5. contract tests;
-6. Storybook and canonical `StateMatrix`;
-7. browser and visual verification;
-8. obsolete-path removal and final consistency pass;
-9. autonomous Material evidence review and operator visual package.
+## 7. Implement the family
 
-Reorder passes only when repository dependencies require it. Do not start the next risky pass before focused verification of the previous one.
-
-## 7. Implement the family contract
-
-- Use exactly the smallest selected profile: `simple`, `configured`, `stateful`, or `configured-stateful`.
-- Keep props, emits, slots, native bindings, runtime fact acquisition, events, and anatomy explicit in Vue.
+- Keep props, emits, slots, native elements, DOM-critical attributes, and events explicit.
 - Prefer native HTML activation, form, navigation, and accessibility semantics.
-- Keep DOM-critical attributes explicit on their actual owner.
-- Keep token declarations, configuration routing, state resolution, and final rendering in their canonical layers.
-- Use the shortest valid token/property pipeline.
-- Keep controlled semantic state consumer-owned and transient state narrowly component-owned.
-- Define acquisition, release, cancellation, disabled, failure, and unmount behavior for owned transient state.
-- Do not deep-style another component family or create private cross-family dependencies.
+- Keep controlled semantic state consumer-owned.
+- Limit component transient state to owned gesture, overlay, animation, or native coordination.
+- Define acquisition, release, cancellation, disabled, failure, and cleanup behavior when applicable.
+- Use exact verified official tokens and the shortest property route.
+- Separate token declaration, configuration routing, state resolution, and final rendering conceptually.
+- Use separate files only when they materially improve clarity or focused verification.
+- Create no empty layers, universal bases, runtime registries, generic resolvers, CSS DSLs, cross-family state machines, broad option bags, or speculative extension points.
 
-Do not introduce universal bases, runtime registries, generic resolvers, CSS DSLs, cross-family state machines, broad option bags, test-only production APIs, or speculative extension points.
+## 8. Migrate consumers and ownership
 
-## 8. Create a new component
+For an end-to-end migration:
 
-For `new-component`:
+1. create the canonical family owner;
+2. migrate every affected in-repository consumer and public export;
+3. preserve accepted product behavior except for named deltas;
+4. remove obsolete files and legacy exports;
+5. allow a temporary compatibility path only when atomic migration is technically unsafe, with exact consumers, no new usage, and a removal target;
+6. update only documents and records whose owned facts changed.
 
-1. create the family directly under `src/shared/ui/material/components/<family>`;
-2. create only files declared by the ready blueprint;
-3. expose the component through the family entry point and curated Material root export when available;
-4. add no compatibility alias or legacy implementation;
-5. document supported usage, unsupported surface, extensions, deviations, and source evidence;
-6. complete the standard test profile before reporting implementation complete.
+Do not report a family migrated while an active obsolete owner or undocumented parallel path remains.
 
-A new public `MD*` component must not be introduced incidentally without completing this workflow.
+## 9. Build proportional proof
 
-## 9. Migrate a legacy component
+Every new or migrated component requires component-contract tests.
 
-For relocation or first architecture migration:
+Add other layers only when applicable:
 
-1. migrate one cohesive family per focused PR;
-2. preserve API, behavior, tokens, and rendered output unless the selected mode explicitly permits a named delta;
-3. update every in-repository consumer import;
-4. update family blueprint, library map, component/foundation registries, UI inventory, roadmap, exports, stories, tests, snapshots, and risk registration;
-5. create or consolidate the canonical test profile;
-6. remove obsolete files and legacy exports in the same PR;
-7. allow a temporary compatibility path only when atomic migration is technically unsafe, with exact consumers, no new usage, and a removal target.
+- one stable canonical visual story for visible output;
+- `StateMatrix` only for multiple distinct component-owned visual routes;
+- bounded visual regression when stable regression protection is material;
+- Storybook Playwright behavior tests for browser-owned behavior the component constrains;
+- focused pure tests for extracted logic or lifecycle;
+- consumer-preservation checks when consumers changed.
 
-Do not call a component migrated while an active legacy owner or undocumented parallel path remains.
+Use real browser input to prove focus, keyboard, pointer, touch, overlay, motion, cancellation, and cleanup behavior. Forced state proves appearance only.
 
-## 10. Complete the standard proof profile
+Do not build a generic test DSL or family-specific forced-state system.
 
-Every new or migrated public component requires:
+## 10. Review and visual handoff
 
-1. static and structured architecture validation;
-2. colocated Vue Test Utils component-contract tests;
-3. exactly one canonical Storybook `StateMatrix`;
-4. bounded Playwright visual regression;
-5. Storybook Playwright behavior tests for real browser-owned behavior when applicable;
-6. focused pure helper/composable tests when applicable;
-7. changed-consumer preservation checks;
-8. source-backed agent architecture, Material, accessibility, behavior, and migration evidence review;
-9. operator visual acceptance when required.
+Perform the source-backed agent review defined by `autonomous-review.md`.
 
-The matrix covers every distinct supported component-owned visible route, not every state name. Forced state proves appearance only. Real focus, keyboard, pointer/touch, drag, overlay, responsive, motion, cancellation, and cleanup behavior uses real browser input.
+Confirm:
 
-The coding agent may mark the non-visual evidence review `passed` only under `autonomous-review.md`. It reports operator visual acceptance as `required` or `blocked`, never `accepted`.
+- architecture and ownership;
+- Material 3 Expressive contract;
+- native semantics and accessibility;
+- state, lifecycle, and browser behavior;
+- foundation dependencies;
+- proportional proof;
+- consumer migration and obsolete-path removal;
+- rule coherence;
+- every applicable audit finding is resolved or evidence-backed as stale.
 
-## 11. Produce the visual handoff
+After all non-visual gates pass, prepare operator visual evidence when visible acceptance is required. The operator checks visible fidelity only.
 
-After every non-visual gate passes, provide the operator package from `autonomous-review.md`:
+The agent reports operator acceptance as `required` or `blocked`, never `accepted`.
 
-- canonical `StateMatrix` story id;
-- bounded screenshot and visual diff;
-- named current official documentation snapshot;
-- Design Kit file/version and component-set reference when required;
-- expected matches, accepted deviations, and unsupported visual surface;
-- confirmation that architecture, Material contract, accessibility, behavior, migration, and repository verification passed.
+## 11. Completion and continuation
 
-Do not ask the operator to re-review API, semantics, source interpretation, ownership, dependencies, or test coverage. If one of those is unresolved, report `blocked` instead of sending a visual package.
+Before completion:
 
-## 12. Completion gate
+- use `component-conversion-checklist.md`;
+- run existing applicable focused checks and final repository verification;
+- ensure code, contract, exports, consumers, applicable tests, stories, map, and directly affected records agree;
+- summarize audit findings resolved or invalidated;
+- state that any pre-existing audit is stale after implementation changes until `material-component-review` replaces it;
+- ensure required operator visual acceptance is recorded;
+- update the selected family to its terminal queue state.
 
-Before completion, use `component-conversion-checklist.md` and confirm:
+After completion, select the next highest-priority ready family without creating another architecture-planning milestone.
 
-- blueprint, code, library map, registries, inventory, roadmap, exports, consumers, Storybook, tests, snapshots, and risk registration agree;
-- every required foundation dependency is non-blocking;
-- no unsupported capability is exposed accidentally;
-- no local foundation substitute, obsolete path, permanent alias, or speculative abstraction remains;
-- static and structured validation passes;
-- autonomous Material evidence review is `passed`;
-- operator visual acceptance is `accepted`, remains an explicit merge blocker, or is validly not required for an unchanged accepted relocation matrix;
-- final `pnpm verify` passes.
-
-If implementation discovers a new architecture, ownership, compatibility, source, foundation, or verification decision, stop and update the blueprint or handoff before continuing.
+Escalate only for a genuine product decision, materially unresolved official source, cross-project public-contract change, unsafe foundation blast radius, unresolved verification failure, or rejected operator visual evidence.

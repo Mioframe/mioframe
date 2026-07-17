@@ -2,56 +2,19 @@
 
 ## Principle
 
-Public shared Material components expose verified official component tokens before relying on private implementation variables.
+Public shared Material components expose exact verified official component tokens before relying on private implementation variables.
 
-Token ownership and routing follow [Component architecture](./component-architecture.md) and the accepted family README blueprint.
+Token ownership and routing follow `component-architecture.md` and the accepted family contract.
 
 ## Canonical ownership
 
 Every official `--md-comp-*` token has exactly one canonical declaration owner.
 
-The normal owner is:
+A dedicated component token file is appropriate when the component owns one or more exact official tokens used by the supported surface. A family token file is appropriate only when multiple current public components genuinely share the same official family contract.
 
-```text
-<Component>.tokens.css
-```
+Do not create token files for symmetry or future reuse.
 
-Create that file only when the component owns at least one exact official token used by the supported surface. Do not create an empty token file.
-
-A family may own:
-
-```text
-<Family>.tokens.css
-```
-
-only when the same exact official token path is consumed by at least two public components in that family. The blueprint names official paths, CSS names, applicable roots, and loading components.
-
-When all applicable official tokens are family-owned, a component does not also need its own token file. When no exact official component token exists, record ownership as `none` and use documented private, system, or app sources according to ownership.
-
-Equal values, similar usage, line count, or possible reuse do not justify family ownership.
-
-Reference and system tokens remain in the foundation. Do not create a global runtime catalog for component-family tokens.
-
-Consumers may override public component tokens but must not define the canonical contract.
-
-## Declaration selectors
-
-Canonical token files declare the complete supported public override surface independently of active configuration and state.
-
-Allowed selectors are only:
-
-- the owning component root in `<Component>.tokens.css`;
-- the exact family-member root list from the family blueprint in `<Family>.tokens.css`.
-
-Forbidden:
-
-- variant, size, shape, width, density, or mode selectors;
-- semantic or interaction state selectors;
-- pseudo-classes;
-- private or app token declarations;
-- normal rendering properties.
-
-Configuration selection belongs to `.routes.css`. Semantic and interaction resolution belongs to `.states.css`.
+Reference and system tokens remain foundation-owned. Consumers may override public component tokens but do not own their canonical declaration.
 
 ## Naming
 
@@ -62,31 +25,39 @@ md.comp.<component>.[variant-or-style].<part>.<property>
 --md-comp-<component>-[variant-or-style]-<part>-<property>
 ```
 
-Example:
+Do not create a public component token without an exact verified official path.
 
-```text
-md.comp.list.list-item.dragged.leading-icon.icon.color
---md-comp-list-list-item-dragged-leading-icon-icon-color
-```
+When an official component path is unavailable:
 
-Do not create a public component token without an exact path in the verified MCP/cache snapshot.
+- do not invent an approximate public token;
+- use a documented private or system source when internal;
+- use `--app-*` only for an explicit project extension;
+- record the unsupported or deviated contract.
+
+## Declaration purity
+
+Canonical token declarations are independent of active configuration and state.
+
+Do not place in the canonical declaration owner:
+
+- variant, size, shape, density, mode, semantic-state, or interaction-state selectors;
+- pseudo-classes;
+- private or app token declarations;
+- final rendering properties.
+
+Configuration and state routing remain separate responsibilities. They do not require dedicated files when the logic is small and unambiguous.
 
 ## Values
 
-Resolve component tokens to system tokens whenever the official model uses a system role:
+Resolve component tokens to system tokens when the official model uses a system role:
 
 ```css
 --md-comp-button-filled-container-color: var(--md-sys-color-primary);
 ```
 
-Use a direct value only when the verified component spec defines it, such as a `dp` measurement or numeric opacity.
+Use a direct value only when the verified component specification defines it, such as a measurement or numeric opacity.
 
-When an official component path is missing:
-
-- do not invent an approximate public token;
-- use a documented private or system source when internal;
-- use `--app-*` only for an explicit public Mioframe extension;
-- record the gap in the family blueprint and registry.
+An available official component token must not be bypassed by a direct system token merely for convenience.
 
 ## Shortest applicable pipeline
 
@@ -94,8 +65,8 @@ Each property uses only the stages it needs:
 
 ```text
 canonical component token or documented private/system/app source
-→ optional configuration route
-→ optional property-specific state resolver
+→ optional configuration selection
+→ optional property-specific state resolution
 → optional rendered private value
 → optional generic foundation bridge
 → actual DOM property owner
@@ -103,69 +74,60 @@ canonical component token or documented private/system/app source
 
 Rules:
 
-- a simple static property may be applied from its canonical token or documented source directly in rendering CSS;
-- a configured property may be applied from its route variable directly;
-- a rendered private variable is required only when state resolution produces the final value or a generic foundation bridge needs a stable final input;
-- do not add a private alias only for naming convenience;
-- an available official component token must not be bypassed by a direct system token.
+- apply a static canonical source directly when possible;
+- use a configuration variable only when configuration selects different sources;
+- use a state-resolved private value only when multiple state sources must be reconciled;
+- add no private alias only for naming convenience;
+- keep family-private variables inside the family;
+- keep generic foundation bridges free of family names and token routing.
 
 ## Private variables
 
-Create only the classes needed by the selected profile and property matrix.
+Create private variables only when the current property route requires them.
 
-Configuration route:
+Suggested forms:
 
 ```text
 --md-private-<component>-<configuration>-<part>-<property>
-```
-
-State candidate when multiple semantic or interaction sources must be resolved:
-
-```text
---md-private-<component>-<semantic-or-state>-<part>-<property>
-```
-
-Final state-resolved value:
-
-```text
+--md-private-<component>-<state>-<part>-<property>
 --md-private-<component>-rendered-<part>-<property>
 ```
 
-Exact names and stages are recorded in the family matrix. Do not add alias levels for readability. Private variables remain inside the owning family and never become consumer styling API.
+Exact naming is less important than clear ownership, minimal stages, and no public leakage.
+
+Use a rendered-property table only when multiple configurations or states make the source, winner, coexistence, bridge, or DOM owner non-obvious.
 
 ## Override contract
 
 Supported public namespaces are:
 
-1. `--md-ref-*` for raw reference values;
+1. `--md-ref-*` for reference values;
 2. `--md-sys-*` for theme roles;
-3. `--md-comp-*` for verified component parts and states;
-4. `--app-*` for explicit public project extensions outside Material vocabulary.
+3. `--md-comp-*` for exact verified component contracts;
+4. `--app-*` for explicit project extensions outside Material vocabulary.
 
 Consumers must not depend on family-private variables, internal classes, or generic foundation bridges.
 
 ## Generic foundation bridges
 
-A shared state-layer, ripple, focus, elevation, or motion primitive exposes only generic private inputs.
+A state-layer, ripple, focus, elevation, or motion primitive exposes generic inputs only.
 
-- The primitive never reads family component tokens or family-private variables.
-- The consuming component maps the applicable final source into the generic bridge.
-- A stateful component normally maps its rendered state-resolved value; a static bridge may map a canonical token directly when no state resolution is required.
+- The primitive never reads family tokens or variables.
+- The family maps its applicable final source into the bridge.
 - The primitive owns generic rendering; the family owns source selection.
-- Do not move family routing into a primitive to remove duplication.
+- Do not move family routing into a primitive merely to reduce repeated syntax.
 
 ## Authoring workflow
 
-During standard component authoring, the implementation agent independently:
+For the selected supported surface:
 
-1. inventories exact official token paths required by supported scenarios;
-2. assigns each path to one component or qualifying family owner file;
-3. omits token files with no owned official paths;
-4. records ownership and the shortest property pipelines in the family blueprint;
-5. selects one of the four deterministic profiles;
-6. implements only required routes, state resolvers, private variables, and bridges;
-7. validates public overrides and actual DOM property owners.
+1. inventory exact official token paths;
+2. assign one canonical owner to each path;
+3. omit token artifacts with no owned official paths;
+4. implement the shortest property route;
+5. separate configuration and state responsibilities conceptually;
+6. extract dedicated files only when they materially improve clarity or focused verification;
+7. verify public overrides and actual DOM property owners;
+8. refine inaccurate token rules when real migration evidence exposes them.
 
-Use architecture escalation only when official paths, ownership, or required project extension semantics are genuinely unresolved.
-
-`MDButton` is the first validation pilot and `MDSwitch` is the independent second pilot. Do not generalize validator exceptions from one component alone.
+Do not select a fixed CSS-file profile before understanding the component. `MDButton` and the independent stateful pilot validate and refine these rules before broader reuse.
