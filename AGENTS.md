@@ -49,6 +49,10 @@ Dependency rules:
 
 Use the applicable skill instead of duplicating its rules in the task:
 
+- `material-library-status`: read-only Material program status, audit freshness, blockers, executable candidates, visual acceptance, and recommended next command;
+- `material-library-next`: select and execute exactly one next Material component family when the user does not name one;
+- `material-component`: resolve a user-named Material component or family and start its complete implementation, migration, or alignment workflow;
+- `material-component-review`: independently review a user-named Material family and persist its durable compliance audit;
 - `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
 - `material-component-authoring`: creation, migration, alignment, or material change of an official public Material component family, including legacy `MD*` components outside the canonical library;
 - `material-foundation`: Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, overlays, accessibility, density, and adaptive foundation contracts;
