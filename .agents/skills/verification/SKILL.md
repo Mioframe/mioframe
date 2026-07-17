@@ -54,13 +54,15 @@ Do not invoke raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual,
 
 ## Mutation execution
 
-Mutation testing is never selected solely because a changed source file has a sibling test. Run it only after the explicit activation check in `mutation-testing` passes:
+A dedicated mutation audit is required only after the explicit activation check in `mutation-testing` passes. Do not invoke it merely because a changed source file has a sibling test:
 
 ```bash
 pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 ```
 
 Do not run broad or full mutation checks for ordinary tasks. Mutation score is not a general completion target.
+
+Until the migration recorded in `docs/testing/migration-plan.md` is complete, final `pnpm verify` or CI may still schedule a broader legacy mutation scope. Do not skip the mandatory final gate because of that implementation detail, and do not treat an incidental legacy mutation run as evidence that mutation was applicable or required for the task.
 
 ## Browser and visual execution
 
@@ -197,3 +199,5 @@ command: pnpm verify
 status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
+
+Use `not run` only when repository verification could not reasonably be executed, such as remote documentation-only edits. State the reason and the exact remaining local command.
