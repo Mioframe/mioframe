@@ -8,17 +8,17 @@ Visual screenshots alone are insufficient. Green automation is necessary but doe
 
 ## Verification layers
 
-| Layer | Expected proof |
-| --- | --- |
-| Repository | Existing format, lint, type, unit, browser, visual, mutation, and build checks applicable to the change |
-| Component contract | Colocated Vue Test Utils tests for public API, native owner, ARIA, defaults, slots, emits, controlled state, and invalid combinations |
-| Browser behavior | Storybook Playwright tests for browser-owned interaction the component changes or constrains |
-| Pure behavior | Focused tests for extracted helpers, composables, transitions, timing, cancellation, and cleanup |
-| Consumer preservation | Focused checks for changed imports, wrappers, or product-visible usage |
-| Canonical visual evidence | One stable bounded story for visible output; `StateMatrix` only when multiple distinct visual routes exist |
-| Visual regression | Bounded screenshots when a stable visual contract and material regression risk justify them |
-| Agent review | Source-backed architecture, Material, accessibility, behavior, migration, rule, and proof review |
-| Operator review | Visible comparison with named official sources when visible output is created or changed |
+| Layer                     | Expected proof                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository                | Existing format, lint, type, unit, browser, visual, mutation, and build checks applicable to the change                               |
+| Component contract        | Colocated Vue Test Utils tests for public API, native owner, ARIA, defaults, slots, emits, controlled state, and invalid combinations |
+| Browser behavior          | Storybook Playwright tests for browser-owned interaction the component changes or constrains                                          |
+| Pure behavior             | Focused tests for extracted helpers, composables, transitions, timing, cancellation, and cleanup                                      |
+| Consumer preservation     | Focused checks for changed imports, wrappers, or product-visible usage                                                                |
+| Canonical visual evidence | One stable bounded story for visible output; `StateMatrix` only when multiple distinct visual routes exist                            |
+| Visual regression         | Bounded screenshots when a stable visual contract and material regression risk justify them                                           |
+| Agent review              | Source-backed architecture, Material, accessibility, behavior, migration, rule, and proof review                                      |
+| Operator review           | Visible comparison with named official sources when visible output is created or changed                                              |
 
 A layer may be omitted only because the component does not own that contract.
 
