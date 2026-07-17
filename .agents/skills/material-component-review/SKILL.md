@@ -1,6 +1,6 @@
 ---
 name: material-component-review
-description: 'Use when the user provides a Material component or family name and wants an independent review against official Material 3 Expressive documentation. Replace the family AUDIT.md without modifying implementation.'
+description: 'Use when the user provides a Material component or family name and wants an independent two-stage review: implementation against project documentation, then project documentation against canonical Material 3 Expressive. Replace only the family AUDIT.md.'
 ---
 
 # Material component review
@@ -35,101 +35,147 @@ Do not modify production code, tests, stories, family `README.md`, exports, cons
 
 The audit contains no branch, commit, pull-request, remote-check, or merge metadata.
 
-## Resolve evidence
+## Evidence sets
 
-1. Resolve current official Material 3 Expressive pages and exact token references.
-2. Read the family `README.md` as the implementation's current claims.
-3. Inspect production code, exports, consumers, tests, and stories.
-4. Inspect applicable foundation and style owners.
-5. Inspect the previous `AUDIT.md` when present, but re-evaluate every conclusion.
+Keep three evidence sets distinct:
 
-Existing code, documentation, tests, snapshots, and rendering are claims and evidence, not Material authority.
+1. **Implementation evidence** — production code, exports, consumers, tests, stories, rendered behavior, and applicable foundation/style implementations.
+2. **Project documentation** — the family `README.md` plus directly applicable project architecture, foundation/style contracts, testing rules, and local instructions.
+3. **Canonical evidence** — current official Material 3 Expressive documentation, exact token references, and the Design Kit only where published documentation does not resolve an applicable visual decision.
 
-## Review implementation documentation
+Project documentation is the intended Mioframe contract, but it is not Material authority. Tests and rendering are implementation evidence, not authority for either documentation layer.
 
-Check that the README states truthfully:
+Inspect the previous `AUDIT.md` when present, but independently re-evaluate every conclusion.
 
-- official documentation mapping;
-- implemented surface;
-- official capability not implemented;
-- known issues and required follow-up;
-- API and native semantics;
-- tokens, states, and final property ownership;
-- foundations and styles used;
-- extensions and deviations;
-- consumers and migration state;
-- verification and review status.
+## Required audit order
 
-For every `Implemented` claim, verify that the final owned output works.
+Always perform the review in this order.
+
+### Stage 1 — implementation against project documentation
+
+First determine whether the actual implementation matches the contract documented by the project.
+
+Check:
+
+- every capability listed under `Implemented` actually works at its final owner;
+- every documented API, default, invalid combination, semantic, accessibility, state, token, motion, and property route matches code and rendered behavior;
+- every documented extension or deviation behaves as described;
+- exports, consumers, migration state, tests, stories, and verification claims are accurate;
+- every known defect, provisional route, omission, missing proof, or visual uncertainty is documented;
+- directly applicable project architecture and shared foundation/style rules are followed.
+
+Report separately:
+
+- documented capability missing or incorrect in implementation;
+- implemented capability or behavior absent from documentation;
+- implementation behavior contradicting project documentation;
+- documentation claiming proof that tests or stories do not establish;
+- implementation violating an applicable project architecture or ownership rule.
 
 A declaration, alias, placeholder, story, or test is not implementation by itself. A route exists only when changing its source input can affect the final output through a real dependency.
 
-An undocumented omission, defect, provisional route, missing verification, or visible mismatch is a finding. A documented optional capability intentionally outside the supported surface is not a defect by itself.
+Do not yet assume that project documentation is correct relative to Material.
 
-## Review supported contract
+### Stage 2 — project documentation against Material 3 Expressive
 
-Check applicable:
+Then independently compare the documented project contract with canonical Material 3 Expressive.
 
-- component choice and family boundary;
-- variants, sizes, shapes, modes, defaults, and invalid combinations;
-- public API, controlled state, native semantics, and accessibility;
-- anatomy and DOM/property ownership;
-- color, elevation, icons, motion, shape, typography, interaction state, ripple, and focus;
-- consumer compatibility and obsolete ownership;
-- proportional tests and visual evidence;
-- consistency between README and implementation.
+Check:
 
-Review only capability claimed by the README or required by current consumers. Still report official capability omitted without documentation.
+- official family choice and documentation mapping;
+- supported variants, sizes, shapes, modes, defaults, states, and invalid combinations;
+- native semantics and accessibility requirements;
+- anatomy and final property ownership;
+- canonical color, elevation, icons, motion, shape, typography, state, ripple, and focus meanings;
+- official token names, values, state routes, and component boundaries;
+- whether omitted official capability is named honestly and does not break the minimum complete supported surface;
+- whether project extensions and intentional deviations are explicitly identified rather than presented as canonical Material behavior;
+- whether source pages and snapshots cited by the project actually support its claims.
+
+Report separately:
+
+- project documentation that contradicts Material 3 Expressive;
+- invented, obsolete, or misinterpreted Material contracts;
+- required canonical behavior missing from the documented supported surface;
+- undocumented deviation from Material;
+- project extension presented as official Material behavior;
+- unsupported official capability omitted without being documented;
+- insufficient or contradictory canonical source evidence.
+
+A documented optional capability outside the current supported surface is not a defect by itself when the supported surface remains coherent and complete for current consumers.
+
+## Reconcile the two stages
+
+After both stages, determine the required correction direction.
+
+- If implementation differs from correct project documentation, correct implementation.
+- If project documentation differs from Material while implementation follows it, correct project documentation and implementation together.
+- If implementation matches Material but project documentation is stale or wrong, correct project documentation; do not regress implementation to match the stale text.
+- If both implementation and project documentation differ from Material, identify both mismatches explicitly.
+- If a Mioframe extension or intentional deviation is required, keep it only when it is explicit, coherent, tested where applicable, and not represented as canonical Material.
+
+The audit must make it possible to tell whether each problem belongs to implementation, project documentation, or both.
 
 ## Motion and shared routes
 
-For motion, verify:
+For motion, verify at both stages:
 
-- official requirement;
-- accepted runtime contract;
-- actual animated property owner;
-- state routing;
-- absence of dead tokens or conflicting timing;
+- what project documentation claims as the runtime contract;
+- what the implementation actually consumes;
+- what Material 3 Expressive requires;
+- the actual animated property owner and state routing;
+- absence of dead tokens, fake dependencies, or conflicting timing;
 - reduced-motion handling when required.
 
 Do not require frame-by-frame browser analysis for ordinary CSS transitions.
 
-When numeric official spring parameters cannot drive CSS directly, they may remain documented source evidence while one honest Web adaptation is the runtime contract. Do not accept fake consumption through colocation or equal aliases.
+When numeric official spring parameters cannot drive CSS directly, they may remain documented canonical source evidence while one honest Web adaptation is the project runtime contract. Project documentation must clearly distinguish those two facts.
 
-Treat root/system token, universal-selector, pseudo-element, and shared-formula changes as cross-family work. Require explicit affected-family analysis and representative proof.
+Treat root/system token, universal-selector, pseudo-element, and shared-formula changes as cross-family work. Compare their implementation with project ownership rules before comparing the documented shared contract with Material.
 
-## Findings
+## Finding formats
 
-Each finding uses:
+### Stage 1 finding
 
 ```text
 Severity: critical | high | medium | low
-Official requirement:
+Project requirement:
 Implementation evidence:
-Documentation claim:
-Mismatch:
+Implementation-to-project mismatch:
 Required correction:
 ```
 
+### Stage 2 finding
+
+```text
+Severity: critical | high | medium | low
+Material 3 Expressive requirement:
+Project documentation claim:
+Project-to-Material mismatch:
+Required correction:
+```
+
+When one issue affects both stages, use the same concise issue name in both sections and state the combined correction order under `Required next work`.
+
 Use:
 
-- `critical` — invalid component choice, unsafe semantics, severe accessibility or interaction corruption;
+- `critical` — invalid component choice, unsafe semantics, or severe accessibility/interaction corruption;
 - `high` — required API, state, token, motion, ownership, migration, or major visual contract is wrong;
-- `medium` — bounded mismatch, incomplete proof, or misleading/incomplete documentation;
+- `medium` — bounded mismatch, incomplete proof, misleading documentation, or non-critical canonical divergence;
 - `low` — minor documentation or cleanup defect.
 
 Do not report speculation as a finding. Put unresolved authoritative evidence under `Evidence gaps`.
 
 ## Result
 
-Use exactly one:
+Use exactly one overall result derived from both stages:
 
-- `compliant` — every claimed and required technical contract passes and the README truthfully records unsupported and remaining work;
-- `partially-compliant` — usable, but confirmed non-critical defects, documentation gaps, or verification gaps remain;
-- `non-compliant` — a critical or high defect invalidates a required or claimed contract;
-- `blocked` — authoritative evidence required for review is unavailable or materially conflicting.
+- `compliant` — implementation matches truthful project documentation, and that documentation accurately represents the supported Material 3 Expressive contract plus explicit extensions/deviations;
+- `partially-compliant` — usable, but confirmed non-critical implementation, project-documentation, canonical-alignment, or verification gaps remain;
+- `non-compliant` — a critical or high finding exists in either comparison stage;
+- `blocked` — evidence required for either comparison stage is unavailable or materially conflicting.
 
-Visual comparison may still be required after a technically compliant audit. Record it separately; do not hide technical findings behind operator review.
+Visual comparison may still be required after a technically compliant audit. Record it separately; do not hide technical or documentation findings behind operator review.
 
 ## AUDIT.md structure
 
@@ -140,18 +186,26 @@ Replace the family audit with:
 
 Reviewed: <date>
 Result: compliant | partially-compliant | non-compliant | blocked
-Implementation documentation: README.md
+Project implementation documentation: README.md
 Visual review: not required | required | blocked | accepted
 
-## Official evidence
-## Documentation claims reviewed
-## Confirmed findings
+## Evidence
+### Project documentation reviewed
+### Material 3 Expressive evidence
+
+## Stage 1 — implementation vs project documentation
+### Findings
+### Verified agreement
+
+## Stage 2 — project documentation vs Material 3 Expressive
+### Findings
+### Verified agreement
+
 ## Evidence gaps
-## Verified areas
 ## Required next work
 ```
 
-Use explicit `none` for empty findings and gaps.
+Use explicit `none` for empty findings, verified agreement, and evidence gaps.
 
 ## Output
 
@@ -162,13 +216,15 @@ MATERIAL COMPONENT REVIEW
 Official family:
 Official documentation path:
 Implementation path:
-Implementation documentation: <path>/README.md
+Project implementation documentation: <path>/README.md
 Audit file: <path>/AUDIT.md
-Result:
+Stage 1 result: implementation matches | findings | blocked
+Stage 2 result: documentation matches Material | findings | blocked
+Overall result:
 Visual review:
-Confirmed findings:
+Implementation/documentation findings:
+Documentation/Material findings:
 Evidence gaps:
-Verified areas:
 Required next work:
 ```
 
