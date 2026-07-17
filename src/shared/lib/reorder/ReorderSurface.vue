@@ -6,14 +6,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/vue';
 import { isSortableOperation } from '@dnd-kit/vue/sortable';
-import { usePreferredReducedMotion } from '@vueuse/core';
 import { computed, provide, ref, shallowRef } from 'vue';
-import {
-  getReorderPlugins,
-  REORDER_MODIFIERS,
-  REORDER_SENSORS,
-  REORDER_TRANSITION,
-} from './reorderConfig';
+import { getReorderPlugins, REORDER_MODIFIERS, REORDER_SENSORS } from './reorderConfig';
 import { reorderSurfaceInjectionKey } from './reorderSurfaceContext';
 import { attemptTouchHapticFeedback, scheduleTouchDragCleanup } from './touchDragCleanup';
 import type { ReorderCommitRequest, ReorderItemId } from './types';
@@ -43,17 +37,8 @@ defineSlots<{
   default: () => unknown;
 }>();
 
-const preferredMotion = usePreferredReducedMotion();
-
-// Resolved once per surface, not per item, so every registered row shares one media-query
-// listener and reacts to the same value instead of each mounting its own.
-const reorderTransition = computed(() =>
-  preferredMotion.value === 'reduce' ? null : REORDER_TRANSITION,
-);
-
 provide(reorderSurfaceInjectionKey, {
   disabled: computed(() => Boolean(props.disabled)),
-  reorderTransition,
 });
 
 // eslint-disable-next-line vue/no-setup-props-reactivity-loss -- one-shot setup-time validation call, not a stored or reactive snapshot of `itemIds`

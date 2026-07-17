@@ -56,8 +56,9 @@ test.describe('reorder displacement transition under prefers-reduced-motion: red
     await page.mouse.move(centerX, displacedBox.y + displacedBox.height + 4, { steps: 8 });
 
     // The displaced row must not receive a `transform`/`translate`/`scale` animation — the one
-    // dnd-kit would otherwise cancel-and-replace per frame (see `Sortable.animate()`), which
-    // `transition: null` skips outright — while direct pointer tracking keeps working.
+    // dnd-kit would otherwise cancel-and-replace per frame (see `Sortable.animate()`). `@dnd-kit/dom`
+    // resolves `prefers-reduced-motion` itself and zeroes the transition duration before that
+    // animation runs, while direct pointer tracking keeps working.
     expect(await hasDisplacementTransformAnimation(displacedItem)).toBe(false);
 
     await page.mouse.up();
