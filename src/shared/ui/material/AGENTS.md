@@ -4,12 +4,15 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 
 ## Routing
 
-- Use `material-component-authoring` for creating, migrating, aligning, or materially changing an official public component family.
+- Use `material-component` when the user supplies a Material component or family name and expects autonomous creation, migration, or alignment from that name alone.
+- Use `material-component-authoring` as the canonical end-to-end execution workflow after the target family is resolved, or directly when the task already provides explicit family scope.
 - Use `material-foundation` when a cross-family foundation contract changes.
 - Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and supported surface.
 - Use Vue and testing skills only for applicable implementation and proof layers.
 - Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
-- Use `library-roadmap.md` and `ui-library-inventory.md` to select and advance sequential migration work.
+- Use `library-roadmap.md` and `ui-library-inventory.md` to select and advance sequential migration work when the user did not explicitly select a component.
+
+A component name is sufficient input for `material-component`. Do not require the user to predefine variants, API, foundations, files, tests, or consumers. Resolve those from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
