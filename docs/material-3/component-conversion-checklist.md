@@ -88,9 +88,12 @@ Use for every new, migrated, or materially changed public Material component. Ap
 Performed separately by `material-component-review`:
 
 - [ ] Reviewer changed only the colocated `AUDIT.md`.
-- [ ] Reviewer checked README claims against official sources and implementation.
-- [ ] Undocumented omissions and defects were reported.
-- [ ] Audit result is `compliant`, `partially-compliant`, `non-compliant`, or `blocked`.
+- [ ] Stage 1 compared implementation, exports, consumers, tests, stories, and shared dependencies with the family README and directly applicable project contracts.
+- [ ] Stage 1 reported undocumented implementation, false implementation claims, hidden unfinished work, and project-contract violations.
+- [ ] Stage 2 compared the documented project contract with current canonical Material 3 Expressive evidence.
+- [ ] Stage 2 reported incorrect Material interpretation, undocumented canonical omissions or deviations, and project extensions presented as official behavior.
+- [ ] Required corrections distinguish implementation changes from project-documentation changes.
+- [ ] Audit result is `compliant`, `partially-compliant`, `non-compliant`, or `blocked` across both stages.
 - [ ] Operator visual review is recorded separately when required.
 
-Do not describe a family as complete while its README hides unfinished work, its audit has unresolved high findings, obsolete ownership remains, required local verification fails, or required visual review is rejected.
+Do not describe a family as complete while implementation and project documentation disagree, project documentation misrepresents Material 3 Expressive, unfinished work is hidden, the audit has unresolved high findings, obsolete ownership remains, required local verification fails, or required visual review is rejected.
