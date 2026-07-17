@@ -94,17 +94,17 @@ Do not hide unfinished work to obtain a successful status.
 
 ## Current physical state
 
-| Area | Current owner | Canonical owner | State |
-| --- | --- | --- | --- |
-| Button family | `material/components/buttons` after this PR's path normalization | `material/components/buttons` | active migration; see family `README.md` and `AUDIT.md` |
-| Other existing official `MD*` families | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<official-docs-slug>` | legacy until migrated |
-| Color/theme tokens | `src/shared/lib/md/tokens.css` | `material/styles/color` when migrated | legacy |
-| Elevation | `src/shared/lib/md/tokens.css` | `material/styles/elevation` when migrated | legacy |
-| Motion | `src/shared/lib/md/tokens.css` | `material/styles/motion` when migrated | legacy |
-| Shape | current token/style owners | `material/styles/shape` when migrated | legacy |
-| Typography | `src/shared/lib/md` | `material/styles/typography` when migrated | legacy |
-| Material Symbols | `src/shared/ui/Icon` | `material/styles/icons` when migrated | legacy |
-| State layer, ripple, focus | `src/shared/ui/State` | `material/foundations/interaction` when migrated | legacy |
+| Area                                   | Current owner                                                    | Canonical owner                                  | State                                                   |
+| -------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------- |
+| Button family                          | `material/components/buttons` after this PR's path normalization | `material/components/buttons`                    | active migration; see family `README.md` and `AUDIT.md` |
+| Other existing official `MD*` families | existing `src/shared/ui/<LegacyFamily>` directories              | `material/components/<official-docs-slug>`       | legacy until migrated                                   |
+| Color/theme tokens                     | `src/shared/lib/md/tokens.css`                                   | `material/styles/color` when migrated            | legacy                                                  |
+| Elevation                              | `src/shared/lib/md/tokens.css`                                   | `material/styles/elevation` when migrated        | legacy                                                  |
+| Motion                                 | `src/shared/lib/md/tokens.css`                                   | `material/styles/motion` when migrated           | legacy                                                  |
+| Shape                                  | current token/style owners                                       | `material/styles/shape` when migrated            | legacy                                                  |
+| Typography                             | `src/shared/lib/md`                                              | `material/styles/typography` when migrated       | legacy                                                  |
+| Material Symbols                       | `src/shared/ui/Icon`                                             | `material/styles/icons` when migrated            | legacy                                                  |
+| State layer, ripple, focus             | `src/shared/ui/State`                                            | `material/foundations/interaction` when migrated | legacy                                                  |
 
 The family documentation is the detailed state owner. This table remains a compact navigation aid and must not duplicate every finding.
 
