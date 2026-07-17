@@ -5,6 +5,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 ## Routing
 
 - Use `material-component` when the user supplies a Material component or family name and expects autonomous creation, migration, or alignment from that name alone.
+- Use `material-component-review` when the user supplies a Material component or family name and expects a source-backed compliance review without production changes.
 - Use `material-component-authoring` as the canonical end-to-end execution workflow after the target family is resolved, or directly when the task already provides explicit family scope.
 - Use `material-foundation` when a cross-family foundation contract changes.
 - Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and supported surface.
@@ -12,7 +13,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 - Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
 - Use `library-roadmap.md` and `ui-library-inventory.md` to select and advance sequential migration work when the user did not explicitly select a component.
 
-A component name is sufficient input for `material-component`. Do not require the user to predefine variants, API, foundations, files, tests, or consumers. Resolve those from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
+A component name is sufficient input for `material-component` and `material-component-review`. Do not require the user to predefine variants, API, foundations, files, tests, consumers, or expected defects. Resolve them from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
@@ -104,6 +105,8 @@ Escalate only for a genuine product decision, materially unresolved official sou
 
 - Use existing repository checks and focused tests.
 - Add automation only after real migrations prove a stable repeated and precisely detectable need.
+- `material-component-review` treats code, family docs, tests, stories, snapshots, and registry status as claims to verify against official sources, not as proof by themselves.
+- A review-only run reports confirmed defects and evidence gaps without modifying production code or rules.
 - The coding agent owns source-backed architecture, Material, accessibility, behavior, migration, rule, and proof review.
 - The operator owns final comparison of prepared visible evidence when required.
 - The agent never reports operator acceptance as accepted.
