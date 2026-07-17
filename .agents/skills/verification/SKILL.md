@@ -33,12 +33,13 @@ Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or Stryk
 
 The verifier may use:
 
-- Vitest related-test selection plus direct changed tests for `unit-tests`;
-- lane-specific fail-closed impact registries for Storybook behavior, app E2E, and visual specs;
+- direct changed unit tests, owning tests for changed Vitest snapshots, and Vitest related-test selection;
+- lane-specific fail-closed impact mappings and justified standalone entries for Storybook behavior, app E2E, and visual specs;
+- owning visual specs for changed Playwright baselines;
 - Playwright tags/project filtering for `@mobile` and `@critical` scenarios;
-- full owning-lane fallback for shared config/helpers, deleted unit dependencies, dynamic-import boundaries, or unknown impact.
+- full owning-lane fallback for unresolved snapshots, shared config/helpers, deleted unit dependencies, dynamic-import boundaries, or unknown impact.
 
-These mechanisms optimize execution. The agent remains responsible for `TEST IMPACT` and for updating stable Playwright mappings in the same change.
+These mechanisms optimize execution. The agent remains responsible for `TEST IMPACT` and for updating stable Playwright mappings or justified standalone entries in the same change.
 
 ## Mutation
 
@@ -58,7 +59,7 @@ Run the exact Storybook behavior, app E2E, and visual specs from `TEST IMPACT`.
 
 Tag app E2E scenarios `@mobile` only for real touch, viewport, responsive composition, overlay, mobile capability, or lifecycle risk. Tag only the small essential cross-platform smoke set `@critical`.
 
-For intentional visual changes, update baselines only after inspecting the diff, then run focused visual verification.
+For intentional visual changes, inspect baseline diffs and run the owning visual specs. If a baseline cannot be resolved to its owning spec through the configured snapshot convention, run the full visual lane.
 
 If no faithful test target exists and adding one would broaden the task, report the gap. Do not substitute a less faithful test type.
 
