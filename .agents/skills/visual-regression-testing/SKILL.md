@@ -1,6 +1,6 @@
 ---
 name: visual-regression-testing
-description: 'Use for canonical Storybook visual references, bounded screenshot coverage, Material state matrices, responsive visual surfaces, intentional baseline updates, and operator visual handoff. Visual tests prove appearance only.'
+description: 'Use for canonical Storybook visual references, bounded screenshots, Material state matrices, intentional baseline updates, responsive visual surfaces, and operator visual handoff. Visual tests prove appearance only.'
 ---
 
 # Visual regression testing
@@ -9,109 +9,51 @@ Follow `docs/testing/architecture.md`. Visual regression detects unintended chan
 
 For public Material components, also follow `docs/material-3/component-testing.md`.
 
-## Harness
+## Activation
 
-Use isolated Storybook stories with:
+Use when a stable visible contract is created or intentionally changed and a bounded deterministic screenshot provides material regression value.
 
-- deterministic fixture data;
-- only dependencies required to render the surface;
-- no product orchestration, navigation, storage, network, diagnostics, or app bootstrap side effects;
-- a stable bounded root whose identity is recorded by the owning component or family documentation.
+Use isolated Storybook stories with deterministic data, rendering-only dependencies, no product side effects, and a stable bounded root.
 
-Storybook is a rendering harness, not an alternate application.
+## Canonical visual reference
 
-## Canonical visual identity
+Use one canonical reference per visible component or surface:
 
-A visible public component or stable surface records one canonical visual reference:
+- `StateMatrix` only when multiple distinct component-owned visual routes exist;
+- bounded `Overview`, `Default`, or equivalent when one representative route is sufficient.
 
-- use `StateMatrix` and `data-testid="visual-<component-kebab>-state-matrix"` only when multiple distinct component-owned visual routes exist;
-- use a bounded `Overview`, `Default`, or equivalent story when one representative route is sufficient.
+A matrix represents distinct visible contracts, not every state name. Do not build Cartesian products or one snapshot per cell. Keep labels readable and accepted story ids stable.
 
-Keep accepted story ids and bounded roots stable. Rename them only with matching spec, snapshot, and documentation changes.
+Use `.visual-checker-backdrop` only when transparency, shape, elevation, or state-layer output needs a neutral contrast surface.
 
-Use `.visual-checker-backdrop` when transparency, shape, elevation, or state-layer output must remain visible against a neutral fixture. Do not copy the checkerboard into component stories or production UI. A simple opaque component may use another deterministic bounded fixture when the checkerboard adds no value.
+## Workflow
 
-## State matrix
+1. Name the visible invariant and canonical story/root.
+2. Use stable data and viewport.
+3. Settle animation without changing accepted final output.
+4. Wait for fonts, icons, rendering, and fixture setup.
+5. Capture the smallest readable bounded surface.
+6. Inspect every intentional baseline diff.
+7. Run focused visual verification and final verification.
+8. Prepare operator Material evidence when applicable.
 
-A state matrix represents distinct visible contracts, not every state or configuration name.
+## Transient appearance
 
-Include applicable:
+Use the real public contract for semantic and disabled states. An accepted foundation testing adapter may prepare generic transient appearance outside public product API.
 
-- supported configurations producing distinct component-owned visible output;
-- semantic, disabled, unavailable, or transient appearances that differ visibly;
-- simultaneous states with a distinct winner or coexistence result;
-- project extensions and accepted deviations that change visible output.
+Forced state proves appearance only. It does not prove acquisition, release, transition, cancellation, cleanup, actionability, or focus movement.
 
-Do not build a Cartesian product. Equivalent sizes, labels, icons, content, and configurations do not receive duplicate cells. Use readable row, column, and section labels. Prefer one bounded screenshot and split only when readability requires labelled sections.
+## Strict boundary
 
-Do not manufacture a matrix for a component with one meaningful visual route.
+Visual specs may open a story, prepare deterministic appearance, and capture screenshots. They contain no success criteria for click, focus, keyboard, pointer, drag, scrolling, overlays, motion lifecycle, persistence, or product flow.
 
-## Snapshot scope
-
-Prefer:
-
-- one complete readable matrix;
-- one simple canonical component story;
-- one dialog, sheet, menu, or overlay surface;
-- one distinct responsive layout context;
-- one focused regression fixture with a named visible invariant.
-
-Avoid full-page screenshots unless page layout itself is the accepted contract. Do not create one snapshot per matrix cell or per equivalent state.
-
-## Determinism
-
-Before capture:
-
-1. use stable data and viewport;
-2. settle or disable animation without changing the accepted final appearance;
-3. avoid live dates, randomness, network, storage, uncontrolled timers, and loading state;
-4. wait for fonts, icons, asynchronous rendering, and deterministic fixture setup;
-5. mask only unavoidable dynamic regions;
-6. keep labels and output readable;
-7. update baselines only from the canonical environment;
-8. do not hide text, broaden clipping, or raise thresholds merely to suppress noise.
-
-## Transient visual state
-
-- Use the real public contract for semantic and disabled appearance.
-- Generic transient appearance may use an accepted foundation testing adapter outside public product API.
-- Use minimal real Playwright input only when no accepted adapter accurately represents the stable visible state.
-- Capture only after the visible state is stable.
-
-Forced state proves appearance only. It does not prove real acquisition, release, transition, cancellation, cleanup, actionability, or focus movement.
-
-Do not add test-only public API, production branches, or family-local forced-state systems.
-
-## Strict lane boundary
-
-Visual specs live under:
-
-```text
-tests/e2e/visual/
-```
-
-For Material families prefer:
-
-```text
-tests/e2e/visual/material/<family>.spec.ts
-```
-
-A visual spec may open a story, prepare deterministic appearance, and capture a screenshot. It must not contain behavioral success criteria such as click outcomes, focus movement, pointer acquisition, drag completion, scroll lifecycle, overlay dismissal, or persistence.
-
-Do not reproduce Material token tables through large computed-style assertion matrices. Use canonical screenshots for appearance and a small browser or contract assertion only when a non-visual stable routing contract cannot be observed reliably in the image.
-
-Route real focus, keyboard, pointer, touch, drag, scrolling, overlay, responsive interaction, motion lifecycle, and browser behavior to `ui-browser-behavior`.
+Do not reproduce token tables through large computed-style assertion matrices. A small non-visual routing assertion belongs to the relevant contract or browser proof.
 
 ## Operator Material review
 
-Automated baselines compare against prior accepted output; they do not prove correspondence with current canonical Material 3 Expressive sources.
+Automation compares against the prior accepted baseline; it does not prove correspondence with canonical Material.
 
-Operator comparison is required for applicable:
-
-- first accepted canonical reference for a component;
-- intentional changes to visible tokens, state routing, shape, color, elevation, typography, icon geometry, focus, ripple, motion appearance, or layout;
-- foundation changes with rendered impact;
-- intentional baseline updates caused by a visible-contract change.
+Operator comparison is required for a first accepted canonical Material reference and intentional changes to visible tokens, state routing, shape, color, elevation, typography, icon geometry, focus/ripple appearance, motion appearance, layout, or rendered foundation output.
 
 Report:
 
@@ -119,7 +61,7 @@ Report:
 Canonical visual story: <story id>
 Visual coverage: complete | incomplete (<gap>)
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
-Official visual sources: <named evidence when Material applies>
+Official visual sources: <named evidence>
 Operator visual acceptance: required | accepted | rejected | blocked (<reason>)
 ```
 
@@ -127,30 +69,24 @@ An automated agent never reports operator acceptance as `accepted`.
 
 ## Commands
 
-Run through repository verification:
-
 ```bash
-pnpm verify --only visual --files <source-story-or-visual-spec-paths...>
+pnpm verify --only visual --files <source-story-or-spec-paths...>
 ```
 
-Update snapshots only for intentional accepted changes after inspecting the diff:
+Intentional baseline update:
 
 ```bash
 pnpm test:visual:update
-pnpm verify --only visual --files <source-story-or-visual-spec-paths...>
+pnpm verify --only visual --files <source-story-or-spec-paths...>
 ```
 
-The direct update command changes baselines; the verify-managed command remains the evidence gate.
+## Forbidden
 
-## Reject when
-
-- a unit, component-contract, browser-behavior, app-e2e, or consumer test is the correct owner;
-- the screenshot is broad without a clear visual invariant;
-- the fixture depends on uncontrolled product, time, network, storage, or loading state;
-- a baseline changes without explanation and inspection;
-- behavior is asserted instead of appearance;
-- computed styles duplicate a token table or implementation;
-- equivalent combinations create snapshot bloat;
-- forced states are presented as behavior proof;
-- a simple component receives a ceremonial matrix;
-- a component with multiple distinct visible routes lacks readable canonical coverage.
+- behavior assertions in visual specs;
+- screenshots broader than the named visible contract;
+- uncontrolled product, time, network, storage, loading, or animation state;
+- unexplained baseline changes;
+- token-table or implementation-detail computed-style matrices;
+- equivalent combinations that create snapshot bloat;
+- forced states presented as behavior proof;
+- ceremonial matrices for simple components.
