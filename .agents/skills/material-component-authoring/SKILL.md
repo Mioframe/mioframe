@@ -1,6 +1,6 @@
 ---
 name: material-component-authoring
-description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family. Owns source lookup, implementation documentation, production work, consumer migration, proportional proof, and local verification.'
+description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family. Owns source lookup, implementation documentation, production work, consumer migration, structural conformance, proportional proof, and local verification.'
 paths:
   - 'src/shared/ui/material/components/**'
 ---
@@ -13,30 +13,31 @@ Use this workflow after the official family is resolved.
 
 Use only current workspace files, official Material sources, the current user task, and local project verification commands.
 
-Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. Historical provenance is not evidence for the current implementation contract.
+Do not run, inspect, or cite git, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history.
 
-The implementation workflow never edits `AUDIT.md`.
+Authoring never edits `AUDIT.md`.
 
-## Inputs
+## Required inputs
 
 Read:
 
-- the current user message and any explicit operator feedback it contains;
-- current official Material sources through `material3-guidelines`;
+- the current user message and explicit operator feedback;
+- current official sources through `material3-guidelines`;
+- applicable repository and scoped `AGENTS.md` files;
+- `src/shared/ui/material/components/AGENTS.md`;
 - `docs/material-3/source-of-truth.md`;
 - `docs/material-3/component-architecture.md`;
+- `docs/material-3/component-tokens.md`;
 - `docs/material-3/component-testing.md`;
-- the family `README.md` and `AUDIT.md` when present;
-- current implementation, exports, consumers, tests, and stories;
-- applicable foundation instructions.
+- `docs/material-3/component-conversion-checklist.md`;
+- family README and AUDIT when present;
+- current implementation, exports, consumers, tests, stories, and applicable foundations.
 
-Treat the previous audit as current-workspace findings to investigate. Do not use source-control history to validate or invalidate it.
+Treat prior audit findings as current-workspace claims to investigate, not authority.
 
-Explicit user feedback about visible behavior is authoritative operator input for the current task. The user does not need to create or edit a report file.
+## Operator feedback
 
-## Operator feedback rule
-
-The family README owns persistent visual status under:
+The family README persists:
 
 ```text
 ## Operator feedback and visual status
@@ -45,205 +46,216 @@ Latest operator feedback: none | <concise factual summary>
 Implementation response: none | <what changed and what must be reviewed>
 ```
 
-Apply these rules:
+Rules:
 
-- When the current user message reports a visual problem or rejects behavior, set `Status: rejected` and copy a concise factual summary into README before implementation.
-- Preserve an existing `rejected` or `awaiting re-review` status when the current message does not explicitly supersede it.
-- After changing production behavior for a rejected issue, the implementing agent may set `Status: awaiting re-review`; preserve the original feedback and describe the implementation response.
-- Never set `accepted` unless the current user message explicitly accepts the reviewed behavior.
-- Documentation, comments, tests, or a renamed contract cannot move `rejected` to `awaiting re-review`; a production behavior change is required.
-- Do not invent operator feedback or infer acceptance from silence, passing tests, screenshots, or an audit.
+- A current user report of a visual defect sets `rejected` before implementation.
+- Preserve previous rejected or awaiting feedback unless explicitly superseded.
+- Only a production behavior change can move `rejected` to `awaiting re-review`.
+- Only explicit user acceptance can set `accepted`.
+- Tests, screenshots, comments, renamed contracts, audits, or silence do not imply acceptance.
 
-## 1. Resolve family, source status, scope, and capability inventory
+When feedback is broad, such as “looks wrong”, “crooked”, or “malformed”:
+
+- preserve the complete affected visible surface as unresolved;
+- investigate anatomy, geometry, content composition, clipping, state endpoints, and motion;
+- do not narrow the task to the first plausible variable;
+- do not report awaiting re-review until the complete affected objective surface has been rechecked.
+
+## 1. Resolve family and source status
 
 1. Resolve the official family and documentation path.
-2. Use the official documentation slug as the canonical directory name.
+2. Use the official documentation slug as the canonical directory.
 3. Select `new-component`, `end-to-end-migration`, or `alignment-only`.
-4. Inspect the available official family pages and structured sources.
-5. Record canonical source status:
-   - `current-complete`;
-   - `snapshot-complete-stale`;
-   - `partial`;
-   - `conflicting`;
-   - `unavailable`.
-6. Reconstruct the contract-level capability inventory supported by that evidence.
+4. Inspect all available family pages and required structured sources.
+5. Record canonical source status: `current-complete`, `snapshot-complete-stale`, `partial`, `conflicting`, or `unavailable`.
+6. Reconstruct the capability inventory supported by that evidence.
 7. Define the minimum coherent implementation surface required by current consumers.
-8. Inspect every current audit finding.
-9. Inspect and preserve current README operator feedback.
+8. Inspect every current audit finding and README operator record.
 
-Use the official mapping, for example:
-
-```text
-m3.material.io/components/buttons
-→ src/shared/ui/material/components/buttons
-```
-
-Implementation scope may be incremental. Inventory classification may not hide unused official capability.
-
-Classify each item as exactly one of:
+Classify every official item exactly once:
 
 - implemented and verified;
 - partial, defective, provisional, or unverified;
 - not implemented;
-- officially unsupported or an invalid combination;
-- unresolved because canonical evidence is incomplete or conflicting;
-- outside the resolved family boundary.
+- officially unsupported or invalid;
+- unresolved;
+- outside the family boundary.
 
-Do not treat optional wording such as a recommendation or “can” guidance as a missing capability unless the official contract makes it required for the implemented surface.
+Optional guidance is not automatically missing capability. Invalid combinations are not absent capability.
 
-Use inventory status:
+Use `complete` inventory only with current-complete evidence. A stale complete snapshot may be snapshot-complete, never current-complete. Spot checks cannot certify inventory completeness.
 
-```text
-complete
-snapshot-complete (<snapshot>; currentness unverified)
-incomplete (<exact gap>)
-blocked (<exact reason>)
-```
+## 2. Update README before production
 
-Use `complete` only when every current family page and required structured source is available and inspected without a partial, truncated, suspicious, or unresolved result. A stale snapshot may be snapshot-complete, but not current-complete. Spot checking values cannot certify the family inventory.
+README must record:
 
-## 2. Update family documentation first
+- official mapping, source status, inventory, and coverage;
+- implemented, partial, absent, invalid, unresolved, and out-of-family capability;
+- known issues and operator status;
+- API, semantics, geometry ownership, tokens, states, foundations, extensions, consumers, verification, and review status.
 
-Create or update:
+Set `Review status: review required after changes`.
 
-```text
-src/shared/ui/material/components/<official-docs-slug>/README.md
-```
+A capability belongs under Implemented only when its final owned output works.
 
-Use these sections:
+## 3. Mandatory geometry ownership map
 
-- Official documentation mapping;
-- Implemented;
-- Partial / defective / unverified;
-- Not implemented;
-- Officially unsupported and invalid combinations;
-- Known issues and required follow-up;
-- Operator feedback and visual status;
-- Public API and semantics;
-- Tokens, states, and property ownership;
-- Foundations and styles used;
-- Extensions and deviations;
-- Consumers and migration state;
-- Verification;
-- Review status.
-
-Set `Review status: review required after changes` before production edits.
-
-Record:
+Before changing or approving a visible interactive component, identify the concrete DOM owner for every applicable role:
 
 ```text
-Canonical source status: current-complete | snapshot-complete-stale | partial | conflicting | unavailable
-Official capability inventory: complete | snapshot-complete (...) | incomplete (...) | blocked (...)
-Official coverage: full | partial | unresolved
+semantic host
+layout footprint
+interaction bounds
+visual container
+content bounds
+state-layer bounds
+ripple event host
+ripple render and clip bounds
+focus-indicator bounds
+outline and elevation owner
+shape and motion owner
 ```
 
-A capability belongs under `Implemented` only when its final owned output works.
+Record the map in README when roles are not all owned by one obvious coherent element.
 
-`Not implemented` contains only real published capability that exists but is absent. Officially unsupported or invalid combinations are constraints, not missing capability. Optional non-adoption belongs under known issues, extensions, or deviations unless it is normative for the implemented surface.
+Rules:
 
-The README must never imply full implementation while coverage is partial or unresolved.
+- Shared roles on one element are valid only when the resulting geometry matches official anatomy.
+- Numeric token values do not prove that the correct element owns them.
+- A minimum interactive target larger than the visual container must form one coherent rectangular layout and hit region.
+- Layout must reserve target space needed to avoid overlap with adjacent controls.
+- The visual container remains the owner of background, outline, elevation, shape, state layer, and clipped ripple.
+- Focus indication follows the intended visible target.
+- Test representative center, edges, corners, and adjacency when custom hit geometry exists.
+- Do not use an absolutely positioned descendant target extending outside its semantic host when it creates a cross-shaped, partial, overlapping, or non-layout hit region.
 
-## 3. Resolve foundations and styles
+Objective anatomy and geometry defects are authoring defects, not operator-review tasks.
 
-Map shared dependencies to the official navigation:
+## 4. CSS custom-property namespace inventory
+
+Inventory every custom-property declaration added or materially touched.
+
+Classify each as:
+
+- exact official token: `--md-ref-*`, `--md-sys-*`, or `--md-comp-*`;
+- justified private route: `--md-private-<owner>-<semantic-role>`;
+- genuine application token: `--app-*`;
+- invalid or unnecessary alias.
+
+Do not create an ad-hoc public-looking `--md-<component>-*` namespace.
+
+Invalid examples:
 
 ```text
-material/foundations/<official-slug>
-material/styles/<official-slug>
+--md-button-border-radius
+--md-button-height
+--md-button-padding-left
+--md-button-icon-gap
 ```
 
-Keep family-specific behavior local unless a real cross-family contract exists. Use `material-foundation` only when a shared contract changes.
+Use exact official names without shortening or paraphrasing. Private names describe semantic Material ownership, not only raw CSS properties.
 
-A route exists only when changing its source input can affect the final output through a real dependency. Colocation, aliases, equality assertions, comments, and tests do not create a route.
+Do not create a variable for a constant used once. Use a direct declaration when runtime indirection is unnecessary.
 
-When numeric spring parameters cannot be consumed directly, preserve them as canonical source evidence and use an honestly documented Web runtime adaptation. Do not imply that the adaptation consumes the original spring model.
+A visible route through an invalid namespace or wrong owner cannot be classified as implemented and verified.
 
-Before changing root/system tokens, universal selectors, pseudo-elements, or shared formulas:
+## 5. Implement the shortest correct route
 
-1. identify all current affected families from current workspace code;
+- Keep props, emits, slots, native semantics, and controlled state explicit.
+- Keep family-specific behavior local unless a real cross-family owner exists.
+- Use exact official token meanings.
+- Configuration selects sources; state resolves output; rendering applies values to the correct final owner.
+- A route exists only when changing the source can affect final output through a real dependency.
+- Colocation, aliases, comments, class names, stories, tests, and equality assertions do not create a route.
+- Add no speculative API, registry, resolver, CSS DSL, universal base, or unnecessary file.
+
+Before changing a root/system token, universal selector, pseudo-element, or shared formula:
+
+1. identify current affected families;
 2. prefer the narrowest valid owner;
-3. prove the shared route with representative tests that actually exercise it, not merely unchanged green tests;
-4. keep the issue open when representative impact is not proved.
+3. prove the route through representative final outputs;
+4. keep the issue open when blast radius is unproved.
 
-## 4. Implement
+## 6. Final rendered-owner proof
 
-- Keep props, emits, slots, native semantics, and DOM ownership explicit.
-- Keep controlled semantic state consumer-owned.
-- Define component-owned lifecycle behavior only when applicable.
-- Use exact official token meanings and the shortest route to the final property owner.
-- Create additional files only when they reduce current complexity.
-- Add no speculative API, runtime registry, generic resolver, CSS DSL, or universal base.
+For every visible property route, prove:
 
-For every materially different normalization or fallback input class, align:
+1. official meaning or explicit project-extension meaning;
+2. valid source namespace;
+3. correct concrete DOM owner;
+4. actual owner bounds when geometry matters;
+5. final computed/rendered output;
+6. state precedence, clipping, and adjacent-layer interaction.
+
+For shape tokens, checking only a border-radius number is insufficient. Verify the actual visual container and complete visible endpoints for resting, pressed, selected, disabled, and simultaneous states.
+
+A visibly rectangular or malformed pressed endpoint is a confirmed defect even if a scalar token lookup is numerically correct.
+
+## 7. Normalization and fallback consistency
+
+For each materially different input class, align:
 
 - actual returned, emitted, or rendered output;
-- native semantics and accessibility output;
+- semantics and accessibility;
 - warning or error text;
-- README and public API documentation;
+- README and API documentation;
 - test assertions.
 
-Do not use one generic warning or assertion when branches produce different outcomes. A clamped result, ignored input, rejected combination, and fallback mode are distinct contracts.
+A clamped result, ignored input, rejected combination, and fallback mode are distinct contracts.
 
-## 5. Motion and lifecycle proof
+## 8. Motion and lifecycle proof
 
-Verify a shared motion foundation deeply once.
+Verify shared motion deeply once. At component level prove only:
 
-At component level, use real input only to prove:
+- real input activates the intended rendered property on the correct owner;
+- one meaningful intermediate state when needed;
+- the correct visible endpoint;
+- safe interruption or cancellation;
+- reduced motion when owned.
 
-- the intended rendered property consumes the selected motion contract;
-- a meaningful intermediate state exists when source inspection alone cannot prove the route;
-- the correct endpoint is reached;
-- interruption or cancellation does not leave stale state;
-- reduced-motion behavior is correct when the component overrides or owns it.
+A named interruption test must trigger the competing event before the first transition settles and prove the competing branch began.
 
-A test proves a named interruption, cancellation, replacement, or recovery risk only when its setup actually enters that state. Trigger the competing event before the first lifecycle or transition settles, prove the competing branch begins, then prove the final public outcome and absence of stale state.
+Do not claim motion fixed when only lifecycle timing changed but the visible endpoint, geometry owner, or shape remains wrong.
 
-A test name, comment, timeout, waiting until the first endpoint, or endpoint-only assertion is not evidence of interruption or cancellation.
+Forced state proves appearance only. Screenshot baselines prove regression stability only.
 
-Do not require frame-by-frame component analysis. Do not retest equivalent pointer, touch, and keyboard paths when they share the same implementation. Forced state is visual-state evidence, not motion evidence.
+## 9. Migrate consumers and ownership
 
-A rejected perceived-motion result remains an open implementation defect even when the route is technically honest. Change production behavior, prepare new evidence, and set README visual status to `awaiting re-review` without claiming acceptance.
+For end-to-end migration:
 
-## 6. Migrate consumers and ownership
-
-For an end-to-end migration:
-
-1. create the canonical official-docs-slug directory;
+1. create the canonical directory;
 2. update the curated Material export;
 3. migrate every affected consumer;
-4. preserve accepted behavior except for documented changes;
+4. preserve accepted behavior except documented corrections;
 5. remove obsolete files and exports;
-6. record the current migration state in the family README.
+6. record migration state honestly.
 
-Do not claim migration complete while an obsolete owner or direct legacy consumer remains.
+## 10. Build proportional proof
 
-## 7. Build proportional proof
+Every new or migrated visible component requires:
 
-Every new or migrated component requires:
+- colocated component-contract tests;
+- one stable canonical visual story using real production anatomy and representative real child components.
 
-- a colocated component-contract test;
-- one stable canonical visual story when visible.
+Add browser, pure, consumer, StateMatrix, and visual-regression proof only for owned risk.
 
-Add browser, pure, consumer, `StateMatrix`, and visual-regression proof only when the family owns the corresponding risk.
+Browser geometry proof must assert relations between semantic host, interaction target, visual container, content, and adjacent controls—not merely one convenient point or one computed scalar.
 
-A test cannot repair a missing implementation dependency. Reject tests that merely restate declarations or aliases, claim a risk that their setup never creates, or assert only a final endpoint while claiming interruption/cancellation.
+A test cannot repair a missing implementation dependency or wrong owner.
 
-Tests cover implemented capability. Unsupported combinations, unimplemented capability, and optional guidance are documented and tested only when the component owns explicit rejection, normalization, or fallback behavior.
-
-## 8. Finish documentation and verification
+## 11. Finish
 
 After implementation:
 
-1. rebuild the inventory from the available official sources;
-2. update every classification and source-status field honestly;
-3. preserve operator feedback and use only permitted visual-status transitions;
-4. name applicable tests and stories;
-5. verify normalization/fallback behavior, warnings, documentation, and tests agree for each material branch;
-6. verify every named-risk test actually enters its claimed condition;
-7. keep `Review status: review required after changes`;
-8. run focused checks and final applicable local verification.
-
-Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` remains unchanged until independent review replaces it.
+1. rebuild classification from available official sources;
+2. update README honestly;
+3. preserve permitted operator-status transitions;
+4. verify geometry ownership and CSS namespace inventories are complete;
+5. verify every named-risk test enters its claimed condition;
+6. verify normalization and warnings agree;
+7. run focused and final applicable local verification;
+8. leave AUDIT unchanged;
+9. recommend `material-component-review <family>`.
 
 ## Result
 
@@ -263,6 +275,8 @@ Partial / defective / unverified:
 Not implemented:
 Officially unsupported / invalid combinations:
 Unresolved / out-of-family:
+Geometry ownership:
+CSS custom-property namespace review:
 Known issues / follow-up:
 Consumers migrated:
 Foundation/style changes:
@@ -274,4 +288,4 @@ Status: implementation finished | blocked (<exact reason>)
 Recommended next command: material-component-review <family>
 ```
 
-Do not report success while documentation hides unfinished work, a rejected issue is unchanged, a named-risk test never enters the claimed risk, fallback behavior and warning text disagree, shared blast radius is unproved, or required local verification fails.
+Do not report implementation finished while geometry ownership is unresolved, a visible endpoint is wrong, invalid custom-property names remain, broad feedback was narrowed without full investigation, shared blast radius is unproved, or verification fails.
