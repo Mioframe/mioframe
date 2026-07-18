@@ -4,22 +4,21 @@ This document separates implementation documentation, independent technical revi
 
 ## Review ownership
 
-Each active family may contain:
+Each active family contains:
 
 ```text
 README.md         # implementation documentation; authoring-owned
 AUDIT.md          # technical/canonical review; reviewer-owned
-VISUAL_REVIEW.md  # visible fidelity decision; operator-owned
 ```
 
-`material-component-review` replaces only `AUDIT.md`. It reads but never modifies `VISUAL_REVIEW.md`.
+`material-component-review` replaces only `AUDIT.md`.
 
 The reviewer uses:
 
 1. current implementation evidence;
 2. current project documentation;
 3. official Material 3 Expressive evidence;
-4. operator visual evidence from `VISUAL_REVIEW.md` when present.
+4. explicit operator feedback from the current user task and the persistent summary in README.
 
 The reviewer does not use source-control or remote state. Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history.
 
@@ -73,7 +72,7 @@ Review:
 - extensions and deviations;
 - tests, stories, rendered evidence, and verification claims;
 - known defects, shared proof gaps, source limitations, and visual status;
-- the operator result in `VISUAL_REVIEW.md` when present.
+- explicit operator feedback from the current user message and README.
 
 Report:
 
@@ -86,7 +85,7 @@ Report:
 - optional guidance inflated into required capability;
 - partial or unverified capability misclassified;
 - shared routes without representative proof;
-- README claims that contradict the operator visual result.
+- README claims that weaken or omit explicit operator feedback.
 
 A declaration, alias, placeholder, story, test, or unchanged green check is not implementation or representative proof by itself.
 
@@ -146,34 +145,28 @@ A shared route is resolved only when:
 
 Unchanged tests that never exercise the route do not close the evidence gap.
 
-## Operator visual review
+## Operator visual feedback
 
-Operator decisions are persisted in:
+The operator reports visible problems or acceptance directly in a user message. No separate report file is required.
 
-```text
-src/shared/ui/material/components/<official-docs-slug>/VISUAL_REVIEW.md
-```
-
-Use:
+Authoring persists the current decision in README:
 
 ```text
-# <Family> visual review
-
-Reviewed: <date>
-Status: accepted | rejected | blocked
-
-## Evidence reviewed
-## Findings
-## Required correction
+## Operator feedback and visual status
+Status: not reviewed | required | rejected | awaiting re-review | accepted
+Latest operator feedback: none | <concise factual summary>
+Implementation response: none | <what changed and what must be reviewed>
 ```
 
 The operator evaluates visible fidelity, including geometry, spacing, shape, color, typography, elevation, state composition, focus indication, and perceived motion quality.
 
-Authoring and reviewing agents read this file but never modify it. A rejected result is a confirmed open implementation defect until production behavior changes, new evidence is reviewed, and the operator replaces the file with an accepted result.
+Rules:
 
-A renamed contract, revised comment, documentation update, route test, or technical audit cannot close a visual rejection. A reviewer must mirror the operator status exactly in `AUDIT.md`.
-
-When `VISUAL_REVIEW.md` is absent, the audit may report `required`, `blocked`, or `not required`. It may report `accepted` only from an accepted operator file.
+- An explicit user report of a visual defect means `rejected`.
+- After a production behavior change, authoring may set `awaiting re-review` but must preserve the feedback.
+- Only an explicit user acceptance message may set `accepted`.
+- A renamed contract, revised comment, documentation update, route test, technical audit, or silence cannot close a visual rejection.
+- Review reports the current message/README status without inventing acceptance.
 
 ## Compliance and coverage
 
@@ -197,14 +190,14 @@ Officially unsupported combinations do not reduce coverage. Optional guidance do
 ## Correction loop
 
 ```text
-AUDIT.md findings or rejected VISUAL_REVIEW.md
+AUDIT.md findings or operator feedback in the user task
 → material-component <family>
 → README/code/tests update
 → material-component-review <family>
-→ new operator evidence when required
+→ explicit user acceptance or further feedback
 ```
 
-Authoring never edits AUDIT or VISUAL_REVIEW. Review never edits README or VISUAL_REVIEW.
+Authoring never edits AUDIT. Review never edits README.
 
 ## Completion gate
 
@@ -217,6 +210,6 @@ A family leaves active migration only when:
 - shared routes have representative proof;
 - consumers are migrated and obsolete ownership is removed;
 - local verification passes;
-- required visual review is accepted in `VISUAL_REVIEW.md`.
+- required visual review is explicitly accepted in README after a user acceptance message.
 
 A family is fully implemented only with current-complete canonical evidence, `Official coverage: full`, and accepted required visual review.
