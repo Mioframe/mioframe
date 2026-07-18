@@ -20,7 +20,7 @@ const meta = {
     docs: {
       description: {
         component: [
-          'Checked against the verified `Vyachean/m3-docs-cache` snapshot (commit `49ffae58a61f86c28b23720696dc9d07b6945483`, captured `2026-07-13T12:48:04.850Z`): `pages/components/buttons/{overview,specs,accessibility}.md` and `pages/styles/motion/overview/{how-it-works,specs}.md`. `guidelines` was not checked.',
+          'Checked against the `material3` MCP snapshot sourced from `m3.material.io` (cache captured `2026-06-30T05:53:04.916Z`): `components/buttons/{overview,specs,guidelines,accessibility}` and the structured Button token graph. The snapshot is complete for this family but stale; currentness is unverified.',
           '',
           '**Props**: `variant` (`default` | `toggle`, default `default`), `color` (`elevated` | `filled` | `tonal` | `outlined` | `text`, default `filled`), `size` (`extra-small` | `small` | `medium` | `large` | `extra-large`, default `small`), `shape` (`round` | `square`, default `round`), `nativeType` (`button` | `submit` | `reset`, default `button`), `label` (required), `selected`, `disabled`, `loading` (project extension, see below).',
           '',

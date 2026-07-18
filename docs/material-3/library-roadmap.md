@@ -26,7 +26,7 @@ Only one milestone should normally be active.
 
 ## Current state
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 Current milestone: `M1 — Buttons end-to-end pilot`
 
@@ -44,16 +44,9 @@ Current audit:
 src/shared/ui/material/components/buttons/AUDIT.md
 ```
 
-Current blocker: unresolved high-severity motion and elevation findings. Operator visual review is blocked until they are corrected.
+Current blocker: the latest independent audit is `partially-compliant`, and operator visual acceptance remains outstanding. The prior rendering-affecting motion, elevation, and loading-zero findings are resolved; the remaining audit findings are documentation accuracy corrections addressed by the current authoring pass.
 
-Single next action: run a focused Button correction that:
-
-1. replaces fake stiffness/damping consumption with an honest runtime motion contract;
-2. narrows or adequately validates the shared elevation implementation;
-3. reconciles official source claims and loading-zero extension behavior;
-4. updates the family README with the resulting implemented, unsupported, and unresolved state;
-5. runs applicable local verification;
-6. reruns `material-component-review Button`.
+Single next action: rerun `material-component-review Button` to replace the stale audit after the documentation corrections, then prepare the existing canonical Button visual evidence for operator acceptance if the review is compliant.
 
 Current progress:
 
@@ -61,7 +54,7 @@ Current progress:
 - the curated root export exists;
 - direct consumers are migrated;
 - the legacy MDButton owner and export are removed;
-- implementation alignment is not complete while the local audit remains `non-compliant`.
+- implementation alignment is not complete while the local audit remains `partially-compliant` and operator visual acceptance is outstanding.
 
 ## Milestones
 
