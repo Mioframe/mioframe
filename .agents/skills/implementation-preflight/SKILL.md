@@ -1,17 +1,17 @@
 ---
 name: implementation-preflight
-description: 'Use before non-trivial implementation work to resolve owners, public entry points, minimum design, risks, passes, and verification before the first production edit.'
+description: 'Use before non-trivial implementation work to resolve owners, public entry points, minimum design, risks, passes, test design, impact metadata, and verification before the first production edit.'
 ---
 
 # Implementation preflight
 
-Use before non-trivial code edits. Keep the artifact short and bounded. Do not repeat scoped repository policy or copy complete domain contracts into the preflight.
+Use before non-trivial code edits. Keep the artifact short and task-specific. Do not restate repository policy or copy complete domain contracts.
 
 ## Activation
 
-Use when work may change production code, tests, tooling, CI, configuration, storage semantics, diagnostics, browser behavior, or user-visible UI.
+Use when work may change production code, tests, tooling, CI, configuration, storage semantics, diagnostics, browser behavior, performance, release behavior, or user-visible UI.
 
-Skip only for trivial typo, formatting, comment, or mechanical rename work with no ownership or behavior decision.
+Skip only for a trivial typo, formatting-only edit, comment, or mechanical rename with no ownership, behavior, test-design, impact-metadata, or verification decision.
 
 ## Required artifact
 
@@ -22,22 +22,52 @@ Record:
 2. **Public entry points** — owning layer and APIs; no deep imports.
 3. **Reuse** — existing helpers, components, configs, schemas, services, tests, and dependencies already owning nearby behavior.
 4. **Minimum sufficient design** — every planned concept mapped to a current requirement or boundary; simpler alternative compared explicitly.
-5. **Acceptance matrix** — only reachable happy and failure/cancellation states required by the current contract.
-6. **Risk matrix** — only applicable browser, lifecycle, async, data, accessibility, visual, CI, or tooling risks.
+5. **Acceptance matrix** — only reachable happy, boundary, failure, cancellation, conflict, and recovery states required by the contract.
+6. **Risk matrix** — only applicable browser, lifecycle, async, data, accessibility, visual, performance, CI, tooling, release, and platform risks.
 7. **Breadth and passes** — independent domains and safe implementation order.
-8. **Verification** — focused proof for the highest risk plus final repository verification.
+8. **TEST IMPACT** — task-specific proof design and required repository impact-metadata maintenance.
+9. **Verification** — focused feedback for the highest risks plus final repository verification.
 
 Proceed without a separate architecture handoff only when an applicable repository policy defines a deterministic authoring path and every required decision is resolved from authoritative sources.
 
 Stop when:
 
 - a required handoff is missing or not ready;
-- the deterministic path remains `blocked`;
-- ownership, source of truth, final state, compatibility, or verification is unresolved;
+- the deterministic path remains blocked;
+- ownership, source of truth, final state, compatibility, test ownership, or verification is unresolved;
 - a narrower design satisfies the same acceptance criteria;
-- a planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, or testing framework lacks a current requirement.
+- a planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, test framework, registry, benchmark framework, or helper lacks a current requirement.
 
 Do not hide the same complexity by splitting it across more files.
+
+## TEST IMPACT
+
+Follow `docs/testing/architecture.md`. Record only task-specific decisions:
+
+```text
+TEST IMPACT
+Changed contracts:
+Risks:
+Proof owners:
+Existing proof:
+New or changed tests:
+Repository impact metadata updates:
+Task-specific measurements:
+```
+
+Rules:
+
+- identify the lowest faithful proof for each changed contract;
+- name exact existing or planned tests/specs;
+- do not list every execution lane with ceremonial `not applicable` entries;
+- update source-to-spec mappings, standalone records, snapshot ownership conventions, project metadata, mutation targets, or persistent performance checks when their durable repository relation changes;
+- a new, moved, renamed, or removed Playwright spec updates its owning registry in the same change;
+- production, story, fixture, or owned support paths may be source mappings; spec paths must not be used as source prefixes to group tests;
+- use full owning-lane fallback when an impact relation is unknown or cross-cutting;
+- name a representative metric, scenario/dataset, environment, and budget/baseline for a performance or optimization claim;
+- do not create permanent benchmark infrastructure for one task;
+- update the preflight when implementation changes the planned contracts, proof, or repository impact metadata;
+- `TEST IMPACT` is a reviewable plan only; `verify` never parses or consumes it.
 
 ## Contract changes
 
@@ -47,7 +77,7 @@ For persisted formats, public APIs, shared UI, Material library/foundation, serv
 - current and canonical owner when migration applies;
 - compatibility decision;
 - applicable edge cases;
-- verification per distinct consumer path.
+- proof per materially distinct consumer path.
 
 ## Workflow routing
 
@@ -61,64 +91,16 @@ Use the domain workflow as the primary execution contract:
 - diagnostics: `diagnostic-events`;
 - ordinary Vue implementation mechanics: `vue-component-implementation`.
 
-The preflight records only task-specific owners, risks, pass order, and proof. It must not restate a family blueprint, foundation registry schema, Material migration workflow, state-matrix rules, or validator checklist.
+Use testing skills according to the proof selected in `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
-### Material component work
-
-When `material-component-authoring` applies, record only:
-
-- selected authoring and component change mode;
-- canonical family blueprint path and readiness;
-- affected family, foundation domains, exports, and consumers;
-- safe implementation passes;
-- highest-risk contract/browser/visual proof;
-- unresolved blockers and review gates.
-
-Do not reconstruct the Material workflow here. A ready family blueprint and `material-component-authoring` define it.
-
-### Material foundation work
-
-When `material-foundation` applies, record only:
-
-- registry domain/status/snapshot;
-- current/canonical owner and migration status;
-- public/private/testing contract delta;
-- selected change mode;
-- consumers and representative verification.
-
-Physical relocation must not hide a correction or replacement.
-
-## Scoped rule application
-
-Use nested `AGENTS.md` and domain skills as detailed policy.
-
-- Storage/service/worker/provider work: record fact owner, public path, error/recovery owner, and forbidden UI reconstruction.
-- FSD cross-layer work: record model/read/action/composition split and public APIs.
-- Shared UI: record consumer blast radius and applicable contract/browser/visual proof.
-- Diagnostics: record only the safe boundary and privacy contract.
-
-A scoped-rule conflict is blocking.
-
-## Wide UI/refactor gate
-
-For non-trivial UI or cross-layer refactors record:
-
-- preserved user scenarios;
-- owner and public entry point for each changed behavior;
-- persisted settings/preferences/flags affected;
-- shared UI, Material foundation, and visual surfaces affected;
-- browser, visual, Storybook, e2e, mutation, unit, and manual review that applies.
-
-If implementation changes a scenario, invariant, owner, public API, Material path, foundation dependency, architecture decision, or verification decision, update the upstream contract before completion.
+The preflight records only task-specific owners, risks, pass order, proof, and metadata changes. It must not restate resolver implementation or general testing policy.
 
 ## Breadth control
 
-Count independent domains before editing.
-
-- Four or more domains require explicit passes and focused proof after risky passes.
+- Four or more independent domains require explicit passes and focused proof after risky passes.
 - Keep behavior-preserving cleanup separate from functional change when practical.
 - Do not start the next risky pass before the previous one has focused verification.
-- If repeated correction rounds add concepts or workarounds, stop and redo the architecture/preflight.
+- If repeated correction rounds add concepts or workarounds, stop and redo architecture/preflight.
 
 ## Feature-flow guardrails
 
@@ -129,13 +111,12 @@ For multi-step flows:
 - keep domain/storage invariants below UI;
 - refuse invalid targets instead of accepting broadly and compensating later;
 - keep typed outcomes local;
-- delete obsolete owners with their replacement unless compatibility is explicit;
-- prefer pure/domain tests before component wiring; use browser/visual proof for layout, focus, gestures, overlays, adaptivity, and appearance.
+- delete obsolete owners with their replacement unless compatibility is explicit.
 
 ## Bounded reuse search
 
-Search only enough to identify the current owner and reusable mechanism. Do not perform broad exploration to justify a generic abstraction.
+Search only enough to identify the current owner, existing proof, and reusable mechanism. Do not perform broad exploration to justify a generic abstraction.
 
 ## Output discipline
 
-Keep the written preflight usually within 8–15 short lines plus verification. Before completion, confirm the diff still matches the ready handoff or deterministic workflow and that owners, exports, registry/map records, tests, and review status remain consistent.
+Keep the written preflight usually within 10–20 short lines plus `TEST IMPACT`. Before completion, confirm the diff still matches the ready handoff or deterministic workflow and that owners, exports, tests, repository impact metadata, measurements, and review status remain consistent.

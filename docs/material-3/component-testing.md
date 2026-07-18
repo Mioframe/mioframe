@@ -1,212 +1,148 @@
-# Material component testing architecture
+# Material component testing
 
-This document defines proportional proof for public components in the Mioframe Material library.
+This document extends `docs/testing/architecture.md` only with Material-specific proof and operator handoff. General proof ownership, execution lanes, `TEST IMPACT`, accessibility ownership, automatic impact metadata, and safe fallback remain defined by the project-wide testing architecture and testing skills.
 
-Tests must prove the contracts a component actually owns. A fixed artifact set is not a substitute for understanding semantics, behavior, visible output, and consumer impact.
+## Goal
 
-## Principles
+Prove the accepted Material family contract with the smallest non-duplicative set of artifacts. Green automation protects accepted repository evidence; it does not prove correspondence with current canonical Material 3 Expressive sources.
 
-- Derive proof from the accepted family contract and current migration scope.
-- Use the smallest set of layers that completely proves the supported surface.
-- Keep visual appearance, browser behavior, pure logic, and consumer preservation in their owning test layers.
-- Do not test unsupported optional capabilities.
-- Do not duplicate framework, browser, foundation, or product behavior.
-- Green automation does not prove that a baseline matches current Material 3 Expressive.
+## Required family evidence
 
-## Proof layers
+| Evidence                   | Requirement                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| Component contract         | Mandatory for every new or migrated public component                                    |
+| Canonical visual story     | Mandatory when the component renders visible output                                     |
+| State matrix               | Only when multiple distinct component-owned visual routes exist                         |
+| Visual regression          | When the accepted visible contract is stable and regression would be material           |
+| Browser behavior           | Only when the family owns browser-dependent interaction                                 |
+| Deterministic behavior     | Only when component/foundation logic owns deterministic decisions outside Vue rendering |
+| Consumer preservation      | When imports, public API, wrappers, native owners, composition, or shared output change |
+| Agent evidence review      | Mandatory before operator handoff                                                       |
+| Operator visual acceptance | Required when accepted Material output is created or intentionally changed              |
 
-| Layer                      | Use when                                                         | Purpose                                                                                                               |
-| -------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Component contract         | Every new or migrated public component                           | Public API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
-| Canonical visual story     | The component has visible output                                 | One stable, readable reference for the accepted visible contract                                                      |
-| State matrix               | More than one distinct component-owned visual route exists       | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product                         |
-| Visual regression          | A stable visual contract exists and regression would be material | Detect unintended changes in a bounded canonical visual reference                                                     |
-| Browser behavior           | The component constrains browser-owned interaction               | Real focus, keyboard, pointer, touch, overlay, responsive, motion, cancellation, and cleanup behavior                 |
-| Pure behavior              | Extracted logic or lifecycle exists outside Vue rendering        | Helpers, composables, transitions, timing, cancellation, and cleanup                                                  |
-| Consumer preservation      | Existing consumers or public imports change                      | Preserve product-visible usage and integration contracts                                                              |
-| Agent evidence review      | Every new or migrated family                                     | Source-backed architecture, Material, accessibility, behavior, migration, and proof review                            |
-| Operator visual acceptance | Visible output is created or intentionally changed               | Compare prepared evidence with named official sources                                                                 |
+Evidence may be omitted only because the family does not own that contract, not because correct proof is difficult.
 
-A layer may be omitted only because the component does not own that contract, not because the contract is difficult to test.
+## Source of proof
 
-## Component contract tests
+Derive `TEST IMPACT` from the accepted family blueprint and current migration scope:
 
-Use colocated Vue Test Utils tests for stable public contracts.
+- supported variants, sizes, states, slots, and extensions;
+- native element, semantics, ARIA, and controlled-state ownership;
+- component versus foundation ownership;
+- token, shape, elevation, typography, icon, state, ripple, focus, motion, and layout routes;
+- unsupported official capabilities and accepted deviations;
+- affected consumers and removed legacy paths;
+- required Storybook behavior, app E2E, visual, snapshot-owner, or other repository impact-metadata updates.
 
-Cover applicable:
+Do not create tests from a generic artifact checklist when the family does not own the corresponding contract.
 
-- canonical defaults and supported configuration;
-- native element and DOM-critical attributes;
-- ARIA, disabled, readonly, and accessible-name ownership;
-- slots and fixed anatomy;
-- emits and controlled-state behavior;
-- invalid combinations and accepted normalization;
-- component-to-foundation wiring that does not require browser rendering;
-- public Mioframe extensions.
+## Component contract
 
-Do not use component tests to prove:
+Every new or migrated public Material component has a colocated `<Component>.test.ts` following `component-contract-testing`.
 
-- computed visual appearance;
-- layout or geometry;
-- real focus-visible acquisition;
-- pointer or touch behavior;
-- ripple, overlay, or browser lifecycle;
-- browser actionability.
+Cover applicable defaults, public configuration, native owner, explicit attributes, accessible name, ARIA, disabled/readonly semantics, slots, anatomy, emits, controlled state, invalid combinations, normalization, extensions, and non-browser foundation wiring.
 
-Prefer named contract assertions over complete rendered-tree snapshots.
-
-## Browser behavior tests
-
-Use isolated Storybook stories and Playwright when the component changes or constrains browser-owned behavior.
-
-Test through public inputs and real browser actions:
-
-- native or custom keyboard activation and navigation;
-- focus entry, movement, visibility, and restoration;
-- pointer, touch, drag, gesture, capture, cancellation, and cleanup;
-- expanded target-area hit testing;
-- overlay, escape, outside interaction, and containment;
-- responsive or container-dependent behavior;
-- motion completion and reduced-motion behavior when contractual.
-
-Forced visual state, direct Vue mutation, private methods, and synthetic internal events do not prove behavior.
-
-A component with no browser-owned behavior may omit this layer with a concise ownership-based reason.
+Do not reproduce the visual state matrix or generic foundation behavior in component tests.
 
 ## Canonical visual evidence
 
-Every visually rendered public component has one stable canonical visual reference.
+Every visibly rendered public component records one stable canonical story and bounded root in family documentation or audit.
 
 Use:
 
-- `StateMatrix` when the supported surface has multiple distinct component-owned visual routes;
-- an ordinary bounded `Overview`, `Default`, or equivalent canonical story when one representative route is sufficient.
+- `StateMatrix` when multiple distinct component-owned visible routes exist;
+- bounded `Overview`, `Default`, or equivalent when one representative route is sufficient.
 
-The family contract records the canonical story id and bounded root when visual proof applies.
+A state matrix includes only distinct visible outputs: supported configurations, semantic/transient states, simultaneous-state precedence, extensions, and deviations. Do not create Cartesian products, duplicate equivalent combinations, or one screenshot per cell.
 
-### State matrix rule
+A verification-only foundation adapter may prepare generic transient appearance when it remains outside public API, belongs to foundation testing, contains no family-specific routing, and claims appearance only.
 
-A `StateMatrix` covers visible contracts, not every state name.
+## Foundation ownership
 
-Include:
+Generic focus indicator, state layer, ripple, elevation, motion, and token-precedence behavior is proved once by the owning foundation.
 
-- every supported state that changes component-owned visible output;
-- every distinct configuration route that changes visible ownership or values;
-- every simultaneous-state combination with a distinct visible winner or coexistence result;
-- every extension or deviation that changes visible output.
+A component family proves only:
 
-Do not build the full Cartesian product. Equivalent sizes, labels, icons, content, and configurations do not receive duplicate cells.
+- routing into the accepted foundation contract;
+- family-specific anatomy or semantic ownership;
+- documented extension or deviation;
+- unique browser or visible output not already owned by foundation.
 
-The matrix must use readable row, column, and section labels. The operator should understand each case without inspecting source code.
+Do not repeat generic foundation matrices in every family.
 
-### Simple visual components
+## Browser behavior
 
-Do not manufacture a matrix for a component with one meaningful visual route. Use one bounded canonical story and screenshot when regression protection is useful.
+Use isolated Storybook behavior tests only when the family owns real focus, keyboard, pointer/touch, drag, expanded-target, overlay, responsive, motion, cancellation, cleanup, or browser-rendered property behavior.
 
-## Deterministic transient appearance
+Use public controls and real browser input. Forced state, direct Vue mutation, private methods, and synthetic internal events do not prove behavior.
 
-Verification-only foundation adapters may represent generic hover, focus-visible, pressed, or dragged appearance.
-
-They must:
-
-- remain outside public product API;
-- belong to the owning foundation testing surface;
-- contain no family-specific token routing or precedence;
-- prove appearance only.
-
-Real acquisition, release, cancellation, and cleanup still require browser input when contractual.
-
-## Visual regression
-
-Add Playwright visual regression when a bounded stable reference provides material value.
-
-The test:
-
-1. opens the canonical story;
-2. waits for deterministic fonts, icons, and asynchronous rendering;
-3. screenshots the bounded component or labelled sections;
-4. uses stable repository baselines;
-5. contains no business or behavior assertions.
-
-Prefer one bounded screenshot. Split only when readability requires it. Do not create one snapshot per matrix cell.
-
-A baseline is a regression reference, not proof of Material correctness.
+A family with no browser-owned behavior records `Browser behavior: not applicable` with an ownership-based reason.
 
 ## Consumer preservation
 
-When migration changes imports, API usage, wrappers, or product composition, add focused checks for affected consumers.
+When migration changes public usage:
 
-Do not require unrelated product suites merely because a shared component changed. Select representative checks from the actual blast radius.
+1. identify actual affected consumers;
+2. select representative materially different integration paths;
+3. preserve complete product scenarios only where product behavior may change;
+4. remove obsolete legacy tests and paths with their implementation;
+5. update every affected Storybook behavior, app E2E, and visual impact mapping in the same change;
+6. keep source mappings limited to production, story, fixture, or owned support paths rather than spec grouping.
+
+A shared Material change does not automatically require unrelated product suites.
 
 ## Agent evidence review
 
 Before operator handoff, the coding agent confirms:
 
 - official sources resolve the supported contract;
-- component and foundation ownership is coherent;
-- semantics, accessibility, state ownership, and lifecycle are correct;
-- each distinct visible route is represented when applicable;
-- test layers are proportionate and non-duplicative;
+- component/foundation ownership is coherent;
+- semantics, accessibility, lifecycle, and state ownership are correct;
+- distinct visible routes are represented proportionately;
+- proof is non-duplicative and matches `TEST IMPACT`;
+- repository impact metadata matches the actual changed sources, specs, stories, and baselines;
 - changed consumers and obsolete paths are handled;
-- no unresolved non-visual decision is hidden behind visual review.
+- no unresolved non-visual decision is delegated to operator review.
 
-The agent may mark this review `passed`. It must report `blocked` when required evidence or decisions remain unresolved.
+Report `passed` or `blocked`. Do not pass while source, architecture, accessibility, behavior, migration, proof, or impact ownership remains unresolved.
 
 ## Operator visual acceptance
 
-Operator comparison is required when a PR:
+Operator comparison is required for:
 
-- creates a visible component;
-- creates its first accepted canonical visual reference;
-- intentionally changes visible tokens, state routing, shape, color, elevation, typography, icon geometry, focus, ripple, motion appearance, or layout;
-- updates a visual baseline because the accepted visible contract changed;
-- changes a foundation contract with rendered impact.
+- a first accepted canonical Material reference;
+- intentional visible token, state-routing, shape, color, elevation, typography, icon, focus/ripple appearance, motion appearance, layout, or rendered foundation changes;
+- an intentional baseline update caused by a changed visible contract.
 
-The agent prepares:
+Prepare:
 
 ```text
 Canonical visual story: <story id>
 Visual coverage: complete | incomplete (<gap>)
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
 Agent evidence review: passed | blocked (<reason>)
-Official visual sources: <snapshot and Design Kit reference when required>
+Official visual sources: <named evidence>
 Expected deviations: none | <records>
 Operator visual acceptance: required | accepted | rejected | blocked (<reason>)
 ```
 
-The operator checks visible fidelity only. API, semantics, accessibility, source interpretation, ownership, migration completeness, and test sufficiency remain agent responsibilities.
-
-An automated agent never reports operator acceptance as `accepted`.
+The operator checks visible fidelity only. An automated agent never reports operator acceptance as `accepted`.
 
 ## Automation policy
 
-Use existing repository checks and test infrastructure.
+Use existing infrastructure. Add structural automation only after repeated migrations prove a precise low-maintenance need. Automation may validate deterministic paths, exports, story ids, specs, snapshot ownership, and prohibited test-only API; it must not infer semantic completeness or visual correctness from Markdown or screenshots.
 
-Add a structural guard only after real migrations demonstrate a stable repeated need with a precise low-maintenance check. Do not require a new validator merely because a rule is documented.
+## Forbidden
 
-Automation may verify deterministic facts such as an existing story id, public export, or prohibited test-only API. It must not infer semantic completeness or visual correctness from Markdown or screenshots.
-
-## Anti-overengineering
-
-Do not create:
-
-- a production state-matrix component;
-- a runtime state registry;
-- a generic component-test DSL;
+- production state-matrix components or runtime state registries;
+- generic component-test DSLs;
 - public test-only props, events, or branches;
-- a family-specific forced-state system;
-- shared fixtures after only one family demonstrates a need.
-
-Extract a shared fixture or helper only after multiple current families prove the same concrete contract and total complexity decreases.
+- family-specific forced-state systems;
+- duplicate foundation suites in every family;
+- mandatory artifact counts disconnected from actual family ownership;
+- shared fixtures before multiple current families prove the same concrete need;
+- stale or semantically overloaded test-impact mappings.
 
 ## Completion
 
-Component proof is complete when:
-
-- applicable public contracts are covered at the correct layers;
-- visible evidence is readable and proportional;
-- browser behavior uses real input when required;
-- changed consumers are preserved;
-- agent evidence review passes;
-- required operator visual acceptance is recorded;
-- repository verification passes.
+Material proof is complete when applicable contracts are covered at the correct proof types, canonical visual evidence is readable, browser behavior uses real input when owned, foundation behavior is not duplicated, consumers and obsolete paths are handled, repository impact metadata is consistent, agent evidence review passes, required operator acceptance is recorded, and repository verification passes.
