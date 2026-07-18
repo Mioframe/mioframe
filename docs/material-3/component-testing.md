@@ -37,6 +37,7 @@ Prove the accepted Material family contract with the smallest non-duplicative se
 | Browser behavior       | Correctness depends on browser behavior or layout | Focus, input, hit testing, layout, clipping, measurement, cancellation, transition lifecycle, or runtime state |
 | Pure behavior          | Extracted logic or lifecycle exists               | Helpers, composables, timing, cancellation, and cleanup                                                        |
 | Consumer preservation  | Imports, wrappers, or usage change                | Preserve affected integration contracts                                                                        |
+| Agent evidence review  | Every new or migrated family                      | Close objective source, ownership, proof, migration, and verification gates                                    |
 | Independent review     | Every new or migrated family                      | Seek contradictions, then compare implementation to docs and docs to Material                                  |
 | Operator review        | Final perceived fidelity remains                  | Explicit acceptance or concrete feedback in a user message                                                     |
 
@@ -154,9 +155,9 @@ For every materially different input class, compare:
 
 A clamped result, ignored input, rejected combination, and fallback mode are different contracts. Do not collapse them into a generic warning assertion.
 
-## Canonical visual evidence
+## Browser behavior
 
-Every visibly rendered public component records one stable canonical story and bounded root in family documentation or audit. The story must:
+Use isolated Storybook Playwright tests when correctness depends on behavior the component changes or constrains:
 
 - custom keyboard activation or navigation;
 - focus entry, movement, visibility, or restoration;
@@ -166,15 +167,9 @@ Every visibly rendered public component records one stable canonical story and b
 - JavaScript, CSS transition, or WAAPI lifecycle;
 - final computed propagation that source review cannot establish reliably.
 
-A state matrix includes only distinct visible outputs: supported configurations, semantic/transient states, simultaneous-state precedence, extensions, and deviations. Do not create Cartesian products, duplicate equivalent combinations, or one screenshot per cell.
+Use public controls and real browser input. Forced state, direct Vue mutation, private methods, and synthetic internal events do not prove browser behavior.
 
-A verification-only foundation adapter may prepare generic transient appearance when it remains outside public API, belongs to foundation testing, contains no family-specific routing, and claims appearance only.
-
-## Visual regression
-
-A visual baseline detects changes from the stored baseline. It does not prove Material correctness, correct anatomy, correct ownership, or operator acceptance.
-
-Do not create or update a baseline until the underlying structural contract is understood. A baseline preserving malformed output is regression evidence for that output, not conformance evidence.
+A family with no browser-owned behavior records `Browser behavior: not applicable` with an ownership-based reason.
 
 ## Foundation ownership
 
@@ -189,7 +184,7 @@ A component family proves only:
 
 Do not repeat generic foundation matrices in every family.
 
-Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, or public shared APIs require representative proof. Representative proof must:
+Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, shared interaction lifecycle, or public shared APIs require representative proof. Representative proof must:
 
 - identify affected contract classes;
 - exercise the changed source through final rendered output;
@@ -197,6 +192,8 @@ Changes to root/system tokens, universal selectors, pseudo-elements, shared form
 - distinguish identical default output from actual override or state behavior.
 
 Unchanged tests that never exercise the route are not representative proof.
+
+When the shared foundation owns browser behavior, use public controls and real browser input. Forced state, direct Vue mutation, private methods, and synthetic internal events do not prove that lifecycle.
 
 ## Motion proof boundary
 
@@ -251,13 +248,27 @@ Use evidence according to what it proves:
 
 Do not substitute one layer for another.
 
-## Shared foundation proof
+## Canonical visual evidence
 
-Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, shared interaction lifecycle, or public shared APIs require representative proof.
+Every visibly rendered public component records one stable canonical story and bounded root in family documentation or audit.
 
-Use public controls and real browser input. Forced state, direct Vue mutation, private methods, and synthetic internal events do not prove behavior.
+The story must:
 
-A family with no browser-owned behavior records `Browser behavior: not applicable` with an ownership-based reason.
+- use real production anatomy;
+- use representative real children when their geometry or behavior is claimed;
+- present distinct visible states and configurations readably;
+- expose the complete surface the operator is asked to review;
+- provide a real-interaction fixture when perceived transition quality is under review.
+
+A state matrix includes only distinct visible outputs: supported configurations, semantic/transient states, simultaneous-state precedence, extensions, and deviations. Do not create Cartesian products, duplicate equivalent combinations, or one screenshot per cell.
+
+A verification-only foundation adapter may prepare generic transient appearance when it remains outside public API, belongs to foundation testing, contains no family-specific routing, and claims appearance only.
+
+## Visual regression
+
+A visual baseline detects changes from the stored baseline. It does not prove Material correctness, correct anatomy, correct ownership, transition trajectory, or operator acceptance.
+
+Do not create or update a baseline until the underlying structural contract is understood. A baseline preserving malformed output is regression evidence for that output, not conformance evidence.
 
 ## Consumer preservation
 
@@ -272,23 +283,26 @@ When migration changes public usage:
 
 A shared Material change does not automatically require unrelated product suites.
 
-- use real production anatomy;
-- use representative real children when their geometry or behavior is claimed;
-- present distinct visible states and configurations readably;
-- expose the complete surface the operator is asked to review;
-- provide a real-interaction fixture when perceived transition quality is under review.
+## Agent evidence review
 
-Use a state matrix only when multiple distinct visual routes exist. Do not build a Cartesian product.
+Before independent review, the coding agent confirms:
 
-## Visual regression
+- official sources resolve the supported contract;
+- component/foundation ownership is coherent;
+- semantics, accessibility, lifecycle, and state ownership are correct;
+- final properties are checked on correct owners, custom-property namespaces are valid, and named-risk setups are causal;
+- distinct visible routes are represented proportionately and canonical stories use real anatomy;
+- proof is non-duplicative and matches `TEST IMPACT`;
+- repository impact metadata matches the actual changed sources, specs, stories, and baselines;
+- changed consumers and obsolete paths are handled;
+- README preserves current feedback accurately;
+- no unresolved non-visual decision is delegated to operator review.
 
-A visual baseline detects changes from the stored baseline. It does not prove Material correctness, correct anatomy, correct ownership, transition trajectory, or operator acceptance.
-
-Do not create or update a baseline until the underlying structural contract is understood. A baseline preserving malformed output is regression evidence for that output, not conformance evidence.
+Report `passed` or `blocked`. Do not pass while source, architecture, accessibility, behavior, migration, proof, impact ownership, or required verification remains unresolved.
 
 ## Independent review
 
-Before operator handoff, reviewer confirms:
+Before operator handoff, the independent reviewer confirms:
 
 - applicable ownership is complete and coherent;
 - final properties are checked on correct owners;
@@ -302,24 +316,9 @@ Before operator handoff, reviewer confirms:
 
 A high-severity anatomy, interaction, geometry, visible-endpoint, final-owner, namespace, lifecycle-proof, contradiction, or unchanged visible defect requires `non-compliant`.
 
-Before operator handoff, the coding agent confirms:
-
-- official sources resolve the supported contract;
-- component/foundation ownership is coherent;
-- semantics, accessibility, lifecycle, and state ownership are correct;
-- final properties are checked on correct owners, custom-property namespaces are valid, and named-risk setups are causal;
-- distinct visible routes are represented proportionately and canonical stories use real anatomy;
-- proof is non-duplicative and matches `TEST IMPACT`;
-- repository impact metadata matches the actual changed sources, specs, stories, and baselines;
-- changed consumers and obsolete paths are handled;
-- README preserves current feedback accurately;
-- no unresolved non-visual decision is delegated to operator review.
-
-The operator evaluates final visible fidelity and perceived motion quality. The operator does not own discovery of incorrect anatomy, interaction bounds, ownership, CSS naming, clipping, lifecycle proof, documentation contradiction, or test insufficiency.
-
 ## Operator visual acceptance
 
-The operator evaluates final visible fidelity and perceived motion quality. The operator does not own discovery of incorrect anatomy, interaction bounds, visible ownership, CSS naming, clipping, or test insufficiency. Only explicit user acceptance sets accepted status.
+The operator evaluates final visible fidelity and perceived motion quality. The operator does not own discovery of incorrect anatomy, interaction bounds, visible ownership, CSS naming, clipping, lifecycle proof, documentation contradiction, or test insufficiency. Only explicit user acceptance sets accepted status.
 
 Operator comparison is required for:
 
@@ -351,9 +350,13 @@ Use existing infrastructure. Add structural automation only after repeated migra
 - generic component-test DSLs;
 - public test-only props, events, or branches;
 - family-specific forced-state systems;
+- duplicate foundation suites in every family;
+- mandatory artifact counts disconnected from actual family ownership;
+- shared fixtures before multiple current families prove the same concrete need;
 - frame-level capture infrastructure without a demonstrated transition-composition risk;
-- separate operator report files.
+- separate operator report files;
+- stale or semantically overloaded test-impact mappings.
 
 ## Completion
 
-Proof is complete only when applicable contracts are covered at correct layers, ownership relationships are coherent, final properties are asserted on correct owners, namespaces are valid, named-risk setups are causal, normalization branches agree, forced-state and real-lifecycle evidence are not confused, independent review records exact remaining work, visible evidence uses real anatomy, required operator acceptance is explicit, and applicable local verification passes.
+Proof is complete only when applicable contracts are covered at correct layers, ownership relationships are coherent, final properties are asserted on correct owners, namespaces are valid, named-risk setups are causal, normalization branches agree, forced-state and real-lifecycle evidence are not confused, agent evidence review passes, independent review records exact remaining work, visible evidence uses real anatomy, required operator acceptance is explicit, and applicable local verification passes.
