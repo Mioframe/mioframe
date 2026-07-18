@@ -12,7 +12,8 @@ Tests prove contracts the component or changed foundation actually owns. They do
 - Do not test unsupported optional capability as if it were implemented.
 - Do not duplicate framework, browser, foundation, or product behavior.
 - Green automation does not prove that an accepted baseline matches Material 3 Expressive.
-- Green automation does not override a rejected `VISUAL_REVIEW.md`.
+- Green automation does not override rejected operator feedback recorded in the family README.
+- A test proves a named risk only when its setup actually enters that risk state.
 
 ## Proof layers
 
@@ -26,9 +27,22 @@ Tests prove contracts the component or changed foundation actually owns. They do
 | Pure behavior               | Extracted logic or lifecycle exists                        | Helpers, composables, state transitions, timing, cancellation, and cleanup                                            |
 | Consumer preservation       | Imports, wrappers, or product usage change                 | Preserve affected integration contracts                                                                               |
 | Independent two-stage audit | Every new or migrated family                               | Compare implementation with project documentation, then project documentation with Material 3 Expressive              |
-| Operator visual review      | Visible fidelity requires human comparison                 | Persist accepted/rejected/blocked visible evidence in `VISUAL_REVIEW.md`                                              |
+| Operator visual review      | Visible fidelity requires human comparison                 | User reports acceptance or defects in a normal message; README persists the current visual status                     |
 
 A layer may be omitted because the component does not own that contract. Difficulty alone is not a reason to omit an owned contract.
+
+## Proof causality
+
+A test name, comment, timeout, or endpoint assertion does not establish that the named risk occurred.
+
+To claim interruption, cancellation, replacement, fallback, or recovery proof:
+
+1. establish the initial active state;
+2. trigger the competing event before the initial lifecycle, transition, request, or operation settles;
+3. prove the competing branch actually began;
+4. prove the final public outcome and absence of stale state.
+
+Waiting for the first transition or operation to reach its endpoint before triggering the second event proves sequential behavior, not interruption. Forced state proves appearance, not acquisition, trajectory, interruption, or cleanup.
 
 ## Component contract tests
 
@@ -46,6 +60,18 @@ Use colocated Vue Test Utils tests for applicable:
 Do not use component tests for computed appearance, layout, real focus-visible, pointer/touch behavior, ripple, overlay lifecycle, or browser actionability.
 
 Prefer named contract assertions over complete rendered-tree snapshots.
+
+## Normalization and fallback proof
+
+For every materially different input class handled by normalization or fallback, compare all applicable outputs:
+
+- the actual returned, emitted, or rendered result;
+- native semantics and accessibility output;
+- development warning or error text;
+- family README and public API documentation;
+- the test assertion.
+
+Do not use one generic assertion when input classes produce different outcomes. Warning text must describe the branch that actually runs; a clamped determinate result, ignored input, rejected combination, and indeterminate fallback are different contracts.
 
 ## Browser behavior tests
 
@@ -72,7 +98,7 @@ Motion is split by ownership:
 - a shared foundation/style owner implements and proves a cross-family runtime contract deeply once;
 - the component owns correct consumption, property ownership, state routing, and family-specific behavior;
 - independent audit checks implementation-to-project and project-to-Material alignment;
-- the operator owns final perceptual comparison in `VISUAL_REVIEW.md`.
+- the operator owns final perceptual comparison through normal user feedback, persisted in the family README.
 
 At shared foundation level, prove:
 
@@ -92,9 +118,7 @@ At component level, use real input only to prove:
 
 Do not require frame-by-frame component analysis, overshoot sampling, or duplicate equivalent pointer/touch/keyboard paths for ordinary CSS transitions.
 
-Forced state proves transient appearance, not motion acquisition or trajectory.
-
-Source review and focused tests may prove a technically honest route. They do not close a rejected visual result. A rejection remains current until production behavior changes and the operator replaces `VISUAL_REVIEW.md` after reviewing new evidence.
+Source review and focused tests may prove a technically honest route. They do not close a rejected visual result. Rejection remains current in README until production behavior changes and the user explicitly accepts the new evidence.
 
 ## Shared foundation proof
 
@@ -107,9 +131,7 @@ Representative proof must:
 - include more than the family that motivated the global change when multiple families consume it;
 - distinguish identical default output from actual override or state-route behavior.
 
-Unchanged tests that never exercise the shared route are not representative proof.
-
-A component-specific check alone cannot close a global blast-radius gap.
+Unchanged tests that never exercise the shared route are not representative proof. A component-specific check alone cannot close a global blast-radius gap.
 
 ## Canonical visual evidence
 
@@ -148,7 +170,7 @@ When migration changes imports, API usage, wrappers, or product composition, sel
 
 ## Independent evidence review
 
-Before operator handoff, `material-component-review` performs both comparisons and reads the current operator file when present.
+Before operator handoff, `material-component-review` performs both comparisons and reads explicit operator feedback from the current user task and family README.
 
 ### Stage 1 — implementation vs project documentation
 
@@ -156,10 +178,12 @@ Confirm:
 
 - implementation matches the family README and directly applicable project contracts;
 - semantics, accessibility, states, lifecycle, tokens, motion, and final property ownership behave as documented;
+- normalization and fallback outputs, warnings, documentation, and tests agree for each materially different input class;
 - exports, consumers, tests, stories, and verification claims are accurate;
+- named-risk tests actually enter the claimed risk state;
 - no unfinished, provisional, unverified, or undocumented behavior is hidden;
 - proof layers establish only what the project documentation claims;
-- README visible-status claims agree with `VISUAL_REVIEW.md`.
+- README preserves the latest explicit operator feedback without inventing acceptance.
 
 ### Stage 2 — project documentation vs Material 3 Expressive
 
@@ -175,25 +199,16 @@ No technical or documentation decision may be hidden behind visual review.
 
 ## Operator visual review
 
-Operator review creates or replaces:
+Operator review is performed through normal user messages.
 
-```text
-src/shared/ui/material/components/<official-docs-slug>/VISUAL_REVIEW.md
-```
+The user reviews prepared canonical evidence and either:
 
-It records:
+- reports concrete visible defects; or
+- explicitly accepts the reviewed behavior.
 
-```text
-Reviewed: <date>
-Status: accepted | rejected | blocked
-Evidence reviewed:
-Findings:
-Required correction:
-```
+Authoring persists the result in the family README under `Operator feedback and visual status`. Only explicit user acceptance may set `accepted`.
 
 The operator evaluates visible fidelity. API, semantics, accessibility, source interpretation, ownership, migration, test sufficiency, and project-documentation correctness remain reviewer responsibilities.
-
-Authoring and reviewing agents never edit this file. A rejected result remains authoritative until the operator reviews new evidence and replaces it.
 
 ## Automation and anti-overengineering
 
@@ -207,8 +222,9 @@ Do not create:
 - public test-only API;
 - a family-specific forced-state system;
 - shared fixtures before multiple current families prove the need;
-- frame-level motion infrastructure for ordinary CSS transitions.
+- frame-level motion infrastructure for ordinary CSS transitions;
+- separate operator report files.
 
 ## Completion
 
-Proof is complete when applicable contracts are covered at the correct layers, the two-stage audit passes or records exact remaining work, visible evidence is readable and proportional, browser behavior is tested only where owned, changed consumers are preserved, required operator acceptance is recorded in `VISUAL_REVIEW.md`, and applicable local verification passes.
+Proof is complete when applicable contracts are covered at the correct layers, named-risk setups actually enter their claimed conditions, normalization/fallback branches agree across behavior, warnings, documentation, and tests, the two-stage audit passes or records exact remaining work, visible evidence is readable and proportional, browser behavior is tested only where owned, changed consumers are preserved, required operator acceptance is explicit and recorded in README, and applicable local verification passes.
