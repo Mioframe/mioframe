@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use when the user provides a Material component or family name and wants it created, implemented, migrated, or aligned. Resolve the official documentation family and run material-component-authoring.'
+description: 'Use when the user provides a Material component or family name and wants it created, implemented, migrated, aligned, or corrected. Resolve the official documentation family and run material-component-authoring.'
 ---
 
 # Material component
@@ -15,11 +15,21 @@ material-component Switch
 material-component Navigation rail
 ```
 
+The same message may include concrete visual problems or explicit acceptance. Example:
+
+```text
+material-component Button
+
+Operator feedback:
+- pressed-shape release feels too slow;
+- the corner shape visibly lags behind pointer release.
+```
+
 The component name is sufficient. Do not ask the user to predefine variants, API, sources, files, tests, consumers, or expected omissions.
 
 ## Workspace boundary
 
-Work from the current workspace only.
+Work from the current user task and current workspace only.
 
 Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. Source-control provenance is not implementation, project-contract, or Material evidence.
 
@@ -29,20 +39,20 @@ Local verification means project commands such as formatting, linting, type chec
 
 1. Resolve the current official Material family and documentation path.
 2. Use the official documentation slug as the canonical directory name.
-3. Inspect current implementations, public exports, consumers, family `README.md`, colocated `AUDIT.md`, operator-owned `VISUAL_REVIEW.md`, tests, stories, and applicable shared owners.
-4. Reconstruct the official contract-level capability inventory from the available official Material 3 Expressive sources.
-5. Record canonical source status:
+3. Inspect current implementations, public exports, consumers, family `README.md`, colocated `AUDIT.md`, tests, stories, and applicable shared owners.
+4. Extract explicit operator feedback from the current user message and existing README.
+5. Reconstruct the official contract-level capability inventory from the available official Material 3 Expressive sources.
+6. Record canonical source status:
    - `current-complete`;
    - `snapshot-complete-stale`;
    - `partial`;
    - `conflicting`;
    - `unavailable`.
-6. Select:
+7. Select:
    - `new-component` when no implementation exists;
    - `end-to-end-migration` when a legacy owner exists;
    - `alignment-only` when the canonical owner exists but is incomplete or incorrect.
-7. Resolve the minimum coherent implementation surface required by current consumers.
-8. Preserve the operator visual status exactly when VISUAL_REVIEW exists.
+8. Resolve the minimum coherent implementation surface required by current consumers.
 
 Example:
 
@@ -101,18 +111,27 @@ The README must state explicitly:
 - officially unsupported or invalid combinations;
 - unresolved evidence and family-boundary items;
 - known issues and required follow-up;
+- operator feedback and visual status;
 - API, semantics, states, tokens, dependencies, extensions, consumers, and verification;
 - `Review status: review required after changes`.
 
 Do not hide incomplete work to make the result appear successful.
 
-When VISUAL_REVIEW is `rejected` or `blocked`, README must keep that visible issue open. The authoring pass must change production behavior before requesting new operator evidence. Documentation, tests, audit wording, or a renamed runtime contract cannot close the operator result.
+## Operator feedback
+
+When the user reports a visual issue in the current message:
+
+- set README visual status to `rejected`;
+- preserve a concise factual summary;
+- change production behavior rather than only documentation or tests.
+
+After a production behavior change, authoring may set `awaiting re-review`. Only an explicit user acceptance message may set `accepted`.
 
 ## Run the authoring workflow
 
 Load `material-component-authoring` and continue through implementation, consumer migration, proportional proof, obsolete-owner removal, documentation update, and local verification.
 
-The implementing workflow does not edit `AUDIT.md` or `VISUAL_REVIEW.md`. After implementation, recommend:
+The implementing workflow does not edit `AUDIT.md`. After implementation, recommend:
 
 ```text
 material-component-review <resolved-family>
@@ -142,8 +161,8 @@ Consumers migrated:
 Foundation/style changes:
 Local verification:
 Family documentation:
-Operator visual evidence: missing | VISUAL_REVIEW.md
-Visual status: not required | required | rejected | blocked | accepted
+Latest operator feedback: none | <summary>
+Visual status: not reviewed | required | rejected | awaiting re-review | accepted
 Review required: yes | no
 Status: implementation finished | blocked (<exact reason>)
 ```
