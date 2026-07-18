@@ -1,6 +1,6 @@
 ---
 name: material-component-authoring
-description: 'Use for creating, migrating, aligning, or materially changing an official Material component family. Owns source lookup, implementation documentation, production work, consumer migration, proportional proof, and local verification.'
+description: 'Use for creating, migrating, aligning, or materially changing an official public Material component family. Owns source lookup, implementation documentation, production work, consumer migration, proportional proof, and local verification.'
 paths:
   - 'src/shared/ui/material/components/**'
 ---
@@ -25,9 +25,10 @@ Read:
 - current official Material sources through `material3-guidelines`;
 - `docs/material-3/source-of-truth.md`;
 - `docs/material-3/component-architecture.md`;
+- `docs/material-3/component-testing.md`;
 - the family `README.md` and `AUDIT.md` when present;
 - current implementation, exports, consumers, tests, and stories;
-- applicable foundation and testing instructions.
+- applicable foundation instructions.
 
 Treat the previous audit as current-workspace findings to investigate. Do not use source-control history to validate or invalidate it.
 
@@ -48,8 +49,8 @@ Apply these rules:
 
 - When the current user message reports a visual problem or rejects behavior, set `Status: rejected` and copy a concise factual summary into README before implementation.
 - Preserve an existing `rejected` or `awaiting re-review` status when the current message does not explicitly supersede it.
-- After changing production behavior for a rejected issue, the implementing agent may set `Status: awaiting re-review`; it must preserve the original feedback and describe the implementation response.
-- The implementing agent must never set `accepted` unless the current user message explicitly accepts the reviewed behavior.
+- After changing production behavior for a rejected issue, the implementing agent may set `Status: awaiting re-review`; preserve the original feedback and describe the implementation response.
+- Never set `accepted` unless the current user message explicitly accepts the reviewed behavior.
 - Documentation, comments, tests, or a renamed contract cannot move `rejected` to `awaiting re-review`; a production behavior change is required.
 - Do not invent operator feedback or infer acceptance from silence, passing tests, screenshots, or an audit.
 
@@ -70,7 +71,7 @@ Apply these rules:
 8. Inspect every current audit finding.
 9. Inspect and preserve current README operator feedback.
 
-Example:
+Use the official mapping, for example:
 
 ```text
 m3.material.io/components/buttons
@@ -128,7 +129,7 @@ Use these sections:
 
 Set `Review status: review required after changes` before production edits.
 
-Under `Official documentation mapping`, record:
+Record:
 
 ```text
 Canonical source status: current-complete | snapshot-complete-stale | partial | conflicting | unavailable
@@ -138,11 +139,7 @@ Official coverage: full | partial | unresolved
 
 A capability belongs under `Implemented` only when its final owned output works.
 
-`Not implemented` contains only real published capability that exists but is absent. It does not contain combinations the official contract itself disallows.
-
-`Officially unsupported and invalid combinations` records official constraints and the implementation's rejection or normalization behavior. These entries do not reduce coverage.
-
-Record optional guidance that Mioframe does not adopt under `Extensions and deviations` or `Known issues and required follow-up`. Do not inflate it into an absent capability unless it is normative for the implemented surface.
+`Not implemented` contains only real published capability that exists but is absent. Officially unsupported or invalid combinations are constraints, not missing capability. Optional non-adoption belongs under known issues, extensions, or deviations unless it is normative for the implemented surface.
 
 The README must never imply full implementation while coverage is partial or unresolved.
 
@@ -168,8 +165,6 @@ Before changing root/system tokens, universal selectors, pseudo-elements, or sha
 3. prove the shared route with representative tests that actually exercise it, not merely unchanged green tests;
 4. keep the issue open when representative impact is not proved.
 
-Do not use repository history to decide who introduced a shared mechanism. Review its current owner, current consumers, current contract, and current blast radius.
-
 ## 4. Implement
 
 - Keep props, emits, slots, native semantics, and DOM ownership explicit.
@@ -179,7 +174,17 @@ Do not use repository history to decide who introduced a shared mechanism. Revie
 - Create additional files only when they reduce current complexity.
 - Add no speculative API, runtime registry, generic resolver, CSS DSL, or universal base.
 
-## 5. Motion proof
+For every materially different normalization or fallback input class, align:
+
+- actual returned, emitted, or rendered output;
+- native semantics and accessibility output;
+- warning or error text;
+- README and public API documentation;
+- test assertions.
+
+Do not use one generic warning or assertion when branches produce different outcomes. A clamped result, ignored input, rejected combination, and fallback mode are distinct contracts.
+
+## 5. Motion and lifecycle proof
 
 Verify a shared motion foundation deeply once.
 
@@ -190,6 +195,10 @@ At component level, use real input only to prove:
 - the correct endpoint is reached;
 - interruption or cancellation does not leave stale state;
 - reduced-motion behavior is correct when the component overrides or owns it.
+
+A test proves a named interruption, cancellation, replacement, or recovery risk only when its setup actually enters that state. Trigger the competing event before the first lifecycle or transition settles, prove the competing branch begins, then prove the final public outcome and absence of stale state.
+
+A test name, comment, timeout, waiting until the first endpoint, or endpoint-only assertion is not evidence of interruption or cancellation.
 
 Do not require frame-by-frame component analysis. Do not retest equivalent pointer, touch, and keyboard paths when they share the same implementation. Forced state is visual-state evidence, not motion evidence.
 
@@ -217,7 +226,7 @@ Every new or migrated component requires:
 
 Add browser, pure, consumer, `StateMatrix`, and visual-regression proof only when the family owns the corresponding risk.
 
-A test cannot repair a missing implementation dependency. Reject tests that merely restate declarations or aliases.
+A test cannot repair a missing implementation dependency. Reject tests that merely restate declarations or aliases, claim a risk that their setup never creates, or assert only a final endpoint while claiming interruption/cancellation.
 
 Tests cover implemented capability. Unsupported combinations, unimplemented capability, and optional guidance are documented and tested only when the component owns explicit rejection, normalization, or fallback behavior.
 
@@ -229,8 +238,10 @@ After implementation:
 2. update every classification and source-status field honestly;
 3. preserve operator feedback and use only permitted visual-status transitions;
 4. name applicable tests and stories;
-5. keep `Review status: review required after changes`;
-6. run focused checks and final applicable local verification.
+5. verify normalization/fallback behavior, warnings, documentation, and tests agree for each material branch;
+6. verify every named-risk test actually enters its claimed condition;
+7. keep `Review status: review required after changes`;
+8. run focused checks and final applicable local verification.
 
 Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` remains unchanged until independent review replaces it.
 
@@ -263,4 +274,4 @@ Status: implementation finished | blocked (<exact reason>)
 Recommended next command: material-component-review <family>
 ```
 
-Do not report success while documentation hides unfinished work, a rejected issue is unchanged, shared blast radius is unproved, or required local verification fails.
+Do not report success while documentation hides unfinished work, a rejected issue is unchanged, a named-risk test never enters the claimed risk, fallback behavior and warning text disagree, shared blast radius is unproved, or required local verification fails.
