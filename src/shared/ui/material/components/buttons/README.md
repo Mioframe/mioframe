@@ -14,25 +14,29 @@
 
 - Public component: `MDButton`.
 - Styles: elevated, filled, tonal, outlined, and text.
-- Sizes: extra-small, small, medium, large, and extra-large.
-- Shapes: round and square, including pressed and selected shape morphs per size.
+- Sizes: extra-small, small, medium, large, and extra-large are exposed by the public API.
+- Shapes: round and square are exposed by the public API.
 - Variants: default actions and controlled toggle buttons.
 - Optional leading icon.
 - Native `<button>` semantics, safe native type, disabled behavior, accessible name, native keyboard activation, `aria-pressed`, and `aria-busy`.
-- State layer, ripple, focus indication, public component-token routing, canonical stories, and colocated contract tests.
-- Loading extension with boolean or normalized numeric progress; values normalized to zero render the same indeterminate visual as `true`.
+- Loading extension with boolean or normalized numeric progress.
 - Canonical root export through `@shared/ui/material`.
 - Direct consumers migrated from the legacy MDButton export.
 
 ## Partial / defective / unverified
 
-- Pressed-shape motion now follows the raw native press lifecycle while the state layer retains its minimum-duration feedback; the correction is awaiting operator visual re-review.
+- The geometry ownership model is defective. The native button currently acts as the visual container while an absolutely positioned `md-button__target` extends beyond it, producing interaction bounds that do not form one coherent reserved rectangular target.
+- The implementation has not established separate, correct owners for semantic host, layout footprint, interaction bounds, visual container, state layer, ripple clipping, focus indication, and shape rendering.
+- Pressed-shape rendering remains operator-rejected. Button corners still become visually straight or otherwise malformed during press; the previous raw-press lifecycle change did not resolve the visible endpoint.
+- Shape values are asserted as `border-radius` numbers without proving that they are applied to the correct visual-container geometry.
+- Ad-hoc custom properties such as `--md-button-border-radius`, `--md-button-height`, `--md-button-padding-left`, and `--md-button-icon-gap` use an invalid public-looking Material namespace. They are neither exact official `--md-comp-*` tokens nor explicit `--md-private-*` routes.
+- The current canonical stories and tests preserve the existing geometry but do not prove official anatomy or final visible conformance.
 - Shared elevation recomputation has focused override proof for Button, FAB, and Extended FAB. Equivalent focused override proof remains absent for MDCard and MDSwitch.
 - Current canonical completeness is unverified because the complete available Button snapshot is stale.
 
 ## Not implemented
 
-- None confirmed in the available complete Button snapshot.
+- None confirmed in the available complete Button snapshot. This does not imply that the current exposed surface is correctly implemented.
 
 ## Officially unsupported and invalid combinations
 
@@ -42,18 +46,23 @@
 
 ## Known issues and required follow-up
 
-- Run independent Button review, then repeat operator visual review of press, release, and interrupted quick-click motion in the canonical size-geometry story.
+- Redesign the Button DOM and CSS ownership around a coherent semantic/layout interaction host and a distinct official visual container where required by the 48dp minimum interactive target.
+- Remove the absolutely positioned cross-shaped expanded-target model and prove complete target geometry, adjacency, edge, and corner hit testing.
+- Re-evaluate state layer, ripple render/clip target, focus-indicator target, outline, elevation, background, and shape ownership after the geometry correction.
+- Correct pressed and selected visible endpoints on the actual visual container; do not treat numeric radius equality as sufficient proof.
+- Replace invalid ad-hoc `--md-button-*` properties with exact official tokens, justified `--md-private-*` semantic routes, or direct declarations when indirection is unnecessary.
+- Rebuild canonical stories and tests around real production anatomy and final rendered owners.
+- Run a fresh independent Button review after production and documentation changes.
 - Add or deliberately defer representative shared elevation override proof for MDCard and MDSwitch through the owning foundation/style workflow.
-- Rapid-click modified motion guidance is conditional, non-normative Web guidance. It is not a missing Button capability; revisit only when a concrete supported scenario requires repeated rapid activation behavior.
-- Refresh or directly verify the current official Button family sources before claiming current-complete inventory or full current coverage.
+- Refresh or directly verify current official Button sources before claiming current-complete inventory or full current coverage.
 
 ## Operator feedback and visual status
 
-Status: `awaiting re-review`
+Status: `rejected`
 
-Latest operator feedback: the shape-change animation on press and release is visibly incorrect and does not match the intended Material 3 Expressive behavior. A technically connected CSS transition does not resolve the perceived motion mismatch.
+Latest operator feedback: the Button is visibly malformed. Its expanded target has geometry larger than and inconsistent with the visible button, the component appears to use the wrong overall geometry model, and corners still become visually straight during press. The previous animation correction did not solve the visible shape problem.
 
-Implementation response: container shape now follows the raw press state and begins its reverse fast-spatial transition immediately on release; the state-layer minimum-duration feedback remains independent. The canonical size-geometry story and real-pointer browser check are prepared for re-review. Only an explicit user acceptance message may set `accepted`.
+Implementation response: unresolved. The next authoring pass must investigate the complete anatomy and geometry ownership model, correct production structure and shape rendering, and preserve `rejected` until a real production correction is ready for explicit operator re-review.
 
 ## Public API and semantics
 
@@ -75,11 +84,11 @@ Invalid combinations and out-of-range loading values are normalized with develop
 
 ## Tokens, states, and property ownership
 
-- The button root owns container geometry, border, background, elevation, and shape transitions.
-- Label and icon descendants own their rendered color and opacity.
-- State resolution maps hover, focus, pressed, selected, disabled, and loading output to final properties. Shape geometry consumes raw pressed state; the state layer separately consumes its minimum-duration pressed state.
-- Public token support is valid only when an override reaches the final rendered property.
-- Official pressed-shape spring values are canonical source evidence. The current CSS runtime uses a documented Web adaptation rather than literal spring physics.
+- Public official tokens are valid only when they retain exact canonical `--md-comp-*` names and reach the final official DOM owner.
+- Family-private routes must use `--md-private-*`; ad-hoc `--md-button-*` variables are not accepted Material token names.
+- Current geometry and shape ownership is unresolved and must not be described as root-owned or verified until a geometry ownership map is established.
+- Label and icon descendants own their rendered color and opacity, subject to renewed final-owner verification.
+- Official pressed-shape spring values remain canonical source evidence. The current Web runtime adaptation and visible endpoint remain rejected.
 - Elevation shadow-color routing consumes the shared `--md-private-elevation-shadow-color` / `--md-sys-elevation-level*` contract.
 
 ## Foundations and styles used
@@ -103,15 +112,15 @@ Invalid combinations and out-of-range loading values are normalized with develop
 - Public export: `MDButton` from `@shared/ui/material`.
 - The legacy MDButton implementation and export are removed.
 - Direct consumers are migrated.
-- Physical ownership migration is complete.
+- Physical ownership migration is complete; visual and geometry conformance is not.
 
 ## Verification
 
-- `MDButton.test.ts` covers public API, semantics, invalid combinations, state, and loading contracts.
-- `MDButton.stories.ts` provides canonical visual configurations and states.
-- Focused browser/visual coverage exists for token routes, geometry, accessibility, motion routing, immediate release, and final computed Button shadow behavior.
-- `SizeGeometryMatrix` is the canonical re-review surface for real press, release, and quick-click interruption across all five sizes.
-- Operator visual acceptance remains open until explicit re-review.
+- Existing component, browser, and visual tests are implementation regression evidence only.
+- Existing expanded-target tests prove only selected click points and currently reinforce the defective target model.
+- Existing shape tests prove selected computed radii, not correct visual-container ownership or official visible endpoints.
+- A new geometry ownership map, final-owner assertions, complete target-bound tests, real production stories, and independent audit are required.
+- Operator visual acceptance remains rejected.
 
 ## Review status
 
