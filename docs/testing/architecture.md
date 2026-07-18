@@ -92,14 +92,14 @@ Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated acti
 
 ## Contract proof types
 
-| Proof type | Owns |
-| --- | --- |
-| Deterministic behavior | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, and deterministic multi-module outcomes |
-| Component contract | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser wiring |
-| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, and browser APIs |
-| Product scenario | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries |
-| Visual regression | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices |
-| Release behavior | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-only invariants |
+| Proof type                | Owns                                                                                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deterministic behavior    | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, and deterministic multi-module outcomes |
+| Component contract        | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser wiring                            |
+| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, and browser APIs                                    |
+| Product scenario          | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries               |
+| Visual regression         | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices                                                                                    |
+| Release behavior          | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-only invariants                                                                   |
 
 ## Supplemental evidence and human gates
 
@@ -112,18 +112,18 @@ These strengthen or approve proof but are not primary owners of ordinary functio
 
 ## Execution lanes
 
-| Verify label or process | Executes |
-| --- | --- |
-| static verification | Formatting, linting, type-checking, instruction compatibility, and other deterministic repository checks |
-| `unit-tests` | Deterministic behavior and component-contract tests through Vitest |
-| `storybook-behavior` | Reusable browser behavior through Playwright against isolated Storybook |
-| `e2e` | Complete product scenarios through application Playwright tests |
-| `visual` | Screenshot regression against canonical Storybook stories |
-| release verification | Release behavior against the built production artifact |
-| `mutation` | Registered narrow mutation targets |
-| persistent performance check | Existing automated benchmark or budget selected by repository impact metadata |
-| task-specific measurement | Reproducible one-off measurement named in preflight; not automatically inferred |
-| operator review | Manual Material comparison |
+| Verify label or process      | Executes                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| static verification          | Formatting, linting, type-checking, instruction compatibility, and other deterministic repository checks |
+| `unit-tests`                 | Deterministic behavior and component-contract tests through Vitest                                       |
+| `storybook-behavior`         | Reusable browser behavior through Playwright against isolated Storybook                                  |
+| `e2e`                        | Complete product scenarios through application Playwright tests                                          |
+| `visual`                     | Screenshot regression against canonical Storybook stories                                                |
+| release verification         | Release behavior against the built production artifact                                                   |
+| `mutation`                   | Registered narrow mutation targets                                                                       |
+| persistent performance check | Existing automated benchmark or budget selected by repository impact metadata                            |
+| task-specific measurement    | Reproducible one-off measurement named in preflight; not automatically inferred                          |
+| operator review              | Manual Material comparison                                                                               |
 
 ## Proof boundaries
 
