@@ -1,6 +1,6 @@
 ---
 name: material
-description: 'Use for any request to implement, migrate, align, or correct a Material 3 Expressive artifact. Resolve whether the target is a component, foundation, style, token system, interaction primitive, or cross-layer route, then execute the applicable specialized workflow without refusing solely because the request is not a component.'
+description: 'Use for any request to implement, migrate, align, or correct a Material 3 Expressive artifact. Resolve whether the target is a component, foundation, style, token system, interaction primitive, or cross-layer route, then execute the applicable specialized workflow.'
 paths:
   - 'src/shared/ui/material/**'
   - 'src/shared/lib/md/**'
@@ -14,21 +14,30 @@ paths:
 
 Use this as the default implementation entrypoint for any named Material 3 Expressive artifact or bounded Material correction.
 
-Examples:
+Syntax examples use placeholders only and do not prescribe implementation structure:
 
 ```text
-material Button
-material State layer
-material Ripple
-material Focus indicator
-material Color roles
-material Elevation
-material Motion
-material Typography
-material Fix the Button target geometry
+material <component-family>
+material <foundation-artifact>
+material <style-domain>
+material <bounded Material correction>
 ```
 
-The user does not need to know whether the requested artifact is classified as a component, foundation, or style.
+The user does not need to classify the request.
+
+## Generalization boundary
+
+This router contains only artifact-independent routing and completion rules.
+
+Do not add:
+
+- a concrete family selector, DOM node, custom-property name, token value, state endpoint, bug symptom, or proposed component structure;
+- a family-specific exception;
+- an example that is later treated as a required implementation shape.
+
+Concrete facts belong in the selected owner README, AUDIT, implementation, tests, and task-specific PR description.
+
+A defect discovered in one artifact may refine this skill only through a rule that applies to any artifact owning the same category of risk.
 
 ## Non-refusal rule
 
@@ -37,17 +46,17 @@ A valid explicit request for an official Material artifact is sufficient to star
 Do not refuse or stop merely because:
 
 - the request is not a component;
-- no component migration is currently active;
-- the roadmap currently names another family;
+- no component migration is active;
+- the roadmap currently names another target;
 - the canonical directory does not exist yet;
 - the current implementation lives in a legacy directory;
 - no current production consumer exists;
-- only one current family consumes the behavior;
-- the request was made through `material-component` by mistake.
+- only one current consumer uses the behavior;
+- the request entered through a more specific Material entrypoint by mistake.
 
-When no current production consumer exists, implement the smallest coherent official contract requested by the user and prove it with foundation/style-owned tests and a bounded testing or Storybook fixture. Do not invent a fake product consumer.
+When no production consumer exists, implement the smallest coherent official contract requested and prove it with owner-local tests and a bounded testing or Storybook fixture. Do not invent a fake product consumer.
 
-A request may still be blocked only by one exact unresolved source, product, ownership, compatibility, safety, or verification decision that materially prevents a correct implementation.
+A request may be blocked only by one exact unresolved source, product, ownership, compatibility, safety, or verification decision that materially prevents a correct implementation.
 
 ## Workspace boundary
 
@@ -58,66 +67,60 @@ Use only:
 - official Material sources;
 - local project verification commands.
 
-Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history as implementation or Material evidence.
+Do not use source-control history or remote workflow state as implementation or Material evidence.
 
 ## Resolve the artifact kind
 
-Classify the request by official ownership, not by its current legacy path or by a repository class name.
+Classify by official Material ownership, not by the current legacy path, repository class name, or command used.
 
 ### Component
 
-Examples: Button, Switch, Card, Dialog, Navigation rail.
-
-Route to:
+Route an official component family to:
 
 ```text
-material-component <official component or family>
+material-component <official component family>
 ```
 
 Then execute `material-component-authoring`.
 
 ### Foundation
 
-Examples: State layer, ripple, focus indication, interaction states, accessibility, adaptive/layout foundations.
-
-Route to:
+Route an official foundation or interaction primitive to:
 
 ```text
 material-foundation <official foundation artifact or bounded correction>
 ```
 
-State layer, ripple, and focus indication are interaction-foundation work. Existing code under `src/shared/ui/State` is a legacy owner to inspect or migrate, not a reason to reject the request.
+A legacy owner outside `material/foundations` is an owner to inspect or migrate, not a reason to reject the request.
 
 ### Style
 
-Examples: color, elevation, icons, motion, shape, typography.
-
-Route to:
+Route an official visual system or token domain to:
 
 ```text
 material-foundation <official style artifact or bounded correction>
 ```
 
-The `material-foundation` workflow owns both `foundations/` and `styles/`.
+The foundation workflow owns both `foundations/` and `styles/` routing.
 
 ### Cross-layer request
 
-When a request necessarily changes a shared foundation/style and one or more component consumers:
+When a request necessarily changes a shared foundation/style and consumers:
 
 1. resolve one canonical shared owner;
 2. implement or correct that owner through `material-foundation`;
-3. update only affected component consumption and documentation;
+3. update only affected consumer routes and documentation;
 4. add representative proof across the actual blast radius;
-5. do not duplicate the shared behavior inside a component;
+5. do not duplicate shared behavior in a consumer;
 6. do not split the task merely to avoid completing the requested behavior.
 
 ## Scope rule
 
-The explicit user request and official contract determine the required surface.
+The explicit request and official contract determine the surface.
 
-Implement the smallest coherent complete contract for that request, including every state, semantic, accessibility, lifecycle, rendering, and verification dependency needed for it to work honestly.
+Implement the smallest coherent complete contract, including every applicable state, semantic, accessibility, lifecycle, rendering, ownership, and verification dependency required for honest operation.
 
-Do not broaden the request into a catalog, universal framework, speculative API, placeholder tree, or migration of unrelated domains.
+Do not broaden the request into a catalog, universal framework, speculative API, placeholder tree, or unrelated migration.
 
 Do not narrow the request to the first existing implementation fragment when the named official artifact owns a broader coherent contract.
 
@@ -127,23 +130,23 @@ Before production changes:
 
 1. resolve the official documentation domain and slug;
 2. record canonical source status;
-3. inspect the current owner, canonical owner, current consumers, tests, stories, and local documentation;
+3. inspect current owner, canonical owner, consumers, tests, fixtures/stories, and local documentation;
 4. distinguish generic browser/platform utilities from Material semantics;
-5. identify whether the work is new implementation, migration, correction, replacement, or source refresh;
+5. select new implementation, migration, correction, replacement, or source refresh;
 6. update the canonical owner README before implementation;
-7. preserve any explicit operator rejection or known defect.
+7. preserve explicit operator rejection and known defects.
 
 ## Execution
 
 Continue through the selected specialized workflow. Do not stop after classification, research, or a plan.
 
-The selected workflow must complete applicable:
+Complete applicable:
 
 - canonical documentation;
 - production implementation;
 - public/private contract;
 - legacy-owner migration or cleanup;
-- current consumer updates;
+- consumer updates;
 - proportional tests and bounded rendered evidence;
 - blast-radius verification;
 - local project verification;
@@ -176,4 +179,4 @@ Status: implementation finished | blocked (<exact reason>)
 Recommended review:
 ```
 
-`implementation finished` means the explicit request was implemented coherently and applicable local verification passed. It does not imply complete coverage of unrelated Material capability or operator visual acceptance.
+`implementation finished` means the explicit request was implemented coherently and applicable local verification passed. It does not imply coverage of unrelated Material capability or operator acceptance.
