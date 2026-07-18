@@ -1,10 +1,8 @@
 # Material 3 Expressive policies
 
-This directory contains durable policy for building `src/shared/ui/material` against current official Material 3 Expressive sources.
+This directory contains durable policy for building `src/shared/ui/material` against official Material 3 Expressive sources.
 
 ## Library model
-
-The production library mirrors the official Material documentation navigation:
 
 ```text
 src/shared/ui/material/
@@ -63,41 +61,124 @@ m3.material.io/components/buttons
 - Architecture documents own durable boundaries and workflow rules.
 - `library-roadmap.md` owns the active milestone and next action.
 - `ui-library-inventory.md` owns classification, priority, and queue state.
-- `source-of-truth.md` owns official source hierarchy.
-- The family `README.md` beside implementation owns current project implementation documentation and the complete official capability classification.
-- The family `AUDIT.md` beside implementation owns the latest independent two-stage review and independently verified official coverage.
-- Registries are program summaries and must not override more specific family documentation.
+- `source-of-truth.md` owns official source hierarchy and source-status rules.
+- The family `README.md` owns current project implementation documentation and classification.
+- The family `AUDIT.md` owns the latest independent two-stage review.
+- Registries are summaries and do not override family documentation.
+
+## Workflow evidence boundary
+
+Material component authoring and review use current workspace files, official Material sources, and local project verification.
+
+They do not run, inspect, or cite `git`, `gh`, GitHub, branches, commits, pull requests, diffs, blame, logs, tags, merge state, or repository history.
+
+## Source and inventory status
+
+Every family records:
+
+```text
+Canonical source status:
+  current-complete
+  snapshot-complete-stale
+  partial
+  conflicting
+  unavailable
+
+Official capability inventory:
+  complete
+  snapshot-complete (<snapshot>; currentness unverified)
+  incomplete (<exact gap>)
+  blocked (<exact reason>)
+
+Official coverage:
+  full
+  partial
+  unresolved
+```
+
+`complete` requires current-complete evidence. A stale snapshot may be snapshot-complete. Partial, truncated, suspicious, missing, or spot-check-only evidence cannot certify complete inventory.
+
+## Capability classification
+
+Each official item is exactly one of:
+
+- implemented and verified;
+- partial, defective, provisional, or unverified;
+- not implemented;
+- officially unsupported or an invalid combination;
+- unresolved because canonical evidence is incomplete or conflicting;
+- outside the resolved family boundary.
+
+`Not implemented` means a real official capability exists but is absent.
+
+Officially unsupported combinations are constraints, not missing capability, and do not reduce coverage.
+
+Optional or non-normative guidance is recorded as a choice, deviation, or follow-up. It does not reduce coverage unless required for the implemented surface.
 
 ## Family documentation
 
-Each implemented or actively migrated component family contains:
+Each implemented or actively migrated family contains:
 
 ```text
 src/shared/ui/material/components/<official-docs-slug>/README.md
 src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
 ```
 
-`README.md` records:
+README records:
 
-- official documentation mapping and inventory completeness;
-- official coverage: full, partial, or unresolved;
-- implemented surface;
-- every official capability not implemented, regardless of current consumer demand;
-- every partial, defective, provisional, ambiguous, or unverified capability;
-- known issues and required follow-up;
-- API, semantics, states, tokens, and property ownership;
-- foundation/style dependencies;
-- extensions and deviations;
-- consumers, verification, and review status.
+- official mapping and source status;
+- inventory status and coverage;
+- implemented capability;
+- partial, defective, provisional, ambiguous, or unverified capability;
+- every actual capability not implemented;
+- officially unsupported and invalid combinations;
+- unresolved and out-of-family items;
+- known issues and follow-up;
+- API, semantics, states, tokens, ownership, dependencies, extensions, consumers, verification, and review status.
 
-The implementing workflow updates `README.md` and never edits `AUDIT.md`.
+Authoring updates README and never edits AUDIT.
 
-`AUDIT.md` is created or replaced only by `material-component-review`. It independently reconstructs the complete official family inventory and performs two comparisons in order:
+AUDIT is created or replaced only by `material-component-review`. It:
 
-1. actual implementation against project documentation;
-2. project documentation and its capability inventory against canonical Material 3 Expressive.
+1. compares current implementation with current project documentation;
+2. compares project documentation with canonical Material evidence;
+3. independently records source status and classification;
+4. reports compliance, coverage, and visual status separately.
 
-The audit lists implemented, partial/unverified, not implemented, unresolved, and out-of-family capability independently of the README. This makes implementation defects, project-documentation defects, and incomplete official coverage visible separately. Project documentation is the intended Mioframe contract, but it is not treated as Material authority.
+## Motion and visual acceptance
+
+Verify a shared motion foundation deeply once.
+
+At component level, use proportional evidence:
+
+- real input activates the intended rendered property;
+- one meaningful intermediate state when needed;
+- correct endpoint;
+- safe interruption or cancellation;
+- consumption of the documented shared contract.
+
+Do not require frame-by-frame component analysis or duplicate equivalent input paths. Forced state proves appearance, not motion.
+
+A known operator-rejected visual behavior remains a confirmed open defect until production behavior changes and new evidence is accepted. Documentation, comments, or tests alone cannot close it.
+
+Visual status is:
+
+- `not required`;
+- `required`;
+- `rejected`;
+- `blocked`;
+- `accepted`.
+
+## Shared routes
+
+Root/system tokens, universal selectors, pseudo-elements, and shared formulas require:
+
+- current affected-family analysis;
+- the narrowest valid owner;
+- representative tests that actually exercise the route;
+- explicit current ownership and blast radius.
+
+Unchanged tests that never exercise the route are not proof.
 
 ## Entrypoints
 
@@ -107,7 +188,7 @@ The audit lists implemented, partial/unverified, not implemented, unresolved, an
 material-component <component-or-family-name>
 ```
 
-The workflow resolves the official documentation family, reconstructs its complete capability inventory, uses its official slug, updates the family README, implements the selected coherent surface, migrates consumers, records all absent and unfinished capability, and runs local verification.
+The workflow resolves the official family, records source status, classifies the inventory, updates README, implements one coherent surface, migrates consumers, adds proportional proof, and runs local verification.
 
 ### Review one family
 
@@ -115,7 +196,7 @@ The workflow resolves the official documentation family, reconstructs its comple
 material-component-review <component-or-family-name>
 ```
 
-The review changes only the colocated `AUDIT.md`, independently verifies complete official coverage, reports both comparison stages, and returns compliance plus `Official coverage: full | partial | unresolved`.
+The review changes only AUDIT, uses no source-control evidence, independently checks both comparison stages, and reports source status, inventory, compliance, coverage, and visual status.
 
 ### Continue the program
 
@@ -131,28 +212,20 @@ Selects and implements exactly one family.
 material-library-status
 ```
 
-Reads roadmap, inventory, registries, and colocated family documentation without changing files.
-
-## Operating loop
-
-```text
-discovery → complete official capability inventory → family README →
-required shared work → implementation → consumer migration → proportional proof →
-local verification → two-stage family audit with independent coverage inventory →
-operator visual review when required → queue update
-```
+Reads roadmap, inventory, registries, and family documentation without changing files.
 
 ## Required behavior
 
-- Implement the current applicable Material 3 Expressive contract for the selected implementation scope.
-- Use baseline Material only when no applicable Expressive contract exists or a documented deviation requires it.
-- Implement the minimum coherent surface needed by current consumers.
-- Classify every official family capability regardless of current consumer demand.
-- Record every absent official capability under `Not implemented`.
-- Record every partial, defective, provisional, ambiguous, or unverified capability as such.
-- Record every known defect, incomplete route, missing verification, and required follow-up.
+- Implement the current applicable Material 3 Expressive contract for the selected surface.
+- Use official documentation slugs for canonical ownership.
+- Keep implementation scope incremental and classification honest.
+- Separate real absent capability from invalid combinations and optional guidance.
+- Never certify complete inventory from partial, stale-only, truncated, suspicious, or spot-check-only evidence.
 - Never infer implementation from declarations, aliases, stories, or tests when the final route does not work.
-- Keep proof proportional and do not retest browser interpolation internals.
+- Require representative proof for shared routes.
+- Keep component motion proof proportional.
+- Preserve known operator rejection until corrected and accepted.
 - Remove obsolete ownership during migration.
 - Do not create placeholder structures, universal validators, fixed file profiles, or a second metadata database.
-- Do not describe a family as fully implemented unless the independent audit reports `Official coverage: full`.
+
+A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and accepted required visual review.
