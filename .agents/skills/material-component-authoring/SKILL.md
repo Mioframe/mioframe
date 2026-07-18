@@ -17,21 +17,23 @@ Use after the official family is resolved.
 - Never edit the family AUDIT.
 - Keep concrete family facts in the family README, implementation, tests, and stories; do not add them to shared skills.
 
-## Required policy
+## Policy loading
 
-Read and follow:
+Always read:
 
 - applicable repository and scoped `AGENTS.md` files;
 - `docs/material-3/source-of-truth.md`;
 - `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-tokens.md`;
-- `docs/material-3/component-testing.md`;
-- `docs/material-3/component-conversion-checklist.md`;
-- `docs/material-3/autonomous-review.md`;
 - current family README and AUDIT when present;
 - current implementation, exports, consumers, tests, stories, and directly affected shared owners.
 
-Those documents own detailed rules. Do not restate them in this skill or in task plans.
+Read only when applicable:
+
+- `component-tokens.md` for token, CSS custom-property, or rendered-property routing work;
+- `component-testing.md` for changed proof, browser behavior, motion, geometry, or visual evidence;
+- `autonomous-review.md` for operator status, evidence severity, or review-state changes.
+
+Use `component-conversion-checklist.md` once as the final completeness pass rather than loading and restating it throughout implementation.
 
 ## Workflow
 
@@ -82,7 +84,7 @@ For end-to-end migration:
 
 ### 6. Build proportional proof
 
-Use the testing layers required by `component-testing.md` for risks the component actually owns.
+Use only testing layers justified by risks the component actually owns.
 
 Every new or migrated visible component requires colocated component-contract tests and one stable canonical story. Add browser, pure, consumer, state-matrix, or visual-regression proof only when justified by the changed contract.
 
@@ -93,6 +95,7 @@ Tests must prove final behavior and real ownership, not declarations, aliases, s
 - Rebuild README classification from current evidence.
 - Confirm code, documentation, exports, consumers, tests, and stories agree.
 - Preserve unresolved source limits, structural gaps, proof gaps, and operator rejection.
+- Run the final component checklist once.
 - Run focused verification as needed and final applicable local verification.
 - Leave AUDIT unchanged.
 - Recommend `material-component-review <family>`.
