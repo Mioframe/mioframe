@@ -1,79 +1,63 @@
 ---
 name: test-first
-description: 'Use this skill when a task changes observable behavior, fixes a reproducible bug, changes migration logic, transforms data, changes storage semantics, or changes a user-facing UI flow, and the expected outcome can be reproduced by a focused test or smoke check.'
+description: 'Use when observable behavior, a reproducible defect, migration, persistence semantics, or a data transformation changes and one focused check can fail against the current implementation before the fix.'
 ---
 
 # Test-first workflow
 
-Use this skill to make behavior changes safer without turning every task into full TDD.
+Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
 
-## Do not use this skill
+## Activation
 
-Do not use this skill for refactors, type-only edits, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
+Use only when all conditions are true:
 
-Do not use this skill when the only way to proceed is to create a new test layer, broad speculative coverage, or fragile UI component unit tests.
+1. observable behavior, a public contract, persistence/migration semantics, a transformation, or a reproducible defect changes;
+2. `docs/testing/architecture.md` defines a faithful proof type for the expected result;
+3. an existing focused test target can be updated, or a new focused target can be created without broad infrastructure;
+4. the check can fail against the current implementation for the expected behavioral reason before production edits.
 
-## Activation check
+Skip for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, and appearance-only changes without a meaningful pre-implementation failure.
 
-Before production edits, decide whether all conditions are true:
-
-1. The task changes observable behavior, fixes a reproducible bug, changes migration logic, transforms data, changes storage semantics, or changes a user-facing UI flow.
-2. The expected outcome can be covered by an existing focused test target or reproducible browser smoke check.
-3. The focused check can be added quickly without expanding the task scope.
-
-If any condition is false, skip test-first and use the normal verification rules from `AGENTS.md`.
+Skipping test-first does not skip required proof from `TEST IMPACT`, repository impact-metadata maintenance, or final verification.
 
 ## Workflow
 
-1. Identify the smallest existing verification target that should own the changed behavior.
-2. Build a minimal acceptance matrix before writing the test. Include only states relevant to the task.
-3. Add or update one focused test or smoke check for the highest-risk matrix item before production edits.
-4. Run only that target and confirm it fails for the expected reason.
-5. If a focused failing check cannot be produced quickly, stop expanding coverage and state the risk in the final response.
-6. Implement the minimal production change.
-7. Rerun the same target and confirm it passes.
-8. Run the narrowest additional verification required by `AGENTS.md`.
-9. Run the final `pnpm verify` check required by `AGENTS.md` before reporting completion.
+1. Name the changed contract and proof type.
+2. Select the highest-risk applicable acceptance case.
+3. Add or update one focused test before production edits.
+4. Update required repository impact metadata when adding or moving a Playwright spec or persistent audit target.
+5. Run the owning verify-managed lane and confirm the expected failure.
+6. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
+7. Implement the minimum production change.
+8. Rerun the same target and confirm it passes.
+9. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
+10. Run final read-only `pnpm verify`.
 
-## Acceptance matrix guidance
+## Proof routing
 
-Include only states that are relevant to the task, but consider:
+- Deterministic domain/service/storage/CRDT/validation/migration/transformation behavior: `unit-testing`.
+- Vue public API and non-browser wiring: `component-contract-testing`.
+- Reusable UI focus/keyboard/pointer/touch/layout/scroll/overlay/responsive/browser behavior: `ui-browser-behavior` with Storybook.
+- Complete cross-boundary product scenario: `ui-browser-behavior` with app E2E.
+- Appearance: `visual-regression-testing`; normally not a red/green target.
 
-- unavailable or disabled integrations;
-- missing browser APIs or unsupported runtime;
-- async pending, cancellation, stale completion, and repeated toggles;
-- invalid, malformed, or hostile input;
-- cache invalidation after create, update, delete, or failed lookup;
-- data-safety-sensitive values in diagnostics, URLs, names, ids, and content;
-- accessibility structure and heading hierarchy for rendered UI.
-
-The first focused test should target the highest-risk applicable matrix item, not just the happy path.
-
-## Choosing the check
-
-- Use focused unit tests for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
-- Use Playwright/e2e or a reproducible browser smoke check for Vue component behavior that depends on real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, or Material state visuals.
-- Use component unit tests only for small render or wiring contracts that do not depend on browser layout or interaction semantics.
-
-## Targeted command patterns
-
-Use the repository verification entry point whenever it can express the target:
+## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <test-or-source-paths...>
-pnpm verify --only e2e --files <spec-paths...>
-pnpm verify --only storybook-behavior --files <spec-or-source-paths...>
+pnpm verify --only unit-tests --files <paths...>
+pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only e2e --files <paths...>
 ```
 
-A reproducible manual browser smoke check is acceptable when no focused automated target exists and adding one would broaden the task.
+Raw Vitest or Playwright commands are diagnostic exceptions, not completion gates.
 
-Do not invoke Vitest or Playwright directly as a verification substitute. Raw runner commands are allowed only for narrow diagnostics after a verify-managed check fails, or when the verify runner cannot express the required mode. Report them as diagnostic commands and return to verify-managed checks before completion.
+## Forbidden
 
-Keep targeted checks narrow. Do not replace the final `pnpm verify` requirement.
-
-## Limits
-
-- Do not create a new testing approach just to satisfy test-first.
-- Do not broaden coverage beyond the behavior changed by the task.
-- Do not keep a test that only documents implementation details instead of behavior.
-- Do not skip final verification when the task changes code.
+- Do not add a test merely because a production file changed.
+- Do not force a ceremonial red phase.
+- Do not use a less faithful proof type because it is easier.
+- Do not broaden coverage beyond the changed contract and confirmed risk.
+- Do not duplicate an existing owner at another proof type.
+- Do not create a framework, DSL, fixture system, registry, or helper for one case.
+- Do not stop after one passing red/green test when the accepted contract requires additional cases.
+- Do not treat a passing focused run as proof that automatic impact metadata is complete.

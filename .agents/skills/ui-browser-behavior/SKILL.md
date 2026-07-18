@@ -1,23 +1,17 @@
 ---
 name: ui-browser-behavior
-description: 'Use for UI changes involving real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, Material state acquisition, or mobile behavior. Prefer Playwright/e2e over Vue component tests for these behaviors.'
+description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch, layout, scrolling, overlays, responsive rendering, browser APIs, motion lifecycle, or mobile behavior. Choose Storybook behavior or app E2E by ownership.'
 ---
 
 # UI browser behavior workflow
 
-Use this skill only when correctness depends on browser behavior rather than pure state, static structure, or ordinary CSS wiring.
+Use this skill only when correctness depends on browser behavior rather than pure state, static structure, or ordinary CSS wiring. Follow `docs/testing/architecture.md`; browser proof uses Playwright and real public input and does not own deterministic logic, Vue-only contracts, or visual appearance.
 
-For public Material components, also follow `docs/material-3/component-testing.md`.
+For new or migrated public Material components, also follow `docs/material-3/component-testing.md`.
 
-## Do not use this skill
+## Activation
 
-Do not use it for pure helpers, schemas, services, storage logic, validation, normalization, static component contracts, token mapping, selector review, or visual appearance alone.
-
-Do not add Playwright merely to prove that the browser interpolates a correctly configured CSS transition or renders ordinary static CSS.
-
-## Activation check
-
-Use this workflow when the change owns or constrains:
+Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, Material state acquisition/release, motion completion, or reduced motion. This includes when the change owns or constrains:
 
 - real layout, measurement, scrolling, sticky/fixed, or viewport behavior;
 - focus, focus-visible, keyboard navigation, or accessibility interaction;
@@ -31,38 +25,54 @@ Use this workflow when the change owns or constrains:
 
 A component with none of these may record `Browser behavior: not applicable` with an ownership-based reason.
 
+Do not use it for pure helpers, schemas, services, storage logic, validation, normalization, static component contracts, token mapping, selector review, or visual appearance alone.
+
+Do not add Playwright merely to prove that the browser interpolates a correctly configured CSS transition or renders ordinary static CSS.
+
+## Choose the execution lane
+
+Use `storybook-behavior` when the behavior belongs to reusable UI or foundation and can be exercised with deterministic fixture data without product routing, persistence, services, or feature orchestration. Isolated Storybook behavior specs cover component-owned browser interaction; pointer, touch, scrolling, focus acquisition, and overlay lifecycle assertions belong in `tests/e2e/storybook`, not visual specs.
+
+Use `e2e` when the complete user scenario is the contract or behavior crosses page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries.
+
+Do not route reusable component behavior into app E2E merely because the component has product consumers.
+
+Use a reproducible smoke check only when no suitable spec exists and adding one would be disproportionate.
+
 ## Workflow
 
-1. Identify the observable behavior and its owner.
-2. Confirm that a unit, component-contract, or visual test cannot prove it more directly.
-3. Use public component surfaces and real browser actions.
-4. Assert the observable outcome, not framework internals.
-5. Extract pure state transitions or lifecycle logic when that reduces browser-test scope.
-6. Run the narrowest applicable Storybook or application Playwright check.
-7. Follow final repository verification from `AGENTS.md`.
+1. Name the browser-owned contract and owning lane.
+2. Inspect native owners, rendered hierarchy, focus order, scroll ownership, teleport boundaries, and responsive composition that matter.
+3. Establish deterministic initial state without performing the action under test.
+4. Extract pure state transitions or lifecycle logic when that reduces browser-test scope.
+5. Drive public controls through real keyboard, pointer, touch, drag, scroll, or browser input.
+6. Wait for observable readiness and outcomes.
+7. Assert user-visible state, focus, URL, persisted result, or another accepted contract.
+8. Add or update the owning source-to-spec mapping when the stable repository impact relation changes.
+9. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
+10. Run the focused lane, then final verification.
 
-## Material component behavior
+## Interaction fidelity
 
-Browser checks may cover applicable:
+- Drive the same public surface and input mechanism available to users; prefer role, accessible name, and label locators.
+- Do not invoke private APIs, component methods, internal handlers, or synthetic internal events to complete the behavior.
+- Lower-level setup may create a valid initial state only outside the behavior under test.
+- Wait for observable readiness and outcomes, not Vue callbacks, DOM identity, arbitrary sleeps, or assumed animation durations.
+- Treat detachment, lost ordinary input, or unexplained scrolling as possible product defects before changing the test.
+- Do not use `force`, broad retries, inflated timeouts, or recovery loops that may repeat an already-delivered action.
+- Assert user-visible outcomes rather than render counts or DOM identity unless explicitly contractual.
+- Test only materially different input paths.
 
-- keyboard activation or navigation;
-- focus entry, movement, visibility, and restoration;
-- pointer/touch acquisition, drag, gesture, and cancellation;
-- expanded target-area hit testing;
-- overlay containment, outside interaction, escape/back, and lifecycle;
-- responsive or container-dependent behavior;
-- JavaScript/WAAPI motion completion and reduced-motion behavior;
-- final computed token/property propagation when source inspection cannot resolve it.
+## Accessibility
 
-For ordinary CSS motion:
+This proof owns real focus order, keyboard operation, focus restoration, pointer target actionability, overlay containment, and other browser-observable accessibility behavior. Automated accessibility scans are supplemental only.
 
-- verify official motion ownership and component/foundation wiring in source and contract tests;
-- do not sample frames, measure browser interpolation, or duplicate equivalent input paths;
-- use a browser check only when state acquisition, final computed routing, or a reported runtime defect requires it.
+## Storybook rules
 
-Forced visual states prove appearance only. They do not prove acquisition, cancellation, or cleanup.
-
-The canonical visual story may be a `StateMatrix` when multiple visual routes exist or a bounded ordinary story when one route is sufficient.
+- Fixtures contain only rendering dependencies.
+- Keep product bootstrap, storage, navigation, network, and diagnostics outside isolated stories.
+- Specs contain no screenshots.
+- Forced visual state never proves acquisition, transition, cancellation, cleanup, or actionability.
 
 ## Browser capability prompts
 
@@ -85,29 +95,44 @@ For panes, docs, settings, dialogs, and app bars, verify applicable:
 - typography and spacing reuse accepted tokens/components;
 - new Vue components render one stable root element and parents own conditional rendering.
 
-## Test placement
+## Impact metadata
 
-Use isolated Storybook behavior specs for component-owned browser interaction. Pointer, touch, scrolling, focus acquisition, and overlay lifecycle assertions belong in `tests/e2e/storybook`, not visual specs.
+For the owning Playwright lane:
 
-Use application E2E only when product composition is part of the contract.
+- map production, story, fixture, or owned support sources to specs;
+- do not use spec paths as source prefixes to group tests;
+- a changed spec selects itself;
+- use standalone only when no truthful stable source mapping exists;
+- shared config/helpers require full-lane fallback unless all consumers are explicit and validated;
+- new, moved, renamed, or removed specs update the registry in the same change.
 
-Use a reproducible smoke check only when no suitable spec exists and adding one would be disproportionate.
+## Mobile and responsive execution
 
-## Interaction fidelity
+Source impact chooses scenarios; project applicability belongs to persistent test metadata.
 
-- Drive the same public surface and input mechanism available to users.
-- Prefer semantic locators by role and accessible name.
-- Do not call private methods, mutate Vue state, invoke app internals, or dispatch synthetic internal events to complete the behavior.
-- Wait for observable readiness and outcomes.
-- Do not synchronize against framework internals or arbitrary sleeps.
-- Do not hide instability with `force`, broad retries, or inflated timeouts.
-- Assert user-visible outcomes rather than render counts or DOM identity unless explicitly contractual.
-- Test only materially different input paths.
+Current selected app E2E scenarios continue to use the existing desktop/mobile project matrix until every scenario is audited and a separate migration proves that narrower execution preserves mobile-risk coverage.
 
-## Limits
+Do not introduce a generic criticality tag as a substitute for real touch, viewport, responsive composition, overlay, capability, lifecycle, or platform differences.
 
-- Do not introduce broad E2E coverage when a focused check is enough.
-- Do not duplicate appearance assertions owned by the canonical visual story.
-- Do not move composition boundaries without reviewing DOM parentage, focus, scroll, teleport, and overlay ownership.
-- Do not require browser tests for behavior owned entirely by native HTML and unchanged by the component.
-- New or migrated Material components still require their colocated component-contract test.
+Reusable responsive UI normally uses focused Storybook viewports rather than duplicating complete product scenarios.
+
+## Commands
+
+```bash
+pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only e2e --files <paths...>
+```
+
+## Forbidden
+
+- deterministic logic, schemas, migrations, service/storage/CRDT transformations;
+- component unit or visual tests as substitutes for browser proof;
+- broad app E2E when Storybook owns reusable behavior or a focused check is enough;
+- duplicating appearance assertions owned by the canonical visual story;
+- screenshots in behavior specs;
+- architectural boundary violations to simplify setup, including moving composition boundaries without reviewing DOM parentage, focus, scroll, teleport, and overlay ownership;
+- browser tests for behavior owned entirely by native HTML and unchanged by the component;
+- source mappings overloaded with spec grouping;
+- reducing desktop/mobile coverage without the dedicated audited migration.
+
+New or migrated Material components still require their colocated component-contract test.

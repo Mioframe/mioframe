@@ -8,17 +8,18 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Read the root and applicable nested `AGENTS.md` files before editing. Use the relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
-- For automatic Material migration, read `docs/material-3/library-roadmap.md`, follow its active milestone and single `Next action`, and update it when milestone status, blockers, dependencies, or next action change.
+- `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
+- For Material library, foundation, component, migration, or validation work, read `docs/material-3/library-roadmap.md`, align with its active milestone and single `Next action`, and update it in the same PR when milestone status, blockers, dependencies, or next action change.
 - An explicit user-selected Material artifact or correction overrides automatic queue order for that task. The agent must execute the requested official component, foundation, or style through the universal `material` routing workflow instead of refusing because the roadmap names another target.
-- Official Material artifacts target the current canonical Material 3 Expressive contract. Follow `docs/material-3/source-of-truth.md` and applicable review policy: the coding agent closes every objective source, architecture, accessibility, behavior, geometry, ownership, and migration gate; the operator performs only final perceived visual comparison when required.
+- Official Material components target the current canonical Material 3 Expressive contract. Follow `docs/material-3/source-of-truth.md` and `docs/material-3/autonomous-review.md`: the coding agent must close every non-visual evidence gate, while the operator normally performs only prepared screenshot comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
 - When a PR adds, removes, consolidates, reclassifies, reprioritizes, or changes the public owner of a shared UI artifact, update the affected row in `docs/material-3/ui-library-inventory.md` in the same PR. Project-specific and generic UI are valid retained outcomes and must not be forced into the Material library.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
 
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, use `architect-handoff` unless an applicable repository skill or policy defines a deterministic standard-authoring path that resolves every required decision from authoritative sources.
-- Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or `not ready`, or while a deterministic standard-authoring preflight remains unresolved or `blocked`.
-- Prefer the minimum complete design for confirmed requirements. Every added abstraction, state, layer, compatibility path, recovery mechanism, guarantee, or optimization must map to an explicit user request, current requirement, existing consumer, repository invariant, platform constraint, or measured need.
+- Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or `not ready`, while a deterministic standard-authoring preflight remains unresolved or `blocked`, or while task-specific `TEST IMPACT` is unresolved.
+- Prefer the minimum complete design for confirmed requirements. Every added abstraction, state, layer, compatibility path, recovery mechanism, guarantee, optimization, test registry, impact mapping, or helper must map to a current requirement, existing consumer, repository invariant, platform constraint, or measured need.
 - Compare the proposed design with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
 - Treat the ready handoff or repository-backed standard-authoring blueprint as the contract for implementation, PR description, and review. If new facts invalidate it, stop and update it explicitly.
 - Preserve existing user scenarios unless the task explicitly changes them. Reachability alone is not preservation when discoverability, interaction tier, steps, or context regress.
@@ -60,14 +61,15 @@ Use the applicable skill instead of duplicating its rules in the task:
 - `material-foundation`: implement, migrate, align, or correct Material foundations and styles, including State Layer, ripple, focus, reference/system tokens, theme, units, typography, shape, elevation, motion, icons, accessibility, and adaptive/layout contracts; an explicit request is sufficient and does not require pre-existing consumers;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
-- `test-first`: reproducible behavior changes, bug fixes, migrations, storage semantics, and transformations;
-- `component-contract-testing`: small Vue render/props/emits/slots/wiring contracts;
-- `ui-browser-behavior`: layout, focus, keyboard, pointer/touch, scrolling, overlays, browser APIs, and mobile behavior;
-- `visual-regression-testing`: appearance and screenshot coverage;
-- `mutation-testing`: high-risk pure/domain/service logic when applicable;
+- `test-first`: one meaningful red/green check for changed observable behavior when applicable;
+- `unit-testing`: deterministic pure/domain/service/storage/CRDT and module-boundary proof in the `unit-tests` lane;
+- `component-contract-testing`: Vue public API, native semantics, ARIA ownership, and non-browser wiring in the `unit-tests` lane;
+- `ui-browser-behavior`: real browser proof in isolated Storybook or complete app E2E according to ownership;
+- `visual-regression-testing`: canonical visual stories, bounded screenshots, baseline updates, and operator visual handoff;
+- `mutation-testing`: narrow audits and persistent ownership for high-risk deterministic logic;
 - `crdt-storage`: Automerge, VFS, storage, repository lifecycle, and managed resources;
 - `diagnostic-events`: Sentry-backed diagnostics, privacy, and error reporting;
-- `verification`: focused checks, failure handling, and final task/verify reporting.
+- `verification`: inspect and execute automatic verify planning, use focused overrides, handle failures, and report final task/verify status.
 
 ## Implementation quality
 
@@ -79,6 +81,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Keep validation, parsing, and extraction close to the boundary that defines them. Use typed collection helpers for typed records instead of local assertions that paper over `Object.keys`, `Object.values`, or `Object.entries` typing.
 - Every DOM node must own a necessary semantic, accessibility, layout, interaction, rendering, clipping/stacking, or platform-integration responsibility. Do not add wrappers or helper elements only for styling convenience, selectors, state hooks, testing, or possible future use when an existing element, component root, fragment, CSS layout, or pseudo-element can correctly own the behavior.
 - When an extra DOM node is necessary, keep its responsibility explicit and verify that it does not alter semantics, accessibility, layout, interaction geometry, clipping, stacking, or consumer styling unintentionally.
+- Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when one change affects multiple contracts, the lowest faithful proof, proportional coverage, and repository-backed automatic impact metadata.
 - Keep unit tests and their helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels; create shared test utilities only after unrelated modules need the same helper.
 - Test files may be larger when scenarios remain uniform. Split them by behavior when setup becomes conditional, fixtures stop being local, or failures no longer identify one behavior.
 - `!important` is forbidden. Shared UI changes require consumer and blast-radius review.
@@ -96,13 +99,19 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 ## Mandatory verification
 
-- Use the `verification` skill for targeted checks, fix mode, failure interpretation, and the final report.
-- Use `pnpm verify --fix` only when safe automatic formatting or lint fixes are useful.
-- Before reporting completion after edits, run the final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
-- Use `pnpm verify --only <label> --files ...` for focused feedback when supported. Do not substitute raw underlying test, lint, visual, mutation, or e2e commands for verify-managed checks.
-- A minimum check named in a nested `AGENTS.md` describes required coverage, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
+- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` before non-trivial edits and `verification` to inspect and execute repository verification.
+- `TEST IMPACT` is a reviewable design record; `verify` never parses it. Automatic scope comes from status-aware Git diff, tests/imports, snapshots, and persistent repository impact metadata.
+- Inferred verify scope is an optimization. A skipped or empty lane is not proof that it is unnecessary. Unknown relevant impact must use full owning-lane fallback.
+- A new, moved, renamed, or removed Playwright spec must update its owning mapping or justified standalone entry in the same change. Source mappings contain production, story, fixture, or owned support paths; do not put spec paths in source prefixes to group tests.
+- Release-only contracts must have repository-owned impact mapping to build, artifact, or release-smoke proof. Until the focused release resolver is implemented, explicitly run `pnpm verify:release` for changes to build/release config, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies.
+- Use `pnpm verify --fix` only when safe automatic formatting, lint fixes, or instruction compatibility generation are useful.
+- Before reporting completion after edits, run final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
+- Use `pnpm verify --only <label> --files ...` for focused feedback when supported. `--files` is not status-aware deletion/rename planning. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks.
+- Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, final `pnpm verify` may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
+- Preserve the current app E2E desktop/mobile matrix until a dedicated audited migration demonstrates safe project filtering.
+- A minimum check named in a nested `AGENTS.md` describes required proof, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
 - Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active.
-- If final verification fails or required verification is missing, do not claim the task is complete. Report the exact failure and remaining work.
+- If final verification fails, repository impact metadata is invalid, or required proof is missing, do not claim the task is complete. Report the exact failure and remaining work.
 
 Final response after edits must include:
 
@@ -122,7 +131,7 @@ reason if not run:
 - `develop` is the active development branch; `main` is the stable public branch.
 - Every PR into `develop` or `main` must increase `package.json` version, except the documented pre-tag repair and `main` to `develop` release-sync cases.
 - `develop`/`main` synchronization PRs use merge commits, never squash or rebase.
-- `pnpm verify` is the focused development gate. `pnpm verify:release` is the full release gate required for `main`.
+- `pnpm verify` is the focused development gate. Its target architecture includes automatic focused release proof for release-relevant changes. `pnpm verify:release` remains the unconditional full release gate required for `main`.
 - Follow `docs/release.md` and `docs/release-checklist.md` for the complete release policy.
 
 ## Agent environment compatibility

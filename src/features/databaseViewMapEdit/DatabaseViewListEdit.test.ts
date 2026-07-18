@@ -15,16 +15,6 @@ vi.mock('@entity/databaseView', () => ({
   }),
 }));
 
-vi.mock('@shared/lib/sortable', () => ({
-  useReorderSurface: () => ({
-    activeProfile: ref({ input: 'mouse' }),
-    displayItemIdList: ref([FAKE_VIEW_ID]),
-    draggedId: ref(undefined),
-    isDragging: ref(false),
-  }),
-  vReorderItem: { mounted() {}, updated() {}, unmounted() {} },
-}));
-
 const mountEdit = (
   slots: Record<string, () => unknown> = {},
   props: Record<string, unknown> = {},

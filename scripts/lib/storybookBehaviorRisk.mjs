@@ -19,9 +19,8 @@ export const STORYBOOK_BEHAVIOR_STANDALONE_SPECS = [];
 
 /**
  * Explicit registry mapping source paths to the Storybook behavior specs
- * that exercise them. This infrastructure PR only registers the smoke spec;
- * later PRs add real scenario mappings (for example reorder behavior)
- * without changing this resolver's shape.
+ * that exercise them. Later PRs add further scenario mappings without
+ * changing this resolver's shape.
  */
 export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   {
@@ -31,22 +30,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/ui/Button/MDButton.vue',
     ],
     specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
-  },
-  {
-    name: 'reorder',
-    // Includes both reorder behavior spec paths themselves (in addition to the library source
-    // prefix): a `startsWith` match on a spec's own path means changing either spec also selects
-    // both, not just the one that changed, since general and autoscroll behavior share the same
-    // library surface.
-    sourcePrefixes: [
-      'src/shared/lib/reorder/',
-      'tests/e2e/storybook/reorder.spec.ts',
-      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
-    ],
-    specs: [
-      'tests/e2e/storybook/reorder.spec.ts',
-      'tests/e2e/storybook/reorder.autoscroll.spec.ts',
-    ],
   },
   {
     name: 'shared overlay outside-interaction lifecycle',
@@ -59,6 +42,51 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/ui/Overlay/stories/OverlayLifecycleRegressionStory.vue',
     ],
     specs: ['tests/e2e/storybook/overlayLifecycle.spec.ts'],
+  },
+  {
+    name: 'reorder self-scrollable container autoscroll',
+    sourcePrefixes: [
+      'src/shared/lib/reorder/ReorderAutoScroller.ts',
+      'src/shared/lib/reorder/getReorderContainer.ts',
+      'src/shared/lib/reorder/getReorderScrollCandidates.ts',
+      'src/shared/lib/reorder/reorderAutoscrollEnvironment.ts',
+      'src/shared/lib/reorder/reorderAutoscrollGeometry.ts',
+      'src/shared/lib/reorder/reorderConfig.ts',
+      'src/shared/lib/reorder/ReorderSurface.vue',
+      'src/shared/lib/reorder/useReorderItem.ts',
+      'src/shared/lib/reorder/ReorderActivation.stories.ts',
+      'src/shared/lib/reorder/ReorderActivationStoryHarness.vue',
+      'src/shared/lib/reorder/ReorderSelfScrollable.stories.ts',
+      'src/shared/lib/reorder/ReorderSelfScrollableStoryHarness.vue',
+      'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',
+      'src/shared/lib/reorder/ReorderDocumentViewport.stories.ts',
+      'src/shared/lib/reorder/ReorderDocumentViewportStoryHarness.vue',
+      'src/shared/lib/reorder/ReorderFixedBoundary.stories.ts',
+      'src/shared/lib/reorder/ReorderFixedBoundaryStoryHarness.vue',
+    ],
+    specs: [
+      'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
+      'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
+      'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
+    ],
+  },
+  {
+    name: 'reorder generic layout support',
+    sourcePrefixes: [
+      'src/shared/lib/reorder/ReorderSurface.vue',
+      'src/shared/lib/reorder/useReorderItem.ts',
+      'src/shared/lib/reorder/reorderConfig.ts',
+      'src/shared/lib/reorder/reorderArray.ts',
+      // getReorderContainer.ts also owns RestrictToElement's direct-parent drag bounds (see
+      // reorderConfig.ts's REORDER_MODIFIERS), not just autoscroll container resolution, so a
+      // change here must select this bounds spec in addition to the autoscroll-container scope
+      // below.
+      'src/shared/lib/reorder/getReorderContainer.ts',
+      'src/shared/lib/reorder/ReorderWrap.stories.ts',
+      'src/shared/lib/reorder/ReorderWrapStoryHarness.vue',
+      'src/shared/lib/reorder/ReorderWrapStoryItem.vue',
+    ],
+    specs: ['tests/e2e/storybook/reorderWrapLayout.spec.ts'],
   },
   {
     name: 'button family behavior',
@@ -77,6 +105,15 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'tests/e2e/storybook/md-button-family.spec.ts',
     ],
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
+  },
+  {
+    name: 'bottom sheet keyboard focus wrap visibility',
+    sourcePrefixes: [
+      'src/shared/ui/Sheets/MDBottomSheetContainer2.vue',
+      'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScroll.stories.ts',
+      'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScrollStoryHarness.vue',
+    ],
+    specs: ['tests/e2e/storybook/mdBottomSheetContainerKeyboardScroll.spec.ts'],
   },
 ];
 
