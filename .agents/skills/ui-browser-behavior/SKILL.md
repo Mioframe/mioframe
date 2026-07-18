@@ -1,11 +1,11 @@
 ---
 name: ui-browser-behavior
-description: 'Use for UI behavior that requires real focus, keyboard, pointer/touch, layout, scrolling, overlays, responsive rendering, browser APIs, motion lifecycle, or mobile behavior. Choose Storybook behavior or app E2E by ownership.'
+description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch, layout, scrolling, overlays, responsive rendering, browser APIs, motion lifecycle, or mobile behavior. Choose Storybook behavior or app E2E by ownership.'
 ---
 
 # UI browser behavior workflow
 
-Follow `docs/testing/architecture.md`. Browser proof uses Playwright and real public input. It does not own pure logic, Vue-only contracts, or visual appearance.
+Follow `docs/testing/architecture.md`. Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, or visual appearance.
 
 For new or migrated public Material components, also follow `docs/material-3/component-testing.md`.
 
@@ -29,8 +29,9 @@ Do not route reusable component behavior into app E2E merely because the compone
 4. Drive public controls through real keyboard, pointer, touch, drag, scroll, or browser input.
 5. Wait for observable readiness and outcomes.
 6. Assert user-visible state, focus, URL, persisted result, or another accepted contract.
-7. Apply `@mobile` or `@critical` only when required by `TEST IMPACT`.
-8. Run the focused lane, then final verification.
+7. Add or update the owning source-to-spec mapping when the stable repository impact relation changes.
+8. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
+9. Run the focused lane, then final verification.
 
 ## Interaction fidelity
 
@@ -52,11 +53,26 @@ This proof owns real focus order, keyboard operation, focus restoration, pointer
 - Specs contain no screenshots.
 - Forced visual state never proves acquisition, transition, cancellation, cleanup, or actionability.
 
+## Impact metadata
+
+For the owning Playwright lane:
+
+- map production, story, fixture, or owned support sources to specs;
+- do not use spec paths as source prefixes to group tests;
+- a changed spec selects itself;
+- use standalone only when no truthful stable source mapping exists;
+- shared config/helpers require full-lane fallback unless all consumers are explicit and validated;
+- new, moved, renamed, or removed specs update the registry in the same change.
+
 ## Mobile and responsive execution
 
-The canonical app project runs all selected product scenarios. Tag a scenario `@mobile` only for touch, viewport, responsive composition, overlay, mobile capability, or mobile lifecycle risk. Tag only the small essential cross-platform smoke set `@critical`.
+Source impact chooses scenarios; project applicability belongs to persistent test metadata.
 
-Reusable responsive UI normally uses focused Storybook viewports rather than duplicated product E2E.
+Current selected app E2E scenarios continue to use the existing desktop/mobile project matrix until every scenario is audited and a separate migration proves that narrower execution preserves mobile-risk coverage.
+
+Do not introduce a generic criticality tag as a substitute for real touch, viewport, responsive composition, overlay, capability, lifecycle, or platform differences.
+
+Reusable responsive UI normally uses focused Storybook viewports rather than duplicating complete product scenarios.
 
 ## Commands
 
@@ -67,9 +83,10 @@ pnpm verify --only e2e --files <paths...>
 
 ## Forbidden
 
-- pure logic, schemas, migrations, service/storage/CRDT transformations;
+- deterministic logic, schemas, migrations, service/storage/CRDT transformations;
 - component unit or visual tests as substitutes for browser proof;
-- broad app E2E when Storybook owns the reusable behavior;
+- broad app E2E when Storybook owns reusable behavior;
 - screenshots in behavior specs;
 - architectural boundary violations to simplify setup;
-- desktop/mobile duplication without `@mobile` or `@critical` justification.
+- source mappings overloaded with spec grouping;
+- reducing desktop/mobile coverage without the dedicated audited migration.
