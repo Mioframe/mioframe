@@ -1,13 +1,15 @@
 ---
 name: verification
-description: 'Use to execute verify-managed checks and task-specific measurements after TEST IMPACT is resolved, use fix mode safely, interpret failures and warnings, avoid duplicate expensive runs, and report final TASK RESULT and VERIFY RESULT.'
+description: 'Use to run verify-managed checks, inspect the automatic impact plan, use focused overrides and fix mode safely, interpret failures, avoid duplicate expensive runs, and report final TASK RESULT and VERIFY RESULT.'
 ---
 
 # Verification workflow
 
-Follow `docs/testing/architecture.md`. `TEST IMPACT` chooses required proof, exact paths, and task-specific measurements. This skill executes that decision through repository commands.
+Follow `docs/testing/architecture.md`.
 
-A skipped or empty inferred lane is never evidence that the proof type is unnecessary.
+The agent designs appropriate proof and maintains repository impact metadata. `verify` independently plans automatic checks from Git diff and repository-backed facts. It never reads `TEST IMPACT`.
+
+A skipped or empty automatic lane is not evidence that the proof type is unnecessary. When the repository metadata is incomplete, fix the metadata or use an explicit focused override while preserving safe fallback.
 
 ## Focused execution
 
@@ -25,55 +27,73 @@ pnpm verify --only visual --files <paths...>
 pnpm verify --only mutation --files <paths...>
 ```
 
-Run every focused lane and exact path required by `TEST IMPACT`, even when default inference would skip it. Focused checks do not replace final verification.
+Use focused runs for development feedback and explicit existing targets. `--files` does not represent deleted files or both sides of a rename; status-aware automatic planning must use Git diff/base-ref modes.
 
 Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or Stryker commands are diagnostic exceptions only. Return to verify-managed checks before completion.
 
 ## Automatic scope
 
-The verifier may use:
+The target automatic planner is defined only by repository facts:
 
-- direct changed unit tests, owning tests for changed Vitest snapshots, and Vitest related-test selection;
-- lane-specific fail-closed impact mappings and justified standalone entries for Storybook behavior, app E2E, and visual specs;
-- owning visual specs for changed Playwright baselines;
-- Playwright tags/project filtering for `@mobile` and `@critical` scenarios;
-- full owning-lane fallback for unresolved snapshots, shared config/helpers, deleted unit dependencies, dynamic-import boundaries, or unknown impact.
+- status-aware added, modified, deleted, and renamed paths;
+- directly changed tests/specs;
+- snapshot ownership;
+- Vitest static-import related selection and safe full-unit fallbacks;
+- independent Storybook behavior, app E2E, and visual impact registries;
+- full-lane paths, relevant source domains, mappings, standalone specs, and validation;
+- persistent project applicability metadata when its audited migration is complete;
+- persistent mutation targets;
+- persistent performance checks for durable budgets.
 
-These mechanisms optimize execution. The agent remains responsible for `TEST IMPACT` and for updating stable Playwright mappings or justified standalone entries in the same change.
+Each lane resolves to `skip`, `focused`, `full`, or blocking `invalid` with inspectable reasons. Unknown relevant impact selects the full owning lane.
+
+Until `docs/testing/migration-plan.md` is complete, the current verifier may still use sibling unit selection, broad visual/E2E fallback, duplicate desktop/mobile execution, and legacy mutation inference. Do not describe target behavior as already implemented.
+
+## Repository impact metadata
+
+When adding, moving, renaming, or removing a Playwright spec:
+
+- update its owning lane registry in the same change;
+- map production, story, fixture, or owned support sources only;
+- do not put spec paths in source prefixes to group tests;
+- use standalone only when no truthful stable source mapping exists;
+- keep shared config/helpers on full-lane fallback unless the complete consumer set is explicit and validated.
+
+A broken registry must fail verification before tests run.
 
 ## Mutation
 
-A dedicated mutation audit applies only after `mutation-testing` activation passes:
+A task-specific focused mutation audit may be run after focused deterministic tests pass:
 
 ```bash
 pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 ```
 
-Do not invoke it because a file has a sibling test. Mutation score is not a general completion target.
+The durable target is automatic selection from persistent registered high-risk source/test pairs. Do not infer semantic applicability merely from sibling files, and do not make automatic selection depend on agent prose.
 
-Until `docs/testing/migration-plan.md` is complete, final `pnpm verify` or CI may still execute broader legacy mutation selection. Do not skip the mandatory final gate because of that temporary behavior, and do not treat an incidental legacy run as evidence that mutation applied to the task.
+Until the persistent registry replaces legacy inference, final `pnpm verify` may still execute broader mutation scope. Do not skip the mandatory final gate or present that incidental run as a deliberate task-specific audit.
 
 ## Browser, visual, and project selection
 
-Run the exact Storybook behavior, app E2E, and visual specs from `TEST IMPACT`.
+Run exact Storybook behavior, app E2E, and visual specs needed for focused feedback when automatic inference has not yet been migrated or metadata is being corrected.
 
-Tag app E2E scenarios `@mobile` only for real touch, viewport, responsive composition, overlay, mobile capability, or lifecycle risk. Tag only the small essential cross-platform smoke set `@critical`.
+Current app E2E desktop/mobile coverage remains authoritative until a dedicated audit and migration changes project applicability. Do not narrow the project matrix in an ordinary product task.
 
-For intentional visual changes, inspect baseline diffs and run the owning visual specs. If a baseline cannot be resolved to its owning spec through the configured snapshot convention, run the full visual lane.
+For intentional visual changes, inspect baseline diffs and run the owning visual specs. If baseline ownership is unresolved, use the full visual lane.
 
-If no faithful test target exists and adding one would broaden the task, report the gap. Do not substitute a less faithful test type.
+If no faithful test target exists, report the proof gap and resolve it within scope when the changed contract requires it. Do not substitute a less faithful proof type.
 
 ## Performance evidence
 
-When `TEST IMPACT` names a performance, memory, startup, main-thread, or bundle-size requirement:
+For a one-off performance, memory, startup, main-thread, or bundle-size claim:
 
-1. run the existing benchmark, build check, or reproducible measurement named in preflight;
-2. use the recorded representative scenario or dataset and environment;
-3. report the metric, budget or baseline, measured result, and comparison;
-4. rerun after implementation when a before/after comparison is required;
-5. treat the measurement as task-specific evidence when no verify-managed label exists, and still run final `pnpm verify`.
+1. run the reproducible measurement named in preflight;
+2. use the recorded representative scenario/dataset and environment;
+3. report the baseline or budget and measured result;
+4. rerun after implementation when comparison is required;
+5. still run final `pnpm verify`.
 
-Do not claim an optimization or performance-preserving change without the required measurement. Do not create permanent benchmark infrastructure for one task.
+A durable product budget belongs in a repository-owned automated check with impact metadata. Do not create permanent benchmark infrastructure for one task.
 
 ## Fix mode
 
@@ -96,10 +116,10 @@ pnpm verify
 Release verification:
 
 ```bash
-pnpm verify --full
+pnpm verify:release
 ```
 
-A broad green run does not replace missing focused proof, performance evidence, architecture review, operator visual acceptance, PR review, or merge readiness.
+A broad green run does not replace missing proof, stale impact metadata, performance evidence, architecture review, operator visual acceptance, PR review, or merge readiness.
 
 ## Mode-specific changes
 
@@ -107,8 +127,9 @@ When tooling, scripts, CI, Storybook, Playwright, build config, package scripts,
 
 Examples:
 
-- verify runner: default and affected `--only`, `--fix`, `--verbose`, resume, or full modes;
-- resolver: focused resolver tests plus representative command planning;
+- verify runner: default and affected `--only`, `--files`, `--fix`, `--verbose`, base-ref, resume, or full modes;
+- changed-path planner: local, base-ref, GitHub Actions, deletion, and rename;
+- resolver: table-driven resolver tests plus representative command planning;
 - Playwright config: every affected project/lane;
 - Storybook harness: affected build, behavior, and visual mode;
 - package/build config: affected type-check, build, artifact, or release mode.
@@ -119,17 +140,17 @@ Final `pnpm verify` does not replace a mode or measurement it does not exercise.
 
 Local coding agents own repository files and local commands, not GitHub CI, PR metadata, review threads, or merge decisions.
 
-Unless the task targets verification infrastructure, treat container/browser runtime internals as an opaque project boundary. Report the failing verify step rather than bypassing repository commands or reconfiguring Podman/Docker/runtime internals.
+Unless the task targets verification infrastructure, treat container/browser runtime internals as an opaque project boundary. Report the failing verify step rather than bypassing repository commands or reconfiguring runtime internals.
 
 If CI autofix commits changes, synchronize the local checkout before continuing.
 
 ## Failure handling
 
-When a required check or measurement fails:
+When a required check, registry validation, or measurement fails:
 
-1. identify the failed label, command, metric, or budget;
+1. identify the failed label, plan state, command, metric, or budget;
 2. determine whether the current change caused it;
-3. fix in-scope failures;
+3. fix in-scope failures or stale repository impact metadata;
 4. rerun the narrow failed proof;
 5. rerun final `pnpm verify`;
 6. report unrelated or unresolved failures exactly;
@@ -154,4 +175,4 @@ status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
 
-`complete` requires assigned scope, acceptance criteria, required proof and measurements, and final verification to pass. Use `not run` only when repository verification could not reasonably execute; state the reason and exact remaining command.
+`complete` requires assigned scope, acceptance criteria, required proof and measurements, consistent repository impact metadata, and final verification to pass.
