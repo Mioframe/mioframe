@@ -4,7 +4,15 @@
 
 Public shared Material components expose only exact verified official Material tokens. Internal implementation routes are explicitly private. Application-specific contracts use an application namespace.
 
-Token ownership, final rendered-property ownership, and geometry ownership follow `component-architecture.md` and `src/shared/ui/material/components/AGENTS.md`.
+Token ownership, final rendered-property ownership, and geometry ownership follow component architecture and scoped component instructions.
+
+## Generalization boundary
+
+This document defines token rules that apply to every component family.
+
+Do not add concrete family token names, selectors, bug examples, or migration-specific findings here. Keep them in the owning family README or AUDIT.
+
+Examples below use placeholders and illustrate naming grammar only. They do not define any family’s supported surface.
 
 ## Allowed namespaces
 
@@ -20,14 +28,14 @@ Use exact verified canonical names only:
 --md-comp-*
 ```
 
-Their names are derived mechanically from the official token path. Do not shorten, paraphrase, omit segments, or translate a semantic Material path into a raw CSS property name.
-
-Example:
+Map an official token path mechanically:
 
 ```text
-md.comp.button.filled.container.color
---md-comp-button-filled-container-color
+md.comp.<component>.[variant-or-style].<part>.<property>
+--md-comp-<component>-[variant-or-style]-<part>-<property>
 ```
+
+Do not shorten, paraphrase, omit semantic segments, or translate a Material path into a raw CSS-property name.
 
 Do not create a public Material token without an exact official path.
 
@@ -39,15 +47,14 @@ Use:
 --md-private-<owner>-<semantic-role>
 ```
 
-Private names describe Material ownership and meaning, not merely the final CSS syntax.
+Private names describe Material ownership and meaning, not merely final CSS syntax.
 
-Examples:
+Grammar examples:
 
 ```text
---md-private-button-rendered-container-shape
---md-private-button-rendered-container-color
---md-private-button-interaction-block-size
---md-private-state-pressed-state-layer-opacity
+--md-private-<family>-rendered-<part>-<property>
+--md-private-<family>-<state>-<part>-<property>
+--md-private-<foundation>-<semantic-role>
 ```
 
 A private route exists only when runtime configuration, state resolution, inheritance, consumer override, cross-element routing, or foundation bridging requires indirection.
@@ -60,24 +67,19 @@ Private variables remain inside their owner and are not consumer API.
 
 Use `--app-*` only for genuine Mioframe application contracts outside Material vocabulary.
 
-Do not use `--app-*` to disguise an invented Material token or a family-private route.
+Do not use `--app-*` to disguise an invented Material token or a private Material route.
 
-## Forbidden names
+## Invalid names
 
-Do not create an unqualified ad-hoc `--md-<component>-*` namespace.
-
-Invalid examples:
+Do not create an unqualified ad-hoc name shaped like:
 
 ```text
---md-button-border-radius
---md-button-height
---md-button-padding-left
---md-button-icon-gap
+--md-<artifact>-<raw-css-property>
 ```
 
-These names are invalid because they look canonical while being neither exact official `--md-comp-*` tokens nor explicit `--md-private-*` routes. They also encode raw CSS implementation properties instead of the semantic Material owner and role.
+It looks canonical while being neither an exact official token nor an explicitly private implementation route.
 
-Do not introduce aliases such as `--md-button-*`, `--md-card-*`, or `--md-switch-*` for convenience.
+Do not introduce convenience namespaces for particular component families. The rule is structural, not a denylist of known names.
 
 ## Canonical ownership
 
@@ -97,7 +99,7 @@ Do not place in the canonical declaration owner:
 
 - variant, size, shape, density, mode, semantic-state, or interaction-state selectors;
 - pseudo-classes;
-- private or app-token declarations;
+- private or application-token declarations;
 - final rendering properties.
 
 Configuration and state routing remain separate responsibilities. They do not require dedicated files when the logic is small and unambiguous.
@@ -107,7 +109,7 @@ Configuration and state routing remain separate responsibilities. They do not re
 Resolve component tokens to system tokens when the official model uses a system role:
 
 ```css
---md-comp-button-filled-container-color: var(--md-sys-color-primary);
+--md-comp-<component>-<part>-color: var(--md-sys-color-<role>);
 ```
 
 Use a direct value only when the verified component specification defines it, such as a measurement or numeric opacity.
@@ -130,12 +132,12 @@ exact official token or documented private/system/app source
 Rules:
 
 - apply a static canonical source directly when possible;
-- use a configuration variable only when configuration selects different sources;
+- use configuration only when it selects different sources;
 - use a state-resolved private value only when multiple state sources must be reconciled;
 - add no alias only for naming convenience;
 - keep private variables inside their owner;
 - keep generic foundation bridges free of family names and family token selection;
-- prove that the final property is applied to the correct semantic and geometric DOM owner.
+- prove that the final property is applied to the correct semantic and geometric owner.
 
 A route is invalid when the expected value is computed on the wrong element. Numeric equality does not prove correct anatomy, geometry, clipping, or visible output.
 
@@ -145,12 +147,12 @@ For every visible property route, verify:
 
 1. exact official meaning or explicit project-extension meaning;
 2. valid custom-property namespace;
-3. concrete DOM owner;
-4. actual bounds of that owner when geometry is relevant;
-5. final computed/rendered output;
-6. state precedence, clipping, and interaction with adjacent layers.
+3. concrete final owner;
+4. relevant owner bounds;
+5. final computed and rendered output;
+6. state precedence, clipping, and adjacent-layer interaction.
 
-For shape tokens, checking only a `border-radius` number is insufficient. The value must affect the actual visual container and produce the correct visible resting, pressed, selected, and disabled endpoint.
+For shape, a scalar radius is insufficient when ownership, clipping, box geometry, corner model, or state composition can change the visible result. Verify all applicable endpoints on the official shape owner.
 
 ## Override contract
 
@@ -169,7 +171,7 @@ A state-layer, ripple, focus, elevation, or motion primitive exposes generic inp
 
 - The primitive never reads family tokens or family-private variables.
 - The family maps its applicable final source into the bridge.
-- The primitive owns generic rendering; the family owns source selection.
+- The primitive owns generic rendering; the family owns source selection and precedence.
 - Do not move family routing into a primitive merely to reduce repeated syntax.
 
 ## Required authoring and review inventory
@@ -181,18 +183,18 @@ For every custom-property declaration added or materially touched, classify it a
 - application token;
 - invalid or unnecessary alias.
 
-Authoring must correct invalid names before reporting implementation finished.
+Authoring corrects invalid names before reporting implementation finished.
 
-Independent review must report a finding when:
+Independent review reports a finding when:
 
 - an invented `--md-*` name looks public or canonical;
-- an official path is shortened or converted to a raw CSS-property name;
+- an official path is shortened or converted to a raw CSS-property alias;
 - a private route omits `private`;
 - a private name describes mechanism rather than semantic ownership;
 - a one-use constant is routed through an unnecessary variable;
 - a declaration cannot affect the correct final rendered owner.
 
-A visible capability routed through an invalid namespace or wrong DOM owner is not `implemented and verified`.
+A visible capability routed through an invalid namespace or wrong owner is not implemented and verified.
 
 ## Authoring workflow
 
