@@ -99,6 +99,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - `TEST IMPACT` is a reviewable design record; `verify` never parses it. Automatic scope comes from status-aware Git diff, tests/imports, snapshots, and persistent repository impact metadata.
 - Inferred verify scope is an optimization. A skipped or empty lane is not proof that it is unnecessary. Unknown relevant impact must use full owning-lane fallback.
 - A new, moved, renamed, or removed Playwright spec must update its owning mapping or justified standalone entry in the same change. Source mappings contain production, story, fixture, or owned support paths; do not put spec paths in source prefixes to group tests.
+- Release-only contracts must have repository-owned impact mapping to build, artifact, or release-smoke proof. Until the focused release resolver is implemented, explicitly run `pnpm verify:release` for changes to build/release config, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies.
 - Use `pnpm verify --fix` only when safe automatic formatting, lint fixes, or instruction compatibility generation are useful.
 - Before reporting completion after edits, run final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
 - Use `pnpm verify --only <label> --files ...` for focused feedback when supported. `--files` is not status-aware deletion/rename planning. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks.
@@ -126,7 +127,7 @@ reason if not run:
 - `develop` is the active development branch; `main` is the stable public branch.
 - Every PR into `develop` or `main` must increase `package.json` version, except the documented pre-tag repair and `main` to `develop` release-sync cases.
 - `develop`/`main` synchronization PRs use merge commits, never squash or rebase.
-- `pnpm verify` is the focused development gate. `pnpm verify:release` is the full release gate required for `main`.
+- `pnpm verify` is the focused development gate. Its target architecture includes automatic focused release proof for release-relevant changes. `pnpm verify:release` remains the unconditional full release gate required for `main`.
 - Follow `docs/release.md` and `docs/release-checklist.md` for the complete release policy.
 
 ## Agent environment compatibility
