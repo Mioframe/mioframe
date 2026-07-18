@@ -5,7 +5,7 @@ description: 'Use when observable behavior, a reproducible defect, migration, pe
 
 # Test-first workflow
 
-Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT` or create a new execution lane.
+Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
 
 ## Activation
 
@@ -18,23 +18,24 @@ Use only when all conditions are true:
 
 Skip for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, and appearance-only changes without a meaningful pre-implementation failure.
 
-Skipping test-first does not skip required proof from `TEST IMPACT` or final verification.
+Skipping test-first does not skip required proof from `TEST IMPACT`, repository impact-metadata maintenance, or final verification.
 
 ## Workflow
 
 1. Name the changed contract and proof type.
 2. Select the highest-risk applicable acceptance case.
 3. Add or update one focused test before production edits.
-4. Run the owning verify-managed lane and confirm the expected failure.
-5. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
-6. Implement the minimum production change.
-7. Rerun the same target and confirm it passes.
-8. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
-9. Run final read-only `pnpm verify`.
+4. Update required repository impact metadata when adding or moving a Playwright spec or persistent audit target.
+5. Run the owning verify-managed lane and confirm the expected failure.
+6. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
+7. Implement the minimum production change.
+8. Rerun the same target and confirm it passes.
+9. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
+10. Run final read-only `pnpm verify`.
 
 ## Proof routing
 
-- Pure/domain/service/storage/CRDT/validation/migration/transformation: `unit-testing`.
+- Deterministic domain/service/storage/CRDT/validation/migration/transformation behavior: `unit-testing`.
 - Vue public API and non-browser wiring: `component-contract-testing`.
 - Reusable UI focus/keyboard/pointer/touch/layout/scroll/overlay/responsive/browser behavior: `ui-browser-behavior` with Storybook.
 - Complete cross-boundary product scenario: `ui-browser-behavior` with app E2E.
@@ -59,3 +60,4 @@ Raw Vitest or Playwright commands are diagnostic exceptions, not completion gate
 - Do not duplicate an existing owner at another proof type.
 - Do not create a framework, DSL, fixture system, registry, or helper for one case.
 - Do not stop after one passing red/green test when the accepted contract requires additional cases.
+- Do not treat a passing focused run as proof that automatic impact metadata is complete.
