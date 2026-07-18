@@ -58,14 +58,13 @@ m3.material.io/components/buttons
 - `library-roadmap.md` owns the active milestone and next action.
 - `ui-library-inventory.md` owns classification, priority, and queue state.
 - `source-of-truth.md` owns official source hierarchy and source-status rules.
-- Family `README.md` owns current implementation documentation.
-- Family `AUDIT.md` owns the latest independent two-stage technical/canonical review.
-- Family `VISUAL_REVIEW.md` owns the latest operator visible-fidelity decision.
+- Family `README.md` owns current implementation documentation and persistent operator feedback.
+- Family `AUDIT.md` owns the latest independent two-stage review.
 - Registries are summaries and do not override family-local documents.
 
 ## Workflow evidence boundary
 
-Material component authoring and review use current workspace files, official Material sources, and local project verification.
+Material component authoring and review use the current user task, current workspace files, official Material sources, and local project verification.
 
 They do not run, inspect, or cite `git`, `gh`, GitHub, branches, commits, pull requests, diffs, blame, logs, tags, merge state, or repository history.
 
@@ -93,7 +92,7 @@ Official coverage:
   unresolved
 ```
 
-`complete` requires current-complete evidence. A stale snapshot may be snapshot-complete. Partial, truncated, suspicious, missing, or spot-check-only evidence cannot certify complete inventory.
+`complete` requires current-complete evidence. A stale snapshot may be snapshot-complete. Partial, truncated, suspicious, missing, or spot-check-only evidence cannot certify complete current inventory.
 
 ## Capability classification
 
@@ -114,19 +113,29 @@ Optional or non-normative guidance is recorded as a choice, deviation, or follow
 
 ## Family documentation
 
-Each implemented or actively migrated family may contain:
+Each implemented or actively migrated family contains:
 
 ```text
 src/shared/ui/material/components/<official-docs-slug>/README.md
 src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
-src/shared/ui/material/components/<official-docs-slug>/VISUAL_REVIEW.md
 ```
 
 ### README
 
-Authoring-owned implementation documentation. It records source status, inventory, coverage, implemented/partial/absent/invalid/unresolved capability, known issues, API, semantics, tokens, states, dependencies, consumers, verification, and review status.
+Authoring-owned implementation documentation. It records source status, inventory, coverage, implemented/partial/absent/invalid/unresolved capability, known issues, operator feedback, API, semantics, tokens, states, dependencies, consumers, verification, and review status.
 
-Authoring never edits AUDIT or VISUAL_REVIEW.
+Operator feedback is supplied directly in user messages and persisted in README:
+
+```text
+## Operator feedback and visual status
+Status: not reviewed | required | rejected | awaiting re-review | accepted
+Latest operator feedback: none | <summary>
+Implementation response: none | <summary>
+```
+
+A reported visual defect means `rejected`. After a production behavior change, authoring may use `awaiting re-review`. Only an explicit user acceptance message may set `accepted`.
+
+Authoring never edits AUDIT.
 
 ### AUDIT
 
@@ -135,23 +144,9 @@ Reviewer-owned independent review. It:
 1. compares current implementation with project documentation;
 2. compares project documentation with canonical Material evidence;
 3. independently records source status and classification;
-4. reads VISUAL_REVIEW and mirrors its operator status exactly.
+4. verifies that README preserves explicit operator feedback accurately.
 
 Review changes only AUDIT.
-
-### VISUAL_REVIEW
-
-Operator-owned visible-fidelity decision. It records:
-
-```text
-Reviewed: <date>
-Status: accepted | rejected | blocked
-Evidence reviewed:
-Findings:
-Required correction:
-```
-
-Implementing and reviewing agents never edit it. A rejection remains authoritative until production behavior changes, new evidence is reviewed, and the operator replaces the file.
 
 ## Motion and visual acceptance
 
@@ -167,7 +162,7 @@ At component level, use proportional evidence:
 
 Do not require frame-by-frame component analysis or duplicate equivalent input paths. Forced state proves appearance, not motion.
 
-Technical routing or green tests cannot close a rejected visual result.
+Technical routing or green tests cannot close a rejected visual result. Only a production behavior change followed by explicit user acceptance can do so.
 
 ## Shared routes
 
@@ -188,7 +183,7 @@ Unchanged tests that never exercise the route are not proof.
 material-component <component-or-family-name>
 ```
 
-Updates implementation and README, reads but never edits AUDIT/VISUAL_REVIEW, and runs local verification.
+The same message may include operator feedback. Authoring updates implementation and README, leaves AUDIT unchanged, and runs local verification.
 
 ### Review one family
 
@@ -196,7 +191,7 @@ Updates implementation and README, reads but never edits AUDIT/VISUAL_REVIEW, an
 material-component-review <component-or-family-name>
 ```
 
-Changes only AUDIT and mirrors operator visual evidence from VISUAL_REVIEW.
+Changes only AUDIT and verifies implementation, README, Material evidence, and current operator feedback.
 
 ### Continue the program
 
@@ -204,7 +199,7 @@ Changes only AUDIT and mirrors operator visual evidence from VISUAL_REVIEW.
 material-library-next
 ```
 
-Selects exactly one family and never advances past an active rejected/blocked visual result.
+Selects exactly one family and never advances past an active rejected or blocked visual result.
 
 ### Read program status
 
@@ -212,7 +207,7 @@ Selects exactly one family and never advances past an active rejected/blocked vi
 material-library-status
 ```
 
-Reads roadmap, inventory, registries, README, AUDIT, and VISUAL_REVIEW without changing files.
+Reads roadmap, inventory, registries, README, and AUDIT without changing files.
 
 ## Required behavior
 
@@ -224,8 +219,8 @@ Reads roadmap, inventory, registries, README, AUDIT, and VISUAL_REVIEW without c
 - Never infer implementation from declarations, aliases, stories, or tests when the final route does not work.
 - Require representative proof for shared routes.
 - Keep component motion proof proportional.
-- Preserve operator rejection until corrected and accepted.
+- Preserve operator rejection until corrected and explicitly accepted.
 - Remove obsolete ownership during migration.
 - Do not create placeholder structures, universal validators, fixed file profiles, or a second metadata database.
 
-A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and accepted required visual review.
+A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and explicit user acceptance when visual review is required.
