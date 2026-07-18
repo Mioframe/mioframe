@@ -4,52 +4,56 @@
 
 - Official family: Buttons — common buttons and toggle buttons.
 - Official path: `m3.material.io/components/buttons`.
-- Pages used: `overview.md`, `guidelines.md`, `accessibility.md` — inspected through the `material3` MCP local documentation cache (`m3.material.io` source, cache captured `2026-06-30T05:53:04.916Z`, per-page `capturedAt: 2026-06-30T05:48:50.423Z`). `specs.md` was cross-verified through the same cache's structured component token-table graph (numeric sizes, paddings, icon sizes, shapes, and elevation/motion token names). Direct checks of all four current published routes on `2026-07-18` reached only the JavaScript shell, so they could not refresh the cached contract evidence.
-- Superseded prior fallback snapshot: `Vyachean/m3-docs-cache` commit `49ffae58a61f86c28b23720696dc9d07b6945483`, captured `2026-07-13T12:48:04.850Z` — recorded for history; the MCP cache above is now the current source of record and the two are consistent.
-- Family boundary: `m3.material.io/components/split-button` (Split buttons), `m3.material.io/components/button-groups` (Standard/Connected button group), `m3.material.io/components/icon-buttons` (Icon/toggle icon buttons), `m3.material.io/components/segmented-buttons` (deprecated in M3 Expressive, superseded by connected button group), and the FAB/Extended FAB families are each a separate official top-level component family with its own `overview`/`specs`/`guidelines`/`accessibility` pages and its own canonical `components/<official-docs-slug>` directory. They are not part of the Buttons family capability inventory; see "Outside this family boundary" below.
+- Pages used: `overview.md`, `guidelines.md`, `accessibility.md` — inspected through the `material3` MCP local documentation cache (`m3.material.io` source, cache captured `2026-06-30T05:53:04.916Z`, per-page `capturedAt: 2026-06-30T05:48:50.423Z`). `specs.md` was cross-verified through the same cache's structured component token-table graph.
+- Family boundary: Split Button, Button Groups, Icon Buttons, Segmented Buttons, FAB, and Extended FAB are separate official families with separate documentation paths.
 - Canonical source status: `snapshot-complete-stale`.
-- Official capability inventory: `snapshot-complete (material3 cache captured 2026-06-30T05:53:04.916Z; currentness unverified)` — every capability documented in that snapshot, including capability with no current Mioframe consumer, is classified below.
-- Official coverage: `partial` — the rapid-click motion-curve accessibility guidance (see "Not implemented") is not yet implemented.
+- Official capability inventory: `snapshot-complete (material3 cache captured 2026-06-30T05:53:04.916Z; currentness unverified)`.
+- Official coverage: `unresolved` because the available family snapshot is complete but stale.
 
 ## Implemented
 
 - Public component: `MDButton`.
 - Styles: elevated, filled, tonal, outlined, and text.
 - Sizes: extra-small, small, medium, large, and extra-large.
-- Shapes: round and square, including the official pressed-shape and selected-shape corner morph per size.
+- Shapes: round and square, including pressed and selected shape morphs per size.
 - Variants: default actions and controlled toggle buttons.
-- Optional leading icon (icon precedes the label; the family publishes no trailing-icon route).
-- Native `<button>` semantics, button type, disabled behavior, accessible name matching the visible label, keyboard activation (native `Tab`/`Space`/`Enter`), `aria-pressed` for toggle state, and `aria-busy` for loading.
+- Optional leading icon.
+- Native `<button>` semantics, safe native type, disabled behavior, accessible name, native keyboard activation, `aria-pressed`, and `aria-busy`.
 - State layer, ripple, focus indication, public component-token routing, canonical stories, and colocated contract tests.
-- Loading extension with boolean or clamped numeric progress; a numeric value that clamps to `0` renders the same indeterminate visual as `true` (see "Extensions and deviations").
+- Loading extension with boolean or normalized numeric progress; values normalized to zero render the same indeterminate visual as `true`.
 - Canonical root export through `@shared/ui/material`.
-- Direct repository consumers migrated from the legacy MDButton export.
+- Direct consumers migrated from the legacy MDButton export.
+
+## Partial / defective / unverified
+
+- Pressed-shape motion is technically connected to the project Web adaptation but is operator-rejected as visibly incorrect for the intended Material 3 Expressive behavior.
+- Shared elevation recomputation has focused override proof for Button, FAB, and Extended FAB. Equivalent focused override proof remains absent for MDCard and MDSwitch.
+- Current canonical completeness is unverified because the complete available Button snapshot is stale.
 
 ## Not implemented
 
-Current confirmed absent official capability, independent of current consumer demand:
+- None confirmed in the available complete Button snapshot.
 
-- Text-style toggle buttons: the verified token graph contains no supported text-toggle color route; this combination normalizes to the default variant with a development warning.
-- Rapid-click modified motion curve: the official accessibility guidance recommends a modified motion curve for the pressed-shape morph to avoid resonant effects when a button receives rapid repeated clicks/taps. `MDButton` has no such adjustment today; every press replays the same fast-spatial adaptation regardless of click cadence.
+## Officially unsupported and invalid combinations
 
-### Outside this family boundary
-
-Confirmed separate official Material families, each with its own documentation path and (where built) its own canonical `components/<official-docs-slug>` directory — not part of the Buttons capability inventory:
-
-- Split Button (`components/split-button`) — not implemented anywhere in the repository.
-- Standard Button Group and Connected Button Group (`components/button-groups`) — not implemented anywhere in the repository.
-- Icon Button and Toggle Icon Button (`components/icon-buttons`) — implemented at the legacy `src/shared/ui/Button/MDIconButton.vue`, outside the canonical Material root.
-- Segmented Button (`components/segmented-buttons`, deprecated by Material in favor of the connected button group) — implemented at the legacy `src/shared/ui/Button/MDSegmentedButtons.vue`.
-- FAB and Extended FAB — implemented at the legacy `src/shared/ui/Button/MDFab.vue` and `MDExtendedFab.vue`.
+- Text-style toggle Button: the official token matrix publishes no selected/unselected text-button route. Mioframe normalizes this combination to the default action variant and emits a development warning.
+- `selected` on a default action Button has no semantic or visual route and is ignored with a development warning.
+- Multiple icons and trailing icons are outside the resolved common Button anatomy.
 
 ## Known issues and required follow-up
 
-- **Rapid-click motion curve (open):** see "Not implemented" above. No current consumer requires it; documented here so it is not silently missing from the inventory.
-- **Motion (resolved):** the per-size `pressed-container-corner-size-motion-spring-{stiffness,damping}` component tokens all alias the same system-level fast-spatial spring for every size. CSS transitions cannot consume spring physics directly, so these are documented as source evidence in one place (a single comment beside the root `--md-private-button-corner-motion-duration`/`-easing` declarations in `MDButton.vue`) instead of being declared as five duplicated, unconsumed per-size CSS custom properties. The border-radius transition is wired to the project's one honest Web adaptation (the pre-existing shared expressive fast-spatial duration/easing), and no test asserts spring consumption that does not exist.
-- **Elevation (resolved for Button; cross-family evidence gap remains):** this Button work changed the shared elevation contract in `src/shared/lib/md/tokens.css` so `--md-sys-elevation-level0..5` are declared on `*, ::before, ::after`; an element-local `--md-private-elevation-shadow-color` override can therefore recompute the final `box-shadow` instead of inheriting an already-resolved value. `MDButton` has focused browser proof for that route. `MDCard`, `MDFab`, `MDExtendedFab`, and `MDSwitch` also set the local shadow-color input, but their existing tests and stories do not directly exercise a non-default shadow-color override, so representative cross-family proof remains a low-risk foundation evidence gap. Narrowing the universal owner or adding representative cross-family proof belongs to a focused `material-foundation` change, not a Button-local workaround.
-- **Loading at zero (resolved):** numeric loading value `0` (and any numeric input that clamps to `0`) is now documented and tested to render the same indeterminate visual as `loading={true}`, rather than a fake determinate `0` ring. `MDCircularProgressIndicator` has no distinct static zero-fill ring, so treating a clamped-to-zero value as indeterminate is the coherent behavior; see "Extensions and deviations".
-- **Documentation consistency (resolved):** all four family pages are represented in the `material3` MCP snapshot above and the Storybook documentation cites the same source. Currentness remains unverified because direct published-route checks exposed only the JavaScript shell.
-- **Visual review:** operator comparison may proceed; the motion, elevation, and loading-zero findings above are resolved. The rapid-click motion-curve gap remains unimplemented and open.
+- Correct the production pressed-shape motion behavior before requesting another operator review.
+- Add or deliberately defer representative shared elevation override proof for MDCard and MDSwitch through the owning foundation/style workflow.
+- Rapid-click modified motion guidance is conditional, non-normative Web guidance. It is not a missing Button capability; revisit only when a concrete supported scenario requires repeated rapid activation behavior.
+- Refresh or directly verify the current official Button family sources before claiming current-complete inventory or full current coverage.
+
+## Operator feedback and visual status
+
+Status: `rejected`
+
+Latest operator feedback: the current pressed-shape animation is visibly incorrect for the intended Material 3 Expressive behavior. A technically connected CSS transition does not resolve the perceived motion mismatch.
+
+Implementation response: none yet. The next implementation pass must change production motion behavior, prepare new canonical evidence, and then set the status to `awaiting re-review`. Only an explicit user acceptance message may set `accepted`.
 
 ## Public API and semantics
 
@@ -75,22 +79,23 @@ Invalid combinations and out-of-range loading values are normalized with develop
 - Label and icon descendants own their rendered color and opacity.
 - State resolution maps hover, focus, pressed, selected, disabled, and loading output to final properties.
 - Public token support is valid only when an override reaches the final rendered property.
-- Official pressed-shape spring values (stiffness/damping) are documented source evidence only, recorded once as a comment beside the root corner-motion duration/easing declarations; they are not declared as per-size CSS custom properties because CSS transitions cannot consume them as a real dependency.
-- Elevation shadow-color routing consumes the shared `--md-private-elevation-shadow-color` / `--md-sys-elevation-level*` foundation contract (see "Foundations and styles used"); Button does not declare its own universal-selector recomputation.
+- Official pressed-shape spring values are canonical source evidence. The current CSS runtime uses a documented Web adaptation rather than literal spring physics.
+- Elevation shadow-color routing consumes the shared `--md-private-elevation-shadow-color` / `--md-sys-elevation-level*` contract.
 
 ## Foundations and styles used
 
-- Color and current theme roles: legacy owner `src/shared/lib/md/tokens.css`; future official navigation owner `material/styles/color`.
-- Elevation: legacy owner `src/shared/lib/md/tokens.css`, including the shared `*, ::before, ::after` recomputation of `--md-sys-elevation-level0..5` against each element's local `--md-private-elevation-shadow-color`; this pre-existing contract is also consumed by `MDCard`, `MDFab`, `MDExtendedFab`, and `MDSwitch`. Future official navigation owner `material/styles/elevation`.
-- Motion: legacy token owner `src/shared/lib/md/tokens.css` (shared expressive fast-spatial duration/easing adaptation); future `material/styles/motion`.
+- Color and theme roles: current legacy owner `src/shared/lib/md/tokens.css`; future official navigation owner `material/styles/color`.
+- Elevation: current legacy owner `src/shared/lib/md/tokens.css`; future official navigation owner `material/styles/elevation`.
+- Motion: current legacy token owner `src/shared/lib/md/tokens.css`; future `material/styles/motion`.
 - Typography: `@shared/lib/md`; future `material/styles/typography`.
 - State layer, ripple, and focus: `src/shared/ui/State`; future `material/foundations/interaction`.
-- Progress indicator: current shared progress-indicator owner (`src/shared/ui/ProgressIndicators`) for the loading extension.
+- Progress indicator: `src/shared/ui/ProgressIndicators` for the loading extension.
 
 ## Extensions and deviations
 
-- `loading` is a Mioframe extension, not part of the official Button component contract. A numeric value that clamps to `0` renders the same indeterminate visual as `loading={true}`, since the shared `MDCircularProgressIndicator` has no distinct static zero-fill ring; this is a deliberate, tested behavior, not an open defect.
+- `loading` is a Mioframe extension, not part of the official Button contract. A numeric value normalized to zero renders the same indeterminate visual as `loading={true}`.
 - Unsupported text-toggle usage normalizes to a default action rather than exposing an invalid token route.
+- The current Web motion adaptation is a project runtime approximation, not literal consumption of Material spring physics.
 
 ## Consumers and migration state
 
@@ -98,15 +103,15 @@ Invalid combinations and out-of-range loading values are normalized with develop
 - Public export: `MDButton` from `@shared/ui/material`.
 - The legacy MDButton implementation and export are removed.
 - Direct consumers are migrated.
-- Physical ownership migration is complete. The official capability inventory is complete; official coverage remains partial while the rapid-click motion-curve gap above is open.
+- Physical ownership migration is complete.
 
 ## Verification
 
-- `MDButton.test.ts` — public API, semantics, invalid combinations, state and loading contracts, including the loading-zero-is-indeterminate behavior.
-- `MDButton.stories.ts` — canonical visual configurations and states.
-- Focused browser/visual coverage exists for token routes, geometry, accessibility, and final computed shadow behavior.
-- No test asserts spring-token consumption; the motion contract is documented as evidence only (see "Known issues" and "Tokens, states, and property ownership").
-- Local verification rerun after this pass; see the task result for status.
+- `MDButton.test.ts` covers public API, semantics, invalid combinations, state, and loading contracts.
+- `MDButton.stories.ts` provides canonical visual configurations and states.
+- Focused browser/visual coverage exists for token routes, geometry, accessibility, motion routing, and final computed Button shadow behavior.
+- Operator visual rejection remains open despite technical route evidence.
+- Applicable local verification must be rerun after the next production correction.
 
 ## Review status
 
