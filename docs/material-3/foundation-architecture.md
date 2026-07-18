@@ -1,17 +1,23 @@
 # Material foundations and styles architecture
 
-Shared Material contracts follow the official documentation navigation:
+Shared Material contracts follow official documentation navigation:
 
 ```text
 src/shared/ui/material/foundations/<official-foundation-slug>
 src/shared/ui/material/styles/<official-style-slug>
 ```
 
-Do not place every cross-family concern into one generic `foundation` bucket.
+Do not place every cross-family concern into one generic foundation bucket.
+
+## Evidence boundary
+
+Foundation authoring and review use current workspace files, official Material sources, and local project verification.
+
+Do not use source-control or remote history as contract evidence.
 
 ## Foundations
 
-`foundations` contains cross-component contracts represented under the official Material Foundations navigation, such as:
+`foundations` contains cross-component contracts represented under official Material Foundations navigation, such as:
 
 - accessibility;
 - adaptive design and layout;
@@ -20,7 +26,7 @@ Do not place every cross-family concern into one generic `foundation` bucket.
 
 ## Styles
 
-`styles` contains cross-component visual systems represented under the official Material Styles navigation:
+`styles` contains cross-component visual systems represented under official Material Styles navigation:
 
 - color;
 - elevation;
@@ -29,7 +35,7 @@ Do not place every cross-family concern into one generic `foundation` bucket.
 - shape;
 - typography.
 
-Use the exact official documentation slug where practical.
+Use exact official documentation slugs where practical.
 
 ## Ownership rule
 
@@ -39,25 +45,41 @@ Shared owners must:
 
 - remain free of component-family and product knowledge;
 - expose the smallest contract required by current consumers;
-- document supported behavior, known gaps, and affected consumers in a local `README.md`;
-- keep implementation, tests, and any latest `AUDIT.md` beside the owner;
+- document source status, supported behavior, known gaps, and affected consumers in README;
+- keep implementation, tests, and the latest independent AUDIT beside the owner;
 - avoid speculative universal frameworks.
 
-A behavior used by one family remains family-local until a second real consumer or official shared contract proves otherwise.
+Behavior used by one family remains family-local until official evidence or multiple real consumers prove shared ownership.
+
+## Canonical source status
+
+Record:
+
+- `current-complete`;
+- `snapshot-complete-stale`;
+- `partial`;
+- `conflicting`;
+- `unavailable`.
+
+Do not certify current-complete domain coverage from stale-only, partial, truncated, suspicious, missing, or spot-check-only evidence.
 
 ## Documentation
 
-Each implemented foundation or style directory contains a `README.md` with:
+Each implemented foundation or style directory contains README with:
 
-- official documentation mapping;
+- official mapping and source status;
 - implemented contract;
-- not implemented or unsupported capability;
+- partial, defective, provisional, or unverified contract;
+- actual capability not implemented;
+- officially unsupported or invalid routes when applicable;
 - known issues and required follow-up;
-- consumers;
-- verification;
+- affected consumers and blast radius;
+- representative verification;
 - review status.
 
-An independent review may create `AUDIT.md` in the same directory. There is no separate global audit tree.
+An officially invalid route is not a missing capability. Optional or non-normative guidance is not automatically required capability.
+
+Independent review may create AUDIT in the same directory. There is no separate global audit tree.
 
 ## Dependency direction
 
@@ -67,7 +89,7 @@ shared generic infrastructure
   → material/components
 ```
 
-Foundations and styles must not import component families. Components consume them through documented public or private cross-family contracts.
+Foundations and styles do not import component families. Components consume them through documented cross-family contracts.
 
 Generic DOM, browser, event, geometry, lifecycle, and teleport utilities remain in their generic owner. Do not create a Material wrapper merely to satisfy folder structure.
 
@@ -75,15 +97,31 @@ Generic DOM, browser, event, geometry, lifecycle, and teleport utilities remain 
 
 Before changing a shared foundation or style:
 
-1. name the official requirement;
-2. name the existing owner and affected consumers;
+1. name the official requirement and source status;
+2. name the current owner and current affected consumers;
 3. verify that the change is not safely family-local;
-4. define the shortest final route;
-5. assess broad cascade or runtime impact;
-6. add proportional proof across representative consumers;
-7. update the local documentation with every remaining gap.
+4. define the shortest real final route;
+5. assess cascade, inheritance, runtime, and visual impact;
+6. add proportional representative proof that actually exercises the route;
+7. update local documentation with every remaining gap and visual status.
 
-Changes to root/system tokens, universal selectors, pseudo-elements, or shared formulas require explicit cross-family impact analysis. A component-specific test alone is not sufficient evidence for a global change.
+Changes to root/system tokens, universal selectors, pseudo-elements, or shared formulas require explicit current cross-family impact analysis. A component-specific test alone is insufficient for a global change.
+
+Unchanged tests that never exercise the shared route do not count as representative proof.
+
+## Motion architecture
+
+A shared motion foundation owns its documented Web runtime contract and proves it deeply once:
+
+- canonical evidence and adaptation;
+- source-to-runtime dependency;
+- timing/easing or runtime model;
+- interruption and reduced-motion behavior;
+- representative consumers.
+
+Each component then proves proportional consumption. Do not require frame-by-frame validation per component.
+
+A technically honest route does not override an operator-rejected perceived result. The affected family keeps the visual defect open until behavior changes and new evidence is accepted.
 
 ## Anti-overengineering
 
@@ -94,6 +132,7 @@ Do not create:
 - a style DSL;
 - a shared owner before current consumers prove it;
 - a parallel wrapper around generic infrastructure;
-- placeholder directories for every official documentation page.
+- placeholder directories for every official page;
+- frame-level component motion infrastructure for ordinary CSS transitions.
 
-The structure mirrors the documentation for navigation. Production artifacts are still created only when required.
+The structure mirrors documentation for navigation. Production artifacts are created only when required.
