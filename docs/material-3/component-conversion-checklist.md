@@ -24,9 +24,10 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Used `Official coverage: full` only when every actual official capability is implemented and verified.
 - [ ] Used `Official coverage: unresolved` when the inventory is not current-complete.
 
-## 3. Family documentation
+## 3. Family documentation and role ownership
 
 - [ ] Created or updated the colocated family `README.md` before production edits.
+- [ ] Read existing `AUDIT.md` and `VISUAL_REVIEW.md` when present.
 - [ ] Recorded canonical source status, inventory status, and official coverage.
 - [ ] Listed only working capability under `Implemented`.
 - [ ] Listed every partial, defective, provisional, ambiguous, or unverified item separately.
@@ -34,9 +35,9 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Listed officially unsupported and invalid combinations separately.
 - [ ] Recorded optional guidance choices under known issues, extensions, or deviations.
 - [ ] Recorded API, semantics, token/state/property ownership, dependencies, extensions, consumers, and verification.
-- [ ] Kept known operator-rejected visual behavior open.
+- [ ] Mirrored a rejected/blocked operator result under known issues without reinterpreting it.
 - [ ] Set `Review status: review required after changes`.
-- [ ] Did not edit `AUDIT.md` during implementation.
+- [ ] Did not edit `AUDIT.md` or `VISUAL_REVIEW.md` during implementation.
 
 ## 4. Family and ownership
 
@@ -77,7 +78,7 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Did not require frame-by-frame component analysis.
 - [ ] Did not duplicate equivalent pointer, touch, and keyboard paths.
 - [ ] Did not use forced state as motion proof.
-- [ ] Did not close a known operator-rejected motion defect without changing behavior and obtaining new acceptance.
+- [ ] Did not close a rejected motion result without changing production behavior and obtaining a replacement accepted VISUAL_REVIEW.
 
 ## 8. Migration
 
@@ -104,7 +105,8 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Rebuilt classification from the available official sources.
 - [ ] Code, README, exports, consumers, tests, and stories agree.
 - [ ] Source and inventory status are honest.
-- [ ] Known visual rejection and shared proof gaps remain explicit.
+- [ ] Existing VISUAL_REVIEW status remains explicit and unchanged.
+- [ ] Known visual rejection and shared proof gaps remain open where applicable.
 - [ ] Focused checks passed.
 - [ ] Final applicable local verification passed.
 - [ ] Recommended `material-component-review <family>`.
@@ -120,10 +122,20 @@ Performed separately by `material-component-review`:
 - [ ] Stage 1 compared current implementation with current project documentation.
 - [ ] Stage 2 compared project documentation with canonical Material evidence.
 - [ ] Review distinguished actual capability from invalid combinations and optional guidance.
-- [ ] Review kept known operator rejection open until accepted.
+- [ ] Review read VISUAL_REVIEW and mirrored its status exactly.
+- [ ] Review never edited or overrode operator visual evidence.
 - [ ] Review required representative proof for shared routes.
 - [ ] Audit recorded compliance, coverage, and visual status separately.
 
-Do not describe a family as complete while implementation and documentation disagree, canonical source status is overstated, any item is misclassified, unfinished work is hidden, shared blast radius is unproved, local verification fails, or required visual review is rejected.
+## 12. Operator visual review
+
+Performed by the operator only:
+
+- [ ] Reviewed prepared canonical evidence against named official references.
+- [ ] Created or replaced `VISUAL_REVIEW.md` with `accepted`, `rejected`, or `blocked`.
+- [ ] Named visible findings and required correction when rejected.
+- [ ] Did not use operator review to decide API, semantics, accessibility, source interpretation, architecture, or test sufficiency.
+
+Do not describe a family as complete while implementation and documentation disagree, canonical source status is overstated, any item is misclassified, unfinished work is hidden, shared blast radius is unproved, local verification fails, or VISUAL_REVIEW is rejected/blocked.
 
 Do not describe a family as fully implemented unless canonical evidence is current-complete, the independent audit reports `Official coverage: full`, and required visual review is accepted.
