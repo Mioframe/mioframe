@@ -31,21 +31,24 @@ The only file changed by this workflow is:
 src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
 ```
 
-Do not modify production code, tests, stories, family `README.md`, exports, consumers, roadmap, registries, or policy during review.
+Do not modify production code, tests, stories, family `README.md`, `VISUAL_REVIEW.md`, exports, consumers, roadmap, registries, or policy during review.
 
 Work from the current workspace only. Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. The audit contains no source-control or remote metadata.
 
 ## Evidence sets
 
-Keep three evidence sets distinct:
+Keep four evidence sets distinct:
 
 1. **Implementation evidence** — current production code, exports, consumers, tests, stories, rendered behavior, and applicable foundation/style implementations.
 2. **Project documentation** — the family `README.md` plus directly applicable architecture, foundation/style contracts, testing rules, and local instructions.
 3. **Canonical evidence** — official Material 3 Expressive documentation, exact token references, and the Design Kit only where published documentation does not resolve an applicable visual decision.
+4. **Operator visual evidence** — the family `VISUAL_REVIEW.md` when present.
 
 Project documentation is the intended Mioframe contract, but it is not Material authority. Tests and rendering are implementation evidence, not authority.
 
 Inspect the previous `AUDIT.md`, but independently re-evaluate every conclusion from current files and official sources.
+
+`VISUAL_REVIEW.md` is operator-owned. Read it exactly as written. Never modify it, downgrade `rejected` to `required`, infer acceptance, or close its findings.
 
 ## Canonical source status
 
@@ -99,11 +102,14 @@ Check:
 - exports, consumers, migration state, tests, stories, and verification claims are accurate;
 - every known defect, omission, missing proof, source limitation, shared blast radius, and visual uncertainty is documented;
 - classification separates absent capability from officially invalid combinations and optional guidance;
+- README visual claims agree with `VISUAL_REVIEW.md` when it exists;
 - directly applicable architecture and shared foundation/style rules are followed.
 
 A declaration, alias, placeholder, story, test, or unchanged green check is not implementation or representative proof by itself.
 
 Do not use historical provenance to resolve a current ownership or compliance question. Review current owner, current consumers, current behavior, and current documented contract.
+
+A README claim that a visually rejected behavior is resolved is a Stage 1 finding even when the technical route is connected.
 
 ### Stage 2 — project documentation against Material 3 Expressive
 
@@ -146,17 +152,15 @@ At component level, require only proportional evidence that:
 
 Do not require frame-by-frame component analysis or duplicate equivalent input paths. Forced state proves appearance, not motion.
 
-A known operator-rejected visible behavior is a confirmed open defect until production behavior changes and the operator accepts new evidence. A technically honest route, renamed contract, new comment, or revised test does not close a perceptual rejection.
+When `VISUAL_REVIEW.md` exists:
 
-Use visual status:
+- copy its status into the audit;
+- include it under operator visual evidence;
+- treat every rejection as a confirmed open defect;
+- require production correction and a later operator review;
+- do not change its status based on tests, comments, documentation, or technical routing.
 
-- `not required`;
-- `required`;
-- `rejected`;
-- `blocked`;
-- `accepted`.
-
-The reviewer may report `accepted` only when operator acceptance is already durably recorded in current project documentation. The automated reviewer never invents it.
+When it is absent, report `required`, `blocked`, or `not required` based on the visible change. The automated reviewer never reports `accepted` without an accepted operator file.
 
 ## Shared routes
 
@@ -208,7 +212,7 @@ Use one overall result:
 
 - `compliant` — the implemented surface matches truthful project documentation, current canonical evidence is sufficient, and no confirmed technical or documentation finding remains;
 - `partially-compliant` — usable, but non-critical implementation, documentation, canonical-freshness, or verification gaps remain;
-- `non-compliant` — a critical or high finding exists;
+- `non-compliant` — a critical or high finding exists, including an unchanged rejected visual contract;
 - `blocked` — evidence required for a material decision is unavailable or conflicting.
 
 A snapshot-complete but stale source cannot produce a fully current `compliant` result. Use `partially-compliant` when the implemented surface is otherwise verified and currentness is the only non-critical gap; use `blocked` when the unresolved currentness affects a material decision.
@@ -234,11 +238,13 @@ Canonical source status: current-complete | snapshot-complete-stale | partial | 
 Official capability inventory: complete | snapshot-complete (...) | incomplete (...) | blocked (...)
 Official coverage: full | partial | unresolved
 Project implementation documentation: README.md
+Operator visual evidence: missing | VISUAL_REVIEW.md
 Visual review: not required | required | rejected | blocked | accepted
 
 ## Evidence
 ### Project documentation reviewed
 ### Material 3 Expressive evidence
+### Operator visual evidence
 
 ## Official capability coverage
 ### Implemented and verified
@@ -273,6 +279,7 @@ Official documentation path:
 Implementation path:
 Project implementation documentation:
 Audit file:
+Operator visual evidence: missing | <path>/VISUAL_REVIEW.md
 Canonical source status:
 Official capability inventory:
 Official coverage:
@@ -291,4 +298,4 @@ Evidence gaps:
 Required next work:
 ```
 
-A review is complete only after `AUDIT.md` is written, uses only current-workspace and official evidence, and reports source status, classification, compliance, coverage, and visual status honestly.
+A review is complete only after `AUDIT.md` is written, uses only current-workspace and official evidence, and reports source status, classification, compliance, coverage, and operator visual status honestly.
