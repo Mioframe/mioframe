@@ -20,13 +20,19 @@
 - Resolvers receive filenames rather than status-aware added/modified/deleted/renamed records.
 - `--files` cannot represent deletion or both sides of rename.
 
+### Static verification
+
+- existing-file filtering happens before some checks can reason about deletion or rename;
+- the status-aware effect of deleted/renamed typed files, declarations, aliases, package, and lockfile changes is not expressed by one planner contract;
+- instruction compatibility is mandatory but not described alongside the other automatic lanes.
+
 ### Unit selection
 
 - focused unit selection is mainly changed tests plus colocated siblings;
 - imported non-sibling tests may be missed;
 - snapshot ownership is not resolved explicitly;
 - deletion, rename, dynamic imports, global setup, and unknown relations lack one explicit full-unit policy;
-- an empty sibling scope is not distinguished from a safely proven empty related-test result.
+- the current implementation does not use official Vitest related resolution for changed source inputs.
 
 ### Playwright selection
 
@@ -86,44 +92,70 @@ Acceptance:
 Introduce a small mechanical result contract shared by resolvers:
 
 - `skip` with reasons;
-- `focused` with non-empty exact targets and reasons;
+- `focused` with non-empty exact lane-defined execution inputs and reasons;
 - `full` with reasons;
 - `invalid` with blocking errors.
+
+A focused input may be a spec, direct test, source path for the official Vitest related resolver, release check, mutation target, or another exact repository-owned check.
 
 Acceptance:
 
 - full overrides focused;
-- targets are sorted and deduplicated;
+- inputs are sorted and deduplicated;
 - empty focused plans are invalid;
 - every decision is printed in verify planning output;
 - invalid metadata fails before test execution;
 - no product semantics or cross-lane orchestration enters the shared helper.
 
-## Phase 2: deterministic unit impact
+## Phase 2: status-aware static verification
 
-### 3. Unit related and snapshot selection
+### 3. Static check planning
 
-Implement unit planning as:
+Adapt format, lint, type-check, and instruction compatibility planning to the changed-path model.
 
-1. directly added or modified test files;
-2. owning tests for added, modified, or deleted snapshots;
-3. Vitest related selection for changed existing source and local test-support modules through static imports;
-4. union and deduplication;
-5. full-unit fallback for unresolved snapshots, deleted/renamed dependencies, Vitest config/setup, global utilities, known dynamic-import boundaries, generated aliases, and unknown relations;
-6. explicit `skip` with `no related unit tests` when the direct/snapshot/related set is empty and no full-fallback category applies.
+- format and lint only added or modified existing supported files;
+- deletion does not produce a formatting/lint target;
+- added, modified, deleted, or renamed TypeScript, Vue, declaration, alias, typed configuration, package, and lockfile changes select full type-check when they can affect the program graph;
+- shared formatter/linter/type-check configuration selects the complete owning check;
+- `AGENTS.md`, skills, or generator changes select instruction compatibility validation;
+- unsupported paths do not select unrelated static tools.
 
 Acceptance:
 
-- a changed imported source or fixture selects non-sibling importing tests;
+- deleting or renaming a typed source cannot skip type-check;
+- deleting a file never sends a nonexistent path to format or lint;
+- instruction-tree edits validate generated compatibility state;
+- package and lockfile changes preserve current field-sensitive behavior where safe;
+- command planning is covered for add/modify/delete/rename and shared config.
+
+## Phase 3: deterministic unit impact
+
+### 4. Unit related and snapshot selection
+
+Implement focused unit execution inputs as:
+
+1. directly added or modified test files;
+2. owning tests for added, modified, or deleted snapshots;
+3. changed existing source and local test-support paths passed to the supported Vitest related CLI or API.
+
+Sort and deduplicate direct tests, snapshot owners, and related source inputs. Let Vitest own static-import graph resolution; do not build a parallel dependency graph merely to enumerate every resulting test file.
+
+Use full-unit fallback for unresolved snapshots, deleted/renamed dependencies whose old relation cannot be represented safely, Vitest config/setup, global utilities, known dynamic-import boundaries, generated aliases, and unknown relations.
+
+If a focused related run finds no tests, report that result explicitly instead of converting it to a full run. It is not evidence that no unit proof is needed.
+
+Acceptance:
+
+- a changed imported source or fixture selects non-sibling importing tests through official Vitest related resolution;
 - a changed test runs directly;
 - a changed snapshot runs its owner;
 - deletion, rename, dynamic import, setup, and unresolved ownership cannot silently skip proof;
-- a safely empty related result does not force a full unit run that cannot add protection;
-- the summary states that an empty related result is not evidence of sufficient proof;
+- a no-match related result does not trigger an unhelpful full unit run;
+- the summary states that no matching related tests is not evidence of sufficient proof;
 - no custom dependency graph is introduced;
-- verify integration tests assert the resulting commands.
+- verify integration tests assert the exact inputs and resulting commands.
 
-## Phase 3: independent Playwright registries
+## Phase 4: independent Playwright registries
 
 Implement each lane separately. Do not introduce all three in one PR.
 
@@ -138,7 +170,7 @@ Shared mechanical fields may cover:
 
 Source mappings contain only production, story, fixture, or owned support paths. They never contain spec paths to group tests.
 
-### 4. Storybook behavior resolver
+### 5. Storybook behavior resolver
 
 Correct the existing Storybook behavior resolver first because it already has the clearest bounded ownership.
 
@@ -157,7 +189,7 @@ Acceptance:
 - irrelevant source skips the lane;
 - moved/deleted specs cannot leave stale registry records.
 
-### 5. App E2E resolver
+### 6. App E2E resolver
 
 Adapt the current app scenario registry to the shared mechanical contract without changing scenario ownership.
 
@@ -174,7 +206,7 @@ Acceptance:
 - every discovered app spec is mapped or has a justified standalone reason;
 - coverage is not reduced relative to the current resolver.
 
-### 6. Visual resolver and snapshot ownership
+### 7. Visual resolver and snapshot ownership
 
 Replace broad visual relevance with an explicit independent resolver.
 
@@ -193,9 +225,9 @@ Acceptance:
 - source mappings do not duplicate browser-behavior ownership;
 - baseline naming and project suffixes are covered by resolver tests.
 
-## Phase 4: focused release impact
+## Phase 5: focused release impact
 
-### 7. Release resolver
+### 8. Release resolver
 
 Add an independent release resolver before allowing release-only proof to remain manual.
 
@@ -218,9 +250,9 @@ Acceptance:
 - focused release planning does not weaken unconditional `pnpm verify:release` for `main`;
 - default, focused `--only`, and full release command modes are covered by tests.
 
-## Phase 5: mutation targets
+## Phase 6: mutation targets
 
-### 8. Persistent mutation registry
+### 9. Persistent mutation registry
 
 Replace sibling-based applicability only after a persistent target registry and validation are implemented.
 
@@ -241,9 +273,9 @@ Acceptance:
 - current legacy mutation remains mandatory until replacement coverage and command behavior pass;
 - removal of legacy sibling inference happens in the same PR that activates the validated registry.
 
-## Phase 6: browser project applicability
+## Phase 7: browser project applicability
 
-### 9. Audit before changing desktop/mobile execution
+### 10. Audit before changing desktop/mobile execution
 
 Do not change the current two-project matrix during earlier resolver work.
 
@@ -267,9 +299,9 @@ Acceptance before narrowing:
 - project filtering is covered by configuration and verify-planning tests;
 - no scenario is silently dropped from all projects.
 
-## Phase 7: durable performance checks when needed
+## Phase 8: durable performance checks when needed
 
-### 10. Separate one-off measurements from budgets
+### 11. Separate one-off measurements from budgets
 
 Do not add a performance registry without an actual durable contract.
 
@@ -282,31 +314,31 @@ When a repeated need appears:
 
 One-off PR optimization claims remain task-specific before/after measurements and are not automatically inferred by `verify`.
 
-## Phase 8: correct proof ownership
+## Phase 9: correct proof ownership
 
 These cleanups follow resolver stability and should remain separate from impact infrastructure.
 
-### 11. Remove behavior from visual specs
+### 12. Remove behavior from visual specs
 
 - retain deterministic preparation and bounded screenshots;
 - move reusable browser behavior to Storybook behavior;
 - move complete product outcomes to app E2E only when product composition owns them;
 - delete duplicate behavior already proved elsewhere.
 
-### 12. Make browser helpers strict
+### 13. Make browser helpers strict
 
 - separate required action/assertion helpers from optional cleanup;
 - remove silent returns, repeated fallback delivery, and arbitrary delay recovery;
 - make missing preconditions and outcomes fail with clear diagnostics;
 - update helper impact ownership.
 
-### 13. Consolidate foundation proof
+### 14. Consolidate foundation proof
 
 - prove generic focus, state layer, ripple, elevation, motion, and token precedence at foundation owners;
 - retain family-specific routing, anatomy, deviations, and unique outcomes;
 - preserve canonical Material evidence.
 
-### 14. Decompose broad mocked component suites
+### 15. Decompose broad mocked component suites
 
 For touched suites:
 
@@ -320,8 +352,9 @@ For touched suites:
 Migration is complete when:
 
 - Git diff planning includes deletion and rename status;
-- every resolver uses `skip | focused | full | invalid` with inspectable reasons;
-- unit selection uses direct tests, snapshot ownership, Vitest static-import relations, safely empty related results, and tested full fallbacks;
+- every resolver uses `skip | focused | full | invalid` with inspectable lane-defined inputs;
+- static verification handles add/modify/delete/rename without passing nonexistent targets or skipping typed impact;
+- unit selection uses direct tests, snapshot ownership, official Vitest static-import resolution, explicit no-match reporting, and tested full fallbacks;
 - Storybook behavior, app E2E, and visual use independent validated source-impact registries;
 - spec paths are not overloaded as source mappings;
 - visual baseline ownership handles add/change/delete/rename safely;
