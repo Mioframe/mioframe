@@ -181,6 +181,18 @@ describe('sortAndDedupeChangedPaths', () => {
 
     expect(sortAndDedupeChangedPaths(changes)).toHaveLength(2);
   });
+
+  it('keeps distinct renames separate and orders them deterministically when their concatenated paths would collide', () => {
+    const first = { status: 'renamed', oldPath: 'a', newPath: 'b c' };
+    const second = { status: 'renamed', oldPath: 'a b', newPath: 'c' };
+
+    const forward = sortAndDedupeChangedPaths([first, second]);
+    const backward = sortAndDedupeChangedPaths([second, first]);
+
+    expect(forward).toHaveLength(2);
+    expect(forward).toEqual(backward);
+    expect(forward).toEqual([first, second]);
+  });
 });
 
 describe('getChangedFileProjection', () => {

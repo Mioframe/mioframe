@@ -2,21 +2,6 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import toolingConfig from '../../config/tooling.json' with { type: 'json' };
 
-/**
- */
-
-/**
- */
-
-/**
- */
-
-/**
- */
-
-/**
- */
-
 const storybookStaticDirPrefix = `${toolingConfig.storybook.staticDir}/`;
 const IGNORED_PREFIXES = [
   'node_modules/',
@@ -248,8 +233,25 @@ export function filterIgnoredChangedPaths(changes) {
   return result;
 }
 
-function getChangedPathSortKey(change) {
-  return change.status === 'renamed' ? `${change.oldPath} ${change.newPath}` : change.path;
+function getChangedPathSortTuple(change) {
+  return change.status === 'renamed'
+    ? [change.oldPath, change.newPath, change.status]
+    : [change.path, '', change.status];
+}
+
+function compareChangedPaths(left, right) {
+  const leftTuple = getChangedPathSortTuple(left);
+  const rightTuple = getChangedPathSortTuple(right);
+
+  for (let index = 0; index < leftTuple.length; index += 1) {
+    const comparison = leftTuple[index].localeCompare(rightTuple[index]);
+
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+
+  return 0;
 }
 
 /**
@@ -272,9 +274,7 @@ export function sortAndDedupeChangedPaths(changes) {
     deduped.push(change);
   }
 
-  return deduped.sort((left, right) =>
-    getChangedPathSortKey(left).localeCompare(getChangedPathSortKey(right)),
-  );
+  return deduped.sort(compareChangedPaths);
 }
 
 function diffNameStatus(refArgs, cwd) {
