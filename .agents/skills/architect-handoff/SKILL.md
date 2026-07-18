@@ -77,8 +77,8 @@ Record:
   - required proof types from `docs/testing/architecture.md`
   - accessibility, browser, visual, data-safety, performance, release, and platform risks that apply
   - named metric/budget when the task makes a performance or optimization claim
-  - whether mutation may be applicable
-  - exact test/spec paths, measurements, and resolver changes are deferred to implementation preflight
+  - whether existing persistent mutation or performance protection may be affected
+  - exact test/spec paths, repository impact metadata updates, and task-specific measurements are deferred to implementation preflight
 - Required verification
 - Forbidden
 - Implementation readiness:
@@ -125,7 +125,7 @@ Review the full implementation against the applicable handoff or deterministic w
 - Do not review only the latest fix or latest changed files.
 - Check goal, non-goals, scenarios, ownership, dependency direction, state shape, API, public contracts, shared UI blast radius, test proof, performance evidence, verification, simplicity, proportionality, and future safety.
 - Confirm every added concept is justified and nothing can be removed without losing an acceptance criterion or invariant.
-- Confirm implementation preflight resolved exact `TEST IMPACT` and the resulting tests and measurements still match the changed contracts.
+- Confirm implementation preflight resolved task-specific `TEST IMPACT`, durable impact metadata was maintained, and resulting tests and measurements still match the changed contracts.
 - Preserve unresolved findings in one consolidated list.
 - If repeated rounds add concepts, protocols, branches, configuration, recovery paths, or abstractions, stop patching and simplify the architecture.
 - If repeated rounds show ownership drift or mixed responsibilities, stop patching and redo the architecture decision.
