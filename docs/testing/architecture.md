@@ -91,14 +91,14 @@ Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated acti
 
 ## Contract proof types
 
-| Proof type                | Owns                                                                                                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Deterministic behavior    | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, and deterministic multi-module outcomes |
-| Component contract        | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser wiring                            |
-| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, and browser APIs                                    |
-| Product scenario          | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries               |
-| Visual regression         | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices                                                                                    |
-| Release behavior          | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-only invariants                                                                   |
+| Proof type | Owns |
+| --- | --- |
+| Deterministic behavior | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, and deterministic multi-module outcomes |
+| Component contract | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser wiring |
+| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, and browser APIs |
+| Product scenario | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries |
+| Visual regression | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices |
+| Release behavior | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-only invariants |
 
 ## Supplemental evidence and human gates
 
@@ -111,17 +111,17 @@ These strengthen or approve proof but are not primary owners of ordinary functio
 
 ## Execution lanes
 
-| Verify label or process      | Executes                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------- |
-| `unit-tests`                 | Deterministic behavior and component-contract tests through Vitest              |
-| `storybook-behavior`         | Reusable browser behavior through Playwright against isolated Storybook         |
-| `e2e`                        | Complete product scenarios through application Playwright tests                 |
-| `visual`                     | Screenshot regression against canonical Storybook stories                       |
-| release verification         | Release behavior against the built production artifact                          |
-| `mutation`                   | Registered narrow mutation targets                                              |
-| persistent performance check | Existing automated benchmark or budget selected by repository impact metadata   |
-| task-specific measurement    | Reproducible one-off measurement named in preflight; not automatically inferred |
-| operator review              | Manual Material comparison                                                      |
+| Verify label or process | Executes |
+| --- | --- |
+| `unit-tests` | Deterministic behavior and component-contract tests through Vitest |
+| `storybook-behavior` | Reusable browser behavior through Playwright against isolated Storybook |
+| `e2e` | Complete product scenarios through application Playwright tests |
+| `visual` | Screenshot regression against canonical Storybook stories |
+| release verification | Release behavior against the built production artifact |
+| `mutation` | Registered narrow mutation targets |
+| persistent performance check | Existing automated benchmark or budget selected by repository impact metadata |
+| task-specific measurement | Reproducible one-off measurement named in preflight; not automatically inferred |
+| operator review | Manual Material comparison |
 
 ## Proof boundaries
 
@@ -200,7 +200,9 @@ A dedicated unit resolver must:
 3. use Vitest related-test selection for changed existing source modules and local test-support modules reachable through static imports;
 4. union and deduplicate direct, snapshot-owned, and related tests;
 5. select the full unit lane for unresolved snapshots, deleted or renamed dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, or any relation that cannot be represented safely;
-6. skip only when changed paths are outside unit relevance.
+6. return `skip` with an explicit `no related unit tests` reason when the direct/snapshot/related set is empty and no full-fallback category applies.
+
+An empty related result does not prove that the changed contract needs no unit test. Test sufficiency remains an agent and review responsibility.
 
 Do not maintain a second custom unit dependency graph.
 
@@ -266,6 +268,26 @@ Maps visible component, foundation, story, theme, font, icon, and rendering sour
 
 Visual snapshot ownership must be deterministic. An unresolved added, modified, deleted, or renamed baseline selects the full visual lane.
 
+### Release verification
+
+Focused development verification must automatically select release checks when the changed contract can only be proved against the built production artifact.
+
+Release impact is repository-owned and independent from app E2E mappings. It covers stable source domains such as:
+
+- build and release configuration;
+- routing/base-path behavior in the built artifact;
+- manifest, service worker, PWA, and channel isolation;
+- release scripts and artifact assembly;
+- runtime dependency changes that affect production output.
+
+A release resolver uses the same `skip | focused | full | invalid` contract:
+
+- known local impact selects exact build, artifact, or release-smoke checks;
+- shared release infrastructure or unknown relevant release impact selects the full release lane;
+- invalid or stale release metadata blocks verification.
+
+`pnpm verify:release` remains the unconditional full-project gate for `main`. Automatic focused release selection during development does not replace it.
+
 ## Browser project applicability
 
 Source impact chooses specs. Project applicability belongs to persistent test metadata, not to changed-file paths or agent prose.
@@ -319,7 +341,7 @@ Rules:
 
 - include only applicable proof; do not enumerate every lane with ceremonial `not applicable` entries;
 - name exact existing or planned tests;
-- update mappings, standalone records, platform metadata, mutation targets, or persistent performance checks when the repository relation changes;
+- update mappings, standalone records, platform metadata, mutation targets, release impact metadata, or persistent performance checks when the repository relation changes;
 - update preflight if implementation changes the planned contracts or proof;
 - `verify` never consumes this artifact.
 
@@ -345,13 +367,14 @@ Reject or revise proof when:
 4. fixtures reconstruct broad product behavior through mocks;
 5. browser instability is hidden by sleeps, force, retries, or recovery loops;
 6. visual tests contain behavior or token-table assertions;
-7. product E2E repeats pure logic branches or shared component states;
+7. product E2E repeats deterministic logic branches or shared component states;
 8. repository impact metadata is missing, stale, or semantically overloaded;
 9. a spec path is used as a source mapping to group tests;
 10. mobile coverage is reduced without complete audit and explicit evidence;
 11. mutation applicability depends only on sibling files or transient agent prose;
 12. a durable performance contract has no persistent automated protection;
-13. a new framework, DSL, registry, validator, or abstraction has no repeated demonstrated need.
+13. release-only behavior changes without focused release proof or the full release gate;
+14. a new framework, DSL, registry, validator, or abstraction has no repeated demonstrated need.
 
 ## Migration
 
