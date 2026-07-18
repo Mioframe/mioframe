@@ -11,22 +11,37 @@ Do not place every cross-family concern into one generic foundation bucket.
 
 ## Evidence boundary
 
-Foundation authoring and review use current workspace files, official Material sources, and local project verification.
+Foundation authoring and review use the current user task, current workspace files, official Material sources, and local project verification.
 
 Do not use source-control or remote history as contract evidence.
 
+## Universal request routing
+
+A named Material request is resolved by official ownership, not by the word `component` in the selected command.
+
+Examples:
+
+- Button → component;
+- State layer, ripple, focus indication, interaction states → foundation;
+- color, elevation, icons, motion, shape, typography → style.
+
+A valid explicit request for an official foundation or style is sufficient to start implementation. It does not require an active component migration, roadmap priority, multiple current consumers, or an existing canonical directory.
+
+When a request is accidentally sent through `material-component`, it must be routed to `material-foundation` and executed rather than rejected.
+
 ## Foundations
 
-`foundations` contains cross-component contracts represented under official Material Foundations navigation, such as:
+`foundations` contains official cross-component behavior and platform contracts, including:
 
 - accessibility;
 - adaptive design and layout;
 - interaction foundations;
-- other official foundation domains required by current components.
+- state layer, ripple, and focus indication;
+- other official foundation domains selected by an explicit library request or required by current components.
 
 ## Styles
 
-`styles` contains cross-component visual systems represented under official Material Styles navigation:
+`styles` contains official cross-component visual systems:
 
 - color;
 - elevation;
@@ -39,17 +54,29 @@ Use exact official documentation slugs where practical.
 
 ## Ownership rule
 
-A shared owner is justified only when at least one current component requires the contract and the concern is genuinely cross-family.
+A shared owner is justified when either:
+
+1. the user explicitly requests implementation of that official Material foundation/style artifact; or
+2. a real current cross-family requirement needs it.
+
+Existing consumers determine migration and blast-radius work. They are not a prerequisite for an explicit standalone library request.
+
+When no production consumer exists:
+
+- implement the smallest coherent official contract requested;
+- use foundation/style-owned tests and a bounded testing or Storybook fixture;
+- do not invent a fake product consumer;
+- do not broaden the work into a universal framework or complete catalog.
+
+Behavior used by one family remains family-local only when it has no official foundation/style owner and no explicit standalone library requirement.
 
 Shared owners must:
 
 - remain free of component-family and product knowledge;
-- expose the smallest contract required by current consumers;
+- expose the smallest coherent contract required by the request and affected consumers;
 - document source status, supported behavior, known gaps, and affected consumers in README;
-- keep implementation, tests, and the latest independent AUDIT beside the owner;
+- keep implementation, tests, fixtures, and the latest independent AUDIT beside the owner;
 - avoid speculative universal frameworks.
-
-Behavior used by one family remains family-local until official evidence or multiple real consumers prove shared ownership.
 
 ## Canonical source status
 
@@ -68,10 +95,13 @@ Do not certify current-complete domain coverage from stale-only, partial, trunca
 Each implemented foundation or style directory contains README with:
 
 - official mapping and source status;
+- implementation scope and capability inventory;
 - implemented contract;
 - partial, defective, provisional, or unverified contract;
 - actual capability not implemented;
-- officially unsupported or invalid routes when applicable;
+- officially unsupported or invalid routes;
+- public/private API and CSS namespaces;
+- state, lifecycle, clipping, rendering, and final-owner responsibilities;
 - known issues and required follow-up;
 - affected consumers and blast radius;
 - representative verification;
@@ -79,7 +109,7 @@ Each implemented foundation or style directory contains README with:
 
 An officially invalid route is not a missing capability. Optional or non-normative guidance is not automatically required capability.
 
-Independent review may create AUDIT in the same directory. There is no separate global audit tree.
+Independent review may create AUDIT in the same directory. There is no separate global audit tree. Authoring never edits AUDIT.
 
 ## Dependency direction
 
@@ -91,37 +121,74 @@ shared generic infrastructure
 
 Foundations and styles do not import component families. Components consume them through documented cross-family contracts.
 
-Generic DOM, browser, event, geometry, lifecycle, and teleport utilities remain in their generic owner. Do not create a Material wrapper merely to satisfy folder structure.
+Generic DOM, browser, event, geometry, lifecycle, and teleport utilities remain in their generic owner when they contain no Material semantics. Do not create a Material wrapper merely to satisfy folder structure.
+
+Do not leave Material-specific state, token, clipping, motion, focus, or rendering ownership in generic infrastructure merely because the current legacy implementation is located there.
+
+## State layer and interaction ownership
+
+State layer, ripple, and focus indication belong to interaction foundations when they remain generic across components.
+
+Resolve applicable:
+
+- official semantic purpose and state model;
+- state-input ownership;
+- color and opacity routes;
+- layer owner, bounds, shape inheritance, and clipping;
+- ripple event host, rendered surface, and clip owner;
+- focus-indicator target and bounds;
+- disabled and simultaneous-state behavior;
+- acquisition, release, cancellation, cleanup, and reduced motion;
+- generic consumer bridge;
+- testing-only forced-state support.
+
+A generic interaction primitive must not contain Button, Switch, Card, or other family-specific tokens, semantics, or state precedence.
+
+An opacity token declaration alone does not implement State Layer. The route must reach the correct rendered layer with correct bounds, clipping, state winner, and consumer behavior.
 
 ## Change rule
 
-Before changing a shared foundation or style:
+Before changing or creating a foundation/style owner:
 
-1. name the official requirement and source status;
-2. name the current owner and current affected consumers;
-3. verify that the change is not safely family-local;
-4. define the shortest real final route;
-5. assess cascade, inheritance, runtime, and visual impact;
-6. add proportional representative proof that actually exercises the route;
-7. update local documentation with every remaining gap and visual status.
+1. name the explicit request or current cross-family requirement;
+2. resolve official requirement and source status;
+3. name current owner, canonical owner, and current consumers;
+4. distinguish generic infrastructure from Material semantics;
+5. define the shortest real final route;
+6. assess cascade, inheritance, clipping, runtime, accessibility, and visual impact;
+7. add proportional proof that actually exercises the route;
+8. migrate legacy Material ownership when applicable;
+9. update local documentation with every remaining gap.
 
-Changes to root/system tokens, universal selectors, pseudo-elements, or shared formulas require explicit current cross-family impact analysis. A component-specific test alone is insufficient for a global change.
+Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, or public shared APIs require explicit current cross-family impact analysis. A component-specific test alone is insufficient for a global change.
 
 Unchanged tests that never exercise the shared route do not count as representative proof.
 
 ## Motion architecture
 
-A shared motion foundation owns its documented Web runtime contract and proves it deeply once:
+A shared motion style owns its documented Web runtime contract and proves it deeply once:
 
 - canonical evidence and adaptation;
 - source-to-runtime dependency;
 - timing/easing or runtime model;
 - interruption and reduced-motion behavior;
-- representative consumers.
+- representative consumers or a style-owned fixture when no consumer exists.
 
 Each component then proves proportional consumption. Do not require frame-by-frame validation per component.
 
 A technically honest route does not override an operator-rejected perceived result. The affected family keeps the visual defect open until behavior changes and new evidence is accepted.
+
+## CSS custom-property namespaces
+
+Use only:
+
+- exact official `--md-ref-*`, `--md-sys-*`, and `--md-comp-*` tokens;
+- justified semantic `--md-private-<owner>-<role>` routes;
+- genuine `--app-*` contracts.
+
+Do not create ad-hoc public-looking `--md-<artifact>-*` namespaces or unnecessary aliases for one-use constants.
+
+Every variable must affect the correct final owner through a real dependency.
 
 ## Anti-overengineering
 
@@ -130,9 +197,10 @@ Do not create:
 - a universal base component;
 - a generic runtime token/state registry;
 - a style DSL;
-- a shared owner before current consumers prove it;
+- a shared owner for family-local behavior with no official foundation/style basis and no explicit library request;
 - a parallel wrapper around generic infrastructure;
 - placeholder directories for every official page;
+- fake product consumers;
 - frame-level component motion infrastructure for ordinary CSS transitions.
 
-The structure mirrors documentation for navigation. Production artifacts are created only when required.
+The documentation hierarchy is navigation and ownership, not a requirement to pre-create every artifact. Production artifacts are created when explicitly requested or required by real consumers.
