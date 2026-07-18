@@ -54,5 +54,5 @@ pnpm verify --only unit-tests --files <component-or-test-paths...>
 - browser APIs, persistence, permissions, OPFS, or service workers;
 - hover, pressed, ripple, focus-indicator, elevation, shape, motion, screenshots, or computed appearance;
 - complete product flows through component stubs;
-- duplicated pure logic already owned by `unit-testing`;
+- duplicated deterministic logic already owned by `unit-testing`;
 - forced visual-state assertions that claim appearance or behavior.
