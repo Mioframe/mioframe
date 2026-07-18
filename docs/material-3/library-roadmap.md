@@ -44,9 +44,9 @@ Current audit:
 src/shared/ui/material/components/buttons/AUDIT.md
 ```
 
-Current blocker: README records `Status: rejected` for the current pressed-shape motion. The production motion behavior must change before another visual review. A shared elevation evidence gap also remains for MDCard and MDSwitch override routes.
+Current blocker: README records `Status: awaiting re-review` for the corrected pressed-shape motion. Independent Button review and explicit operator visual acceptance remain required. A shared elevation evidence gap also remains for MDCard and MDSwitch override routes.
 
-Single next action: send the visual problem directly with `material-component Button`. The authoring pass must preserve the feedback in README, change production pressed-shape motion, update implementation documentation, run local verification, and leave AUDIT unchanged. Then run `material-component-review Button` and ask the user to review the new evidence.
+Single next action: run `material-component-review Button`, then ask the operator to exercise press, release, and interrupted quick-click motion in the canonical size-geometry story and explicitly accept or reject the new evidence.
 
 Current progress:
 
@@ -59,12 +59,12 @@ Current progress:
 
 ## Milestones
 
-| ID  | Milestone                        | Status    | Exit gate                                                                                                                                                                                              |
-| --- | -------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | Architecture and operating model | `done`    | Official source hierarchy, documentation-shaped navigation, authoring/review/operator ownership, roadmap, and inventory ownership are defined.                                                       |
-| M1  | Buttons end-to-end pilot         | `active`  | Canonical owner, truthful README, compliant AUDIT, migrated consumers, no obsolete owner, applicable local verification, no unresolved shared-route blocker, and explicit operator acceptance.         |
+| ID  | Milestone                        | Status    | Exit gate                                                                                                                                                                                               |
+| --- | -------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model | `done`    | Official source hierarchy, documentation-shaped navigation, authoring/review/operator ownership, roadmap, and inventory ownership are defined.                                                          |
+| M1  | Buttons end-to-end pilot         | `active`  | Canonical owner, truthful README, compliant AUDIT, migrated consumers, no obsolete owner, applicable local verification, no unresolved shared-route blocker, and explicit operator acceptance.          |
 | M2  | Independent stateful pilot       | `planned` | One materially different stateful family validates controlled state, input/cancellation, accessibility, multiple anatomy owners, truthful documentation, independent audit, and operator visual review. |
-| M3  | Sequential migration             | `planned` | Each selected family follows the same implementation/documentation/audit/message-based-operator-review loop until the inventory has no unresolved Material-owned artifact.                            |
+| M3  | Sequential migration             | `planned` | Each selected family follows the same implementation/documentation/audit/message-based-operator-review loop until the inventory has no unresolved Material-owned artifact.                              |
 
 ## M1 — Buttons pilot
 

@@ -26,7 +26,7 @@ Tests prove contracts the component or changed foundation actually owns. They do
 | Pure behavior               | Extracted logic or lifecycle exists                        | Helpers, composables, state transitions, timing, cancellation, and cleanup                                            |
 | Consumer preservation       | Imports, wrappers, or product usage change                 | Preserve affected integration contracts                                                                               |
 | Independent two-stage audit | Every new or migrated family                               | Compare implementation with project documentation, then project documentation with Material 3 Expressive              |
-| Operator visual review      | Visible fidelity requires human comparison                 | Persist accepted/rejected/blocked visible evidence in `VISUAL_REVIEW.md`                                               |
+| Operator visual review      | Visible fidelity requires human comparison                 | Persist accepted/rejected/blocked visible evidence in `VISUAL_REVIEW.md`                                              |
 
 A layer may be omitted because the component does not own that contract. Difficulty alone is not a reason to omit an owned contract.
 

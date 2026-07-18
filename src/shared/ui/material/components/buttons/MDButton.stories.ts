@@ -36,7 +36,7 @@ const meta = {
           '',
           '**Typography**: the label uses the shared `MD_TYPESCALE` utility classes (no handwritten font CSS). `md.comp.button.<size>.label-text` is a composite official token with no exact decomposed `--md-comp-*` path, so it is documented here rather than split into invented font/size/line-height/weight/tracking fragments: `xsmall`/`small`→label-large, `medium`→title-medium, `large`→headline-small, `xlarge`→headline-large.',
           '',
-          '**Motion property ownership**: the root owns `border-radius`/`box-shadow` (fast spatial: 350ms `cubic-bezier(0.42, 1.67, 0.21, 0.9)`) and `background-color`/`border-color` (fast effects: 150ms `cubic-bezier(0.31, 0.94, 0.34, 1)`); the root does not transition `color` because no root-owned rendered property depends on it. The label and icon elements own their own visible `color` and `opacity` and each carry the fast-effects transition directly.',
+          '**Motion property ownership**: the root owns `border-radius`/`box-shadow` (fast spatial: 350ms `cubic-bezier(0.42, 1.67, 0.21, 0.9)`) and `background-color`/`border-color` (fast effects: 150ms `cubic-bezier(0.31, 0.94, 0.34, 1)`); shape geometry follows the raw native press lifecycle so release starts immediately, while the state layer independently keeps its minimum-duration feedback. The root does not transition `color` because no root-owned rendered property depends on it. The label and icon elements own their own visible `color` and `opacity` and each carry the fast-effects transition directly.',
           '',
           '**Toggle semantics**: `variant="toggle"` exposes controlled `aria-pressed` from `selected`. The consumer owns `selected` state; clicking only emits `click`.',
           '',
@@ -102,10 +102,10 @@ export const ToggleShapes: Story = {
           <MDButton data-testid="toggle-round-selected" label="Round selected" variant="toggle" shape="round" selected color="tonal" />
           <MDButton data-testid="toggle-round-unselected" label="Round unselected" variant="toggle" shape="round" color="tonal" />
           <MDStateLayerForcedStateProvider pressed>
-            <MDButton data-testid="toggle-round-pressed" class="md-state_pressed" label="Round pressed" shape="round" color="tonal" />
+            <MDButton data-testid="toggle-round-pressed" class="md-state_pressed md-button_pressed" label="Round pressed" shape="round" color="tonal" />
           </MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider pressed>
-            <MDButton data-testid="toggle-round-selected-pressed" class="md-state_pressed" label="Round selected pressed" variant="toggle" shape="round" selected color="tonal" />
+            <MDButton data-testid="toggle-round-selected-pressed" class="md-state_pressed md-button_pressed" label="Round selected pressed" variant="toggle" shape="round" selected color="tonal" />
           </MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
@@ -127,9 +127,9 @@ export const ToggleShapeDisabledPrecedence: Story = {
         <div class="visual-row">
           <MDButton data-testid="toggle-round-selected" label="Round selected" variant="toggle" shape="round" selected color="tonal" />
           <MDButton data-testid="toggle-round-selected-disabled" label="Round selected disabled" variant="toggle" shape="round" selected disabled color="tonal" />
-          <MDButton data-testid="toggle-round-selected-disabled-pressed" class="md-state_pressed" label="Round selected disabled forced-pressed" variant="toggle" shape="round" selected disabled color="tonal" />
+          <MDButton data-testid="toggle-round-selected-disabled-pressed" class="md-state_pressed md-button_pressed" label="Round selected disabled forced-pressed" variant="toggle" shape="round" selected disabled color="tonal" />
           <MDButton data-testid="toggle-square-selected" label="Square selected" variant="toggle" shape="square" selected color="tonal" />
-          <MDButton data-testid="toggle-square-selected-disabled-pressed" class="md-state_pressed" label="Square selected disabled forced-pressed" variant="toggle" shape="square" selected disabled color="tonal" />
+          <MDButton data-testid="toggle-square-selected-disabled-pressed" class="md-state_pressed md-button_pressed" label="Square selected disabled forced-pressed" variant="toggle" shape="square" selected disabled color="tonal" />
         </div>
       </div>
     `,
@@ -162,7 +162,7 @@ export const ToggleInteractionStates: Story = {
             </MDButton>
           </MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider pressed>
-            <MDButton class="md-state_pressed" label="Selected pressed" variant="toggle" selected color="tonal">
+            <MDButton class="md-state_pressed md-button_pressed" label="Selected pressed" variant="toggle" selected color="tonal">
               <template #icon>+</template>
             </MDButton>
           </MDStateLayerForcedStateProvider>
@@ -249,27 +249,27 @@ export const VisualInteractionStates: Story = {
         <div class="visual-row">
           <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Elevated hover" color="elevated" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Elevated focus" color="elevated" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Elevated pressed" color="elevated" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed md-button_pressed" label="Elevated pressed" color="elevated" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
           <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Filled hover" color="filled" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Filled focus" color="filled" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Filled pressed" color="filled" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed md-button_pressed" label="Filled pressed" color="filled" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
           <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Tonal hover" color="tonal" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Tonal focus" color="tonal" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Tonal pressed" color="tonal" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed md-button_pressed" label="Tonal pressed" color="tonal" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
           <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Outlined hover" color="outlined" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Outlined focus" color="outlined" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Outlined pressed" color="outlined" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed md-button_pressed" label="Outlined pressed" color="outlined" /></MDStateLayerForcedStateProvider>
         </div>
         <div class="visual-row">
           <MDStateLayerForcedStateProvider hovered><MDButton class="md-state_hover" label="Text hover" color="text" /></MDStateLayerForcedStateProvider>
           <MDStateLayerForcedStateProvider focused><MDButton class="md-state_focused" label="Text focus" color="text" /></MDStateLayerForcedStateProvider>
-          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed" label="Text pressed" color="text" /></MDStateLayerForcedStateProvider>
+          <MDStateLayerForcedStateProvider pressed><MDButton class="md-state_pressed md-button_pressed" label="Text pressed" color="text" /></MDStateLayerForcedStateProvider>
         </div>
       </div>
     `,
@@ -296,7 +296,10 @@ export const DefaultRoleMatrix: Story = {
             :pressed="state === 'pressed'"
           >
             <MDButton
-              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :class="[
+                'md-state_' + (state === 'focus' ? 'focused' : state),
+                { 'md-button_pressed': state === 'pressed' },
+              ]"
               :label="style + ' ' + state"
               :color="style"
             >
@@ -356,7 +359,7 @@ export const SizeGeometryMatrix: Story = {
           <MDStateLayerForcedStateProvider pressed>
             <MDButton
               :data-testid="\`geometry-\${size}-pressed\`"
-              class="md-state_pressed"
+              class="md-state_pressed md-button_pressed"
               :label="size"
               :size="size"
               shape="round"
@@ -487,7 +490,7 @@ export const TokenRoutingMatrix: Story = {
           <MDStateLayerForcedStateProvider pressed>
             <MDButton
               data-testid="button-pressed"
-              class="md-state_pressed"
+              class="md-state_pressed md-button_pressed"
               label="Pressed"
               color="filled"
               style="
@@ -536,7 +539,7 @@ export const TokenRoutingMatrix: Story = {
           <MDStateLayerForcedStateProvider pressed>
             <MDButton
               data-testid="button-outlined-pressed"
-              class="md-state_pressed"
+              class="md-state_pressed md-button_pressed"
               label="Outlined pressed"
               color="outlined"
               style="
@@ -589,7 +592,7 @@ export const TokenRoutingMatrix: Story = {
           <MDStateLayerForcedStateProvider pressed>
             <MDButton
               data-testid="button-tonal-pressed"
-              class="md-state_pressed"
+              class="md-state_pressed md-button_pressed"
               label="Tonal pressed"
               color="tonal"
               style="
@@ -644,7 +647,7 @@ export const TokenRoutingMatrix: Story = {
           <MDStateLayerForcedStateProvider pressed>
             <MDButton
               data-testid="button-elevated-pressed"
-              class="md-state_pressed"
+              class="md-state_pressed md-button_pressed"
               label="Elevated pressed"
               color="elevated"
               style="
@@ -697,7 +700,7 @@ export const TokenRoutingMatrix: Story = {
           <MDStateLayerForcedStateProvider pressed>
             <MDButton
               data-testid="button-text-pressed"
-              class="md-state_pressed"
+              class="md-state_pressed md-button_pressed"
               label="Text pressed"
               color="text"
               style="
@@ -740,7 +743,7 @@ export const DefaultToggleRoleMatrix: Story = {
               :focused="state === 'focus'"
               :pressed="state === 'pressed'"
             >
-              <MDButton :data-testid="'default-button-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-' + state" :class="'md-state_' + (state === 'focus' ? 'focused' : state)" :label="style + ' ' + (selected ? 'selected' : 'unselected') + ' ' + state" variant="toggle" :selected="selected" :color="style"><template #icon>+</template></MDButton>
+              <MDButton :data-testid="'default-button-toggle-' + style + '-' + (selected ? 'selected' : 'unselected') + '-' + state" :class="['md-state_' + (state === 'focus' ? 'focused' : state), { 'md-button_pressed': state === 'pressed' }]" :label="style + ' ' + (selected ? 'selected' : 'unselected') + ' ' + state" variant="toggle" :selected="selected" :color="style"><template #icon>+</template></MDButton>
             </MDStateLayerForcedStateProvider>
           </template>
         </div>
@@ -1047,7 +1050,10 @@ export const ToggleTokenRoutingMatrix: Story = {
           >
             <MDButton
               :data-testid="\`toggle-token-\${style}-selected-\${state}\`"
-              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :class="[
+                'md-state_' + (state === 'focus' ? 'focused' : state),
+                { 'md-button_pressed': state === 'pressed' },
+              ]"
               :label="\`\${style} selected \${state}\`"
               variant="toggle"
               selected
@@ -1066,7 +1072,10 @@ export const ToggleTokenRoutingMatrix: Story = {
           >
             <MDButton
               :data-testid="\`toggle-token-\${style}-unselected-\${state}\`"
-              :class="'md-state_' + (state === 'focus' ? 'focused' : state)"
+              :class="[
+                'md-state_' + (state === 'focus' ? 'focused' : state),
+                { 'md-button_pressed': state === 'pressed' },
+              ]"
               :label="\`\${style} unselected \${state}\`"
               variant="toggle"
               :color="style"

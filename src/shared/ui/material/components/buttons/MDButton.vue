@@ -66,7 +66,7 @@ const onButtonClick = (event: MouseEvent) => {
 };
 
 const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
-const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
+const { hover, focused, pressed, durationPressedState } = useStateLayer(buttonEl);
 const showVisualState = computed(() => !props.disabled);
 /**
  * `md.comp.button` publishes no text-toggle color route (the color matrix has no text
@@ -162,6 +162,7 @@ if (import.meta.env.DEV) {
       {
         'md-button_icon': !!$slots.icon,
         'md-button_loading': isLoading,
+        'md-button_pressed': showVisualState && pressed,
         'md-button_selected': appliedSelected,
         'md-state_hover': showVisualState && hover,
         'md-state_focused': showVisualState && focused,
@@ -1468,19 +1469,19 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-xsmall-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-square);
       }
 
-      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-xsmall-pressed-container-shape);
       }
@@ -1517,19 +1518,19 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-small-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-square);
       }
 
-      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-small-pressed-container-shape);
       }
@@ -1565,19 +1566,19 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-medium-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-square);
       }
 
-      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-medium-pressed-container-shape);
       }
@@ -1613,19 +1614,19 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-large-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-square);
       }
 
-      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-large-pressed-container-shape);
       }
@@ -1663,19 +1664,19 @@ if (import.meta.env.DEV) {
         --md-button-border-radius: var(--md-comp-button-xlarge-container-shape-square);
       }
 
-      &.md-button_shape-round.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-round);
       }
 
-      &.md-button_shape-square.md-button_selected:not(.md-state_pressed):not(:active),
+      &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
         --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-square);
       }
 
-      &.md-state_pressed:not(.md-state_disabled):not(:disabled),
+      &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
         --md-button-border-radius: var(--md-comp-button-xlarge-pressed-container-shape);
       }

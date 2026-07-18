@@ -227,6 +227,41 @@ test('MDButton focus indicator follows real keyboard focus and is not clipped', 
   await assertFocusIndicatorFollowsHost(page, indicator, host);
 });
 
+test('MDButton pressed shape starts releasing immediately after a quick pointer press', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--size-geometry-matrix');
+
+  const button = page.getByTestId('geometry-small-round');
+  const restingRadius = await button.evaluate((el) =>
+    parseFloat(getComputedStyle(el).borderRadius),
+  );
+  const pressedRadius = await page
+    .getByTestId('geometry-small-pressed')
+    .evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+  const box = await button.boundingBox();
+
+  if (box == null) {
+    throw new Error('Missing MDButton bounding box for pressed-shape release test.');
+  }
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(button).toHaveClass(/md-button_pressed/);
+  await expect
+    .poll(() => button.evaluate((el) => parseFloat(getComputedStyle(el).borderRadius)))
+    .toBeCloseTo(pressedRadius, 1);
+
+  await page.mouse.up();
+  await expect(button).not.toHaveClass(/md-button_pressed/);
+
+  await expect
+    .poll(() => button.evaluate((el) => parseFloat(getComputedStyle(el).borderRadius)), {
+      timeout: 150,
+    })
+    .toBeGreaterThan(pressedRadius + (restingRadius - pressedRadius) / 4);
+});
+
 test('MDIconButton focus indicator follows real keyboard focus and is not clipped', async ({
   page,
 }) => {

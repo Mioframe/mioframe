@@ -26,7 +26,7 @@
 
 ## Partial / defective / unverified
 
-- Pressed-shape motion is technically connected to the project Web adaptation but is operator-rejected as visibly incorrect for the intended Material 3 Expressive behavior.
+- Pressed-shape motion now follows the raw native press lifecycle while the state layer retains its minimum-duration feedback; the correction is awaiting operator visual re-review.
 - Shared elevation recomputation has focused override proof for Button, FAB, and Extended FAB. Equivalent focused override proof remains absent for MDCard and MDSwitch.
 - Current canonical completeness is unverified because the complete available Button snapshot is stale.
 
@@ -42,18 +42,18 @@
 
 ## Known issues and required follow-up
 
-- Correct the production pressed-shape motion behavior before requesting another operator review.
+- Run independent Button review, then repeat operator visual review of press, release, and interrupted quick-click motion in the canonical size-geometry story.
 - Add or deliberately defer representative shared elevation override proof for MDCard and MDSwitch through the owning foundation/style workflow.
 - Rapid-click modified motion guidance is conditional, non-normative Web guidance. It is not a missing Button capability; revisit only when a concrete supported scenario requires repeated rapid activation behavior.
 - Refresh or directly verify the current official Button family sources before claiming current-complete inventory or full current coverage.
 
 ## Operator feedback and visual status
 
-Status: `rejected`
+Status: `awaiting re-review`
 
-Latest operator feedback: the current pressed-shape animation is visibly incorrect for the intended Material 3 Expressive behavior. A technically connected CSS transition does not resolve the perceived motion mismatch.
+Latest operator feedback: the shape-change animation on press and release is visibly incorrect and does not match the intended Material 3 Expressive behavior. A technically connected CSS transition does not resolve the perceived motion mismatch.
 
-Implementation response: none yet. The next implementation pass must change production motion behavior, prepare new canonical evidence, and then set the status to `awaiting re-review`. Only an explicit user acceptance message may set `accepted`.
+Implementation response: container shape now follows the raw press state and begins its reverse fast-spatial transition immediately on release; the state-layer minimum-duration feedback remains independent. The canonical size-geometry story and real-pointer browser check are prepared for re-review. Only an explicit user acceptance message may set `accepted`.
 
 ## Public API and semantics
 
@@ -77,7 +77,7 @@ Invalid combinations and out-of-range loading values are normalized with develop
 
 - The button root owns container geometry, border, background, elevation, and shape transitions.
 - Label and icon descendants own their rendered color and opacity.
-- State resolution maps hover, focus, pressed, selected, disabled, and loading output to final properties.
+- State resolution maps hover, focus, pressed, selected, disabled, and loading output to final properties. Shape geometry consumes raw pressed state; the state layer separately consumes its minimum-duration pressed state.
 - Public token support is valid only when an override reaches the final rendered property.
 - Official pressed-shape spring values are canonical source evidence. The current CSS runtime uses a documented Web adaptation rather than literal spring physics.
 - Elevation shadow-color routing consumes the shared `--md-private-elevation-shadow-color` / `--md-sys-elevation-level*` contract.
@@ -109,9 +109,9 @@ Invalid combinations and out-of-range loading values are normalized with develop
 
 - `MDButton.test.ts` covers public API, semantics, invalid combinations, state, and loading contracts.
 - `MDButton.stories.ts` provides canonical visual configurations and states.
-- Focused browser/visual coverage exists for token routes, geometry, accessibility, motion routing, and final computed Button shadow behavior.
-- Operator visual rejection remains open despite technical route evidence.
-- Applicable local verification must be rerun after the next production correction.
+- Focused browser/visual coverage exists for token routes, geometry, accessibility, motion routing, immediate release, and final computed Button shadow behavior.
+- `SizeGeometryMatrix` is the canonical re-review surface for real press, release, and quick-click interruption across all five sizes.
+- Operator visual acceptance remains open until explicit re-review.
 
 ## Review status
 
