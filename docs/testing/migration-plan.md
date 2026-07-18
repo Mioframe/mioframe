@@ -14,11 +14,11 @@
 
 ## Current mismatches
 
-### Diff planning
+### Diff planning (resolved)
 
-- Git changed-file detection excludes deleted paths.
-- Resolvers receive filenames rather than status-aware added/modified/deleted/renamed records.
-- `--files` cannot represent deletion or both sides of rename.
+`scripts/lib/changedPaths.mjs` now owns a repository-wide, status-aware changed-path model (see Phase 1, step 1, below). Local, local-base, and GitHub Actions planning all use NUL-delimited `git diff --name-status` output, preserve deleted paths, and expose both sides of a rename. `--files` remains an explicit existing-path override handled separately from Git diff planning.
+
+Resolvers still consume filenames, not status-aware records: `scripts/verify.mjs` and its command planners (format, lint, type-check, unit-test scope, mutation scope, and the app-e2e/Storybook-behavior/visual resolvers) read the transitional `getChangedFileProjection()` string-path projection rather than the underlying `ChangedPath[]` records. Making those planners status-aware is tracked separately in Phase 2 ("Static check planning") and later phases; this PR does not change their behavior.
 
 ### Static verification
 
@@ -68,26 +68,28 @@
 
 ## Phase 1: status-aware planning foundation
 
-### 1. Changed-path model
+### 1. Changed-path model — complete
 
-Introduce a repository-owned changed-path model carrying:
+`scripts/lib/changedPaths.mjs` introduces the repository-owned changed-path model, carrying:
 
 - added path;
 - modified path;
 - deleted path;
 - renamed path with old and new names.
 
-Use Git status-aware output for local, base-ref, and GitHub Actions planning. Preserve package comparison support.
+It uses NUL-delimited, status-aware Git output (`git diff --name-status -z --find-renames --diff-filter=ADMRT`) for local, local-base (fork-point), and GitHub Actions (merge-base) planning, and preserves `packageJsonOldRef` package comparison support for every scope. `scripts/verify.mjs` calls `resolveChangedPathsScope()` for scope resolution and `getChangedFileProjection()` to obtain the transitional string-path list its current command planners still consume (see "Diff planning" above).
 
-Acceptance:
+Acceptance (met):
 
 - deleted files reach every affected resolver;
 - rename exposes both old and new paths;
-- existing ignored-path behavior remains intentional;
+- existing ignored-path behavior remains intentional, including renames that cross an ignored/relevant boundary;
 - `--files` remains an explicit existing-target override and is not treated as deletion/rename planning;
-- planner tests cover local, base-ref, CI, deletion, and rename cases.
+- planner tests (`scripts/lib/changedPaths.test.mjs`) cover local, local-base, GitHub Actions, last-commit fallback, deletion, and rename cases using temporary Git repositories.
 
-### 2. Common lane-plan contract
+### 2. Common lane-plan contract — not started
+
+The `skip | focused | full | invalid` shared lane-plan contract below remains unimplemented. Current resolvers (`resolveAppE2EPlan`, `resolveStorybookBehaviorPlan`, and the ad hoc format/lint/type-check/unit-test/mutation/visual planning in `scripts/verify.mjs`) are unchanged by the changed-path model and still use their existing, resolver-specific shapes.
 
 Introduce a small mechanical result contract shared by resolvers:
 

@@ -20,7 +20,6 @@ import {
   getVerifyProcessEnv,
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
-  getVerifyBaseRef,
   PLAYWRIGHT_COMMAND_OVERHEAD_MS,
   printSummary,
   resolveCommandStatus,
@@ -162,12 +161,6 @@ describe('getCliFilesOverride', () => {
     expect(
       getCliFilesOverride(['--files=scripts/verify.mjs,scripts/playwrightContainer.mjs']),
     ).toEqual(['scripts/playwrightContainer.mjs', 'scripts/verify.mjs']);
-  });
-});
-
-describe('getVerifyBaseRef', () => {
-  it('reads VERIFY_BASE from process env', () => {
-    expect(getVerifyBaseRef({ VERIFY_BASE: 'origin/develop' })).toBe('origin/develop');
   });
 });
 

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 import { applyProjectEnv } from './lib/projectEnv.mjs';
@@ -11,6 +11,7 @@ import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
+import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
   comparePlaywrightContainerProfiles,
   resolvePlaywrightContainerProfile,
@@ -135,27 +136,10 @@ const FORMATTABLE_EXTENSIONS = new Set([
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx', '.vue']);
 const SOURCE_EXTENSIONS = ['.ts', '.vue'];
-const storybookStaticDirPrefix = `${toolingConfig.storybook.staticDir}/`;
-const IGNORED_PREFIXES = [
-  'node_modules/',
-  'dist/',
-  storybookStaticDirPrefix,
-  'coverage/',
-  'reports/',
-  'playwright-report/',
-  'test-results/',
-  '.stryker-tmp/',
-];
 const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
 function toPosixPath(filePath) {
   return filePath.split(path.sep).join(path.posix.sep);
-}
-
-function isIgnored(filePath) {
-  return IGNORED_PREFIXES.some(
-    (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
-  );
 }
 
 function isFormatLintIgnored(filePath) {
@@ -174,34 +158,6 @@ function fileExists(filePath) {
 
 function directoryExists(directoryPath) {
   return fs.existsSync(directoryPath) && fs.statSync(directoryPath).isDirectory();
-}
-
-function hasHeadParent() {
-  const result = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD~1'], {
-    encoding: 'utf8',
-    stdio: ['inherit', 'pipe', 'pipe'],
-  });
-
-  return result.status === 0;
-}
-
-function runGitCommand(args, options = {}) {
-  const result = spawnSync('git', args, {
-    encoding: 'utf8',
-    stdio: ['inherit', 'pipe', 'pipe'],
-  });
-
-  if (result.status !== 0 && options.allowFailure !== true) {
-    const command = ['git', ...args].join(' ');
-    process.stdout.write(result.stdout ?? '');
-    process.stderr.write(result.stderr ?? '');
-    throw new Error(`Command failed: ${command}`);
-  }
-
-  return (result.stdout ?? '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
 }
 
 function getCliBaseRef(argv) {
@@ -377,151 +333,6 @@ function validateOnlyLabel(label) {
       '\n',
     ),
   );
-}
-
-function ensureBaseRefExists(baseRef) {
-  const result = spawnSync('git', ['rev-parse', '--verify', baseRef], {
-    encoding: 'utf8',
-    stdio: ['inherit', 'pipe', 'pipe'],
-  });
-
-  if (result.status === 0) {
-    return;
-  }
-
-  process.stdout.write(result.stdout ?? '');
-  process.stderr.write(result.stderr ?? '');
-  throw new Error(
-    [
-      `Base ref does not exist: ${baseRef}`,
-      'Fetch the branch and try again:',
-      'git fetch origin',
-      `pnpm verify --base ${baseRef}`,
-    ].join('\n'),
-  );
-}
-
-function getForkPoint(baseRef) {
-  const forkPoint = runGitCommand(['merge-base', '--fork-point', baseRef, 'HEAD'], {
-    allowFailure: true,
-  })[0];
-
-  if (forkPoint) {
-    return forkPoint;
-  }
-
-  const mergeBase = runGitCommand(['merge-base', baseRef, 'HEAD'], {
-    allowFailure: true,
-  })[0];
-
-  if (mergeBase) {
-    return mergeBase;
-  }
-
-  throw new Error(
-    [
-      `Cannot determine fork point for base ref: ${baseRef}`,
-      'Both commands failed:',
-      `git merge-base --fork-point ${baseRef} HEAD`,
-      `git merge-base ${baseRef} HEAD`,
-    ].join('\n'),
-  );
-}
-
-function getChangedFiles() {
-  if (cliFilesOverride !== null) {
-    return {
-      changedFiles: uniqSorted(cliFilesOverride),
-      scope: 'explicit-files',
-      baseRef: null,
-      // No reliable single base ref for an explicit --files list.
-      packageJsonOldRef: null,
-    };
-  }
-
-  const githubBaseRef = process.env.GITHUB_BASE_REF;
-  const envBaseRef = getVerifyBaseRef();
-  let changedFiles = [];
-  let scope = 'local-changes';
-  let packageJsonOldRef = 'HEAD';
-
-  if (githubBaseRef) {
-    const mergeBase = runGitCommand(['merge-base', 'HEAD', `origin/${githubBaseRef}`], {
-      allowFailure: false,
-    })[0];
-
-    changedFiles = runGitCommand([
-      'diff',
-      '--name-only',
-      '--diff-filter=ACMR',
-      `${mergeBase}...HEAD`,
-      '--',
-    ]);
-    return {
-      changedFiles: uniqSorted(
-        changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
-      ),
-      scope: `github-base origin/${githubBaseRef}`,
-      baseRef: `origin/${githubBaseRef}`,
-      packageJsonOldRef: mergeBase,
-    };
-  } else if (cliBaseRef || envBaseRef) {
-    const baseRef = cliBaseRef ?? envBaseRef;
-    ensureBaseRefExists(baseRef);
-
-    const forkPoint = getForkPoint(baseRef);
-
-    changedFiles = [
-      ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', `${forkPoint}...HEAD`, '--']),
-      ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
-      ...runGitCommand(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '--']),
-      ...runGitCommand(['ls-files', '--others', '--exclude-standard']),
-    ];
-    return {
-      changedFiles: uniqSorted(
-        changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
-      ),
-      scope: `local-base ${baseRef}`,
-      baseRef,
-      packageJsonOldRef: forkPoint,
-    };
-  } else {
-    changedFiles = [
-      ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
-      ...runGitCommand(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '--']),
-      ...runGitCommand(['ls-files', '--others', '--exclude-standard']),
-    ];
-
-    if (changedFiles.length === 0 && hasHeadParent()) {
-      changedFiles = runGitCommand([
-        'diff',
-        '--name-only',
-        '--diff-filter=ACMR',
-        'HEAD~1..HEAD',
-        '--',
-      ]);
-      scope = 'local-last-commit';
-      packageJsonOldRef = 'HEAD~1';
-    }
-  }
-
-  return {
-    changedFiles: uniqSorted(
-      changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
-    ),
-    scope,
-    baseRef: null,
-    packageJsonOldRef,
-  };
-}
-
-/**
- * Read the verify base ref from the current process environment.
- * @param processEnv Environment object to read from.
- * @returns Base ref value, or null when VERIFY_BASE is unset.
- */
-export function getVerifyBaseRef(processEnv = process.env) {
-  return processEnv.VERIFY_BASE ?? null;
 }
 
 function isTypeCheckTarget(filePath) {
@@ -1933,7 +1744,12 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
   }
 
   const verifyProcessEnv = getVerifyProcessEnv(process.env);
-  const { changedFiles, scope, baseRef, packageJsonOldRef } = getChangedFiles();
+  const { input, scope, baseRef, packageJsonOldRef } = resolveChangedPathsScope({
+    cliFilesOverride,
+    cliBaseRef,
+    processEnv: process.env,
+  });
+  const changedFiles = getChangedFileProjection(input);
   const commands = selectOnlyCommands(buildCommands(changedFiles, { packageJsonOldRef }));
   const results = [];
   let hasFailed = false;
