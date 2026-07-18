@@ -21,6 +21,21 @@ Every in-scope shared UI artifact eventually reaches one outcome:
 
 Implementation may be incremental. Classification and source limitations remain explicit.
 
+## Generalization boundary
+
+This plan defines a universal adoption loop. Current pilot names and active migration facts are descriptive program state only.
+
+They do not define:
+
+- reusable component anatomy;
+- required DOM structure;
+- CSS custom-property names;
+- token values or state endpoints;
+- required wrappers, files, or test shapes;
+- special behavior for unrelated artifacts.
+
+Shared workflow refinements must be stated as artifact-independent rules. Concrete pilot defects remain in the owning README, AUDIT, roadmap, inventory, implementation, tests, and task-specific PR description.
+
 ## Library navigation
 
 ```text
@@ -40,14 +55,13 @@ Use:
 material <artifact-or-request>
 ```
 
-Examples:
+Artifact-independent syntax:
 
 ```text
-material Button
-material State layer
-material Ripple
-material Elevation
-material Motion
+material <component-family>
+material <foundation-artifact>
+material <style-domain>
+material <bounded Material correction>
 ```
 
 The router resolves official ownership:
@@ -56,7 +70,7 @@ The router resolves official ownership:
 - foundation/style → `material-foundation`;
 - cross-layer request → one canonical shared owner plus affected consumer changes.
 
-A request routed through `material-component` must be redirected when it resolves to a foundation/style. It must not be refused because it is not a component.
+A request routed through the wrong specialized Material entrypoint is redirected and executed rather than refused for classification alone.
 
 ## Explicit-request rule
 
@@ -65,16 +79,16 @@ A valid explicit request for an official Material artifact is a current requirem
 Do not defer solely because:
 
 - no component migration is active;
-- no current production consumer exists;
-- only one current family consumes the behavior;
-- the roadmap names another family;
+- no production consumer exists;
+- only one consumer exists;
+- the roadmap names another target;
 - the canonical owner does not exist;
 - the current owner is legacy.
 
-When no current production consumer exists:
+When no production consumer exists:
 
 - implement the smallest coherent official contract requested;
-- add owner-local tests and a bounded testing/Storybook fixture;
+- add owner-local tests and a bounded testing or Storybook fixture;
 - do not invent a fake product consumer;
 - do not broaden the work into a universal framework or unrelated catalog.
 
@@ -84,7 +98,7 @@ Existing consumers determine migration and blast-radius proof, not whether an ex
 
 Material authoring and review operate from the current user task, current workspace files, official Material sources, and local project verification.
 
-They do not use `git`, `gh`, GitHub, branches, commits, pull requests, diffs, blame, logs, tags, merge state, or repository history as evidence or workflow input.
+They do not use source-control history or remote workflow state as evidence or workflow input.
 
 ## Implementation loop
 
@@ -98,7 +112,7 @@ Each bounded Material task follows:
 6. classify each item as implemented, partial/unverified, not implemented, officially unsupported/invalid, unresolved, or outside the owner boundary;
 7. select the smallest coherent surface required by the explicit request and affected consumers;
 8. update the canonical owner README without editing AUDIT;
-9. correct directly applicable defective rules;
+9. correct directly applicable defective rules only through artifact-independent refinements;
 10. implement the selected surface;
 11. migrate existing consumers and remove obsolete Material ownership when applicable;
 12. add proportional tests and bounded rendered evidence;
@@ -135,7 +149,7 @@ Official coverage:
 
 Use `complete` only with current-complete evidence.
 
-A stale snapshot may be snapshot-complete. A partial, truncated, suspicious, missing, or spot-check-only source cannot certify complete inventory.
+A stale, partial, truncated, suspicious, missing, or spot-check-only source cannot certify current completeness.
 
 ## Classification rules
 
@@ -144,8 +158,8 @@ Use exactly one category per item:
 - implemented and verified;
 - partial, defective, provisional, or unverified;
 - not implemented;
-- officially unsupported or an invalid combination;
-- unresolved because canonical evidence is incomplete or conflicting;
+- officially unsupported or invalid;
+- unresolved;
 - outside the resolved owner boundary.
 
 `Not implemented` is reserved for real official capability that exists but is absent.
@@ -202,28 +216,28 @@ An official shared owner is justified by either:
 1. an explicit user request to implement that official library artifact; or
 2. a real current cross-family requirement.
 
-State layer, ripple, and focus indication are valid direct foundation targets.
+For a rendered foundation or interaction primitive, resolve applicable semantics, state ownership, token/color/opacity routes, rendered bounds, clipping, focus/ripple ownership, lifecycle, reduced motion, generic consumer bridges, and owner-local proof.
 
-For a direct interaction-foundation request, resolve applicable semantics, state ownership, color/opacity routes, rendered bounds, clipping, focus/ripple ownership, lifecycle, reduced motion, generic consumer bridges, and owner-local proof.
+A token declaration alone does not implement a rendered artifact. Final rendered behavior must work.
 
-An opacity token declaration alone does not implement State Layer. The final rendered layer and behavior must work.
-
-Family-local behavior remains local only when it has no official shared owner and no explicit standalone library request.
+Family-local behavior remains local only when it has no official shared owner and no explicit standalone request.
 
 ## Operator visual feedback
 
 The operator reports visible findings directly in the implementation message. No separate report file is required.
 
 - reported visible defects are persisted as `rejected`;
-- authoring may move to `awaiting re-review` only after changing production behavior;
+- authoring may move to `awaiting re-review` only after changing production behavior and rechecking objective surfaces;
 - only explicit user acceptance may set `accepted`;
 - tests, screenshots, technical routing, audit text, or silence do not imply acceptance.
 
-## Pilot and sequential migration
+## Current pilots and sequential migration
 
-Buttons remain the first component-family pilot. `MDSwitch` remains the default independent stateful component-family pilot.
+The roadmap may name concrete current pilots. Those names are scheduling and progress facts, not templates for unrelated artifacts.
 
-These automatic pilots do not prevent an explicit request for another component, foundation, or style.
+A pilot may validate universal workflow properties such as source handling, ownership, evidence, review separation, and operator-feedback persistence. Its specific DOM, tokens, states, defects, and fixes never become universal requirements by implication.
+
+Current automatic pilots do not prevent an explicit request for another component, foundation, or style.
 
 After the pilots, automatic migration:
 
@@ -240,16 +254,18 @@ After the pilots, automatic migration:
 When implementation exposes a rule defect:
 
 - identify current-workspace evidence;
-- update the owning rule with the smallest correction;
+- extract the underlying artifact-independent invariant;
+- update the narrowest owning rule;
 - update only directly affected instructions;
+- keep concrete symptoms and fixes in the owning artifact documentation;
 - do not preserve the defect through a family-specific exception;
 - do not broaden the correction into unrelated architecture work.
 
 ## Shared domain changes
 
 - Reuse an existing owner when sufficient.
-- Create a shared owner for an explicit official foundation/style request or a real cross-family contract.
-- Keep family-local behavior local when neither condition applies.
+- Create a shared owner for an explicit official foundation/style request or a real shared contract.
+- Keep consumer-specific behavior local when neither condition applies.
 - Identify current affected consumers from current code.
 - Require representative tests that exercise the shared route.
 - Use an owner-local fixture when no production consumer exists.
