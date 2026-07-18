@@ -1,6 +1,6 @@
 ---
 name: material-foundation
-description: 'Use for implementing, migrating, aligning, or correcting an official Material foundation or style contract, including state layer, ripple, focus indication, accessibility, adaptive/layout, color, elevation, icons, motion, shape, typography, theme, tokens, or units. An explicit user request is sufficient to start this workflow.'
+description: 'Use for implementing, migrating, aligning, or correcting an official Material foundation or style contract. An explicit user request is sufficient to start this workflow.'
 paths:
   - 'src/shared/ui/material/foundations/**'
   - 'src/shared/ui/material/styles/**'
@@ -17,26 +17,23 @@ paths:
 
 # Material foundations and styles
 
-Use this workflow for:
+Use for an explicit request, migration, correction, replacement, or source refresh of an official Material foundation or style.
 
-- an explicit request to implement a named official foundation or style artifact;
-- migration of an existing legacy Material foundation/style owner;
-- correction or replacement of a shared cross-family contract;
-- a source refresh that changes or verifies a shared contract.
-
-Examples:
+Syntax:
 
 ```text
-material State layer
-material Ripple
-material Focus indicator
-material Interaction states
-material Color roles
-material Elevation
-material Motion
-material Shape
-material Typography
+material-foundation <official-foundation-or-style-artifact>
 ```
+
+## Generalization boundary
+
+This skill contains only rules common to official foundation and style work.
+
+Do not add concrete component-family names, selectors, DOM nodes, custom-property names, token values, bug symptoms, or proposed consumer structures.
+
+Concrete findings belong in the selected owner README, AUDIT, implementation, tests, fixtures, and task-specific PR description.
+
+A finding may refine this skill only through an artifact-independent rule applicable to every foundation/style owner with the same risk.
 
 ## Explicit-request rule
 
@@ -45,16 +42,16 @@ A valid user request for an official Material foundation or style is a current r
 Do not refuse or defer solely because:
 
 - no component migration is active;
-- no current production consumer exists;
-- only one current component consumes the behavior;
-- the roadmap currently names another family;
-- the canonical directory has not been created;
-- the current implementation lives in `src/shared/ui/State`, `src/shared/lib/md`, `src/shared/ui/Icon`, or another legacy owner;
-- the request entered through `material-component`.
+- no production consumer exists;
+- only one consumer exists;
+- the roadmap names another target;
+- the canonical directory is absent;
+- the current implementation is in a legacy owner;
+- the request entered through another Material entrypoint.
 
-When there is no current production consumer, implement the smallest coherent official contract requested by the user and prove it with foundation/style-owned tests plus a bounded testing or Storybook fixture. Do not invent a fake product consumer.
+When no production consumer exists, implement the smallest coherent official contract and prove it with owner-local tests plus a bounded fixture. Do not invent a fake product consumer.
 
-Existing consumers remain important for migration and blast-radius proof, but they are not a prerequisite for an explicit standalone library request.
+Existing consumers determine migration and blast-radius proof, not whether the explicit request is allowed.
 
 ## Evidence boundary
 
@@ -65,32 +62,30 @@ Use only:
 - official Material sources;
 - local project verification commands.
 
-Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history as foundation evidence.
+Do not use source-control history or remote workflow state as implementation evidence.
 
 ## Resolve official ownership
 
-Classify the artifact by official Material navigation.
+Classify the artifact by official Material navigation:
 
 ```text
 src/shared/ui/material/foundations/<official-slug>
 src/shared/ui/material/styles/<official-slug>
 ```
 
-Use `foundations` for official cross-component behavior and platform contracts, including accessibility, adaptive/layout, and interaction foundations.
+Use foundations for official cross-component behavior and platform contracts. Use styles for official visual systems and token domains.
 
-Use `styles` for official visual systems, including color, elevation, icons, motion, shape, and typography.
+A legacy owner is an implementation to inspect or migrate, not canonical evidence and not a reason to reject the task.
 
-State layer, ripple, and focus indication are interaction-foundation work. Their current legacy owner may be `src/shared/ui/State`; the canonical target is resolved from official navigation, normally under `material/foundations/interaction` or a narrower official slug when one exists.
-
-Do not create a generic catch-all foundation owner or a top-level patterns tree without an official equivalent.
+Do not create a generic catch-all owner without an official equivalent.
 
 ## Distinguish Material from generic infrastructure
 
-Material foundations own Material semantics and public/private Material routes.
+Material owners contain Material semantics, routes, rendering contracts, and public/private Material APIs.
 
-Generic browser, DOM, event, geometry, lifecycle, timing, and teleport utilities remain in their generic owners when they do not encode Material meaning.
+Generic browser, DOM, event, geometry, lifecycle, timing, and teleport utilities remain generic when they contain no Material meaning.
 
-Do not create a Material wrapper merely to move a generic utility into the library. Conversely, do not leave Material-specific state, token, clipping, motion, focus, or rendering ownership in generic infrastructure merely because the current legacy implementation is there.
+Do not create a Material wrapper only to move a generic utility. Do not leave Material-specific state, token, clipping, focus, motion, or rendering ownership in generic infrastructure merely because the legacy implementation is there.
 
 ## Source status and inventory
 
@@ -104,19 +99,14 @@ Record canonical source status:
 
 Record inventory status separately:
 
-```text
-Official capability inventory:
-  complete
-  snapshot-complete (<snapshot>; currentness unverified)
-  incomplete (<exact gap>)
-  blocked (<exact reason>)
-```
+- `complete`;
+- `snapshot-complete (<snapshot>; currentness unverified)`;
+- `incomplete (<exact gap>)`;
+- `blocked (<exact reason>)`.
 
-A current-complete claim requires all applicable current domain pages and structured sources to be inspected without partial, truncated, suspicious, stale, or unresolved coverage.
+A stale, partial, truncated, suspicious, missing, or spot-check-only source cannot certify current completeness.
 
-A stale snapshot may be snapshot-complete, not current-complete. Spot checks prove particular facts, not complete domain coverage.
-
-Classify each official item as:
+Classify every official item exactly once:
 
 - implemented and verified;
 - partial, defective, provisional, or unverified;
@@ -125,24 +115,24 @@ Classify each official item as:
 - unresolved;
 - outside the resolved domain boundary.
 
-Do not classify an invalid route as missing capability. Do not inflate optional or non-normative guidance into required capability.
+Invalid routes are constraints, not absent capability. Optional guidance is not automatically required capability.
 
 ## Preflight
 
-Before production changes, resolve only applicable:
+Before production changes resolve applicable:
 
 - requested artifact and official domain;
-- exact official sources and source status;
-- current owner and canonical owner;
-- current consumers and legacy import paths;
-- required public, private, or testing-only contract;
-- change mode: new implementation, relocation, additive, correction, replacement, or source refresh;
+- exact sources and source status;
+- current and canonical owners;
+- consumers and legacy import paths;
+- public, private, and testing-only contracts;
+- change mode;
 - expected behavior or rendering delta;
-- semantics, lifecycle, state, clipping, focus, motion, token, and accessibility ownership;
+- semantics, state, lifecycle, clipping, focus, motion, token, and accessibility ownership;
 - proof and migration needs;
-- known omissions and genuine blockers.
+- genuine blockers.
 
-An unresolved source, ownership, compatibility, safety, or verification decision may block the task only when it materially prevents correct implementation. Name one exact blocker and the evidence already gathered.
+A blocker is valid only when one exact unresolved source, ownership, compatibility, safety, or verification decision materially prevents correct implementation.
 
 ## Local documentation
 
@@ -160,65 +150,58 @@ src/shared/ui/material/styles/<official-slug>/README.md
 
 README records:
 
-- official mapping and canonical source status;
-- implementation scope and capability inventory;
-- implemented contract;
-- partial, defective, provisional, or unverified contract;
-- actual official capability not implemented;
-- officially unsupported or invalid routes;
+- official mapping, source status, inventory, and coverage;
+- implemented, partial, absent, invalid, unresolved, and out-of-domain capability;
 - public and private API;
-- semantics, state, lifecycle, clipping, rendering, and token ownership;
+- semantic, state, lifecycle, clipping, rendering, and token ownership;
 - current and migrated consumers;
-- known issues and required follow-up;
-- representative verification;
+- known issues and follow-up;
+- representative proof;
 - review status.
 
-Set `Review status: review required after changes` before production edits.
-
-Authoring never edits an existing `AUDIT.md`.
+Set review required before production edits. Authoring never edits AUDIT.
 
 ## Ownership rule
 
 An official foundation/style owner is justified by either:
 
-1. an explicit user request to implement that official library artifact; or
-2. a real current cross-family requirement.
+1. an explicit user request for that official library artifact; or
+2. a real current shared requirement.
 
-Family-specific behavior remains local only when it has no official foundation/style ownership and no explicit standalone library requirement.
+Family-specific behavior remains family-local when it has no official shared ownership and no explicit standalone requirement.
 
 Foundations and styles:
 
 - remain free of component-family and product knowledge;
-- expose the smallest coherent contract required by the explicit request and affected consumers;
+- expose the smallest coherent contract required by the request and affected consumers;
 - do not import component families or the root Material barrel;
 - do not become universal registries, state machines, theme managers, or CSS DSLs.
 
-## State layer and interaction primitives
+## Interaction foundations
 
-For state layer, ripple, focus indication, or related interaction work, resolve and implement applicable:
+For a state, ripple, focus, or other interaction primitive, resolve applicable:
 
 - semantic purpose and official state model;
-- input state ownership;
+- input-state ownership;
 - color and opacity routes;
-- rendered layer owner and bounds;
+- rendered owner and bounds;
 - clipping and shape inheritance;
-- pointer/focus/keyboard acquisition where owned;
+- acquisition paths owned by the primitive;
 - disabled and simultaneous-state behavior;
-- lifecycle, release, cancellation, and cleanup;
-- reduced-motion behavior when applicable;
-- generic component-consumption bridge;
-- testing-only forced-state support, kept outside public product API;
-- representative real consumers when they exist.
+- release, cancellation, cleanup, and reduced motion;
+- generic consumer bridge;
+- testing-only forced-state support;
+- representative consumers when they exist.
 
-A generic primitive must not contain Button, Switch, Card, or other family-specific token routing or state precedence.
+A generic primitive must not contain any component-family-specific token selection, semantics, or precedence.
 
-Do not claim State Layer implemented merely because an opacity token exists. The source must reach the correct rendered layer, bounds, clipping, state winner, and consumer route.
+A token declaration alone does not implement a rendered primitive. The route must reach the correct owner with correct bounds, clipping, state winner, lifecycle, and consumer behavior.
 
 ## Actual dependency rule
 
-A shared contract is consumed only when changing its source input can affect the final output through a real implementation dependency.
+A shared contract is consumed only when changing its source can affect final output through a real dependency.
 
-These are not implementation routes:
+These are not routes:
 
 - adjacent declarations;
 - aliases to unchanged constants;
@@ -226,7 +209,7 @@ These are not implementation routes:
 - comments claiming derivation;
 - stories or tests that restate definitions.
 
-When official numeric spring parameters cannot drive CSS directly, record them as canonical evidence and expose one honestly documented Web runtime adaptation. Do not describe the adaptation as literal spring consumption.
+When canonical runtime parameters cannot be consumed literally by the Web platform, record them as source evidence and document one honest adaptation. Do not claim literal consumption.
 
 ## CSS custom-property namespaces
 
@@ -236,7 +219,13 @@ Use only:
 - justified semantic `--md-private-<owner>-<role>` routes;
 - genuine `--app-*` application contracts.
 
-Do not create ad-hoc public-looking `--md-<artifact>-*` namespaces. Do not create a custom property for a one-use constant unless runtime indirection is genuinely required.
+Do not create an ad-hoc public-looking name shaped like:
+
+```text
+--md-<artifact>-<raw-css-property>
+```
+
+Do not create a custom property for a one-use constant unless runtime indirection is required.
 
 Every touched variable must affect the correct final owner through a real route.
 
@@ -244,61 +233,59 @@ Every touched variable must affect the correct final owner through a real route.
 
 For current consumers:
 
-1. identify every affected contract class from current code;
+1. identify affected contract classes;
 2. migrate imports and routes to the canonical owner;
 3. prefer the narrowest valid shared owner;
-4. document cascade, inheritance, clipping, runtime, and visual impact;
-5. add representative proof that actually exercises the changed route;
-6. record remaining uncertainty in the shared-domain README and affected family READMEs.
+4. document cascade, inheritance, clipping, runtime, accessibility, and visual impact;
+5. add representative proof through final output;
+6. record remaining uncertainty locally.
 
-Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, or public shared APIs require representative proof across affected contract classes.
+Global selectors, root/system tokens, pseudo-elements, shared formulas, theme roles, and public shared APIs require representative proof across affected contract classes.
 
-Unchanged tests that never exercise the route are not proof.
-
-When no production consumer exists, use a foundation-owned fixture to prove the complete requested contract without fabricating product usage.
+When no production consumer exists, use an owner-local fixture without fabricating product usage.
 
 ## Proportional proof
 
 Use only proof owned by the changed artifact:
 
-- focused shared-owner contract and pure tests;
+- focused owner contract and pure tests;
 - computed CSS or browser checks for real cascade, clipping, focus, input, or lifecycle behavior;
-- bounded canonical stories or fixtures for visible output;
-- representative component consumers for existing cross-family impact;
+- bounded canonical fixtures/stories for visible output;
+- representative consumers for existing blast radius;
 - reduced-motion and interruption proof when owned;
 - final rendered-owner assertions;
-- public/private namespace and export checks;
+- namespace and export checks;
 - local project verification.
 
 A screenshot baseline proves regression stability, not Material correctness.
 
-Do not build a universal validation framework, motion catalog, generic test DSL, placeholder directory tree, or fake demonstration component.
+Do not build a universal validation framework, catalog, test DSL, placeholder tree, or fake demonstration consumer.
 
 ## Migration and cleanup
 
-When a legacy owner exists:
+When a legacy Material owner exists:
 
-1. create the canonical official domain owner;
+1. create the canonical owner;
 2. migrate current consumers and exports;
-3. preserve accepted behavior except for documented corrections;
+3. preserve accepted behavior except documented corrections;
 4. remove obsolete Material ownership and duplicate routes;
 5. leave generic utilities in their correct generic owner;
-6. document incomplete migration explicitly when atomic removal is genuinely unsafe.
+6. document incomplete migration when atomic removal is genuinely unsafe.
 
 Do not report migration complete while an obsolete Material owner or undocumented parallel path remains.
 
 ## Completion
 
-Foundation/style implementation is finished when:
+Implementation is finished when:
 
-- the explicit requested contract is implemented coherently;
+- the explicit requested contract is coherent;
 - code, README, exports, fixtures, tests, and current consumers agree;
 - source and inventory status are honest;
-- final rendered owners and real dependency routes are proved;
+- final owners and real dependency routes are proved;
 - representative blast-radius proof exists when consumers are affected;
-- every remaining gap and visual rejection is explicit;
+- remaining gaps and visual rejection are explicit;
 - applicable local verification passes;
-- review status is `review required after changes`.
+- review status is review required after changes.
 
 Finish with:
 
@@ -325,4 +312,4 @@ Status: implementation finished | blocked (<exact reason>)
 Recommended review:
 ```
 
-Do not report a blocker whose only reason is absence of a current component consumer, active component migration, roadmap priority, or pre-existing canonical directory.
+Do not report a blocker whose only reason is missing consumers, inactive roadmap position, legacy location, or an absent pre-created canonical directory.
