@@ -8,12 +8,14 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Read the root and applicable nested `AGENTS.md` files before editing. Use the relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
-- `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
-- For Material library, foundation, component, migration, or validation work, read `docs/material-3/library-roadmap.md`, align with its active milestone and single `Next action`, and update it in the same PR when milestone status, blockers, dependencies, or next action change.
-- An explicit user-selected Material artifact or correction overrides automatic queue order for that task. The agent must execute the requested official component, foundation, or style through the universal `material` routing workflow instead of refusing because the roadmap names another target.
-- Official Material components target the current canonical Material 3 Expressive contract. Follow `docs/material-3/source-of-truth.md` and `docs/material-3/autonomous-review.md`: the coding agent must close every non-visual evidence gate, while the operator normally performs only prepared screenshot comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
+- For Material work, current successful complete reads from the Material MCP are working official evidence. Capture age alone is not a defect; follow `docs/material-3/source-of-truth.md` for incomplete or conflicting evidence.
+- Source-control history is not requirements or Material authority. The current diff may be inspected for scope, unrelated changes, missing cleanup, ownership drift, and regression risk.
+- For automatic Material migration, read `docs/material-3/library-roadmap.md`, follow its active milestone and single `Next action`, and update it when milestone status, blockers, dependencies, or next action change.
+- An explicit user-selected Material artifact or correction overrides automatic queue order for that task. Execute the requested official component, foundation, or style through the universal `material` routing workflow instead of refusing because the roadmap names another target.
+- Official Material artifacts target the current canonical Material 3 Expressive contract. Follow applicable review policy: the coding agent closes every objective source, architecture, accessibility, behavior, geometry, ownership, lifecycle, and migration gate; the operator performs only final perceived visual comparison when required.
 - When a PR adds, removes, consolidates, reclassifies, reprioritizes, or changes the public owner of a shared UI artifact, update the affected row in `docs/material-3/ui-library-inventory.md` in the same PR. Project-specific and generic UI are valid retained outcomes and must not be forced into the Material library.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
+- During process calibration, determine whether a defect exposed a missing universal rule or whether the agent ignored an existing rule. Add shared policy only for a real cross-artifact gap; otherwise strengthen checklist execution or report non-compliance.
 
 ## Architecture and implementation workflow
 
@@ -51,13 +53,13 @@ Dependency rules:
 
 Use the applicable skill instead of duplicating its rules in the task:
 
-- `material`: universal entrypoint for any explicit Material component, foundation, style, interaction primitive, token system, migration, alignment, or correction; it resolves ownership and executes the specialized workflow;
+- `material`: universal entrypoint for any explicit Material component, foundation, style, interaction primitive, token system, migration, alignment, review, or correction; it resolves ownership and executes the specialized workflow;
 - `material-library-status`: read-only Material program status, audit freshness, blockers, executable candidates, visual acceptance, and recommended next command;
 - `material-library-next`: select and execute exactly one next automatic Material migration target when the user does not name one;
-- `material-component`: component-family implementation compatibility entrypoint; it must reroute non-component Material requests to `material-foundation` rather than refuse them;
-- `material-component-review`: independently review a user-named Material component family and persist its durable compliance audit;
+- `material-component`: compatibility alias that routes a named component directly to `material-component-authoring` and reroutes non-components rather than refusing;
+- `material-component-review`: independently seek contradictions, review a user-named Material component family, and persist its durable compliance audit;
 - `material3-guidelines`: official Material sources, component/artifact choice, usage, composition, and product-facing UI/UX decisions;
-- `material-component-authoring`: creation, migration, alignment, or material change of an official public Material component family, including legacy `MD*` components outside the canonical library;
+- `material-component-authoring`: contract reconstruction, diagnosis, repair/restructure/replace strategy, implementation, migration, proportional proof, and objective gate for an official public component family;
 - `material-foundation`: implement, migrate, align, or correct Material foundations and styles, including State Layer, ripple, focus, reference/system tokens, theme, units, typography, shape, elevation, motion, icons, accessibility, and adaptive/layout contracts; an explicit request is sufficient and does not require pre-existing consumers;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
@@ -79,7 +81,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Separate behavior-preserving extraction from behavior changes when practical. Remove obsolete paths, exports, tests, and comments when their replacement is introduced unless compatibility is explicitly required.
 - Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc. Prefer IDs, primitives, small typed records, explicit props, emits, slots, and actions over broad configuration or mixed read/write objects.
 - Keep validation, parsing, and extraction close to the boundary that defines them. Use typed collection helpers for typed records instead of local assertions that paper over `Object.keys`, `Object.values`, or `Object.entries` typing.
-- Every DOM node must own a necessary semantic, accessibility, layout, interaction, rendering, clipping/stacking, or platform-integration responsibility. Do not add wrappers or helper elements only for styling convenience, selectors, state hooks, testing, or possible future use when an existing element, component root, fragment, CSS layout, or pseudo-element can correctly own the behavior.
+- Every DOM node must own a necessary semantic, accessibility, layout, interaction, rendering, clipping/stacking, transition, or platform-integration responsibility. Do not add wrappers or helper elements only for styling convenience, selectors, state hooks, testing, or possible future use when an existing element, component root, fragment, CSS layout, or pseudo-element can correctly own the behavior.
 - When an extra DOM node is necessary, keep its responsibility explicit and verify that it does not alter semantics, accessibility, layout, interaction geometry, clipping, stacking, or consumer styling unintentionally.
 - Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when one change affects multiple contracts, the lowest faithful proof, proportional coverage, and repository-backed automatic impact metadata.
 - Keep unit tests and their helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels; create shared test utilities only after unrelated modules need the same helper.

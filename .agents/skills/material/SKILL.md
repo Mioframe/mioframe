@@ -1,6 +1,6 @@
 ---
 name: material
-description: 'Use for any request to implement, migrate, align, or correct a Material 3 Expressive artifact. Resolve whether the target is a component, foundation, style, token system, interaction primitive, or cross-layer route, then execute the applicable specialized workflow.'
+description: 'Use for any request to implement, migrate, align, audit, or correct a Material 3 Expressive artifact. Resolve the official owner and execute the applicable component, foundation/style, or review workflow.'
 paths:
   - 'src/shared/ui/material/**'
   - 'src/shared/lib/md/**'
@@ -12,15 +12,10 @@ paths:
 
 # Universal Material request
 
-Use this as the default implementation entrypoint for any named Material 3 Expressive artifact or bounded Material correction.
-
-Syntax examples use placeholders only and do not prescribe implementation structure:
+Use this as the default entrypoint for any explicit Material artifact or bounded correction.
 
 ```text
-material <component-family>
-material <foundation-artifact>
-material <style-domain>
-material <bounded Material correction>
+material <artifact-or-request>
 ```
 
 The user does not need to classify the request.
@@ -29,112 +24,85 @@ The user does not need to classify the request.
 
 This router contains only artifact-independent routing and completion rules.
 
-Do not add:
+Do not add concrete selectors, DOM nodes, custom-property names, token values, state endpoints, bug symptoms, family exceptions, or proposed structures.
 
-- a concrete family selector, DOM node, custom-property name, token value, state endpoint, bug symptom, or proposed component structure;
-- a family-specific exception;
-- an example that is later treated as a required implementation shape.
+Concrete facts belong in the selected owner README, AUDIT, implementation, tests, stories, and task context.
 
-Concrete facts belong in the selected owner README, AUDIT, implementation, tests, and task-specific PR description.
-
-A defect discovered in one artifact may refine this skill only through a rule that applies to any artifact owning the same category of risk.
+A pilot finding may refine shared policy only as a rule applicable to every artifact owning the same risk.
 
 ## Non-refusal rule
 
 A valid explicit request for an official Material artifact is sufficient to start the applicable workflow.
 
-Do not refuse or stop merely because:
+Do not refuse because the request:
 
-- the request is not a component;
-- no component migration is active;
-- the roadmap currently names another target;
-- the canonical directory does not exist yet;
-- the current implementation lives in a legacy directory;
-- no current production consumer exists;
-- only one current consumer uses the behavior;
-- the request entered through a more specific Material entrypoint by mistake.
+- is not a component;
+- is outside the automatic roadmap order;
+- has no current production consumer;
+- currently lives in a legacy directory;
+- entered through a compatibility command.
 
-When no production consumer exists, implement the smallest coherent official contract requested and prove it with owner-local tests and a bounded testing or Storybook fixture. Do not invent a fake product consumer.
+A task may be blocked only by one exact unresolved source, product, ownership, compatibility, safety, or verification decision that prevents correct implementation.
 
-A request may be blocked only by one exact unresolved source, product, ownership, compatibility, safety, or verification decision that materially prevents a correct implementation.
+## Evidence boundary
 
-## Workspace boundary
+Use the current task, current workspace, current successful Material MCP reads, official sources, and local project verification.
 
-Use only:
-
-- the current user task;
-- current workspace files;
-- official Material sources;
-- local project verification commands.
-
-Do not use source-control history or remote workflow state as implementation or Material evidence.
+Source-control history is not Material evidence. The current diff may be inspected for scope, unrelated changes, ownership drift, and regression risk.
 
 ## Resolve the artifact kind
 
-Classify by official Material ownership, not by the current legacy path, repository class name, or command used.
+Classify by official Material ownership, not by the current repository path or class name.
 
-### Component
+### Component family
 
-Route an official component family to:
-
-```text
-material-component <official component family>
-```
-
-Then execute `material-component-authoring`.
-
-### Foundation
-
-Route an official foundation or interaction primitive to:
+Execute directly:
 
 ```text
-material-foundation <official foundation artifact or bounded correction>
+material-component-authoring <official component family>
 ```
 
-A legacy owner outside `material/foundations` is an owner to inspect or migrate, not a reason to reject the request.
+`material-component` remains only a compatibility alias for this route.
 
-### Style
+### Independent component review
 
-Route an official visual system or token domain to:
+Execute:
 
 ```text
-material-foundation <official style artifact or bounded correction>
+material-component-review <official component family>
 ```
 
-The foundation workflow owns both `foundations/` and `styles/` routing.
+Review never replaces authoring and changes only the family AUDIT.
+
+### Foundation, style, token system, or interaction primitive
+
+Execute:
+
+```text
+material-foundation <official artifact or bounded correction>
+```
+
+A legacy location is an owner to inspect or migrate, not a reason to reject the request.
 
 ### Cross-layer request
 
 When a request necessarily changes a shared foundation/style and consumers:
 
 1. resolve one canonical shared owner;
-2. implement or correct that owner through `material-foundation`;
-3. update only affected consumer routes and documentation;
-4. add representative proof across the actual blast radius;
-5. do not duplicate shared behavior in a consumer;
-6. do not split the task merely to avoid completing the requested behavior.
+2. execute `material-foundation` for that owner;
+3. update only affected component consumption, documentation, and proof;
+4. do not duplicate shared behavior in a component;
+5. do not split the task merely to avoid completing requested behavior.
 
 ## Scope rule
 
 The explicit request and official contract determine the surface.
 
-Implement the smallest coherent complete contract, including every applicable state, semantic, accessibility, lifecycle, rendering, ownership, and verification dependency required for honest operation.
+Implement the smallest coherent complete contract, including applicable semantics, accessibility, lifecycle, rendering, ownership, and verification dependencies.
 
 Do not broaden the request into a catalog, universal framework, speculative API, placeholder tree, or unrelated migration.
 
-Do not narrow the request to the first existing implementation fragment when the named official artifact owns a broader coherent contract.
-
-## Source and ownership resolution
-
-Before production changes:
-
-1. resolve the official documentation domain and slug;
-2. record canonical source status;
-3. inspect current owner, canonical owner, consumers, tests, fixtures/stories, and local documentation;
-4. distinguish generic browser/platform utilities from Material semantics;
-5. select new implementation, migration, correction, replacement, or source refresh;
-6. update the canonical owner README before implementation;
-7. preserve explicit operator rejection and known defects.
+Do not narrow the request to the first existing implementation fragment when the official artifact owns a broader coherent contract.
 
 ## Execution
 
@@ -142,41 +110,18 @@ Continue through the selected specialized workflow. Do not stop after classifica
 
 Complete applicable:
 
-- canonical documentation;
+- current-run source resolution;
+- contract reconstruction;
+- diagnosis and implementation strategy;
 - production implementation;
-- public/private contract;
-- legacy-owner migration or cleanup;
-- consumer updates;
-- proportional tests and bounded rendered evidence;
-- blast-radius verification;
-- local project verification;
+- migration or shared-owner correction;
+- proportional proof;
+- objective authoring or review gate;
+- local verification;
 - truthful remaining-gap reporting.
-
-Authoring does not edit the independent `AUDIT.md`.
 
 ## Result
 
-Finish with:
+Use the result format owned by the selected specialized workflow.
 
-```text
-MATERIAL RESULT
-Requested artifact:
-Resolved kind: component | foundation | style | cross-layer
-Official documentation path:
-Current owner:
-Canonical owner:
-Selected workflow:
-Change mode:
-Implemented:
-Partial / defective / unverified:
-Not implemented:
-Officially unsupported / invalid:
-Consumers affected:
-Legacy ownership:
-Verification:
-Documentation:
-Status: implementation finished | blocked (<exact reason>)
-Recommended review:
-```
-
-`implementation finished` means the explicit request was implemented coherently and applicable local verification passed. It does not imply coverage of unrelated Material capability or operator acceptance.
+The universal router does not declare implementation complete by itself.

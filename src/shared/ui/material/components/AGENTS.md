@@ -4,7 +4,7 @@ Inherits `src/shared/ui/material/AGENTS.md`.
 
 ## Purpose
 
-This file contains only component-family workflow boundaries. Detailed architecture, token, testing, and review rules live in:
+This file contains only component-family workflow boundaries. Detailed architecture, token, testing, checklist, and review rules live in:
 
 - `docs/material-3/component-architecture.md`;
 - `docs/material-3/component-tokens.md`;
@@ -20,13 +20,13 @@ Shared component instructions contain only cross-family invariants. Keep concret
 
 ## Ownership and DOM structure
 
-For each family, identify only the responsibilities that actually apply, such as semantic host, layout, interaction, visual container, content, state layer, ripple, focus, outline/elevation, shape, and motion.
+For each family, identify only responsibilities that actually apply, such as semantic host, layout, interaction, visual container, content, state layer, ripple, focus, outline/elevation, shape, and motion.
 
-This is an ownership analysis, not an element checklist.
+This is ownership analysis, not an element checklist.
 
 - Do not create one DOM node per responsibility.
 - Prefer one existing semantic element to own compatible responsibilities.
-- Add a wrapper or helper node only when official anatomy, semantics, accessibility, layout, interaction geometry, clipping/stacking, or a platform API requires a distinct owner.
+- Add a wrapper or helper only when official anatomy, semantics, accessibility, layout, interaction geometry, clipping/stacking, transition ownership, or a platform API requires a distinct owner.
 - Styling convenience, selector convenience, test hooks, or future flexibility do not justify a node.
 - Record a non-obvious ownership map in the family README.
 
@@ -34,20 +34,30 @@ This is an ownership analysis, not an element checklist.
 
 `material-component-authoring`:
 
+- reconstructs the official contract before production changes;
+- diagnoses each material problem and actual owner;
+- chooses repair, restructure, or replace;
 - updates README, implementation, exports, consumers, tests, and stories as required;
+- removes superseded ownership rather than preserving parallel models;
+- distinguishes forced-state appearance from real-input lifecycle proof;
 - preserves explicit operator rejection;
 - never edits AUDIT;
-- finishes with local verification and recommends independent review.
+- runs an evidence-backed objective gate and local verification before recommending review.
 
 ## Review boundary
 
 `material-component-review`:
 
-- independently compares implementation with project documentation and project documentation with canonical Material evidence;
+- reconstructs evidence independently rather than accepting README conclusions;
+- actively searches for contradictions across production, README, stories, tests, verification, and operator feedback;
+- compares implementation with project documentation and project documentation with canonical Material evidence;
+- reviews diagnosis and repair/restructure/replace strategy;
 - changes only the family AUDIT;
 - does not modify implementation, README, tests, stories, exports, consumers, roadmap, or policy;
-- treats unresolved high-severity structural or operator-rejected defects as non-compliant.
+- treats unresolved high-severity structural, lifecycle-proof, contradiction, or operator-rejected defects as non-compliant.
 
 ## Completion
 
-A component family is not complete while applicable ownership is unresolved, a visible endpoint is wrong, documentation overstates evidence, verification fails, independent review is stale, or required operator acceptance is missing.
+A component authoring pass is not implementation-finished while the objective gate fails, applicable ownership is unresolved, a visible endpoint or transition composition is wrong, documentation contradicts production, verification fails, or known objective work is delegated to the operator.
+
+Family compliance additionally requires current independent review. Required perceived visual acceptance remains a separate final gate.

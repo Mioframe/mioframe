@@ -28,13 +28,13 @@ Use the narrowest official owner available.
 
 ## Generalization boundary
 
-Shared policies and skills contain only artifact-independent routing, ownership, naming, evidence, and completion rules.
+Shared policies and skills contain only artifact-independent routing, ownership, naming, diagnosis, evidence, and completion rules.
 
 Do not put concrete family selectors, DOM node names, custom-property names, token values, state endpoints, defect symptoms, or proposed family structures into shared policy.
 
-Concrete facts belong in the owning README, AUDIT, implementation, tests, fixtures/stories, roadmap when it records current work, and task-specific PR description.
+Concrete facts belong in the owning README, AUDIT, implementation, tests, fixtures/stories, roadmap when it records current work, and task context.
 
-A pilot finding may refine shared policy only through a rule applicable to every artifact owning the same category of risk.
+A pilot finding may refine shared policy only through a rule applicable to every artifact owning the same category of risk. When an existing rule already prohibited a defect, strengthen execution or report agent non-compliance instead of adding another rule.
 
 ## Core policies
 
@@ -84,9 +84,11 @@ An explicit user request may select an official Material artifact outside the au
 
 ## Evidence boundary
 
-Material authoring and review use the current user task, current workspace files, official Material sources, and local project verification.
+Material authoring and review use the current task, current workspace files, current successful Material MCP reads, official sources, and local verification.
 
-They do not use source-control history or remote workflow state as implementation or Material evidence.
+Source-control history is not Material authority. The current diff may be inspected for scope, unrelated changes, missing cleanup, ownership drift, and regression risk.
+
+A healthy complete current-run MCP read is working current evidence. Capture age alone is provenance, not a defect. Follow `source-of-truth.md` when evidence is partial, failed, suspicious, truncated, or conflicting.
 
 ## Universal implementation entrypoint
 
@@ -96,25 +98,19 @@ Use:
 material <artifact-or-request>
 ```
 
-Artifact-independent syntax:
-
-```text
-material <component-family>
-material <foundation-artifact>
-material <style-domain>
-material <bounded Material correction>
-```
-
 The user does not need to classify the request.
 
 The router resolves:
 
-- component families → `material-component` and `material-component-authoring`;
+- component families → `material-component-authoring`;
+- independent component review → `material-component-review`;
 - foundations and interaction primitives → `material-foundation`;
 - styles and token systems → `material-foundation`;
 - cross-layer changes → one canonical shared owner plus affected consumer work.
 
-A request sent through the wrong specialized Material entrypoint must be rerouted and executed rather than rejected for classification alone.
+`material-component` is a compatibility alias only. It does not own a duplicate workflow.
+
+A request sent through the wrong specialized entrypoint must be rerouted and executed rather than rejected for classification alone.
 
 ## Explicit-request rule
 
@@ -133,6 +129,33 @@ When no production consumer exists, implement the smallest coherent requested co
 
 Existing consumers determine migration and blast-radius proof.
 
+## Calibrated authoring loop
+
+For components, foundations, and styles:
+
+```text
+resolve official owner and current-run sources
+→ reconstruct the contract
+→ diagnose each material problem
+→ choose repair | restructure | replace
+→ implement through ordered ownership gates
+→ build proportional proof
+→ run an evidence-backed objective gate
+→ run independent contradiction-seeking review
+→ request operator acceptance only for remaining perceived fidelity
+```
+
+Diagnosis categories are:
+
+- canonical behavior;
+- implementation defect;
+- architecture defect;
+- foundation/style or generic-infrastructure defect;
+- evidence gap;
+- product deviation.
+
+If two correction rounds retain the same objective defect, add workarounds, or create new ownership ambiguity, stop patching and reconsider the implementation strategy.
+
 ## Source and inventory status
 
 Every active Material owner records:
@@ -147,7 +170,7 @@ Canonical source status:
 
 Official capability inventory:
   complete
-  snapshot-complete (<snapshot>; currentness unverified)
+  snapshot-complete (<snapshot>; currentness unresolved)
   incomplete (<exact gap>)
   blocked (<exact reason>)
 
@@ -157,7 +180,7 @@ Official coverage:
   unresolved
 ```
 
-A stale, partial, truncated, suspicious, missing, or spot-check-only source cannot certify current completeness.
+Use `snapshot-complete-stale` only when relying on a retained snapshot without a healthy current read or when freshness is explicitly unresolved. Partial, failed, truncated, suspicious, conflicting, missing, or spot-check-only evidence cannot certify complete inventory.
 
 ## Capability classification
 
@@ -174,20 +197,18 @@ Invalid combinations are constraints, not missing capability. Optional guidance 
 
 ## Local owner documentation
 
-Each implemented or actively migrated owner contains:
+Each implemented or actively migrated owner contains current README documentation and may contain an independent AUDIT.
 
-```text
-foundations/<official-slug>/README.md
-foundations/<official-slug>/AUDIT.md
+README records:
 
-styles/<official-slug>/README.md
-styles/<official-slug>/AUDIT.md
+- official mapping and current-run source status;
+- reconstructed contract;
+- diagnosis and repair/restructure/replace strategy;
+- implemented, partial, absent, invalid, unresolved, and out-of-boundary capability;
+- API, anatomy, ownership, tokens, states, lifecycle, foundations, consumers, and proof;
+- known defects and operator status.
 
-components/<official-docs-slug>/README.md
-components/<official-docs-slug>/AUDIT.md
-```
-
-README is authoring-owned current documentation. AUDIT is independent reviewer-owned. Authoring never edits AUDIT.
+AUDIT is independent reviewer-owned. Authoring never edits it. Review seeks contradictions before accepting README claims and records findings concisely rather than duplicating the complete contract.
 
 Visible feedback is supplied directly in user messages and persisted when applicable:
 
@@ -208,15 +229,19 @@ An official shared owner is justified by either:
 
 A rendered primitive is not implemented merely because a token declaration exists. The route must reach the correct final owner with correct bounds, clipping, state precedence, lifecycle, and consumer behavior.
 
+Do not patch a shared foundation defect locally inside a component.
+
 ## Motion and visual acceptance
 
-Verify a shared motion contract deeply once. At consumer level prove only applicable activation, final owner, meaningful intermediate state, endpoints, interruption/cancellation, and reduced motion.
+Verify a shared motion contract deeply once. At consumer level prove applicable real-input activation, final owner, meaningful intermediate composition when endpoints cannot reveal the risk, endpoints, interruption/cancellation, and reduced motion.
+
+Forced state proves stable appearance only. It does not prove acquisition, trajectory, release, interruption, cancellation, or cleanup.
 
 Technical routing or green tests cannot close rejected perceived output. Only corrected production behavior followed by explicit acceptance can do so.
 
 ## Shared routes
 
-Root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, and public shared APIs require:
+Root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, shared lifecycle, and public shared APIs require:
 
 - affected-consumer analysis;
 - the narrowest valid owner;
@@ -228,7 +253,7 @@ Unchanged tests that never exercise the route are not proof.
 ## Specialized entrypoints
 
 ```text
-material-component <component-family>
+material-component <component-family>        # compatibility alias
 material-component-review <component-family>
 material-foundation <foundation-or-style-artifact>
 material-library-next
@@ -243,9 +268,9 @@ A specialized entrypoint does not override official artifact classification.
 - Continue through implementation; do not stop after classification, research, or a plan.
 - Keep scope coherent and classification honest.
 - Never infer implementation from declarations, aliases, stories, screenshots, or tests when the final route does not work.
-- Require representative proof for shared routes.
+- Require real-input evidence for lifecycle claims and representative proof for shared routes.
 - Preserve visible rejection until corrected and explicitly accepted.
-- Remove obsolete Material ownership during migration.
-- Do not create fake consumers, placeholder implementation trees, universal validators, fixed file profiles, generic registries, or a second metadata database.
+- Remove obsolete ownership during restructure, replacement, or migration.
+- Do not create fake consumers, placeholder implementation trees, universal semantic validators, fixed file profiles, generic registries, or a second metadata database.
 
 A blocker may not consist only of missing consumers, inactive roadmap position, legacy location, or absence of a pre-created canonical directory.

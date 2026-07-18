@@ -4,11 +4,11 @@ This document separates authoring documentation, independent technical/canonical
 
 ## Generalization boundary
 
-Review policy contains only artifact-independent evidence, severity, and ownership rules.
+Review policy contains only artifact-independent evidence, severity, contradiction, and ownership rules.
 
 Do not add concrete family selectors, DOM node names, custom-property names, token values, state endpoints, bug symptoms, or proposed family structures.
 
-Concrete findings belong only in the reviewed owner README and AUDIT. A finding from one pilot may refine shared review policy only through a rule applicable to every artifact owning the same risk.
+Concrete findings belong in the reviewed owner README and AUDIT. A pilot finding may refine shared review policy only through a rule applicable to every artifact owning the same risk.
 
 ## Review ownership
 
@@ -21,33 +21,21 @@ AUDIT.md    # independent reviewer-owned result
 
 Authoring never edits AUDIT. Review changes only AUDIT.
 
-The reviewer uses four separate evidence sets:
+The reviewer keeps separate:
 
-1. current implementation;
-2. current project documentation;
-3. official Material 3 Expressive evidence;
-4. explicit operator feedback from the current task and README.
+1. current implementation evidence;
+2. current project documentation claims;
+3. official Material 3 Expressive evidence from the current run;
+4. explicit operator feedback;
+5. current-diff scope evidence when available.
 
-Do not use source-control history or remote state as implementation evidence.
+Source-control history is not Material authority. The current diff may be inspected for unrelated changes, missing cleanup, accidental compatibility paths, ownership drift, and regression risk.
 
 ## Canonical source and inventory status
 
-Record canonical source status:
+Use `source-of-truth.md`.
 
-- `current-complete`;
-- `snapshot-complete-stale`;
-- `partial`;
-- `conflicting`;
-- `unavailable`.
-
-Record inventory status:
-
-- `complete`;
-- `snapshot-complete (<snapshot>; currentness unverified)`;
-- `incomplete (<exact gap>)`;
-- `blocked (<exact reason>)`.
-
-A stale, partial, truncated, suspicious, missing, or spot-check-only source cannot certify current completeness.
+A current successful Material MCP read is working current evidence when all required routes were read and none is reported partial, failed, suspicious, truncated, or conflicting. Capture age alone is not a review finding.
 
 Classify every official item exactly once:
 
@@ -59,6 +47,36 @@ Classify every official item exactly once:
 - outside the resolved owner boundary.
 
 Invalid combinations are constraints, not absent capability. Optional guidance is not automatically required capability.
+
+## Review posture
+
+Review is contradiction-seeking, not documentation-confirming.
+
+The reviewer must attempt to disprove material claims before accepting them. A claim repeated in several artifacts becomes higher-risk, not automatically stronger.
+
+For each materially repeated claim, compare applicable:
+
+```text
+production implementation
+README
+Storybook story and description
+component contract tests
+browser and visual tests
+shared-owner documentation
+verification report
+operator feedback
+```
+
+Report contradictions such as:
+
+- different owners named for the same rendered property;
+- superseded anatomy retained in stories or documentation;
+- a test title claiming a condition its setup never enters;
+- warning text describing a different normalization branch;
+- forced state presented as acquisition or transition proof;
+- an intermediate alias presented as final rendered proof;
+- operator rejection weakened without explicit acceptance;
+- implementation strategy claiming repair while retaining conflicting structural models.
 
 ## Stage 1 — implementation against project documentation
 
@@ -72,7 +90,8 @@ Independently review applicable:
 - token, state, motion, and final rendered-property routes;
 - custom-property namespaces;
 - tests, fixtures/stories, rendered evidence, and verification claims;
-- known defects, source limitations, proof gaps, and operator rejection.
+- known defects, source limitations, proof gaps, and operator rejection;
+- authoring diagnosis and repair/restructure/replace strategy.
 
 Report:
 
@@ -85,9 +104,30 @@ Report:
 - optional guidance inflated into a requirement;
 - partial capability called verified;
 - shared routes without representative proof;
-- weakened or omitted operator feedback.
+- weakened or omitted operator feedback;
+- parallel or superseded models retained after restructuring;
+- contradictions among implementation, README, stories, tests, and verification.
 
 A declaration, alias, placeholder, story, screenshot, test title, or green check is not proof by itself.
+
+## Diagnosis and strategy review
+
+Verify every material problem was classified correctly:
+
+- `canonical-behavior`;
+- `implementation-defect`;
+- `architecture-defect`;
+- `foundation-defect`;
+- `evidence-gap`;
+- `product-deviation`.
+
+Verify the chosen implementation strategy:
+
+- `repair` preserves only a sound contract and ownership model;
+- `restructure` removes superseded anatomy, ownership, and proof paths;
+- `replace` removes obsolete implementations and hidden compatibility routes unless explicitly required.
+
+If two correction rounds retain the same objective defect, add workarounds, or create new ownership ambiguity, report that the strategy must be reconsidered.
 
 ## Applicable ownership review
 
@@ -114,7 +154,8 @@ Verify:
 - adjacent interactive regions do not conflict;
 - custom geometry is proved at representative interior, boundary, exterior, and adjacency points;
 - final visual properties use their correct owners;
-- applicable visible endpoints and simultaneous-state precedence are correct.
+- applicable visible endpoints and simultaneous-state precedence are correct;
+- every DOM node has a necessary responsibility.
 
 Helper geometry that produces partial, disconnected, overlapping, or unreserved interaction regions is a high-severity defect.
 
@@ -142,7 +183,7 @@ Classify every materially used custom property as:
 - genuine `--app-*` token;
 - invalid or unnecessary alias.
 
-Report a finding when an official path is invented, shortened, paraphrased, converted to a raw CSS-property alias, or replaced by an unnecessary private indirection.
+Report a finding when an official path is invented, shortened, paraphrased, converted to a raw CSS-property alias, named after a rendering mechanism instead of a semantic role, or replaced by unnecessary private indirection.
 
 An ad-hoc name shaped like `--md-<artifact>-<raw-css-property>` is invalid unless it is an exact official canonical token.
 
@@ -151,7 +192,7 @@ An ad-hoc name shaped like `--md-<artifact>-<raw-css-property>` is invalid unles
 Independently review applicable:
 
 - official family/domain mapping and boundary;
-- source and inventory claims;
+- current-run source and inventory claims;
 - variants, configurations, states, semantics, accessibility, and invalid combinations;
 - official anatomy and geometry relationships;
 - color, elevation, icon, motion, shape, typography, interaction, ripple, and focus meanings;
@@ -164,17 +205,25 @@ Use official visual evidence or the Design Kit when text/token tables cannot res
 
 ## Motion and lifecycle evidence
 
+Distinguish:
+
+- forced-state endpoint evidence;
+- real-input acquisition and release;
+- intermediate trajectory evidence when endpoints cannot reveal composition defects;
+- interruption/cancellation and cleanup;
+- operator-perceived quality.
+
 Require proportional proof for applicable:
 
 - real input activates the intended property on the correct owner;
-- an intermediate state is sampled only when needed;
+- bounds and layer composition remain valid during the transition when at risk;
 - correct visible endpoints are reached;
 - interruption or cancellation leaves no stale state;
 - reduced motion is correct when owned.
 
 A named interruption test must trigger the competing event before settlement and prove the competing branch begins.
 
-Do not claim motion fixed when only timing changes but the final owner, endpoint, composition, or rendered result remains wrong.
+Do not claim motion fixed when only timing changes but the final owner, endpoint, trajectory composition, or rendered result remains wrong.
 
 Forced state proves appearance only. A screenshot baseline proves regression stability only.
 
@@ -201,15 +250,7 @@ Latest operator feedback: none | <summary>
 Implementation response: none | <summary>
 ```
 
-The agent and reviewer own objective correctness, including:
-
-- anatomy and ownership;
-- layout and interaction geometry;
-- clipping and alignment;
-- visible state endpoints;
-- token interpretation and CSS naming;
-- accessibility and behavior;
-- test sufficiency.
+The agent and reviewer own objective correctness, including anatomy, ownership, geometry, clipping, visible endpoints, token interpretation, CSS naming, accessibility, behavior, lifecycle proof, documentation consistency, and test sufficiency.
 
 The operator owns final perceived fidelity after those gates are closed, including naturalness, polish, and perceived motion quality.
 
@@ -226,43 +267,61 @@ Rules:
 Use:
 
 - `critical` — unsafe semantics, accessibility, or severe interaction corruption;
-- `high` — required API/state/token/motion/ownership, major anatomy or geometry, interaction region, visible endpoint, invalid public-looking namespace, or unchanged operator-rejected behavior is wrong;
-- `medium` — bounded mismatch, incomplete proof, misleading documentation, fallback inconsistency, or non-critical canonical divergence;
+- `high` — required API/state/token/motion/ownership, major anatomy or geometry, interaction region, visible endpoint, invalid public-looking namespace, unresolved contradiction, non-causal lifecycle proof, or unchanged operator-rejected behavior is wrong;
+- `medium` — bounded mismatch, incomplete proof, misleading documentation, fallback inconsistency, mechanism-named private route, or non-critical canonical divergence;
 - `low` — minor documentation or cleanup defect.
 
 Overall result:
 
-- `compliant` — no finding remains and current canonical evidence is sufficient;
+- `compliant` — no finding remains and canonical evidence is sufficient;
 - `partially-compliant` — only non-critical gaps remain;
 - `non-compliant` — any critical or high finding exists;
 - `blocked` — required authoritative evidence is unavailable or conflicting.
 
-A stale snapshot alone prevents fully current compliant status.
-
-## Correction loop
+## Calibration and correction loop
 
 ```text
-AUDIT findings or operator feedback
-→ applicable authoring workflow
-→ README/code/tests update
-→ independent review
-→ explicit acceptance or further feedback
+objective finding or operator feedback
+→ classify the defect and actual owner
+→ decide whether the workflow missed the class or execution ignored an existing rule
+→ refine universal policy only for a real cross-artifact gap
+→ run authoring from contract reconstruction
+→ run independent contradiction-seeking review
+→ operator review only after objective gates close
 ```
 
+Do not add a new universal rule when the existing rule already prohibited the defect. In that case, strengthen checklist execution or report agent non-compliance.
+
 Authoring never edits AUDIT. Review never edits README.
+
+## Concise AUDIT
+
+AUDIT records:
+
+```text
+result and source status
+evidence inspected
+contradictions
+objective findings by severity
+evidence gaps
+operator status
+required next work
+```
+
+Do not duplicate the complete family contract or every verified token/value from README.
 
 ## Completion gate
 
 An owner leaves active work only when:
 
 - implementation and README agree;
+- repeated claims across stories, tests, and verification contain no unresolved contradiction;
 - documentation accurately represents Material and source limitations;
 - classification is complete for available evidence;
 - every partial, unsupported, unresolved, extended, deviated, and remaining item is explicit;
+- diagnosis and implementation strategy are sound;
 - applicable ownership and namespaces are correct;
 - shared routes have representative proof;
 - consumers and obsolete ownership are handled;
 - local verification passes;
 - required visual review is explicitly accepted.
-
-Full implementation additionally requires current-complete evidence and full official coverage for the resolved owner.

@@ -17,7 +17,9 @@ Shared library navigation and skills define only artifact-independent rules.
 
 Do not place concrete family selectors, DOM nodes, custom-property names, token values, endpoints, defects, or proposed family structures here.
 
-Concrete implementation facts belong in the selected owner README, AUDIT, code, tests, fixtures/stories, roadmap when it records active work, and task-specific PR description.
+Concrete implementation facts belong in the selected owner README, AUDIT, code, tests, fixtures/stories, roadmap when it records active work, and task context.
+
+A pilot may refine shared policy only through a cross-artifact invariant. Do not add a new rule when an existing rule already prohibited the defect.
 
 ## Universal request
 
@@ -27,20 +29,24 @@ Use:
 material <artifact-or-request>
 ```
 
-Syntax examples:
+The router resolves official ownership and executes:
 
-```text
-material <component-family>
-material <foundation-artifact>
-material <style-domain>
-material <bounded Material correction>
-```
+- component family → `material-component-authoring`;
+- independent component review → `material-component-review`;
+- foundation, interaction primitive, style, or token domain → `material-foundation`;
+- cross-layer request → one canonical shared owner plus affected consumers.
 
-The router resolves official ownership and executes the applicable workflow.
+`material-component` remains a compatibility alias only.
 
 A valid explicit request is sufficient. It is not blocked merely because the artifact is not a component, no migration is active, no consumer exists, the roadmap names another target, or the canonical directory is absent.
 
 When no production consumer exists, implement the smallest coherent official contract with owner-local tests and a bounded fixture. Do not invent a fake consumer.
+
+## Evidence boundary
+
+Use current successful complete Material MCP reads as working official evidence. Capture age alone is not a defect.
+
+Source-control history is not Material authority. The current diff may be inspected for scope, unrelated changes, missing cleanup, ownership drift, and regression risk.
 
 ## Navigation
 
@@ -98,23 +104,45 @@ styles/<official-slug>/
   ... only justified implementation, tests, and fixtures
 ```
 
-- README documents current implementation and review state.
-- AUDIT contains the latest independent review.
+- README documents the reconstructed contract, diagnosis, strategy, current implementation, evidence, and review state.
+- AUDIT contains the latest independent contradiction-seeking review.
 - Authoring never edits AUDIT.
 - An implementation change sets review required after changes.
 - No separate operator report file is required.
 
-## Routing compatibility
+## Calibrated authoring path
 
-Specialized entrypoints remain valid:
+For every component, foundation, or style target:
 
-```text
-material-component <component-family>
-material-component-review <component-family>
-material-foundation <foundation-or-style-artifact>
-```
+1. Resolve the official owner and current-run sources.
+2. Reconstruct the contract independently of legacy implementation.
+3. Diagnose each material problem and actual owner.
+4. Select `repair`, `restructure`, or `replace`.
+5. Implement through ordered semantics, ownership, geometry/routing, lifecycle, and migration gates.
+6. Remove superseded ownership and contradictory documentation.
+7. Add proportional proof, using real input for lifecycle claims.
+8. Pass an evidence-backed objective gate and local verification.
+9. Run independent contradiction-seeking review separately.
+10. Obtain explicit operator acceptance only for remaining perceived visual fidelity.
 
-A request sent through the wrong specialized entrypoint is rerouted by official ownership rather than rejected for classification alone.
+If two correction rounds retain the same objective defect, add workarounds, or create new ownership ambiguity, stop patching and reconsider the implementation strategy.
+
+## Diagnosis and strategy
+
+Use one primary diagnosis per material problem:
+
+- canonical behavior;
+- implementation defect;
+- architecture defect;
+- foundation/style or generic-infrastructure defect;
+- evidence gap;
+- product deviation.
+
+Use:
+
+- `repair` when contract, anatomy, and ownership are sound;
+- `restructure` when supported capability remains valid but ownership, routes, lifecycle, or anatomy are wrong;
+- `replace` when the implementation is based on a wrong contract or preserves conflicting models.
 
 ## Operator feedback
 
@@ -152,25 +180,20 @@ shared generic infrastructure
 - foundations and styles do not import component families;
 - families do not deep-import another family's private files;
 - Material code does not import product layers;
-- generic infrastructure does not contain Material family knowledge.
+- generic infrastructure does not contain Material family knowledge;
+- components do not locally patch shared-foundation defects.
 
 Generic platform utilities remain generic when they contain no Material semantics. Material-specific state, token, clipping, focus, motion, or rendering ownership belongs in this library even when its current implementation is legacy.
 
-## New Material work
+## Proof boundary
 
-1. Resolve the requested artifact against official navigation.
-2. Route it to component, foundation, style, or cross-layer ownership.
-3. Record source and inventory status.
-4. Create or update the canonical owner README.
-5. Implement the smallest coherent surface required by the explicit request and affected consumers.
-6. Record absent, invalid, unresolved, and out-of-boundary capability honestly.
-7. Prove final owners and behavior with proportional tests and bounded fixtures/stories.
-8. Migrate existing consumers and remove obsolete Material ownership when applicable.
-9. Run local verification.
-10. Run independent review separately.
-11. Obtain explicit operator acceptance when visible review is required.
+- Forced states prove stable appearance only.
+- Screenshot baselines prove regression stability only.
+- Real browser input proves acquisition, release, trajectory, interruption, cancellation, and cleanup.
+- Intermediate transition evidence is required only when endpoints cannot prove the changed or reported composition risk.
+- Operator review proves perceived fidelity only after objective gates close.
 
-Do not stop after classification, research, or a plan.
+Do not substitute one proof layer for another.
 
 ## Rendered foundations and interaction primitives
 
@@ -191,8 +214,8 @@ A token declaration alone is not implementation. Final rendered behavior must wo
 
 ## Current physical state
 
-The inventory and roadmap describe current concrete owners and active migrations. Those records are descriptive project state, not reusable implementation rules or templates for unrelated artifacts.
+The inventory and roadmap describe current concrete owners and active migrations. Those records are descriptive project state, not reusable implementation templates.
 
 ## Anti-overengineering
 
-Do not create placeholder implementation folders, fixed file profiles, runtime registries, broad wrappers, fake consumers, separate visual report files, or a second metadata system.
+Do not create placeholder implementation folders, fixed file profiles, runtime registries, broad wrappers, fake consumers, separate visual report files, semantic Markdown validators, or a second metadata system.

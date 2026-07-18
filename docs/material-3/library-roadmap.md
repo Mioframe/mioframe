@@ -28,7 +28,7 @@ Only one milestone should normally be active.
 
 Last updated: 2026-07-18
 
-Current milestone: `M1 — Buttons end-to-end pilot`
+Current milestone: `M1 — Buttons end-to-end workflow calibration pilot`
 
 Current status: `active`
 
@@ -44,80 +44,84 @@ Current audit:
 src/shared/ui/material/components/buttons/AUDIT.md
 ```
 
-Current blocker: README records `Status: rejected`. The broad operator rejection (expanded-target geometry inconsistent with the visible button, wrong overall geometry model, malformed pressed corners) has been partially corrected: geometry ownership (real 48dp-reserving button host, distinct `.md-button__container` visual container, ripple/focus-indicator retargeting) and the invalid `--md-button-*` CSS namespace are fixed and locally verified. Pressed-shape motion is unchanged and remains rejected — the complete affected surface is not yet corrected, so status intentionally stays `rejected` rather than `awaiting re-review`. A shared elevation evidence gap also remains for MDCard and MDSwitch override routes.
+Current blocker: the calibrated instruction tree has changed but has not yet been regenerated and verified locally. The Button implementation has not yet been rerun through the new contract reconstruction → diagnosis → repair/restructure/replace → objective gate workflow. Its latest independent audit remains non-compliant and operator visual status remains rejected.
 
-Single next action: run `material-component-review Button` against the corrected geometry, then continue authoring to fix the pressed-shape visible endpoint; only after that ask the operator to exercise press, release, and interrupted quick-click motion in the canonical size-geometry story and explicitly accept or reject the complete surface.
+Single next action: run `pnpm verify --fix` to regenerate compatibility instructions, run final `pnpm verify`, then execute `material Button` from contract reconstruction without Button-defect-specific hints. The authoring run must report its diagnosis, strategy, objective gate, and exact remaining defects before a fresh independent review.
 
 Current progress:
 
-- `MDButton` lives under the official documentation slug `material/components/buttons`;
-- the curated root export exists;
-- direct consumers are migrated;
-- the legacy MDButton owner and export are removed;
-- source evidence is snapshot-complete but stale, so current official coverage remains unresolved;
-- the family cannot complete while README visual status is `rejected` or `awaiting re-review`.
+- universal routing sends components directly to `material-component-authoring` and keeps `material-component` as a compatibility alias;
+- component and foundation authoring reconstruct the contract, diagnose defects, and select repair, restructure, or replace;
+- authoring uses an evidence-backed objective gate;
+- real input and forced-state evidence have separate responsibilities;
+- independent review actively searches for contradictions across production, README, stories, tests, verification, and operator feedback;
+- healthy current-run Material MCP reads are working current evidence; capture age alone is not a blocker;
+- Button remains the calibration specimen and is not ready for merge.
 
 ## Milestones
 
-| ID  | Milestone                        | Status    | Exit gate                                                                                                                                                                                               |
-| --- | -------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Architecture and operating model | `done`    | Official source hierarchy, documentation-shaped navigation, authoring/review/operator ownership, roadmap, and inventory ownership are defined.                                                          |
-| M1  | Buttons end-to-end pilot         | `active`  | Canonical owner, truthful README, compliant AUDIT, migrated consumers, no obsolete owner, applicable local verification, no unresolved shared-route blocker, and explicit operator acceptance.          |
-| M2  | Independent stateful pilot       | `planned` | One materially different stateful family validates controlled state, input/cancellation, accessibility, multiple anatomy owners, truthful documentation, independent audit, and operator visual review. |
-| M3  | Sequential migration             | `planned` | Each selected family follows the same implementation/documentation/audit/message-based-operator-review loop until the inventory has no unresolved Material-owned artifact.                              |
+| ID  | Milestone                               | Status    | Exit gate                                                                                                                                                                                                                 |
+| --- | --------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model        | `done`    | Official ownership hierarchy, documentation-shaped navigation, source model, authoring/review/operator ownership, roadmap, and inventory ownership are defined.                                                           |
+| M1  | Buttons end-to-end workflow calibration | `active`  | Calibrated rules pass verification; Button authoring independently diagnoses and corrects or replaces the implementation; objective gate passes; audit is compliant; operator explicitly accepts required visible output. |
+| M2  | Independent stateful/foundation pilot   | `planned` | A materially different stateful family or foundation validates controlled state, shared lifecycle ownership, cancellation, accessibility, real-input proof, independent review, and operator visual review.               |
+| M3  | Sequential migration                    | `planned` | Each selected owner follows the calibrated implementation/documentation/objective-gate/audit/operator-review loop until the inventory has no unresolved Material-owned artifact.                                          |
 
-## M1 — Buttons pilot
+## M1 — Buttons calibration pilot
 
 The pilot must demonstrate:
 
-- official documentation path resolves the canonical directory;
-- authoring documentation is written beside implementation;
+- current-run official sources resolve the canonical contract and directory;
+- authoring reconstructs the contract before preserving legacy structure;
+- each defect is classified by type and actual owner;
+- repair, restructure, or replace is chosen explicitly;
+- repeated correction does not preserve parallel ownership models or workarounds;
 - implemented, absent, invalid, optional, unresolved, and out-of-family surfaces are classified correctly;
-- known defects and missing verification are not hidden;
 - required foundation/style changes remain narrowly owned and have representative proof;
-- consumers and exports migrate end to end;
-- proof remains proportional;
-- an independent reviewer updates only `AUDIT.md`;
-- operator feedback is supplied in normal user messages and persisted in README;
-- authoring and review cannot erase a rejected operator result or invent acceptance.
+- forced states prove stable appearance only and real input proves lifecycle;
+- production, README, stories, tests, and verification contain no unresolved contradiction;
+- consumers and exports migrate end to end and obsolete ownership is removed;
+- the objective authoring gate closes before independent review;
+- independent review changes only AUDIT and actively seeks contradictions;
+- operator feedback is persisted without being weakened or replaced by green tests.
 
-## M2 — Independent stateful pilot
+## M2 — Independent stateful/foundation pilot
 
-`MDSwitch` is the default candidate unless current inventory evidence identifies a better stateful family.
+`MDSwitch` is the default component candidate, while an interaction foundation such as State Layer is a valid alternative when current inventory identifies a more valuable independent risk class.
 
 It should validate:
 
-- controlled semantic state;
-- disabled and presentation modes;
+- controlled semantic state or shared state-input ownership;
+- disabled and simultaneous-state behavior;
 - keyboard and pointer/touch paths that differ materially;
-- cancellation and cleanup;
-- anatomy and accessibility ownership;
+- acquisition, release, interruption, cancellation, and cleanup;
+- anatomy, accessibility, bounds, clipping, and final rendered ownership;
 - state, motion, shape, color, focus, and target-area dependencies;
-- the same README/AUDIT plus message-based operator-feedback model without Button-specific assumptions.
+- representative blast-radius proof for shared owners;
+- the same README/AUDIT and operator-feedback model without Button-specific assumptions.
 
 ## M3 — Sequential migration
 
 After the pilots:
 
-1. select one unblocked queued official component family by accepted priority;
-2. resolve its official documentation slug;
-3. create or update its README;
-4. implement or migrate the minimum complete supported surface;
-5. record every omitted, defective, provisional, invalid, optional, or unverified item accurately;
-6. add proportional proof and run local verification;
-7. run the independent review to update AUDIT;
-8. complete operator visual review through explicit user feedback when required;
-9. update the inventory and choose the next family in a new run.
+1. select one unblocked queued official owner by accepted priority;
+2. execute the calibrated source → contract → diagnosis → strategy → implementation → proof → objective gate loop;
+3. remove obsolete ownership and contradictions;
+4. run local verification;
+5. run independent review to update AUDIT;
+6. complete operator visual review through explicit user feedback when required;
+7. update inventory and choose the next owner in a new run.
 
-One run owns one family. Do not start a second family automatically.
+One run owns one component family or one foundation/style artifact. Do not start a second target automatically.
 
 ## Rule refinement
 
-When real implementation exposes an inaccurate or unnecessarily complex rule:
+When real implementation exposes a possible rule defect:
 
-- identify the concrete case;
-- correct the owning source with the smallest evidence-backed change;
-- update only directly affected instructions;
+- determine whether the universal rule is missing or the agent ignored an existing rule;
+- add shared policy only for a real cross-artifact gap;
+- update the narrowest owning source and only directly affected instructions;
+- keep concrete symptoms and fixes in owner-local documentation;
 - do not create a family-specific exception.
 
 ## Automation policy
@@ -126,4 +130,4 @@ Add automation only when repeated real work proves a stable, precise, inexpensiv
 
 ## Update protocol
 
-Update this roadmap only when the current milestone, blocker, next action, or exit gate changes. Detailed findings remain in family-local documents rather than being duplicated here.
+Update this roadmap only when the current milestone, blocker, next action, or exit gate changes. Detailed findings remain in owner-local documents rather than being duplicated here.

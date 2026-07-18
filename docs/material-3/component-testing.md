@@ -1,6 +1,8 @@
 # Material component testing
 
-This document extends `docs/testing/architecture.md` only with Material-specific proof and operator handoff. General proof ownership, execution lanes, `TEST IMPACT`, accessibility ownership, automatic impact metadata, and safe fallback remain defined by the project-wide testing architecture and testing skills.
+This document defines proportional proof for public components in the Mioframe Material library.
+
+Tests prove contracts the component or changed foundation actually owns. They do not retest Vue, CSS, browser internals, or subjective operator perception. They must still prove objective anatomy, geometry, ownership, state composition, and visible endpoints before operator handoff.
 
 ## Generalization boundary
 
@@ -8,34 +10,35 @@ Testing policy contains only cross-family risk and evidence rules.
 
 Do not add family selectors, custom-property names, token values, DOM node names, bug symptoms, or expected family structures. Concrete scenarios belong in the owning family tests, README, and AUDIT.
 
-A pilot defect may refine this document only through a risk statement and proof rule that can be applied to any family owning that risk.
+A pilot defect may refine this document only through a risk statement and proof rule applicable to every family owning that risk.
 
 ## Goal
 
 Prove the accepted Material family contract with the smallest non-duplicative set of artifacts. Green automation protects accepted repository evidence; it does not prove correspondence with current canonical Material 3 Expressive sources.
 
-- Derive proof from the official family contract, project rules, and current change.
+- Derive proof from the reconstructed official family contract, project rules, diagnosis, and current change.
 - Use the smallest set of layers that completely proves the implemented surface.
 - Keep component contracts, browser behavior, pure logic, visual regression, independent review, and operator review in their owning layers.
 - Green automation does not prove that a baseline matches Material 3 Expressive.
 - Green automation does not override rejected operator feedback.
-- A test proves a named risk only when its setup enters that risk.
+- A test proves a named risk only when its setup enters that risk and its assertions observe the owned outcome.
 - Numeric equality on the wrong owner is not conformance proof.
-- Objective structural defects are agent-owned, not operator-owned.
+- Objective structural and lifecycle defects are agent-owned, not operator-owned.
+- Tests must not preserve an implementation model that the reconstructed contract has rejected.
 
 ## Required family evidence
 
-| Evidence                   | Requirement                                                                             |
-| -------------------------- | --------------------------------------------------------------------------------------- |
-| Component contract         | Mandatory for every new or migrated public component                                    |
-| Canonical visual story     | Mandatory when the component renders visible output                                     |
-| State matrix               | Only when multiple distinct component-owned visual routes exist                         |
-| Visual regression          | When the accepted visible contract is stable and regression would be material           |
-| Browser behavior           | Only when the family owns browser-dependent interaction                                 |
-| Deterministic behavior     | Only when component/foundation logic owns deterministic decisions outside Vue rendering |
-| Consumer preservation      | When imports, public API, wrappers, native owners, composition, or shared output change |
-| Agent evidence review      | Mandatory before operator handoff                                                       |
-| Operator visual acceptance | Required when accepted Material output is created or intentionally changed              |
+| Layer                  | Use when                                          | Purpose                                                                                                        |
+| ---------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Component contract     | Every new or migrated public component            | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
+| Canonical visual story | Visible output exists                             | Stable readable surface using real production anatomy                                                          |
+| State matrix           | Multiple distinct visible routes exist            | Compare configurations, stable endpoints, winners, and coexistence                                             |
+| Visual regression      | Stable visual contract has regression risk        | Detect unintended changes against a bounded accepted baseline                                                  |
+| Browser behavior       | Correctness depends on browser behavior or layout | Focus, input, hit testing, layout, clipping, measurement, cancellation, transition lifecycle, or runtime state |
+| Pure behavior          | Extracted logic or lifecycle exists               | Helpers, composables, timing, cancellation, and cleanup                                                        |
+| Consumer preservation  | Imports, wrappers, or usage change                | Preserve affected integration contracts                                                                        |
+| Independent review     | Every new or migrated family                      | Seek contradictions, then compare implementation to docs and docs to Material                                  |
+| Operator review        | Final perceived fidelity remains                  | Explicit acceptance or concrete feedback in a user message                                                     |
 
 Evidence may be omitted only because the family does not own that contract, not because correct proof is difficult.
 
@@ -55,7 +58,7 @@ Do not create tests from a generic artifact checklist when the family does not o
 
 ## Proof causality
 
-A test name, comment, timeout, or endpoint assertion does not establish that the named condition occurred.
+A test name, comment, timeout, delayed action, screenshot, or endpoint assertion does not establish that the named condition occurred.
 
 To claim interruption, cancellation, replacement, fallback, or recovery proof:
 
@@ -64,7 +67,9 @@ To claim interruption, cancellation, replacement, fallback, or recovery proof:
 3. prove the competing branch began;
 4. prove the final public outcome and absence of stale state.
 
-Waiting for the first endpoint proves sequential behavior, not interruption. Forced state proves appearance, not acquisition, trajectory, interruption, or cleanup.
+Waiting for the first endpoint proves sequential behavior, not interruption.
+
+Forced state proves stable appearance only. It does not prove acquisition, trajectory, release, interruption, cancellation, event ownership, or cleanup.
 
 ## Component contract
 
@@ -72,7 +77,9 @@ Every new or migrated public Material component has a colocated `<Component>.tes
 
 Cover applicable defaults, public configuration, native owner, explicit attributes, accessible name, ARIA, disabled/readonly semantics, slots, anatomy, emits, controlled state, invalid combinations, normalization, extensions, and non-browser foundation wiring.
 
-Do not reproduce the visual state matrix or generic foundation behavior in component tests.
+Component tests may verify required structural elements and semantic roles. They do not prove computed layout, hit regions, clipping, focus-visible, ripple, visual shape, or transition behavior.
+
+Prefer named contract assertions over complete rendered-tree snapshots.
 
 ## Applicable geometry proof
 
@@ -103,9 +110,7 @@ Prove applicable relationships:
 - content remains correctly aligned and unclipped;
 - background, outline, elevation, shape, and motion use their correct owners.
 
-For custom or expanded interaction geometry, test representative interior, boundary, exterior, and adjacent-control points.
-
-A single successful point is not proof of the complete interaction region.
+For custom or expanded interaction geometry, test representative interior, boundary, exterior, and adjacent-control points. A single successful point is not proof of the complete interaction region.
 
 Do not accept helper geometry that produces partial, disconnected, overlapping, or unreserved interaction regions.
 
@@ -119,14 +124,12 @@ For shape:
 
 - identify the official shape owner;
 - assert applicable resting and state endpoints;
-- verify clipping, box sizing, and corner composition do not change the intended result;
+- verify clipping, box sizing, corner composition, and adjacent layers do not change the intended result;
 - reject a visibly incorrect endpoint even when a scalar source value matches.
 
 A scalar radius assertion alone is insufficient when more than the scalar determines the rendered shape.
 
 ## CSS custom-property proof boundary
-
-Tests may prove public overrides reach final owners. Tests must not normalize invalid naming.
 
 Before testing, authoring and review classify touched variables as:
 
@@ -135,7 +138,7 @@ Before testing, authoring and review classify touched variables as:
 - genuine `--app-*` token;
 - invalid or unnecessary alias.
 
-Do not write tests that bless an ad-hoc name shaped like `--md-<artifact>-<raw-css-property>`.
+Do not write tests that bless an ad-hoc name shaped like `--md-<artifact>-<raw-css-property>` or a private name that merely repeats a CSS mechanism.
 
 Private variables are implementation details, not consumer API. Test the official source or public extension and the final output, not a private alias itself unless a generic foundation boundary explicitly owns that bridge.
 
@@ -145,22 +148,23 @@ For every materially different input class, compare:
 
 - actual returned, emitted, or rendered result;
 - native semantics and accessibility;
-- warning or error text;
+- exact warning or error meaning;
 - README and API documentation;
 - test assertion.
 
-A clamped result, ignored input, rejected combination, and fallback mode are different contracts.
+A clamped result, ignored input, rejected combination, and fallback mode are different contracts. Do not collapse them into a generic warning assertion.
 
 ## Canonical visual evidence
 
 Every visibly rendered public component records one stable canonical story and bounded root in family documentation or audit. The story must:
 
-- use real production anatomy;
-- use representative real children when their geometry or behavior is claimed;
-- present distinct visible states and configurations readably;
-- expose the complete surface the operator is asked to review;
-- use `StateMatrix` when multiple distinct component-owned visible routes exist;
-- use bounded `Overview`, `Default`, or equivalent when one representative route is sufficient.
+- custom keyboard activation or navigation;
+- focus entry, movement, visibility, or restoration;
+- pointer/touch acquisition, hit testing, gesture, capture, or cancellation;
+- overlay and containment;
+- layout, measurement, responsive, or container-dependent behavior;
+- JavaScript, CSS transition, or WAAPI lifecycle;
+- final computed propagation that source review cannot establish reliably.
 
 A state matrix includes only distinct visible outputs: supported configurations, semantic/transient states, simultaneous-state precedence, extensions, and deviations. Do not create Cartesian products, duplicate equivalent combinations, or one screenshot per cell.
 
@@ -201,25 +205,55 @@ Motion ownership is split:
 - official documentation defines the requirement;
 - project documentation defines an accepted Web adaptation;
 - shared foundation implements and proves cross-family runtime behavior deeply once;
-- component owns correct property, final owner, state routing, and family-specific endpoints;
+- component owns the correct property, final owner, state routing, and family-specific endpoints;
 - reviewer checks technical and canonical alignment;
 - operator owns final perceived quality.
+
+For a motion-sensitive component, establish the smallest applicable real-input sequence:
+
+```text
+resting endpoint
+→ real acquisition input
+→ early active composition when endpoint-only proof can miss defects
+→ settled active endpoint
+→ real release input
+→ early release composition when needed
+→ resting endpoint
+```
+
+Also prove interruption or cancellation when the component or shared foundation owns that risk.
 
 At component level prove applicable:
 
 - real input activates the intended property on the correct owner;
-- one meaningful intermediate state when needed;
-- correct visible endpoints;
-- safe interruption or cancellation;
-- reduced motion when owned.
+- intermediate geometry and layer composition remain valid when they can fail between endpoints;
+- bounds do not jump or change unexpectedly unless the official contract requires it;
+- shape, clipping, state layer, outline, elevation, and content remain composed on their intended owners;
+- correct visible endpoints are reached;
+- interruption or cancellation leaves no stale state;
+- reduced motion is correct when owned.
 
-Do not claim motion fixed when timing changes but the final visible owner, endpoint, composition, or rendered property remains wrong.
+Do not require frame-by-frame infrastructure for every ordinary transition. Sample an intermediate state only when the changed composition, a reported defect, or ownership risk cannot be proved from endpoints.
+
+Do not claim motion fixed when timing changes but the final visible owner, endpoint, trajectory composition, or rendered property remains wrong.
 
 Technical route proof never closes rejected operator feedback.
 
-## Browser behavior
+## Stable-state versus lifecycle evidence
 
-Use isolated Storybook behavior tests only when the family owns real focus, keyboard, pointer/touch, drag, expanded-target, overlay, responsive, motion, cancellation, cleanup, or browser-rendered property behavior.
+Use evidence according to what it proves:
+
+- forced-state story: stable visual endpoint;
+- screenshot baseline: regression stability of that endpoint;
+- real browser input: acquisition, release, event ownership, trajectory, interruption, and cleanup;
+- pure lifecycle test: deterministic internal timing/cancellation logic when extracted;
+- operator review: perceived fidelity and polish after objective gates pass.
+
+Do not substitute one layer for another.
+
+## Shared foundation proof
+
+Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, shared interaction lifecycle, or public shared APIs require representative proof.
 
 Use public controls and real browser input. Forced state, direct Vue mutation, private methods, and synthetic internal events do not prove behavior.
 
@@ -238,9 +272,35 @@ When migration changes public usage:
 
 A shared Material change does not automatically require unrelated product suites.
 
-## Agent evidence review
+- use real production anatomy;
+- use representative real children when their geometry or behavior is claimed;
+- present distinct visible states and configurations readably;
+- expose the complete surface the operator is asked to review;
+- provide a real-interaction fixture when perceived transition quality is under review.
 
-A high-severity anatomy, interaction, geometry, visible-endpoint, final-owner, namespace, or unchanged visible defect requires `non-compliant`.
+Use a state matrix only when multiple distinct visual routes exist. Do not build a Cartesian product.
+
+## Visual regression
+
+A visual baseline detects changes from the stored baseline. It does not prove Material correctness, correct anatomy, correct ownership, transition trajectory, or operator acceptance.
+
+Do not create or update a baseline until the underlying structural contract is understood. A baseline preserving malformed output is regression evidence for that output, not conformance evidence.
+
+## Independent review
+
+Before operator handoff, reviewer confirms:
+
+- applicable ownership is complete and coherent;
+- final properties are checked on correct owners;
+- custom-property namespaces are valid;
+- tests prove named risks causally;
+- forced states are not presented as lifecycle proof;
+- repeated claims in production, README, stories, tests, and verification agree;
+- canonical stories use real anatomy;
+- no objective defect is hidden behind operator review;
+- README preserves current feedback accurately.
+
+A high-severity anatomy, interaction, geometry, visible-endpoint, final-owner, namespace, lifecycle-proof, contradiction, or unchanged visible defect requires `non-compliant`.
 
 Before operator handoff, the coding agent confirms:
 
@@ -255,7 +315,7 @@ Before operator handoff, the coding agent confirms:
 - README preserves current feedback accurately;
 - no unresolved non-visual decision is delegated to operator review.
 
-Report `passed` or `blocked`. Do not pass while source, architecture, accessibility, behavior, migration, proof, or impact ownership remains unresolved.
+The operator evaluates final visible fidelity and perceived motion quality. The operator does not own discovery of incorrect anatomy, interaction bounds, ownership, CSS naming, clipping, lifecycle proof, documentation contradiction, or test insufficiency.
 
 ## Operator visual acceptance
 
@@ -291,13 +351,9 @@ Use existing infrastructure. Add structural automation only after repeated migra
 - generic component-test DSLs;
 - public test-only props, events, or branches;
 - family-specific forced-state systems;
-- frame-level infrastructure for ordinary CSS transitions;
-- duplicate foundation suites in every family;
-- mandatory artifact counts disconnected from actual family ownership;
-- shared fixtures before multiple current families prove the same concrete need;
-- stale or semantically overloaded test-impact mappings;
+- frame-level capture infrastructure without a demonstrated transition-composition risk;
 - separate operator report files.
 
 ## Completion
 
-Material proof is complete when applicable contracts are covered at the correct proof types, canonical visual evidence is readable, browser behavior uses real input when owned, foundation behavior is not duplicated, consumers and obsolete paths are handled, repository impact metadata is consistent, agent evidence review passes, required operator acceptance is recorded, and repository verification passes.
+Proof is complete only when applicable contracts are covered at correct layers, ownership relationships are coherent, final properties are asserted on correct owners, namespaces are valid, named-risk setups are causal, normalization branches agree, forced-state and real-lifecycle evidence are not confused, independent review records exact remaining work, visible evidence uses real anatomy, required operator acceptance is explicit, and applicable local verification passes.

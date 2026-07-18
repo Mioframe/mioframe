@@ -22,13 +22,13 @@ Use for decisions about:
 - accessibility, interaction, adaptive behavior, and visual evidence;
 - whether a surface is official Material, an official constraint, optional guidance, or project-specific UI.
 
-For an official public component family, `material-component-authoring` owns execution, migration, proof, documentation, and completion. This skill supplies source and usage decisions.
+For an official public component family, `material-component-authoring` owns contract reconstruction, diagnosis, strategy, implementation, proof, documentation, and completion. This skill supplies source and usage decisions.
 
 ## Evidence boundary
 
-For Material component authoring and review, use official Material sources and current workspace files.
+Use official Material sources and current workspace files.
 
-Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history as source or implementation evidence.
+Source-control history is not Material authority. The current diff may be inspected for scope, unrelated changes, missing cleanup, and regression risk; do not use it to derive canonical behavior.
 
 ## Canonical target
 
@@ -47,24 +47,27 @@ For a change preserving component choice, usage, ownership, public imports, API,
 Material impact: none
 ```
 
-A public, visual, foundation, ownership, or state-model change is not `none`.
+A public, visual, foundation, ownership, state-model, or proof-contract change is not `none`.
 
 ## Official authority
 
 Use `docs/material-3/source-of-truth.md`.
 
 - Current published Material 3 Expressive documentation is authoritative for documented usage, anatomy, behavior, accessibility, tokens, foundations, motion, and adaptive guidance.
-- The current official Material Design Kit is authoritative only for visual decisions published documentation does not resolve.
+- The current official Material Design Kit is authoritative only for objective visual decisions published documentation does not resolve.
 - MCP and cache are access mechanisms, not independent authorities.
 - Repository code, tests, stories, snapshots, and prior audits are current implementation evidence, not proof of Material correctness.
 
 ## Source access workflow
 
-1. Use the `material3` MCP server for relevant official pages.
-2. Use `Vyachean/m3-docs-cache` when MCP is unavailable or incomplete for a required page.
-3. Directly verify the current published page when cache evidence is missing, stale, partial, suspicious, or inconsistent and access is possible.
-4. Use the current official Material Design Kit only when published documentation cannot resolve an exact visual decision.
-5. Record exact page names, source status, snapshot/capture metadata, direct verification dates, and Design Kit references.
+1. Read every required official page and structured route through the current `material3` MCP run.
+2. Treat a successful complete MCP read as working current evidence when it is not reported partial, failed, suspicious, truncated, or conflicting.
+3. Use `Vyachean/m3-docs-cache` when MCP is unavailable or incomplete for a required source.
+4. Directly verify the current published page only when evidence is missing, partial, suspicious, conflicting, or there is a concrete reason to suspect the contract changed.
+5. Use the current official Material Design Kit only when published documentation cannot resolve an exact objective visual decision.
+6. Record exact page names, current-run lookup status, provenance metadata, direct verification dates, and Design Kit references.
+
+Capture age alone is not a defect and does not downgrade a healthy current MCP read.
 
 Record one canonical source status:
 
@@ -74,22 +77,22 @@ Record one canonical source status:
 - `conflicting`;
 - `unavailable`.
 
-Use `complete` inventory only with current-complete evidence.
+Use `snapshot-complete-stale` only when relying on a retained snapshot without a healthy current read, or when freshness is explicitly unresolved by the source mechanism.
 
-A stale snapshot may support `snapshot-complete`, not current completeness. A partial cache, failed or missing page, truncated graph, suspicious record, or spot-check-only inspection requires incomplete or blocked inventory status.
+Use complete inventory only with `current-complete` evidence. A partial cache, failed or missing page, truncated graph, suspicious record, conflicting source, or spot-check-only inspection requires incomplete or blocked inventory status.
 
 Spot checks may verify exact facts. They do not prove the full family inventory.
 
-Do not use Material Web, generic web search results, unproven screenshots, older Material versions, third-party libraries, existing Mioframe rendering, memory, or repository history as Material authority.
+Do not use Material Web, generic search results, unproven screenshots, older Material versions, third-party libraries, existing Mioframe rendering, memory, or repository history as Material authority.
 
 Another implementation may be inspected only after the official contract is resolved and only as a non-authoritative reference.
 
-When evidence is unavailable, stale, partial, suspicious, or contradictory:
+When evidence is unavailable, partial, suspicious, or contradictory:
 
 - identify the exact unresolved decision;
 - narrow implementation scope only when required scenarios remain coherent;
 - record the source limitation honestly;
-- use `blocked` when the unresolved evidence affects a required decision;
+- use `blocked` when unresolved evidence affects a required decision;
 - do not infer correctness from an existing baseline.
 
 ## Capability interpretation
@@ -170,11 +173,15 @@ A known operator-rejected visible behavior remains an open defect until producti
 
 Do not convert a perceptual rejection into a documentation-only issue because the implementation route is technically honest.
 
-Shared motion foundations are verified deeply once. Component evidence remains proportional and does not require frame-by-frame analysis or duplicate equivalent input paths.
+Shared motion foundations are verified deeply once. Component evidence remains proportional, but forced states prove only stable appearance; real input is required for lifecycle claims.
+
+Sample intermediate transition composition only when endpoints cannot prove the changed or reported risk.
 
 ## Rule refinement
 
-When current source or implementation evidence proves a project rule inaccurate or needlessly complex, correct the owning rule through `material-component-authoring`. Do not work around it with a component-specific exception.
+When current source or implementation evidence proves a project rule inaccurate or needlessly complex, correct the owning rule through the calibrated Material workflow.
+
+Do not add a component-specific exception. Do not add a new universal rule when an existing rule already prohibited the defect; strengthen execution or report agent non-compliance instead.
 
 ## Review and verification
 
@@ -186,6 +193,6 @@ Name:
 - affected official contracts;
 - applicable browser, visual, accessibility, or consumer proof.
 
-`material-component-authoring` owns family documentation, implementation, migration, proportional proof, and local verification. `autonomous-review.md` owns independent review and operator visual separation.
+`material-component-authoring` owns family documentation, implementation, migration, proportional proof, and the objective gate. `autonomous-review.md` owns independent contradiction-seeking review and operator visual separation.
 
 The agent never invents operator visual acceptance.
