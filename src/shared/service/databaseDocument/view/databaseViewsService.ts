@@ -11,6 +11,7 @@ import {
   type DatabaseView,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
+import type { ReorderCommitRequest, ReorderCommitResult } from '@shared/lib/reorder';
 import { strictRecordSet } from '@shared/lib/strictRecord/wrapStrictRecord';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
@@ -23,9 +24,33 @@ import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
 import type { DatabaseStateQueryResult } from '../databaseService';
 
+/**
+ * The single canonical ordering rule for stored views: legacy views without an explicit `order`
+ * sort as if their order were `0`, the same value newly created views start counting up from (see
+ * `getNextViewOrder`). Used by both `viewList$` and `getCanonicalOrderedIds` so the displayed
+ * order and the guarded reorder comparison can never disagree for missing or duplicate `order`
+ * values; ties keep the record's own iteration order via `Array.prototype.sort`'s stability.
+ * @param entryA - A `[viewId, view]` entry being compared.
+ * @param entryB - The other `[viewId, view]` entry being compared.
+ * @returns A negative, zero, or positive number per the standard comparator contract.
+ */
+const compareViewOrder = (
+  [, { order: orderA = 0 }]: readonly [DatabaseViewId, DatabaseView],
+  [, { order: orderB = 0 }]: readonly [DatabaseViewId, DatabaseView],
+): number => orderA - orderB;
+
+/**
+ * Wires the database view read model and mutations on top of the shared database state query
+ * and change helpers.
+ * @param databaseState$ - Cached observable query for one document's raw database state.
+ * @param changeDatabase - Applies a change callback atomically to one document's database state.
+ * @returns The view read model and view-level mutations.
+ */
 export const setupDatabaseViewsService = (
   databaseState$: (q: {
+    /** The database document id. */
     documentId: AMDocumentId;
+    /** Directory path containing the document. */
     path: string;
   }) => Observable<DatabaseStateQueryResult>,
   changeDatabase: (
@@ -35,7 +60,15 @@ export const setupDatabaseViewsService = (
   ) => Promise<unknown>,
 ) => {
   const databaseViews$ = defineCacheObservable(
-    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
+    ({
+      documentId,
+      path,
+    }: {
+      /** The database document id. */
+      documentId: AMDocumentId;
+      /** Directory path containing the document. */
+      path: string;
+    }) =>
       databaseState$({ documentId, path }).pipe(
         map((state) => {
           if (state instanceof Error) {
@@ -49,16 +82,22 @@ export const setupDatabaseViewsService = (
   );
 
   const viewList$ = defineCacheObservable(
-    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
+    ({
+      documentId,
+      path,
+    }: {
+      /** The database document id. */
+      documentId: AMDocumentId;
+      /** Directory path containing the document. */
+      path: string;
+    }) =>
       databaseViews$({ documentId, path }).pipe(
         map((viewsRecord) => {
           if (viewsRecord instanceof Error) {
             return viewsRecord;
           }
 
-          return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
-            ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
-          );
+          return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(compareViewOrder);
         }),
       ),
   );
@@ -71,8 +110,11 @@ export const setupDatabaseViewsService = (
       path,
       viewId,
     }: {
+      /** The database document id. */
       documentId: AMDocumentId;
+      /** Directory path containing the document. */
       path: string;
+      /** The specific view id to read, or `undefined` when no view is selected. */
       viewId?: DatabaseViewId | undefined;
     }) =>
       databaseViews$({ documentId, path }).pipe(
@@ -92,32 +134,77 @@ export const setupDatabaseViewsService = (
       strictRecordRemove(state['views'], viewId);
     });
 
-  const reorder = (path: string, documentId: AMDocumentId, orderedIds: DatabaseViewId[]) =>
-    changeDatabase(path, documentId, (state) => {
+  /**
+   * Derives the canonical view order currently stored in the document. Uses the same
+   * {@link compareViewOrder} comparator as `viewList$` so the displayed order and the guarded
+   * reorder comparison can never disagree for legacy views missing an explicit `order`.
+   * @param views - The document's raw views record.
+   * @returns The view ids ordered by their stored `order`.
+   */
+  const getCanonicalOrderedIds = (views: DatabaseState['views']): DatabaseViewId[] =>
+    Array.from(strictRecordIterableEntries(views)())
+      .sort(compareViewOrder)
+      .map(([viewId]) => viewId);
+
+  const isSameOrderedIds = (a: readonly DatabaseViewId[], b: readonly DatabaseViewId[]) =>
+    a.length === b.length && a.every((id, index) => id === b[index]);
+
+  const isPermutation = (
+    candidate: readonly DatabaseViewId[],
+    reference: readonly DatabaseViewId[],
+  ): boolean => {
+    if (candidate.length !== reference.length) {
+      return false;
+    }
+
+    const candidateIds = new Set(candidate);
+    if (candidateIds.size !== candidate.length) {
+      return false;
+    }
+
+    const referenceIds = new Set(reference);
+    return candidate.every((id) => referenceIds.has(id));
+  };
+
+  /**
+   * Reorders views by explicit identifier order, guarded by the canonical order the caller
+   * last observed. Applies and returns `'applied'` only when `expectedOrderedIds` still matches
+   * the document's current order; otherwise leaves the document untouched and returns `'stale'`.
+   * @param path - Directory path containing the document.
+   * @param documentId - The database document id.
+   * @param request - The guarded reorder request.
+   * @returns `'applied'` when persisted, `'stale'` when the expected order no longer matched.
+   */
+  const reorder = (
+    path: string,
+    documentId: AMDocumentId,
+    request: ReorderCommitRequest<DatabaseViewId>,
+  ): Promise<ReorderCommitResult> => {
+    let result: ReorderCommitResult = 'stale';
+
+    return changeDatabase(path, documentId, (state) => {
       const views = state.views;
-      const knownIds = Array.from(strictRecordIterableEntries(views)())
-        .sort(
-          (
-            [, { order: a = Number.MAX_SAFE_INTEGER }],
-            [, { order: b = Number.MAX_SAFE_INTEGER }],
-          ) => a - b,
-        )
-        .map(([viewId]) => viewId);
+      const currentOrderedIds = getCanonicalOrderedIds(views);
 
-      const seenIds = new Set(orderedIds);
-      const nextOrderedIds = [
-        ...orderedIds.filter((viewId) => Boolean(views[viewId])),
-        ...knownIds.filter((viewId) => !seenIds.has(viewId)),
-      ];
+      if (!isSameOrderedIds(currentOrderedIds, request.expectedOrderedIds)) {
+        return;
+      }
 
-      nextOrderedIds.forEach((viewId, index) => {
+      if (!isPermutation(request.orderedIds, currentOrderedIds)) {
+        throw new Error('reorder request orderedIds must be a permutation of expectedOrderedIds');
+      }
+
+      request.orderedIds.forEach((viewId, index) => {
         const view = views[viewId];
 
         if (view) {
           view.order = index;
         }
       });
-    });
+
+      result = 'applied';
+    }).then(() => result);
+  };
 
   const create = async (path: string, documentId: AMDocumentId, view: DatabaseView) => {
     const viewId = generateViewId();

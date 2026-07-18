@@ -1,241 +1,139 @@
 # @shared/lib/reorder
 
-A framework-level Vue 3 composable and directive set for live item reordering through pointer
-(mouse and touch) dragging. It owns pointer activation, physical displacement geometry, and
-native-scroll-ownership autoscroll — nothing else.
+A thin dnd-kit-based Vue 3 primitive for pointer-driven list reordering. It owns drag interaction
+only: sensors, plugins, container-bounds restriction, the Material reorder transition, and
+translating a completed drag into a typed reorder request. It owns nothing about persistence.
 
-## Purpose
+## Status
 
-`useReorder` lets a consumer make an existing list of items draggable-to-reorder without handing
-over ownership of the list's data, visuals, or persistence. The library only decides _when_ and
-_where_ to fire a reorder request; the consumer decides everything else.
+This is the **canonical** reorder implementation and the target for incrementally migrating
+existing consumers off `@shared/lib/sortable` (legacy, see that module's README). New reorder
+consumers must use this module, not `@shared/lib/sortable`.
 
 ## Usage
 
 ```vue
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useReorder } from '@shared/lib/reorder';
+import { ref } from 'vue';
+import { ReorderSurface, type ReorderCommitRequest } from '@shared/lib/reorder';
+import { MDList } from '@shared/ui/Lists';
 
-interface Item {
-  id: string;
-  label: string;
-}
+const itemIds = ref<MyItemId[]>([...]);
 
-const items = ref<Item[]>([
-  { id: 'a', label: 'Alpha' },
-  { id: 'b', label: 'Bravo' },
-  { id: 'c', label: 'Charlie' },
-]);
-const itemKeys = computed(() => items.value.map((item) => item.id));
-
-const { draggingKey, vReorderContainer, vReorderItem } = useReorder({
-  keys: itemKeys,
-  onReorder: ({ fromIndex, toIndex }) => {
-    const next = [...items.value];
-    const [moved] = next.splice(fromIndex, 1);
-    if (moved) next.splice(toIndex, 0, moved);
-    items.value = next;
-  },
-});
-
-const onRemove = (id: string): void => {
-  items.value = items.value.filter((item) => item.id !== id);
+const onReorder = (request: ReorderCommitRequest<MyItemId>) => {
+  // Apply request.orderedIds optimistically and persist, guarded by
+  // request.expectedOrderedIds. See "Ownership" below.
 };
 </script>
 
 <template>
-  <div v-reorder-container>
-    <div
-      v-for="item in items"
-      :key="item.id"
-      v-reorder-item="item.id"
-      :class="{ 'is-dragging': draggingKey === item.id }"
-    >
-      {{ item.label }}
-      <button type="button" @click="onRemove(item.id)">Remove</button>
-    </div>
-  </div>
+  <ReorderSurface :item-ids="itemIds" @reorder="onReorder">
+    <MDList>
+      <MyRow v-for="(id, index) in itemIds" :key="id" :item-id="id" :index="index" />
+    </MDList>
+  </ReorderSurface>
 </template>
 ```
 
-Native interactive descendants such as `button`, `a`, and form controls are excluded from drag
-activation automatically. Use `v-reorder-ignore` only for a custom interactive descendant that is
-not recognized natively.
+Each row registers itself with `useReorderItem`:
 
-## Source-of-truth contract
+```vue
+<script setup lang="ts">
+import { useTemplateRef } from 'vue';
+import { useReorderItem } from '@shared/lib/reorder';
 
-The consumer owns the ordered data. `useReorder` receives it as
-`keys: MaybeRefOrGetter<readonly Key[]>` (`Key extends string | number`) and never mutates it,
-never keeps a second authoritative copy, and never infers identity from array indexes or DOM
-position — only from the key passed to `v-reorder-item`.
+const props = defineProps<{ itemId: MyItemId; index: number }>();
+const rootEl = useTemplateRef<HTMLElement>('root');
 
-For every live move, `onReorder({ key, fromIndex, toIndex })` fires and the consumer must update
-its reactive order **synchronously**. The library confirms acceptance synchronously too, by
-re-reading the consumer's keys immediately after `onReorder` returns and comparing them to the
-exact sequence it requested — it never waits for Vue's `nextTick` to decide whether a move was
-accepted. `nextTick` is used only afterward, to wait for Vue's DOM commit of an already-accepted
-move before remeasuring geometry on the next animation frame. If the original pointer is released
-while that DOM commit is still pending, completion is deferred until the commit resolves rather
-than reported prematurely — but the physical release still stops every part of the active gesture
-immediately (pointer capture, the per-frame loop, and all temporary listeners): only the final
-`onDragEnd` waits, nothing about the drag itself keeps running while it does. A later, real
-`lostpointercapture` from that same release resolving is expected and never turns a deferred
-completion into a cancellation.
+const { isDragging } = useReorderItem({
+  id: () => props.itemId,
+  index: () => props.index,
+  element: () => rootEl.value ?? undefined,
+  handle: () => rootEl.value ?? undefined,
+});
+</script>
 
-Internally, an active session keeps a non-authoritative snapshot (`confirmedSequence`) of the
-sequence it expects the consumer's `keys` to be. That snapshot exists only to verify the controlled
-contract — it is never exposed publicly and never becomes another source of truth. Before
-evaluating every frame, and immediately after every requested move, the library compares the
-consumer's live sequence against that snapshot in full (not just the active item's resulting
-index).
+<template>
+  <li ref="root" :class="{ dragging: isDragging }">...</li>
+</template>
+```
 
-If the controlled order does not reflect a requested move, or changes incompatibly mid-session
-(the active key disappears, or the consumer applies an unrelated change, for example), the session
-cancels safely instead of continuing with divergent state. An incompatible external change is
-never rolled back or overwritten by the library.
+`ReorderSurface` is renderless (`DragDropProvider` adds no DOM node) and its default slot has no
+slot props: render the list from whatever ids you already own. There are no callback props; the
+component emits one typed `reorder` event per completed, changed, valid drag.
 
-## Directive contract
+## Controlled-list contract
 
-- `v-reorder-container`: apply once per `useReorder` instance, on the element that bounds
-  reordering.
-- `v-reorder-item="item.key"`: apply on each reorderable item's root element. Registered items may
-  be arbitrary descendants of the container, not only direct children.
-- `v-reorder-ignore`: apply on a custom interactive descendant (anything that isn't a native
-  `button`/`a`/`input`/`textarea`/`select`/editable element) that must not start drag activation.
+`itemIds` must contain unique values. This is validated at three points, not continuously:
 
-Nested reorder containers and cross-container item movement are not supported. Only items
-registered by the same `useReorder` instance participate together.
+- **Setup**: duplicate initial `itemIds` throw `ReorderSurface: itemIds must contain unique
+values.` deterministically when the component is created.
+- **Before drag start**: a duplicate introduced later causes the next cancelable dnd-kit
+  `beforeDragStart` event to be prevented. This safely rejects activation without throwing and
+  before snapshot creation, dragged state, autoscroll, pointer tracking, or haptics can begin.
+- **Drag end**: a completed drag is ignored, emitting nothing, if either the drag-start snapshot
+  or the current controlled `itemIds` contains a duplicate. This never throws — a completion can
+  legitimately arrive after external state changed, and the safe response is to ignore it.
 
-Duplicate identities are programmer errors, not supported runtime states, and are rejected
-deterministically (a thrown `Error`) rather than resolved by "last mounted wins": a second
-`v-reorder-container` mounted for the same `useReorder` instance, two different elements
-registered under the same key, one element registered under two different keys, and duplicate
-values in the controlled `keys` sequence.
+`ReorderSurface` does not continuously observe `itemIds` in between these points, and it never
+mutates, repairs, or rolls back the caller's list. Correcting duplicate ids restores normal drag
+operation on the same mounted surface; remounting is not required.
 
-The registered active element must keep its normal flow layout box while dragging — this library
-renders nothing extra and does not remove or collapse it. If your visual treatment (e.g. a
-dragging class) would otherwise change the element's box, keep the box stable through that
-treatment.
+The surface also ignores a completed drag's operation, emitting nothing, if the controlled order
+changed during the drag: `itemIds` no longer matches the order observed at drag start, the dragged
+item's id no longer matches its drag-start position, or either index is out of range. A later,
+consistent drag still emits normally.
 
-## Callback semantics
+## Ownership
 
-- `onDragStart({ key, index })` fires exactly once, only after activation succeeds.
-- `onReorder({ key, fromIndex, toIndex })` may fire multiple times during one live drag; at most
-  once per animation frame.
-- `onDragEnd({ key, initialIndex, finalIndex, cancelled })` fires exactly once for every fired
-  `onDragStart` whose consumer callbacks complete without throwing. `finalIndex` is the item's
-  actual index in the consumer's controlled `keys` when the session ended, or `-1` when the active
-  key no longer exists there (for example, the consumer removed it mid-drag).
-- A pending pointer gesture that never activates (released before the threshold, or cancelled
-  before the touch long-press delay) fires none of these callbacks.
-- `draggingKey` becomes the active key on activation and returns to `null` when the session ends.
+- **Shared** (`ReorderSurface`, `useReorderItem`): drag interaction only — activation, transition,
+  bounds, touch haptics/cleanup, and translating a drag into a `ReorderCommitRequest`.
+- **Feature**: owns the optimistic displayed order, pending state, and rollback/confirmation
+  reconciliation for its guarded persistence call. See
+  `src/features/databaseViewMapEdit/useDatabaseViewReorderState.ts` for a worked example.
+- **Service**: owns the guarded canonical mutation, comparing `expectedOrderedIds` against the
+  live document and applying `orderedIds` atomically, returning `'applied'` or `'stale'`.
 
-## Visual ownership boundary
+## Container-boundary contract
 
-This library owns no visual representation. It renders no overlay, clone, placeholder, or
-Teleported content, and applies no transforms, transitions, or animations. All dragged-state
-styling, spacing, and motion are the consumer's responsibility — use `draggingKey` to drive it.
+Every sortable item root must be a **direct DOM child** of the container that defines its movement
+bounds (e.g. `MDList`'s root element). The dragged element cannot visually leave that direct
+parent. This is enforced through dnd-kit's `RestrictToElement` modifier, not custom geometry.
 
-## Activation
+## Autoscroll scope
 
-- **Mouse**: `pointerdown` starts a pending session; it activates after at least 4 CSS px of
-  movement. Releasing before that threshold is a normal click.
-- **Touch**: activation requires a long press (`longPressDelay`, default `400`ms). Movement beyond
-  an 8 CSS px slop before the delay elapses cancels the pending gesture. Native scrolling is not
-  blocked before activation; after activation, the gesture captures the pointer and suppresses
-  scrolling, context menus, and text selection for that gesture only.
+Autoscroll during a drag is scoped to the active reorder container and resolved independently per
+axis. While an outer scrollable ancestor hides the relevant physical edge of the reorder surface,
+the nearest ancestor that can reveal that edge owns the axis and the container does not scroll on
+that axis. Once the physical edge is visible, ancestor movement stops and the container's own
+overflow may scroll to reveal sortable content. Reaching the container's content limit does not
+fall through to an ancestor while that physical surface edge remains visible; an ancestor becomes
+eligible again only if the edge is genuinely clipped again. X and Y may therefore be owned by
+different candidates in the same frame.
 
-A normal completed drag arms one-shot click suppression immediately while handling the original
-`pointerup` — before any finish/defer/cancel decision, since the browser's resulting `click`
-follows that same physical release shortly after regardless of how the session concludes. That
-suppression survives the session's own (synchronous) teardown long enough to intercept the click,
-then removes itself immediately, or after a bounded fallback if no click ever arrives. It
-suppresses only that one click; a later, genuinely unrelated click is never affected.
+Edge intent is measured against each candidate's actually visible rectangle after overflow and
+viewport clipping. The real pointer's relative X/Y position is projected independently into
+dnd-kit's full candidate rectangle, including a corresponding projection of its orthogonal pixel
+tolerance. dnd-kit therefore retains its existing acceleration, percentage threshold,
+scroll-limit, and inverted-axis behavior while those calculations operate relative to visible
+client area. Projection controls activation relative to that visible area, while per-frame speed
+saturates at the configured maximum acceleration on each axis. The same visible rectangle is used
+for the project-specific outer-ancestor clamp.
 
-Cancelling mid-drag _before_ the physical release while the container and composable remain
-mounted (`Escape`, blur, visibility loss, a second pointer, active-item removal, or a consumer
-exception) cannot use that same immediate arm-and-fallback shape: the original pointer may stay
-physically pressed far longer than one event-loop turn. In that case the library instead starts a
-bounded release watcher for the original pointer's own `pointerup`, and arms suppression only once
-that release actually happens. A matching `pointercancel` for that same pointer removes the watcher
-without arming suppression (no click will follow), and a bounded safety timeout removes it if the
-pointer never reports back at all. Either way, only the just-ended gesture's own click can ever be
-suppressed — a genuinely unrelated later click always passes. Container unmount and composable
-scope disposal are hard cleanup boundaries and remove this watcher immediately, as described below.
+dnd-kit 0.5.0's default `AutoScroller` has no notion of the reorder container's bounds, so it keeps
+autoscrolling an outer ancestor even once that ancestor can no longer reveal more of the container.
+`ReorderAutoScroller` replaces it in `getReorderPlugins` rather than running alongside it.
 
-A direct `pointercancel` on an active drag (not a `pointercancel` observed by an already-running
-release watcher) ends the original pointer stream completely and immediately: no click can ever
-follow it, so it never arms suppression and never starts a release watcher of its own — a real
-release of that same physical button afterward is treated as unrelated.
+## Supported scope
 
-## Autoscroll
+- One `ReorderSurface` per screen region.
+- Pointer input only (mouse, touch, pen).
+- Arbitrary item sizes and layout directions (vertical lists, horizontal layouts, grids,
+  flex-wrap).
 
-Once activated, dragging near a visible edge of the reorder container, any of its existing
-scrollable ancestors, or the page viewport itself scrolls that target using its own native
-scrolling — this library never makes an element scrollable by changing its styles, and never
-treats the viewport as an ordinary overflow element. Horizontal and vertical axes scroll
-independently and can be owned by different targets; when the nearest eligible target reaches its
-scroll limit, the chain falls through to the next one, ending with the viewport as the final
-target. Only ancestors that actually clip (not `overflow: visible`) reduce an item's visible
-bounds. Speed increases smoothly near an edge and continues while the pointer is held still; a
-pointer beyond a visible edge keeps scrolling and reordering intuitively rather than stalling.
+## Unsupported scope
 
-Every edge and clipping measurement is based on each ancestor's client (content) viewport — its
-border and any scrollbar gutter are excluded, never treated as scrollable or reorderable content.
-A container whose visible area is fully clipped or scrolled away (zero width or height) has no
-interior point to target at all: the library skips reordering for that frame instead of resolving
-an arbitrary point.
-
-## Cancellation
-
-A session cancels safely on `Escape`, `pointercancel`, lost pointer capture, a second pointer
-(anywhere, not only inside the container), window blur, the document becoming hidden,
-container/active-item unmount, or an incompatible controlled-order change. A second pointer never
-consumes its own event for the rest of the page — no `stopPropagation`, `stopImmediatePropagation`,
-or `preventDefault` — it only prevents that same event from also starting a brand-new session in
-this library. When rollback is still valid — the active key still exists and the consumer's live
-sequence exactly matches what the library expects — the active item is live-reordered back to its
-initial index before the session ends; otherwise it ends as cancelled without inventing or
-overwriting consumer state, and never rolls back over an incompatible external mutation. Every
-activated session whose consumer callbacks complete without throwing ends with exactly one
-`onDragEnd`, and all timers, listeners, capture, and animation-frame work are cleaned up
-deterministically.
-
-Container unmount and composable scope disposal are hard cleanup boundaries: they cancel any
-in-flight session immediately, in every phase, and unconditionally remove every remaining library
-side effect — the active session runtime (animation frame, pointer capture, session listeners,
-touch/context-menu/selection guards), click suppression, and any pending bounded release watcher
-and its safety timeout, even if a consumer callback (`keys`, `onReorder`, or `onDragEnd`) throws
-while that in-flight session is being cancelled. Nothing from an ended `useReorder` instance is
-ever left listening on `window` or `document`. An active-item unmount alone (the container and
-composable staying mounted) is different: if the original pointer may still be physically held,
-the bounded release watcher described above is still armed and kept, because a later real release
-on the same still-mounted container remains observable.
-
-### Consumer exceptions
-
-`keys`, `onDragStart`, and `onReorder` are outside the library's trust boundary. If any of them
-throws, the active session (whichever phase it is in) is aborted the same way container/composable
-disposal cleans up — deterministically and immediately, before the error is rethrown unchanged: no
-rollback is attempted, and `onDragEnd` is not called for that aborted session. The exact-one-
-`onDragEnd` guarantee above applies to sessions whose consumer getter/callback calls do not throw.
-If the original pointer may still be physically held and the container is still mounted, the
-bounded release watcher is armed exactly as an ordinary early cancellation would arm it. If
-`onDragEnd` itself throws, every other effect has already been cleaned up beforehand; the error
-still propagates unchanged.
-
-## Profiling
-
-Storybook provides `ReorderProfilingHarness` stories with 100, 500, and 1000 items. They use the
-public API, cached computed keys, and synchronous controlled updates for reproducible DevTools
-profiling during production-consumer migration. They are manual diagnostic surfaces, not visual
-baselines or CI performance benchmarks; do not add timing thresholds or infer device performance
-from CI runtime.
-
-## Non-goals
-
-This library does not provide: consumer migration, cross-container transfer, nested containers,
-keyboard reordering, accessibility announcements, virtualized-list adapters, visual dragged
-layers/overlays/clones, persistence, domain-specific list behavior, or configurable layout
-direction/autoscroll strategy.
+- Cross-container dragging.
+- Nested reorder zones.
+- Keyboard reordering.
+- Virtualization-specific integration.

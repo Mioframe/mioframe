@@ -89,9 +89,29 @@ const onClickScrim = () => {
 
 const ariaHidden = useModalAriaHidden();
 
+// preventScroll stops the trap's internal focus() calls (initial activation and its
+// mutation-driven fallback redirect when the previously focused element leaves the DOM,
+// e.g. during a reorder drag) from triggering the browser's native scroll-into-view, which
+// would otherwise move this component's own scrollable scrim — the sheet's positioning
+// mechanism — out from under the user.
 const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(containerEl, {
   allowOutsideClick: true,
+  preventScroll: true,
 });
+
+// preventScroll above also suppresses the scroll-into-view a browser would normally perform when
+// focus-trap wraps keyboard focus (Tab from the last focusable element to the first, or
+// Shift+Tab from the first to the last). Restore just that one case, narrowly, for keyboard
+// input only: after focus-trap's own synchronous Tab handling has run, wait one animation frame
+// and bring the newly focused element into view if it isn't already.
+let focusVisibilityFrame: number | undefined;
+
+const cancelFocusVisibilityFrame = () => {
+  if (focusVisibilityFrame !== undefined) {
+    cancelAnimationFrame(focusVisibilityFrame);
+    focusVisibilityFrame = undefined;
+  }
+};
 
 watch(
   [openModel, containerEl],
@@ -102,13 +122,40 @@ watch(
         lockFocus();
       }
     } else {
+      cancelFocusVisibilityFrame();
       unlockFocus();
     }
   },
   { immediate: true, flush: 'post' },
 );
 
-tryOnBeforeUnmount(unlockFocus);
+tryOnBeforeUnmount(() => {
+  cancelFocusVisibilityFrame();
+  unlockFocus();
+});
+
+const onContainerKeydown = (event: KeyboardEvent) => {
+  if (event.key !== 'Tab' || !openModel.value) {
+    return;
+  }
+
+  cancelFocusVisibilityFrame();
+
+  focusVisibilityFrame = requestAnimationFrame(() => {
+    focusVisibilityFrame = undefined;
+
+    if (!openModel.value) {
+      return;
+    }
+
+    const container = containerEl.value;
+    const { activeElement } = document;
+
+    if (activeElement instanceof HTMLElement && container?.contains(activeElement)) {
+      activeElement.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    }
+  });
+};
 
 const paneContainer = usePaneScrollContainer();
 
@@ -150,6 +197,7 @@ useOnBackNavigationStackedWhen(openModel, () => {
     :aria-hidden="ariaHidden"
     :style="scrimStyle"
     @click.self="onClickScrim"
+    @keydown="onContainerKeydown"
   >
     <div ref="bodyEl" class="md md-bottom-sheet__body" :style="bodyStyle">
       <div class="md-bottom-sheet__header">

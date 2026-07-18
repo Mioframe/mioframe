@@ -289,6 +289,9 @@ defineExpose({
       rootEl.value?.focus();
     }
   },
+  getPrimaryActionElement(): HTMLElement | null {
+    return interactiveSurfaceEl.value;
+  },
 });
 </script>
 

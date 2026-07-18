@@ -120,7 +120,11 @@ export const E2E_SCENARIO_SCOPES = [
     ],
     specs: [
       'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
-      'tests/e2e/reorderSurfaceDragSmoke.spec.ts',
+      'tests/e2e/reorderSurfaceBottomSheet.spec.ts',
+      'tests/e2e/reorderSurfaceCancellation.spec.ts',
+      'tests/e2e/reorderSurfaceMouse.spec.ts',
+      'tests/e2e/reorderSurfacePersistence.spec.ts',
+      'tests/e2e/reorderSurfaceTouch.spec.ts',
     ],
   },
   {

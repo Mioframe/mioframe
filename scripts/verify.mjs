@@ -61,15 +61,48 @@ const MAX_FILE_ARGS_IN_SUMMARY = 4;
 const MAX_ROLLING_BUFFER_CHARS = 128 * 1024;
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const KILL_GRACE_MS = 10_000;
-const COMMAND_TIMEOUT_MS_BY_LABEL = {
+// Fixed, documented allowance for orchestration outside the bounded
+// Playwright container: container startup, web-server startup, Playwright
+// shutdown, and process-result propagation back to verify.mjs.
+export const PLAYWRIGHT_COMMAND_OVERHEAD_MS = 2 * 60 * 1000;
+
+/**
+ * Derive the outer verify command timeout for a container-backed Playwright
+ * lane from the canonical container hard timeout in `config/tooling.json`.
+ * The result must stay strictly greater than the container timeout so a
+ * completed Playwright run is never killed by the outer verify deadline
+ * before the bounded container can exit and report its result normally.
+ * @param [containerTimeoutSeconds] Canonical Playwright container timeout,
+ * in seconds. Defaults to `config/tooling.json`'s
+ * `verification.playwrightContainer.timeoutSeconds`.
+ * @returns Outer verify command timeout, in milliseconds.
+ */
+export function resolvePlaywrightCommandTimeoutMs(
+  containerTimeoutSeconds = toolingConfig.verification.playwrightContainer.timeoutSeconds,
+) {
+  const containerTimeoutMs = Number(containerTimeoutSeconds) * 1000;
+
+  if (!Number.isFinite(containerTimeoutMs) || containerTimeoutMs <= 0) {
+    throw new Error(
+      `Invalid config/tooling.json verification.playwrightContainer.timeoutSeconds: ${JSON.stringify(containerTimeoutSeconds)}`,
+    );
+  }
+
+  return containerTimeoutMs + PLAYWRIGHT_COMMAND_OVERHEAD_MS;
+}
+
+const PLAYWRIGHT_COMMAND_TIMEOUT_MS = resolvePlaywrightCommandTimeoutMs();
+// Exported read-only so focused tests can prove which labels use the
+// derived Playwright container timeout without executing the full CLI.
+export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   'e2e-install': 10 * 60 * 1000,
-  e2e: 12 * 60 * 1000,
-  'storybook-behavior': 15 * 60 * 1000,
-  visual: 15 * 60 * 1000,
+  e2e: PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'storybook-behavior': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  visual: PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   mutation: 20 * 60 * 1000,
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
-  'release-smoke': 10 * 60 * 1000,
+  'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
 const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);

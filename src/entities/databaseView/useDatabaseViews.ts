@@ -3,6 +3,7 @@ import { computed, toValue, type ComputedRef, type Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseView, DatabaseViewId } from '@shared/lib/databaseDocument';
 import type { PatchSource } from '@shared/lib/changeObject';
+import type { ReorderCommitRequest, ReorderCommitResult } from '@shared/lib/reorder';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 
@@ -36,9 +37,11 @@ export interface UseDatabaseViewsResult {
   remove: (viewId: DatabaseViewId) => Promise<unknown>;
 
   /**
-   * Reorders the current document's views by explicit identifier order.
+   * Reorders the current document's views by explicit identifier order, guarded by the
+   * canonical order the caller last observed. Resolves `'stale'` without mutating the document
+   * when the canonical order no longer matches `expectedOrderedIds`.
    */
-  reorder: (orderedIds: DatabaseViewId[]) => Promise<unknown>;
+  reorder: (request: ReorderCommitRequest<DatabaseViewId>) => Promise<ReorderCommitResult>;
 
   /**
    * Applies a partial update to a concrete view in the current document.
@@ -52,8 +55,9 @@ export interface UseDatabaseViewsResult {
  * This composable is the raw entity read/write contract for database views. It does not apply any
  * default-view fallback or selection policy; consumers that need a current view should resolve that
  * separately through a higher-level selection contract.
- * @param path
- * @param documentId
+ * @param path - Directory path containing the document.
+ * @param documentId - The database document id.
+ * @returns The reactive view list and view-level mutations.
  */
 export const useDatabaseViews = (
   path: Ref<string>,
@@ -94,7 +98,8 @@ export const useDatabaseViews = (
 
     create: (view: DatabaseView) => create(path.value, documentId.value, view),
     remove: (viewId: DatabaseViewId) => remove(path.value, documentId.value, viewId),
-    reorder: (orderedIds: DatabaseViewId[]) => reorder(path.value, documentId.value, orderedIds),
+    reorder: (request: ReorderCommitRequest<DatabaseViewId>) =>
+      reorder(path.value, documentId.value, request),
     patch: (viewId: DatabaseViewId, view: PatchSource<DatabaseView>) =>
       patch(path.value, documentId.value, viewId, view),
   };
