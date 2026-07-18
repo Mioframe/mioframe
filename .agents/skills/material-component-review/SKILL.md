@@ -5,21 +5,19 @@ description: 'Use when the user provides a Material component or family name and
 
 # Material component review
 
-Use this as the one-name, review-only entrypoint.
+Use this as the review-only entrypoint for an official component family.
 
 ## Input
 
 ```text
-material-component-review Button
-material-component-review Switch
-material-component-review Navigation rail
+material-component-review <component-or-family>
 ```
 
 The component name is sufficient.
 
 ## Review boundary
 
-Resolve the official family and canonical directory:
+Resolve:
 
 ```text
 src/shared/ui/material/components/<official-docs-slug>/
@@ -29,50 +27,48 @@ The only file changed by this workflow is the family `AUDIT.md`.
 
 Do not modify production code, tests, stories, README, exports, consumers, roadmap, registries, or policy during review.
 
-Use current workspace files, the current user task, official evidence, and local verification results. Do not run, inspect, or cite git, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history.
+Use current workspace files, the current user task, official evidence, and local verification results. Do not use source-control history as evidence.
 
 ## Required instructions
 
-Read:
+Read applicable repository and scoped instructions, component architecture/token/testing policy, the authoring checklist, current family README and previous AUDIT, implementation, exports, consumers, tests, stories, and shared owners.
 
-- applicable repository and scoped `AGENTS.md` files;
-- `src/shared/ui/material/components/AGENTS.md`;
-- `docs/material-3/source-of-truth.md`;
-- `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-tokens.md`;
-- `docs/material-3/component-testing.md`;
-- `docs/material-3/component-conversion-checklist.md`;
-- current family README and previous AUDIT;
-- current implementation, exports, consumers, tests, stories, and applicable shared owners.
+Independently re-evaluate every conclusion. The previous audit is not authority.
 
-Independently re-evaluate every prior conclusion. The previous audit is not authority.
+## Generalization boundary
+
+This skill contains only cross-family review invariants.
+
+Do not add family selectors, custom-property names, token values, DOM node names, bug symptoms, or expected family structures here. Record concrete findings only in the reviewed family AUDIT.
+
+A defect discovered in one family may update this skill only through an artifact-independent rule applicable to any family owning the same risk.
 
 ## Evidence sets
 
-Keep four evidence sets distinct:
+Keep distinct:
 
-1. **Implementation evidence** — production code, rendered behavior, exports, consumers, tests, stories, and foundations.
-2. **Project documentation** — family README and applicable project rules.
-3. **Canonical evidence** — official Material 3 Expressive documentation, exact token sources, and Design Kit only where published documentation cannot resolve an objective visual decision.
-4. **Operator feedback** — explicit current-message feedback and the persistent README summary.
+1. implementation evidence;
+2. project documentation;
+3. canonical Material evidence;
+4. explicit operator feedback.
 
 Tests and screenshots are evidence of current output, not proof of Material correctness.
 
 ## Operator feedback
 
-An explicit user report of a visual defect overrides a weaker README status and must be reported as `rejected`.
+An explicit user report of a visible defect overrides a weaker README status and is reported as `rejected`.
 
-When feedback says the component looks wrong, crooked, malformed, or visually incorrect:
+For broad visible feedback:
 
-- treat the complete affected visible surface as unresolved;
+- treat the complete affected surface as unresolved;
 - inspect anatomy, geometry, content composition, clipping, state endpoints, and motion;
 - do not narrow the finding to the first plausible variable;
-- do not report `awaiting re-review` unless production behavior actually changed and all affected objective surfaces were rechecked;
+- do not report `awaiting re-review` unless production behavior changed and all affected objective surfaces were rechecked;
 - never infer acceptance from silence, tests, screenshots, technical routing, or prior audit wording.
 
-Objective structural conformance is reviewer-owned. Do not delegate anatomy, geometry, bounds, clipping, ownership, endpoint, or CSS naming decisions to operator review.
+Objective structural conformance is reviewer-owned. Do not delegate anatomy, geometry, bounds, clipping, ownership, endpoint, namespace, or test-sufficiency decisions to operator review.
 
-## Canonical source and inventory status
+## Source and inventory status
 
 Record canonical source status as one of:
 
@@ -91,7 +87,7 @@ Record inventory status as:
 
 A stale snapshot cannot certify current completeness. Partial, truncated, suspicious, missing, or spot-check-only evidence cannot certify a complete inventory.
 
-Classify every official item as exactly one of:
+Classify every official item exactly once:
 
 - implemented and verified;
 - partial, defective, provisional, or unverified;
@@ -102,22 +98,22 @@ Classify every official item as exactly one of:
 
 Invalid combinations are constraints, not absent capability. Optional guidance is not automatically required capability.
 
-## Required Stage 1 — implementation against project documentation
+## Stage 1 — implementation against project documentation
 
 Check independently:
 
 - API, defaults, semantics, accessibility, controlled state, invalid combinations, and extensions;
 - physical owner, public export, consumers, and migration state;
 - every documented token, state, motion, geometry, and final property route;
-- current tests, stories, and verification claims;
-- normalization/fallback outputs, warning text, documentation, and tests for each materially different branch;
+- tests, stories, and verification claims;
+- normalization/fallback outputs, warnings, documentation, and tests for each material branch;
 - every known defect, missing proof, shared blast radius, source limitation, and operator rejection.
 
 A declaration, alias, class name, story, test title, screenshot, or green check is not implementation proof by itself.
 
-## Mandatory geometry ownership review
+## Applicable ownership review
 
-For every visible interactive component, independently identify the concrete DOM owner for:
+For a visible interactive component, independently identify applicable owners:
 
 ```text
 semantic host
@@ -133,82 +129,75 @@ outline and elevation owner
 shape and motion owner
 ```
 
+Mark non-applicable roles explicitly. Do not require wrapper elements for symmetry.
+
 Verify:
 
-- shared roles on one element form a coherent official geometry;
-- interaction bounds form one coherent rectangular region and reserve layout space where required;
-- target regions do not overlap adjacent controls;
-- representative center, edge, corner, and adjacency behavior is proved when target geometry is custom;
-- visual container owns background, outline, elevation, shape, state layer, and clipped ripple as applicable;
-- focus indication follows the intended visible target;
-- content alignment and clipping are correct;
-- state endpoints remain visibly correct for resting, hover, focus, press, selection, disabled, and simultaneous states.
+- combined roles on one element form coherent official anatomy;
+- interaction geometry is contiguous, unambiguous, and supported by layout space where required;
+- adjacent interactive regions do not conflict;
+- representative interior, boundary, exterior, and adjacency behavior is proved when geometry is custom;
+- visual, state, ripple, focus, outline, elevation, content, shape, and motion properties use their correct owners;
+- all applicable visible state endpoints and simultaneous-state precedence are correct.
 
-Report a high-severity finding when an absolutely positioned descendant target extends beyond its semantic host and creates a cross-shaped, partial, overlapping, or non-layout interaction region.
+Report a high-severity finding when helper geometry creates partial, disconnected, overlapping, or unreserved interaction regions.
 
-A component cannot be `implemented and verified` while the geometry map is missing, contradictory, or inconsistent with rendered bounds.
+A component cannot be implemented and verified while applicable ownership is missing, contradictory, or inconsistent with rendered output.
 
 ## Final rendered-owner proof
 
 For every visible route, prove:
 
 1. official meaning or explicit project-extension meaning;
-2. valid source and custom-property namespace;
-3. correct concrete DOM owner;
-4. actual owner bounds where relevant;
-5. final computed/rendered result;
-6. state precedence, clipping, and interaction with adjacent layers.
+2. valid source and namespace;
+3. correct concrete owner;
+4. relevant owner bounds;
+5. final computed and rendered result;
+6. state precedence, clipping, and adjacent-layer interaction.
 
 Numeric equality on the wrong element is not proof.
 
-For shape tokens, checking only a `border-radius` number is insufficient. Verify the actual visible container and the complete visible endpoint. A pressed button that visibly becomes rectangular or malformed is a confirmed implementation defect even when the radius variable matches a documented token.
+For shape, a scalar radius alone is insufficient when ownership, clipping, box geometry, corner model, or state composition can alter the visible result. Verify the complete applicable endpoints on the official shape owner.
 
 ## CSS custom-property namespace review
 
-Inventory every custom-property declaration added or materially used by the family and classify it as:
+Inventory every custom property materially used by the family and classify it as:
 
 - exact official `--md-ref-*`, `--md-sys-*`, or `--md-comp-*` token;
-- justified `--md-private-<owner>-<semantic-role>` implementation route;
+- justified `--md-private-<owner>-<semantic-role>` route;
 - genuine `--app-*` application token;
 - invalid or unnecessary alias.
 
 Report a finding when:
 
 - an invented `--md-*` name looks public or canonical;
-- an official path is shortened or converted to a raw CSS-property name;
+- an official path is shortened or expressed as a raw CSS-property alias;
 - a private route omits `private`;
 - a private route describes mechanism rather than semantic ownership;
 - a one-use constant is routed through an unnecessary variable;
 - a variable cannot affect the correct final owner.
 
-Names such as these are invalid:
+An ad-hoc name shaped like `--md-<artifact>-<raw-css-property>` is invalid unless it is an exact official token, which must use the canonical namespace and path.
 
-```text
---md-button-border-radius
---md-button-height
---md-button-padding-left
---md-button-icon-gap
-```
+A visible capability routed through an invalid namespace cannot be fully implemented.
 
-A visible capability routed through an invalid namespace cannot be classified as fully implemented.
+## Motion and lifecycle review
 
-## Motion and state endpoint review
+Require proportional proof for applicable:
 
-Verify the shared motion foundation deeply once. At component level require proportional proof that:
-
-- real input activates the intended property on the correct visual owner;
+- real input activates the intended property on the correct owner;
 - an intermediate state is sampled only when needed to prove the route;
-- the correct visible endpoint is reached;
+- correct visible endpoints are reached;
 - interruption/cancellation leaves no stale state;
 - reduced-motion behavior is correct when owned.
 
-A named interruption test must trigger the competing event before the first transition settles and prove the competing branch began.
+A named interruption test triggers the competing event before the first transition settles and proves the competing branch began.
 
-Do not claim motion fixed when only event timing changed but the visible endpoint, owning geometry, or rendered shape remains wrong.
+Do not claim motion fixed when only timing changes while the final visible owner, endpoint, composition, or rendered property remains wrong.
 
 Forced state proves appearance only. A screenshot baseline proves regression stability only.
 
-## Required Stage 2 — project documentation against Material 3 Expressive
+## Stage 2 — project documentation against Material
 
 Check:
 
@@ -220,29 +209,27 @@ Check:
 - exact token names, values, routes, namespaces, and final owners;
 - classification of implemented, partial, absent, invalid, unresolved, and out-of-family capability;
 - explicit extensions and deviations;
-- whether cited sources actually support each claim.
+- whether cited sources support each claim.
 
-Use the Design Kit when published documentation cannot resolve an objective anatomy, geometry, alignment, or state-composition decision. Do not use operator review as a substitute for available official visual evidence.
+Use the Design Kit when published documentation cannot resolve an objective anatomy, geometry, alignment, or state-composition decision. Do not use operator review as a substitute for available official evidence.
 
 ## Severity and result
 
 Use:
 
 - `critical` — unsafe semantics, accessibility, or severe interaction corruption;
-- `high` — required API/state/token/motion/ownership, major anatomy or geometry, target region, visible state endpoint, invalid public-looking token namespace, or unchanged operator-rejected behavior is wrong;
+- `high` — required API/state/token/motion/ownership, major anatomy or geometry, interaction region, visible endpoint, invalid public-looking namespace, or unchanged operator-rejected behavior is wrong;
 - `medium` — bounded mismatch, incomplete proof, misleading documentation, fallback inconsistency, or non-critical canonical divergence;
 - `low` — minor documentation or cleanup defect.
 
 Overall result:
 
-- `compliant` — no finding remains and current canonical evidence is sufficient;
+- `compliant` — no finding remains and canonical evidence is sufficient;
 - `partially-compliant` — only non-critical gaps remain;
 - `non-compliant` — any critical or high finding exists;
 - `blocked` — required authoritative evidence is unavailable or conflicting.
 
-A high-severity anatomy, geometry, target, shape, final-owner, invalid-namespace, or unchanged visual-rejection finding requires `non-compliant`.
-
-A stale snapshot alone prevents fully current `compliant` status.
+A stale snapshot alone prevents fully current compliant status.
 
 ## AUDIT structure
 
@@ -260,34 +247,16 @@ Project implementation documentation: README.md
 Visual review: not reviewed | required | rejected | awaiting re-review | accepted
 
 ## Evidence
-### Project documentation reviewed
-### Material 3 Expressive evidence
-### Operator feedback considered
-
-## Geometry ownership map
+## Applicable ownership map
 ## CSS custom-property namespace review
-
 ## Official capability coverage
-### Implemented and verified
-### Partial / defective / unverified
-### Not implemented
-### Officially unsupported / invalid combinations
-### Unresolved evidence
-### Outside this family boundary
-
 ## Stage 1 — implementation vs project documentation
-### Findings
-### Verified agreement
-
 ## Stage 2 — project documentation vs Material 3 Expressive
-### Findings
-### Verified agreement
-
 ## Evidence gaps
 ## Required next work
 ```
 
-Use explicit `none` for empty categories. The Not implemented list is independently verified, not copied from README.
+Use explicit `none` for empty categories. Verify `Not implemented` independently rather than copying README.
 
 ## Output
 
@@ -305,7 +274,7 @@ Official coverage:
 Stage 1 result:
 Stage 2 result:
 Overall result:
-Geometry ownership:
+Ownership:
 CSS custom-property namespace review:
 Latest operator feedback: none | <summary>
 Visual review: not reviewed | required | rejected | awaiting re-review | accepted
@@ -319,6 +288,6 @@ Evidence gaps:
 Required next work:
 ```
 
-A review is complete only after AUDIT is replaced and the reviewer has independently checked geometry ownership, final rendered owners, CSS namespaces, operator feedback, named-risk proof, normalization consistency, compliance, and coverage.
+A review is complete only after AUDIT is replaced and applicable ownership, final rendered owners, CSS namespaces, operator feedback, causal named-risk proof, normalization consistency, compliance, and coverage are checked.
 
-Do not report `partially-compliant` when a high-severity structural or unchanged visible defect remains.
+Do not report `partially-compliant` while a high-severity structural or unchanged visible defect remains.

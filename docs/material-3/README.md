@@ -11,19 +11,30 @@ src/shared/ui/material/
   components/
 ```
 
-Official owners follow official documentation navigation and slugs.
-
-Examples:
+Official owners follow official documentation navigation and slugs:
 
 ```text
-m3.material.io/components/buttons
-→ src/shared/ui/material/components/buttons
+m3.material.io/components/<official-family-slug>
+→ src/shared/ui/material/components/<official-family-slug>
 
-state layer / ripple / focus indication
-→ src/shared/ui/material/foundations/interaction
+<official-foundation-domain>
+→ src/shared/ui/material/foundations/<official-foundation-slug>
+
+<official-style-domain>
+→ src/shared/ui/material/styles/<official-style-slug>
 ```
 
-Use a narrower official slug when official navigation defines one.
+Use the narrowest official owner available.
+
+## Generalization boundary
+
+Shared policies and skills contain only artifact-independent routing, ownership, naming, evidence, and completion rules.
+
+Do not put concrete family selectors, DOM node names, custom-property names, token values, state endpoints, defect symptoms, or proposed family structures into shared policy.
+
+Concrete facts belong in the owning README, AUDIT, implementation, tests, fixtures/stories, roadmap when it records current work, and task-specific PR description.
+
+A pilot finding may refine shared policy only through a rule applicable to every artifact owning the same category of risk.
 
 ## Core policies
 
@@ -62,20 +73,20 @@ Use a narrower official slug when official navigation defines one.
 ## Fact ownership
 
 - Architecture documents own durable boundaries and workflow rules.
-- `library-roadmap.md` owns the active migration milestone and automatic next action.
+- `library-roadmap.md` owns the active automatic migration milestone and next action.
 - `ui-library-inventory.md` owns classification, priority, and queue state.
 - `source-of-truth.md` owns official source hierarchy and source-status rules.
 - Local owner `README.md` owns current implementation documentation.
 - Local owner `AUDIT.md` owns the latest independent review.
 - Registries are summaries and do not override local owner documentation.
 
-An explicit user request is allowed to select an official Material artifact outside the current automatic roadmap order.
+An explicit user request may select an official Material artifact outside the automatic roadmap order.
 
-## Workflow evidence boundary
+## Evidence boundary
 
 Material authoring and review use the current user task, current workspace files, official Material sources, and local project verification.
 
-They do not run, inspect, or cite `git`, `gh`, GitHub, branches, commits, pull requests, diffs, blame, logs, tags, merge state, or repository history as implementation or Material evidence.
+They do not use source-control history or remote workflow state as implementation or Material evidence.
 
 ## Universal implementation entrypoint
 
@@ -85,18 +96,13 @@ Use:
 material <artifact-or-request>
 ```
 
-Examples:
+Artifact-independent syntax:
 
 ```text
-material Button
-material State layer
-material Ripple
-material Focus indicator
-material Color roles
-material Elevation
-material Motion
-material Typography
-material Fix the Button target geometry
+material <component-family>
+material <foundation-artifact>
+material <style-domain>
+material <bounded Material correction>
 ```
 
 The user does not need to classify the request.
@@ -106,9 +112,9 @@ The router resolves:
 - component families → `material-component` and `material-component-authoring`;
 - foundations and interaction primitives → `material-foundation`;
 - styles and token systems → `material-foundation`;
-- cross-layer changes → one canonical shared owner plus only affected consumer work.
+- cross-layer changes → one canonical shared owner plus affected consumer work.
 
-A request sent through `material-component` by mistake must be rerouted when it resolves to a foundation/style. It must not be rejected merely because it is not a component.
+A request sent through the wrong specialized Material entrypoint must be rerouted and executed rather than rejected for classification alone.
 
 ## Explicit-request rule
 
@@ -117,15 +123,15 @@ A valid explicit request for an official Material artifact is a current requirem
 Do not defer solely because:
 
 - no component migration is active;
-- no current production consumer exists;
-- only one current family consumes the behavior;
-- the roadmap currently names another family;
+- no production consumer exists;
+- only one consumer exists;
+- the roadmap names another target;
 - the canonical directory is absent;
-- the current implementation is still in a legacy owner.
+- the current implementation is in a legacy owner.
 
-When no production consumer exists, implement the smallest coherent requested official contract with owner-local tests and a bounded testing or Storybook fixture. Do not invent a fake product consumer.
+When no production consumer exists, implement the smallest coherent requested contract with owner-local tests and a bounded fixture. Do not invent a fake product consumer.
 
-Existing consumers still determine migration and blast-radius proof.
+Existing consumers determine migration and blast-radius proof.
 
 ## Source and inventory status
 
@@ -151,7 +157,7 @@ Official coverage:
   unresolved
 ```
 
-`complete` requires current-complete evidence. A stale snapshot may be snapshot-complete. Partial, truncated, suspicious, missing, or spot-check-only evidence cannot certify complete current inventory.
+A stale, partial, truncated, suspicious, missing, or spot-check-only source cannot certify current completeness.
 
 ## Capability classification
 
@@ -160,36 +166,30 @@ Each official item is exactly one of:
 - implemented and verified;
 - partial, defective, provisional, or unverified;
 - not implemented;
-- officially unsupported or an invalid combination;
-- unresolved because canonical evidence is incomplete or conflicting;
+- officially unsupported or invalid;
+- unresolved;
 - outside the resolved owner boundary.
 
-`Not implemented` means a real official capability exists but is absent.
-
-Officially unsupported combinations are constraints, not missing capability, and do not reduce coverage.
-
-Optional or non-normative guidance is recorded as a choice, deviation, or follow-up. It does not reduce coverage unless required for the implemented surface.
+Invalid combinations are constraints, not missing capability. Optional guidance is not automatically required capability.
 
 ## Local owner documentation
 
-Each implemented or actively migrated owner contains local documentation:
+Each implemented or actively migrated owner contains:
 
 ```text
-src/shared/ui/material/foundations/<official-slug>/README.md
-src/shared/ui/material/foundations/<official-slug>/AUDIT.md
+foundations/<official-slug>/README.md
+foundations/<official-slug>/AUDIT.md
 
-src/shared/ui/material/styles/<official-slug>/README.md
-src/shared/ui/material/styles/<official-slug>/AUDIT.md
+styles/<official-slug>/README.md
+styles/<official-slug>/AUDIT.md
 
-src/shared/ui/material/components/<official-docs-slug>/README.md
-src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
+components/<official-docs-slug>/README.md
+components/<official-docs-slug>/AUDIT.md
 ```
 
-### README
+README is authoring-owned current documentation. AUDIT is independent reviewer-owned. Authoring never edits AUDIT.
 
-Authoring-owned implementation documentation. It records source status, inventory, coverage, implemented/partial/absent/invalid/unresolved capability, known issues, ownership, public/private contract, consumers, verification, and review status.
-
-Visible component or rendered foundation/style feedback is supplied directly in user messages and persisted when applicable:
+Visible feedback is supplied directly in user messages and persisted when applicable:
 
 ```text
 Status: not reviewed | required | rejected | awaiting re-review | accepted
@@ -197,108 +197,55 @@ Latest operator feedback: none | <summary>
 Implementation response: none | <summary>
 ```
 
-A reported visible defect means `rejected`. After production behavior changes, authoring may use `awaiting re-review`. Only explicit user acceptance may set `accepted`.
-
-Authoring never edits AUDIT.
-
-### AUDIT
-
-Reviewer-owned independent review. It compares current implementation with project documentation, then project documentation with canonical Material evidence. It independently records source status and classification.
+Only explicit user acceptance sets `accepted`.
 
 ## Foundation and style ownership
 
 An official shared owner is justified by either:
 
-1. an explicit request to implement that official Material foundation/style artifact; or
-2. a real current cross-family requirement.
+1. an explicit request for that official artifact; or
+2. a real current shared requirement.
 
-State layer, ripple, and focus indication are valid direct foundation targets. Their workflow must resolve semantics, state ownership, color/opacity routes, rendered bounds, clipping, focus/ripple ownership, lifecycle, reduced motion, generic consumer bridges, and representative proof.
-
-An opacity token declaration alone does not implement State Layer. The final rendered layer and behavior must work.
+A rendered primitive is not implemented merely because a token declaration exists. The route must reach the correct final owner with correct bounds, clipping, state precedence, lifecycle, and consumer behavior.
 
 ## Motion and visual acceptance
 
-Verify a shared motion style deeply once.
+Verify a shared motion contract deeply once. At consumer level prove only applicable activation, final owner, meaningful intermediate state, endpoints, interruption/cancellation, and reduced motion.
 
-At component level, use proportional evidence:
-
-- real input activates the intended rendered property;
-- one meaningful intermediate state when needed;
-- correct endpoint;
-- safe interruption or cancellation;
-- consumption of the documented shared contract.
-
-Do not require frame-by-frame component analysis or duplicate equivalent input paths. Forced state proves appearance, not motion.
-
-Technical routing or green tests cannot close a rejected visual result. Only a production behavior change followed by explicit user acceptance can do so.
+Technical routing or green tests cannot close rejected perceived output. Only corrected production behavior followed by explicit acceptance can do so.
 
 ## Shared routes
 
-Root/system tokens, universal selectors, pseudo-elements, and shared formulas require:
+Root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, and public shared APIs require:
 
-- current affected-consumer analysis;
+- affected-consumer analysis;
 - the narrowest valid owner;
-- representative tests that actually exercise the route;
-- explicit current ownership and blast radius.
+- representative proof through final output;
+- explicit ownership and blast radius.
 
 Unchanged tests that never exercise the route are not proof.
 
 ## Specialized entrypoints
 
-### Component implementation
-
 ```text
-material-component <component-or-family-name>
-```
-
-If the supplied name resolves to a foundation/style, this entrypoint reroutes to `material-foundation` and continues.
-
-### Component review
-
-```text
-material-component-review <component-or-family-name>
-```
-
-Changes only the component-family AUDIT.
-
-### Known foundation/style implementation
-
-```text
-material-foundation <artifact-or-correction>
-```
-
-Implements, migrates, aligns, or corrects foundations and styles, including State Layer.
-
-An independent foundation/style review is a separate review-only task that updates only the local AUDIT. Authoring does not mark its own implementation compliant.
-
-### Continue automatic migration
-
-```text
+material-component <component-family>
+material-component-review <component-family>
+material-foundation <foundation-or-style-artifact>
 material-library-next
-```
-
-Selects exactly one queued target and never overrides an explicit user-selected artifact.
-
-### Read program status
-
-```text
 material-library-status
 ```
 
-Reads roadmap, inventory, registries, README, and AUDIT without changing files.
+A specialized entrypoint does not override official artifact classification.
 
 ## Required behavior
 
-- Implement the current applicable Material 3 Expressive contract for the explicit requested surface.
-- Use official documentation slugs for canonical ownership.
+- Implement the applicable current Material 3 Expressive contract for the explicit surface.
 - Continue through implementation; do not stop after classification, research, or a plan.
-- Keep implementation scope coherent and classification honest.
-- Separate real absent capability from invalid combinations and optional guidance.
-- Never certify complete inventory from partial, stale-only, truncated, suspicious, or spot-check-only evidence.
-- Never infer implementation from declarations, aliases, stories, or tests when the final route does not work.
+- Keep scope coherent and classification honest.
+- Never infer implementation from declarations, aliases, stories, screenshots, or tests when the final route does not work.
 - Require representative proof for shared routes.
-- Preserve operator rejection until corrected and explicitly accepted.
+- Preserve visible rejection until corrected and explicitly accepted.
 - Remove obsolete Material ownership during migration.
-- Do not create fake consumers, placeholder implementation trees, universal validators, fixed file profiles, generic state registries, or a second metadata database.
+- Do not create fake consumers, placeholder implementation trees, universal validators, fixed file profiles, generic registries, or a second metadata database.
 
-A blocker may not consist only of missing current consumers, inactive roadmap priority, legacy location, or absence of a pre-created canonical directory.
+A blocker may not consist only of missing consumers, inactive roadmap position, legacy location, or absence of a pre-created canonical directory.

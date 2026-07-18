@@ -4,26 +4,49 @@ Inherits `src/shared/ui/material/AGENTS.md`.
 
 These rules apply to every official Material component family under this directory and to both `material-component-authoring` and `material-component-review`.
 
+## Generalization boundary
+
+Shared instructions contain only cross-family invariants that can be applied without knowing which component exposed them.
+
+A defect found in one family may justify a shared rule only when the rule can be stated and verified for any applicable family.
+
+Keep concrete family facts in the owning family documents:
+
+```text
+components/<official-docs-slug>/README.md
+components/<official-docs-slug>/AUDIT.md
+```
+
+Do not place these in shared skills or architecture documents:
+
+- family class names, selectors, or DOM node names;
+- family-specific custom-property names;
+- one family’s expected token values or state endpoints;
+- one family’s bug symptoms or proposed DOM structure;
+- examples that are later treated as mandatory implementation shapes.
+
+Examples in shared policy illustrate syntax only. They never establish component behavior.
+
 ## Structural conformance is agent-owned
 
-Operator visual review does not replace structural review. The implementing agent and independent reviewer must detect objective visible defects before asking the operator to accept the result.
+Operator visual review does not replace structural review. The implementing agent and independent reviewer must detect objective defects before asking the operator to accept the result.
 
-They own verification of:
+They own verification of applicable:
 
 - official anatomy and DOM ownership;
 - layout footprint and interaction geometry;
 - visual-container geometry;
 - content alignment and clipping;
-- state-layer, ripple, outline, elevation, and focus-indicator bounds;
-- resting, selected, disabled, hovered, focused, and pressed visible endpoints;
-- the DOM element that owns every final rendered property;
+- state-layer, ripple, outline, elevation, and focus-indicator ownership and bounds;
+- visible state endpoints and simultaneous-state precedence;
+- the concrete owner of every final rendered property;
 - CSS custom-property naming and route correctness.
 
-The operator owns final perceived fidelity, including whether motion feels natural. A result that is structurally wrong, visibly malformed, or inconsistent with official evidence must be rejected by the agent without waiting for operator feedback.
+The operator owns final perceived fidelity. A result that is structurally wrong, visibly malformed, or inconsistent with official evidence must be rejected by the agent without waiting for operator feedback.
 
-## Mandatory geometry ownership map
+## Geometry ownership map
 
-Before changing or approving any visible interactive component, identify the concrete DOM owner for every applicable role:
+For a visible interactive component, identify every applicable concrete owner:
 
 ```text
 semantic host
@@ -39,58 +62,61 @@ outline and elevation owner
 shape and motion owner
 ```
 
-Record the map in the family README when the roles are not all owned by one obvious element.
+Mark non-applicable roles explicitly rather than inventing an element for symmetry.
 
-A role may be shared by one element only when the resulting geometry is coherent and matches the official anatomy. Numeric token values do not prove that the correct element owns them.
+Record the map in the family README when ownership is not obvious from one coherent element.
 
-A component is not `implemented and verified` while this map is missing, contradictory, or inconsistent with rendered bounds.
+A role may be shared by one element only when the resulting structure matches official anatomy and produces coherent rendered geometry. Numeric token equality does not prove correct ownership.
+
+A component is not `implemented and verified` while applicable ownership is missing, contradictory, or inconsistent with rendered output.
 
 ## Interaction and visual bounds
 
-Keep semantic, layout, interaction, and visual-container bounds distinct when the official component requires it.
+Keep semantic, layout, interaction, and visual-container bounds distinct when the official contract requires it.
 
-For a minimum interactive target larger than the visible container:
+When the intended interaction area differs from the visible container:
 
-- the full target must have one coherent rectangular layout and hit region;
-- layout must reserve the target space needed to prevent overlap with adjacent controls;
-- the visual container remains the owner of background, outline, elevation, shape, state layer, and clipped ripple;
-- focus indication follows the intended official visible target, not an unrelated oversized helper;
-- hit testing must cover the complete intended target, including edges and corners;
-- target regions must not overlap adjacent interactive controls.
+- it must form one coherent, contiguous hit region;
+- layout must reserve the space required to prevent accidental overlap;
+- adjacent interactive regions must remain unambiguous;
+- visual properties remain on the official visual owner;
+- focus and ripple behavior must follow their official targets;
+- browser proof must cover representative interior, boundary, exterior, and adjacency points.
 
-Do not create an absolutely positioned descendant target that extends outside its semantic host and produces a cross-shaped, partial, overlapping, or non-layout interaction region.
+Do not use a helper that extends outside its semantic/layout ownership when the result is partial, disconnected, overlapping, or dependent on unreserved space.
 
-Do not accept a browser test that clicks one convenient central point as proof of the entire target geometry. Test representative edges, corners, adjacency, and the relation between host, target, and visual-container bounds.
+A single successful click point is not proof of the complete interaction geometry.
 
 ## Final rendered-owner proof
 
-For every visible property route, prove all of:
+For every visible property route, prove:
 
-1. the official meaning of the source token or documented project extension;
-2. the concrete DOM element that officially owns the property;
-3. the actual bounds of that owner;
-4. the final computed/rendered property on that owner;
-5. interaction with clipping, state precedence, and adjacent visual layers.
+1. official meaning or explicit project-extension meaning;
+2. valid source and namespace;
+3. correct concrete owner;
+4. relevant owner bounds;
+5. final computed and rendered output;
+6. state precedence, clipping, and interaction with adjacent layers.
 
-A declaration, alias, class name, test title, computed value on the wrong element, or screenshot baseline does not prove the route.
+A declaration, alias, class name, test title, value on the wrong element, or screenshot baseline does not prove the route.
 
-For shape tokens, verify the final visible shape on the actual visual container. Checking only a `border-radius` number is insufficient. The endpoint must remain visibly consistent with the official pressed/selected shape and must not accidentally become rectangular because of wrong ownership, box sizing, clipping, or radius resolution.
+For shape, verify the complete visible result on the official shape owner. A scalar radius alone is insufficient when ownership, clipping, box geometry, corner model, or state composition can change the rendered shape.
 
 ## Response to broad operator rejection
 
-When the user says that a component looks wrong, crooked, malformed, or visually incorrect:
+When the user reports that a component looks wrong or visibly malformed:
 
 - set the family visual status to `rejected`;
-- preserve the full visible surface as unresolved until investigated;
-- inspect anatomy, geometry ownership, content composition, state endpoints, clipping, and motion before choosing a root cause;
-- do not narrow the problem to the first plausible variable or previously discussed animation;
+- preserve the complete affected visible surface as unresolved;
+- inspect anatomy, geometry ownership, content composition, clipping, state endpoints, and motion before choosing a root cause;
+- do not narrow the issue to the first plausible variable or the previously discussed defect;
 - do not move to `awaiting re-review` until production behavior changes and the complete affected surface has been rechecked.
 
-An unchanged or newly reported visible defect is a high-severity finding. A technical route or passing test cannot downgrade it.
+An unchanged or newly discovered visible defect is a high-severity finding. Passing tests or a technically connected route cannot downgrade it.
 
 ## CSS custom-property namespaces
 
-Every custom property must belong to exactly one namespace:
+Every custom property belongs to exactly one namespace.
 
 ### Official Material tokens
 
@@ -102,87 +128,62 @@ Use exact verified canonical names only:
 --md-comp-*
 ```
 
-Do not shorten, paraphrase, translate to raw CSS terminology, or invent an official-looking token.
+Do not shorten, paraphrase, omit semantic segments, translate to raw CSS terminology, or invent an official-looking token.
 
 ### Private Material implementation routes
 
 Use:
 
 ```text
---md-private-<owner>-<semantic-name>
+--md-private-<owner>-<semantic-role>
 ```
 
-Private names describe the semantic Material role and route, not merely the CSS property used to render it.
-
-Good examples:
-
-```text
---md-private-button-rendered-container-shape
---md-private-button-rendered-container-color
---md-private-button-interaction-block-size
---md-private-state-pressed-state-layer-opacity
-```
+Private names describe semantic ownership and purpose, not merely the CSS property used to render the value.
 
 ### Application-specific public tokens
 
 Use `--app-*` only for genuine Mioframe application contracts outside Material vocabulary.
 
-## Forbidden CSS custom-property naming
+### Invalid naming
 
-Do not create an unqualified ad-hoc `--md-<component>-*` namespace. In particular, names such as these are invalid:
+Do not create an unqualified ad-hoc namespace shaped like:
 
 ```text
---md-button-border-radius
---md-button-height
---md-button-padding-left
---md-button-icon-gap
+--md-<artifact>-<raw-css-property>
 ```
 
-They look canonical but are neither exact official tokens nor explicitly private implementation routes. They also encode raw CSS properties instead of Material semantics.
+Such a name looks canonical while being neither an exact official token nor an explicitly private route.
 
-Use an exact official component token when the value is part of the public Material contract. Otherwise use a narrowly scoped `--md-private-*` route only when runtime indirection is necessary.
+Use an exact official token, a justified private semantic route, an application token, or a direct declaration when indirection is unnecessary.
 
-Do not introduce a custom property for a constant used once. Prefer a direct declaration. Private aliases are justified only for real configuration, state resolution, inheritance, consumer override, or cross-element routing.
+Do not create a custom property for a one-use constant. Private aliases are justified only by real configuration, state resolution, inheritance, consumer override, cross-element routing, or foundation bridging.
 
-Do not expose private variables as consumer API or test them as if they were official tokens.
-
-## CSS naming review
-
-Authoring and review must inventory every custom-property declaration added or materially touched and classify it as:
+Authoring and review inventory every custom property added or materially touched and classify it as:
 
 - exact official token;
 - private implementation route;
 - application token;
 - invalid or unnecessary alias.
 
-Report as a finding when:
-
-- an invented `--md-*` name looks public or canonical;
-- an official token name is shortened or converted to a CSS-property name;
-- a private route omits `private`;
-- a private route describes the implementation mechanism instead of the semantic owner;
-- a one-use constant is routed through an unnecessary variable;
-- a variable is declared but does not affect the final rendered owner.
-
 A visible property routed through an invalid namespace cannot be classified as fully implemented.
 
-## Motion and shape review
+## Motion and state review
 
-For state-driven shape changes:
+For state-driven visible changes:
 
-- identify the visual-container owner first;
-- verify resting, pressed, selected, disabled, and simultaneous-state endpoints against official evidence;
-- use real input for acquisition, release, and interruption;
-- compare an intermediate state only when needed to prove the real route;
-- reject an endpoint that is visibly wrong even when the numeric token lookup is correct;
-- preserve operator rejection until an explicit acceptance message follows corrected production behavior.
+- identify the final visible owner first;
+- verify all applicable resting and state endpoints against official evidence;
+- use real input for acquisition, release, interruption, and cancellation when lifecycle is owned;
+- sample an intermediate state only when needed to prove the real route;
+- reject a visibly incorrect endpoint even when a source value is numerically correct;
+- preserve operator rejection until corrected production behavior is explicitly accepted.
 
-Do not claim motion fixed when only event timing changed but the visible endpoint, owning geometry, or rendered shape remains wrong.
+Do not claim motion fixed when only event timing changed but the final visible owner, endpoint, composition, or rendered property remains wrong.
 
 ## Evidence standard
 
 Automated screenshots detect regression against their baseline. They do not prove Material correctness.
 
-A canonical story must render real production anatomy and representative real child components. Placeholder glyphs or helper geometry must not substitute for the actual visual contract being claimed.
+A canonical story must render real production anatomy and representative real children when their geometry or behavior is part of the claimed contract. Placeholder content may be used only when it does not alter the property being verified.
 
-Independent review must classify the family as `non-compliant` when a high-severity anatomy, geometry, target, shape, ownership, or unchanged operator-rejected defect remains.
+Independent review must report `non-compliant` when a high-severity anatomy, geometry, interaction, visible-endpoint, ownership, namespace, or unchanged operator-rejected defect remains.
