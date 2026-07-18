@@ -6,7 +6,7 @@ Official component families live under:
 src/shared/ui/material/components/<official-component-docs-slug>/
 ```
 
-The directory slug follows the official Material documentation path. For example:
+The directory slug follows the official Material documentation path. Example:
 
 ```text
 m3.material.io/components/buttons
@@ -20,7 +20,6 @@ Every implemented or actively migrated family contains:
 ```text
 README.md
 AUDIT.md                    # created and replaced only by material-component-review
-VISUAL_REVIEW.md            # optional; created and replaced only after operator review
 index.ts
 <Component>.vue
 <Component>.test.ts
@@ -28,26 +27,27 @@ index.ts
 ... only justified implementation files
 ```
 
-`AUDIT.md` may be absent before the first independent review. `VISUAL_REVIEW.md` may be absent before the first operator review. Do not create empty placeholders.
+`AUDIT.md` may be absent before the first independent review. Do not create empty report files.
+
+Operator feedback is supplied in task messages and persisted in the family README. It does not require a separate report artifact.
 
 ## Workspace evidence boundary
 
 Material authoring and review use:
 
+- the current user task;
 - current workspace files;
 - current or traceable official Material sources;
 - local project verification commands.
 
 They do not use source-control or remote state as implementation evidence. Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history inside these workflows.
 
-Historical provenance is not needed to judge the current owner, current contract, current consumers, or current behavior.
-
 ## Implementation scope and official inventory
 
 Keep three concepts separate:
 
 - **implementation scope** — coherent capability currently implemented for product scenarios;
-- **official capability inventory** — the official contract-level items identified from available canonical evidence;
+- **official capability inventory** — official contract-level items identified from available canonical evidence;
 - **official coverage** — how much actual official capability is implemented and verified.
 
 Implementation may be incremental. Classification may not hide unused official capability.
@@ -66,8 +66,6 @@ Classify each item as exactly one of:
 An officially unsupported or invalid combination is a documented constraint, not a missing capability. It does not reduce coverage when Mioframe rejects or normalizes it coherently.
 
 Optional or non-normative guidance is not automatically a capability. Record a relevant non-adoption under known issues, extensions, or deviations. It reduces coverage only when the canonical contract makes it required for the implemented surface.
-
-Do not expand the inventory into one row per token when coherent grouping preserves full traceability.
 
 ## Canonical source status
 
@@ -95,13 +93,11 @@ Official coverage:
 
 Use `complete` only when every current family page and required structured source is available and inspected without partial, truncated, suspicious, or unresolved coverage.
 
-A stale snapshot may be snapshot-complete, but not current-complete. A partial cache, missing page, truncated graph, or spot-check-only review cannot certify a complete inventory.
+A stale snapshot may be snapshot-complete, but not current-complete. A partial cache, missing page, truncated graph, or spot-check-only review cannot certify a complete current inventory.
 
-Spot checks may verify specific implementation facts. They do not certify family completeness.
+## README ownership
 
-## `README.md` ownership
-
-The family `README.md` is current project implementation documentation. The authoring workflow updates it whenever implementation state changes.
+The family `README.md` is current project implementation documentation. Authoring updates it whenever implementation state changes.
 
 It contains:
 
@@ -114,6 +110,7 @@ It contains:
 ## Not implemented
 ## Officially unsupported and invalid combinations
 ## Known issues and required follow-up
+## Operator feedback and visual status
 ## Public API and semantics
 ## Tokens, states, and property ownership
 ## Foundations and styles used
@@ -123,57 +120,43 @@ It contains:
 ## Review status
 ```
 
-### Official documentation mapping
-
-Record:
-
-- official family and path;
-- pages and structured sources inspected;
-- snapshot or direct-verification metadata;
-- Design Kit evidence only when used;
-- canonical source status;
-- inventory status;
-- official coverage.
-
 ### Implemented
 
-List only capability whose final owned output works.
-
-A declaration, alias, placeholder, story, or test is not implementation by itself.
+List only capability whose final owned output works. A declaration, alias, placeholder, story, or test is not implementation by itself.
 
 ### Partial / defective / unverified
 
 Record implemented capability that is incomplete, defective, provisional, ambiguous, or not independently verified.
 
-Do not classify it as fully implemented or fully absent.
-
 ### Not implemented
 
 List every real official capability that exists but is absent, independently of current consumer demand.
-
-No-current-consumer may explain deferral. It does not permit omission.
 
 ### Officially unsupported and invalid combinations
 
 Record combinations or routes the official contract itself disallows, together with Mioframe rejection or normalization behavior.
 
-These entries do not reduce official coverage.
-
 ### Known issues and required follow-up
 
-Record every:
+Record every known defect, incomplete route, missing representative proof, unresolved source limitation, shared-foundation blast-radius gap, and required follow-up.
 
-- known defect;
-- incomplete final route;
-- missing representative proof;
-- unresolved source limitation;
-- shared-foundation blast-radius gap;
-- awaiting or rejected visual comparison;
-- required follow-up for the implemented surface.
+### Operator feedback and visual status
 
-Never use `none` while a relevant audit finding, failing check, unresolved source question, shared proof gap, or observed visual mismatch exists.
+Use:
 
-A visual rejection recorded in `VISUAL_REVIEW.md` stays open until production behavior changes, new evidence is prepared, and the operator replaces that file with an accepted result. Documentation, tests, audit wording, or a renamed runtime contract cannot close it.
+```text
+Status: not reviewed | required | rejected | awaiting re-review | accepted
+Latest operator feedback: none | <concise factual summary>
+Implementation response: none | <what changed and what must be reviewed>
+```
+
+Rules:
+
+- Explicit visual feedback from the current user message is authoritative.
+- A reported defect or rejection is persisted as `rejected` in README.
+- After a production behavior change, authoring may move `rejected` to `awaiting re-review` while preserving the feedback.
+- Only an explicit user acceptance message may set `accepted`.
+- Silence, tests, screenshots, technical routing, or an audit do not imply acceptance.
 
 ### Review status
 
@@ -184,9 +167,9 @@ Use one:
 - `reviewed — see AUDIT.md`;
 - `blocked — <reason>`.
 
-Any production change affecting the documented contract sets `review required after changes`. Authoring never edits `AUDIT.md` or `VISUAL_REVIEW.md`.
+Any production change affecting the documented contract sets `review required after changes`. Authoring never edits `AUDIT.md`.
 
-## `AUDIT.md` ownership
+## AUDIT ownership
 
 `AUDIT.md` is the latest independent compliance and coverage review. `material-component-review` creates or replaces only this file.
 
@@ -195,69 +178,7 @@ The reviewer independently compares:
 1. implementation against project documentation;
 2. project documentation against canonical Material 3 Expressive.
 
-The audit uses only current workspace and official evidence. It contains no source-control or remote metadata.
-
-The audit records:
-
-```text
-# <Family> implementation audit
-
-Reviewed:
-Result: compliant | partially-compliant | non-compliant | blocked
-Canonical source status: current-complete | snapshot-complete-stale | partial | conflicting | unavailable
-Official capability inventory: complete | snapshot-complete (...) | incomplete (...) | blocked (...)
-Official coverage: full | partial | unresolved
-Project implementation documentation: README.md
-Operator visual evidence: missing | VISUAL_REVIEW.md
-Visual review: not required | required | rejected | blocked | accepted
-
-## Evidence
-### Project documentation reviewed
-### Material 3 Expressive evidence
-### Operator visual evidence
-
-## Official capability coverage
-### Implemented and verified
-### Partial / defective / unverified
-### Not implemented
-### Officially unsupported / invalid combinations
-### Unresolved evidence
-### Outside this family boundary
-
-## Stage 1 — implementation vs project documentation
-### Findings
-### Verified agreement
-
-## Stage 2 — project documentation vs Material 3 Expressive
-### Findings
-### Verified agreement
-
-## Evidence gaps
-## Required next work
-```
-
-The reviewer independently verifies the classifications rather than approving the README list.
-
-When `VISUAL_REVIEW.md` exists, the audit must report its status and findings exactly. The reviewer may not replace `rejected` with `required`, infer acceptance, or close the visual defect. When it is absent, the reviewer may report `required`, `blocked`, or `not required` based on the visible change and available evidence.
-
-## `VISUAL_REVIEW.md` ownership
-
-`VISUAL_REVIEW.md` is the durable operator decision for visible fidelity. It is created or replaced only after the operator reviews prepared evidence.
-
-Use:
-
-```text
-# <Family> visual review
-
-Reviewed: <date>
-Status: accepted | rejected | blocked
-
-## Evidence reviewed
-## Findings
-## Required correction
-```
-
-Implementing and reviewing agents read this file but never modify it. A rejected result remains authoritative until the operator reviews new evidence and replaces the file. A production change may require new visual review, but it does not erase the previous rejection.
+The reviewer also verifies that README accurately preserves explicit operator feedback. It never invents acceptance.
 
 ## Compliance and coverage
 
@@ -270,14 +191,6 @@ Coverage uses:
 - `unresolved` — the inventory is not current-complete.
 
 Officially unsupported combinations do not reduce coverage. Optional guidance does not reduce coverage unless required for the implemented surface.
-
-A family may have a compliant implemented subset and partial coverage. It must not be called fully implemented.
-
-## Family boundary
-
-Multiple components share one directory only when official Material documentation treats them as one family or they share a real current contract.
-
-Similar appearance or legacy adjacency is insufficient. Official capability outside the family is recorded with its separate owner, not as a missing current-family capability.
 
 ## Public contract and ownership
 
@@ -311,8 +224,6 @@ Before changing root/system tokens, universal selectors, pseudo-elements, or sha
 - add representative proof that actually exercises the shared route;
 - keep the issue open when blast radius remains unproved.
 
-Unchanged tests that never exercise the route are not representative proof.
-
 ## Motion proof
 
 Verify a shared motion foundation deeply once.
@@ -320,14 +231,14 @@ Verify a shared motion foundation deeply once.
 At component level, prove only:
 
 - real input activates the intended rendered property;
-- one meaningful intermediate state when needed to establish the route;
+- one meaningful intermediate state when needed;
 - the correct endpoint;
 - safe interruption or cancellation;
 - consumption of the documented shared contract.
 
 Do not require frame-by-frame component analysis. Do not duplicate equivalent input paths. Forced state proves appearance, not motion.
 
-Perceived motion quality remains an operator visual decision. A rejection in `VISUAL_REVIEW.md` is a confirmed open defect until the operator accepts new evidence after a behavior change.
+Perceived motion quality remains an operator decision communicated through user messages and persisted in README. A rejection remains open until behavior changes and the user explicitly accepts the new result.
 
 ## Migration
 
@@ -353,4 +264,4 @@ Implementation work is finished only when:
 - applicable local verification passes;
 - README says `review required after changes`.
 
-A family is compliant only after an independent audit. A family is fully implemented only when the audit reports current-complete evidence, `Official coverage: full`, and required visual acceptance. A family cannot leave active migration while `VISUAL_REVIEW.md` is rejected or blocked.
+A family is compliant only after an independent audit. A family is fully implemented only when the audit reports current-complete evidence, `Official coverage: full`, and README records explicit operator acceptance when visual review is required.
