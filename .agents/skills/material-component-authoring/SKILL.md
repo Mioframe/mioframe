@@ -11,26 +11,47 @@ Use this workflow after the official family is resolved.
 
 ## Workspace boundary
 
-Use only current workspace files, official Material sources, and local project verification commands.
+Use only current workspace files, official Material sources, the current user task, and local project verification commands.
 
 Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. Historical provenance is not evidence for the current implementation contract.
 
-The implementation workflow never edits `AUDIT.md` or `VISUAL_REVIEW.md`.
+The implementation workflow never edits `AUDIT.md`.
 
 ## Inputs
 
 Read:
 
+- the current user message and any explicit operator feedback it contains;
 - current official Material sources through `material3-guidelines`;
 - `docs/material-3/source-of-truth.md`;
 - `docs/material-3/component-architecture.md`;
-- the family `README.md`, `AUDIT.md`, and `VISUAL_REVIEW.md` when present;
+- the family `README.md` and `AUDIT.md` when present;
 - current implementation, exports, consumers, tests, and stories;
 - applicable foundation and testing instructions.
 
 Treat the previous audit as current-workspace findings to investigate. Do not use source-control history to validate or invalidate it.
 
-Treat `VISUAL_REVIEW.md` as operator-owned evidence. A rejected or blocked result is authoritative until the operator replaces that file after reviewing new evidence. Do not rewrite, ignore, reinterpret, or close it.
+Explicit user feedback about visible behavior is authoritative operator input for the current task. The user does not need to create or edit a report file.
+
+## Operator feedback rule
+
+The family README owns persistent visual status under:
+
+```text
+## Operator feedback and visual status
+Status: not reviewed | required | rejected | awaiting re-review | accepted
+Latest operator feedback: none | <concise factual summary>
+Implementation response: none | <what changed and what must be reviewed>
+```
+
+Apply these rules:
+
+- When the current user message reports a visual problem or rejects behavior, set `Status: rejected` and copy a concise factual summary into README before implementation.
+- Preserve an existing `rejected` or `awaiting re-review` status when the current message does not explicitly supersede it.
+- After changing production behavior for a rejected issue, the implementing agent may set `Status: awaiting re-review`; it must preserve the original feedback and describe the implementation response.
+- The implementing agent must never set `accepted` unless the current user message explicitly accepts the reviewed behavior.
+- Documentation, comments, tests, or a renamed contract cannot move `rejected` to `awaiting re-review`; a production behavior change is required.
+- Do not invent operator feedback or infer acceptance from silence, passing tests, screenshots, or an audit.
 
 ## 1. Resolve family, source status, scope, and capability inventory
 
@@ -47,7 +68,7 @@ Treat `VISUAL_REVIEW.md` as operator-owned evidence. A rejected or blocked resul
 6. Reconstruct the contract-level capability inventory supported by that evidence.
 7. Define the minimum coherent implementation surface required by current consumers.
 8. Inspect every current audit finding.
-9. Inspect the current operator visual result when `VISUAL_REVIEW.md` exists.
+9. Inspect and preserve current README operator feedback.
 
 Example:
 
@@ -96,6 +117,7 @@ Use these sections:
 - Not implemented;
 - Officially unsupported and invalid combinations;
 - Known issues and required follow-up;
+- Operator feedback and visual status;
 - Public API and semantics;
 - Tokens, states, and property ownership;
 - Foundations and styles used;
@@ -123,14 +145,6 @@ A capability belongs under `Implemented` only when its final owned output works.
 Record optional guidance that Mioframe does not adopt under `Extensions and deviations` or `Known issues and required follow-up`. Do not inflate it into an absent capability unless it is normative for the implemented surface.
 
 The README must never imply full implementation while coverage is partial or unresolved.
-
-When `VISUAL_REVIEW.md` is rejected or blocked:
-
-- record the visual issue under `Known issues and required follow-up`;
-- keep the operator status explicit;
-- do not call the behavior resolved;
-- do not advance to visual acceptance without a production change and new evidence;
-- do not modify `VISUAL_REVIEW.md`.
 
 ## 3. Resolve foundations and styles
 
@@ -179,7 +193,7 @@ At component level, use real input only to prove:
 
 Do not require frame-by-frame component analysis. Do not retest equivalent pointer, touch, and keyboard paths when they share the same implementation. Forced state is visual-state evidence, not motion evidence.
 
-A rejected motion result in `VISUAL_REVIEW.md` remains an open implementation defect even when the route is technically honest. Change production behavior, prepare new evidence, and leave the operator file unchanged for later review.
+A rejected perceived-motion result remains an open implementation defect even when the route is technically honest. Change production behavior, prepare new evidence, and set README visual status to `awaiting re-review` without claiming acceptance.
 
 ## 6. Migrate consumers and ownership
 
@@ -213,12 +227,12 @@ After implementation:
 
 1. rebuild the inventory from the available official sources;
 2. update every classification and source-status field honestly;
-3. preserve every operator rejection from `VISUAL_REVIEW.md`;
+3. preserve operator feedback and use only permitted visual-status transitions;
 4. name applicable tests and stories;
 5. keep `Review status: review required after changes`;
 6. run focused checks and final applicable local verification.
 
-Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` and `VISUAL_REVIEW.md` remain unchanged until their owning workflows replace them.
+Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` remains unchanged until independent review replaces it.
 
 ## Result
 
@@ -243,10 +257,10 @@ Consumers migrated:
 Foundation/style changes:
 Local verification:
 Family documentation:
-Operator visual evidence: missing | VISUAL_REVIEW.md
-Visual status: not required | required | rejected | blocked | accepted
+Latest operator feedback: none | <summary>
+Visual status: not reviewed | required | rejected | awaiting re-review | accepted
 Status: implementation finished | blocked (<exact reason>)
 Recommended next command: material-component-review <family>
 ```
 
-Do not report success while documentation hides unfinished work, a rejected operator result is unchanged, shared blast radius is unproved, or required local verification fails.
+Do not report success while documentation hides unfinished work, a rejected issue is unchanged, shared blast radius is unproved, or required local verification fails.
