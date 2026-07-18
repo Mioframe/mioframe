@@ -49,11 +49,37 @@ components/<official-docs-slug>/
   ... only justified files
 ```
 
-- `README.md` documents the current implementation and all omitted, incomplete, unverified, or deviated capability.
+- `README.md` documents current implementation, omissions, incomplete/unverified capability, deviations, operator feedback, and visual status.
 - `AUDIT.md` contains the latest independent review and is maintained by `material-component-review`.
 - Production code, tests, and stories live beside both documents.
 
 The implementing agent updates `README.md` but does not edit `AUDIT.md`. Any material implementation change sets the documented review status to `review required after changes`.
+
+No separate visual report file is required. The operator reports visible problems or acceptance directly in the user message; authoring persists the result in README.
+
+## Operator feedback
+
+A message may combine the command and concrete observations:
+
+```text
+material-component Button
+
+Operator feedback:
+- release animation feels too slow;
+- the corner shape visibly lags behind pointer release.
+```
+
+README records:
+
+```text
+Status: not reviewed | required | rejected | awaiting re-review | accepted
+Latest operator feedback: none | <summary>
+Implementation response: none | <summary>
+```
+
+- A reported visual defect means `rejected`.
+- After production behavior changes, authoring may set `awaiting re-review`.
+- Only an explicit user acceptance message may set `accepted`.
 
 ## Public API
 
@@ -83,12 +109,14 @@ shared generic infrastructure
 
 1. Resolve the official Material documentation path and family.
 2. Create or update `components/<official-docs-slug>/README.md`.
-3. Implement the minimum complete surface required by current consumers.
-4. Record official capability left unimplemented.
-5. Record every known defect, provisional implementation, missing verification, and required follow-up.
-6. Add proportional tests and a canonical visual story.
-7. Migrate consumers and remove obsolete ownership when applicable.
-8. Run `material-component-review <family>` to create or replace the colocated `AUDIT.md`.
+3. Persist explicit operator feedback from the current task.
+4. Implement the minimum complete surface required by current consumers.
+5. Record official capability left unimplemented.
+6. Record every known defect, provisional implementation, missing verification, and required follow-up.
+7. Add proportional tests and a canonical visual story.
+8. Migrate consumers and remove obsolete ownership when applicable.
+9. Run `material-component-review <family>` to create or replace the colocated `AUDIT.md`.
+10. Obtain explicit operator acceptance when visual review is required.
 
 Do not hide unfinished work to obtain a successful status.
 
@@ -110,4 +138,4 @@ The family documentation is the detailed state owner. This table remains a compa
 
 ## Anti-overengineering
 
-Do not create placeholder implementation folders, fixed file profiles, runtime registries, broad wrappers, or a second metadata system. The official-documentation hierarchy exists to make the library easy to navigate and review.
+Do not create placeholder implementation folders, fixed file profiles, runtime registries, broad wrappers, separate visual report files, or a second metadata system. The official-documentation hierarchy exists to make the library easy to navigate and review.
