@@ -9,26 +9,42 @@ paths:
 
 Use this workflow after the official family is resolved.
 
+## Workspace boundary
+
+Use only current workspace files, official Material sources, and local project verification commands.
+
+Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. Historical provenance is not evidence for the current implementation contract.
+
+The implementation workflow never edits `AUDIT.md`.
+
 ## Inputs
 
 Read:
 
 - current official Material sources through `material3-guidelines`;
+- `docs/material-3/source-of-truth.md`;
 - `docs/material-3/component-architecture.md`;
 - the family `README.md` and `AUDIT.md` when present;
 - current implementation, exports, consumers, tests, and stories;
 - applicable foundation and testing instructions.
 
-The implementation workflow never edits `AUDIT.md`.
+Treat the previous audit as current-workspace findings to investigate. Do not use source-control history to validate or invalidate it.
 
-## 1. Resolve family, path, scope, and complete capability inventory
+## 1. Resolve family, source status, scope, and capability inventory
 
 1. Resolve the official family and documentation path.
 2. Use the official documentation slug as the canonical directory name.
 3. Select `new-component`, `end-to-end-migration`, or `alignment-only`.
-4. Inspect every current official page for the family and reconstruct its complete contract-level capability inventory.
-5. Define the minimum complete implementation surface required by current consumers.
-6. Inspect every current audit finding.
+4. Inspect the available official family pages and structured sources.
+5. Record canonical source status:
+   - `current-complete`;
+   - `snapshot-complete-stale`;
+   - `partial`;
+   - `conflicting`;
+   - `unavailable`.
+6. Reconstruct the contract-level capability inventory supported by that evidence.
+7. Define the minimum coherent implementation surface required by current consumers.
+8. Inspect every current audit finding.
 
 Example:
 
@@ -37,11 +53,29 @@ m3.material.io/components/buttons
 → src/shared/ui/material/components/buttons
 ```
 
-Implementation scope may be incremental. Documentation coverage may not be incremental: every official capability in the resolved family must be classified regardless of whether a current consumer needs it.
+Implementation scope may be incremental. Inventory classification may not hide unused official capability.
 
-Inventory contract-level capabilities such as public subcomponents, variants, sizes, shapes, modes, states, semantics, accessibility behavior, configuration, adaptive behavior, and documented interactions. Do not turn the README into a token-by-token dump when a coherent grouped entry preserves full coverage.
+Classify each item as exactly one of:
 
-When official evidence is unavailable or ambiguous, record the capability as unresolved or unverified. Do not omit it.
+- implemented and verified;
+- partial, defective, provisional, or unverified;
+- not implemented;
+- officially unsupported or an invalid combination;
+- unresolved because canonical evidence is incomplete or conflicting;
+- outside the resolved family boundary.
+
+Do not treat optional wording such as a recommendation or “can” guidance as a missing capability unless the official contract makes it required for the implemented surface.
+
+Use inventory status:
+
+```text
+complete
+snapshot-complete (<snapshot>; currentness unverified)
+incomplete (<exact gap>)
+blocked (<exact reason>)
+```
+
+Use `complete` only when every current family page and required structured source is available and inspected without a partial, truncated, suspicious, or unresolved result. A stale snapshot may be snapshot-complete, but not current-complete. Spot checking values cannot certify the family inventory.
 
 ## 2. Update family documentation first
 
@@ -55,7 +89,9 @@ Use these sections:
 
 - Official documentation mapping;
 - Implemented;
+- Partial / defective / unverified;
 - Not implemented;
+- Officially unsupported and invalid combinations;
 - Known issues and required follow-up;
 - Public API and semantics;
 - Tokens, states, and property ownership;
@@ -70,19 +106,22 @@ Set `Review status: review required after changes` before production edits.
 Under `Official documentation mapping`, record:
 
 ```text
-Official capability inventory: complete | incomplete (<exact missing evidence>)
+Canonical source status: current-complete | snapshot-complete-stale | partial | conflicting | unavailable
+Official capability inventory: complete | snapshot-complete (...) | incomplete (...) | blocked (...)
 Official coverage: full | partial | unresolved
 ```
 
-Record exact official pages and source snapshot metadata. Use the Design Kit only when it resolves a visual decision not resolved by published guidance.
+A capability belongs under `Implemented` only when its final owned output works.
 
-A capability belongs under `Implemented` only when its final owned output works. A declaration, alias, placeholder, story, or test is insufficient by itself.
+`Not implemented` contains only real published capability that exists but is absent. It does not contain combinations the official contract itself disallows.
 
-`Not implemented` must enumerate every official capability absent from the implementation, independently of current consumer demand. A reason such as no current consumer may explain prioritization, but it does not permit omission from the inventory.
+`Officially unsupported and invalid combinations` records official constraints and the implementation's rejection or normalization behavior. These entries do not reduce coverage.
 
-Record partially implemented, provisional, defective, ambiguous, or unverified capability under `Known issues and required follow-up`. Do not misclassify partial capability as fully implemented or fully absent.
+Record optional guidance that Mioframe does not adopt under `Extensions and deviations` or `Known issues and required follow-up`. Do not inflate it into an absent capability unless it is normative for the implemented surface.
 
-The README must never imply full family implementation while `Official coverage` is `partial` or `unresolved`.
+The README must never imply full implementation while coverage is partial or unresolved.
+
+A known operator-rejected visible behavior stays under known issues with visual status `rejected`. It cannot be marked resolved by documentation, test changes, or a renamed runtime contract. Resolution requires a production change affecting the behavior, new visual evidence, and operator acceptance.
 
 ## 3. Resolve foundations and styles
 
@@ -93,15 +132,20 @@ material/foundations/<official-slug>
 material/styles/<official-slug>
 ```
 
-Foundations own cross-component accessibility, adaptive/layout, and interaction contracts. Styles own color, elevation, icons, motion, shape, typography, and other official style domains.
+Keep family-specific behavior local unless a real cross-family contract exists. Use `material-foundation` only when a shared contract changes.
 
-Keep family-specific behavior in the family unless a real cross-family contract exists. Use `material-foundation` only when a shared contract changes.
+A route exists only when changing its source input can affect the final output through a real dependency. Colocation, aliases, equality assertions, comments, and tests do not create a route.
 
-A route exists only when changing its source input can affect the final output through a real implementation dependency. Colocation, aliases to unchanged constants, equality assertions, and comments do not create a route.
+When numeric spring parameters cannot be consumed directly, preserve them as canonical source evidence and use an honestly documented Web runtime adaptation. Do not imply that the adaptation consumes the original spring model.
 
-When numeric spring parameters cannot be consumed directly, document them as source evidence and use an honestly documented Web adaptation as the runtime contract. Do not invent fake consumption.
+Before changing root/system tokens, universal selectors, pseudo-elements, or shared formulas:
 
-Before changing root/system tokens, universal selectors, pseudo-elements, or shared formulas, identify affected families and prefer the narrowest valid owner.
+1. identify all current affected families from current workspace code;
+2. prefer the narrowest valid owner;
+3. prove the shared route with representative tests that actually exercise it, not merely unchanged green tests;
+4. keep the issue open when representative impact is not proved.
+
+Do not use repository history to decide who introduced a shared mechanism. Review its current owner, current consumers, current contract, and current blast radius.
 
 ## 4. Implement
 
@@ -112,9 +156,23 @@ Before changing root/system tokens, universal selectors, pseudo-elements, or sha
 - Create additional files only when they reduce current complexity.
 - Add no speculative API, runtime registry, generic resolver, CSS DSL, or universal base.
 
-For motion, verify the official requirement, runtime contract, animated property owner, state routing, conflicting transitions, and reduced-motion handling when applicable. Do not test browser interpolation internals for ordinary CSS transitions.
+## 5. Motion proof
 
-## 5. Migrate consumers and ownership
+Verify a shared motion foundation deeply once.
+
+At component level, use real input only to prove:
+
+- the intended rendered property consumes the selected motion contract;
+- a meaningful intermediate state exists when source inspection alone cannot prove the route;
+- the correct endpoint is reached;
+- interruption or cancellation does not leave stale state;
+- reduced-motion behavior is correct when the component overrides or owns it.
+
+Do not require frame-by-frame component analysis. Do not retest equivalent pointer, touch, and keyboard paths when they share the same implementation. Forced state is visual-state evidence, not motion evidence.
+
+When the operator has already rejected perceived motion quality, the defect remains open even if the route is technically honest. Change the behavior and return it for visual acceptance.
+
+## 6. Migrate consumers and ownership
 
 For an end-to-end migration:
 
@@ -127,7 +185,7 @@ For an end-to-end migration:
 
 Do not claim migration complete while an obsolete owner or direct legacy consumer remains.
 
-## 6. Build proportional proof
+## 7. Build proportional proof
 
 Every new or migrated component requires:
 
@@ -136,22 +194,20 @@ Every new or migrated component requires:
 
 Add browser, pure, consumer, `StateMatrix`, and visual-regression proof only when the family owns the corresponding risk.
 
-A test cannot repair a missing implementation dependency. Reject tests that only compare aliases already defined as equal.
+A test cannot repair a missing implementation dependency. Reject tests that merely restate declarations or aliases.
 
-Tests are required for implemented capability. Unimplemented capability is documented rather than tested as though it existed.
+Tests cover implemented capability. Unsupported combinations, unimplemented capability, and optional guidance are documented and tested only when the component owns explicit rejection, normalization, or fallback behavior.
 
-## 7. Finish documentation and verification
+## 8. Finish documentation and verification
 
 After implementation:
 
-1. rebuild the official capability inventory from the current canonical sources;
-2. update `Implemented` to match working code;
-3. update `Not implemented` with every absent official capability;
-4. update `Known issues and required follow-up` with every partial, defective, provisional, ambiguous, or unverified capability;
-5. set `Official capability inventory` and `Official coverage` honestly;
-6. name applicable tests and stories under `Verification`;
-7. keep `Review status: review required after changes`;
-8. run focused checks and final applicable local verification.
+1. rebuild the inventory from the available official sources;
+2. update every classification and source-status field honestly;
+3. preserve every known operator rejection until accepted;
+4. name applicable tests and stories;
+5. keep `Review status: review required after changes`;
+6. run focused checks and final applicable local verification.
 
 Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` remains unchanged until an independent review replaces it.
 
@@ -165,18 +221,22 @@ Official family:
 Official documentation path:
 Canonical implementation path:
 Change mode:
-Official capability inventory: complete | incomplete (<exact gap>)
-Official coverage: full | partial | unresolved
+Canonical source status:
+Official capability inventory:
+Official coverage:
 Implemented:
+Partial / defective / unverified:
 Not implemented:
-Partial / unverified:
+Officially unsupported / invalid combinations:
+Unresolved / out-of-family:
 Known issues / follow-up:
 Consumers migrated:
 Foundation/style changes:
 Local verification:
 Family documentation:
+Visual status: not required | required | rejected | blocked | accepted
 Status: implementation finished | blocked (<exact reason>)
 Recommended next command: material-component-review <family>
 ```
 
-Do not report success while family documentation hides unfinished or unimplemented official capability. `Implementation finished` describes the current task, not full family coverage.
+Do not report success while documentation hides unfinished work, a known visual rejection is unchanged, shared blast radius is unproved, or required local verification fails.
