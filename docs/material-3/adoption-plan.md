@@ -7,7 +7,7 @@ Adopt Material incrementally through bounded real implementation tasks.
 A task may be selected by:
 
 - the automatic migration roadmap; or
-- an explicit user request for an official component, foundation, style, interaction primitive, token system, migration, alignment, or correction.
+- an explicit user request for an official component, foundation, style, interaction primitive, token system, migration, alignment, review, or correction.
 
 An explicit request overrides automatic queue order for that task.
 
@@ -23,17 +23,13 @@ Implementation may be incremental. Classification and source limitations remain 
 
 ## Generalization boundary
 
-This plan defines a universal adoption loop. Concrete current pilots are descriptive program state only.
+This plan defines a universal adoption and calibration loop. Concrete pilots are program state only.
 
-They do not define:
+They do not define reusable anatomy, DOM structure, custom-property names, token values, state endpoints, wrappers, files, or test shapes.
 
-- reusable anatomy or DOM structure;
-- CSS custom-property names;
-- token values or state endpoints;
-- required wrappers, files, or test shapes;
-- special behavior for unrelated artifacts.
+Shared workflow refinements must be artifact-independent. Concrete pilot defects remain in the owning README, AUDIT, roadmap, inventory, implementation, tests, and task context.
 
-Shared workflow refinements must be stated as artifact-independent rules. Concrete pilot defects remain in the owning README, AUDIT, roadmap, inventory, implementation, tests, and task-specific PR description.
+When an existing rule already prohibited a defect, strengthen execution or report agent non-compliance instead of adding another universal rule.
 
 ## Library navigation
 
@@ -54,22 +50,16 @@ Use:
 material <artifact-or-request>
 ```
 
-Artifact-independent syntax:
-
-```text
-material <component-family>
-material <foundation-artifact>
-material <style-domain>
-material <bounded Material correction>
-```
-
 The router resolves official ownership:
 
-- component → `material-component` and `material-component-authoring`;
+- component → `material-component-authoring`;
+- independent component review → `material-component-review`;
 - foundation/style → `material-foundation`;
 - cross-layer request → one canonical shared owner plus affected consumer changes.
 
-A request routed through the wrong specialized Material entrypoint is redirected and executed rather than refused for classification alone.
+`material-component` is a compatibility alias only.
+
+A request routed through the wrong specialized entrypoint is redirected and executed rather than refused for classification alone.
 
 ## Explicit-request rule
 
@@ -95,32 +85,59 @@ Existing consumers determine migration and blast-radius proof, not whether an ex
 
 ## Workflow evidence boundary
 
-Material authoring and review operate from the current user task, current workspace files, official Material sources, and local project verification.
+Material authoring and review operate from the current task, current workspace files, current successful Material MCP reads, official sources, and local verification.
 
-They do not use source-control history or remote workflow state as evidence or workflow input.
+Source-control history is not Material authority. The current diff may be inspected for scope, unrelated changes, missing cleanup, ownership drift, and regression risk.
 
-## Implementation loop
+A healthy complete current-run MCP read is working current evidence. Capture age alone is not a defect. Follow `source-of-truth.md` when evidence is partial, failed, suspicious, truncated, or conflicting.
+
+## Calibrated implementation loop
 
 Each bounded Material task follows:
 
-1. resolve the requested artifact and official documentation path;
-2. classify it as component, foundation, style, or cross-layer;
-3. inspect current owner, exports, consumers, tests, fixtures/stories, README, and AUDIT when present;
-4. record canonical source status;
-5. reconstruct the supported contract-level inventory without overstating incomplete sources;
-6. classify each item as implemented, partial/unverified, not implemented, officially unsupported/invalid, unresolved, or outside the owner boundary;
-7. select the smallest coherent surface required by the explicit request and affected consumers;
+1. resolve the requested artifact and official owner;
+2. read all required current-run MCP sources;
+3. inspect current owner, exports, consumers, tests, fixtures/stories, README, AUDIT, and current diff when available;
+4. reconstruct the official contract and capability inventory;
+5. classify capability as implemented, partial/unverified, not implemented, officially unsupported/invalid, unresolved, or outside the owner boundary;
+6. diagnose every material problem and actual owner;
+7. select `repair`, `restructure`, or `replace`;
 8. update the canonical owner README without editing AUDIT;
-9. correct directly applicable defective rules only through artifact-independent refinements;
-10. implement the selected surface;
-11. migrate existing consumers and remove obsolete Material ownership when applicable;
-12. add proportional tests and bounded rendered evidence;
+9. implement through ordered semantics, ownership, geometry, routing, lifecycle, and migration gates;
+10. remove superseded ownership and contradictory documentation;
+11. add proportional proof, using real input for lifecycle claims;
+12. run an evidence-backed objective authoring/foundation gate;
 13. run local verification;
-14. run independent review separately;
-15. receive explicit operator acceptance or further feedback when visible review is required;
+14. run independent contradiction-seeking review separately;
+15. receive explicit operator acceptance or further feedback only after objective gates close;
 16. update roadmap/inventory only when their owned facts change.
 
 Do not stop after classification, research, an audit summary, or a plan.
+
+If two correction rounds retain the same objective defect, add workarounds, or create new ownership ambiguity, stop patching and reconsider the implementation strategy from the reconstructed contract.
+
+## Problem diagnosis
+
+Use one primary category per problem:
+
+- canonical behavior;
+- implementation defect;
+- architecture defect;
+- foundation/style or generic-infrastructure defect;
+- evidence gap;
+- product deviation.
+
+Diagnosis identifies the actual owner. A symptom visible in one component does not make that component the correct owner.
+
+## Implementation strategy
+
+Use:
+
+- `repair` when contract, anatomy, and ownership are sound;
+- `restructure` when supported capability remains valid but ownership, routes, lifecycle, or anatomy are wrong;
+- `replace` when the implementation is based on a wrong contract or preserves multiple conflicting models.
+
+Restructure and replacement remove superseded code, routes, tests, stories, documentation, and compatibility paths unless explicit compatibility is required.
 
 ## Source and inventory status
 
@@ -136,7 +153,7 @@ Canonical source status:
 
 Official capability inventory:
   complete
-  snapshot-complete (<snapshot>; currentness unverified)
+  snapshot-complete (<snapshot>; currentness unresolved)
   incomplete (<exact gap>)
   blocked (<exact reason>)
 
@@ -146,9 +163,9 @@ Official coverage:
   unresolved
 ```
 
-Use `complete` only with current-complete evidence.
+Use `snapshot-complete-stale` only when relying on a retained snapshot without a healthy current read or when freshness is explicitly unresolved.
 
-A stale, partial, truncated, suspicious, missing, or spot-check-only source cannot certify current completeness.
+Partial, failed, truncated, suspicious, conflicting, missing, or spot-check-only evidence cannot certify complete inventory.
 
 ## Classification rules
 
@@ -163,31 +180,22 @@ Use exactly one category per item:
 
 `Not implemented` is reserved for real official capability that exists but is absent.
 
-Officially unsupported combinations do not reduce coverage.
-
-Optional or non-normative guidance is documented as a choice, deviation, or follow-up. It does not reduce coverage unless required for the implemented surface.
+Officially unsupported combinations do not reduce coverage. Optional guidance is documented as a choice, deviation, or follow-up unless required for the implemented surface.
 
 ## Documentation ownership
 
 ### Authoring README
 
-The implementing agent owns the current owner README:
+The implementing agent owns the current owner README beside the component, foundation, or style.
 
-```text
-src/shared/ui/material/components/<official-docs-slug>/README.md
-src/shared/ui/material/foundations/<official-slug>/README.md
-src/shared/ui/material/styles/<official-slug>/README.md
-```
+It records:
 
-It records official mapping, source status, inventory, coverage, implementation state, omissions, invalid routes, unresolved items, known issues, ownership, public/private contract, consumers, verification, and review status.
-
-Visible behavior may persist operator feedback:
-
-```text
-Status: not reviewed | required | rejected | awaiting re-review | accepted
-Latest operator feedback: none | <summary>
-Implementation response: none | <summary>
-```
+- official mapping and current-run source status;
+- reconstructed contract and inventory;
+- diagnosis and implementation strategy;
+- implementation state, omissions, invalid routes, unresolved items, and known issues;
+- ownership, public/private contract, consumers, proof, and verification;
+- operator feedback and review status.
 
 Any production change marks review required. Authoring never edits AUDIT.
 
@@ -197,13 +205,14 @@ Independent review owns the local AUDIT beside the implementation owner.
 
 The reviewer:
 
-- uses only the current user task, current workspace, and official evidence;
-- independently records source status and inventory limitations;
+- reconstructs evidence independently rather than accepting README conclusions;
+- actively searches for contradictions across implementation, README, stories, tests, verification, and operator feedback;
 - checks implementation against project documentation;
 - checks project documentation against canonical Material;
-- separates absent capability from invalid combinations and optional guidance;
-- requires representative proof for shared routes;
+- reviews diagnosis and repair/restructure/replace strategy;
+- requires representative proof for shared routes and real input for lifecycle claims;
 - verifies explicit operator feedback accurately;
+- records findings and gaps concisely rather than duplicating the complete README;
 - never invents visual acceptance.
 
 Compliance, coverage, source status, and operator visual status remain separate.
@@ -221,9 +230,21 @@ A token declaration alone does not implement a rendered artifact. Final rendered
 
 Family-local behavior remains local only when it has no official shared owner and no explicit standalone request.
 
+Do not patch a shared-foundation defect inside a component to avoid correcting the real owner.
+
+## Objective proof boundary
+
+- Forced states prove stable appearance only.
+- Screenshots prove regression stability only.
+- Real browser input proves acquisition, release, trajectory, interruption, cancellation, and cleanup.
+- Intermediate transition evidence is required only when endpoints cannot prove the changed or reported composition risk.
+- Operator review proves perceived fidelity only after objective gates close.
+
+Do not substitute one proof layer for another.
+
 ## Operator visual feedback
 
-The operator reports visible findings directly in the implementation message. No separate report file is required.
+The operator reports visible findings directly. No separate report file is required.
 
 - reported visible defects are persisted as `rejected`;
 - authoring may move to `awaiting re-review` only after changing production behavior and rechecking objective surfaces;
@@ -234,38 +255,35 @@ The operator reports visible findings directly in the implementation message. No
 
 Concrete pilot names and statuses live in the roadmap and owning artifact documentation. They are scheduling and progress facts, not templates for unrelated artifacts.
 
-A pilot may validate universal workflow properties such as source handling, ownership, evidence, review separation, and operator-feedback persistence. Its specific DOM, tokens, states, defects, and fixes never become universal requirements by implication.
-
-Current automatic pilots do not prevent an explicit request for another component, foundation, or style.
+A pilot validates universal workflow properties such as source handling, contract reconstruction, diagnosis, implementation strategy, ownership, evidence, review separation, and operator-feedback persistence. Its specific DOM, tokens, states, defects, and fixes never become universal requirements by implication.
 
 After the pilots, automatic migration:
 
 1. selects one unblocked queued target;
-2. resolves official sources and source status;
-3. reconstructs and classifies the inventory honestly;
-4. completes one coherent implementation surface, migration, proof, local verification, and independent audit;
-5. completes operator visual review when required;
-6. updates inventory and coverage state;
-7. stops before a second automatic target.
+2. executes the calibrated implementation loop;
+3. completes one coherent implementation surface, migration, proof, objective gate, local verification, and independent audit;
+4. completes operator visual review when required;
+5. updates inventory and coverage state;
+6. stops before a second automatic target.
 
 ## Rule refinement
 
-When implementation exposes a rule defect:
+When implementation exposes a possible rule defect:
 
-- identify current-workspace evidence;
-- extract the underlying artifact-independent invariant;
-- update the narrowest owning rule;
-- update only directly affected instructions;
-- keep concrete symptoms and fixes in the owning artifact documentation;
-- do not preserve the defect through a family-specific exception;
-- do not broaden the correction into unrelated architecture work.
+1. identify current-workspace evidence;
+2. determine whether the rule is missing or the agent ignored an existing rule;
+3. extract an artifact-independent invariant only for a real policy gap;
+4. update the narrowest owning rule and directly affected instructions;
+5. keep concrete symptoms and fixes in owning artifact documentation;
+6. do not preserve the defect through a family-specific exception;
+7. do not broaden the correction into unrelated architecture work.
 
 ## Shared domain changes
 
 - Reuse an existing owner when sufficient.
 - Create a shared owner for an explicit official foundation/style request or a real shared contract.
 - Keep consumer-specific behavior local when neither condition applies.
-- Identify current affected consumers from current code.
+- Identify affected consumers from current code.
 - Require representative tests that exercise the shared route.
 - Use an owner-local fixture when no production consumer exists.
 - Do not count unrelated unchanged green tests as proof.
@@ -273,4 +291,6 @@ When implementation exposes a rule defect:
 
 ## Evidence-driven automation
 
-Add a guard only when repeated real work proves a stable, precise, inexpensive check with low false positives.
+Add an automated guard only when repeated real work proves a stable, precise, inexpensive check with low false positives.
+
+Do not automate semantic completeness, anatomy correctness, or visual fidelity through Markdown validators or generic rule engines.
