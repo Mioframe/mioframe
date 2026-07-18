@@ -1,6 +1,6 @@
 ---
 name: material-library-status
-description: 'Use when the user wants a read-only status report for the Material 3 Expressive library program. Reconcile roadmap, inventory, registries, and colocated family README/AUDIT files without changing the repository.'
+description: 'Use when the user wants a read-only status report for the Material 3 Expressive library program. Reconcile roadmap, inventory, registries, and colocated family README/AUDIT/VISUAL_REVIEW files without changing the repository.'
 ---
 
 # Material library status
@@ -28,7 +28,8 @@ Read:
 3. component and foundation registries for program summaries;
 4. `src/shared/ui/material/README.md` for library navigation;
 5. active and queued family README files for implementation state;
-6. colocated AUDIT files for independent review results.
+6. colocated AUDIT files for independent review results;
+7. colocated VISUAL_REVIEW files for operator decisions.
 
 Do not inspect unrelated families.
 
@@ -47,7 +48,7 @@ For each reported family distinguish:
 - unresolved and out-of-family items;
 - known issues and follow-up;
 - review status and latest audit result;
-- visual status;
+- operator visual evidence and status;
 - foundation/style gaps.
 
 Do not merge invalid combinations into `Not implemented`.
@@ -64,7 +65,9 @@ Review status: review required after changes
 
 Do not use commit metadata to determine freshness.
 
-A visual status of `rejected` remains open until current documentation records accepted replacement evidence after a production behavior change.
+When VISUAL_REVIEW exists, its status is authoritative. Report `rejected`, `blocked`, or `accepted` exactly as recorded. Never downgrade rejection to `required` or infer acceptance from README, AUDIT, tests, or stories.
+
+A rejected visual result blocks family completion and next-family selection until production behavior changes, new evidence is reviewed, and the operator replaces VISUAL_REVIEW.
 
 When records conflict, report:
 
@@ -112,6 +115,9 @@ Known issues / follow-up:
 Audit state:
 - <family — current | review required | missing | blocked — result when current>
 
+Operator visual evidence:
+- <family — missing | VISUAL_REVIEW.md>
+
 Visual status:
 - none | <family — not required | required | rejected | blocked | accepted>
 
@@ -129,7 +135,7 @@ Recommended commands:
 
 - `material-component <family>` for implementation or correction;
 - `material-component-review <family>` when review is required;
-- `material-library-next` when one next family can be selected;
+- `material-library-next` only when the active family has no rejected/blocked visual result or other completion blocker;
 - resolve one exact blocker when no workflow can proceed.
 
 Keep the report concise and evidence-backed.
