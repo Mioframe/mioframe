@@ -2,47 +2,47 @@
 
 This document defines proportional proof for public components in the Mioframe Material library.
 
-Tests prove contracts the component or changed foundation actually owns. They do not retest Vue, CSS, browser internals, or operator-perceived visual fidelity.
+Tests prove contracts the component or changed foundation actually owns. They do not retest Vue, CSS, browser internals, or subjective operator perception. They must still prove objective anatomy, geometry, ownership, and visible endpoints before operator handoff.
 
 ## Principles
 
-- Derive proof from the accepted family contract and current change.
+- Derive proof from the official family contract, project rules, and current change.
 - Use the smallest set of layers that completely proves the implemented surface.
-- Keep component contracts, browser behavior, pure logic, visual appearance, consumer preservation, independent audit, and operator review in their owning layers.
-- Do not test unsupported optional capability as if it were implemented.
-- Do not duplicate framework, browser, foundation, or product behavior.
-- Green automation does not prove that an accepted baseline matches Material 3 Expressive.
-- Green automation does not override rejected operator feedback recorded in the family README.
-- A test proves a named risk only when its setup actually enters that risk state.
+- Keep component contracts, browser behavior, pure logic, visual regression, independent review, and operator review in their owning layers.
+- Green automation does not prove that a baseline matches Material 3 Expressive.
+- Green automation does not override rejected operator feedback.
+- A test proves a named risk only when its setup enters that risk.
+- Numeric equality on the wrong DOM owner is not conformance proof.
+- Objective structural defects are agent-owned, not operator-owned.
 
 ## Proof layers
 
-| Layer                       | Use when                                                   | Purpose                                                                                                               |
-| --------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Component contract          | Every new or migrated public component                     | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and static foundation wiring |
-| Canonical visual story      | Visible output exists                                      | One stable reference for accepted appearance                                                                          |
-| `StateMatrix`               | Multiple distinct component-owned visual routes exist      | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product                         |
-| Visual regression           | A stable visual contract has material regression risk      | Detect unintended changes against a bounded accepted baseline                                                         |
-| Browser behavior            | The component changes or constrains browser-owned behavior | Focus, input, layout, overlay, scrolling, responsive, cancellation, or runtime lifecycle                              |
-| Pure behavior               | Extracted logic or lifecycle exists                        | Helpers, composables, state transitions, timing, cancellation, and cleanup                                            |
-| Consumer preservation       | Imports, wrappers, or product usage change                 | Preserve affected integration contracts                                                                               |
-| Independent two-stage audit | Every new or migrated family                               | Compare implementation with project documentation, then project documentation with Material 3 Expressive              |
-| Operator visual review      | Visible fidelity requires human comparison                 | User reports acceptance or defects in a normal message; README persists the current visual status                     |
+| Layer | Use when | Purpose |
+| --- | --- | --- |
+| Component contract | Every new or migrated public component | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
+| Canonical visual story | Visible output exists | Stable readable surface using real production anatomy |
+| `StateMatrix` | Multiple distinct visible routes exist | Compare configurations, states, winners, and coexistence |
+| Visual regression | Stable visual contract has regression risk | Detect unintended changes against a bounded baseline |
+| Browser behavior | Correctness depends on browser behavior or layout | Focus, input, hit testing, layout, clipping, measurement, cancellation, or runtime lifecycle |
+| Pure behavior | Extracted logic or lifecycle exists | Helpers, composables, timing, cancellation, and cleanup |
+| Consumer preservation | Imports, wrappers, or usage change | Preserve affected integration contracts |
+| Independent review | Every new or migrated family | Compare implementation with project documentation, then documentation with Material |
+| Operator review | Final perceived fidelity remains | Explicit acceptance or concrete feedback in a user message |
 
-A layer may be omitted because the component does not own that contract. Difficulty alone is not a reason to omit an owned contract.
+Difficulty alone is not a reason to omit an owned contract.
 
 ## Proof causality
 
-A test name, comment, timeout, or endpoint assertion does not establish that the named risk occurred.
+A test name, comment, timeout, or endpoint assertion does not establish that the named condition occurred.
 
 To claim interruption, cancellation, replacement, fallback, or recovery proof:
 
 1. establish the initial active state;
-2. trigger the competing event before the initial lifecycle, transition, request, or operation settles;
-3. prove the competing branch actually began;
+2. trigger the competing event before it settles;
+3. prove the competing branch began;
 4. prove the final public outcome and absence of stale state.
 
-Waiting for the first transition or operation to reach its endpoint before triggering the second event proves sequential behavior, not interruption. Forced state proves appearance, not acquisition, trajectory, interruption, or cleanup.
+Waiting for the first endpoint proves sequential behavior, not interruption. Forced state proves appearance, not acquisition, trajectory, interruption, or cleanup.
 
 ## Component contract tests
 
@@ -53,72 +53,139 @@ Use colocated Vue Test Utils tests for applicable:
 - ARIA, disabled, readonly, and accessible-name ownership;
 - slots and fixed anatomy;
 - emits and controlled state;
-- invalid combinations and accepted normalization;
-- non-browser component-to-foundation wiring;
+- invalid combinations and normalization;
+- non-browser foundation wiring;
 - public Mioframe extensions.
 
-Do not use component tests for computed appearance, layout, real focus-visible, pointer/touch behavior, ripple, overlay lifecycle, or browser actionability.
+Component tests may verify that required structural elements exist and have the intended semantic role. They do not prove computed layout, hit regions, clipping, focus-visible, ripple, or visual shape.
 
 Prefer named contract assertions over complete rendered-tree snapshots.
 
+## Mandatory geometry proof
+
+When a visible interactive component has distinct or non-obvious geometry, browser proof must identify and compare the concrete bounds of:
+
+```text
+semantic host
+layout footprint
+interaction bounds
+visual container
+content bounds
+state-layer bounds
+ripple render and clip bounds
+focus-indicator bounds
+outline/elevation/shape owner
+```
+
+Prove applicable relations:
+
+- the intended target is one coherent rectangular region;
+- layout reserves the required interaction space;
+- the interaction target does not overlap adjacent controls;
+- the visual container has the official size and position within the layout target;
+- state layer and ripple are clipped to the intended visual container;
+- focus indication follows the intended visible target;
+- content remains centered/aligned and unclipped;
+- background, outline, elevation, shape, and motion are applied to the correct owner.
+
+For custom or expanded targets, test representative:
+
+- center;
+- each relevant edge;
+- at least one corner;
+- boundary with an adjacent control;
+- points outside the intended target.
+
+A test clicking one convenient central point is not proof of complete target geometry.
+
+Do not accept an absolutely positioned descendant extending outside its semantic host when it creates a cross-shaped, partial, overlapping, or non-layout hit region.
+
+## Final rendered-owner proof
+
+For each visible route, assert the final property on the actual owner.
+
+A computed token or CSS variable on an ancestor, wrapper, or helper does not prove the visible result.
+
+For shape:
+
+- identify the actual visual container;
+- assert its resting and state endpoint geometry;
+- verify clipping and box sizing do not change the visible shape;
+- verify pressed, selected, disabled, and simultaneous-state endpoints;
+- reject a visibly rectangular or malformed endpoint even when a scalar radius matches an expected value.
+
+A scalar `border-radius` assertion alone is insufficient.
+
+## CSS custom-property proof boundary
+
+Tests may prove public overrides reach final owners. Tests must not normalize invalid naming.
+
+Before testing, authoring and review classify touched variables as:
+
+- exact official `--md-ref-*`, `--md-sys-*`, or `--md-comp-*`;
+- justified `--md-private-*` route;
+- genuine `--app-*` token;
+- invalid or unnecessary alias.
+
+Do not write tests that bless ad-hoc public-looking names such as:
+
+```text
+--md-button-border-radius
+--md-button-height
+--md-button-padding-left
+--md-button-icon-gap
+```
+
+Private variables are implementation details, not consumer API. Test the official source or public extension and the final output, not the private alias itself unless a generic foundation boundary explicitly owns that bridge.
+
 ## Normalization and fallback proof
 
-For every materially different input class handled by normalization or fallback, compare all applicable outputs:
+For every materially different input class, compare:
 
-- the actual returned, emitted, or rendered result;
-- native semantics and accessibility output;
-- development warning or error text;
-- family README and public API documentation;
-- the test assertion.
+- actual returned, emitted, or rendered result;
+- native semantics and accessibility;
+- warning or error text;
+- README and API documentation;
+- test assertion.
 
-Do not use one generic assertion when input classes produce different outcomes. Warning text must describe the branch that actually runs; a clamped determinate result, ignored input, rejected combination, and indeterminate fallback are different contracts.
+A clamped result, ignored input, rejected combination, and fallback mode are different contracts.
 
 ## Browser behavior tests
 
-Use isolated Storybook Playwright tests only when correctness depends on behavior the component changes or constrains:
+Use isolated Storybook Playwright tests when correctness depends on behavior the component changes or constrains:
 
 - custom keyboard activation or navigation;
 - focus entry, movement, visibility, or restoration;
-- pointer/touch acquisition, target hit testing, gesture, capture, or cancellation;
-- overlay, escape, outside interaction, or containment;
-- scrolling, layout, measurement, responsive, or container-dependent behavior;
+- pointer/touch acquisition, hit testing, gesture, capture, or cancellation;
+- overlay and containment;
+- layout, measurement, responsive, or container-dependent behavior;
 - JavaScript/WAAPI lifecycle;
-- final computed CSS propagation that source and contract tests cannot establish reliably.
+- final computed propagation that source review cannot establish reliably.
 
-Use public input and assert public outcomes. Forced state, direct Vue mutation, private methods, and synthetic internal events do not prove browser behavior.
-
-A component with no browser-owned behavior may omit this layer with a concise reason.
+Use public input and assert public outcomes. Forced state and direct mutation do not prove browser behavior.
 
 ## Motion proof boundary
 
-Motion is split by ownership:
+Motion ownership is split:
 
-- official documentation defines the canonical requirement;
-- project documentation defines an accepted official-to-Web adaptation;
-- a shared foundation/style owner implements and proves a cross-family runtime contract deeply once;
-- the component owns correct consumption, property ownership, state routing, and family-specific behavior;
-- independent audit checks implementation-to-project and project-to-Material alignment;
-- the operator owns final perceptual comparison through normal user feedback, persisted in the family README.
+- official documentation defines the requirement;
+- project documentation defines an accepted Web adaptation;
+- shared foundation implements and proves cross-family runtime behavior deeply once;
+- component owns correct property, geometry owner, state routing, and family-specific endpoints;
+- reviewer checks technical and canonical alignment;
+- operator owns final perceived quality.
 
-At shared foundation level, prove:
+At component level prove:
 
-- canonical evidence and the documented adaptation;
-- the real source-to-runtime dependency;
-- timing/easing or runtime model;
-- interruption and reduced-motion behavior;
-- representative consumers.
+- real input activates the intended property on the correct visual owner;
+- one meaningful intermediate state when needed;
+- correct visible endpoint;
+- safe interruption/cancellation;
+- reduced motion when owned.
 
-At component level, use real input only to prove:
+Do not claim motion fixed when timing changes but the visible endpoint, owning geometry, or rendered shape remains wrong.
 
-- the intended rendered property consumes the selected contract;
-- one meaningful intermediate state when needed to establish the route;
-- the correct endpoint;
-- interruption or cancellation leaves no stale state;
-- component-specific reduced-motion behavior when owned.
-
-Do not require frame-by-frame component analysis, overshoot sampling, or duplicate equivalent pointer/touch/keyboard paths for ordinary CSS transitions.
-
-Source review and focused tests may prove a technically honest route. They do not close a rejected visual result. Rejection remains current in README until production behavior changes and the user explicitly accepts the new evidence.
+Technical route proof never closes rejected operator feedback.
 
 ## Shared foundation proof
 
@@ -126,105 +193,66 @@ Changes to root/system tokens, universal selectors, pseudo-elements, shared form
 
 Representative proof must:
 
-- identify current affected contract classes from current code;
-- exercise the changed shared input through the final rendered output;
-- include more than the family that motivated the global change when multiple families consume it;
-- distinguish identical default output from actual override or state-route behavior.
+- identify current affected contract classes;
+- exercise the changed source through final rendered output;
+- include more than the motivating family when multiple families consume it;
+- distinguish identical default output from actual override/state behavior.
 
-Unchanged tests that never exercise the shared route are not representative proof. A component-specific check alone cannot close a global blast-radius gap.
+Unchanged tests that never exercise the route are not representative proof.
 
 ## Canonical visual evidence
 
-Every visible public component has one stable canonical visual story.
+Every visible public component has one stable canonical story.
 
-Use:
+The story must:
 
-- `StateMatrix` for multiple distinct component-owned visual routes;
-- a bounded `Overview`, `Default`, or equivalent story when one representative route is sufficient.
+- use real production anatomy;
+- use representative real child components rather than placeholder glyphs when child geometry is claimed;
+- present distinct visible states and configurations readably;
+- expose the complete surface the operator is asked to review.
 
-A matrix includes distinct visible configurations, states, simultaneous-state winners/coexistence, and visible extensions or deviations. Do not build a full Cartesian product or duplicate equivalent sizes, labels, icons, and content.
-
-The operator should understand the cases without reading source code.
-
-## Deterministic transient appearance
-
-A generic foundation testing adapter may represent hover, focus-visible, pressed, or dragged appearance.
-
-It remains testing-only, family-agnostic, and proves appearance only. Real acquisition or cleanup requires browser input only when the component owns or changes that behavior.
+Use `StateMatrix` only when multiple distinct visual routes exist. Do not build a Cartesian product.
 
 ## Visual regression
 
-Add bounded Playwright screenshots when stable regression protection is valuable.
+A visual baseline detects changes from the stored baseline. It does not prove Material correctness, correct anatomy, correct ownership, or operator acceptance.
 
-- Open the canonical story.
-- Wait for deterministic fonts, icons, and asynchronous rendering.
-- Screenshot the bounded component or labelled section.
-- Use stable repository baselines.
-- Keep behavior assertions elsewhere.
+Do not create or update a baseline until the underlying structural contract is understood. A baseline preserving a malformed component is regression evidence for the malformed output, not conformance evidence.
 
-A baseline is regression evidence, not proof of Material correctness or operator acceptance.
+## Independent review
 
-## Consumer preservation
+Before operator handoff, reviewer confirms:
 
-When migration changes imports, API usage, wrappers, or product composition, select focused checks from the actual blast radius. Do not require unrelated product suites merely because a shared component changed.
+- geometry ownership map is complete and coherent;
+- final properties are checked on correct owners;
+- CSS custom-property namespaces are valid;
+- tests prove their named risks causally;
+- canonical stories use real anatomy;
+- no objective defect is hidden behind operator review;
+- README preserves current feedback accurately.
 
-## Independent evidence review
+A high-severity anatomy, target, geometry, shape, final-owner, invalid-namespace, or unchanged visible defect requires `non-compliant`.
 
-Before operator handoff, `material-component-review` performs both comparisons and reads explicit operator feedback from the current user task and family README.
-
-### Stage 1 — implementation vs project documentation
-
-Confirm:
-
-- implementation matches the family README and directly applicable project contracts;
-- semantics, accessibility, states, lifecycle, tokens, motion, and final property ownership behave as documented;
-- normalization and fallback outputs, warnings, documentation, and tests agree for each materially different input class;
-- exports, consumers, tests, stories, and verification claims are accurate;
-- named-risk tests actually enter the claimed risk state;
-- no unfinished, provisional, unverified, or undocumented behavior is hidden;
-- proof layers establish only what the project documentation claims;
-- README preserves the latest explicit operator feedback without inventing acceptance.
-
-### Stage 2 — project documentation vs Material 3 Expressive
-
-Confirm:
-
-- official sources support the documented family scope and contract;
-- canonical component, token, state, semantics, accessibility, and property meanings are interpreted correctly;
-- unsupported official capability is documented accurately;
-- project extensions and deviations are explicit and not presented as canonical Material;
-- project documentation and canonical evidence use one consistent source record.
-
-No technical or documentation decision may be hidden behind visual review.
-
-## Operator visual review
+## Operator review
 
 Operator review is performed through normal user messages.
 
-The user reviews prepared canonical evidence and either:
+The operator evaluates final visible fidelity and perceived motion quality. The operator does not own discovery of incorrect DOM anatomy, interaction bounds, visual-container ownership, CSS naming, clipping, or test insufficiency.
 
-- reports concrete visible defects; or
-- explicitly accepts the reviewed behavior.
+Only explicit user acceptance sets accepted status.
 
-Authoring persists the result in the family README under `Operator feedback and visual status`. Only explicit user acceptance may set `accepted`.
+## Anti-overengineering
 
-The operator evaluates visible fidelity. API, semantics, accessibility, source interpretation, ownership, migration, test sufficiency, and project-documentation correctness remain reviewer responsibilities.
-
-## Automation and anti-overengineering
-
-Use existing repository checks. Add a structural guard only after real migrations prove a stable repeated need with a precise low-maintenance check.
-
-Do not create:
+Use existing test infrastructure. Do not create:
 
 - a production state-matrix component;
-- runtime state or token registries;
+- runtime token or geometry registries;
 - a generic component-test DSL;
 - public test-only API;
-- a family-specific forced-state system;
-- shared fixtures before multiple current families prove the need;
-- frame-level motion infrastructure for ordinary CSS transitions;
+- family-specific forced-state systems;
+- frame-level infrastructure for ordinary CSS transitions;
 - separate operator report files.
 
 ## Completion
 
-Proof is complete when applicable contracts are covered at the correct layers, named-risk setups actually enter their claimed conditions, normalization/fallback branches agree across behavior, warnings, documentation, and tests, the two-stage audit passes or records exact remaining work, visible evidence is readable and proportional, browser behavior is tested only where owned, changed consumers are preserved, required operator acceptance is explicit and recorded in README, and applicable local verification passes.
+Proof is complete only when applicable contracts are covered at correct layers, geometry relationships are coherent, final properties are asserted on correct owners, CSS namespaces are valid, named-risk setups are causal, normalization branches agree, independent review records exact remaining work, visible evidence uses real anatomy, required operator acceptance is explicit, and applicable local verification passes.
