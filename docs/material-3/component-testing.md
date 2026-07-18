@@ -4,6 +4,14 @@ This document defines proportional proof for public components in the Mioframe M
 
 Tests prove contracts the component or changed foundation actually owns. They do not retest Vue, CSS, browser internals, or subjective operator perception. They must still prove objective anatomy, geometry, ownership, and visible endpoints before operator handoff.
 
+## Generalization boundary
+
+Testing policy contains only cross-family risk and evidence rules.
+
+Do not add family selectors, custom-property names, token values, DOM node names, bug symptoms, or expected family structures. Concrete scenarios belong in the owning family tests, README, and AUDIT.
+
+A pilot defect may refine this document only through a risk statement and proof rule that can be applied to any family owning that risk.
+
 ## Principles
 
 - Derive proof from the official family contract, project rules, and current change.
@@ -12,7 +20,7 @@ Tests prove contracts the component or changed foundation actually owns. They do
 - Green automation does not prove that a baseline matches Material 3 Expressive.
 - Green automation does not override rejected operator feedback.
 - A test proves a named risk only when its setup enters that risk.
-- Numeric equality on the wrong DOM owner is not conformance proof.
+- Numeric equality on the wrong owner is not conformance proof.
 - Objective structural defects are agent-owned, not operator-owned.
 
 ## Proof layers
@@ -21,7 +29,7 @@ Tests prove contracts the component or changed foundation actually owns. They do
 | --- | --- | --- |
 | Component contract | Every new or migrated public component | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
 | Canonical visual story | Visible output exists | Stable readable surface using real production anatomy |
-| `StateMatrix` | Multiple distinct visible routes exist | Compare configurations, states, winners, and coexistence |
+| State matrix | Multiple distinct visible routes exist | Compare configurations, states, winners, and coexistence |
 | Visual regression | Stable visual contract has regression risk | Detect unintended changes against a bounded baseline |
 | Browser behavior | Correctness depends on browser behavior or layout | Focus, input, hit testing, layout, clipping, measurement, cancellation, or runtime lifecycle |
 | Pure behavior | Extracted logic or lifecycle exists | Helpers, composables, timing, cancellation, and cleanup |
@@ -57,13 +65,13 @@ Use colocated Vue Test Utils tests for applicable:
 - non-browser foundation wiring;
 - public Mioframe extensions.
 
-Component tests may verify that required structural elements exist and have the intended semantic role. They do not prove computed layout, hit regions, clipping, focus-visible, ripple, or visual shape.
+Component tests may verify required structural elements and semantic roles. They do not prove computed layout, hit regions, clipping, focus-visible, ripple, or visual shape.
 
 Prefer named contract assertions over complete rendered-tree snapshots.
 
-## Mandatory geometry proof
+## Applicable geometry proof
 
-When a visible interactive component has distinct or non-obvious geometry, browser proof must identify and compare the concrete bounds of:
+When a visible interactive component has distinct or non-obvious geometry, browser proof identifies applicable concrete bounds:
 
 ```text
 semantic host
@@ -77,44 +85,39 @@ focus-indicator bounds
 outline/elevation/shape owner
 ```
 
-Prove applicable relations:
+Mark non-applicable roles. Do not require an element solely to complete the list.
 
-- the intended target is one coherent rectangular region;
-- layout reserves the required interaction space;
-- the interaction target does not overlap adjacent controls;
-- the visual container has the official size and position within the layout target;
-- state layer and ripple are clipped to the intended visual container;
-- focus indication follows the intended visible target;
-- content remains centered/aligned and unclipped;
-- background, outline, elevation, shape, and motion are applied to the correct owner.
+Prove applicable relationships:
 
-For custom or expanded targets, test representative:
+- interaction geometry is coherent and contiguous;
+- layout reserves required interaction space;
+- adjacent interactive regions do not conflict;
+- the visual container has the official size and placement;
+- state layer and ripple use intended rendered and clipping bounds;
+- focus indication follows its intended target;
+- content remains correctly aligned and unclipped;
+- background, outline, elevation, shape, and motion use their correct owners.
 
-- center;
-- each relevant edge;
-- at least one corner;
-- boundary with an adjacent control;
-- points outside the intended target.
+For custom or expanded interaction geometry, test representative interior, boundary, exterior, and adjacent-control points.
 
-A test clicking one convenient central point is not proof of complete target geometry.
+A single successful point is not proof of the complete interaction region.
 
-Do not accept an absolutely positioned descendant extending outside its semantic host when it creates a cross-shaped, partial, overlapping, or non-layout hit region.
+Do not accept helper geometry that produces partial, disconnected, overlapping, or unreserved interaction regions.
 
 ## Final rendered-owner proof
 
 For each visible route, assert the final property on the actual owner.
 
-A computed token or CSS variable on an ancestor, wrapper, or helper does not prove the visible result.
+A computed token or variable on an ancestor, wrapper, or helper does not prove the visible result.
 
 For shape:
 
-- identify the actual visual container;
-- assert its resting and state endpoint geometry;
-- verify clipping and box sizing do not change the visible shape;
-- verify pressed, selected, disabled, and simultaneous-state endpoints;
-- reject a visibly rectangular or malformed endpoint even when a scalar radius matches an expected value.
+- identify the official shape owner;
+- assert applicable resting and state endpoints;
+- verify clipping, box sizing, and corner composition do not change the intended result;
+- reject a visibly incorrect endpoint even when a scalar source value matches.
 
-A scalar `border-radius` assertion alone is insufficient.
+A scalar radius assertion alone is insufficient when more than the scalar determines the rendered shape.
 
 ## CSS custom-property proof boundary
 
@@ -123,20 +126,13 @@ Tests may prove public overrides reach final owners. Tests must not normalize in
 Before testing, authoring and review classify touched variables as:
 
 - exact official `--md-ref-*`, `--md-sys-*`, or `--md-comp-*`;
-- justified `--md-private-*` route;
+- justified `--md-private-<owner>-<semantic-role>` route;
 - genuine `--app-*` token;
 - invalid or unnecessary alias.
 
-Do not write tests that bless ad-hoc public-looking names such as:
+Do not write tests that bless an ad-hoc name shaped like `--md-<artifact>-<raw-css-property>`.
 
-```text
---md-button-border-radius
---md-button-height
---md-button-padding-left
---md-button-icon-gap
-```
-
-Private variables are implementation details, not consumer API. Test the official source or public extension and the final output, not the private alias itself unless a generic foundation boundary explicitly owns that bridge.
+Private variables are implementation details, not consumer API. Test the official source or public extension and the final output, not a private alias itself unless a generic foundation boundary explicitly owns that bridge.
 
 ## Normalization and fallback proof
 
@@ -159,7 +155,7 @@ Use isolated Storybook Playwright tests when correctness depends on behavior the
 - pointer/touch acquisition, hit testing, gesture, capture, or cancellation;
 - overlay and containment;
 - layout, measurement, responsive, or container-dependent behavior;
-- JavaScript/WAAPI lifecycle;
+- JavaScript or WAAPI lifecycle;
 - final computed propagation that source review cannot establish reliably.
 
 Use public input and assert public outcomes. Forced state and direct mutation do not prove browser behavior.
@@ -171,19 +167,19 @@ Motion ownership is split:
 - official documentation defines the requirement;
 - project documentation defines an accepted Web adaptation;
 - shared foundation implements and proves cross-family runtime behavior deeply once;
-- component owns correct property, geometry owner, state routing, and family-specific endpoints;
+- component owns correct property, final owner, state routing, and family-specific endpoints;
 - reviewer checks technical and canonical alignment;
 - operator owns final perceived quality.
 
-At component level prove:
+At component level prove applicable:
 
-- real input activates the intended property on the correct visual owner;
+- real input activates the intended property on the correct owner;
 - one meaningful intermediate state when needed;
-- correct visible endpoint;
-- safe interruption/cancellation;
+- correct visible endpoints;
+- safe interruption or cancellation;
 - reduced motion when owned.
 
-Do not claim motion fixed when timing changes but the visible endpoint, owning geometry, or rendered shape remains wrong.
+Do not claim motion fixed when timing changes but the final visible owner, endpoint, composition, or rendered property remains wrong.
 
 Technical route proof never closes rejected operator feedback.
 
@@ -193,10 +189,10 @@ Changes to root/system tokens, universal selectors, pseudo-elements, shared form
 
 Representative proof must:
 
-- identify current affected contract classes;
+- identify affected contract classes;
 - exercise the changed source through final rendered output;
 - include more than the motivating family when multiple families consume it;
-- distinguish identical default output from actual override/state behavior.
+- distinguish identical default output from actual override or state behavior.
 
 Unchanged tests that never exercise the route are not representative proof.
 
@@ -207,37 +203,37 @@ Every visible public component has one stable canonical story.
 The story must:
 
 - use real production anatomy;
-- use representative real child components rather than placeholder glyphs when child geometry is claimed;
+- use representative real children when their geometry or behavior is claimed;
 - present distinct visible states and configurations readably;
 - expose the complete surface the operator is asked to review.
 
-Use `StateMatrix` only when multiple distinct visual routes exist. Do not build a Cartesian product.
+Use a state matrix only when multiple distinct visual routes exist. Do not build a Cartesian product.
 
 ## Visual regression
 
 A visual baseline detects changes from the stored baseline. It does not prove Material correctness, correct anatomy, correct ownership, or operator acceptance.
 
-Do not create or update a baseline until the underlying structural contract is understood. A baseline preserving a malformed component is regression evidence for the malformed output, not conformance evidence.
+Do not create or update a baseline until the underlying structural contract is understood. A baseline preserving malformed output is regression evidence for that output, not conformance evidence.
 
 ## Independent review
 
 Before operator handoff, reviewer confirms:
 
-- geometry ownership map is complete and coherent;
+- applicable ownership is complete and coherent;
 - final properties are checked on correct owners;
-- CSS custom-property namespaces are valid;
-- tests prove their named risks causally;
+- custom-property namespaces are valid;
+- tests prove named risks causally;
 - canonical stories use real anatomy;
 - no objective defect is hidden behind operator review;
 - README preserves current feedback accurately.
 
-A high-severity anatomy, target, geometry, shape, final-owner, invalid-namespace, or unchanged visible defect requires `non-compliant`.
+A high-severity anatomy, interaction, geometry, visible-endpoint, final-owner, namespace, or unchanged visible defect requires `non-compliant`.
 
 ## Operator review
 
 Operator review is performed through normal user messages.
 
-The operator evaluates final visible fidelity and perceived motion quality. The operator does not own discovery of incorrect DOM anatomy, interaction bounds, visual-container ownership, CSS naming, clipping, or test insufficiency.
+The operator evaluates final visible fidelity and perceived motion quality. The operator does not own discovery of incorrect anatomy, interaction bounds, visible ownership, CSS naming, clipping, or test insufficiency.
 
 Only explicit user acceptance sets accepted status.
 
@@ -255,4 +251,4 @@ Use existing test infrastructure. Do not create:
 
 ## Completion
 
-Proof is complete only when applicable contracts are covered at correct layers, geometry relationships are coherent, final properties are asserted on correct owners, CSS namespaces are valid, named-risk setups are causal, normalization branches agree, independent review records exact remaining work, visible evidence uses real anatomy, required operator acceptance is explicit, and applicable local verification passes.
+Proof is complete only when applicable contracts are covered at correct layers, ownership relationships are coherent, final properties are asserted on correct owners, namespaces are valid, named-risk setups are causal, normalization branches agree, independent review records exact remaining work, visible evidence uses real anatomy, required operator acceptance is explicit, and applicable local verification passes.
