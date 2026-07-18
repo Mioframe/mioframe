@@ -80,35 +80,37 @@ const assertFocusIndicatorFollowsHost = async (page: Page, indicator: Locator, h
   expect(indicatorBox.y + indicatorBox.height + visibleExtent).toBeLessThanOrEqual(viewport.height);
 };
 
-test('MDButton expanded target activates clicks outside the visible button box', async ({
+test('MDButton expanded target activates clicks outside the visible container box', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--expanded-target-hit-area');
 
   const surface = page.locator('#visual-md-button-target-hit');
+  // The button host reserves the full 48dp minimum interaction target as its own real layout
+  // box; `.md-button__container` renders the smaller documented visual pill centered inside it.
   const button = surface.getByRole('button', { name: 'OK', exact: true });
-  const target = surface.locator('.md-button__target');
+  const container = surface.locator('.md-button__container');
   const count = page.locator('#visual-md-button-target-hit-count');
   const buttonBox = await button.boundingBox();
-  const targetBox = await target.boundingBox();
+  const containerBox = await container.boundingBox();
 
   expect(buttonBox).not.toBeNull();
-  expect(targetBox).not.toBeNull();
+  expect(containerBox).not.toBeNull();
 
-  if (buttonBox == null || targetBox == null) {
+  if (buttonBox == null || containerBox == null) {
     throw new Error('Missing MDButton bounding boxes for expanded target hit test.');
   }
 
   const clickPoint = {
-    x: buttonBox.x + buttonBox.width / 2,
-    y: buttonBox.y - 2,
+    x: containerBox.x + containerBox.width / 2,
+    y: buttonBox.y + 2,
   };
 
-  expect(clickPoint.x).toBeGreaterThan(targetBox.x);
-  expect(clickPoint.x).toBeLessThan(targetBox.x + targetBox.width);
-  expect(clickPoint.y).toBeGreaterThan(targetBox.y);
-  expect(clickPoint.y).toBeLessThan(targetBox.y + targetBox.height);
-  expect(clickPoint.y).toBeLessThan(buttonBox.y);
+  expect(clickPoint.x).toBeGreaterThan(buttonBox.x);
+  expect(clickPoint.x).toBeLessThan(buttonBox.x + buttonBox.width);
+  expect(clickPoint.y).toBeGreaterThan(buttonBox.y);
+  expect(clickPoint.y).toBeLessThan(buttonBox.y + buttonBox.height);
+  expect(clickPoint.y).toBeLessThan(containerBox.y);
 
   await page.mouse.click(clickPoint.x, clickPoint.y);
 
@@ -224,7 +226,10 @@ test('MDButton focus indicator follows real keyboard focus and is not clipped', 
   expect(await host.evaluate((el) => el.matches(':focus-visible'))).toBe(true);
   await expect(indicator).toHaveCSS('opacity', '1');
 
-  await assertFocusIndicatorFollowsHost(page, indicator, host);
+  // The focused host reserves the (possibly larger) minimum interaction target; the indicator's
+  // documented bounding source is `.md-button__container` (`data-md-focus-indicator-target`),
+  // the actual visible button.
+  await assertFocusIndicatorFollowsHost(page, indicator, host.locator('.md-button__container'));
 });
 
 test('MDButton pressed shape starts releasing immediately after a quick pointer press', async ({
@@ -233,12 +238,12 @@ test('MDButton pressed shape starts releasing immediately after a quick pointer 
   await openStory(page, 'material-3-components-buttons-mdbutton--size-geometry-matrix');
 
   const button = page.getByTestId('geometry-small-round');
-  const restingRadius = await button.evaluate((el) =>
-    parseFloat(getComputedStyle(el).borderRadius),
-  );
+  const readContainerRadius = (el: HTMLElement) =>
+    parseFloat(getComputedStyle(el.querySelector('.md-button__container') ?? el).borderRadius);
+  const restingRadius = await button.evaluate(readContainerRadius);
   const pressedRadius = await page
     .getByTestId('geometry-small-pressed')
-    .evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+    .evaluate(readContainerRadius);
   const box = await button.boundingBox();
 
   if (box == null) {
@@ -248,15 +253,13 @@ test('MDButton pressed shape starts releasing immediately after a quick pointer 
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await expect(button).toHaveClass(/md-button_pressed/);
-  await expect
-    .poll(() => button.evaluate((el) => parseFloat(getComputedStyle(el).borderRadius)))
-    .toBeCloseTo(pressedRadius, 1);
+  await expect.poll(() => button.evaluate(readContainerRadius)).toBeCloseTo(pressedRadius, 1);
 
   await page.mouse.up();
   await expect(button).not.toHaveClass(/md-button_pressed/);
 
   await expect
-    .poll(() => button.evaluate((el) => parseFloat(getComputedStyle(el).borderRadius)), {
+    .poll(() => button.evaluate(readContainerRadius), {
       timeout: 150,
     })
     .toBeGreaterThan(pressedRadius + (restingRadius - pressedRadius) / 4);

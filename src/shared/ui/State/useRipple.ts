@@ -70,10 +70,16 @@ let lastTarget: Element | undefined = undefined;
 
 /**
  * Attach Material-style ripple rendering to an interactive host element.
- * @param rawEl - Reactive element source for the host that should render the ripple.
+ * @param rawEl - Reactive element source for the host that listens for press activation.
+ * @param rawRenderEl - Reactive element source the ripple renders/clips into. Defaults to
+ *   `rawEl` when omitted, so every existing single-argument consumer is unaffected. Pass a
+ *   distinct element when the listening host is larger than its visible container (an expanded
+ *   minimum touch target), so the ripple's geometry and clip bounds follow the visible container
+ *   instead of the larger interaction target.
  */
-export const useRipple = (rawEl: MaybeElementRef) => {
+export const useRipple = (rawEl: MaybeElementRef, rawRenderEl?: MaybeElementRef) => {
   const el = computed(() => unrefElement(rawEl));
+  const renderEl = computed(() => unrefElement(rawRenderEl) ?? unrefElement(rawEl));
 
   let lastAnimation: Animation | undefined = undefined;
 
@@ -87,10 +93,12 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     clientY: number;
   }) => {
     const { target, clientX, clientY } = press;
+    const renderTarget = renderEl.value;
 
     if (
       target instanceof Element &&
       target === unrefElement(el) &&
+      renderTarget &&
       (!lastTarget || !target.contains(lastTarget))
     ) {
       lastTarget = target;
@@ -98,7 +106,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
       lastAnimation = await startRipple({
         clientX,
         clientY,
-        target,
+        target: renderTarget,
       });
     }
   };

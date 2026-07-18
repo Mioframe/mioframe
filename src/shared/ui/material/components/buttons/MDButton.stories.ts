@@ -42,7 +42,7 @@ const meta = {
           '',
           '**Invalid combination**: `selected` with `variant="default"` is ignored (not rendered as selected) and logs a development warning.',
           '',
-          '**Target area**: `extra-small` and `small` sizes keep a 48dp minimum hit target via `.md-button__target`.',
+          '**Target area**: `extra-small` and `small` sizes reserve a real 48dp minimum interaction target on the native `<button>` (`min-width`/`height`, part of normal layout flow, not an absolutely positioned overlay); `.md-button__container` renders the documented smaller visual container centered inside it and is the focus-indicator bounding source (`data-md-focus-indicator-target`).',
           '',
           "**Toggle shape**: selected toggle buttons morph container shape per size (round input shape morphs to the size's square corner token, square input shape morphs to a fully-rounded corner token); the pressed shape always takes precedence over the selected shape, and the selected shape is preserved while disabled — including the artificial forced-pressed test combination, since a real disabled button can never enter a genuine `:active` interaction.",
           '',

@@ -66,6 +66,7 @@ const onButtonClick = (event: MouseEvent) => {
 };
 
 const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
+const containerEl = useTemplateRef<HTMLSpanElement>('containerEl');
 const { hover, focused, pressed, durationPressedState } = useStateLayer(buttonEl);
 const showVisualState = computed(() => !props.disabled);
 /**
@@ -123,7 +124,10 @@ const labelTypescaleClass = computed(() => {
   }
 });
 
-useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
+useRipple(
+  computed(() => (props.disabled ? undefined : buttonEl.value)),
+  computed(() => (props.disabled ? undefined : containerEl.value)),
+);
 
 if (import.meta.env.DEV) {
   onMounted(() => {
@@ -172,46 +176,46 @@ if (import.meta.env.DEV) {
     ]"
     @click.stop="onButtonClick"
   >
-    <span class="md-button__target" aria-hidden="true" />
-
-    <MDStateLayer
-      :hover="hover"
-      :focused="focused"
-      :pressed="durationPressedState"
-      :disabled="props.disabled"
-    />
-
-    <span class="md-button__content">
-      <span v-if="!!slots.icon" class="md-button__icon">
-        <slot name="icon" />
-      </span>
-
-      <span v-if="props.label" class="md-button__label-text" :class="labelTypescaleClass">{{
-        props.label
-      }}</span>
-
-      <MDCircularProgressIndicator
-        v-if="isLoading"
-        aria-hidden="true"
-        class="md-button__progress-indicator"
-        :progress="normalizedLoadingProgress"
+    <span ref="containerEl" class="md-button__container" data-md-focus-indicator-target>
+      <MDStateLayer
+        :hover="hover"
+        :focused="focused"
+        :pressed="durationPressedState"
+        :disabled="props.disabled"
       />
+
+      <span class="md-button__content">
+        <span v-if="!!slots.icon" class="md-button__icon">
+          <slot name="icon" />
+        </span>
+
+        <span v-if="props.label" class="md-button__label-text" :class="labelTypescaleClass">{{
+          props.label
+        }}</span>
+
+        <MDCircularProgressIndicator
+          v-if="isLoading"
+          aria-hidden="true"
+          class="md-button__progress-indicator"
+          :progress="normalizedLoadingProgress"
+        />
+      </span>
     </span>
   </button>
 </template>
 
 <style scoped>
 .md-button {
-  --md-button-border-radius: 20px;
-  --md-button-icon-size: 20dp;
-  --md-button-height: 40px;
-  --md-button-padding-left: 16px;
-  --md-button-padding-right: 16px;
-  --md-button-icon-gap: 8px;
-  --md-button-border-width: 0px;
-  --md-button-border-style: solid;
-  --md-button-box-sizing: border-box;
-  --md-button-target-size: var(--md-button-height);
+  --md-private-button-border-radius: 20px;
+  --md-private-button-icon-size: 20dp;
+  --md-private-button-height: 40px;
+  --md-private-button-padding-left: 16px;
+  --md-private-button-padding-right: 16px;
+  --md-private-button-icon-gap: 8px;
+  --md-private-button-border-width: 0px;
+  --md-private-button-border-style: solid;
+  --md-private-button-box-sizing: border-box;
+  --md-private-button-target-size: var(--md-private-button-height);
   --md-private-button-container-color: transparent;
   --md-private-button-label-color: inherit;
   --md-private-button-icon-color: inherit;
@@ -269,51 +273,58 @@ if (import.meta.env.DEV) {
   --md-private-state-layer-transition-easing: var(
     --md-private-motion-expressive-fast-effects-easing
   );
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: var(--md-button-height);
-  padding-left: var(--md-button-padding-left);
-  padding-right: var(--md-button-padding-right);
-  border: var(--md-button-border-width) var(--md-button-border-style)
-    var(--md-private-button-rendered-outline-color);
-  box-sizing: var(--md-button-box-sizing);
-  border-radius: var(--md-button-border-radius);
-  background: var(--md-private-button-rendered-container-color);
-  box-shadow: var(--md-private-button-rendered-elevation);
-  color: var(--md-private-button-rendered-label-color);
+  box-sizing: var(--md-private-button-box-sizing);
+  /*
+   * Semantic host and layout footprint: reserves the full minimum interaction target as a real
+   * flow box (`min-width`/`height`, not an absolutely positioned overlay), so adjacent siblings
+   * respect the reserved space instead of the target silently overlapping them. For sizes at or
+   * above the 48dp minimum target, `--md-private-button-target-size` already equals
+   * `--md-private-button-height`, so this is a no-op and the host and visual container coincide.
+   */
+  min-width: var(--md-private-button-target-size);
+  height: var(--md-private-button-target-size);
   outline-color: var(--md-state-outline-color);
   vertical-align: middle;
   cursor: pointer;
   user-select: none;
-  transition:
-    border-radius var(--md-private-button-corner-motion-duration)
-      var(--md-private-button-corner-motion-easing),
-    box-shadow var(--md-private-motion-expressive-fast-spatial-duration)
-      var(--md-private-motion-expressive-fast-spatial-easing),
-    background-color var(--md-private-motion-expressive-fast-effects-duration)
-      var(--md-private-motion-expressive-fast-effects-easing),
-    border-color var(--md-private-motion-expressive-fast-effects-duration)
-      var(--md-private-motion-expressive-fast-effects-easing);
   -webkit-tap-highlight-color: transparent;
 
   &:disabled {
     cursor: default;
   }
 
-  &__target {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    z-index: 0;
-    display: block;
-    width: var(--md-button-target-size);
-    height: var(--md-button-target-size);
-    min-width: var(--md-button-target-size);
-    min-height: var(--md-button-target-size);
-    transform: translate(-50%, -50%);
-    background: transparent;
+  /*
+   * Visual container: owns background, outline, elevation, shape, and the clipped state
+   * layer/ripple at the documented container geometry, centered inside the (possibly larger)
+   * semantic host reserved above.
+   */
+  &__container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--md-private-button-height);
+    padding-left: var(--md-private-button-padding-left);
+    padding-right: var(--md-private-button-padding-right);
+    border: var(--md-private-button-border-width) var(--md-private-button-border-style)
+      var(--md-private-button-rendered-outline-color);
+    box-sizing: var(--md-private-button-box-sizing);
+    border-radius: var(--md-private-button-border-radius);
+    background: var(--md-private-button-rendered-container-color);
+    box-shadow: var(--md-private-button-rendered-elevation);
+    color: var(--md-private-button-rendered-label-color);
+    transition:
+      border-radius var(--md-private-button-corner-motion-duration)
+        var(--md-private-button-corner-motion-easing),
+      box-shadow var(--md-private-motion-expressive-fast-spatial-duration)
+        var(--md-private-motion-expressive-fast-spatial-easing),
+      background-color var(--md-private-motion-expressive-fast-effects-duration)
+        var(--md-private-motion-expressive-fast-effects-easing),
+      border-color var(--md-private-motion-expressive-fast-effects-duration)
+        var(--md-private-motion-expressive-fast-effects-easing);
   }
 
   &__content {
@@ -322,15 +333,15 @@ if (import.meta.env.DEV) {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: var(--md-button-icon-gap);
+    gap: var(--md-private-button-icon-gap);
   }
 
   &__icon {
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    width: var(--md-button-icon-size, 1lh);
-    height: var(--md-button-icon-size, 1lh);
+    width: var(--md-private-button-icon-size, 1lh);
+    height: var(--md-private-button-icon-size, 1lh);
     color: rgb(
       from var(--md-private-button-rendered-icon-color) r g b /
         var(--md-private-button-icon-opacity, 1)
@@ -344,7 +355,7 @@ if (import.meta.env.DEV) {
         var(--md-private-motion-expressive-fast-effects-easing),
       opacity var(--md-private-motion-expressive-fast-effects-duration)
         var(--md-private-motion-expressive-fast-effects-easing);
-    --md-symbol-size: var(--md-button-icon-size, 1lh);
+    --md-symbol-size: var(--md-private-button-icon-size, 1lh);
 
     .md-button_loading & {
       opacity: 0;
@@ -381,7 +392,7 @@ if (import.meta.env.DEV) {
   }
 
   &.md-button_shape-round {
-    --md-button-border-radius: var(--md-button-height);
+    --md-private-button-border-radius: var(--md-private-button-height);
   }
 
   &.md-button_color-elevated {
@@ -1012,8 +1023,8 @@ if (import.meta.env.DEV) {
   }
 
   &.md-button_color-outlined {
-    --md-button-border-style: solid;
-    --md-button-box-sizing: border-box;
+    --md-private-button-border-style: solid;
+    --md-private-button-box-sizing: border-box;
     /* md.comp.button.outlined publishes no container-elevation route (an outlined container has
        no shadow); this is a private-only constant, not a public component token. */
     --md-private-button-elevation: var(--md-sys-elevation-level0);
@@ -1451,39 +1462,43 @@ if (import.meta.env.DEV) {
       --md-comp-button-xsmall-selected-container-shape-round: var(--md-sys-shape-corner-medium);
       --md-comp-button-xsmall-selected-container-shape-square: var(--md-sys-shape-corner-full);
 
-      --md-button-height: var(--md-comp-button-xsmall-container-height);
-      --md-button-icon-size: var(--md-comp-button-xsmall-icon-size);
-      --md-button-padding-left: var(--md-comp-button-xsmall-leading-space);
-      --md-button-padding-right: var(--md-comp-button-xsmall-trailing-space);
-      --md-button-icon-gap: var(--md-comp-button-xsmall-icon-label-space);
-      --md-button-target-size: 48dp;
+      --md-private-button-height: var(--md-comp-button-xsmall-container-height);
+      --md-private-button-icon-size: var(--md-comp-button-xsmall-icon-size);
+      --md-private-button-padding-left: var(--md-comp-button-xsmall-leading-space);
+      --md-private-button-padding-right: var(--md-comp-button-xsmall-trailing-space);
+      --md-private-button-icon-gap: var(--md-comp-button-xsmall-icon-label-space);
+      --md-private-button-target-size: 48dp;
 
       &.md-button_color-outlined {
-        --md-button-border-width: var(--md-comp-button-xsmall-outlined-outline-width);
+        --md-private-button-border-width: var(--md-comp-button-xsmall-outlined-outline-width);
       }
 
       &.md-button_shape-round {
-        --md-button-border-radius: var(--md-comp-button-xsmall-container-shape-round);
+        --md-private-button-border-radius: var(--md-comp-button-xsmall-container-shape-round);
       }
       &.md-button_shape-square {
-        --md-button-border-radius: var(--md-comp-button-xsmall-container-shape-square);
+        --md-private-button-border-radius: var(--md-comp-button-xsmall-container-shape-square);
       }
 
       &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-round);
+        --md-private-button-border-radius: var(
+          --md-comp-button-xsmall-selected-container-shape-round
+        );
       }
 
       &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-xsmall-selected-container-shape-square);
+        --md-private-button-border-radius: var(
+          --md-comp-button-xsmall-selected-container-shape-square
+        );
       }
 
       &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
-        --md-button-border-radius: var(--md-comp-button-xsmall-pressed-container-shape);
+        --md-private-button-border-radius: var(--md-comp-button-xsmall-pressed-container-shape);
       }
     }
 
@@ -1500,39 +1515,43 @@ if (import.meta.env.DEV) {
       --md-comp-button-small-selected-container-shape-round: var(--md-sys-shape-corner-medium);
       --md-comp-button-small-selected-container-shape-square: var(--md-sys-shape-corner-full);
 
-      --md-button-height: var(--md-comp-button-small-container-height);
-      --md-button-icon-size: var(--md-comp-button-small-icon-size);
-      --md-button-padding-left: var(--md-comp-button-small-leading-space);
-      --md-button-padding-right: var(--md-comp-button-small-trailing-space);
-      --md-button-icon-gap: var(--md-comp-button-small-icon-label-space);
-      --md-button-target-size: 48dp;
+      --md-private-button-height: var(--md-comp-button-small-container-height);
+      --md-private-button-icon-size: var(--md-comp-button-small-icon-size);
+      --md-private-button-padding-left: var(--md-comp-button-small-leading-space);
+      --md-private-button-padding-right: var(--md-comp-button-small-trailing-space);
+      --md-private-button-icon-gap: var(--md-comp-button-small-icon-label-space);
+      --md-private-button-target-size: 48dp;
 
       &.md-button_color-outlined {
-        --md-button-border-width: var(--md-comp-button-small-outlined-outline-width);
+        --md-private-button-border-width: var(--md-comp-button-small-outlined-outline-width);
       }
 
       &.md-button_shape-round {
-        --md-button-border-radius: var(--md-comp-button-small-container-shape-round);
+        --md-private-button-border-radius: var(--md-comp-button-small-container-shape-round);
       }
       &.md-button_shape-square {
-        --md-button-border-radius: var(--md-comp-button-small-container-shape-square);
+        --md-private-button-border-radius: var(--md-comp-button-small-container-shape-square);
       }
 
       &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-round);
+        --md-private-button-border-radius: var(
+          --md-comp-button-small-selected-container-shape-round
+        );
       }
 
       &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-small-selected-container-shape-square);
+        --md-private-button-border-radius: var(
+          --md-comp-button-small-selected-container-shape-square
+        );
       }
 
       &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
-        --md-button-border-radius: var(--md-comp-button-small-pressed-container-shape);
+        --md-private-button-border-radius: var(--md-comp-button-small-pressed-container-shape);
       }
     }
 
@@ -1549,38 +1568,42 @@ if (import.meta.env.DEV) {
       --md-comp-button-medium-selected-container-shape-round: var(--md-sys-shape-corner-large);
       --md-comp-button-medium-selected-container-shape-square: var(--md-sys-shape-corner-full);
 
-      --md-button-height: var(--md-comp-button-medium-container-height);
-      --md-button-icon-size: var(--md-comp-button-medium-icon-size);
-      --md-button-padding-left: var(--md-comp-button-medium-leading-space);
-      --md-button-padding-right: var(--md-comp-button-medium-trailing-space);
-      --md-button-icon-gap: var(--md-comp-button-medium-icon-label-space);
+      --md-private-button-height: var(--md-comp-button-medium-container-height);
+      --md-private-button-icon-size: var(--md-comp-button-medium-icon-size);
+      --md-private-button-padding-left: var(--md-comp-button-medium-leading-space);
+      --md-private-button-padding-right: var(--md-comp-button-medium-trailing-space);
+      --md-private-button-icon-gap: var(--md-comp-button-medium-icon-label-space);
 
       &.md-button_color-outlined {
-        --md-button-border-width: var(--md-comp-button-medium-outlined-outline-width);
+        --md-private-button-border-width: var(--md-comp-button-medium-outlined-outline-width);
       }
 
       &.md-button_shape-round {
-        --md-button-border-radius: var(--md-comp-button-medium-container-shape-round);
+        --md-private-button-border-radius: var(--md-comp-button-medium-container-shape-round);
       }
       &.md-button_shape-square {
-        --md-button-border-radius: var(--md-comp-button-medium-container-shape-square);
+        --md-private-button-border-radius: var(--md-comp-button-medium-container-shape-square);
       }
 
       &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-round);
+        --md-private-button-border-radius: var(
+          --md-comp-button-medium-selected-container-shape-round
+        );
       }
 
       &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-medium-selected-container-shape-square);
+        --md-private-button-border-radius: var(
+          --md-comp-button-medium-selected-container-shape-square
+        );
       }
 
       &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
-        --md-button-border-radius: var(--md-comp-button-medium-pressed-container-shape);
+        --md-private-button-border-radius: var(--md-comp-button-medium-pressed-container-shape);
       }
     }
 
@@ -1597,38 +1620,42 @@ if (import.meta.env.DEV) {
       --md-comp-button-large-selected-container-shape-round: var(--md-sys-shape-corner-extra-large);
       --md-comp-button-large-selected-container-shape-square: var(--md-sys-shape-corner-full);
 
-      --md-button-height: var(--md-comp-button-large-container-height);
-      --md-button-icon-size: var(--md-comp-button-large-icon-size);
-      --md-button-padding-left: var(--md-comp-button-large-leading-space);
-      --md-button-padding-right: var(--md-comp-button-large-trailing-space);
-      --md-button-icon-gap: var(--md-comp-button-large-icon-label-space);
+      --md-private-button-height: var(--md-comp-button-large-container-height);
+      --md-private-button-icon-size: var(--md-comp-button-large-icon-size);
+      --md-private-button-padding-left: var(--md-comp-button-large-leading-space);
+      --md-private-button-padding-right: var(--md-comp-button-large-trailing-space);
+      --md-private-button-icon-gap: var(--md-comp-button-large-icon-label-space);
 
       &.md-button_color-outlined {
-        --md-button-border-width: var(--md-comp-button-large-outlined-outline-width);
+        --md-private-button-border-width: var(--md-comp-button-large-outlined-outline-width);
       }
 
       &.md-button_shape-round {
-        --md-button-border-radius: var(--md-comp-button-large-container-shape-round);
+        --md-private-button-border-radius: var(--md-comp-button-large-container-shape-round);
       }
       &.md-button_shape-square {
-        --md-button-border-radius: var(--md-comp-button-large-container-shape-square);
+        --md-private-button-border-radius: var(--md-comp-button-large-container-shape-square);
       }
 
       &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-round);
+        --md-private-button-border-radius: var(
+          --md-comp-button-large-selected-container-shape-round
+        );
       }
 
       &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-large-selected-container-shape-square);
+        --md-private-button-border-radius: var(
+          --md-comp-button-large-selected-container-shape-square
+        );
       }
 
       &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
-        --md-button-border-radius: var(--md-comp-button-large-pressed-container-shape);
+        --md-private-button-border-radius: var(--md-comp-button-large-pressed-container-shape);
       }
     }
 
@@ -1647,38 +1674,42 @@ if (import.meta.env.DEV) {
       );
       --md-comp-button-xlarge-selected-container-shape-square: var(--md-sys-shape-corner-full);
 
-      --md-button-height: var(--md-comp-button-xlarge-container-height);
-      --md-button-icon-size: var(--md-comp-button-xlarge-icon-size);
-      --md-button-padding-left: var(--md-comp-button-xlarge-leading-space);
-      --md-button-padding-right: var(--md-comp-button-xlarge-trailing-space);
-      --md-button-icon-gap: var(--md-comp-button-xlarge-icon-label-space);
+      --md-private-button-height: var(--md-comp-button-xlarge-container-height);
+      --md-private-button-icon-size: var(--md-comp-button-xlarge-icon-size);
+      --md-private-button-padding-left: var(--md-comp-button-xlarge-leading-space);
+      --md-private-button-padding-right: var(--md-comp-button-xlarge-trailing-space);
+      --md-private-button-icon-gap: var(--md-comp-button-xlarge-icon-label-space);
 
       &.md-button_color-outlined {
-        --md-button-border-width: var(--md-comp-button-xlarge-outlined-outline-width);
+        --md-private-button-border-width: var(--md-comp-button-xlarge-outlined-outline-width);
       }
 
       &.md-button_shape-round {
-        --md-button-border-radius: var(--md-comp-button-xlarge-container-shape-round);
+        --md-private-button-border-radius: var(--md-comp-button-xlarge-container-shape-round);
       }
       &.md-button_shape-square {
-        --md-button-border-radius: var(--md-comp-button-xlarge-container-shape-square);
+        --md-private-button-border-radius: var(--md-comp-button-xlarge-container-shape-square);
       }
 
       &.md-button_shape-round.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-round.md-button_selected.md-state_disabled,
       &.md-button_shape-round.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-round);
+        --md-private-button-border-radius: var(
+          --md-comp-button-xlarge-selected-container-shape-round
+        );
       }
 
       &.md-button_shape-square.md-button_selected:not(.md-button_pressed):not(:active),
       &.md-button_shape-square.md-button_selected.md-state_disabled,
       &.md-button_shape-square.md-button_selected:disabled {
-        --md-button-border-radius: var(--md-comp-button-xlarge-selected-container-shape-square);
+        --md-private-button-border-radius: var(
+          --md-comp-button-xlarge-selected-container-shape-square
+        );
       }
 
       &.md-button_pressed:not(.md-state_disabled):not(:disabled),
       &:active:not(:disabled) {
-        --md-button-border-radius: var(--md-comp-button-xlarge-pressed-container-shape);
+        --md-private-button-border-radius: var(--md-comp-button-xlarge-pressed-container-shape);
       }
     }
   }

@@ -44,9 +44,9 @@ Current audit:
 src/shared/ui/material/components/buttons/AUDIT.md
 ```
 
-Current blocker: README records `Status: awaiting re-review` for the corrected pressed-shape motion. Independent Button review and explicit operator visual acceptance remain required. A shared elevation evidence gap also remains for MDCard and MDSwitch override routes.
+Current blocker: README records `Status: rejected`. The broad operator rejection (expanded-target geometry inconsistent with the visible button, wrong overall geometry model, malformed pressed corners) has been partially corrected: geometry ownership (real 48dp-reserving button host, distinct `.md-button__container` visual container, ripple/focus-indicator retargeting) and the invalid `--md-button-*` CSS namespace are fixed and locally verified. Pressed-shape motion is unchanged and remains rejected — the complete affected surface is not yet corrected, so status intentionally stays `rejected` rather than `awaiting re-review`. A shared elevation evidence gap also remains for MDCard and MDSwitch override routes.
 
-Single next action: run `material-component-review Button`, then ask the operator to exercise press, release, and interrupted quick-click motion in the canonical size-geometry story and explicitly accept or reject the new evidence.
+Single next action: run `material-component-review Button` against the corrected geometry, then continue authoring to fix the pressed-shape visible endpoint; only after that ask the operator to exercise press, release, and interrupted quick-click motion in the canonical size-geometry story and explicitly accept or reject the complete surface.
 
 Current progress:
 

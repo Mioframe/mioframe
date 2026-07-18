@@ -46,11 +46,16 @@ export const readButtonVisuals = async (
       const label = selectors.labelSelector ? el.querySelector(selectors.labelSelector) : null;
       const icon = selectors.iconSelector ? el.querySelector(selectors.iconSelector) : null;
       const style = getComputedStyle(el);
+      // `MDButton` owns background/border/box-shadow on its `.md-button__container` visual
+      // container, a descendant of the (possibly larger, minimum-target-reserving) button host
+      // located by testId. Other Button-family members without that split still render those
+      // properties on the located element itself.
+      const visualStyle = getComputedStyle(el.querySelector('.md-button__container') ?? el);
       return {
-        background: style.backgroundColor,
+        background: visualStyle.backgroundColor,
         opacity: style.opacity,
-        boxShadow: style.boxShadow,
-        borderColor: style.borderColor,
+        boxShadow: visualStyle.boxShadow,
+        borderColor: visualStyle.borderColor,
         hoverOpacity: style.getPropertyValue('--md-private-state-hover-state-layer-opacity').trim(),
         focusOpacity: style.getPropertyValue('--md-private-state-focus-state-layer-opacity').trim(),
         pressedOpacity: style
@@ -92,11 +97,14 @@ export const readButtonLocatorVisuals = async (
       const label = selectors.labelSelector ? el.querySelector(selectors.labelSelector) : null;
       const icon = selectors.iconSelector ? el.querySelector(selectors.iconSelector) : null;
       const stateLayer = el.querySelector('.md-state-layer');
+      // See the matching comment in `readButtonVisuals`: `MDButton` renders visual properties on
+      // its `.md-button__container` descendant, not the located host element.
+      const visualStyle = getComputedStyle(el.querySelector('.md-button__container') ?? el);
       return {
-        background: style.backgroundColor,
+        background: visualStyle.backgroundColor,
         opacity: style.opacity,
-        boxShadow: style.boxShadow,
-        borderColor: style.borderColor,
+        boxShadow: visualStyle.boxShadow,
+        borderColor: visualStyle.borderColor,
         labelColor: label ? getComputedStyle(label).color : null,
         labelOpacity: label ? getComputedStyle(label).opacity : null,
         iconColor: icon ? getComputedStyle(icon).color : null,

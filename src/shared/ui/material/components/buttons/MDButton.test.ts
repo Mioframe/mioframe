@@ -29,15 +29,19 @@ describe('MDButton', () => {
     expect(button.findAll('span').length).toBeGreaterThan(0);
   });
 
-  it('renders a non-layout target layer as a direct child of the native button', () => {
+  it('reserves the minimum interaction target on the native button itself and marks the visual container as the focus-indicator bounding source', () => {
     const wrapper = mountButton({ size: 'extra-small' });
     const button = wrapper.get('button');
     const directChildren = Array.from(button.element.children);
-    const target = button.get('.md-button__target');
+    const container = button.get('.md-button__container');
 
-    expect(target.attributes('aria-hidden')).toBe('true');
-    expect(directChildren[0]).toBe(target.element);
+    // The button (semantic host + layout footprint + interaction bounds) is a real flow box, not
+    // an absolutely positioned overlay: the visual container is its only, real DOM child.
+    expect(directChildren).toHaveLength(1);
+    expect(directChildren[0]).toBe(container.element);
     expect(directChildren.every((child) => child.tagName === 'SPAN')).toBe(true);
+    // The visual container — not the (possibly larger) button host — is the intended focus target.
+    expect(container.attributes('data-md-focus-indicator-target')).toBeDefined();
   });
 
   it('treats loading=0 as an active loading state rendered with the indeterminate visual', () => {

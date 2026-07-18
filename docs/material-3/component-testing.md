@@ -17,17 +17,17 @@ Tests prove contracts the component or changed foundation actually owns. They do
 
 ## Proof layers
 
-| Layer | Use when | Purpose |
-| --- | --- | --- |
-| Component contract | Every new or migrated public component | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
-| Canonical visual story | Visible output exists | Stable readable surface using real production anatomy |
-| `StateMatrix` | Multiple distinct visible routes exist | Compare configurations, states, winners, and coexistence |
-| Visual regression | Stable visual contract has regression risk | Detect unintended changes against a bounded baseline |
-| Browser behavior | Correctness depends on browser behavior or layout | Focus, input, hit testing, layout, clipping, measurement, cancellation, or runtime lifecycle |
-| Pure behavior | Extracted logic or lifecycle exists | Helpers, composables, timing, cancellation, and cleanup |
-| Consumer preservation | Imports, wrappers, or usage change | Preserve affected integration contracts |
-| Independent review | Every new or migrated family | Compare implementation with project documentation, then documentation with Material |
-| Operator review | Final perceived fidelity remains | Explicit acceptance or concrete feedback in a user message |
+| Layer                  | Use when                                          | Purpose                                                                                                        |
+| ---------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Component contract     | Every new or migrated public component            | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and structural wiring |
+| Canonical visual story | Visible output exists                             | Stable readable surface using real production anatomy                                                          |
+| `StateMatrix`          | Multiple distinct visible routes exist            | Compare configurations, states, winners, and coexistence                                                       |
+| Visual regression      | Stable visual contract has regression risk        | Detect unintended changes against a bounded baseline                                                           |
+| Browser behavior       | Correctness depends on browser behavior or layout | Focus, input, hit testing, layout, clipping, measurement, cancellation, or runtime lifecycle                   |
+| Pure behavior          | Extracted logic or lifecycle exists               | Helpers, composables, timing, cancellation, and cleanup                                                        |
+| Consumer preservation  | Imports, wrappers, or usage change                | Preserve affected integration contracts                                                                        |
+| Independent review     | Every new or migrated family                      | Compare implementation with project documentation, then documentation with Material                            |
+| Operator review        | Final perceived fidelity remains                  | Explicit acceptance or concrete feedback in a user message                                                     |
 
 Difficulty alone is not a reason to omit an owned contract.
 

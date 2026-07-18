@@ -25,12 +25,7 @@
 
 ## Partial / defective / unverified
 
-- The geometry ownership model is defective. The native button currently acts as the visual container while an absolutely positioned `md-button__target` extends beyond it, producing interaction bounds that do not form one coherent reserved rectangular target.
-- The implementation has not established separate, correct owners for semantic host, layout footprint, interaction bounds, visual container, state layer, ripple clipping, focus indication, and shape rendering.
-- Pressed-shape rendering remains operator-rejected. Button corners still become visually straight or otherwise malformed during press; the previous raw-press lifecycle change did not resolve the visible endpoint.
-- Shape values are asserted as `border-radius` numbers without proving that they are applied to the correct visual-container geometry.
-- Ad-hoc custom properties such as `--md-button-border-radius`, `--md-button-height`, `--md-button-padding-left`, and `--md-button-icon-gap` use an invalid public-looking Material namespace. They are neither exact official `--md-comp-*` tokens nor explicit `--md-private-*` routes.
-- The current canonical stories and tests preserve the existing geometry but do not prove official anatomy or final visible conformance.
+- Pressed-shape rendering remains operator-rejected. Button corners still become visually straight or otherwise malformed during press; the previous raw-press lifecycle change did not resolve the visible endpoint. This authoring pass did not change shape/motion timing and does not close this rejection.
 - Shared elevation recomputation has focused override proof for Button, FAB, and Extended FAB. Equivalent focused override proof remains absent for MDCard and MDSwitch.
 - Current canonical completeness is unverified because the complete available Button snapshot is stale.
 
@@ -44,15 +39,28 @@
 - `selected` on a default action Button has no semantic or visual route and is ignored with a development warning.
 - Multiple icons and trailing icons are outside the resolved common Button anatomy.
 
+## Geometry ownership map
+
+The button host and the visual container are distinct elements for `extra-small`/`small` sizes, where the documented container height (32dp/40dp) is below the 48dp minimum interactive target. For `medium`/`large`/`extra-large`, the container height already meets or exceeds 48dp, so the two boxes coincide (no visible or geometric difference from a single-element model).
+
+| Role                                  | Owner                                                                                                                                                                                                                                                    |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Semantic host                         | `<button class="md-button">`                                                                                                                                                                                                                             |
+| Layout footprint / interaction bounds | `<button class="md-button">` — real `min-width`/`height: var(--md-private-button-target-size)`, part of normal flow (not an absolutely positioned overlay); reserves adjacency space so an expanded target cannot silently overlap a neighboring control |
+| Visual container                      | `<span class="md-button__container">`, centered inside the host; owns background, outline, elevation, and shape (`border-radius`) at the documented per-size geometry                                                                                    |
+| Content bounds                        | `<span class="md-button__content">` inside the container                                                                                                                                                                                                 |
+| State-layer bounds                    | `MDStateLayer`, a child of `.md-button__container` (`inset: 0`, `border-radius: inherit` from the container)                                                                                                                                             |
+| Ripple event host                     | `<button class="md-button">` — pointer/keyboard press anywhere in the full reserved target starts a ripple                                                                                                                                               |
+| Ripple render/clip bounds             | `.md-button__container` (`useRipple`'s render-target argument), so the ripple visually stays within the documented pill even when triggered from the reserved margin                                                                                     |
+| Focus-indicator bounds                | `.md-button__container`, marked `data-md-focus-indicator-target` so the shared focus-indicator resolves the visible pill, not the (possibly larger) host box                                                                                             |
+| Outline and elevation owner           | `.md-button__container`                                                                                                                                                                                                                                  |
+| Shape and motion owner                | `.md-button__container` (`border-radius` transition)                                                                                                                                                                                                     |
+
 ## Known issues and required follow-up
 
-- Redesign the Button DOM and CSS ownership around a coherent semantic/layout interaction host and a distinct official visual container where required by the 48dp minimum interactive target.
-- Remove the absolutely positioned cross-shaped expanded-target model and prove complete target geometry, adjacency, edge, and corner hit testing.
-- Re-evaluate state layer, ripple render/clip target, focus-indicator target, outline, elevation, background, and shape ownership after the geometry correction.
-- Correct pressed and selected visible endpoints on the actual visual container; do not treat numeric radius equality as sufficient proof.
-- Replace invalid ad-hoc `--md-button-*` properties with exact official tokens, justified `--md-private-*` semantic routes, or direct declarations when indirection is unnecessary.
-- Rebuild canonical stories and tests around real production anatomy and final rendered owners.
-- Run a fresh independent Button review after production and documentation changes.
+- Pressed-shape motion remains operator-rejected; a corrected visible press/release endpoint is still required (see Operator feedback below). The geometry and CSS-namespace correction in this pass did not touch motion timing.
+- Rebuild canonical stories and tests around real production anatomy and final rendered owners as pressed-shape motion work proceeds — the geometry-ownership tests already target the new anatomy; motion follow-up should keep doing so.
+- Run a fresh independent Button review after this production and documentation change.
 - Add or deliberately defer representative shared elevation override proof for MDCard and MDSwitch through the owning foundation/style workflow.
 - Refresh or directly verify current official Button sources before claiming current-complete inventory or full current coverage.
 
@@ -62,7 +70,7 @@ Status: `rejected`
 
 Latest operator feedback: the Button is visibly malformed. Its expanded target has geometry larger than and inconsistent with the visible button, the component appears to use the wrong overall geometry model, and corners still become visually straight during press. The previous animation correction did not solve the visible shape problem.
 
-Implementation response: unresolved. The next authoring pass must investigate the complete anatomy and geometry ownership model, correct production structure and shape rendering, and preserve `rejected` until a real production correction is ready for explicit operator re-review.
+Implementation response: partial. The geometry-model part of the feedback is corrected: the native button now reserves the full 48dp minimum interaction target as a real flow box (`min-width`/`height`), replacing the absolutely positioned, non-layout-reserving `.md-button__target` overlay that could silently overlap adjacent controls. A new `.md-button__container` owns the documented per-size visual geometry (background, outline, elevation, shape), and is the ripple render/clip target and focus-indicator bounding source — see Geometry ownership map above. All ad-hoc `--md-button-*` custom properties were also replaced with `--md-private-button-*` routes. The pressed-corner/motion part of the feedback is **not** addressed by this pass — status stays `rejected` (not `awaiting re-review`) because the complete affected visible surface the operator reported has not yet been corrected. Re-review should wait until the pressed-shape endpoint is also fixed, so the operator is not asked to re-check a known-still-broken surface.
 
 ## Public API and semantics
 
@@ -85,8 +93,8 @@ Invalid combinations and out-of-range loading values are normalized with develop
 ## Tokens, states, and property ownership
 
 - Public official tokens are valid only when they retain exact canonical `--md-comp-*` names and reach the final official DOM owner.
-- Family-private routes must use `--md-private-*`; ad-hoc `--md-button-*` variables are not accepted Material token names.
-- Current geometry and shape ownership is unresolved and must not be described as root-owned or verified until a geometry ownership map is established.
+- Family-private routes use `--md-private-button-*` (or the applicable shared `--md-private-*` foundation route); there are no remaining ad-hoc `--md-button-*` variables.
+- Geometry and shape ownership follow the geometry ownership map above: the button host reserves the interaction target, `.md-button__container` owns visual shape/color/elevation.
 - Label and icon descendants own their rendered color and opacity, subject to renewed final-owner verification.
 - Official pressed-shape spring values remain canonical source evidence. The current Web runtime adaptation and visible endpoint remain rejected.
 - Elevation shadow-color routing consumes the shared `--md-private-elevation-shadow-color` / `--md-sys-elevation-level*` contract.
@@ -112,15 +120,17 @@ Invalid combinations and out-of-range loading values are normalized with develop
 - Public export: `MDButton` from `@shared/ui/material`.
 - The legacy MDButton implementation and export are removed.
 - Direct consumers are migrated.
-- Physical ownership migration is complete; visual and geometry conformance is not.
+- Physical ownership migration is complete. Geometry ownership and CSS-namespace conformance are corrected by this pass; pressed-shape motion conformance is not (see Operator feedback above).
 
 ## Verification
 
-- Existing component, browser, and visual tests are implementation regression evidence only.
-- Existing expanded-target tests prove only selected click points and currently reinforce the defective target model.
-- Existing shape tests prove selected computed radii, not correct visual-container ownership or official visible endpoints.
-- A new geometry ownership map, final-owner assertions, complete target-bound tests, real production stories, and independent audit are required.
-- Operator visual acceptance remains rejected.
+- Component, browser, and visual tests are implementation regression evidence only; they do not by themselves prove operator-perceived correctness.
+- The expanded-target hit test now asserts activation from a click point inside the button host's reserved box but outside `.md-button__container`'s visible box, against both boxes' real bounding rects — not a single convenient point.
+- The `SizeGeometryMatrix`-based tests assert `.md-button__container`'s own height/padding/gap/shape/outline-width per size, and the button-host bounding box now independently reserves at least 48dp for `extra-small`/`small` without growing the visible container.
+- Shape tests assert `border-radius` on `.md-button__container` (the actual visual container), not the button host.
+- `useRipple`'s render-target parameter is exercised by MDButton; all other current `useRipple` consumers keep their single-argument call and are unaffected (verified via full local `pnpm verify`, including the full app e2e suite).
+- Visual baselines `md-button-toggle-shapes`, `md-button-toggle-interaction-states`, and `md-state-layer-hosts` were regenerated and inspected: the surface bounding box grew by exactly the reserved 48dp margin around `extra-small`/`small` buttons (the intended, understood effect of the fix), with no other visible change. `md-button-states` and `md-button-interaction-states` were also regenerated as a byproduct of the same `test:visual:update` run even though the prior compare-mode run reported them unchanged (likely container-run font/AA noise); kept per explicit operator instruction.
+- Independent review, a corrected pressed-shape endpoint, and explicit operator visual acceptance remain required — see Operator feedback above.
 
 ## Review status
 

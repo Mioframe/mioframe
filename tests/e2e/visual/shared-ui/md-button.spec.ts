@@ -102,7 +102,11 @@ test('MDButton selected toggle shape morphs round and square input shapes to the
   await openStory(page, 'material-3-components-buttons-mdbutton--toggle-shapes');
 
   const readRadius = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+    page
+      .getByTestId(testId)
+      .evaluate((el) =>
+        parseFloat(getComputedStyle(el.querySelector('.md-button__container') ?? el).borderRadius),
+      );
 
   const roundSelected = await readRadius('toggle-round-selected');
   const roundUnselected = await readRadius('toggle-round-unselected');
@@ -202,12 +206,18 @@ test('MDButton exact geometry per size: height, icon, spacing, gap, outline widt
       // selected-square radii are asserted relative to this same instance's own height rather than
       // a second hand-derived literal.
       const round = await page.getByTestId(`geometry-${size}-round`).evaluate((el) => {
-        const style = getComputedStyle(el);
+        const container = el.querySelector('.md-button__container');
         const content = el.querySelector('.md-button__content');
         const icon = el.querySelector('.md-button__icon');
-        if (!content || !icon) {
-          throw new Error('Missing .md-button__content or .md-button__icon in geometry fixture.');
+        if (!container || !content || !icon) {
+          throw new Error(
+            'Missing .md-button__container, .md-button__content, or .md-button__icon in geometry fixture.',
+          );
         }
+        // The documented per-size container geometry (height, spacing, shape) is owned by the
+        // visual container, not the button host — the host's own box additionally reserves the
+        // 48dp minimum interaction target for extra-small/small sizes.
+        const style = getComputedStyle(container);
         return {
           height: parseFloat(style.height),
           iconSize: parseFloat(getComputedStyle(icon).width),
@@ -217,21 +227,25 @@ test('MDButton exact geometry per size: height, icon, spacing, gap, outline widt
           radius: parseFloat(style.borderRadius),
         };
       });
-      const square = await page
-        .getByTestId(`geometry-${size}-square`)
-        .evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
-      const pressed = await page
-        .getByTestId(`geometry-${size}-pressed`)
-        .evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
-      const selectedRound = await page
-        .getByTestId(`geometry-${size}-selected-round`)
-        .evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
-      const selectedSquare = await page
-        .getByTestId(`geometry-${size}-selected-square`)
-        .evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+      const readContainerRadius = (testId: string) =>
+        page
+          .getByTestId(testId)
+          .evaluate((el) =>
+            parseFloat(
+              getComputedStyle(el.querySelector('.md-button__container') ?? el).borderRadius,
+            ),
+          );
+      const square = await readContainerRadius(`geometry-${size}-square`);
+      const pressed = await readContainerRadius(`geometry-${size}-pressed`);
+      const selectedRound = await readContainerRadius(`geometry-${size}-selected-round`);
+      const selectedSquare = await readContainerRadius(`geometry-${size}-selected-square`);
       const outline = await page
         .getByTestId(`geometry-${size}-outlined`)
-        .evaluate((el) => parseFloat(getComputedStyle(el).borderTopWidth));
+        .evaluate((el) =>
+          parseFloat(
+            getComputedStyle(el.querySelector('.md-button__container') ?? el).borderTopWidth,
+          ),
+        );
 
       expect(round.height, `${size} height`).toBe(expected.height);
       expect(round.iconSize, `${size} icon size`).toBe(expected.icon);
@@ -260,7 +274,11 @@ test('MDButton pressed shape takes precedence over selected shape', async ({ pag
   await openStory(page, 'material-3-components-buttons-mdbutton--toggle-shapes');
 
   const readRadius = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+    page
+      .getByTestId(testId)
+      .evaluate((el) =>
+        parseFloat(getComputedStyle(el.querySelector('.md-button__container') ?? el).borderRadius),
+      );
 
   const selectedOnly = await readRadius('toggle-round-selected');
   const pressedOnly = await readRadius('toggle-round-pressed');
@@ -278,7 +296,11 @@ test('MDButton selected shape is preserved while disabled, including a forced-pr
   await openStory(page, 'material-3-components-buttons-mdbutton--toggle-shape-disabled-precedence');
 
   const readRadius = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
+    page
+      .getByTestId(testId)
+      .evaluate((el) =>
+        parseFloat(getComputedStyle(el.querySelector('.md-button__container') ?? el).borderRadius),
+      );
 
   const roundSelected = await readRadius('toggle-round-selected');
   const roundSelectedDisabled = await readRadius('toggle-round-selected-disabled');
@@ -331,10 +353,11 @@ test('MDButton resting styles resolve to the documented Material color role by d
 
   const readResting = (name: string) => {
     const button = page.getByRole('button', { name, exact: true });
+    const container = button.locator('.md-button__container');
     return Promise.all([
-      button.evaluate((el) => getComputedStyle(el).backgroundColor),
-      button.evaluate((el) => getComputedStyle(el).borderColor),
-      button.evaluate((el) => getComputedStyle(el).boxShadow),
+      container.evaluate((el) => getComputedStyle(el).backgroundColor),
+      container.evaluate((el) => getComputedStyle(el).borderColor),
+      container.evaluate((el) => getComputedStyle(el).boxShadow),
       button.locator('.md-button__label-text').evaluate((el) => getComputedStyle(el).color),
       button.locator('.md-button__icon').evaluate((el) => getComputedStyle(el).color),
     ]).then(([background, borderColor, boxShadow, labelColor, iconColor]) => ({
@@ -582,10 +605,13 @@ test('MDButton text-color spacing follows the active size, including the icon ca
   await openStory(page, 'material-3-components-buttons-mdbutton--text-button-spacing');
 
   const readPadding = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => ({
-      left: getComputedStyle(el).paddingLeft,
-      right: getComputedStyle(el).paddingRight,
-    }));
+    page.getByTestId(testId).evaluate((el) => {
+      const style = getComputedStyle(el.querySelector('.md-button__container') ?? el);
+      return {
+        left: style.paddingLeft,
+        right: style.paddingRight,
+      };
+    });
 
   const small = await readPadding('text-spacing-small');
   const medium = await readPadding('text-spacing-medium');
@@ -1055,26 +1081,32 @@ test('MDButton selected/unselected defaults resolve through documented Material 
   );
 });
 
-test('MDButton keeps a 48dp target layer for extra-small and small sizes without growing layout', async ({
+test('MDButton reserves a real 48dp minimum interaction target on the button host for extra-small and small sizes, while the visual container keeps the documented smaller geometry', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--target-layers');
 
   const targetButtons = page.getByTestId('visual-md-button-targets').getByRole('button');
-  const targetLayers = page.getByTestId('visual-md-button-targets').locator('.md-button__target');
+  const targetContainers = page
+    .getByTestId('visual-md-button-targets')
+    .locator('.md-button__container');
   const buttonBoxes = await Promise.all([
     targetButtons.nth(0).boundingBox(),
     targetButtons.nth(1).boundingBox(),
   ]);
-  const targetBoxes = await Promise.all([
-    targetLayers.nth(0).boundingBox(),
-    targetLayers.nth(1).boundingBox(),
+  const containerBoxes = await Promise.all([
+    targetContainers.nth(0).boundingBox(),
+    targetContainers.nth(1).boundingBox(),
   ]);
 
-  expect(buttonBoxes[0]?.height).toBe(32);
-  expect(buttonBoxes[1]?.height).toBe(40);
+  // The visual container renders the documented per-size height exactly (extra-small 32dp, small
+  // 40dp) — the minimum-target reservation must not inflate the visible pill itself.
+  expect(containerBoxes[0]?.height).toBe(32);
+  expect(containerBoxes[1]?.height).toBe(40);
 
-  for (const box of targetBoxes) {
+  // The button host — a real flow box, not an absolutely positioned overlay — reserves at least
+  // the 48dp minimum interaction target on both axes.
+  for (const box of buttonBoxes) {
     expect(box?.width).toBeGreaterThanOrEqual(48);
     expect(box?.height).toBeGreaterThanOrEqual(48);
   }
@@ -1162,10 +1194,14 @@ test('MDButton public component-token overrides work through an ordinary CSS cla
 
   const classOverride = await page
     .getByTestId('override-class-selector')
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
+    .evaluate(
+      (el) => getComputedStyle(el.querySelector('.md-button__container') ?? el).backgroundColor,
+    );
   const inherited = await page
     .getByTestId('override-inherited')
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
+    .evaluate(
+      (el) => getComputedStyle(el.querySelector('.md-button__container') ?? el).backgroundColor,
+    );
 
   // The class-based override on the element itself must win over the inherited ancestor value,
   // and the inherited value must reach the button at all — neither would happen if MDButton still
@@ -1223,8 +1259,9 @@ test('MDButton container shadow-color override reaches the private elevation bri
   const assertShadowColorReachesFinalRoute = async (testId: string, elevationVar: string) => {
     const { renderedShadow, bridgeValue } = await page.getByTestId(testId).evaluate((el) => {
       const style = getComputedStyle(el);
+      const containerStyle = getComputedStyle(el.querySelector('.md-button__container') ?? el);
       return {
-        renderedShadow: style.boxShadow,
+        renderedShadow: containerStyle.boxShadow,
         bridgeValue: style.getPropertyValue('--md-private-elevation-shadow-color').trim(),
       };
     });
@@ -1332,7 +1369,9 @@ test('MDButton pressed-shape border-radius transition runs on the documented fas
       parts.push(current.trim());
       return parts;
     };
-    const style = getComputedStyle(el);
+    // The spatial border-radius/box-shadow transition is declared on `.md-button__container`,
+    // the visual container that actually owns shape and elevation.
+    const style = getComputedStyle(el.querySelector('.md-button__container') ?? el);
     const properties = splitTopLevel(style.transitionProperty);
     const index = properties.indexOf('border-radius');
     return {
@@ -1361,6 +1400,10 @@ test('MDButton root-owned spatial and color-effect transitions use the documente
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
   const button = page.getByRole('button', { name: 'Filled', exact: true });
+  // Spatial/color-effect transitions are owned by `.md-button__container`, the visual container
+  // that renders shape, elevation, and background/border color — not the (possibly larger)
+  // button host that only reserves the minimum interaction target.
+  const container = button.locator('.md-button__container');
 
   const readTransition = (locator: typeof button) =>
     locator.evaluate((el) => {
@@ -1391,7 +1434,7 @@ test('MDButton root-owned spatial and color-effect transitions use the documente
       };
     });
 
-  const rootTransition = await readTransition(button);
+  const rootTransition = await readTransition(container);
   const durationFor = (property: string) =>
     rootTransition.durations[rootTransition.properties.indexOf(property)];
   const easingFor = (property: string) =>
