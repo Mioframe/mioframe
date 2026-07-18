@@ -1,6 +1,6 @@
 ---
 name: visual-regression-testing
-description: 'Use for canonical Storybook visual references, bounded screenshots, Material state matrices, intentional baseline updates, responsive visual surfaces, and operator visual handoff. Visual tests prove appearance only.'
+description: 'Use for canonical Storybook visual references, bounded screenshots, Material state matrices, intentional baseline updates, visual impact metadata, and operator visual handoff. Visual tests prove appearance only.'
 ---
 
 # Visual regression testing
@@ -33,9 +33,11 @@ Use `.visual-checker-backdrop` only when transparency, shape, elevation, or stat
 3. Settle animation without changing accepted final output.
 4. Wait for fonts, icons, rendering, and fixture setup.
 5. Capture the smallest readable bounded surface.
-6. Inspect every intentional baseline diff.
-7. Run focused visual verification and final verification.
-8. Prepare operator Material evidence when applicable.
+6. Update the owning visual source-to-spec mapping when the stable impact relation changes.
+7. Confirm added, moved, renamed, or removed specs and baselines preserve deterministic ownership or use the documented full-lane fallback.
+8. Inspect every intentional baseline diff.
+9. Run focused visual verification and final verification.
+10. Prepare operator Material evidence when applicable.
 
 ## Transient appearance
 
@@ -47,7 +49,19 @@ Forced state proves appearance only. It does not prove acquisition, release, tra
 
 Visual specs may open a story, prepare deterministic appearance, and capture screenshots. They contain no success criteria for click, focus, keyboard, pointer, drag, scrolling, overlays, motion lifecycle, persistence, or product flow.
 
-Do not reproduce token tables through large computed-style assertion matrices. A small non-visual routing assertion belongs to the relevant contract or browser proof.
+Do not reproduce token tables through large computed-style assertion matrices. A small non-visual routing assertion belongs to the relevant component contract or browser proof.
+
+## Impact metadata
+
+- map visible component, foundation, story, theme, font, icon, fixture, and rendering sources to owning visual specs;
+- do not put visual spec paths into source prefixes to group tests;
+- a changed visual spec selects itself;
+- a changed baseline resolves through the repository snapshot convention;
+- an unresolved added, modified, deleted, or renamed baseline requires full visual fallback;
+- global visual/Storybook configuration and common rendering helpers require full visual fallback unless all consumers are explicit and validated;
+- every visual spec is mapped or has a justified standalone reason.
+
+Until the visual resolver migration is implemented, current `verify` may still run a broader visual lane. Do not claim focused baseline ownership behavior already exists.
 
 ## Operator Material review
 
@@ -89,4 +103,5 @@ pnpm verify --only visual --files <source-story-or-spec-paths...>
 - token-table or implementation-detail computed-style matrices;
 - equivalent combinations that create snapshot bloat;
 - forced states presented as behavior proof;
-- ceremonial matrices for simple components.
+- ceremonial matrices for simple components;
+- stale or semantically overloaded visual impact mappings.
