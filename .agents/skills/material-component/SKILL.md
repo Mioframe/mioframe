@@ -29,7 +29,7 @@ Local verification means project commands such as formatting, linting, type chec
 
 1. Resolve the current official Material family and documentation path.
 2. Use the official documentation slug as the canonical directory name.
-3. Inspect current implementations, public exports, consumers, family `README.md`, colocated `AUDIT.md`, tests, stories, and applicable shared owners.
+3. Inspect current implementations, public exports, consumers, family `README.md`, colocated `AUDIT.md`, operator-owned `VISUAL_REVIEW.md`, tests, stories, and applicable shared owners.
 4. Reconstruct the official contract-level capability inventory from the available official Material 3 Expressive sources.
 5. Record canonical source status:
    - `current-complete`;
@@ -42,6 +42,7 @@ Local verification means project commands such as formatting, linting, type chec
    - `end-to-end-migration` when a legacy owner exists;
    - `alignment-only` when the canonical owner exists but is incomplete or incorrect.
 7. Resolve the minimum coherent implementation surface required by current consumers.
+8. Preserve the operator visual status exactly when VISUAL_REVIEW exists.
 
 Example:
 
@@ -105,13 +106,13 @@ The README must state explicitly:
 
 Do not hide incomplete work to make the result appear successful.
 
-A known operator-rejected visual behavior remains open until production behavior changes, new evidence is prepared, and the operator accepts the corrected result. Renaming a contract, changing documentation, or replacing a test cannot close a rejected visual defect.
+When VISUAL_REVIEW is `rejected` or `blocked`, README must keep that visible issue open. The authoring pass must change production behavior before requesting new operator evidence. Documentation, tests, audit wording, or a renamed runtime contract cannot close the operator result.
 
 ## Run the authoring workflow
 
 Load `material-component-authoring` and continue through implementation, consumer migration, proportional proof, obsolete-owner removal, documentation update, and local verification.
 
-The implementing workflow does not edit `AUDIT.md`. After implementation, recommend:
+The implementing workflow does not edit `AUDIT.md` or `VISUAL_REVIEW.md`. After implementation, recommend:
 
 ```text
 material-component-review <resolved-family>
@@ -141,6 +142,7 @@ Consumers migrated:
 Foundation/style changes:
 Local verification:
 Family documentation:
+Operator visual evidence: missing | VISUAL_REVIEW.md
 Visual status: not required | required | rejected | blocked | accepted
 Review required: yes | no
 Status: implementation finished | blocked (<exact reason>)
