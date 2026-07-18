@@ -269,6 +269,8 @@ material-foundation <artifact-or-correction>
 
 Implements, migrates, aligns, or corrects foundations and styles, including State Layer.
 
+An independent foundation/style review is a separate review-only task that updates only the local AUDIT. Authoring does not mark its own implementation compliant.
+
 ### Continue automatic migration
 
 ```text
