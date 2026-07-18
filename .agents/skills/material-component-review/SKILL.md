@@ -33,137 +33,143 @@ src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
 
 Do not modify production code, tests, stories, family `README.md`, exports, consumers, roadmap, registries, or policy during review.
 
-The audit contains no branch, commit, pull-request, remote-check, or merge metadata.
+Work from the current workspace only. Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. The audit contains no source-control or remote metadata.
 
 ## Evidence sets
 
 Keep three evidence sets distinct:
 
-1. **Implementation evidence** — production code, exports, consumers, tests, stories, rendered behavior, and applicable foundation/style implementations.
-2. **Project documentation** — the family `README.md` plus directly applicable project architecture, foundation/style contracts, testing rules, and local instructions.
-3. **Canonical evidence** — current official Material 3 Expressive documentation, exact token references, and the Design Kit only where published documentation does not resolve an applicable visual decision.
+1. **Implementation evidence** — current production code, exports, consumers, tests, stories, rendered behavior, and applicable foundation/style implementations.
+2. **Project documentation** — the family `README.md` plus directly applicable architecture, foundation/style contracts, testing rules, and local instructions.
+3. **Canonical evidence** — official Material 3 Expressive documentation, exact token references, and the Design Kit only where published documentation does not resolve an applicable visual decision.
 
-Project documentation is the intended Mioframe contract, but it is not Material authority. Tests and rendering are implementation evidence, not authority for either documentation layer.
+Project documentation is the intended Mioframe contract, but it is not Material authority. Tests and rendering are implementation evidence, not authority.
 
-Inspect the previous `AUDIT.md` when present, but independently re-evaluate every conclusion.
+Inspect the previous `AUDIT.md`, but independently re-evaluate every conclusion from current files and official sources.
 
-## Build the independent official capability inventory
+## Canonical source status
 
-Before accepting the README's coverage claims, independently reconstruct the complete contract-level capability inventory for the resolved official family.
+Record one:
 
-Include all documented:
+- `current-complete`;
+- `snapshot-complete-stale`;
+- `partial`;
+- `conflicting`;
+- `unavailable`.
 
-- public subcomponents and family members;
-- variants, styles, sizes, shapes, widths, modes, and configurations;
-- defaults, states, selected/unselected routes, and invalid combinations;
-- native semantics, accessibility, target, focus, keyboard, pointer, touch, and adaptive behavior when applicable;
-- anatomy, token surfaces, visual systems, motion, elevation, and documented interactions;
-- official optional capability even when no current Mioframe consumer requires it.
+Use inventory status:
 
-Do not require one audit row for every individual token when a coherent grouped contract preserves complete traceability. Do not omit a capability because it is optional, low priority, unused, expensive, or planned for later.
+- `complete`;
+- `snapshot-complete (<snapshot>; currentness unverified)`;
+- `incomplete (<exact gap>)`;
+- `blocked (<exact reason>)`.
 
-Classify every official capability as:
+`complete` requires every current family page and required structured source to be available and inspected without partial, truncated, suspicious, or unresolved coverage.
+
+A stale snapshot can be snapshot-complete, but cannot certify current canonical completeness. A partial cache, missing page, truncated token graph, or spot-check-only review requires `incomplete` or `blocked`. Spot checks may verify particular implementation facts; they cannot certify the complete family inventory.
+
+## Build the independent capability inventory
+
+Classify each official item as exactly one of:
 
 - implemented and verified;
-- implemented but partial, defective, provisional, or unverified;
+- partial, defective, provisional, or unverified;
 - not implemented;
+- officially unsupported or an invalid combination;
 - unresolved because canonical evidence is incomplete or conflicting;
 - outside the resolved family boundary, with the separate official owner named.
+
+`Not implemented` contains only real official capability that exists but is absent.
+
+An officially unsupported or invalid combination is a constraint, not a missing capability. It does not reduce official coverage when the implementation rejects or normalizes it coherently.
+
+Optional or non-normative guidance is not automatically a capability. Record relevant non-adoption as a project choice, deviation, or follow-up. It reduces coverage only when the canonical contract makes it required for the implemented surface.
 
 Current consumer demand affects implementation priority, not inventory completeness.
 
 ## Required audit order
 
-Always perform the review in this order.
-
 ### Stage 1 — implementation against project documentation
-
-First determine whether the actual implementation matches the contract documented by the project.
 
 Check:
 
-- every capability listed under `Implemented` actually works at its final owner;
-- every documented API, default, invalid combination, semantic, accessibility, state, token, motion, and property route matches code and rendered behavior;
-- every documented extension or deviation behaves as described;
+- every documented implemented capability works at its final owner;
+- API, defaults, invalid combinations, semantics, accessibility, states, tokens, motion, and property routes match current code and rendering;
+- extensions and deviations behave as documented;
 - exports, consumers, migration state, tests, stories, and verification claims are accurate;
-- every known defect, provisional route, omission, missing proof, or visual uncertainty is documented;
-- every official capability absent from implementation appears under `Not implemented`, regardless of current project need;
-- every partial or unverified official capability appears under `Known issues and required follow-up` rather than being presented as implemented or silently omitted;
-- directly applicable project architecture and shared foundation/style rules are followed.
+- every known defect, omission, missing proof, source limitation, shared blast radius, and visual uncertainty is documented;
+- classification separates absent capability from officially invalid combinations and optional guidance;
+- directly applicable architecture and shared foundation/style rules are followed.
 
-Report separately:
+A declaration, alias, placeholder, story, test, or unchanged green check is not implementation or representative proof by itself.
 
-- documented capability missing or incorrect in implementation;
-- implemented capability or behavior absent from documentation;
-- implementation behavior contradicting project documentation;
-- documentation claiming proof that tests or stories do not establish;
-- official capability absent from implementation and absent from the README inventory;
-- partial or unverified capability misclassified as fully implemented or fully absent;
-- implementation violating an applicable project architecture or ownership rule.
-
-A declaration, alias, placeholder, story, or test is not implementation by itself. A route exists only when changing its source input can affect the final output through a real dependency.
-
-Do not yet assume that project documentation is correct relative to Material.
+Do not use historical provenance to resolve a current ownership or compliance question. Review current owner, current consumers, current behavior, and current documented contract.
 
 ### Stage 2 — project documentation against Material 3 Expressive
 
-Then independently compare the documented project contract and capability inventory with canonical Material 3 Expressive.
-
 Check:
 
-- official family choice and documentation mapping;
-- whether the README's official capability inventory is complete against all current family pages;
-- supported variants, sizes, shapes, modes, defaults, states, and invalid combinations;
-- native semantics and accessibility requirements;
+- official family mapping and boundary;
+- source status and inventory completeness claims;
+- variants, sizes, shapes, modes, defaults, states, invalid combinations, semantics, and accessibility;
 - anatomy and final property ownership;
 - canonical color, elevation, icons, motion, shape, typography, state, ripple, and focus meanings;
-- official token names, values, state routes, and component boundaries;
-- whether every unimplemented official capability is named, regardless of current consumer need;
-- whether omitted official capability is classified accurately and does not break the minimum complete implemented surface;
-- whether project extensions and intentional deviations are explicitly identified rather than presented as canonical Material behavior;
-- whether source pages and snapshots cited by the project actually support its claims.
+- exact token names, values, routes, and component boundaries;
+- classification of implemented, partial, absent, officially unsupported, unresolved, and out-of-family items;
+- optional guidance is not inflated into a missing capability;
+- extensions and deviations are explicit;
+- cited sources actually support the claims.
 
-Report separately:
+If current canonical evidence is stale, partial, truncated, or conflicting, report the exact limitation. Do not certify a current-complete inventory from it.
 
-- project documentation that contradicts Material 3 Expressive;
-- invented, obsolete, or misinterpreted Material contracts;
-- required canonical behavior missing from the documented implemented surface;
-- undocumented deviation from Material;
-- project extension presented as official Material behavior;
-- any official capability missing from both `Implemented` and `Not implemented`/known-issue documentation;
-- incomplete or inaccurate official capability inventory;
-- insufficient or contradictory canonical source evidence.
+## Reconcile the stages
 
-A documented optional capability outside the current implementation surface is not automatically an implementation defect. It must still be listed in both README and AUDIT. The audit reports official coverage separately from technical compliance.
+- Correct implementation when it differs from correct project documentation.
+- Correct documentation and implementation when both follow a non-canonical contract.
+- Correct only documentation when implementation matches Material but local text is stale.
+- Record both mismatches when implementation and documentation independently diverge.
+- Keep extensions only when explicit, coherent, and not presented as canonical Material.
 
-## Reconcile the two stages
+The audit must identify whether each correction belongs to implementation, project documentation, or both.
 
-After both stages, determine the required correction direction.
+## Motion and visual evidence
 
-- If implementation differs from correct project documentation, correct implementation.
-- If project documentation differs from Material while implementation follows it, correct project documentation and implementation together.
-- If implementation matches Material but project documentation is stale or wrong, correct project documentation; do not regress implementation to match the stale text.
-- If both implementation and project documentation differ from Material, identify both mismatches explicitly.
-- If a Mioframe extension or intentional deviation is required, keep it only when it is explicit, coherent, tested where applicable, and not represented as canonical Material.
+Verify the shared motion foundation deeply once.
 
-The audit must make it possible to tell whether each problem belongs to implementation, project documentation, or both.
+At component level, require only proportional evidence that:
 
-## Motion and shared routes
+- real input activates the intended rendered property;
+- a meaningful intermediate state is observable when needed to prove the route;
+- the correct endpoint is reached;
+- interruption or cancellation leaves no stale state;
+- the component consumes the documented shared motion contract.
 
-For motion, verify at both stages:
+Do not require frame-by-frame component analysis or duplicate equivalent input paths. Forced state proves appearance, not motion.
 
-- what project documentation claims as the runtime contract;
-- what the implementation actually consumes;
-- what Material 3 Expressive requires;
-- the actual animated property owner and state routing;
-- absence of dead tokens, fake dependencies, or conflicting timing;
-- reduced-motion handling when required.
+A known operator-rejected visible behavior is a confirmed open defect until production behavior changes and the operator accepts new evidence. A technically honest route, renamed contract, new comment, or revised test does not close a perceptual rejection.
 
-Do not require frame-by-frame browser analysis for ordinary CSS transitions.
+Use visual status:
 
-When numeric official spring parameters cannot drive CSS directly, they may remain documented canonical source evidence while one honest Web adaptation is the project runtime contract. Project documentation must clearly distinguish those two facts.
+- `not required`;
+- `required`;
+- `rejected`;
+- `blocked`;
+- `accepted`.
 
-Treat root/system token, universal-selector, pseudo-element, and shared-formula changes as cross-family work. Compare their implementation with project ownership rules before comparing the documented shared contract with Material.
+The reviewer may report `accepted` only when operator acceptance is already durably recorded in current project documentation. The automated reviewer never invents it.
+
+## Shared routes
+
+Treat root/system tokens, universal selectors, pseudo-elements, and shared formulas as cross-family work.
+
+A shared route is resolved only when:
+
+- current affected families are identified from current code;
+- the owner is appropriately narrow;
+- representative tests actually exercise the route across affected contract classes;
+- documentation describes current ownership and blast radius without unsupported historical claims.
+
+Unchanged tests that never exercise the shared route are not representative proof.
 
 ## Finding formats
 
@@ -187,35 +193,33 @@ Project-to-Material mismatch:
 Required correction:
 ```
 
-When one issue affects both stages, use the same concise issue name in both sections and state the combined correction order under `Required next work`.
-
 Use:
 
 - `critical` — invalid component choice, unsafe semantics, or severe accessibility/interaction corruption;
-- `high` — required API, state, token, motion, ownership, migration, or major visual contract is wrong;
-- `medium` — bounded mismatch, incomplete proof, misleading documentation, incomplete capability inventory, or non-critical canonical divergence;
+- `high` — required API, state, token, motion, ownership, migration, major visual contract, or unchanged operator-rejected behavior is wrong;
+- `medium` — bounded mismatch, incomplete representative proof, misleading documentation, inaccurate inventory, or non-critical canonical divergence;
 - `low` — minor documentation or cleanup defect.
 
-Do not report speculation as a finding. Put unresolved authoritative evidence under `Evidence gaps`.
+Put unresolved authoritative evidence under `Evidence gaps`, not speculative findings.
 
-## Compliance and coverage results
+## Compliance and coverage
 
-Use exactly one overall compliance result derived from both stages:
+Use one overall result:
 
-- `compliant` — the implemented surface matches truthful project documentation, and that documentation accurately represents Material 3 Expressive plus explicit extensions/deviations;
-- `partially-compliant` — usable, but confirmed non-critical implementation, project-documentation, canonical-alignment, or verification gaps remain;
-- `non-compliant` — a critical or high finding exists in either comparison stage;
-- `blocked` — evidence required for either comparison stage is unavailable or materially conflicting.
+- `compliant` — the implemented surface matches truthful project documentation, current canonical evidence is sufficient, and no confirmed technical or documentation finding remains;
+- `partially-compliant` — usable, but non-critical implementation, documentation, canonical-freshness, or verification gaps remain;
+- `non-compliant` — a critical or high finding exists;
+- `blocked` — evidence required for a material decision is unavailable or conflicting.
 
-Report official capability coverage separately:
+A snapshot-complete but stale source cannot produce a fully current `compliant` result. Use `partially-compliant` when the implemented surface is otherwise verified and currentness is the only non-critical gap; use `blocked` when the unresolved currentness affects a material decision.
 
-- `full` — every official capability in the resolved family is implemented and verified;
-- `partial` — at least one official capability is explicitly not implemented, partial, defective, provisional, or unverified;
-- `unresolved` — the canonical inventory cannot yet be completed because evidence is unavailable or conflicting.
+Report coverage separately:
 
-A family with `partial` coverage must not be described as fully implemented even when its implemented surface is compliant.
+- `full` — every actual official capability is implemented and verified;
+- `partial` — at least one actual official capability is absent, partial, defective, provisional, or unverified;
+- `unresolved` — the capability inventory is not current-complete.
 
-Visual comparison may still be required after a technically compliant audit. Record it separately; do not hide technical or documentation findings behind operator review.
+Officially unsupported combinations do not reduce coverage. Optional guidance does not reduce coverage unless it is required for the implemented surface.
 
 ## AUDIT.md structure
 
@@ -226,10 +230,11 @@ Replace the family audit with:
 
 Reviewed: <date>
 Result: compliant | partially-compliant | non-compliant | blocked
-Official capability inventory: complete | incomplete | blocked
+Canonical source status: current-complete | snapshot-complete-stale | partial | conflicting | unavailable
+Official capability inventory: complete | snapshot-complete (...) | incomplete (...) | blocked (...)
 Official coverage: full | partial | unresolved
 Project implementation documentation: README.md
-Visual review: not required | required | blocked | accepted
+Visual review: not required | required | rejected | blocked | accepted
 
 ## Evidence
 ### Project documentation reviewed
@@ -239,6 +244,7 @@ Visual review: not required | required | blocked | accepted
 ### Implemented and verified
 ### Partial / defective / unverified
 ### Not implemented
+### Officially unsupported / invalid combinations
 ### Unresolved evidence
 ### Outside this family boundary
 
@@ -254,9 +260,7 @@ Visual review: not required | required | blocked | accepted
 ## Required next work
 ```
 
-The audit's `Not implemented` list is mandatory even when the README already contains the same omissions. It is the reviewer's independently verified coverage result, not a copy accepted without checking.
-
-Use explicit `none` for empty findings, coverage categories, verified agreement, and evidence gaps.
+Use explicit `none` for empty categories. The `Not implemented` list is independently verified, not copied from the README.
 
 ## Output
 
@@ -267,22 +271,24 @@ MATERIAL COMPONENT REVIEW
 Official family:
 Official documentation path:
 Implementation path:
-Project implementation documentation: <path>/README.md
-Audit file: <path>/AUDIT.md
-Official capability inventory: complete | incomplete | blocked
-Official coverage: full | partial | unresolved
-Stage 1 result: implementation matches | findings | blocked
-Stage 2 result: documentation matches Material | findings | blocked
+Project implementation documentation:
+Audit file:
+Canonical source status:
+Official capability inventory:
+Official coverage:
+Stage 1 result:
+Stage 2 result:
 Overall result:
 Visual review:
 Implemented and verified:
 Partial / defective / unverified:
 Not implemented:
-Unresolved official capability:
+Officially unsupported / invalid combinations:
+Unresolved / out-of-family:
 Implementation/documentation findings:
 Documentation/Material findings:
 Evidence gaps:
 Required next work:
 ```
 
-A review is complete only after the colocated `AUDIT.md` is written and independently lists the complete official capability coverage.
+A review is complete only after `AUDIT.md` is written, uses only current-workspace and official evidence, and reports source status, classification, compliance, coverage, and visual status honestly.
