@@ -40,6 +40,7 @@ The target automatic planner is defined only by repository facts:
 - snapshot ownership;
 - Vitest static-import related selection and safe full-unit fallbacks;
 - independent Storybook behavior, app E2E, and visual impact registries;
+- independent release-impact mappings to build, artifact, and release-smoke checks;
 - full-lane paths, relevant source domains, mappings, standalone specs, and validation;
 - persistent project applicability metadata when its audited migration is complete;
 - persistent mutation targets;
@@ -47,7 +48,7 @@ The target automatic planner is defined only by repository facts:
 
 Each lane resolves to `skip`, `focused`, `full`, or blocking `invalid` with inspectable reasons. Unknown relevant impact selects the full owning lane.
 
-Until `docs/testing/migration-plan.md` is complete, the current verifier may still use sibling unit selection, broad visual/E2E fallback, duplicate desktop/mobile execution, and legacy mutation inference. Do not describe target behavior as already implemented.
+Until `docs/testing/migration-plan.md` is complete, the current verifier may still use sibling unit selection, broad visual/E2E fallback, omit release-only checks from focused development runs, duplicate desktop/mobile execution, and use legacy mutation inference. Do not describe target behavior as already implemented.
 
 ## Repository impact metadata
 
@@ -59,7 +60,9 @@ When adding, moving, renaming, or removing a Playwright spec:
 - use standalone only when no truthful stable source mapping exists;
 - keep shared config/helpers on full-lane fallback unless the complete consumer set is explicit and validated.
 
-A broken registry must fail verification before tests run.
+When changing a release-only contract, maintain its repository mapping to the exact build, artifact, or release-smoke checks. Shared or unknown release impact uses full release fallback.
+
+A broken registry or release mapping must fail verification before tests run.
 
 ## Mutation
 
@@ -82,6 +85,12 @@ Current app E2E desktop/mobile coverage remains authoritative until a dedicated 
 For intentional visual changes, inspect baseline diffs and run the owning visual specs. If baseline ownership is unresolved, use the full visual lane.
 
 If no faithful test target exists, report the proof gap and resolve it within scope when the changed contract requires it. Do not substitute a less faithful proof type.
+
+## Release selection
+
+The target focused planner automatically selects production-artifact proof for release-relevant changes. `pnpm verify:release` remains the unconditional full gate for `main`.
+
+Until the release resolver migration is implemented, a task changing build configuration, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies must explicitly run the affected release verification through the supported full release command. Do not treat a focused `pnpm verify` that skipped release checks as complete proof for that contract.
 
 ## Performance evidence
 
@@ -132,6 +141,7 @@ Examples:
 - resolver: table-driven resolver tests plus representative command planning;
 - Playwright config: every affected project/lane;
 - Storybook harness: affected build, behavior, and visual mode;
+- release resolver: focused development planning and unconditional full release mode;
 - package/build config: affected type-check, build, artifact, or release mode.
 
 Final `pnpm verify` does not replace a mode or measurement it does not exercise.
