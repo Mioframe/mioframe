@@ -1,6 +1,6 @@
 # Material component testing
 
-This document extends `docs/testing/architecture.md` only with Material-specific proof and operator handoff. General proof ownership, execution lanes, `TEST IMPACT`, accessibility ownership, and impact resolution remain defined by the project-wide testing architecture and testing skills.
+This document extends `docs/testing/architecture.md` only with Material-specific proof and operator handoff. General proof ownership, execution lanes, `TEST IMPACT`, accessibility ownership, automatic impact metadata, and safe fallback remain defined by the project-wide testing architecture and testing skills.
 
 ## Goal
 
@@ -15,8 +15,8 @@ Prove the accepted Material family contract with the smallest non-duplicative se
 | State matrix               | Only when multiple distinct component-owned visual routes exist                         |
 | Visual regression          | When the accepted visible contract is stable and regression would be material           |
 | Browser behavior           | Only when the family owns browser-dependent interaction                                 |
-| Pure behavior              | Only when component/foundation logic owns deterministic decisions outside Vue rendering |
-| Consumer preservation      | When imports, public API, wrappers, native owners, composition, or shared output change |
+| Deterministic behavior     | Only when component/foundation logic owns deterministic decisions outside Vue rendering |
+| Consumer preservation      | When imports, public API, wrappers, native owners, composition, or shared output change  |
 | Agent evidence review      | Mandatory before operator handoff                                                       |
 | Operator visual acceptance | Required when accepted Material output is created or intentionally changed              |
 
@@ -31,7 +31,8 @@ Derive `TEST IMPACT` from the accepted family blueprint and current migration sc
 - component versus foundation ownership;
 - token, shape, elevation, typography, icon, state, ripple, focus, motion, and layout routes;
 - unsupported official capabilities and accepted deviations;
-- affected consumers and removed legacy paths.
+- affected consumers and removed legacy paths;
+- required Storybook behavior, app E2E, visual, snapshot-owner, or other repository impact-metadata updates.
 
 Do not create tests from a generic artifact checklist when the family does not own the corresponding contract.
 
@@ -85,7 +86,8 @@ When migration changes public usage:
 2. select representative materially different integration paths;
 3. preserve complete product scenarios only where product behavior may change;
 4. remove obsolete legacy tests and paths with their implementation;
-5. update stable Playwright impact mappings in the same change.
+5. update every affected Storybook behavior, app E2E, and visual impact mapping in the same change;
+6. keep source mappings limited to production, story, fixture, or owned support paths rather than spec grouping.
 
 A shared Material change does not automatically require unrelated product suites.
 
@@ -98,10 +100,11 @@ Before operator handoff, the coding agent confirms:
 - semantics, accessibility, lifecycle, and state ownership are correct;
 - distinct visible routes are represented proportionately;
 - proof is non-duplicative and matches `TEST IMPACT`;
+- repository impact metadata matches the actual changed sources, specs, stories, and baselines;
 - changed consumers and obsolete paths are handled;
 - no unresolved non-visual decision is delegated to operator review.
 
-Report `passed` or `blocked`. Do not pass while source, architecture, accessibility, behavior, migration, or proof decisions remain unresolved.
+Report `passed` or `blocked`. Do not pass while source, architecture, accessibility, behavior, migration, proof, or impact ownership remains unresolved.
 
 ## Operator visual acceptance
 
@@ -127,7 +130,7 @@ The operator checks visible fidelity only. An automated agent never reports oper
 
 ## Automation policy
 
-Use existing infrastructure. Add structural automation only after repeated migrations prove a precise low-maintenance need. Automation may validate deterministic paths, exports, story ids, specs, or prohibited test-only API; it must not infer semantic completeness or visual correctness from Markdown or screenshots.
+Use existing infrastructure. Add structural automation only after repeated migrations prove a precise low-maintenance need. Automation may validate deterministic paths, exports, story ids, specs, snapshot ownership, and prohibited test-only API; it must not infer semantic completeness or visual correctness from Markdown or screenshots.
 
 ## Forbidden
 
@@ -137,8 +140,9 @@ Use existing infrastructure. Add structural automation only after repeated migra
 - family-specific forced-state systems;
 - duplicate foundation suites in every family;
 - mandatory artifact counts disconnected from actual family ownership;
-- shared fixtures before multiple current families prove the same concrete need.
+- shared fixtures before multiple current families prove the same concrete need;
+- stale or semantically overloaded test-impact mappings.
 
 ## Completion
 
-Material proof is complete when applicable contracts are covered at the correct proof types, canonical visual evidence is readable, browser behavior uses real input when owned, foundation behavior is not duplicated, consumers and obsolete paths are handled, agent evidence review passes, required operator acceptance is recorded, and repository verification passes.
+Material proof is complete when applicable contracts are covered at the correct proof types, canonical visual evidence is readable, browser behavior uses real input when owned, foundation behavior is not duplicated, consumers and obsolete paths are handled, repository impact metadata is consistent, agent evidence review passes, required operator acceptance is recorded, and repository verification passes.
