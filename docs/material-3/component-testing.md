@@ -2,28 +2,31 @@
 
 This document defines proportional proof for public components in the Mioframe Material library.
 
-Tests prove contracts the component or changed foundation actually owns. They do not retest Vue, CSS, or browser internals.
+Tests prove contracts the component or changed foundation actually owns. They do not retest Vue, CSS, browser internals, or optional documentation wording.
 
 ## Principles
 
-- Derive proof from the accepted family contract and current change.
-- Use the smallest set of layers that completely proves the supported surface.
-- Keep component contracts, browser behavior, pure logic, visual appearance, and consumer preservation in their owning layers.
-- Do not test unsupported optional capability.
-- Do not duplicate framework, browser, foundation, or product behavior.
-- Green automation does not prove that an accepted baseline matches Material 3 Expressive.
+- Derive proof from the truthful family contract and current change.
+- Use the smallest set of layers that completely proves the implemented surface.
+- Keep component contracts, browser behavior, pure logic, visual appearance, shared foundations, and consumer preservation in their owning layers.
+- Test implemented capability and owned rejection/normalization behavior.
+- Do not create tests that imply unimplemented capability exists.
+- Do not treat officially invalid combinations as missing capability.
+- Do not inflate optional or non-normative guidance into required test coverage.
+- Green automation does not prove Material correctness or operator visual acceptance.
 
 ## Proof layers
 
 | Layer                       | Use when                                                   | Purpose                                                                                                               |
 | --------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Component contract          | Every new or migrated public component                     | API, native owner, ARIA, defaults, slots, emits, controlled state, invalid combinations, and static foundation wiring |
-| Canonical visual story      | Visible output exists                                      | One stable reference for accepted appearance                                                                          |
+| Canonical visual story      | Visible output exists                                      | One stable reference for intended appearance                                                                          |
 | `StateMatrix`               | Multiple distinct component-owned visual routes exist      | Compare configurations, states, and simultaneous visible outcomes without a Cartesian product                         |
 | Visual regression           | A stable visual contract has material regression risk      | Detect unintended changes against a bounded accepted baseline                                                         |
 | Browser behavior            | The component changes or constrains browser-owned behavior | Focus, input, layout, overlay, scrolling, responsive, cancellation, or runtime lifecycle                              |
 | Pure behavior               | Extracted logic or lifecycle exists                        | Helpers, composables, state transitions, timing, cancellation, and cleanup                                            |
 | Consumer preservation       | Imports, wrappers, or product usage change                 | Preserve affected integration contracts                                                                               |
+| Shared foundation proof     | A real cross-family route changes                          | Prove the shared owner and representative consumers actually consume the changed route                                |
 | Independent two-stage audit | Every new or migrated family                               | Compare implementation with project documentation, then project documentation with Material 3 Expressive              |
 | Operator visual acceptance  | Visible output is created or intentionally changed         | Compare prepared evidence with named official sources                                                                 |
 
@@ -38,7 +41,7 @@ Use colocated Vue Test Utils tests for applicable:
 - ARIA, disabled, readonly, and accessible-name ownership;
 - slots and fixed anatomy;
 - emits and controlled state;
-- invalid combinations and accepted normalization;
+- invalid combinations and owned normalization/rejection;
 - non-browser component-to-foundation wiring;
 - public Mioframe extensions.
 
@@ -56,7 +59,8 @@ Use isolated Storybook Playwright tests only when correctness depends on behavio
 - overlay, escape, outside interaction, or containment;
 - scrolling, layout, measurement, responsive, or container-dependent behavior;
 - JavaScript/WAAPI lifecycle;
-- final computed CSS propagation that source and contract tests cannot establish reliably.
+- final computed CSS propagation that source and contract tests cannot establish reliably;
+- a reproducible runtime defect.
 
 Use public input and assert public outcomes. Forced state, direct Vue mutation, private methods, and synthetic internal events do not prove browser behavior.
 
@@ -66,18 +70,49 @@ A component with no browser-owned behavior may omit this layer with a concise re
 
 Motion is split by ownership:
 
-- official documentation defines the canonical motion requirement;
-- project documentation defines any accepted official-to-Web adaptation;
-- a shared foundation/style owner implements and proves that project runtime contract when it is cross-family;
-- the component owns correct consumption, actual property ownership, state routing, and family-specific behavior;
-- the independent audit checks both implementation-to-project and project-to-Material alignment;
+- official documentation defines the canonical requirement;
+- project documentation defines an accepted official-to-Web adaptation;
+- a shared foundation/style owner implements and proves a cross-family runtime contract deeply once;
+- the component owns correct consumption, property ownership, state routing, and family-specific behavior;
+- independent audit checks implementation-to-project and project-to-Material alignment;
 - the operator owns final perceptual comparison.
 
-For ordinary CSS motion, source review and focused contract tests are sufficient when they prove the documented project route and no conflicting local transition exists.
+At shared foundation level, prove:
 
-Do not test browser interpolation frames, overshoot, or equivalent input paths merely to confirm a correctly configured CSS transition.
+- canonical evidence and the documented adaptation;
+- the real source-to-runtime dependency;
+- timing/easing or runtime model;
+- interruption and reduced-motion behavior;
+- representative consumers.
 
-Use browser tests for motion only when the component owns custom acquisition/cancellation, JavaScript/WAAPI lifecycle, reduced-motion behavior beyond foundation wiring, uncertain computed propagation, or a reproducible runtime defect.
+At component level, use real input only to prove:
+
+- the intended rendered property consumes the selected contract;
+- one meaningful intermediate state when needed to establish the route;
+- the correct endpoint;
+- interruption or cancellation leaves no stale state;
+- component-specific reduced-motion behavior when owned.
+
+Do not require frame-by-frame component analysis, overshoot sampling, or duplicate equivalent pointer/touch/keyboard paths for ordinary CSS transitions.
+
+Forced state proves transient appearance, not motion acquisition or trajectory.
+
+Source review and focused tests may prove a technically honest route. They do not close a known operator-rejected perceived motion defect. That defect remains open until production behavior changes and new visual evidence is accepted.
+
+## Shared foundation proof
+
+Changes to root/system tokens, universal selectors, pseudo-elements, shared formulas, theme roles, or public shared APIs require representative proof.
+
+Representative proof must:
+
+- identify current affected contract classes from current code;
+- exercise the changed shared input through the final rendered output;
+- include more than the family that motivated the global change when multiple families consume it;
+- distinguish identical default output from actual override or state-route behavior.
+
+Unchanged tests that never exercise the shared route are not representative proof.
+
+A component-specific check alone cannot close a global blast-radius gap.
 
 ## Canonical visual evidence
 
@@ -96,7 +131,7 @@ The operator should understand the cases without reading source code.
 
 A generic foundation testing adapter may represent hover, focus-visible, pressed, or dragged appearance.
 
-It must remain testing-only, family-agnostic, and prove appearance only. Real acquisition or cleanup requires browser input only when the component owns or changes that behavior.
+It remains testing-only, family-agnostic, and proves appearance only. Real acquisition or cleanup requires browser input only when the component owns or changes that behavior.
 
 ## Visual regression
 
@@ -108,7 +143,7 @@ Add bounded Playwright screenshots when stable regression protection is valuable
 - Use stable repository baselines.
 - Keep behavior assertions elsewhere.
 
-Prefer one readable screenshot. A baseline is regression evidence, not proof of Material correctness.
+A baseline is regression evidence, not proof of Material correctness or acceptance.
 
 ## Consumer preservation
 
@@ -122,29 +157,32 @@ Before operator handoff, `material-component-review` performs both comparisons.
 
 Confirm:
 
-- implementation matches the family README and directly applicable project contracts;
+- implementation matches README and applicable project contracts;
 - semantics, accessibility, states, lifecycle, tokens, motion, and final property ownership behave as documented;
 - exports, consumers, tests, stories, and verification claims are accurate;
-- no unfinished, provisional, unverified, or undocumented behavior is hidden;
-- proof layers establish only what the project documentation claims.
+- no unfinished, provisional, unverified, shared-proof, source, or visual issue is hidden;
+- proof layers establish only what documentation claims;
+- actual absent capability, invalid combinations, and optional guidance are classified separately.
 
 ### Stage 2 — project documentation vs Material 3 Expressive
 
 Confirm:
 
-- official sources support the documented family scope and contract;
+- official sources and source status support the documented family scope and inventory claim;
 - canonical component, token, state, semantics, accessibility, and property meanings are interpreted correctly;
-- unsupported official capability is documented;
-- project extensions and deviations are explicit and not presented as canonical Material;
-- project documentation and canonical evidence use one consistent source record.
+- actual unsupported capability is documented as not implemented;
+- invalid combinations are not mislabeled as missing capability;
+- optional guidance is not inflated into required capability;
+- project extensions and deviations are explicit;
+- source records are consistent and honest about freshness and coverage.
 
 No technical or documentation decision may be hidden behind visual review.
 
 ## Operator visual acceptance
 
-Operator comparison is required when a change creates a visible component or intentionally changes visible tokens, shape, color, elevation, typography, icon geometry, focus, ripple, motion appearance, layout, or a rendered shared contract.
+Operator comparison is required when a change creates or intentionally changes visible tokens, shape, color, elevation, typography, icon geometry, focus, ripple, motion appearance, layout, or a rendered shared contract.
 
-The audit prepares:
+Use:
 
 ```text
 Canonical visual story: <story id>
@@ -152,12 +190,16 @@ Visual coverage: complete | incomplete (<gap>)
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
 Stage 1 audit: passed | findings | blocked
 Stage 2 audit: passed | findings | blocked
-Official visual sources: <snapshot and Design Kit reference when required>
+Official visual sources: <source status, snapshot, and Design Kit reference when required>
 Expected extensions/deviations: none | <records>
 Operator visual acceptance: required | accepted | rejected | blocked (<reason>)
 ```
 
-The operator checks visible fidelity. API, semantics, accessibility, source interpretation, ownership, migration, test sufficiency, and project-documentation correctness remain reviewer responsibilities. An automated reviewer never reports operator acceptance as `accepted` without an operator decision.
+The operator checks visible fidelity. API, semantics, accessibility, source interpretation, ownership, migration, test sufficiency, and documentation correctness remain reviewer responsibilities.
+
+An automated agent never invents `accepted`.
+
+A recorded `rejected` status persists until production behavior changes and the operator accepts replacement evidence.
 
 ## Automation and anti-overengineering
 
@@ -175,4 +217,4 @@ Do not create:
 
 ## Completion
 
-Proof is complete when applicable contracts are covered at the correct layers, the two-stage audit passes or records exact remaining work, visible evidence is readable and proportional, browser behavior is tested only where owned, changed consumers are preserved, required operator acceptance is recorded, and applicable local verification passes.
+Proof is complete when applicable contracts are covered at the correct layers, shared routes have representative proof, source status is honest, the two-stage audit passes or records exact remaining work, visible evidence is readable and proportional, browser behavior is tested only where owned, changed consumers are preserved, required operator acceptance is recorded, and applicable local verification passes.
