@@ -30,20 +30,20 @@ material-foundation <official-foundation-or-style-artifact>
 - Authoring updates README and implementation artifacts as required; it never edits AUDIT.
 - Keep concrete artifact and consumer facts in the owning README, implementation, tests, fixtures, and task-specific PR description.
 
-## Required policy
+## Policy loading
 
-Read and follow:
+Always read:
 
 - applicable repository and scoped `AGENTS.md` files;
 - `docs/material-3/source-of-truth.md`;
 - `docs/material-3/library-architecture.md`;
 - `docs/material-3/foundation-architecture.md`;
-- applicable `docs/material-3/foundation-*.md` and style-domain documents;
-- `docs/material-3/component-tokens.md` and `component-testing.md` when token or rendered consumer routes are involved;
 - current owner README and AUDIT when present;
 - current implementation, exports, consumers, tests, fixtures, and directly affected shared owners.
 
-Those documents own detailed source, token, evidence, and completion rules. Do not duplicate them in this skill.
+Read only the domain documents applicable to the selected artifact. Read `component-tokens.md` or `component-testing.md` only when token routes, rendered consumer behavior, browser behavior, motion, geometry, or visual evidence are affected.
+
+Do not load unrelated foundation/style domains or duplicate their detailed rules in this skill.
 
 ## Workflow
 
