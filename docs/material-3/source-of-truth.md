@@ -1,23 +1,11 @@
-# Material 3 source of truth
+# Material 3 Expressive source of truth
 
-## Canonical target
+## Authority order
 
-Official Mioframe Material components implement the current official **Material 3 Expressive** contract.
-
-When official sources distinguish Expressive from baseline Material 3:
-
-- current Expressive usage, anatomy, tokens, geometry, state composition, motion, and adaptive guidance are canonical;
-- baseline Material 3 is not selected because it is simpler, already implemented, or more familiar;
-- baseline behavior may remain only when no applicable Expressive contract exists or an explicit product deviation requires it;
-- one supported surface must not silently mix baseline and Expressive contracts.
-
-## Official authority
-
-Use the narrowest current official source that resolves the decision.
-
-1. Current published Material 3 Expressive documentation on `m3.material.io`.
+1. Current official `m3.material.io` documentation for component, foundation, style, usage, behavior, accessibility, and token contracts.
 2. The current official Material Design Kit only when published documentation does not resolve an exact visual decision.
 3. Current repository code and tests as evidence of Mioframe behavior, never proof of Material correctness.
+4. Explicit operator feedback in the current user task as evidence of accepted or rejected perceived visual behavior.
 
 The MCP server and documentation cache are access mechanisms for official content, not independent design authorities.
 
@@ -110,64 +98,12 @@ Node or component set: <stable name or node reference>
 Verified date: <YYYY-MM-DD>
 ```
 
-If required Design Kit evidence is unavailable, mark the exact visual decision partial or blocked. Do not infer it from existing Mioframe screenshots.
+## Operator feedback
 
-## Capability interpretation
+Operator feedback does not define canonical Material. It determines whether the current visible Mioframe result is accepted.
 
-Distinguish:
-
-- **official capability** — a real supported component feature, variant, mode, state, behavior, or configuration;
-- **officially unsupported or invalid combination** — a documented prohibition or absent route, not missing capability;
-- **optional guidance** — a recommendation or “can” choice, not automatically a required capability;
-- **required behavior** — a normative contract for the implemented surface.
-
-Do not place invalid combinations under `Not implemented`.
-
-Do not convert optional guidance into missing capability unless the official contract makes it required for the implemented surface.
-
-## Implementation references
-
-Material Web or another implementation may be inspected only after the official contract is resolved and only as a non-authoritative implementation reference.
-
-It must not:
-
-- override official guidance;
-- define Mioframe public API or ownership;
-- justify unsupported behavior;
-- replace native-platform reasoning or project tests.
-
-## Non-sources
-
-Do not use as Material authority:
-
-- generic web search;
-- third-party component libraries;
-- screenshots without official provenance;
-- older Material versions;
-- memory;
-- existing Mioframe rendering or baselines;
-- repository history.
-
-## Unavailable or conflicting guidance
-
-When required guidance is unavailable, partial, stale, suspicious, or contradictory:
-
-1. identify the exact unresolved decision;
-2. determine whether the implemented surface can be narrowed safely;
-3. otherwise use `blocked` before production changes that depend on the decision;
-4. record an intentional deviation only for an explicit product requirement.
-
-Do not claim current complete alignment for unresolved surfaces.
-
-## Evidence recording
-
-Use stable page names and source metadata, for example:
-
-- `components/buttons/overview`;
-- `components/buttons/specs`;
-- `components/buttons/guidelines`;
-- `components/buttons/accessibility`;
-- `styles/motion/overview`;
-- official Design Kit file/version and component-set reference.
-
-Review ownership and operator visual handoff are defined in `autonomous-review.md`.
+- A reported visual defect is authoritative evidence that current output is rejected.
+- Authoring persists the feedback in the family README.
+- A production behavior change may move status to `awaiting re-review`.
+- Only an explicit user acceptance message may set `accepted`.
+- Tests, screenshots, technical routing, or silence do not imply acceptance.
