@@ -23,12 +23,11 @@ Implementation may be incremental. Classification and source limitations remain 
 
 ## Generalization boundary
 
-This plan defines a universal adoption loop. Current pilot names and active migration facts are descriptive program state only.
+This plan defines a universal adoption loop. Concrete current pilots are descriptive program state only.
 
 They do not define:
 
-- reusable component anatomy;
-- required DOM structure;
+- reusable anatomy or DOM structure;
 - CSS custom-property names;
 - token values or state endpoints;
 - required wrappers, files, or test shapes;
@@ -233,7 +232,7 @@ The operator reports visible findings directly in the implementation message. No
 
 ## Current pilots and sequential migration
 
-The roadmap may name concrete current pilots. Those names are scheduling and progress facts, not templates for unrelated artifacts.
+Concrete pilot names and statuses live in the roadmap and owning artifact documentation. They are scheduling and progress facts, not templates for unrelated artifacts.
 
 A pilot may validate universal workflow properties such as source handling, ownership, evidence, review separation, and operator-feedback persistence. Its specific DOM, tokens, states, defects, and fixes never become universal requirements by implication.
 
