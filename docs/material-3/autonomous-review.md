@@ -1,30 +1,38 @@
 # Material implementation review
 
-This document separates implementation documentation, independent technical review, and operator visual comparison.
+This document separates authoring documentation, independent technical/canonical review, and final operator visual comparison.
+
+## Generalization boundary
+
+Review policy contains only artifact-independent evidence, severity, and ownership rules.
+
+Do not add concrete family selectors, DOM node names, custom-property names, token values, state endpoints, bug symptoms, or proposed family structures.
+
+Concrete findings belong only in the reviewed owner README and AUDIT. A finding from one pilot may refine shared review policy only through a rule applicable to every artifact owning the same risk.
 
 ## Review ownership
 
-Each active family contains:
+Each active owner contains:
 
 ```text
-README.md         # implementation documentation; authoring-owned
-AUDIT.md          # technical/canonical review; reviewer-owned
+README.md   # authoring-owned current implementation documentation
+AUDIT.md    # independent reviewer-owned result
 ```
 
-`material-component-review` replaces only `AUDIT.md`.
+Authoring never edits AUDIT. Review changes only AUDIT.
 
-The reviewer uses:
+The reviewer uses four separate evidence sets:
 
-1. current implementation evidence;
+1. current implementation;
 2. current project documentation;
 3. official Material 3 Expressive evidence;
-4. explicit operator feedback from the current user task and the persistent summary in README.
+4. explicit operator feedback from the current task and README.
 
-The reviewer does not use source-control or remote state. Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history.
+Do not use source-control history or remote state as implementation evidence.
 
-## Canonical source status
+## Canonical source and inventory status
 
-Record one:
+Record canonical source status:
 
 - `current-complete`;
 - `snapshot-complete-stale`;
@@ -32,184 +40,229 @@ Record one:
 - `conflicting`;
 - `unavailable`.
 
-Record inventory status as:
+Record inventory status:
 
 - `complete`;
 - `snapshot-complete (<snapshot>; currentness unverified)`;
 - `incomplete (<exact gap>)`;
 - `blocked (<exact reason>)`.
 
-`complete` requires all current family pages and required structured sources to be available and inspected without partial, truncated, suspicious, or unresolved coverage.
+A stale, partial, truncated, suspicious, missing, or spot-check-only source cannot certify current completeness.
 
-A stale snapshot may support a snapshot-complete inventory. It cannot certify current completeness. Spot checks verify specific claims, not family completeness.
-
-## Capability classification
-
-Classify each official item as exactly one of:
+Classify every official item exactly once:
 
 - implemented and verified;
 - partial, defective, provisional, or unverified;
 - not implemented;
-- officially unsupported or an invalid combination;
-- unresolved because canonical evidence is incomplete or conflicting;
-- outside the resolved family boundary.
+- officially unsupported or invalid;
+- unresolved;
+- outside the resolved owner boundary.
 
-`Not implemented` is reserved for a real official capability that exists but is absent.
+Invalid combinations are constraints, not absent capability. Optional guidance is not automatically required capability.
 
-An officially unsupported or invalid combination is a constraint, not a missing capability. It does not reduce official coverage when the implementation rejects or normalizes it coherently.
+## Stage 1 — implementation against project documentation
 
-Optional or non-normative guidance is not automatically a capability. Record a relevant non-adoption as a project choice, deviation, or follow-up. It reduces coverage only when the canonical contract makes it required for the implemented surface.
+Independently review applicable:
 
-## Stage 1 — implementation vs project documentation
-
-Review:
-
-- production code and physical ownership;
-- public exports and consumers;
-- family README claims and classification;
-- applicable architecture and foundation/style contracts;
-- public API, native semantics, accessibility, states, tokens, motion, and final property routing;
-- extensions and deviations;
-- tests, stories, rendered evidence, and verification claims;
-- known defects, shared proof gaps, source limitations, and visual status;
-- explicit operator feedback from the current user message and README.
+- physical and semantic ownership;
+- public API, exports, consumers, and migration state;
+- native semantics and accessibility;
+- configuration, controlled state, lifecycle, and normalization;
+- anatomy, layout, interaction geometry, clipping, and content composition;
+- token, state, motion, and final rendered-property routes;
+- custom-property namespaces;
+- tests, fixtures/stories, rendered evidence, and verification claims;
+- known defects, source limitations, proof gaps, and operator rejection.
 
 Report:
 
 - documented behavior missing from implementation;
-- implementation behavior absent from documentation;
-- code contradicting documented API, semantics, state, token, motion, or ownership rules;
-- documentation claiming proof that tests or stories do not establish;
-- real capability absent from implementation and absent from `Not implemented`;
-- officially invalid combinations misclassified as missing capability;
-- optional guidance inflated into required capability;
-- partial or unverified capability misclassified;
+- undocumented implementation behavior;
+- wrong owner or incomplete route;
+- documentation claiming proof not established by evidence;
+- absent capability hidden from classification;
+- invalid capability misclassified as absent;
+- optional guidance inflated into a requirement;
+- partial capability called verified;
 - shared routes without representative proof;
-- README claims that weaken or omit explicit operator feedback.
+- weakened or omitted operator feedback.
 
-A declaration, alias, placeholder, story, test, or unchanged green check is not implementation or representative proof by itself.
+A declaration, alias, placeholder, story, screenshot, test title, or green check is not proof by itself.
 
-## Stage 2 — project documentation vs Material 3 Expressive
+## Applicable ownership review
 
-Review:
+For a visible interactive component, identify each applicable owner and mark non-applicable roles:
 
-- official family mapping and boundary;
-- canonical source status and inventory claim;
-- variants, sizes, shapes, modes, defaults, states, invalid combinations, semantics, and accessibility;
-- anatomy and final property ownership;
-- official color, elevation, icon, motion, shape, typography, interaction, ripple, and focus contracts;
-- exact token names, values, meanings, and routes;
-- classification of implemented, partial, absent, officially unsupported, unresolved, and out-of-family items;
-- optional guidance and normative requirements;
-- project extensions and deviations;
-- exact pages, snapshots, and Design Kit evidence.
+```text
+semantic host
+layout footprint
+interaction bounds
+visual container
+content bounds
+state-layer bounds
+ripple event host
+ripple render and clip bounds
+focus-indicator bounds
+outline and elevation owner
+shape and motion owner
+```
 
-Do not certify current completeness from a partial, truncated, suspicious, stale-only, or spot-check-only source.
+Verify:
 
-## Reconciliation
+- combined roles form coherent official anatomy;
+- interaction geometry is contiguous, unambiguous, and backed by layout space where required;
+- adjacent interactive regions do not conflict;
+- custom geometry is proved at representative interior, boundary, exterior, and adjacency points;
+- final visual properties use their correct owners;
+- applicable visible endpoints and simultaneous-state precedence are correct.
 
-- Correct implementation when it differs from correct project documentation.
-- Correct documentation and implementation when both follow a non-canonical contract.
-- Correct only documentation when implementation matches Material but local text is stale.
-- Record both mismatches when both layers diverge.
-- Keep extensions only when explicit, coherent, and not presented as canonical Material.
+Helper geometry that produces partial, disconnected, overlapping, or unreserved interaction regions is a high-severity defect.
 
-The audit identifies whether each correction belongs to implementation, documentation, or both.
+## Final rendered-owner proof
 
-## Motion evidence
+For every visible route, prove:
 
-Verify a shared motion foundation deeply once.
+1. official meaning or explicit extension meaning;
+2. valid source and namespace;
+3. correct concrete owner;
+4. relevant owner bounds;
+5. final computed and rendered result;
+6. state precedence, clipping, and adjacent-layer interaction.
 
-At component level, require proportional evidence only:
+Numeric equality on the wrong element is not proof.
 
-- real input activates the intended rendered property;
-- one meaningful intermediate state when needed to establish the route;
-- the correct endpoint;
-- safe interruption or cancellation;
-- consumption of the documented shared motion contract.
+For shape, a scalar radius is insufficient when ownership, clipping, box geometry, corner model, or state composition can alter the visible result.
 
-Do not require frame-by-frame analysis. Do not duplicate equivalent pointer, touch, and keyboard paths. Forced state proves appearance, not motion.
+## CSS custom-property review
 
-Technical routing evidence does not override operator-perceived fidelity.
+Classify every materially used custom property as:
+
+- exact official `--md-ref-*`, `--md-sys-*`, or `--md-comp-*` token;
+- justified semantic `--md-private-<owner>-<role>` route;
+- genuine `--app-*` token;
+- invalid or unnecessary alias.
+
+Report a finding when an official path is invented, shortened, paraphrased, converted to a raw CSS-property alias, or replaced by an unnecessary private indirection.
+
+An ad-hoc name shaped like `--md-<artifact>-<raw-css-property>` is invalid unless it is an exact official canonical token.
+
+## Stage 2 — project documentation against Material
+
+Independently review applicable:
+
+- official family/domain mapping and boundary;
+- source and inventory claims;
+- variants, configurations, states, semantics, accessibility, and invalid combinations;
+- official anatomy and geometry relationships;
+- color, elevation, icon, motion, shape, typography, interaction, ripple, and focus meanings;
+- exact token names, values, routes, namespaces, and final owners;
+- implementation/partial/absent/invalid/unresolved/out-of-boundary classification;
+- extensions and deviations;
+- whether cited evidence supports every claim.
+
+Use official visual evidence or the Design Kit when text/token tables cannot resolve an objective anatomy, geometry, alignment, or state-composition decision.
+
+## Motion and lifecycle evidence
+
+Require proportional proof for applicable:
+
+- real input activates the intended property on the correct owner;
+- an intermediate state is sampled only when needed;
+- correct visible endpoints are reached;
+- interruption or cancellation leaves no stale state;
+- reduced motion is correct when owned.
+
+A named interruption test must trigger the competing event before settlement and prove the competing branch begins.
+
+Do not claim motion fixed when only timing changes but the final owner, endpoint, composition, or rendered result remains wrong.
+
+Forced state proves appearance only. A screenshot baseline proves regression stability only.
 
 ## Shared route evidence
 
-Root/system tokens, universal selectors, pseudo-elements, and shared formulas are cross-family work.
-
 A shared route is resolved only when:
 
-- current affected families are identified from current code;
-- the owner is appropriately narrow;
-- representative tests actually exercise the shared route;
-- documentation describes current ownership and blast radius without unsupported historical claims.
+- affected consumers are identified;
+- ownership is appropriately narrow;
+- representative tests exercise the source through final output;
+- documentation describes current ownership and blast radius.
 
-Unchanged tests that never exercise the route do not close the evidence gap.
+Unchanged tests that never exercise the route do not close the gap.
 
-## Operator visual feedback
+## Operator feedback boundary
 
 The operator reports visible problems or acceptance directly in a user message. No separate report file is required.
 
-Authoring persists the current decision in README:
+Authoring persists:
 
 ```text
-## Operator feedback and visual status
 Status: not reviewed | required | rejected | awaiting re-review | accepted
-Latest operator feedback: none | <concise factual summary>
-Implementation response: none | <what changed and what must be reviewed>
+Latest operator feedback: none | <summary>
+Implementation response: none | <summary>
 ```
 
-The operator evaluates visible fidelity, including geometry, spacing, shape, color, typography, elevation, state composition, focus indication, and perceived motion quality.
+The agent and reviewer own objective correctness, including:
+
+- anatomy and ownership;
+- layout and interaction geometry;
+- clipping and alignment;
+- visible state endpoints;
+- token interpretation and CSS naming;
+- accessibility and behavior;
+- test sufficiency.
+
+The operator owns final perceived fidelity after those gates are closed, including naturalness, polish, and perceived motion quality.
 
 Rules:
 
-- An explicit user report of a visual defect means `rejected`.
-- After a production behavior change, authoring may set `awaiting re-review` but must preserve the feedback.
-- Only an explicit user acceptance message may set `accepted`.
-- A renamed contract, revised comment, documentation update, route test, technical audit, or silence cannot close a visual rejection.
-- Review reports the current message/README status without inventing acceptance.
+- explicit visible rejection means `rejected`;
+- broad rejection reopens the complete affected visible surface;
+- authoring may set `awaiting re-review` only after production behavior changes and all affected objective surfaces are rechecked;
+- only explicit user acceptance sets `accepted`;
+- tests, screenshots, technical routing, review text, or silence do not imply acceptance.
 
-## Compliance and coverage
+## Severity and result
 
 Use:
 
-- `compliant` — implementation and truthful documentation agree, current canonical evidence is sufficient, and no finding remains;
-- `partially-compliant` — usable, but non-critical implementation, documentation, canonical-freshness, or verification gaps remain;
-- `non-compliant` — a critical or high finding exists, including unchanged rejected visible behavior;
-- `blocked` — evidence required for a material decision is unavailable or conflicting.
+- `critical` — unsafe semantics, accessibility, or severe interaction corruption;
+- `high` — required API/state/token/motion/ownership, major anatomy or geometry, interaction region, visible endpoint, invalid public-looking namespace, or unchanged operator-rejected behavior is wrong;
+- `medium` — bounded mismatch, incomplete proof, misleading documentation, fallback inconsistency, or non-critical canonical divergence;
+- `low` — minor documentation or cleanup defect.
 
-A stale snapshot cannot produce a fully current compliant result. Use `partially-compliant` when currentness is the only non-critical gap and `blocked` when it affects a material decision.
+Overall result:
 
-Coverage is:
+- `compliant` — no finding remains and current canonical evidence is sufficient;
+- `partially-compliant` — only non-critical gaps remain;
+- `non-compliant` — any critical or high finding exists;
+- `blocked` — required authoritative evidence is unavailable or conflicting.
 
-- `full` — every actual official capability is implemented and verified;
-- `partial` — at least one actual capability is absent, partial, defective, provisional, or unverified;
-- `unresolved` — the inventory is not current-complete.
-
-Officially unsupported combinations do not reduce coverage. Optional guidance does not reduce coverage unless required for the implemented surface.
+A stale snapshot alone prevents fully current compliant status.
 
 ## Correction loop
 
 ```text
-AUDIT.md findings or operator feedback in the user task
-→ material-component <family>
+AUDIT findings or operator feedback
+→ applicable authoring workflow
 → README/code/tests update
-→ material-component-review <family>
-→ explicit user acceptance or further feedback
+→ independent review
+→ explicit acceptance or further feedback
 ```
 
 Authoring never edits AUDIT. Review never edits README.
 
 ## Completion gate
 
-A family leaves active migration only when:
+An owner leaves active work only when:
 
 - implementation and README agree;
-- README accurately represents canonical Material and source limitations;
-- classification is complete for the available evidence;
-- every unsupported, partial, unresolved, extended, deviated, and remaining item is explicit;
+- documentation accurately represents Material and source limitations;
+- classification is complete for available evidence;
+- every partial, unsupported, unresolved, extended, deviated, and remaining item is explicit;
+- applicable ownership and namespaces are correct;
 - shared routes have representative proof;
-- consumers are migrated and obsolete ownership is removed;
+- consumers and obsolete ownership are handled;
 - local verification passes;
-- required visual review is explicitly accepted in README after a user acceptance message.
+- required visual review is explicitly accepted.
 
-A family is fully implemented only with current-complete canonical evidence, `Official coverage: full`, and accepted required visual review.
+Full implementation additionally requires current-complete evidence and full official coverage for the resolved owner.
