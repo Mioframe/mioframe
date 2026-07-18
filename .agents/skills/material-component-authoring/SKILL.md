@@ -15,7 +15,7 @@ Use only current workspace files, official Material sources, and local project v
 
 Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. Historical provenance is not evidence for the current implementation contract.
 
-The implementation workflow never edits `AUDIT.md`.
+The implementation workflow never edits `AUDIT.md` or `VISUAL_REVIEW.md`.
 
 ## Inputs
 
@@ -24,11 +24,13 @@ Read:
 - current official Material sources through `material3-guidelines`;
 - `docs/material-3/source-of-truth.md`;
 - `docs/material-3/component-architecture.md`;
-- the family `README.md` and `AUDIT.md` when present;
+- the family `README.md`, `AUDIT.md`, and `VISUAL_REVIEW.md` when present;
 - current implementation, exports, consumers, tests, and stories;
 - applicable foundation and testing instructions.
 
 Treat the previous audit as current-workspace findings to investigate. Do not use source-control history to validate or invalidate it.
+
+Treat `VISUAL_REVIEW.md` as operator-owned evidence. A rejected or blocked result is authoritative until the operator replaces that file after reviewing new evidence. Do not rewrite, ignore, reinterpret, or close it.
 
 ## 1. Resolve family, source status, scope, and capability inventory
 
@@ -45,6 +47,7 @@ Treat the previous audit as current-workspace findings to investigate. Do not us
 6. Reconstruct the contract-level capability inventory supported by that evidence.
 7. Define the minimum coherent implementation surface required by current consumers.
 8. Inspect every current audit finding.
+9. Inspect the current operator visual result when `VISUAL_REVIEW.md` exists.
 
 Example:
 
@@ -121,7 +124,13 @@ Record optional guidance that Mioframe does not adopt under `Extensions and devi
 
 The README must never imply full implementation while coverage is partial or unresolved.
 
-A known operator-rejected visible behavior stays under known issues with visual status `rejected`. It cannot be marked resolved by documentation, test changes, or a renamed runtime contract. Resolution requires a production change affecting the behavior, new visual evidence, and operator acceptance.
+When `VISUAL_REVIEW.md` is rejected or blocked:
+
+- record the visual issue under `Known issues and required follow-up`;
+- keep the operator status explicit;
+- do not call the behavior resolved;
+- do not advance to visual acceptance without a production change and new evidence;
+- do not modify `VISUAL_REVIEW.md`.
 
 ## 3. Resolve foundations and styles
 
@@ -170,7 +179,7 @@ At component level, use real input only to prove:
 
 Do not require frame-by-frame component analysis. Do not retest equivalent pointer, touch, and keyboard paths when they share the same implementation. Forced state is visual-state evidence, not motion evidence.
 
-When the operator has already rejected perceived motion quality, the defect remains open even if the route is technically honest. Change the behavior and return it for visual acceptance.
+A rejected motion result in `VISUAL_REVIEW.md` remains an open implementation defect even when the route is technically honest. Change production behavior, prepare new evidence, and leave the operator file unchanged for later review.
 
 ## 6. Migrate consumers and ownership
 
@@ -204,12 +213,12 @@ After implementation:
 
 1. rebuild the inventory from the available official sources;
 2. update every classification and source-status field honestly;
-3. preserve every known operator rejection until accepted;
+3. preserve every operator rejection from `VISUAL_REVIEW.md`;
 4. name applicable tests and stories;
 5. keep `Review status: review required after changes`;
 6. run focused checks and final applicable local verification.
 
-Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` remains unchanged until an independent review replaces it.
+Code, README, exports, consumers, tests, and stories must agree. The previous `AUDIT.md` and `VISUAL_REVIEW.md` remain unchanged until their owning workflows replace them.
 
 ## Result
 
@@ -234,9 +243,10 @@ Consumers migrated:
 Foundation/style changes:
 Local verification:
 Family documentation:
+Operator visual evidence: missing | VISUAL_REVIEW.md
 Visual status: not required | required | rejected | blocked | accepted
 Status: implementation finished | blocked (<exact reason>)
 Recommended next command: material-component-review <family>
 ```
 
-Do not report success while documentation hides unfinished work, a known visual rejection is unchanged, shared blast radius is unproved, or required local verification fails.
+Do not report success while documentation hides unfinished work, a rejected operator result is unchanged, shared blast radius is unproved, or required local verification fails.
