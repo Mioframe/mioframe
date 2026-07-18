@@ -1,13 +1,19 @@
 ---
 name: material-component
-description: 'Use when the user provides a Material component or family name and wants it created, implemented, migrated, aligned, or corrected. Resolve the official documentation family and run material-component-authoring.'
+description: 'Use when the user supplies a Material component or family name for implementation, migration, alignment, or correction. If the supplied request resolves to a foundation or style instead, route it to material-foundation and continue rather than refusing.'
 ---
 
-# Material component
+# Material component entrypoint
 
-Use this as the one-name entrypoint for Material 3 Expressive component work.
+Use this as the compatibility entrypoint for named Material work.
 
-## Input
+Preferred universal command:
+
+```text
+material <artifact-or-request>
+```
+
+Component examples:
 
 ```text
 material-component Button
@@ -15,29 +21,57 @@ material-component Switch
 material-component Navigation rail
 ```
 
-The same message may include concrete visual problems or explicit acceptance:
+A request may also be routed here with a non-component name:
 
 ```text
-material-component Button
-
-Operator feedback:
-- the target geometry is larger than and inconsistent with the visible container;
-- corners become visually straight during press.
+material-component State layer
+material-component Ripple
+material-component Elevation
 ```
 
-The component name is sufficient. Do not ask the user to predefine variants, API, sources, files, tests, consumers, or expected omissions.
+Do not reject such a request merely because the selected skill name contains `component`.
 
 ## Workspace boundary
 
-Work from the current user task and current workspace only.
+Use only the current user task, current workspace files, official Material sources, and local project verification commands.
 
-Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history. Source-control provenance is not implementation, project-contract, or Material evidence.
+Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history as implementation or Material evidence.
 
-Local verification means project commands such as formatting, linting, type checking, tests, Storybook, and build commands.
+## Resolve before acting
 
-## Required instructions
+Resolve the named artifact against official Material navigation rather than its current repository path.
 
-Before resolving or changing a family, read:
+### Component family
+
+For an official component or component family:
+
+1. resolve its official documentation path and slug;
+2. inspect current owner, consumers, README, AUDIT, tests, stories, and shared dependencies;
+3. preserve explicit operator feedback;
+4. execute `material-component-authoring` end to end.
+
+The component name is sufficient. Do not ask the user to predefine variants, API, sources, files, tests, consumers, geometry, or known defects.
+
+### Foundation or style
+
+For a foundation, style, token system, or interaction primitive, immediately route to `material-foundation` and continue the same task.
+
+Examples:
+
+- State layer, ripple, focus indication, interaction states, accessibility, adaptive/layout → foundation;
+- color, elevation, icons, motion, shape, typography → style.
+
+Existing code under `src/shared/ui/State`, `src/shared/lib/md`, `src/shared/ui/Icon`, or another legacy directory is an implementation owner to inspect or migrate. It does not turn the artifact into a component and is not a reason to refuse it.
+
+A valid explicit user request is sufficient to start the applicable foundation/style workflow. Do not require an active component migration, roadmap priority, multiple existing consumers, or an existing canonical directory.
+
+### Broad or cross-layer request
+
+When the request spans a shared foundation/style and affected components, resolve one canonical shared owner first, execute `material-foundation`, then update only the affected component consumption and proof. Do not duplicate the shared behavior inside a component.
+
+## Component authoring requirements
+
+For actual component work, read and obey:
 
 - applicable repository and scoped `AGENTS.md` files;
 - `src/shared/ui/material/components/AGENTS.md`;
@@ -45,148 +79,13 @@ Before resolving or changing a family, read:
 - `docs/material-3/component-tokens.md`;
 - `docs/material-3/component-testing.md`;
 - `docs/material-3/component-conversion-checklist.md`;
-- the family README and AUDIT when present.
+- the current family README and AUDIT.
 
-The scoped component instructions are mandatory for both authoring and later independent review.
+Continue through production implementation, consumer migration, structural conformance, correct final rendered-property ownership, CSS custom-property namespace review, proportional proof, obsolete-owner removal, documentation update, and local verification.
 
-## Resolve the target
+Do not stop after research, classification, an audit summary, or a plan.
 
-1. Resolve the current official Material family and documentation path.
-2. Use the official documentation slug as the canonical directory name.
-3. Inspect current implementation, public exports, consumers, README, AUDIT, tests, stories, and applicable shared owners.
-4. Extract explicit operator feedback from the current message and existing README.
-5. Reconstruct the official contract-level capability inventory from available official Material 3 Expressive sources.
-6. Record canonical source status: `current-complete`, `snapshot-complete-stale`, `partial`, `conflicting`, or `unavailable`.
-7. Select `new-component`, `end-to-end-migration`, or `alignment-only`.
-8. Resolve the minimum coherent implementation surface required by current consumers.
-
-Example:
-
-```text
-m3.material.io/components/buttons
-→ src/shared/ui/material/components/buttons
-```
-
-Do not infer canonical ownership from a legacy folder name.
-
-Current consumer need determines implementation priority. It does not determine inventory coverage.
-
-## Capability classification
-
-Classify each relevant official item as exactly one of:
-
-- implemented and verified;
-- partial, defective, provisional, or unverified;
-- not implemented;
-- officially unsupported or an invalid combination;
-- unresolved because canonical evidence is incomplete or conflicting;
-- outside the resolved family boundary, with the separate official owner named.
-
-An officially unsupported or invalid combination is not missing capability and does not reduce coverage. Optional guidance is not automatically required capability.
-
-Use:
-
-```text
-Official capability inventory:
-  complete
-  snapshot-complete (<snapshot>; currentness unverified)
-  incomplete (<exact gap>)
-  blocked (<exact reason>)
-
-Official coverage:
-  full
-  partial
-  unresolved
-```
-
-`complete` requires every current family page and required structured source. Spot checks cannot certify a complete family inventory.
-
-## Documentation-first rule
-
-Before implementation, create or update the family README. It must state:
-
-- official pages and source status;
-- inventory status and official coverage;
-- implemented, partial, absent, invalid, unresolved, and out-of-family capability;
-- known issues and required follow-up;
-- operator feedback and visual status;
-- API and semantics;
-- geometry and final rendered-property ownership;
-- token namespaces and routes;
-- dependencies, extensions, consumers, verification, and review status.
-
-Do not hide incomplete work to make the result appear successful.
-
-## Broad visible feedback rule
-
-When the user says that a component looks wrong, crooked, malformed, or visually incorrect:
-
-- set README visual status to `rejected`;
-- preserve the complete affected visible surface as unresolved;
-- investigate official anatomy, geometry ownership, content layout, clipping, state endpoints, and motion before selecting a root cause;
-- do not narrow the task to the first plausible variable or to the previously discussed issue;
-- do not move to `awaiting re-review` until production behavior changes and the complete affected surface is rechecked.
-
-Objective structural defects are agent-owned. The operator is not responsible for discovering:
-
-- wrong DOM anatomy;
-- incoherent layout or hit geometry;
-- incorrect visual-container ownership;
-- wrong state-layer, ripple, focus, outline, elevation, shape, or content bounds;
-- invalid CSS custom-property naming;
-- visibly wrong state endpoints.
-
-## Mandatory geometry ownership map
-
-For every visible interactive component, identify concrete DOM owners for:
-
-```text
-semantic host
-layout footprint
-interaction bounds
-visual container
-content bounds
-state-layer bounds
-ripple event host
-ripple render and clip bounds
-focus-indicator bounds
-outline and elevation owner
-shape and motion owner
-```
-
-A component cannot be classified as implemented and verified while this map is missing, contradictory, or inconsistent with rendered bounds.
-
-Numeric token values do not prove that the correct element owns them.
-
-Do not accept an absolutely positioned descendant target that extends outside its semantic host and creates a cross-shaped, partial, overlapping, or non-layout interaction region.
-
-## CSS custom-property namespaces
-
-Every touched custom property must be classified as:
-
-- exact official token: `--md-ref-*`, `--md-sys-*`, or `--md-comp-*`;
-- justified private implementation route: `--md-private-<owner>-<semantic-role>`;
-- genuine application token: `--app-*`;
-- invalid or unnecessary alias.
-
-Do not create ad-hoc public-looking `--md-<component>-*` namespaces.
-
-Invalid examples:
-
-```text
---md-button-border-radius
---md-button-height
---md-button-padding-left
---md-button-icon-gap
-```
-
-Use an exact official token, a justified semantic `--md-private-*` route, or a direct declaration when indirection is unnecessary.
-
-## Run the authoring workflow
-
-Load `material-component-authoring` and continue through implementation, consumer migration, structural conformance, token-namespace review, proportional proof, obsolete-owner removal, documentation update, and local verification.
-
-The implementing workflow does not edit AUDIT. After implementation, recommend:
+Authoring does not edit AUDIT. After component implementation, recommend:
 
 ```text
 material-component-review <resolved-family>
@@ -194,36 +93,14 @@ material-component-review <resolved-family>
 
 ## Result
 
-Finish with:
+For a component, finish with the result format owned by `material-component-authoring`.
+
+For a rerouted foundation/style request, finish with the result format owned by `material-foundation` and state:
 
 ```text
-MATERIAL COMPONENT RESULT
-Requested name:
-Resolved official family:
-Official documentation path:
-Canonical implementation path:
-Change mode:
-Canonical source status:
-Official capability inventory:
-Official coverage:
-Implemented:
-Partial / defective / unverified:
-Not implemented:
-Officially unsupported / invalid combinations:
-Unresolved / out-of-family:
-Geometry ownership:
-CSS custom-property namespace review:
-Known issues / follow-up:
-Consumers migrated:
-Foundation/style changes:
-Local verification:
-Family documentation:
-Latest operator feedback: none | <summary>
-Visual status: not reviewed | required | rejected | awaiting re-review | accepted
-Review required: yes | no
-Status: implementation finished | blocked (<exact reason>)
+Requested through: material-component
+Resolved kind: foundation | style | cross-layer
+Selected workflow: material-foundation
 ```
 
-`implementation finished` does not mean full official coverage, successful independent audit, or operator acceptance.
-
-Do not report implementation finished while structural geometry is unresolved, a visible state endpoint is wrong, invalid CSS custom properties remain, broad operator feedback was narrowed without full investigation, or required local verification fails.
+Do not report a blocker whose only reason is that the requested Material artifact is not a component.
