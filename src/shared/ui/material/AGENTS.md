@@ -6,25 +6,24 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 
 - Use `material-library-status` for a read-only report based on roadmap, inventory, registries, and colocated family documentation.
 - Use `material-library-next` to select and execute exactly one next family.
-- Use `material-component` when the user supplies a component or family name for creation, migration, or alignment.
+- Use `material-component` when the user supplies a component or family name for creation, migration, alignment, or correction.
 - Use `material-component-review` for an independent source-backed review without production changes.
 - Use `material-component-authoring` after the target family is resolved.
 - Use `material-foundation` when a real cross-family foundation or style contract changes.
 - Use `material3-guidelines` for official sources and supported surface.
 
-A component name is sufficient. Resolve API, consumers, dependencies, tests, omissions, invalid combinations, and source limitations from current workspace and official evidence.
+A component name is sufficient. Explicit visual problems may be included directly in the same user message.
 
 ## Workflow evidence boundary
 
 Material component authoring and review use:
 
+- the current user task;
 - current workspace files;
 - official Material sources;
 - local project verification commands.
 
 Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history inside these workflows.
-
-Historical provenance is not required to judge current ownership, behavior, consumers, or compliance.
 
 ## Canonical navigation
 
@@ -35,12 +34,12 @@ components/
 ```
 
 - `foundations/<official-slug>` — official foundation domains.
-- `styles/<official-slug>` — color, elevation, icons, motion, shape, typography, and other official style domains.
+- `styles/<official-slug>` — official style domains.
 - `components/<official-docs-slug>` — official component families.
 
 Use the official documentation slug. Button belongs in `components/buttons`, matching `m3.material.io/components/buttons`.
 
-Do not create a top-level `patterns` tree without an equivalent official documentation owner. Product compositions remain outside the official library.
+Do not create a top-level `patterns` tree without an equivalent official documentation owner.
 
 ## Canonical source status
 
@@ -66,7 +65,7 @@ Official coverage:
   unresolved
 ```
 
-Use `complete` only with current-complete evidence. A partial, truncated, suspicious, stale-only, missing, or spot-check-only source cannot certify complete inventory.
+Use `complete` only with current-complete evidence. Partial, truncated, suspicious, stale-only, missing, or spot-check-only evidence cannot certify complete current inventory.
 
 ## Capability classification
 
@@ -81,31 +80,45 @@ Classify each official item as exactly one of:
 
 `Not implemented` is reserved for a real supported capability that exists but is absent.
 
-An officially unsupported or invalid combination is a constraint, not a missing capability. It does not reduce coverage when rejection or normalization is coherent.
-
-Optional or non-normative guidance is recorded as a project choice, deviation, or follow-up. It reduces coverage only when required for the implemented surface.
+An officially unsupported or invalid combination is a constraint, not a missing capability. Optional guidance is not automatically a capability.
 
 ## Family documentation
 
-Every implemented or actively migrated family may own:
+Every implemented or actively migrated family owns:
 
 ```text
 components/<official-docs-slug>/README.md
 components/<official-docs-slug>/AUDIT.md
-components/<official-docs-slug>/VISUAL_REVIEW.md
 ```
 
 - README is current implementation documentation and is updated by authoring.
-- AUDIT is the latest independent technical/canonical review and is updated only by `material-component-review`.
-- VISUAL_REVIEW is the durable operator decision and is created or replaced only after operator review.
+- AUDIT is the latest independent review and is updated only by `material-component-review`.
+- No separate operator report file is required.
 
-README records official mapping, source status, inventory, coverage, implementation state, omissions, invalid combinations, known issues, dependencies, consumers, verification, and review state.
+README records official mapping, source status, inventory, coverage, implementation state, omissions, invalid combinations, known issues, operator feedback, dependencies, consumers, verification, and review state.
 
-A production change sets `Review status: review required after changes`. Authoring never edits AUDIT or VISUAL_REVIEW.
+## Operator feedback
 
-A review-only run creates or replaces only AUDIT. It reads but never edits VISUAL_REVIEW.
+The user reports visual problems directly in the task message. Authoring persists them in README under:
 
-A rejected VISUAL_REVIEW remains authoritative until the operator reviews new evidence and replaces it. Agents must not downgrade it to `required`, infer acceptance, or call the visible behavior resolved.
+```text
+## Operator feedback and visual status
+Status: not reviewed | required | rejected | awaiting re-review | accepted
+Latest operator feedback: none | <summary>
+Implementation response: none | <summary>
+```
+
+Rules:
+
+- A reported visual defect means `rejected`.
+- The agent preserves the feedback in README.
+- After changing production behavior, authoring may use `awaiting re-review`.
+- Only an explicit user acceptance message may set `accepted`.
+- Passing tests, technical routing, screenshots, or silence do not imply acceptance.
+
+A production change sets `Review status: review required after changes`. Authoring never edits AUDIT.
+
+A review-only run creates or replaces only AUDIT and verifies that README preserves explicit operator feedback accurately.
 
 ## Canonical target
 
@@ -127,7 +140,7 @@ shared generic infrastructure
 - a family does not deep-import another family's private files;
 - Material code does not import product layers;
 - product consumers use `@shared/ui/material`;
-- private implementation, tests, stories, docs, audits, and visual reviews are not public API.
+- private implementation, tests, stories, docs, and audits are not public API.
 
 ## Implementation rules
 
@@ -154,7 +167,7 @@ At component level, prove only:
 
 Do not require frame-by-frame analysis. Do not duplicate equivalent input paths. Forced state proves appearance, not motion.
 
-Perceived fidelity is operator-owned. A rejected VISUAL_REVIEW is an open implementation defect even when technical routing is correct.
+Perceived fidelity is operator-owned. A rejected visual result remains open until behavior changes and the user explicitly accepts the replacement.
 
 ## Proof
 
@@ -168,11 +181,11 @@ Perceived fidelity is operator-owned. A rejected VISUAL_REVIEW is an open implem
 Authoring finishes by:
 
 - updating README truthfully;
-- preserving source limitations, shared proof gaps, and operator visual status;
+- preserving source limitations, shared proof gaps, and operator feedback;
 - running applicable local verification;
 - reporting `implementation finished` or one exact blocker;
 - recommending `material-component-review <family>`.
 
-Review records the independent result in AUDIT and mirrors VISUAL_REVIEW without changing it.
+Review records the independent result in AUDIT.
 
-A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and accepted required visual review. A family cannot leave active migration while VISUAL_REVIEW is rejected or blocked.
+A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and explicit operator acceptance when visual review is required.
