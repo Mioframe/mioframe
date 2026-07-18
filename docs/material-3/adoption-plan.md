@@ -16,8 +16,6 @@ Implementation may be incremental. Classification and source limitations must re
 
 ## Library navigation
 
-The canonical library mirrors official Material navigation:
-
 ```text
 src/shared/ui/material/
   foundations/
@@ -37,13 +35,13 @@ They do not use `git`, `gh`, GitHub, branches, commits, pull requests, diffs, bl
 
 Each family follows one loop:
 
-1. inspect current implementation, exports, consumers, tests, stories, README, and previous audit;
+1. inspect current implementation, exports, consumers, tests, stories, README, AUDIT, and VISUAL_REVIEW when present;
 2. resolve the official family and documentation path;
 3. record canonical source status;
 4. reconstruct the supported contract-level inventory without overstating incomplete sources;
 5. classify each item as implemented, partial/unverified, not implemented, officially unsupported/invalid, unresolved, or outside the family boundary;
 6. select the minimum coherent implementation surface required by current scenarios;
-7. update the canonical family README;
+7. update the canonical family README without editing AUDIT or VISUAL_REVIEW;
 8. correct directly applicable defective rules;
 9. change shared foundations/styles only for a real cross-family need;
 10. implement the selected surface and migrate consumers;
@@ -51,7 +49,7 @@ Each family follows one loop:
 12. add proportional tests and visual evidence;
 13. run local verification;
 14. run an independent current-workspace review that changes only AUDIT;
-15. perform operator visual review when required;
+15. perform operator visual review and create/replace VISUAL_REVIEW when required;
 16. update the queue and select another family in a later run.
 
 Current consumer need determines implementation priority, not whether an item is classified.
@@ -101,7 +99,7 @@ Officially unsupported combinations do not reduce coverage.
 
 Optional or non-normative guidance is documented as a choice, deviation, or follow-up. It does not reduce coverage unless required for the implemented surface.
 
-## Documentation contract
+## Documentation ownership
 
 ### Authoring README
 
@@ -111,24 +109,9 @@ The implementing agent owns:
 src/shared/ui/material/components/<official-docs-slug>/README.md
 ```
 
-It records:
+It records official mapping, source status, inventory, coverage, implementation state, omissions, invalid combinations, unresolved items, known issues, API, semantics, states, tokens, dependencies, extensions, consumers, verification, and review status.
 
-- official mapping and source status;
-- inventory status and official coverage;
-- implemented capability;
-- partial, defective, provisional, ambiguous, or unverified capability;
-- every actual capability not implemented;
-- officially unsupported and invalid combinations;
-- unresolved and out-of-family items;
-- known issues and required follow-up;
-- API, semantics, states, tokens, and final property ownership;
-- foundation/style dependencies;
-- extensions and deviations;
-- consumers, verification, review status, and visual status.
-
-Any production change marks review required. Authoring never edits AUDIT.
-
-A known operator-rejected visual behavior remains open until production behavior changes and new evidence is accepted.
+Any production change marks review required. Authoring never edits AUDIT or VISUAL_REVIEW.
 
 ### Independent AUDIT
 
@@ -147,9 +130,21 @@ The reviewer:
 - checks project documentation against canonical Material;
 - separates absent capability from invalid combinations and optional guidance;
 - requires representative proof for shared routes;
-- preserves known visual rejection until accepted.
+- reads VISUAL_REVIEW and mirrors its status exactly.
 
-Compliance, coverage, source status, and visual status remain separate.
+### Operator VISUAL_REVIEW
+
+The operator owns:
+
+```text
+src/shared/ui/material/components/<official-docs-slug>/VISUAL_REVIEW.md
+```
+
+It records `accepted`, `rejected`, or `blocked`, the reviewed evidence, visible findings, and required correction.
+
+Authoring and review never edit this file. A rejected result remains authoritative until production behavior changes, new evidence is reviewed, and the operator replaces it.
+
+Compliance, coverage, source status, and operator visual status remain separate.
 
 ## Pilot 1 — Buttons
 
@@ -162,28 +157,21 @@ Buttons validate:
 - public API, semantics, accessibility, state, token, shape, elevation, and motion ownership;
 - representative proof for shared routes;
 - proportional motion evidence without frame-by-frame component testing;
-- persistence of operator-rejected visual defects until accepted;
+- persistence of operator-rejected visual defects in VISUAL_REVIEW until accepted;
 - consumer migration and obsolete-owner removal;
 - independent review.
 
-Current state and findings live only in:
+Current state and findings live in:
 
 - `src/shared/ui/material/components/buttons/README.md`;
-- `src/shared/ui/material/components/buttons/AUDIT.md`.
+- `src/shared/ui/material/components/buttons/AUDIT.md`;
+- `src/shared/ui/material/components/buttons/VISUAL_REVIEW.md`.
 
 ## Pilot 2 — independent stateful family
 
 `MDSwitch` is the default candidate unless inventory evidence identifies a better family.
 
-It should validate:
-
-- controlled semantic state;
-- disabled and presentation contracts;
-- materially distinct input paths only;
-- cancellation and cleanup;
-- multiple anatomy owners;
-- accessibility, target area, focus, ripple, motion, shape, and color;
-- the same source-status, classification, README/AUDIT, and visual-rejection model without Button assumptions.
+It should validate controlled state, disabled/presentation contracts, materially distinct input paths, cancellation, anatomy, accessibility, target area, focus, ripple, motion, shape, color, and the same README/AUDIT/VISUAL_REVIEW ownership model without Button assumptions.
 
 After two pilots, consolidate only mechanisms both migrations prove useful.
 
@@ -195,7 +183,7 @@ After the pilots:
 2. resolve official sources and source status;
 3. reconstruct and classify the inventory honestly;
 4. complete one coherent implementation surface, migration, proof, local verification, and independent audit;
-5. complete visual review when required;
+5. complete operator visual review when required;
 6. update inventory and coverage state;
 7. stop before starting a second family.
 
@@ -233,4 +221,4 @@ A family is fully implemented only when:
 
 - canonical evidence is current-complete;
 - the independent audit reports `Official coverage: full`;
-- required visual review is accepted.
+- required VISUAL_REVIEW is accepted.
