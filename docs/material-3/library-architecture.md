@@ -22,12 +22,7 @@ src/shared/ui/material/
 
   styles/
     README.md
-    color/
-    elevation/
-    icons/
-    motion/
-    shape/
-    typography/
+    <official-style-slug>/
 
   components/
     README.md
@@ -41,7 +36,7 @@ src/shared/ui/material/
       ... only files required by the current implementation
 ```
 
-Do not pre-create empty implementation directories. The three navigation `README.md` files may exist before their sections contain production code because they define the library map.
+Do not pre-create empty implementation directories. The three navigation README files may exist before their sections contain production code because they define the library map.
 
 ## Mapping rule
 
@@ -58,46 +53,49 @@ m3.material.io/foundations/interaction
 → src/shared/ui/material/foundations/interaction
 ```
 
-Use the official documentation slug, not a legacy Mioframe directory name or an invented singular/plural form. When several official pages form one implementation family, its `README.md` records the page mapping explicitly.
+Use the official documentation slug, not a legacy Mioframe directory name or an invented singular/plural form.
 
 ## Section ownership
 
-### `foundations`
+### foundations
 
 Owns cross-component foundations represented under the official Foundations navigation, such as accessibility, adaptive/layout rules, and interaction foundations.
 
-### `styles`
+### styles
 
 Owns cross-component visual systems represented under the official Styles navigation, including color, elevation, icons, motion, shape, and typography.
 
-### `components`
+### components
 
-Owns official public component families. Each family directory contains both the implementation and its current documentation state.
+Owns official public component families. Each family directory contains both implementation and current documentation state.
 
-Project-specific patterns, screens, workflows, and generic browser infrastructure remain outside this library. Do not create a separate `patterns` hierarchy that has no equivalent in the official documentation navigation.
+Project-specific patterns, screens, workflows, and generic browser infrastructure remain outside this library.
 
 ## Family documentation
 
 Every implemented or actively migrated component family contains:
 
-- `README.md` — current implementation contract and status;
-- `AUDIT.md` — latest independent source-backed review;
+- README.md — current implementation contract and status;
+- AUDIT.md — latest independent source-backed review;
 - production code and exports;
 - proportional tests and stories.
 
-`README.md` must state honestly:
+README must state honestly:
 
 - official documentation pages used;
 - implemented components, variants, states, behavior, and tokens;
-- unsupported or intentionally omitted official capability;
+- partial, defective, provisional, or unverified capability;
+- actual official capability not implemented;
+- officially unsupported and invalid combinations;
 - project extensions and deviations;
-- known defects;
+- known defects and shared proof gaps;
+- operator feedback and visual status;
 - items requiring verification or further work;
 - applicable tests and visual evidence.
 
-Do not describe an item as implemented when only a token, alias, placeholder, story, or test exists without a working final route.
+Operator feedback is supplied in normal user messages and persisted in README. No separate visual report file is required.
 
-`AUDIT.md` checks the implementation and `README.md` claims. It does not replace the implementation documentation and is not edited by the authoring workflow.
+AUDIT checks the implementation and README claims. It does not replace implementation documentation and is not edited by the authoring workflow.
 
 ## Dependency direction
 
@@ -121,16 +119,17 @@ Rules:
 A component migration:
 
 1. resolves the official documentation path and family;
-2. creates or updates the family `README.md`;
-3. implements the documented supported surface;
-4. updates required foundations or styles only when their shared ownership is real;
-5. migrates consumers and exports;
-6. removes obsolete ownership;
-7. adds proportional proof;
-8. records every omitted, unresolved, or unverified item in the family documentation;
-9. runs an independent local audit that replaces the family `AUDIT.md`.
+2. creates or updates the family README;
+3. records explicit user visual feedback when present;
+4. implements the documented supported surface;
+5. updates required foundations or styles only when their shared ownership is real;
+6. migrates consumers and exports;
+7. removes obsolete ownership;
+8. adds proportional proof;
+9. records every omitted, unresolved, invalid, optional, or unverified item;
+10. runs an independent local audit that replaces the family AUDIT.
 
-A migration is not complete while a legacy owner remains, a required consumer is not migrated, or the family documentation hides unfinished work.
+A migration is not complete while a legacy owner remains, a required consumer is not migrated, family documentation hides unfinished work, or required visual review is not explicitly accepted.
 
 ## Public API
 
@@ -151,6 +150,7 @@ Do not create:
 - generic component or token registries at runtime;
 - wrappers around generic utilities merely to satisfy the hierarchy;
 - a fixed file profile for every family;
+- separate operator report files;
 - automated checks that infer semantic completeness from Markdown.
 
 The library map should make implementation easier to find, not add ceremony.
