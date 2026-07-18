@@ -11,6 +11,14 @@ Use this read-only entrypoint:
 material-library-status
 ```
 
+## Evidence boundary
+
+Read current workspace records only.
+
+Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history.
+
+Do not modify files.
+
 ## Read owners
 
 Read:
@@ -19,31 +27,44 @@ Read:
 2. `docs/material-3/ui-library-inventory.md` for queue and classification;
 3. component and foundation registries for program summaries;
 4. `src/shared/ui/material/README.md` for library navigation;
-5. active and queued family `README.md` files for implementation state;
-6. colocated `AUDIT.md` files for independent review results.
+5. active and queued family README files for implementation state;
+6. colocated AUDIT files for independent review results.
 
-Do not inspect unrelated families or modify files.
+Do not inspect unrelated families.
 
 ## Reconcile state
 
 For each reported family distinguish:
 
 - implementation path;
-- README implementation claims;
-- `Not implemented` capability;
+- canonical source status;
+- official inventory status;
+- official coverage;
+- implemented capability;
+- partial, defective, provisional, or unverified capability;
+- actual capability not implemented;
+- officially unsupported or invalid combinations;
+- unresolved and out-of-family items;
 - known issues and follow-up;
-- review status;
-- latest AUDIT result;
-- pending visual review;
-- relevant foundation/style gaps.
+- review status and latest audit result;
+- visual status;
+- foundation/style gaps.
 
-An audit is stale when the family README says:
+Do not merge invalid combinations into `Not implemented`.
+
+Do not report optional or non-normative guidance as missing capability unless current family documentation classifies it as required for the implemented surface.
+
+Do not repeat a family README's `complete` inventory claim when its source status is partial, stale-only, truncated, suspicious, or otherwise insufficient. Report the inconsistency.
+
+An audit is stale when README says:
 
 ```text
 Review status: review required after changes
 ```
 
 Do not use commit metadata to determine freshness.
+
+A visual status of `rejected` remains open until current documentation records accepted replacement evidence after a production behavior change.
 
 When records conflict, report:
 
@@ -67,8 +88,23 @@ Next action:
 Implementation state:
 - <family — path — implemented / incomplete / blocked>
 
+Canonical source status:
+- <family — current-complete | snapshot-complete-stale | partial | conflicting | unavailable>
+
+Official inventory and coverage:
+- <family — complete | snapshot-complete | incomplete | blocked — full | partial | unresolved>
+
+Partial / defective / unverified:
+- none | <family — item>
+
 Not implemented:
-- none | <family — capability>
+- none | <family — actual official capability>
+
+Officially unsupported / invalid combinations:
+- none | <family — item>
+
+Unresolved / out-of-family:
+- none | <family — item or separate owner>
 
 Known issues / follow-up:
 - none | <family — item>
@@ -76,17 +112,14 @@ Known issues / follow-up:
 Audit state:
 - <family — current | review required | missing | blocked — result when current>
 
-Pending visual review:
-- none | <family — status>
+Visual status:
+- none | <family — not required | required | rejected | blocked | accepted>
 
 Foundation/style gaps:
 - none | <domain — impact>
 
 Record inconsistencies:
 - none | <conflict>
-
-Inventory completeness:
-- complete | partial | planned
 
 Recommended next command:
 <one command or exact blocker action>
