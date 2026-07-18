@@ -4,19 +4,57 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 
 ## Routing
 
-- Use `material-library-status` for a read-only report based on roadmap, inventory, registries, and colocated family documentation.
-- Use `material-library-next` to select and execute exactly one next family.
-- Use `material-component` when the user supplies a component or family name for creation, migration, alignment, or correction.
-- Use `material-component-review` for an independent source-backed review without production changes.
-- Use `material-component-authoring` after the target family is resolved.
-- Use `material-foundation` when a real cross-family foundation or style contract changes.
-- Use `material3-guidelines` for official sources and supported surface.
+Use `material` as the default implementation entrypoint for any named Material artifact or bounded Material correction.
 
-A component name is sufficient. Explicit visual problems may be included directly in the same user message.
+```text
+material Button
+material State layer
+material Ripple
+material Elevation
+material Typography
+```
+
+The user does not need to classify the request.
+
+The router resolves:
+
+- component families → `material-component` → `material-component-authoring`;
+- foundations and interaction primitives → `material-foundation`;
+- styles and token systems → `material-foundation`;
+- cross-layer requests → one canonical shared owner plus only affected consumer changes.
+
+Specialized entrypoints remain valid:
+
+- `material-component` for a component family;
+- `material-component-review` for independent component review;
+- `material-foundation` for a known foundation/style target;
+- `material-library-status` for read-only program status;
+- `material-library-next` for exactly one next queued migration target;
+- `material3-guidelines` for official source resolution.
+
+If a foundation/style request enters through `material-component`, reroute it and continue. Do not refuse it because the skill name contains `component`.
+
+## Explicit-request rule
+
+A valid explicit request for an official Material artifact is a current requirement.
+
+Do not refuse or defer merely because:
+
+- the artifact is not a component;
+- no component migration is active;
+- no current production consumer exists;
+- only one current component consumes it;
+- the roadmap names another family;
+- the canonical directory is absent;
+- the current owner is legacy.
+
+When no production consumer exists, implement the smallest coherent requested official contract with owner-local tests and a bounded testing/Storybook fixture. Do not invent a fake product consumer.
+
+Existing consumers determine migration and blast-radius proof, not whether the explicit request is allowed.
 
 ## Workflow evidence boundary
 
-Material component authoring and review use:
+Material authoring and review use:
 
 - the current user task;
 - current workspace files;
@@ -33,17 +71,27 @@ styles/
 components/
 ```
 
-- `foundations/<official-slug>` — official foundation domains.
-- `styles/<official-slug>` — official style domains.
+- `foundations/<official-slug>` — official foundation domains and interaction primitives;
+- `styles/<official-slug>` — official visual systems;
 - `components/<official-docs-slug>` — official component families.
 
-Use the official documentation slug. Button belongs in `components/buttons`, matching `m3.material.io/components/buttons`.
+Examples:
+
+```text
+m3.material.io/components/buttons
+→ src/shared/ui/material/components/buttons
+
+state layer / ripple / focus indication
+→ src/shared/ui/material/foundations/interaction
+```
+
+Use a narrower official slug when official navigation defines one.
 
 Do not create a top-level `patterns` tree without an equivalent official documentation owner.
 
 ## Canonical source status
 
-Every active family records:
+Every active Material owner records:
 
 ```text
 Canonical source status:
@@ -76,49 +124,52 @@ Classify each official item as exactly one of:
 - not implemented;
 - officially unsupported or an invalid combination;
 - unresolved because canonical evidence is incomplete or conflicting;
-- outside the resolved family boundary.
+- outside the resolved owner boundary.
 
-`Not implemented` is reserved for a real supported capability that exists but is absent.
+`Not implemented` is reserved for a real official capability that exists but is absent.
 
-An officially unsupported or invalid combination is a constraint, not a missing capability. Optional guidance is not automatically a capability.
+An officially unsupported or invalid combination is a constraint, not missing capability. Optional guidance is not automatically required capability.
 
-## Family documentation
+## Local documentation
 
-Every implemented or actively migrated family owns:
+Every implemented or actively migrated owner has local documentation:
 
 ```text
+foundations/<official-slug>/README.md
+foundations/<official-slug>/AUDIT.md
+
+styles/<official-slug>/README.md
+styles/<official-slug>/AUDIT.md
+
 components/<official-docs-slug>/README.md
 components/<official-docs-slug>/AUDIT.md
 ```
 
 - README is current implementation documentation and is updated by authoring.
-- AUDIT is the latest independent review and is updated only by `material-component-review`.
+- AUDIT is the latest independent review and is never edited by authoring.
 - No separate operator report file is required.
 
-README records official mapping, source status, inventory, coverage, implementation state, omissions, invalid combinations, known issues, operator feedback, dependencies, consumers, verification, and review state.
+README records official mapping, source status, inventory, coverage, implementation state, omissions, invalid routes, known issues, ownership, consumers, verification, and review state.
+
+Component-family README also persists operator feedback and visual status.
 
 ## Operator feedback
 
-The user reports visual problems directly in the task message. Authoring persists them in README under:
+For visible component or rendered foundation/style behavior, the user reports problems directly in the task message.
 
 ```text
-## Operator feedback and visual status
 Status: not reviewed | required | rejected | awaiting re-review | accepted
 Latest operator feedback: none | <summary>
 Implementation response: none | <summary>
 ```
 
-Rules:
-
-- A reported visual defect means `rejected`.
-- The agent preserves the feedback in README.
-- After changing production behavior, authoring may use `awaiting re-review`.
-- Only an explicit user acceptance message may set `accepted`.
+- A reported visible defect means `rejected`.
+- Authoring preserves the feedback.
+- After production behavior changes, authoring may use `awaiting re-review`.
+- Only explicit user acceptance may set `accepted`.
 - Passing tests, technical routing, screenshots, or silence do not imply acceptance.
 
-A production change sets `Review status: review required after changes`. Authoring never edits AUDIT.
-
-A review-only run creates or replaces only AUDIT and verifies that README preserves explicit operator feedback accurately.
+A production change sets `Review status: review required after changes`.
 
 ## Canonical target
 
@@ -137,55 +188,61 @@ shared generic infrastructure
 ```
 
 - foundations and styles do not import components;
-- a family does not deep-import another family's private files;
+- a component family does not deep-import another family's private files;
 - Material code does not import product layers;
 - product consumers use `@shared/ui/material`;
-- private implementation, tests, stories, docs, and audits are not public API.
+- private implementation, tests, fixtures, stories, docs, and audits are not public API.
+
+Generic platform utilities remain generic when they contain no Material semantics. Material-specific state, token, clipping, focus, motion, or rendering ownership belongs in the Material library even when its legacy implementation currently lives elsewhere.
 
 ## Implementation rules
 
-- Implement the minimum coherent surface required by current consumers.
+- Implement the smallest coherent surface required by the explicit user request and affected consumers.
 - Use exact official token meanings and shortest final property routes.
 - A route exists only when its source can affect the final output through a real dependency.
 - Colocation, aliases, equality assertions, comments, stories, and tests do not create a route.
-- Keep behavior family-local unless a real cross-family contract exists.
-- Before changing root/system tokens, universal selectors, pseudo-elements, or shared formulas, identify current affected families, prefer the narrowest owner, and add representative proof that exercises the route.
+- Keep family-specific behavior local unless an official shared owner or explicit foundation/style request exists.
+- Before changing root/system tokens, universal selectors, pseudo-elements, or shared formulas, identify affected consumers and add representative proof that exercises the route.
 - Unchanged tests that never exercise a shared route are not proof.
-- Create only files and abstractions required by current work.
+- Create only files and abstractions required by the current request.
+- Do not create fake consumers, placeholder implementation trees, universal validators, generic state registries, CSS DSLs, or broad wrappers.
 
-## Motion proof
+## State layer and interaction foundations
 
-Verify a shared motion foundation deeply once.
+State layer, ripple, and focus indication are valid direct implementation targets.
 
-At component level, prove only:
+Their workflow must resolve applicable:
 
-- real input activates the intended rendered property;
-- one meaningful intermediate state when needed;
-- correct endpoint;
-- safe interruption or cancellation;
-- consumption of the documented shared contract.
+- semantic and state-input ownership;
+- color/opacity routes;
+- rendered bounds, clipping, and shape inheritance;
+- pointer/focus/keyboard acquisition where owned;
+- disabled and simultaneous-state behavior;
+- lifecycle, cancellation, cleanup, and reduced motion;
+- generic component-consumption bridge;
+- testing-only forced-state support.
 
-Do not require frame-by-frame analysis. Do not duplicate equivalent input paths. Forced state proves appearance, not motion.
-
-Perceived fidelity is operator-owned. A rejected visual result remains open until behavior changes and the user explicitly accepts the replacement.
+A token declaration alone does not implement the artifact. The final rendered owner and behavior must work.
 
 ## Proof
 
-- Every new or migrated component has colocated component-contract tests.
-- Every visible component has one stable canonical story.
-- Add state-matrix, browser, pure, consumer, and visual-regression layers only when the family owns those risks.
+- New or migrated components have colocated component-contract tests and one stable canonical story when visible.
+- Foundations/styles have owner-local contract tests and bounded fixtures when rendered behavior exists.
+- Add browser, pure, consumer, state-matrix, and visual-regression layers only when the changed artifact owns those risks.
+- Representative consumers are required for existing blast radius; a standalone owner fixture is valid when no consumer exists.
 - Operator visual comparison does not replace technical review.
 
 ## Completion behavior
 
 Authoring finishes by:
 
-- updating README truthfully;
-- preserving source limitations, shared proof gaps, and operator feedback;
+- updating local README truthfully;
+- implementing the explicit requested contract rather than stopping at classification;
+- migrating current consumers and obsolete ownership when applicable;
+- preserving source limitations, proof gaps, and operator feedback;
 - running applicable local verification;
-- reporting `implementation finished` or one exact blocker;
-- recommending `material-component-review <family>`.
+- reporting `implementation finished` or one exact blocker.
 
-Review records the independent result in AUDIT.
+A blocker may not consist only of missing current consumers, inactive roadmap position, legacy location, or absence of a pre-created canonical directory.
 
-A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and explicit operator acceptance when visual review is required.
+A Material owner is fully implemented only with current-complete evidence, full official coverage for its resolved scope, independent review, and explicit operator acceptance when visible review is required.
