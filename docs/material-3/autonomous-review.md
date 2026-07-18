@@ -1,20 +1,27 @@
 # Material implementation review
 
-This document separates independent technical review from operator visual comparison.
+This document separates implementation documentation, independent technical review, and operator visual comparison.
 
-## Review boundary
+## Review ownership
 
-`material-component-review` replaces only the family `AUDIT.md`.
+Each active family may contain:
+
+```text
+README.md         # implementation documentation; authoring-owned
+AUDIT.md          # technical/canonical review; reviewer-owned
+VISUAL_REVIEW.md  # visible fidelity decision; operator-owned
+```
+
+`material-component-review` replaces only `AUDIT.md`. It reads but never modifies `VISUAL_REVIEW.md`.
 
 The reviewer uses:
 
 1. current implementation evidence;
 2. current project documentation;
-3. official Material 3 Expressive evidence.
+3. official Material 3 Expressive evidence;
+4. operator visual evidence from `VISUAL_REVIEW.md` when present.
 
 The reviewer does not use source-control or remote state. Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history.
-
-Historical provenance is not needed to review current ownership, current behavior, current consumers, or the current documented contract.
 
 ## Canonical source status
 
@@ -65,7 +72,8 @@ Review:
 - public API, native semantics, accessibility, states, tokens, motion, and final property routing;
 - extensions and deviations;
 - tests, stories, rendered evidence, and verification claims;
-- known defects, shared proof gaps, source limitations, and visual status.
+- known defects, shared proof gaps, source limitations, and visual status;
+- the operator result in `VISUAL_REVIEW.md` when present.
 
 Report:
 
@@ -78,7 +86,7 @@ Report:
 - optional guidance inflated into required capability;
 - partial or unverified capability misclassified;
 - shared routes without representative proof;
-- unfinished or rejected visible work hidden from README.
+- README claims that contradict the operator visual result.
 
 A declaration, alias, placeholder, story, test, or unchanged green check is not implementation or representative proof by itself.
 
@@ -123,6 +131,8 @@ At component level, require proportional evidence only:
 
 Do not require frame-by-frame analysis. Do not duplicate equivalent pointer, touch, and keyboard paths. Forced state proves appearance, not motion.
 
+Technical routing evidence does not override operator-perceived fidelity.
+
 ## Shared route evidence
 
 Root/system tokens, universal selectors, pseudo-elements, and shared formulas are cross-family work.
@@ -138,19 +148,32 @@ Unchanged tests that never exercise the route do not close the evidence gap.
 
 ## Operator visual review
 
+Operator decisions are persisted in:
+
+```text
+src/shared/ui/material/components/<official-docs-slug>/VISUAL_REVIEW.md
+```
+
+Use:
+
+```text
+# <Family> visual review
+
+Reviewed: <date>
+Status: accepted | rejected | blocked
+
+## Evidence reviewed
+## Findings
+## Required correction
+```
+
 The operator evaluates visible fidelity, including geometry, spacing, shape, color, typography, elevation, state composition, focus indication, and perceived motion quality.
 
-Visual status is:
+Authoring and reviewing agents read this file but never modify it. A rejected result is a confirmed open implementation defect until production behavior changes, new evidence is reviewed, and the operator replaces the file with an accepted result.
 
-- `not required`;
-- `required`;
-- `rejected`;
-- `blocked`;
-- `accepted`.
+A renamed contract, revised comment, documentation update, route test, or technical audit cannot close a visual rejection. A reviewer must mirror the operator status exactly in `AUDIT.md`.
 
-A known operator rejection is a confirmed open defect until production behavior changes and new evidence is accepted. A renamed contract, revised comment, or new test cannot close it.
-
-The automated reviewer never invents operator acceptance.
+When `VISUAL_REVIEW.md` is absent, the audit may report `required`, `blocked`, or `not required`. It may report `accepted` only from an accepted operator file.
 
 ## Compliance and coverage
 
@@ -158,7 +181,7 @@ Use:
 
 - `compliant` — implementation and truthful documentation agree, current canonical evidence is sufficient, and no finding remains;
 - `partially-compliant` — usable, but non-critical implementation, documentation, canonical-freshness, or verification gaps remain;
-- `non-compliant` — a critical or high finding exists;
+- `non-compliant` — a critical or high finding exists, including unchanged rejected visible behavior;
 - `blocked` — evidence required for a material decision is unavailable or conflicting.
 
 A stale snapshot cannot produce a fully current compliant result. Use `partially-compliant` when currentness is the only non-critical gap and `blocked` when it affects a material decision.
@@ -174,11 +197,14 @@ Officially unsupported combinations do not reduce coverage. Optional guidance do
 ## Correction loop
 
 ```text
-AUDIT.md findings → material-component <family> → README/code/tests update →
-material-component-review <family> → updated AUDIT.md
+AUDIT.md findings or rejected VISUAL_REVIEW.md
+→ material-component <family>
+→ README/code/tests update
+→ material-component-review <family>
+→ new operator evidence when required
 ```
 
-Authoring never edits the audit to declare its own work correct.
+Authoring never edits AUDIT or VISUAL_REVIEW. Review never edits README or VISUAL_REVIEW.
 
 ## Completion gate
 
@@ -191,6 +217,6 @@ A family leaves active migration only when:
 - shared routes have representative proof;
 - consumers are migrated and obsolete ownership is removed;
 - local verification passes;
-- required visual review is accepted.
+- required visual review is accepted in `VISUAL_REVIEW.md`.
 
 A family is fully implemented only with current-complete canonical evidence, `Official coverage: full`, and accepted required visual review.
