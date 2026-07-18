@@ -93,7 +93,9 @@ For panes, docs, settings, dialogs, and app bars, verify applicable:
 - browser APIs are guarded;
 - text and diagnostics use the correct format;
 - typography and spacing reuse accepted tokens/components;
-- new Vue components render one stable root element and parents own conditional rendering.
+- new Vue components use the minimal stable rendered structure required by their contract, and parents own conditional rendering;
+- a single root is required only when attrs, refs, transitions, layout, or integration need one;
+- a valid Vue fragment is not wrapped only to satisfy a single-root convention.
 
 ## Impact metadata
 
