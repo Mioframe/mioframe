@@ -3,31 +3,18 @@ import { spawnSync } from 'node:child_process';
 import toolingConfig from '../../config/tooling.json' with { type: 'json' };
 
 /**
- * @typedef {(
- *   | { status: 'added' | 'modified' | 'deleted'; path: string }
- *   | { status: 'renamed'; oldPath: string; newPath: string }
- * )} ChangedPath
  */
 
 /**
- * @typedef {{ kind: 'git-diff'; changedPaths: ChangedPath[] }} GitDiffInput
  */
 
 /**
- * @typedef {{ kind: 'explicit-files'; files: string[] }} ExplicitFilesInput
  */
 
 /**
- * @typedef {GitDiffInput | ExplicitFilesInput} ChangedPathsInput
  */
 
 /**
- * @typedef {{
- *   input: ChangedPathsInput;
- *   scope: string;
- *   baseRef: string | null;
- *   packageJsonOldRef: string | null;
- * }} ChangedPathsScope
  */
 
 const storybookStaticDirPrefix = `${toolingConfig.storybook.staticDir}/`;
@@ -164,7 +151,7 @@ function normalizeSimpleStatus(statusToken) {
 /**
  * Parse NUL-delimited `git diff --name-status -z` output into ChangedPath records.
  * @param rawOutput Raw NUL-delimited stdout from `git diff --name-status -z`.
- * @returns {ChangedPath[]} Parsed ChangedPath records, not yet ignore-normalized.
+ * @returns Parsed ChangedPath records, not yet ignore-normalized.
  */
 export function parseGitDiffStatusOutput(rawOutput) {
   const tokens = rawOutput.split('\0').filter((token) => token.length > 0);
@@ -211,7 +198,7 @@ export function parseGitDiffStatusOutput(rawOutput) {
 /**
  * Parse NUL-delimited `git ls-files --others -z` output into `added` ChangedPath records.
  * @param rawOutput Raw NUL-delimited stdout from `git ls-files --others --exclude-standard -z`.
- * @returns {ChangedPath[]} Untracked files represented as `added` ChangedPath records.
+ * @returns Untracked files represented as `added` ChangedPath records.
  */
 export function parseUntrackedFilesOutput(rawOutput) {
   return rawOutput
@@ -224,8 +211,8 @@ export function parseUntrackedFilesOutput(rawOutput) {
  * Remove ignored paths from a ChangedPath list. A rename with exactly one
  * side ignored is normalized to `added`/`deleted` on its relevant side
  * instead of being dropped or leaking the ignored path.
- * @param {ChangedPath[]} changes ChangedPath records to normalize.
- * @returns {ChangedPath[]} ChangedPath records with ignored paths removed or normalized.
+ * @param changes ChangedPath records to normalize.
+ * @returns ChangedPath records with ignored paths removed or normalized.
  */
 export function filterIgnoredChangedPaths(changes) {
   const result = [];
@@ -267,8 +254,8 @@ function getChangedPathSortKey(change) {
 
 /**
  * Deterministically sort and deduplicate ChangedPath records.
- * @param {ChangedPath[]} changes ChangedPath records to normalize.
- * @returns {ChangedPath[]} Sorted, deduplicated ChangedPath records.
+ * @param changes ChangedPath records to normalize.
+ * @returns Sorted, deduplicated ChangedPath records.
  */
 export function sortAndDedupeChangedPaths(changes) {
   const seen = new Set();
@@ -326,7 +313,7 @@ function toGitDiffScope(changes, scope, baseRef, packageJsonOldRef) {
  * @param [options.cliBaseRef] Explicit `--base` override.
  * @param [options.processEnv] Process environment read for `VERIFY_BASE` and `GITHUB_BASE_REF`.
  * @param [options.cwd] Repository working directory; defaults to `process.cwd()`, overridable for tests.
- * @returns {ChangedPathsScope} Scope with an explicit `git-diff` or `explicit-files` input, a
+ * @returns Scope with an explicit `git-diff` or `explicit-files` input, a
  * human-readable scope label, resolved base ref, and `packageJsonOldRef`.
  */
 export function resolveChangedPathsScope({
@@ -383,8 +370,8 @@ export function resolveChangedPathsScope({
  * POSIX-normalized string path list existing command planners consume.
  * Transitional: current planners are not yet status-aware. Renamed entries
  * project both `oldPath` and `newPath`.
- * @param {ChangedPathsInput} input Scope input: `git-diff` or `explicit-files`.
- * @returns {string[]} Sorted, deduplicated, POSIX-normalized path list.
+ * @param input Scope input: `git-diff` or `explicit-files`.
+ * @returns Sorted, deduplicated, POSIX-normalized path list.
  */
 export function getChangedFileProjection(input) {
   if (input.kind === 'explicit-files') {
