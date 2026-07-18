@@ -16,7 +16,7 @@ Prove the accepted Material family contract with the smallest non-duplicative se
 | Visual regression          | When the accepted visible contract is stable and regression would be material           |
 | Browser behavior           | Only when the family owns browser-dependent interaction                                 |
 | Deterministic behavior     | Only when component/foundation logic owns deterministic decisions outside Vue rendering |
-| Consumer preservation      | When imports, public API, wrappers, native owners, composition, or shared output change  |
+| Consumer preservation      | When imports, public API, wrappers, native owners, composition, or shared output change |
 | Agent evidence review      | Mandatory before operator handoff                                                       |
 | Operator visual acceptance | Required when accepted Material output is created or intentionally changed              |
 
