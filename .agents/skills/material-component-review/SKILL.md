@@ -123,6 +123,16 @@ Check:
 - classification separates absent capability from officially invalid combinations and optional guidance;
 - directly applicable architecture and shared foundation/style rules are followed.
 
+For every materially different normalization or fallback input class, compare:
+
+- actual returned, emitted, or rendered output;
+- semantics and accessibility output;
+- warning or error text;
+- README and public API documentation;
+- test assertions.
+
+A clamped result, ignored input, rejected combination, and fallback mode are different contracts. Report a Stage 1 finding when one generic warning, documentation claim, or assertion describes a branch that produces another outcome.
+
 A declaration, alias, placeholder, story, test, or unchanged green check is not implementation or representative proof by itself.
 
 Do not use historical provenance to resolve a current ownership or compliance question. Review current owner, current consumers, current behavior, and current documented contract.
@@ -154,7 +164,7 @@ If current canonical evidence is stale, partial, truncated, or conflicting, repo
 
 The audit must identify whether each correction belongs to implementation, project documentation, or both.
 
-## Motion and visual evidence
+## Motion and named-risk evidence
 
 Verify the shared motion foundation deeply once.
 
@@ -165,6 +175,10 @@ At component level, require only proportional evidence that:
 - the correct endpoint is reached;
 - interruption or cancellation leaves no stale state;
 - the component consumes the documented shared motion contract.
+
+A test proves a named interruption, cancellation, replacement, or recovery risk only when its setup actually creates that condition. The competing event must occur before the first transition or lifecycle settles; evidence must show the competing branch begins and the final public outcome contains no stale state.
+
+A test name, comment, timeout, delayed action after settlement, or endpoint-only assertion does not prove interruption or cancellation. When the setup never enters the named condition, treat the claimed proof as absent even if the test passes.
 
 Do not require frame-by-frame component analysis or duplicate equivalent input paths. Forced state proves appearance, not motion.
 
@@ -217,7 +231,7 @@ Use:
 
 - `critical` — invalid component choice, unsafe semantics, or severe accessibility/interaction corruption;
 - `high` — required API, state, token, motion, ownership, migration, major visual contract, or unchanged operator-rejected behavior is wrong;
-- `medium` — bounded mismatch, incomplete representative proof, misleading documentation, inaccurate inventory, or non-critical canonical divergence;
+- `medium` — bounded mismatch, incomplete representative proof, misleading documentation, inaccurate inventory, missing named-risk proof, fallback/warning inconsistency, or non-critical canonical divergence;
 - `low` — minor documentation or cleanup defect.
 
 Put unresolved authoritative evidence under `Evidence gaps`, not speculative findings.
@@ -231,7 +245,7 @@ Use one overall result:
 - `non-compliant` — a critical or high finding exists;
 - `blocked` — evidence required for a material decision is unavailable or conflicting.
 
-A snapshot-complete but stale source cannot produce a fully current `compliant` result. Use `partially-compliant` when the implemented surface is otherwise verified and currentness is the only non-critical gap; use `blocked` when the unresolved currentness affects a material decision.
+A snapshot-complete but stale source cannot produce a fully current `compliant` result. Use `partially-compliant` when the implemented surface is otherwise verified and currentness is the only non-critical gap; use `blocked` when unresolved currentness affects a material decision.
 
 Report coverage separately:
 
@@ -313,4 +327,4 @@ Evidence gaps:
 Required next work:
 ```
 
-A review is complete only after `AUDIT.md` is written, uses only current-workspace/current-task and official evidence, and reports source status, classification, compliance, coverage, and visual status honestly.
+A review is complete only after `AUDIT.md` is written, uses only current-workspace/current-task and official evidence, and reports source status, classification, compliance, coverage, named-risk proof, normalization/fallback consistency, and visual status honestly.
