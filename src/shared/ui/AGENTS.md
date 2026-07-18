@@ -18,13 +18,13 @@ A component name is sufficient input. Do not require the user to supply variants
 
 `material-library-next` requires no component name and selects only one family per run. `material-library-status` is read-only.
 
-A completed `material-component-review` creates or replaces only the colocated family audit:
+A completed `material-component-review` creates or replaces only:
 
 ```text
 src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
 ```
 
-Review-only means no implementation, test, story, README, registry, roadmap, or policy changes.
+Review-only means no implementation, test, story, README, VISUAL_REVIEW, registry, roadmap, or policy changes.
 
 Do not assemble an official Material component workflow from generic shared UI rules. `material-component-authoring` remains the primary implementation contract after target resolution.
 
@@ -47,12 +47,15 @@ Do not assemble an official Material component workflow from generic shared UI r
 
 ## Documentation ownership
 
-- Family `README.md` owns the current implementation state, supported surface, omissions, known issues, dependencies, consumers, verification, and review status.
-- Family `AUDIT.md` owns the latest independent review.
-- Implementing agents update README and never edit AUDIT.
-- Reviewing agents update AUDIT and never edit implementation or README.
-- Any incomplete, deferred, provisional, unverified, or defective item must be recorded honestly.
+- Family `README.md` owns current implementation state, supported surface, omissions, known issues, dependencies, consumers, verification, and review status.
+- Family `AUDIT.md` owns the latest independent technical/canonical review.
+- Family `VISUAL_REVIEW.md` owns the latest operator visible-fidelity decision.
+- Implementing agents update README and never edit AUDIT or VISUAL_REVIEW.
+- Reviewing agents update AUDIT and never edit implementation, README, or VISUAL_REVIEW.
+- Only the operator creates or replaces VISUAL_REVIEW after reviewing prepared evidence.
+- A rejected VISUAL_REVIEW remains authoritative until production behavior changes and the operator accepts new evidence.
+- Any incomplete, deferred, provisional, unverified, defective, or visually rejected item must be recorded honestly.
 
 ## Verification
 
-Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Implementation completion requires applicable local repository verification and truthful documentation; independent review remains a separate step.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Implementation completion requires applicable local repository verification and truthful documentation; independent review and operator visual review remain separate steps.
