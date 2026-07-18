@@ -40,6 +40,7 @@ The repository stores facts that automation can validate:
 - lane-specific source-to-spec mappings;
 - lane relevance and full-lane fallback paths;
 - justified standalone specs;
+- release source-to-check mappings;
 - persistent project applicability metadata when introduced;
 - persistent mutation targets;
 - persistent performance checks for durable budgets.
@@ -53,7 +54,7 @@ The repository stores facts that automation can validate:
 - resolves each execution lane independently;
 - prints why each lane is skipped, focused, full, or invalid;
 - executes the resulting plan;
-- never infers test sufficiency from a skipped lane.
+- never infers test sufficiency from a skipped lane or a focused command with no matching tests.
 
 ## Core rules
 
@@ -91,14 +92,14 @@ Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated acti
 
 ## Contract proof types
 
-| Proof type                | Owns                                                                                                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Deterministic behavior    | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, and deterministic multi-module outcomes |
-| Component contract        | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser wiring                            |
-| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, and browser APIs                                    |
-| Product scenario          | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries               |
-| Visual regression         | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices                                                                                    |
-| Release behavior          | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-only invariants                                                                   |
+| Proof type | Owns |
+| --- | --- |
+| Deterministic behavior | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, and deterministic multi-module outcomes |
+| Component contract | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser wiring |
+| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, and browser APIs |
+| Product scenario | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries |
+| Visual regression | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices |
+| Release behavior | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-only invariants |
 
 ## Supplemental evidence and human gates
 
@@ -111,17 +112,18 @@ These strengthen or approve proof but are not primary owners of ordinary functio
 
 ## Execution lanes
 
-| Verify label or process      | Executes                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------- |
-| `unit-tests`                 | Deterministic behavior and component-contract tests through Vitest              |
-| `storybook-behavior`         | Reusable browser behavior through Playwright against isolated Storybook         |
-| `e2e`                        | Complete product scenarios through application Playwright tests                 |
-| `visual`                     | Screenshot regression against canonical Storybook stories                       |
-| release verification         | Release behavior against the built production artifact                          |
-| `mutation`                   | Registered narrow mutation targets                                              |
-| persistent performance check | Existing automated benchmark or budget selected by repository impact metadata   |
-| task-specific measurement    | Reproducible one-off measurement named in preflight; not automatically inferred |
-| operator review              | Manual Material comparison                                                      |
+| Verify label or process | Executes |
+| --- | --- |
+| static verification | Formatting, linting, type-checking, instruction compatibility, and other deterministic repository checks |
+| `unit-tests` | Deterministic behavior and component-contract tests through Vitest |
+| `storybook-behavior` | Reusable browser behavior through Playwright against isolated Storybook |
+| `e2e` | Complete product scenarios through application Playwright tests |
+| `visual` | Screenshot regression against canonical Storybook stories |
+| release verification | Release behavior against the built production artifact |
+| `mutation` | Registered narrow mutation targets |
+| persistent performance check | Existing automated benchmark or budget selected by repository impact metadata |
+| task-specific measurement | Reproducible one-off measurement named in preflight; not automatically inferred |
+| operator review | Manual Material comparison |
 
 ## Proof boundaries
 
@@ -178,33 +180,57 @@ Resolvers must not receive only existing filenames. Deletion and rename are firs
 Every automatic resolver returns one of:
 
 - `skip`: no repository-backed impact for the lane;
-- `focused`: a non-empty sorted set of exact targets;
+- `focused`: a non-empty sorted set of lane-defined execution inputs;
 - `full`: the complete owning lane is required;
 - `invalid`: impact metadata is inconsistent and verification must fail before test execution.
+
+A focused input is exact and inspectable, but its meaning is lane-specific: a Playwright spec path, a direct unit test, a source path passed to the official Vitest related resolver, a release check, a mutation target, or another repository-owned check.
 
 Rules:
 
 - `invalid` blocks the run;
-- `full` overrides focused targets;
-- overlapping mappings are unioned and deduplicated;
+- `full` overrides focused inputs;
+- overlapping mappings and duplicate inputs are unioned and deduplicated;
 - every decision includes inspectable reasons;
 - unknown relevant impact uses `full`, never `skip`;
 - paths outside a lane's declared relevance do not select that lane.
 
+## Static verification impact
+
+Static checks use direct file capability rather than semantic test ownership:
+
+- format and lint run for added or modified existing files supported by the corresponding tool;
+- deleted files are not formatted or linted, but their removal still participates in type-check and affected metadata validation;
+- type-check runs for added, modified, deleted, or renamed TypeScript, Vue, declaration, alias, typed configuration, package, or lockfile changes that can affect the program graph;
+- instruction compatibility validation runs when `AGENTS.md`, skills, or their generator changes;
+- shared static configuration changes run the complete owning static check;
+- a path unsupported by a static tool does not select that tool.
+
+Static checks do not replace behavioral, browser, visual, release, mutation, performance, or operator proof.
+
 ## Unit-test impact resolution
 
-A dedicated unit resolver must:
+A dedicated unit resolver builds focused execution inputs from:
 
-1. run directly added or modified test files;
-2. resolve added, modified, or deleted Vitest snapshots to owning tests through repository convention;
-3. use Vitest related-test selection for changed existing source modules and local test-support modules reachable through static imports;
-4. union and deduplicate direct, snapshot-owned, and related tests;
-5. select the full unit lane for unresolved snapshots, deleted or renamed dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, or any relation that cannot be represented safely;
-6. return `skip` with an explicit `no related unit tests` reason when the direct/snapshot/related set is empty and no full-fallback category applies.
+1. directly added or modified test files;
+2. owning tests for added, modified, or deleted Vitest snapshots;
+3. changed existing source modules and local test-support modules passed to the official Vitest related-test resolver.
 
-An empty related result does not prove that the changed contract needs no unit test. Test sufficiency remains an agent and review responsibility.
+The unit executor may use the supported Vitest CLI or API to resolve static-import relations. It must not build or persist a second dependency graph merely to precompute every related test path.
 
-Do not maintain a second custom unit dependency graph.
+Direct tests, snapshot owners, and related source inputs are sorted and deduplicated. If a related run finds no tests, report that result explicitly; do not convert it to a full unit run. A no-match result is not evidence that the changed contract needs no unit test.
+
+Select the full unit lane for:
+
+- unresolved snapshots;
+- deleted or renamed dependencies whose old relation cannot be represented safely;
+- Vitest config or setup;
+- global test utilities;
+- known dynamic-import boundaries;
+- generated aliases;
+- any relation the official resolver cannot represent safely.
+
+Return `skip` only when no direct test, snapshot owner, related source input, or full-fallback category applies.
 
 ## Playwright impact registries
 
