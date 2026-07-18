@@ -2,9 +2,16 @@
 
 ## Principle
 
-Adopt Material incrementally through real family migrations.
+Adopt Material incrementally through bounded real implementation tasks.
 
-Do not build a complete validation framework, exhaustive migration database, generic test DSL, empty documentation-shaped runtime tree, or mass source migration before real families prove the need.
+A task may be selected by:
+
+- the automatic migration roadmap; or
+- an explicit user request for an official component, foundation, style, interaction primitive, token system, migration, alignment, or correction.
+
+An explicit request overrides automatic queue order for that task.
+
+Do not build a complete validation framework, exhaustive migration database, generic test DSL, empty documentation-shaped runtime tree, or mass source migration before real work requires it.
 
 Every in-scope shared UI artifact eventually reaches one outcome:
 
@@ -12,7 +19,7 @@ Every in-scope shared UI artifact eventually reaches one outcome:
 - explicitly retained project-specific or generic UI owner outside Material;
 - removed or consolidated obsolete owner.
 
-Implementation may be incremental. Classification and source limitations must remain explicit.
+Implementation may be incremental. Classification and source limitations remain explicit.
 
 ## Library navigation
 
@@ -23,37 +30,84 @@ src/shared/ui/material/
   components/
 ```
 
-Family and domain directories use official documentation slugs. Production directories are created only when implementation work begins.
+Owner directories use official documentation slugs. Production directories are created when explicit implementation work or real consumer work begins.
+
+## Universal request model
+
+Use:
+
+```text
+material <artifact-or-request>
+```
+
+Examples:
+
+```text
+material Button
+material State layer
+material Ripple
+material Elevation
+material Motion
+```
+
+The router resolves official ownership:
+
+- component → `material-component` and `material-component-authoring`;
+- foundation/style → `material-foundation`;
+- cross-layer request → one canonical shared owner plus affected consumer changes.
+
+A request routed through `material-component` must be redirected when it resolves to a foundation/style. It must not be refused because it is not a component.
+
+## Explicit-request rule
+
+A valid explicit request for an official Material artifact is a current requirement.
+
+Do not defer solely because:
+
+- no component migration is active;
+- no current production consumer exists;
+- only one current family consumes the behavior;
+- the roadmap names another family;
+- the canonical owner does not exist;
+- the current owner is legacy.
+
+When no current production consumer exists:
+
+- implement the smallest coherent official contract requested;
+- add owner-local tests and a bounded testing/Storybook fixture;
+- do not invent a fake product consumer;
+- do not broaden the work into a universal framework or unrelated catalog.
+
+Existing consumers determine migration and blast-radius proof, not whether an explicit request is permitted.
 
 ## Workflow evidence boundary
 
-Material family authoring and review operate from the current user task, current workspace files, official Material sources, and local project verification.
+Material authoring and review operate from the current user task, current workspace files, official Material sources, and local project verification.
 
 They do not use `git`, `gh`, GitHub, branches, commits, pull requests, diffs, blame, logs, tags, merge state, or repository history as evidence or workflow input.
 
-## Family migration loop
+## Implementation loop
 
-Each family follows one loop:
+Each bounded Material task follows:
 
-1. inspect current implementation, exports, consumers, tests, stories, README, and AUDIT when present;
-2. read explicit operator feedback from the current user message and existing README;
-3. resolve the official family and documentation path;
+1. resolve the requested artifact and official documentation path;
+2. classify it as component, foundation, style, or cross-layer;
+3. inspect current owner, exports, consumers, tests, fixtures/stories, README, and AUDIT when present;
 4. record canonical source status;
 5. reconstruct the supported contract-level inventory without overstating incomplete sources;
-6. classify each item as implemented, partial/unverified, not implemented, officially unsupported/invalid, unresolved, or outside the family boundary;
-7. select the minimum coherent implementation surface required by current scenarios;
-8. update the canonical family README without editing AUDIT;
+6. classify each item as implemented, partial/unverified, not implemented, officially unsupported/invalid, unresolved, or outside the owner boundary;
+7. select the smallest coherent surface required by the explicit request and affected consumers;
+8. update the canonical owner README without editing AUDIT;
 9. correct directly applicable defective rules;
-10. change shared foundations/styles only for a real cross-family need;
-11. implement the selected surface and migrate consumers;
-12. remove obsolete ownership;
-13. add proportional tests and visual evidence;
-14. run local verification;
-15. run an independent current-workspace review that changes only AUDIT;
-16. receive explicit operator acceptance or further feedback through a normal user message;
-17. update the queue and select another family in a later run.
+10. implement the selected surface;
+11. migrate existing consumers and remove obsolete Material ownership when applicable;
+12. add proportional tests and bounded rendered evidence;
+13. run local verification;
+14. run independent review separately;
+15. receive explicit operator acceptance or further feedback when visible review is required;
+16. update roadmap/inventory only when their owned facts change.
 
-Current consumer need determines implementation priority, not whether an item is classified.
+Do not stop after classification, research, an audit summary, or a plan.
 
 ## Source and inventory status
 
@@ -92,9 +146,9 @@ Use exactly one category per item:
 - not implemented;
 - officially unsupported or an invalid combination;
 - unresolved because canonical evidence is incomplete or conflicting;
-- outside the resolved family boundary.
+- outside the resolved owner boundary.
 
-`Not implemented` is reserved for real supported capability that exists but is absent.
+`Not implemented` is reserved for real official capability that exists but is absent.
 
 Officially unsupported combinations do not reduce coverage.
 
@@ -104,15 +158,17 @@ Optional or non-normative guidance is documented as a choice, deviation, or foll
 
 ### Authoring README
 
-The implementing agent owns:
+The implementing agent owns the current owner README:
 
 ```text
 src/shared/ui/material/components/<official-docs-slug>/README.md
+src/shared/ui/material/foundations/<official-slug>/README.md
+src/shared/ui/material/styles/<official-slug>/README.md
 ```
 
-It records official mapping, source status, inventory, coverage, implementation state, omissions, invalid combinations, unresolved items, known issues, operator feedback, API, semantics, states, tokens, dependencies, extensions, consumers, verification, and review status.
+It records official mapping, source status, inventory, coverage, implementation state, omissions, invalid routes, unresolved items, known issues, ownership, public/private contract, consumers, verification, and review status.
 
-Operator feedback is supplied in task messages and persisted in README:
+Visible behavior may persist operator feedback:
 
 ```text
 Status: not reviewed | required | rejected | awaiting re-review | accepted
@@ -124,76 +180,60 @@ Any production change marks review required. Authoring never edits AUDIT.
 
 ### Independent AUDIT
 
-The reviewer owns:
-
-```text
-src/shared/ui/material/components/<official-docs-slug>/AUDIT.md
-```
+Independent review owns the local AUDIT beside the implementation owner.
 
 The reviewer:
 
-- changes only AUDIT;
 - uses only the current user task, current workspace, and official evidence;
 - independently records source status and inventory limitations;
 - checks implementation against project documentation;
 - checks project documentation against canonical Material;
 - separates absent capability from invalid combinations and optional guidance;
 - requires representative proof for shared routes;
-- verifies that README accurately preserves explicit operator feedback;
+- verifies explicit operator feedback accurately;
 - never invents visual acceptance.
 
 Compliance, coverage, source status, and operator visual status remain separate.
+
+## Foundations and styles
+
+An official shared owner is justified by either:
+
+1. an explicit user request to implement that official library artifact; or
+2. a real current cross-family requirement.
+
+State layer, ripple, and focus indication are valid direct foundation targets.
+
+For a direct interaction-foundation request, resolve applicable semantics, state ownership, color/opacity routes, rendered bounds, clipping, focus/ripple ownership, lifecycle, reduced motion, generic consumer bridges, and owner-local proof.
+
+An opacity token declaration alone does not implement State Layer. The final rendered layer and behavior must work.
+
+Family-local behavior remains local only when it has no official shared owner and no explicit standalone library request.
 
 ## Operator visual feedback
 
 The operator reports visible findings directly in the implementation message. No separate report file is required.
 
-Rules:
-
-- reported visible defects are persisted as `rejected` in README;
+- reported visible defects are persisted as `rejected`;
 - authoring may move to `awaiting re-review` only after changing production behavior;
-- only an explicit user acceptance message may set `accepted`;
+- only explicit user acceptance may set `accepted`;
 - tests, screenshots, technical routing, audit text, or silence do not imply acceptance.
 
-## Pilot 1 — Buttons
+## Pilot and sequential migration
 
-Buttons validate:
+Buttons remain the first component-family pilot. `MDSwitch` remains the default independent stateful component-family pilot.
 
-- official path `components/buttons`;
-- full legacy-to-canonical migration;
-- honest source and inventory status;
-- correct classification of capability, invalid combinations, and optional guidance;
-- public API, semantics, accessibility, state, token, shape, elevation, and motion ownership;
-- representative proof for shared routes;
-- proportional motion evidence without frame-by-frame component testing;
-- persistence of operator-rejected visual defects in README until explicitly accepted;
-- consumer migration and obsolete-owner removal;
-- independent review.
+These automatic pilots do not prevent an explicit request for another component, foundation, or style.
 
-Current state and findings live in:
+After the pilots, automatic migration:
 
-- `src/shared/ui/material/components/buttons/README.md`;
-- `src/shared/ui/material/components/buttons/AUDIT.md`.
-
-## Pilot 2 — independent stateful family
-
-`MDSwitch` is the default candidate unless inventory evidence identifies a better family.
-
-It should validate controlled state, disabled/presentation contracts, materially distinct input paths, cancellation, anatomy, accessibility, target area, focus, ripple, motion, shape, color, and the same README/AUDIT plus message-based operator-feedback model without Button assumptions.
-
-After two pilots, consolidate only mechanisms both migrations prove useful.
-
-## Sequential migration
-
-After the pilots:
-
-1. select one unblocked queued family;
-2. resolve official sources and source status;
-3. reconstruct and classify the inventory honestly;
-4. complete one coherent implementation surface, migration, proof, local verification, and independent audit;
-5. complete operator visual review through an explicit user message when required;
-6. update inventory and coverage state;
-7. stop before starting a second family.
+1. selects one unblocked queued target;
+2. resolves official sources and source status;
+3. reconstructs and classifies the inventory honestly;
+4. completes one coherent implementation surface, migration, proof, local verification, and independent audit;
+5. completes operator visual review when required;
+6. updates inventory and coverage state;
+7. stops before a second automatic target.
 
 ## Rule refinement
 
@@ -208,25 +248,14 @@ When implementation exposes a rule defect:
 ## Shared domain changes
 
 - Reuse an existing owner when sufficient.
-- Keep family-local behavior local.
-- Create a shared owner only for a real cross-family contract.
-- Identify current affected families from current code.
+- Create a shared owner for an explicit official foundation/style request or a real cross-family contract.
+- Keep family-local behavior local when neither condition applies.
+- Identify current affected consumers from current code.
 - Require representative tests that exercise the shared route.
+- Use an owner-local fixture when no production consumer exists.
 - Do not count unrelated unchanged green tests as proof.
-- Split broad work only when its impact cannot be reviewed safely with the family.
+- Split broad work only when its impact cannot be reviewed safely as one coherent request.
 
 ## Evidence-driven automation
 
 Add a guard only when repeated real work proves a stable, precise, inexpensive check with low false positives.
-
-Do not automate interpretation of official documentation, semantic completeness, architectural correctness, Markdown honesty, perceived motion quality, or visual fidelity.
-
-## Program completion
-
-The program is complete when every in-scope artifact has a terminal owner and every Material-owned artifact has one canonical current owner.
-
-A family is fully implemented only when:
-
-- canonical evidence is current-complete;
-- the independent audit reports `Official coverage: full`;
-- required visual review is explicitly accepted by the user and recorded in README.
