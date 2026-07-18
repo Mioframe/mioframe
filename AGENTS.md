@@ -8,8 +8,9 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Read the root and applicable nested `AGENTS.md` files before editing. Use the relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
-- For Material library, foundation, component, migration, or validation work, read `docs/material-3/library-roadmap.md`, align with its active milestone and single `Next action`, and update it in the same PR when milestone status, blockers, dependencies, or next action change.
-- Official Material components target the current canonical Material 3 Expressive contract. Follow `docs/material-3/source-of-truth.md` and `docs/material-3/autonomous-review.md`: the coding agent must close every non-visual evidence gate, while the operator normally performs only prepared screenshot comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
+- For automatic Material migration, read `docs/material-3/library-roadmap.md`, follow its active milestone and single `Next action`, and update it when milestone status, blockers, dependencies, or next action change.
+- An explicit user-selected Material artifact or correction overrides automatic queue order for that task. The agent must execute the requested official component, foundation, or style through the universal `material` routing workflow instead of refusing because the roadmap names another target.
+- Official Material artifacts target the current canonical Material 3 Expressive contract. Follow `docs/material-3/source-of-truth.md` and applicable review policy: the coding agent closes every objective source, architecture, accessibility, behavior, geometry, ownership, and migration gate; the operator performs only final perceived visual comparison when required.
 - When a PR adds, removes, consolidates, reclassifies, reprioritizes, or changes the public owner of a shared UI artifact, update the affected row in `docs/material-3/ui-library-inventory.md` in the same PR. Project-specific and generic UI are valid retained outcomes and must not be forced into the Material library.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
@@ -17,7 +18,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, use `architect-handoff` unless an applicable repository skill or policy defines a deterministic standard-authoring path that resolves every required decision from authoritative sources.
 - Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or `not ready`, or while a deterministic standard-authoring preflight remains unresolved or `blocked`.
-- Prefer the minimum complete design for confirmed requirements. Every added abstraction, state, layer, compatibility path, recovery mechanism, guarantee, or optimization must map to a current requirement, existing consumer, repository invariant, platform constraint, or measured need.
+- Prefer the minimum complete design for confirmed requirements. Every added abstraction, state, layer, compatibility path, recovery mechanism, guarantee, or optimization must map to an explicit user request, current requirement, existing consumer, repository invariant, platform constraint, or measured need.
 - Compare the proposed design with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
 - Treat the ready handoff or repository-backed standard-authoring blueprint as the contract for implementation, PR description, and review. If new facts invalidate it, stop and update it explicitly.
 - Preserve existing user scenarios unless the task explicitly changes them. Reachability alone is not preservation when discoverability, interaction tier, steps, or context regress.
@@ -49,13 +50,14 @@ Dependency rules:
 
 Use the applicable skill instead of duplicating its rules in the task:
 
+- `material`: universal entrypoint for any explicit Material component, foundation, style, interaction primitive, token system, migration, alignment, or correction; it resolves ownership and executes the specialized workflow;
 - `material-library-status`: read-only Material program status, audit freshness, blockers, executable candidates, visual acceptance, and recommended next command;
-- `material-library-next`: select and execute exactly one next Material component family when the user does not name one;
-- `material-component`: resolve a user-named Material component or family and start its complete implementation, migration, or alignment workflow;
-- `material-component-review`: independently review a user-named Material family and persist its durable compliance audit;
-- `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
+- `material-library-next`: select and execute exactly one next automatic Material migration target when the user does not name one;
+- `material-component`: component-family implementation compatibility entrypoint; it must reroute non-component Material requests to `material-foundation` rather than refuse them;
+- `material-component-review`: independently review a user-named Material component family and persist its durable compliance audit;
+- `material3-guidelines`: official Material sources, component/artifact choice, usage, composition, and product-facing UI/UX decisions;
 - `material-component-authoring`: creation, migration, alignment, or material change of an official public Material component family, including legacy `MD*` components outside the canonical library;
-- `material-foundation`: Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, overlays, accessibility, density, and adaptive foundation contracts;
+- `material-foundation`: implement, migrate, align, or correct Material foundations and styles, including State Layer, ripple, focus, reference/system tokens, theme, units, typography, shape, elevation, motion, icons, accessibility, and adaptive/layout contracts; an explicit request is sufficient and does not require pre-existing consumers;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
 - `test-first`: reproducible behavior changes, bug fixes, migrations, storage semantics, and transformations;
