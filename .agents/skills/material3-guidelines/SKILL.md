@@ -18,21 +18,26 @@ Use for decisions about:
 - intended and prohibited usage;
 - component hierarchy and placement;
 - official source interpretation;
-- minimum complete supported surface;
+- minimum coherent implemented surface;
 - accessibility, interaction, adaptive behavior, and visual evidence;
-- whether a surface is official Material, a pattern, or project-specific UI.
+- whether a surface is official Material, an official constraint, optional guidance, or project-specific UI.
 
-For an official public component family, `material-component-authoring` owns execution, migration, proportional proof, rule refinement, and completion. This skill supplies source and usage decisions.
+For an official public component family, `material-component-authoring` owns execution, migration, proof, documentation, and completion. This skill supplies source and usage decisions.
+
+## Evidence boundary
+
+For Material component authoring and review, use official Material sources and current workspace files.
+
+Do not run, inspect, or cite `git`, `gh`, GitHub, commits, branches, pull requests, diffs, blame, logs, tags, merge state, or repository history as source or implementation evidence.
 
 ## Canonical target
 
 Official Mioframe Material components target the current applicable Material 3 Expressive contract.
 
-- Prefer current Expressive guidance, tokens, measurements, state composition, motion, and Design Kit component sets when available for the supported surface.
+- Prefer current Expressive guidance, tokens, measurements, state composition, motion, and Design Kit component sets when available.
 - Do not preserve baseline Material 3 merely because it matches current code.
-- Use baseline behavior or geometry only when no applicable Expressive contract exists or an explicit product deviation requires it.
+- Use baseline behavior only when no applicable Expressive contract exists or an explicit product deviation requires it.
 - Do not silently combine baseline and Expressive contracts.
-- `Canonical Material default` means the current Expressive default when available.
 
 ## No-impact path
 
@@ -46,60 +51,88 @@ A public, visual, foundation, ownership, or state-model change is not `none`.
 
 ## Official authority
 
-Use the source hierarchy in `docs/material-3/source-of-truth.md`.
+Use `docs/material-3/source-of-truth.md`.
 
 - Current published Material 3 Expressive documentation is authoritative for documented usage, anatomy, behavior, accessibility, tokens, foundations, motion, and adaptive guidance.
-- The current official Material Design Kit is authoritative only for applicable visual decisions that published documentation does not resolve.
-- MCP and cache are access mechanisms for official documentation, not independent authorities.
-- Repository code, tests, stories, snapshots, prior audits, and other implementations are evidence to inspect, not proof of Material correctness.
+- The current official Material Design Kit is authoritative only for visual decisions published documentation does not resolve.
+- MCP and cache are access mechanisms, not independent authorities.
+- Repository code, tests, stories, snapshots, and prior audits are current implementation evidence, not proof of Material correctness.
 
 ## Source access workflow
 
-1. Use the `material3` MCP server first to access the relevant official pages.
-2. Use `Vyachean/m3-docs-cache` only when MCP is unavailable or incomplete for the required page.
-3. Directly verify the current official published page when MCP or cache evidence is missing, stale, internally inconsistent, or marked suspicious and the environment can access it.
-4. Use the current official Material Design Kit Expressive component set only when published documentation cannot resolve an applicable visual decision.
-5. Record exact page names, snapshot or capture metadata, direct verification dates, and Design Kit references when used.
-6. Stop source lookup when required decisions are resolved by current, traceable official evidence.
+1. Use the `material3` MCP server for relevant official pages.
+2. Use `Vyachean/m3-docs-cache` when MCP is unavailable or incomplete for a required page.
+3. Directly verify the current published page when cache evidence is missing, stale, partial, suspicious, or inconsistent and access is possible.
+4. Use the current official Material Design Kit only when published documentation cannot resolve an exact visual decision.
+5. Record exact page names, source status, snapshot/capture metadata, direct verification dates, and Design Kit references.
 
-Do not treat lookup order as authority order. Do not use Material Web, generic web search results, unproven screenshots, older Material versions, third-party libraries, existing Mioframe rendering, or memory as Material authority.
+Record one canonical source status:
 
-Another implementation may be inspected only after the official contract is resolved and only as a non-authoritative implementation reference.
+- `current-complete`;
+- `snapshot-complete-stale`;
+- `partial`;
+- `conflicting`;
+- `unavailable`.
 
-When evidence is unavailable, stale, suspicious, or contradictory:
+Use `complete` inventory only with current-complete evidence.
+
+A stale snapshot may support `snapshot-complete`, not current completeness. A partial cache, failed or missing page, truncated graph, suspicious record, or spot-check-only inspection requires incomplete or blocked inventory status.
+
+Spot checks may verify exact facts. They do not prove the full family inventory.
+
+Do not use Material Web, generic web search results, unproven screenshots, older Material versions, third-party libraries, existing Mioframe rendering, memory, or repository history as Material authority.
+
+Another implementation may be inspected only after the official contract is resolved and only as a non-authoritative reference.
+
+When evidence is unavailable, stale, partial, suspicious, or contradictory:
 
 - identify the exact unresolved decision;
-- narrow unsupported scope when required scenarios remain satisfied;
-- otherwise report `blocked`;
+- narrow implementation scope only when required scenarios remain coherent;
+- record the source limitation honestly;
+- use `blocked` when the unresolved evidence affects a required decision;
 - do not infer correctness from an existing baseline.
+
+## Capability interpretation
+
+Distinguish exactly:
+
+- **official capability** — a supported component feature, variant, mode, state, behavior, or configuration;
+- **officially unsupported or invalid combination** — a documented prohibition or absent route, not missing capability;
+- **optional or non-normative guidance** — a recommendation or available choice, not automatically required capability;
+- **required behavior** — a normative contract for the implemented surface;
+- **out-of-family capability** — owned by a separate official family.
+
+Do not place invalid combinations under `Not implemented`.
+
+Do not convert optional guidance into missing capability unless the official contract makes it required for the implemented surface.
 
 ## Component choice and usage
 
 Start from the user scenario and current official guidance, not from the component already present.
 
-Confirm applicable:
+Confirm:
 
 - intended and prohibited scenarios;
 - action or content hierarchy;
 - allowed Material compositions;
 - placement constraints;
 - adaptive behavior and owner;
-- whether product composition or a reusable Material pattern owns the relationship.
+- whether a product composition or official family owns the relationship.
 
 Prefer an existing official component or documented composition when it covers the need.
 
 Do not create an `MD*` surface for a project-specific workflow merely because it resembles Material visually.
 
-## Minimum complete surface
+## Minimum coherent implemented surface
 
 - Start from named scenarios and affected consumers.
-- Use the current canonical Expressive default only when no narrower scenario is supplied.
+- Use the current canonical Expressive default only when no narrower scenario exists.
 - Add variants, sizes, shapes, modes, anatomy, and behavior only for a current scenario or consumer.
-- Include every reachable state, accessibility requirement, and applicable dependency of the supported surface.
-- Record remaining official capabilities as unsupported.
+- Include every reachable state, accessibility requirement, and dependency of the implemented surface.
+- Classify every remaining official item accurately: not implemented, officially unsupported/invalid, unresolved, or out of family.
 - Add no Mioframe extension without an explicit requirement, owner, and deviation record.
 
-Minimum scope is not partial correctness.
+Minimum scope is not partial correctness. An implemented subset must be internally complete and truthful.
 
 ## Product and library ownership
 
@@ -111,9 +144,9 @@ Product layers own:
 - product-level adaptive composition;
 - consumer data and content.
 
-Official component families own only their supported usage, public API, native semantics, anatomy, states, tokens, behavior, and rendering.
+Official families own their public API, native semantics, anatomy, states, tokens, behavior, and rendering.
 
-Reusable compositions belong in `material/patterns` only when official evidence defines them, a current scenario requires them, they are independent of one product domain, and they can be tested without product data.
+Reusable compositions belong in `material/patterns` only when official evidence defines them, a current scenario requires them, they are product-independent, and they can be tested without product data.
 
 ## Accessibility and interaction
 
@@ -131,20 +164,28 @@ Material alignment includes applicable:
 
 Visual similarity alone is not alignment.
 
+## Visual and motion decisions
+
+A known operator-rejected visible behavior remains an open defect until production behavior changes and new evidence is accepted.
+
+Do not convert a perceptual rejection into a documentation-only issue because the implementation route is technically honest.
+
+Shared motion foundations are verified deeply once. Component evidence remains proportional and does not require frame-by-frame analysis or duplicate equivalent input paths.
+
 ## Rule refinement
 
-When real source evidence or implementation proves a project rule inaccurate or needlessly complex, correct the owning rule through `material-component-authoring`. Do not work around it with a component-specific exception.
+When current source or implementation evidence proves a project rule inaccurate or needlessly complex, correct the owning rule through `material-component-authoring`. Do not work around it with a component-specific exception.
 
 ## Review and verification
 
-For product-facing Material changes, name:
+Name:
 
-- official sources checked;
+- official sources and source status;
 - resulting component-choice, usage, accessibility, or adaptive decision;
-- deviations or unresolved evidence;
-- affected official component contracts;
+- classifications, deviations, and unresolved evidence;
+- affected official contracts;
 - applicable browser, visual, accessibility, or consumer proof.
 
-For official component work, `material-component-authoring` owns adaptive family contracts, proportional proof, migration completion, and continuation to the next ready family. `autonomous-review.md` owns agent/operator role separation.
+`material-component-authoring` owns family documentation, implementation, migration, proportional proof, and local verification. `autonomous-review.md` owns independent review and operator visual separation.
 
-The agent may mark non-visual evidence review `passed` only when every applicable decision is resolved and proved. It never reports operator visual acceptance as accepted.
+The agent never invents operator visual acceptance.
