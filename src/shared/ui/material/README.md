@@ -2,7 +2,7 @@
 
 `src/shared/ui/material` is the canonical source boundary for Mioframe's Material 3 Expressive implementation.
 
-Its navigation mirrors the official Material documentation:
+Its navigation mirrors official Material documentation:
 
 ```text
 material/
@@ -13,30 +13,63 @@ material/
 
 This is a navigation and ownership map, not a reason to create empty production layers.
 
+## Universal request
+
+Use one entrypoint for any explicit Material artifact:
+
+```text
+material <artifact-or-request>
+```
+
+Examples:
+
+```text
+material Button
+material State layer
+material Ripple
+material Focus indicator
+material Elevation
+material Motion
+material Fix the Button target geometry
+```
+
+The router resolves the official owner and executes the applicable component or foundation/style workflow.
+
+A valid explicit request is sufficient. The agent must not refuse because the artifact is not a component, no component migration is active, no production consumer exists, the roadmap names another family, or the canonical directory has not yet been created.
+
+When there is no production consumer, implement the smallest coherent official contract with owner-local tests and a bounded fixture. Do not invent a fake product consumer.
+
 ## Navigation
 
 ### [Foundations](./foundations/README.md)
 
-Cross-component contracts corresponding to the official Foundations navigation, such as accessibility, adaptive/layout, and interaction foundations.
+Official cross-component behavior and platform contracts, including accessibility, adaptive/layout, interaction foundations, State Layer, ripple, and focus indication.
 
 ### [Styles](./styles/README.md)
 
-Cross-component visual systems corresponding to the official Styles navigation: color, elevation, icons, motion, shape, and typography.
+Official cross-component visual systems: color, elevation, icons, motion, shape, and typography.
 
 ### [Components](./components/README.md)
 
 Official public component families. Family directories use the official documentation slug.
 
-Example:
+Examples:
 
 ```text
 m3.material.io/components/buttons
 → src/shared/ui/material/components/buttons
+
+state layer / ripple / focus indication
+→ src/shared/ui/material/foundations/interaction
 ```
+
+Use a narrower official slug when official navigation defines one.
 
 Project-specific compositions, screens, workflows, and generic platform infrastructure remain outside this library.
 
-## Family layout
+## Owner layout
+
+Component example:
 
 ```text
 components/<official-docs-slug>/
@@ -49,27 +82,45 @@ components/<official-docs-slug>/
   ... only justified files
 ```
 
-- `README.md` documents current implementation, omissions, incomplete/unverified capability, deviations, operator feedback, and visual status.
-- `AUDIT.md` contains the latest independent review and is maintained by `material-component-review`.
-- Production code, tests, and stories live beside both documents.
+Foundation/style example:
 
-The implementing agent updates `README.md` but does not edit `AUDIT.md`. Any material implementation change sets the documented review status to `review required after changes`.
+```text
+foundations/<official-slug>/
+  README.md
+  AUDIT.md
+  index.ts
+  ... implementation, tests, and fixtures only when justified
 
-No separate visual report file is required. The operator reports visible problems or acceptance directly in the user message; authoring persists the result in README.
+styles/<official-slug>/
+  README.md
+  AUDIT.md
+  index.ts
+  ... implementation, tests, and fixtures only when justified
+```
+
+- `README.md` documents current implementation, omissions, incomplete/unverified capability, ownership, consumers, deviations, and review state.
+- `AUDIT.md` contains the latest independent review.
+- Authoring updates README but never edits AUDIT.
+- Any implementation change sets `Review status: review required after changes`.
+
+No separate operator report file is required. Visible problems or acceptance are reported directly in the user message and persisted in the applicable README.
+
+## Routing compatibility
+
+`material-component` remains valid for component work.
+
+A non-component request sent through it must be rerouted rather than rejected:
+
+```text
+material-component State layer
+→ material-foundation State layer
+```
+
+`material-foundation` implements both official foundations and styles.
 
 ## Operator feedback
 
-A message may combine the command and concrete observations:
-
-```text
-material-component Button
-
-Operator feedback:
-- release animation feels too slow;
-- the corner shape visibly lags behind pointer release.
-```
-
-README records:
+For visible component or rendered foundation/style behavior, README may record:
 
 ```text
 Status: not reviewed | required | rejected | awaiting re-review | accepted
@@ -77,19 +128,19 @@ Latest operator feedback: none | <summary>
 Implementation response: none | <summary>
 ```
 
-- A reported visual defect means `rejected`.
+- A reported visible defect means `rejected`.
 - After production behavior changes, authoring may set `awaiting re-review`.
-- Only an explicit user acceptance message may set `accepted`.
+- Only explicit user acceptance may set `accepted`.
 
 ## Public API
 
-Product code uses the curated root entry point:
+Product code uses the curated root entry point where a public Material artifact is intended for consumers:
 
 ```ts
 import { MDButton } from '@shared/ui/material';
 ```
 
-Internal implementation, stories, tests, documentation, and audit files are not public API.
+Private implementation routes, testing fixtures, stories, documentation, and audits are not public API.
 
 ## Dependency direction
 
@@ -103,22 +154,44 @@ shared generic infrastructure
 - foundations and styles do not import component families;
 - families do not deep-import another family's private files;
 - Material code does not import product layers;
-- generic infrastructure does not contain component-family knowledge.
+- generic infrastructure does not contain Material family knowledge.
 
-## New component work
+Generic browser/platform utilities remain generic when they contain no Material semantics. Material-specific state, token, clipping, focus, motion, or rendering ownership belongs in this library even when its current implementation is legacy.
 
-1. Resolve the official Material documentation path and family.
-2. Create or update `components/<official-docs-slug>/README.md`.
-3. Persist explicit operator feedback from the current task.
-4. Implement the minimum complete surface required by current consumers.
-5. Record official capability left unimplemented.
-6. Record every known defect, provisional implementation, missing verification, and required follow-up.
-7. Add proportional tests and a canonical visual story.
-8. Migrate consumers and remove obsolete ownership when applicable.
-9. Run `material-component-review <family>` to create or replace the colocated `AUDIT.md`.
-10. Obtain explicit operator acceptance when visual review is required.
+## New Material work
+
+1. Resolve the requested artifact against official Material navigation.
+2. Route it to component, foundation, style, or cross-layer ownership.
+3. Record official source and inventory status.
+4. Create or update the canonical owner README.
+5. Implement the smallest coherent surface required by the explicit request and affected consumers.
+6. Record actual official capability left unimplemented and every invalid/unsupported route.
+7. Prove final rendered owners and behavior with proportional tests and bounded fixtures/stories.
+8. Migrate existing consumers and remove obsolete Material ownership when applicable.
+9. Run applicable local verification.
+10. Run independent review separately.
+11. Obtain explicit operator acceptance when visible review is required.
+
+Do not stop after target classification, research, or a plan.
 
 Do not hide unfinished work to obtain a successful status.
+
+## State Layer and interaction foundations
+
+State Layer is a valid direct implementation target, not a component request that should be rejected.
+
+Its implementation must resolve applicable:
+
+- state-input ownership;
+- color and opacity routes;
+- rendered layer and bounds;
+- clipping and shape inheritance;
+- disabled and simultaneous-state behavior;
+- lifecycle, release, cancellation, cleanup, and reduced motion;
+- generic component-consumption bridge;
+- testing-only forced-state support.
+
+An opacity token declaration alone is not an implementation. The final rendered layer, bounds, clipping, state winner, and consumer route must work.
 
 ## Current physical state
 
@@ -129,13 +202,13 @@ Do not hide unfinished work to obtain a successful status.
 | Color/theme tokens                     | `src/shared/lib/md/tokens.css`                                   | `material/styles/color` when migrated            | legacy                                                  |
 | Elevation                              | `src/shared/lib/md/tokens.css`                                   | `material/styles/elevation` when migrated        | legacy                                                  |
 | Motion                                 | `src/shared/lib/md/tokens.css`                                   | `material/styles/motion` when migrated           | legacy                                                  |
-| Shape                                  | current token/style owners                                       | `material/styles/shape` when migrated            | legacy                                                  |
-| Typography                             | `src/shared/lib/md`                                              | `material/styles/typography` when migrated       | legacy                                                  |
-| Material Symbols                       | `src/shared/ui/Icon`                                             | `material/styles/icons` when migrated            | legacy                                                  |
-| State layer, ripple, focus             | `src/shared/ui/State`                                            | `material/foundations/interaction` when migrated | legacy                                                  |
+| Shape                                  | current token/style owners                                       | `material/styles/shape` when migrated             | legacy                                                  |
+| Typography                             | `src/shared/lib/md`                                              | `material/styles/typography` when migrated        | legacy                                                  |
+| Material Symbols                       | `src/shared/ui/Icon`                                             | `material/styles/icons` when migrated             | legacy                                                  |
+| State layer, ripple, focus             | `src/shared/ui/State`                                            | `material/foundations/interaction` when migrated | legacy; valid direct migration target                   |
 
-The family documentation is the detailed state owner. This table remains a compact navigation aid and must not duplicate every finding.
+Local owner documentation is the detailed state owner. This table is only navigation.
 
 ## Anti-overengineering
 
-Do not create placeholder implementation folders, fixed file profiles, runtime registries, broad wrappers, separate visual report files, or a second metadata system. The official-documentation hierarchy exists to make the library easy to navigate and review.
+Do not create placeholder implementation folders, fixed file profiles, runtime registries, broad wrappers, fake consumers, separate visual report files, or a second metadata system. The official-documentation hierarchy exists to make the library easy to navigate and review.
