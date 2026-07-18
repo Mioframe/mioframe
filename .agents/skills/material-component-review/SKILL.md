@@ -20,21 +20,25 @@ The component name is sufficient.
 - Do not use source-control history as evidence.
 - Keep concrete findings in the reviewed AUDIT; do not add them to shared skills.
 
-## Required policy
+## Policy loading
 
-Read and follow:
+Always read:
 
 - applicable repository and scoped `AGENTS.md` files;
 - `docs/material-3/source-of-truth.md`;
 - `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-tokens.md`;
-- `docs/material-3/component-testing.md`;
-- `docs/material-3/component-conversion-checklist.md`;
 - `docs/material-3/autonomous-review.md`;
 - current family README and previous AUDIT;
 - implementation, exports, consumers, tests, stories, and directly affected shared owners.
 
-Those documents own detailed evidence, classification, severity, and completion rules. Independently re-evaluate every prior claim.
+Read only when applicable:
+
+- `component-tokens.md` for token, namespace, or rendered-property findings;
+- `component-testing.md` for browser behavior, motion, geometry, visual evidence, or test-sufficiency findings.
+
+Use `component-conversion-checklist.md` once as the final completeness pass.
+
+Independently re-evaluate every prior claim.
 
 ## Workflow
 
@@ -77,7 +81,7 @@ Use official visual evidence or the Design Kit when text and token tables do not
 
 ### 5. Write AUDIT
 
-Replace the family AUDIT using the structure below. Apply severity and overall result definitions from `autonomous-review.md`.
+Run the final component checklist once, then replace the family AUDIT. Apply severity and overall result definitions from `autonomous-review.md`.
 
 ```text
 # <Family> implementation audit
