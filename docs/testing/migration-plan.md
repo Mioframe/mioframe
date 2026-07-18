@@ -1,266 +1,298 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` defines the durable target. This plan applies that already-resolved architecture to the current repository. It must not be used to redesign test ownership or impact resolution during implementation.
+`docs/testing/architecture.md` defines the durable target. This plan applies it to the current repository without reducing existing protection before replacement mechanisms are implemented and verified.
 
-## Fixed target
+## Migration constraints
 
-The migration must preserve these decisions:
-
-- proof types and execution lanes remain separate;
-- every non-trivial change records `TEST IMPACT` before implementation;
-- `unit-tests` run directly changed tests, owning tests for changed snapshots, and Vitest related-test selection over static imports for existing source and local test-support modules;
-- unresolved snapshots, deleted/renamed unit dependencies, Vitest config/setup, global test utilities, known dynamic-import boundaries, generated aliases, and unknown unit impact use full-unit fallback;
-- Storybook behavior, app E2E, and visual use separate small impact registries with shared mechanical schemas and validation;
-- every Playwright lane declares stable relevance prefixes and full-lane paths;
-- every Playwright spec has a source mapping or a justified standalone entry;
-- changed visual baselines resolve to their owning visual specs or use full visual fallback;
-- matching Playwright mappings are unioned and deduplicated;
-- an unmapped source inside a lane’s relevance domain selects the full lane; paths outside that domain do not select it;
-- common lane config/helpers select the full owning lane;
-- app E2E canonical project runs all selected scenarios;
-- mobile project runs only `@mobile` and `@critical` scenarios;
-- mutation is an explicit narrow audit selected in `TEST IMPACT`, not inferred from paths;
-- performance evidence remains task-specific until repeated work proves a stable automated lane is needed;
-- no generic dependency graph, production test annotations, test DSL, or cross-lane registry.
-
-## Migration rules
-
-- Use focused PRs and preserve regression protection before removing or relocating tests.
-- Keep production behavior unchanged unless migration exposes a real defect that receives separate resolved scope.
-- Prefer deleting invalid or duplicate assertions over translating every assertion to another lane.
-- Keep broad fail-closed fallback until its focused replacement is implemented and tested.
-- Final `pnpm verify` remains mandatory throughout migration, even while it executes broader legacy scope.
-- Remove this plan when all completion criteria are satisfied; durable rules remain in `docs/testing/architecture.md`.
+- Use focused PRs with one resolver or ownership problem per PR.
+- Preserve current production behavior.
+- Preserve or strengthen current test coverage before narrowing execution.
+- Keep safe broad fallback until a deterministic replacement is implemented and tested.
+- Do not make `verify` depend on `TEST IMPACT` or any uncommitted agent report.
+- Do not redesign proof ownership inside resolver implementation.
+- Remove this document after all completion criteria are satisfied.
 
 ## Current mismatches
 
+### Diff planning
+
+- Git changed-file detection excludes deleted paths.
+- Resolvers receive filenames rather than status-aware added/modified/deleted/renamed records.
+- `--files` cannot represent deletion or both sides of rename.
+
+### Unit selection
+
+- focused unit selection is mainly changed tests plus colocated siblings;
+- imported non-sibling tests may be missed;
+- snapshot ownership is not resolved explicitly;
+- deletion, rename, dynamic imports, global setup, and unknown relations lack one explicit full-unit policy.
+
+### Playwright selection
+
+- app E2E and Storybook behavior already use separate scenario mappings, but their semantics differ;
+- Storybook mappings currently use spec paths inside `sourcePrefixes` to group tests;
+- visual selection is broad and has no explicit baseline-owner resolver;
+- lane relevance, full-lane paths, mappings, and standalone rules are not represented consistently;
+- common helper consumer ownership is not uniformly validated.
+
+### Project execution
+
+- every selected app E2E scenario currently runs on desktop and mobile;
+- no complete audit exists for safe proportional project selection;
+- changing this matrix now would reduce coverage without evidence.
+
+### Mutation and performance
+
+- mutation scope is inferred from source location and sibling tests rather than explicit high-risk targets;
+- no persistent performance-impact mechanism exists because no repeated durable need has yet been established.
+
 ### Proof ownership
 
-- visual specs contain browser-behavior and computed token/geometry assertions;
+- some visual specs contain browser-behavior or computed token/geometry assertions;
 - generic Material foundation behavior is repeated across component families;
-- broad component tests reconstruct product behavior through global stubs;
-- some test helpers silently recover from missing expected state.
+- some broad component tests reconstruct product behavior through global stubs;
+- some helpers silently recover from missing expected state.
 
-### Impact execution
+## Phase 1: status-aware planning foundation
 
-- mutation applicability is inferred from changed files and sibling tests;
-- unit selection is mainly changed tests plus colocated siblings rather than static import impact;
-- visual selection treats broad shared UI/foundation paths as full-lane changes;
-- app E2E uses broad full-suite fallback for many known source areas;
-- every selected app E2E scenario is duplicated across desktop and mobile.
+### 1. Changed-path model
 
-These mismatches do not invalidate current CI gates until replacements are implemented and verified.
+Introduce a repository-owned changed-path model carrying:
 
-## Phase 1: establish deterministic impact infrastructure
+- added path;
+- modified path;
+- deleted path;
+- renamed path with old and new names.
 
-### 1. Vitest related and snapshot selection
-
-Implement `unit-tests` planning as:
-
-1. include directly changed test files;
-2. resolve added, changed, or deleted Vitest snapshots to their owning tests through the configured snapshot convention;
-3. pass changed existing production and local test-support modules to Vitest related-test selection in run mode;
-4. union and deduplicate direct, snapshot-owned, and related tests;
-5. run the full unit lane for an unresolved snapshot, deleted or renamed non-test module, Vitest config/setup, global test utility, known dynamic-import boundary, generated alias, or an unrepresentable relation;
-6. keep empty scope only when no unit proof is required by changed paths and `TEST IMPACT` does not name explicit tests.
+Use Git status-aware output for local, base-ref, and GitHub Actions planning. Preserve package comparison support.
 
 Acceptance:
 
-- a changed source, local fixture, or `testUtils` module selects statically importing tests, not only a sibling;
-- a changed test always runs directly;
-- a changed snapshot runs its owning test;
-- unresolved snapshots and deleted/renamed dependencies cannot silently lose proof;
-- fallback categories are explicit and unit-tested;
-- dynamic-import and global setup changes cannot silently skip unit proof;
-- no custom dependency graph is introduced.
+- deleted files reach every affected resolver;
+- rename exposes both old and new paths;
+- existing ignored-path behavior remains intentional;
+- `--files` remains an explicit existing-target override and is not treated as deletion/rename planning;
+- planner tests cover local, base-ref, CI, deletion, and rename cases.
 
-### 2. Shared Playwright impact contracts
+### 2. Common lane-plan contract
 
-Create small reusable contracts used by three independent lane registries:
+Introduce a small mechanical result contract shared by resolvers:
 
-```ts
-interface TestImpactEntry {
-  readonly name: string;
-  readonly sourcePrefixes: readonly string[];
-  readonly specs: readonly string[];
-}
-
-interface StandaloneSpecEntry {
-  readonly spec: string;
-  readonly reason: string;
-}
-```
-
-Each lane owns:
-
-- its spec directory;
-- broad stable `relevantSourcePrefixes`;
-- exact files and prefixes that always select the full lane;
-- mappings and justified standalone specs.
-
-Registry owners:
-
-- Storybook browser behavior registry;
-- app E2E registry;
-- visual registry.
-
-Use standalone only when no truthful stable source mapping exists, such as lane-infrastructure smoke. It is not an alternative to maintaining known impact. Add a relevance prefix only for a stable source domain, never to patch one task.
-
-Entry names, arrays, specs, and reasons are non-empty. Validation rejects missing specs, duplicate mapping names, duplicate paths within one entry, duplicate standalone specs, empty reasons, invalid paths, and uncovered discovered specs. Overlapping source prefixes and a spec referenced by multiple mappings are valid.
-
-Resolve each changed path in this order:
-
-1. full-lane exact file/prefix;
-2. changed spec plus mappings matching that spec path;
-3. visual baseline owner plus mappings matching the owning spec, or full visual fallback when unresolved;
-4. matching source mappings;
-5. unmapped source under `relevantSourcePrefixes` → full lane;
-6. path outside the lane’s domains → no lane selection.
-
-Across changed paths, union and deduplicate selected specs; full-lane selection wins.
+- `skip` with reasons;
+- `focused` with non-empty exact targets and reasons;
+- `full` with reasons;
+- `invalid` with blocking errors.
 
 Acceptance:
 
-- a changed spec selects itself and any intentionally grouped specs;
-- a changed visual baseline selects its owning visual spec;
-- a changed mapped source selects the union of registered specs;
-- an unmapped relevant source safely selects the full lane;
-- an irrelevant path does not schedule the lane;
-- every discovered spec has a mapping or justified standalone entry;
-- a new/moved/removed spec requires a matching mapping or standalone update;
-- overlapping valid mappings do not fail or duplicate execution;
-- standalone entries cannot hide known stable impact;
-- unresolved baselines cannot silently skip visual proof;
-- broken registry integrity fails before test execution;
-- the contracts contain no product semantics or cross-lane orchestration.
+- full overrides focused;
+- targets are sorted and deduplicated;
+- empty focused plans are invalid;
+- every decision is printed in verify planning output;
+- invalid metadata fails before test execution;
+- no product semantics or cross-lane orchestration enters the shared helper.
 
-### 3. Full-lane fallback rules
+## Phase 2: deterministic unit impact
 
-For each Playwright lane:
+### 3. Unit related and snapshot selection
 
-- lane config, global setup, global fixture, or shared common helper selects the whole lane;
-- known helpers with explicit complete consumer lists may select only those consumers;
-- an unmapped path under the lane’s relevance prefixes selects the complete lane;
-- an unresolved visual baseline selects the complete visual lane;
-- an empty inferred scope does not override explicit `TEST IMPACT` paths.
+Implement unit planning as:
+
+1. directly added or modified test files;
+2. owning tests for added, modified, or deleted snapshots;
+3. Vitest related selection for changed existing source and local test-support modules through static imports;
+4. union and deduplication;
+5. full-unit fallback for unresolved snapshots, deleted/renamed dependencies, Vitest config/setup, global utilities, known dynamic-import boundaries, generated aliases, and unknown relations;
+6. skip only for paths outside unit relevance.
 
 Acceptance:
 
-- no known shared helper silently misses a consumer;
-- unknown relevant impact remains safe;
-- irrelevant paths do not run unrelated lanes;
-- broad fallback is not used for already-mapped local changes.
+- a changed imported source or fixture selects non-sibling importing tests;
+- a changed test runs directly;
+- a changed snapshot runs its owner;
+- deletion, rename, dynamic import, setup, and unresolved ownership cannot silently skip proof;
+- no custom dependency graph is introduced;
+- verify integration tests assert the resulting commands.
 
-## Phase 2: correct lane ownership
+## Phase 3: independent Playwright registries
 
-### 4. Remove behavior from visual specs
+Implement each lane separately. Do not introduce all three in one PR.
 
-- keep only deterministic story preparation and bounded screenshots under `tests/e2e/visual/`;
-- move reusable browser behavior to `tests/e2e/storybook/`;
-- move complete product scenarios to app E2E only when product composition is the owner;
-- delete duplicate behavior already proved elsewhere;
-- update all affected impact registries.
+Shared mechanical fields may cover:
+
+- spec directory;
+- relevant source domains;
+- full-lane files and prefixes;
+- source-to-spec mappings;
+- justified standalone specs;
+- visual snapshot ownership where applicable.
+
+Source mappings contain only production, story, fixture, or owned support paths. They never contain spec paths to group tests.
+
+### 4. Storybook behavior resolver
+
+Correct the existing Storybook behavior resolver first because it already has the clearest bounded ownership.
+
+- changed spec selects itself;
+- remove spec paths from `sourcePrefixes`;
+- explicitly map reusable UI/foundation/story/fixture sources;
+- use full-lane fallback for shared config, setup, common helpers, and unmapped relevant sources;
+- validate all discovered behavior specs.
 
 Acceptance:
 
-- visual specs contain no behavior success criteria or token-table matrices;
-- relocated tests use real public browser input;
-- visual baselines retain meaningful regression protection.
+- editing one spec does not implicitly select unrelated grouped specs;
+- source changes select all matching specs;
+- overlapping mappings union cleanly;
+- unknown relevant source selects full Storybook behavior;
+- irrelevant source skips the lane;
+- moved/deleted specs cannot leave stale registry records.
 
-### 5. Make action helpers strict
+### 5. App E2E resolver
 
-- split required action/assertion helpers from optional cleanup helpers;
-- remove silent returns, repeated fallback delivery, and fixed-delay recovery;
+Adapt the current app scenario registry to the shared mechanical contract without changing scenario ownership.
+
+- retain safe full app E2E for bootstrap, cross-cutting worker/service protocols, E2E infrastructure, and unknown relevant product source;
+- changed app spec selects itself;
+- mappings represent only stable source-to-product-scenario impact;
+- common helpers default to full app E2E unless their complete consumer set is explicit and validated.
+
+Acceptance:
+
+- mapped local source runs owning product scenarios;
+- unmapped relevant product source remains fail-closed;
+- irrelevant source does not run app E2E;
+- every discovered app spec is mapped or has a justified standalone reason;
+- coverage is not reduced relative to the current resolver.
+
+### 6. Visual resolver and snapshot ownership
+
+Replace broad visual relevance with an explicit independent resolver.
+
+- define the real repository convention from visual spec to baseline paths;
+- changed spec selects itself;
+- changed component, foundation, story, theme, font, icon, or rendering source selects mapped visual specs;
+- unresolved baseline ownership selects full visual;
+- global visual/Storybook configuration selects full visual;
+- all visual specs are mapped or justified standalone.
+
+Acceptance:
+
+- added, modified, deleted, and renamed baselines resolve safely;
+- mapped local visible changes do not require the full visual suite;
+- unknown relevant visual impact remains full-lane;
+- source mappings do not duplicate browser-behavior ownership;
+- baseline naming and project suffixes are covered by resolver tests.
+
+## Phase 4: mutation targets
+
+### 7. Persistent mutation registry
+
+Replace sibling-based applicability only after a persistent target registry and validation are implemented.
+
+Start with exact files:
+
+- unique target name;
+- exact high-risk source files;
+- exact owning focused tests;
+- concrete risk reason.
+
+Select a target when registered source or owning tests change.
+
+Acceptance:
+
+- ordinary UI, documentation, low-risk, and unrelated changes do not schedule mutation;
+- registered high-risk changes automatically schedule narrow Stryker scope;
+- missing source/tests, duplicate ownership, deletion, or rename without maintenance is invalid;
+- current legacy mutation remains mandatory until replacement coverage and command behavior pass;
+- removal of legacy sibling inference happens in the same PR that activates the validated registry.
+
+## Phase 5: browser project applicability
+
+### 8. Audit before changing desktop/mobile execution
+
+Do not change the current two-project matrix during earlier resolver work.
+
+First audit every app E2E scenario for observable platform risk:
+
+- touch or pointer modality;
+- viewport and responsive composition;
+- overlays or mobile navigation;
+- browser capability or permission differences;
+- lifecycle differences;
+- scenarios that are genuinely platform-independent.
+
+Then choose the smallest persistent test metadata supported by Playwright and the repository. Do not introduce a generic criticality tag.
+
+Acceptance before narrowing:
+
+- every existing scenario is classified;
+- mobile-risk scenarios remain directly exercised;
+- the previous mobile protection is accounted for explicitly;
+- execution-time benefit is measured;
+- project filtering is covered by configuration and verify-planning tests;
+- no scenario is silently dropped from all projects.
+
+## Phase 6: durable performance checks when needed
+
+### 9. Separate one-off measurements from budgets
+
+Do not add a performance registry without an actual durable contract.
+
+When a repeated need appears:
+
+- define a named budget or baseline;
+- add a reproducible repository-owned check;
+- map stable source impact to that check;
+- validate missing commands and stale mappings.
+
+One-off PR optimization claims remain task-specific before/after measurements and are not automatically inferred by `verify`.
+
+## Phase 7: correct proof ownership
+
+These cleanups follow resolver stability and should remain separate from impact infrastructure.
+
+### 10. Remove behavior from visual specs
+
+- retain deterministic preparation and bounded screenshots;
+- move reusable browser behavior to Storybook behavior;
+- move complete product outcomes to app E2E only when product composition owns them;
+- delete duplicate behavior already proved elsewhere.
+
+### 11. Make browser helpers strict
+
+- separate required action/assertion helpers from optional cleanup;
+- remove silent returns, repeated fallback delivery, and arbitrary delay recovery;
 - make missing preconditions and outcomes fail with clear diagnostics;
-- register shared helper consumers or use full owning-lane fallback.
+- update helper impact ownership.
 
-Acceptance:
+### 12. Consolidate foundation proof
 
-- required actions cannot become silent no-ops;
-- cleanup is never used as behavior evidence;
-- product defects are exposed rather than masked.
-
-### 6. Align mutation execution
-
-- remove default mutation applicability based on path or sibling-test existence;
-- retain explicit `pnpm verify --only mutation --files ...`;
-- schedule mutation only when `TEST IMPACT` and the mutation skill activation both apply;
-- remove the unconditional ordinary-development mutation step after default planning no longer relies on it;
-- preserve any named high-risk merge policy only with an explicit narrow scope.
-
-Acceptance:
-
-- UI, refactor, documentation, and ordinary low-risk changes do not schedule mutation;
-- explicit narrow mutation remains fail-closed;
-- final development verification does not spend mutation time on unrelated changes.
-
-## Phase 3: proportional project and consumer selection
-
-### 7. App E2E mobile tags
-
-- keep one canonical project for all selected scenarios;
-- tag real mobile-risk scenarios `@mobile`;
-- tag only the small essential cross-platform smoke set `@critical`;
-- configure the mobile project with project-level filtering for those tags;
-- keep reusable responsive behavior in Storybook with explicit viewports.
-
-Acceptance:
-
-- platform-independent scenarios run once;
-- mobile-specific and critical smoke coverage remains direct;
-- every mobile duplication has a visible tag and reason.
-
-### 8. Replace broad known-path fallback
-
-As real changes occur, add stable source-to-spec mappings for known shared UI, feature, entity, page, service-client, foundation, and helper ownership.
-
-Keep broad relevance prefixes for safe unknown fallback, but narrow them only when stable mappings prove the source domain is fully understood. Keep full app E2E for bootstrap, cross-cutting worker/service protocols, E2E infrastructure, and genuinely broad impact.
-
-Acceptance:
-
-- mapped local source changes run representative owning scenarios;
-- unmapped relevant impact remains fail-closed;
-- irrelevant source domains do not schedule the lane;
-- registries remain small mechanical maps rather than a second architecture model.
-
-### 9. Consolidate foundation proof
-
-- move complete generic focus, state-layer, ripple, elevation, motion, and transient-state proof to foundation owners;
+- prove generic focus, state layer, ripple, elevation, motion, and token precedence at foundation owners;
 - retain family-specific routing, anatomy, deviations, and unique outcomes;
-- update visual and Storybook impact mappings for foundation consumers.
+- preserve canonical Material evidence.
 
-Acceptance:
+### 13. Decompose broad mocked component suites
 
-- foundation defects still fail focused proof;
-- component families no longer duplicate identical generic matrices;
-- canonical Material evidence remains complete.
+For touched suites:
 
-### 10. Decompose pseudo-integration unit suites
-
-For each touched broad mocked suite:
-
-- move deterministic decisions to `unit-testing` at the real owner;
-- retain narrow Vue public wiring in component contract tests;
-- retain complete product outcome in app E2E when needed;
+- move deterministic decisions to their real owner;
+- retain narrow Vue public wiring in component-contract tests;
+- retain complete product outcomes in app E2E when needed;
 - delete broad stubs and duplicate assertions.
-
-Acceptance:
-
-- failures identify a contract;
-- global stubs decrease;
-- no user scenario loses meaningful protection.
 
 ## Completion criteria
 
 Migration is complete when:
 
-- agents consistently produce `TEST IMPACT` before non-trivial edits;
-- unit selection uses direct tests, snapshot ownership, and Vitest static-import related selection with tested snapshot/deletion/dynamic/global fallbacks;
-- all Playwright lanes use validated mappings, justified standalone entries, declared relevance/full-lane domains, deterministic resolution order, union/deduplication, complete spec coverage, visual baseline ownership, and safe fallback;
-- visual specs prove appearance only;
-- reusable browser behavior and product scenarios have distinct ownership;
-- mobile execution is tag-driven and proportional;
-- mutation is explicit and narrow;
-- foundation behavior is not repeated by every consumer;
-- broad mocked pseudo-integration suites no longer substitute for faithful proof;
-- focused development and full release verification remain green and diagnostically useful.
+- Git diff planning includes deletion and rename status;
+- every resolver uses `skip | focused | full | invalid` with inspectable reasons;
+- unit selection uses direct tests, snapshot ownership, Vitest static-import relations, and tested safe fallbacks;
+- Storybook behavior, app E2E, and visual use independent validated source-impact registries;
+- spec paths are not overloaded as source mappings;
+- visual baseline ownership handles add/change/delete/rename safely;
+- mutation is automatically selected from validated persistent high-risk targets;
+- any project filtering was introduced only after complete audit and preserved mobile-risk coverage;
+- task-specific `TEST IMPACT` is not consumed by automation;
+- focused development and full release verification remain green and diagnostically useful;
+- broad fallback remains only where impact is genuinely unknown or cross-cutting.
