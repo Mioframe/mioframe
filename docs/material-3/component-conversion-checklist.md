@@ -6,7 +6,7 @@ Implementation scope may follow current product need. Inventory classification m
 
 ## 1. Workspace and sources
 
-- [ ] Used current workspace files, official Material sources, and local project verification only.
+- [ ] Used the current user task, current workspace files, official Material sources, and local project verification only.
 - [ ] Did not run, inspect, or cite git, GitHub, branches, commits, diffs, blame, logs, pull requests, or repository history.
 - [ ] Resolved the current official family and documentation path.
 - [ ] Used the official documentation slug for the canonical directory.
@@ -27,7 +27,8 @@ Implementation scope may follow current product need. Inventory classification m
 ## 3. Family documentation and role ownership
 
 - [ ] Created or updated the colocated family `README.md` before production edits.
-- [ ] Read existing `AUDIT.md` and `VISUAL_REVIEW.md` when present.
+- [ ] Read existing `AUDIT.md` when present.
+- [ ] Read and extracted explicit operator feedback from the current user message.
 - [ ] Recorded canonical source status, inventory status, and official coverage.
 - [ ] Listed only working capability under `Implemented`.
 - [ ] Listed every partial, defective, provisional, ambiguous, or unverified item separately.
@@ -35,9 +36,12 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Listed officially unsupported and invalid combinations separately.
 - [ ] Recorded optional guidance choices under known issues, extensions, or deviations.
 - [ ] Recorded API, semantics, token/state/property ownership, dependencies, extensions, consumers, and verification.
-- [ ] Mirrored a rejected/blocked operator result under known issues without reinterpreting it.
+- [ ] Persisted operator feedback in README under `Operator feedback and visual status`.
+- [ ] Set `rejected` when the user reported a visual defect.
+- [ ] Set `awaiting re-review` only after a production behavior change.
+- [ ] Set `accepted` only from an explicit user acceptance message.
 - [ ] Set `Review status: review required after changes`.
-- [ ] Did not edit `AUDIT.md` or `VISUAL_REVIEW.md` during implementation.
+- [ ] Did not edit `AUDIT.md` during implementation.
 
 ## 4. Family and ownership
 
@@ -78,7 +82,7 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Did not require frame-by-frame component analysis.
 - [ ] Did not duplicate equivalent pointer, touch, and keyboard paths.
 - [ ] Did not use forced state as motion proof.
-- [ ] Did not close a rejected motion result without changing production behavior and obtaining a replacement accepted VISUAL_REVIEW.
+- [ ] Did not close rejected perceived motion without changing production behavior and obtaining explicit user acceptance.
 
 ## 8. Migration
 
@@ -105,7 +109,7 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Rebuilt classification from the available official sources.
 - [ ] Code, README, exports, consumers, tests, and stories agree.
 - [ ] Source and inventory status are honest.
-- [ ] Existing VISUAL_REVIEW status remains explicit and unchanged.
+- [ ] Operator feedback and current visual status remain explicit.
 - [ ] Known visual rejection and shared proof gaps remain open where applicable.
 - [ ] Focused checks passed.
 - [ ] Final applicable local verification passed.
@@ -122,20 +126,19 @@ Performed separately by `material-component-review`:
 - [ ] Stage 1 compared current implementation with current project documentation.
 - [ ] Stage 2 compared project documentation with canonical Material evidence.
 - [ ] Review distinguished actual capability from invalid combinations and optional guidance.
-- [ ] Review read VISUAL_REVIEW and mirrored its status exactly.
-- [ ] Review never edited or overrode operator visual evidence.
+- [ ] Review verified that README preserves explicit operator feedback.
+- [ ] Review did not invent acceptance.
 - [ ] Review required representative proof for shared routes.
 - [ ] Audit recorded compliance, coverage, and visual status separately.
 
 ## 12. Operator visual review
 
-Performed by the operator only:
+Performed through normal user messages:
 
 - [ ] Reviewed prepared canonical evidence against named official references.
-- [ ] Created or replaced `VISUAL_REVIEW.md` with `accepted`, `rejected`, or `blocked`.
-- [ ] Named visible findings and required correction when rejected.
+- [ ] Reported visible problems directly in the implementation request, or explicitly accepted the reviewed result.
 - [ ] Did not use operator review to decide API, semantics, accessibility, source interpretation, architecture, or test sufficiency.
 
-Do not describe a family as complete while implementation and documentation disagree, canonical source status is overstated, any item is misclassified, unfinished work is hidden, shared blast radius is unproved, local verification fails, or VISUAL_REVIEW is rejected/blocked.
+Do not describe a family as complete while implementation and documentation disagree, canonical source status is overstated, any item is misclassified, unfinished work is hidden, shared blast radius is unproved, local verification fails, or visual status is rejected/blocked/awaiting re-review.
 
-Do not describe a family as fully implemented unless canonical evidence is current-complete, the independent audit reports `Official coverage: full`, and required visual review is accepted.
+Do not describe a family as fully implemented unless canonical evidence is current-complete, the independent audit reports `Official coverage: full`, and required visual review is explicitly accepted.
