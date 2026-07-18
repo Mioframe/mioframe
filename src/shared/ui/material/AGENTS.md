@@ -4,7 +4,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 
 ## Routing
 
-- Use `material-library-status` for a read-only report based on roadmap, inventory, registries, and colocated family documentation/audits.
+- Use `material-library-status` for a read-only report based on roadmap, inventory, registries, and colocated family documentation.
 - Use `material-library-next` to select and execute exactly one next family.
 - Use `material-component` when the user supplies a component or family name for creation, migration, or alignment.
 - Use `material-component-review` for an independent source-backed review without production changes.
@@ -87,33 +87,25 @@ Optional or non-normative guidance is recorded as a project choice, deviation, o
 
 ## Family documentation
 
-Every implemented or actively migrated family owns:
+Every implemented or actively migrated family may own:
 
 ```text
 components/<official-docs-slug>/README.md
 components/<official-docs-slug>/AUDIT.md
+components/<official-docs-slug>/VISUAL_REVIEW.md
 ```
 
 - README is current implementation documentation and is updated by authoring.
-- AUDIT is the latest independent review and is updated only by `material-component-review`.
+- AUDIT is the latest independent technical/canonical review and is updated only by `material-component-review`.
+- VISUAL_REVIEW is the durable operator decision and is created or replaced only after operator review.
 
-README records:
+README records official mapping, source status, inventory, coverage, implementation state, omissions, invalid combinations, known issues, dependencies, consumers, verification, and review state.
 
-- official mapping and source status;
-- inventory status and coverage;
-- implemented capability;
-- partial, defective, provisional, ambiguous, or unverified capability;
-- every actual capability not implemented;
-- officially unsupported and invalid combinations;
-- unresolved and out-of-family items;
-- known defects, shared proof gaps, source limitations, and visual status;
-- API, semantics, tokens, states, final property ownership, dependencies, extensions, consumers, verification, and review status.
+A production change sets `Review status: review required after changes`. Authoring never edits AUDIT or VISUAL_REVIEW.
 
-Do not claim completion by omission.
+A review-only run creates or replaces only AUDIT. It reads but never edits VISUAL_REVIEW.
 
-A production change sets `Review status: review required after changes`. Authoring never edits AUDIT.
-
-A review-only run creates or replaces only AUDIT. It does not modify implementation, tests, stories, README, registries, roadmap, or policy.
+A rejected VISUAL_REVIEW remains authoritative until the operator reviews new evidence and replaces it. Agents must not downgrade it to `required`, infer acceptance, or call the visible behavior resolved.
 
 ## Canonical target
 
@@ -135,7 +127,7 @@ shared generic infrastructure
 - a family does not deep-import another family's private files;
 - Material code does not import product layers;
 - product consumers use `@shared/ui/material`;
-- private implementation, tests, stories, docs, and audits are not public API.
+- private implementation, tests, stories, docs, audits, and visual reviews are not public API.
 
 ## Implementation rules
 
@@ -162,19 +154,7 @@ At component level, prove only:
 
 Do not require frame-by-frame analysis. Do not duplicate equivalent input paths. Forced state proves appearance, not motion.
 
-## Visual status
-
-Use:
-
-- `not required`;
-- `required`;
-- `rejected`;
-- `blocked`;
-- `accepted`.
-
-A known operator-rejected visible behavior remains an open defect until production behavior changes and new evidence is accepted. Documentation, comments, renamed contracts, or tests alone cannot close it.
-
-An automated author or reviewer never invents operator acceptance.
+Perceived fidelity is operator-owned. A rejected VISUAL_REVIEW is an open implementation defect even when technical routing is correct.
 
 ## Proof
 
@@ -188,11 +168,11 @@ An automated author or reviewer never invents operator acceptance.
 Authoring finishes by:
 
 - updating README truthfully;
-- preserving source limitations, shared proof gaps, and rejected visual status;
+- preserving source limitations, shared proof gaps, and operator visual status;
 - running applicable local verification;
 - reporting `implementation finished` or one exact blocker;
 - recommending `material-component-review <family>`.
 
-Review records the independent result in AUDIT.
+Review records the independent result in AUDIT and mirrors VISUAL_REVIEW without changing it.
 
-A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and accepted required visual review.
+A family is fully implemented only with current-complete evidence, independent `Official coverage: full`, and accepted required visual review. A family cannot leave active migration while VISUAL_REVIEW is rejected or blocked.
