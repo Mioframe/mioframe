@@ -65,20 +65,26 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Added representative proof that actually exercises a shared route.
 - [ ] Did not use unchanged unrelated tests as representative proof.
 
-## 6. API, state, and DOM ownership
+## 6. API, state, normalization, and DOM ownership
 
 - [ ] Public props, emits, slots, and native semantics match the implemented contract.
 - [ ] Invalid combinations are prevented, normalized, or rejected coherently.
 - [ ] Controlled semantic state has no hidden component copy.
 - [ ] Component-owned transient state defines acquisition, release, cancellation, disabled, failure, and cleanup only when applicable.
 - [ ] DOM, focus, accessible-name, ARIA, target-area, interaction, and final rendering ownership is explicit.
+- [ ] Classified materially different normalization/fallback input classes separately.
+- [ ] Verified actual output, semantics/accessibility, warning/error text, README/API documentation, and test assertion agree for each material branch.
+- [ ] Did not describe an ignored input, rejected combination, clamped result, and fallback mode with one misleading generic message.
 
-## 7. Motion proof
+## 7. Motion and lifecycle proof
 
 - [ ] Verified the shared motion foundation deeply once.
 - [ ] Used real input to prove the component activates the intended rendered property.
 - [ ] Checked one meaningful intermediate state only when needed to establish the route.
 - [ ] Verified the correct endpoint and safe interruption/cancellation.
+- [ ] For every claimed interruption/cancellation/replacement/recovery test, triggered the competing event before the first lifecycle or transition settled.
+- [ ] Proved the competing branch began and the final public outcome contained no stale state.
+- [ ] Did not treat a test name, comment, timeout, delayed action after settlement, or endpoint-only assertion as proof of interruption/cancellation.
 - [ ] Did not require frame-by-frame component analysis.
 - [ ] Did not duplicate equivalent pointer, touch, and keyboard paths.
 - [ ] Did not use forced state as motion proof.
@@ -103,6 +109,7 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Did not add tests that merely restate equal declarations or aliases.
 - [ ] Tested unsupported combinations only when the component owns explicit rejection or normalization.
 - [ ] Did not create tests that imply unimplemented capability exists.
+- [ ] Confirmed every named test claim is established by its setup and assertions, not only by its title.
 
 ## 10. Implementation completion
 
@@ -111,6 +118,8 @@ Implementation scope may follow current product need. Inventory classification m
 - [ ] Source and inventory status are honest.
 - [ ] Operator feedback and current visual status remain explicit.
 - [ ] Known visual rejection and shared proof gaps remain open where applicable.
+- [ ] Normalization/fallback behavior, warnings, documentation, and tests agree for every material branch.
+- [ ] Named-risk tests actually enter their claimed conditions.
 - [ ] Focused checks passed.
 - [ ] Final applicable local verification passed.
 - [ ] Recommended `material-component-review <family>`.
@@ -128,6 +137,8 @@ Performed separately by `material-component-review`:
 - [ ] Review distinguished actual capability from invalid combinations and optional guidance.
 - [ ] Review verified that README preserves explicit operator feedback.
 - [ ] Review did not invent acceptance.
+- [ ] Review independently checked normalization/fallback outputs, warning text, documentation, and tests for each material input class.
+- [ ] Review rejected named-risk proof whose setup never entered the named condition.
 - [ ] Review required representative proof for shared routes.
 - [ ] Audit recorded compliance, coverage, and visual status separately.
 
@@ -139,6 +150,6 @@ Performed through normal user messages:
 - [ ] Reported visible problems directly in the implementation request, or explicitly accepted the reviewed result.
 - [ ] Did not use operator review to decide API, semantics, accessibility, source interpretation, architecture, or test sufficiency.
 
-Do not describe a family as complete while implementation and documentation disagree, canonical source status is overstated, any item is misclassified, unfinished work is hidden, shared blast radius is unproved, local verification fails, or visual status is rejected/blocked/awaiting re-review.
+Do not describe a family as complete while implementation and documentation disagree, canonical source status is overstated, any item is misclassified, unfinished work is hidden, named-risk proof is not causal, fallback behavior and warning text disagree, shared blast radius is unproved, local verification fails, or visual status is rejected/blocked/awaiting re-review.
 
 Do not describe a family as fully implemented unless canonical evidence is current-complete, the independent audit reports `Official coverage: full`, and required visual review is explicitly accepted.
