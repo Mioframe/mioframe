@@ -20,6 +20,7 @@ Every implemented or actively migrated family contains:
 ```text
 README.md
 AUDIT.md                    # created and replaced only by material-component-review
+VISUAL_REVIEW.md            # optional; created and replaced only after operator review
 index.ts
 <Component>.vue
 <Component>.test.ts
@@ -27,7 +28,7 @@ index.ts
 ... only justified implementation files
 ```
 
-`AUDIT.md` may be absent before the first review. Do not create an empty placeholder.
+`AUDIT.md` may be absent before the first independent review. `VISUAL_REVIEW.md` may be absent before the first operator review. Do not create empty placeholders.
 
 ## Workspace evidence boundary
 
@@ -172,7 +173,7 @@ Record every:
 
 Never use `none` while a relevant audit finding, failing check, unresolved source question, shared proof gap, or observed visual mismatch exists.
 
-A known operator-rejected visual behavior stays open until production behavior changes, new evidence is prepared, and the operator accepts it. Documentation or test changes alone cannot close it.
+A visual rejection recorded in `VISUAL_REVIEW.md` stays open until production behavior changes, new evidence is prepared, and the operator replaces that file with an accepted result. Documentation, tests, audit wording, or a renamed runtime contract cannot close it.
 
 ### Review status
 
@@ -183,7 +184,7 @@ Use one:
 - `reviewed — see AUDIT.md`;
 - `blocked — <reason>`.
 
-Any production change affecting the documented contract sets `review required after changes`. Authoring never edits `AUDIT.md`.
+Any production change affecting the documented contract sets `review required after changes`. Authoring never edits `AUDIT.md` or `VISUAL_REVIEW.md`.
 
 ## `AUDIT.md` ownership
 
@@ -207,11 +208,13 @@ Canonical source status: current-complete | snapshot-complete-stale | partial | 
 Official capability inventory: complete | snapshot-complete (...) | incomplete (...) | blocked (...)
 Official coverage: full | partial | unresolved
 Project implementation documentation: README.md
+Operator visual evidence: missing | VISUAL_REVIEW.md
 Visual review: not required | required | rejected | blocked | accepted
 
 ## Evidence
 ### Project documentation reviewed
 ### Material 3 Expressive evidence
+### Operator visual evidence
 
 ## Official capability coverage
 ### Implemented and verified
@@ -234,6 +237,27 @@ Visual review: not required | required | rejected | blocked | accepted
 ```
 
 The reviewer independently verifies the classifications rather than approving the README list.
+
+When `VISUAL_REVIEW.md` exists, the audit must report its status and findings exactly. The reviewer may not replace `rejected` with `required`, infer acceptance, or close the visual defect. When it is absent, the reviewer may report `required`, `blocked`, or `not required` based on the visible change and available evidence.
+
+## `VISUAL_REVIEW.md` ownership
+
+`VISUAL_REVIEW.md` is the durable operator decision for visible fidelity. It is created or replaced only after the operator reviews prepared evidence.
+
+Use:
+
+```text
+# <Family> visual review
+
+Reviewed: <date>
+Status: accepted | rejected | blocked
+
+## Evidence reviewed
+## Findings
+## Required correction
+```
+
+Implementing and reviewing agents read this file but never modify it. A rejected result remains authoritative until the operator reviews new evidence and replaces the file. A production change may require new visual review, but it does not erase the previous rejection.
 
 ## Compliance and coverage
 
@@ -303,7 +327,7 @@ At component level, prove only:
 
 Do not require frame-by-frame component analysis. Do not duplicate equivalent input paths. Forced state proves appearance, not motion.
 
-Perceived motion quality remains an operator visual decision. A previous rejection is a confirmed open defect until accepted after a behavior change.
+Perceived motion quality remains an operator visual decision. A rejection in `VISUAL_REVIEW.md` is a confirmed open defect until the operator accepts new evidence after a behavior change.
 
 ## Migration
 
@@ -329,4 +353,4 @@ Implementation work is finished only when:
 - applicable local verification passes;
 - README says `review required after changes`.
 
-A family is compliant only after an independent audit. A family is fully implemented only when the audit reports current-complete evidence, `Official coverage: full`, and required visual acceptance.
+A family is compliant only after an independent audit. A family is fully implemented only when the audit reports current-complete evidence, `Official coverage: full`, and required visual acceptance. A family cannot leave active migration while `VISUAL_REVIEW.md` is rejected or blocked.
