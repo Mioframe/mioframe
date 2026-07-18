@@ -64,6 +64,19 @@ Do not reproduce visual coverage in unit tests. The canonical Storybook story ow
 
 Do not use forced visual-state providers unless the assertion is narrowly about explicit wiring to an accepted provider and does not claim appearance or behavior.
 
+## Normalization and fallback branches
+
+When materially different input classes select different normalization or fallback branches, test each branch as its own contract.
+
+For each applicable class, align assertions with:
+
+- the actual returned, emitted, or rendered result;
+- native semantics and accessibility output;
+- the exact warning or error meaning;
+- the documented public contract.
+
+A generic warning assertion is insufficient when one input clamps to a determinate result while another is ignored, rejected, or falls back to an indeterminate mode. Do not assert only that “a warning occurred” when the warning text can misdescribe the branch that ran.
+
 ## Assertions
 
 Prefer:
@@ -73,14 +86,15 @@ Prefer:
 - props passed to stubbed child components;
 - slot content;
 - accessible text or labels in the public contract;
-- documented warning or normalization behavior.
+- exact documented warning, normalization, or fallback behavior for each materially different input class.
 
 Avoid:
 
 - complete rendered-tree snapshots;
 - internal class lists unrelated to public or foundation wiring;
 - test ids added only for unit tests;
-- assertions that duplicate the implementation rather than its contract.
+- assertions that duplicate the implementation rather than its contract;
+- generic substring warning checks that allow contradictory behavior descriptions to pass.
 
 ## Reject or rewrite when
 
@@ -91,3 +105,4 @@ Avoid:
 5. It relies on happy-dom for behavior it cannot simulate accurately.
 6. It grows into broad pseudo-e2e coverage.
 7. A new or migrated component has no named contract coverage because browser or visual tests exist.
+8. Different normalization or fallback branches are collapsed into one assertion that does not prove their distinct outputs and warning meanings.
