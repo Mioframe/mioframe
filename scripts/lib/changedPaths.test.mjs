@@ -29,7 +29,7 @@ function git(cwd, args) {
 function createTempRepo() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'changed-paths-test-'));
   createdDirs.push(dir);
-  git(dir, ['init', '-q']);
+  git(dir, ['init', '-q', '--initial-branch=main']);
   git(dir, ['config', 'user.email', 'test@example.com']);
   git(dir, ['config', 'user.name', 'Test']);
   return dir;
@@ -347,7 +347,7 @@ describe('resolveChangedPathsScope local-base mode', () => {
     commitAll(dir, 'feature commit');
     writeFile(dir, 'uncommitted.ts');
 
-    const scope = resolveChangedPathsScope({ cliBaseRef: 'main', cwd: dir });
+    const scope = resolveChangedPathsScope({ cliBaseRef: 'main', cwd: dir, processEnv: {} });
 
     expect(scope.scope).toBe('local-base main');
     expect(scope.baseRef).toBe('main');
@@ -367,7 +367,7 @@ describe('resolveChangedPathsScope local-base mode', () => {
     commitAll(dir, 'init');
 
     expect(() =>
-      resolveChangedPathsScope({ cliBaseRef: 'origin/does-not-exist', cwd: dir }),
+      resolveChangedPathsScope({ cliBaseRef: 'origin/does-not-exist', cwd: dir, processEnv: {} }),
     ).toThrow(/Base ref does not exist/);
   });
 });
