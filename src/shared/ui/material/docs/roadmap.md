@@ -24,6 +24,8 @@ material-component Button
 
 The fresh session must load the merged repository rules and skills. Do not continue a session that loaded the pre-PR #155 Material workflow, and remove any stale project auto-memory that treats PR #150, old audits, registries, or removed `docs/material-3` files as current evidence.
 
+Treat Button as the first calibration run. If the agent skips the contract gate, expands before representative-consumer validation, starts another family, or continues through an exact blocker, stop and correct the workflow before continuing implementation.
+
 The orchestrator starts with `material-component-contract`, invokes required foundation work only when the resolved contract proves it, then continues through implementation, adoption, complete review, and final verification.
 
 Do not reuse implementation, workflow, review, or audit conclusions from PR #150. Resolve the current Button family from the merged repository and current official Material 3 Expressive sources.
