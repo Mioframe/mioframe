@@ -3,27 +3,28 @@ name: material-foundation
 description: 'Use when changing Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, verification adapters, icons, overlays, accessibility, density, or adaptive foundation contracts.'
 paths:
   - 'src/shared/ui/material/foundation/**'
+  - 'src/shared/ui/material/docs/foundation-*.md'
+  - 'src/shared/ui/material/docs/library-architecture.md'
+  - 'src/shared/ui/material/docs/source-of-truth.md'
   - 'src/shared/lib/md/**'
   - 'src/shared/ui/State/**'
   - 'src/shared/ui/Icon/**'
   - 'src/shared/ui/Overlay/**'
   - 'postcss.config.js'
   - 'config/postcss.config.test.ts'
-  - 'docs/material-3/foundation-*.md'
-  - 'docs/material-3/library-architecture.md'
-  - 'docs/material-3/source-of-truth.md'
 ---
 
 # Material foundation
 
-Canonical rules live in:
+Canonical Material-specific rules live only in:
 
-- `docs/material-3/source-of-truth.md`;
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/foundation-registry.md`.
+- `src/shared/ui/material/AGENTS.md`;
+- `src/shared/ui/material/docs/source-of-truth.md`;
+- `src/shared/ui/material/docs/library-architecture.md`;
+- `src/shared/ui/material/docs/foundation-architecture.md`;
+- `src/shared/ui/material/docs/foundation-registry.md`.
 
-This skill defines execution order and stop conditions. Do not duplicate registry or domain contracts here.
+This repository-level skill owns only execution routing, order, and stop conditions. Do not duplicate registry or domain contracts here.
 
 ## Preflight
 
@@ -51,13 +52,13 @@ shared/lib generic infrastructure
   → product composition
 ```
 
-Foundation remains free of consuming-family knowledge. Generic DOM, browser, event, geometry, lifecycle, and teleport utilities stay in their generic owner; Material foundation may compose narrow Material-facing adapters.
+Foundation remains free of consuming-family and product knowledge. Generic DOM, browser, event, geometry, lifecycle, and teleport utilities stay in their generic owner; Material foundation may compose narrow Material-facing adapters.
 
 Do not create a universal base, runtime token/state registry, generic resolver, cross-family state machine, duplicate theme/overlay system, production state-matrix component, or generic test DSL.
 
 ## Registry and migration
 
-`foundation-registry.md` owns current correctness and status. `src/shared/ui/material/README.md` owns physical migration.
+`src/shared/ui/material/docs/foundation-registry.md` owns current correctness and status. `src/shared/ui/material/README.md` owns physical migration.
 
 Update only fields whose owned facts changed:
 
@@ -102,10 +103,10 @@ Physical relocation must not hide a correction or replacement.
 
 Add or expand a foundation capability only when:
 
-- a current component or product scenario requires it;
+- a current Material component or explicit shared-library requirement needs it;
 - Material or an unavoidable platform/testing boundary defines it as cross-family;
 - the existing mechanism is insufficient;
-- the contract remains family-agnostic;
+- the contract remains family-agnostic and product-independent;
 - total complexity is lower than local implementations.
 
 A verification adapter may be added for a first family when the state is already a generic foundation concern and a family-local substitute would be worse.
@@ -135,7 +136,7 @@ Do not prebuild palettes, motion catalogs, adaptive managers, state systems, or 
 
 ## Rule refinement
 
-When a real component or foundation change proves a rule inaccurate or needlessly complex, correct the owning source with the smallest evidence-backed change. Do not add a domain-specific exception merely to preserve the old rule.
+When a real component or foundation change proves a rule inaccurate or needlessly complex, correct the owning document under `src/shared/ui/material/docs` with the smallest evidence-backed change. Do not add a domain-specific exception merely to preserve the old rule.
 
 ## Proportional verification
 
