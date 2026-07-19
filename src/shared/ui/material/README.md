@@ -65,16 +65,20 @@ Create it only when a real public artifact can be exported honestly. External co
 
 ## Development
 
-`material-component` executes the only component implementation workflow, one family at a time:
+`material-component` is the only implementation entry point. It orchestrates one family through internal stage owners:
 
 ```text
-0 task lock
-→ 1 resolved family contract
-→ 2 primary vertical slice
-→ 3 complete supported family
-→ 4 consumer migration and old-owner removal
-→ 5 full-result review and visual handoff
-→ 6 final verification
+contract
+→ required foundation work
+→ implementation
+   primary slice
+   → representative consumer
+   → complete supported family
+→ adoption and old-owner removal
+→ complete review
+→ final verification
 ```
+
+`material-component-contract`, `material-component-implementation`, and `material-component-adoption` are internal stages, not alternative entry points or independent workflows.
 
 Review-only assessment uses `material-component-review` and does not edit production files. The current family and one next action are recorded in [`docs/roadmap.md`](./docs/roadmap.md).
