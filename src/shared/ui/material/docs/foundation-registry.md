@@ -19,16 +19,16 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Status: `partial`.
 - Official sources: `material3` MCP; `Vyachean/m3-docs-cache` fallback; official Material Design Kit for exact visual decisions unresolved by published docs.
 - Verified snapshot: source hierarchy reviewed 2026-07-16; domain snapshots remain record-specific.
-- Current production owner: policy/tooling outside application runtime.
-- Canonical library owner: none; policy remains under `docs/material-3`.
+- Current production owner: `src/shared/ui/material/docs/source-of-truth.md` and owner-local evidence records.
+- Canonical library owner: `src/shared/ui/material/docs`.
 - Migration status: `migrated`.
 - Public contract: bounded authority order, exact snapshot recording, Design Kit role, and explicit `partial`/`blocked` handling.
 - Private bridge contract: none.
 - Verification-only contract: none.
 - Known consumers: every Material foundation, component, pattern, and review decision.
 - Known gaps: historical domains need exact snapshots when revalidated.
-- Verification: policy review plus source records in family blueprints and domain changes.
-- Last reviewed: 2026-07-16.
+- Verification: policy review plus source records in family contracts and domain changes.
+- Last reviewed: 2026-07-19.
 
 ## Authoring units
 
@@ -180,7 +180,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: component measurements, density/layout guidance, and accessibility target requirements.
 - Verified snapshot: not yet recorded — policy and family evidence are mixed.
 - Current production owner: `density-spacing.md`; each component owns supported measurements and target box.
-- Canonical library owner: policy remains under `docs/material-3`; runtime owner is component-specific unless a shared artifact is required.
+- Canonical library owner: policy under `src/shared/ui/material/docs`; runtime owner is component-specific unless a shared foundation artifact is required.
 - Migration status: `migrated`.
 - Public contract: exact component specs first, layout guidance second, app `step` only when no exact Material measure exists.
 - Private bridge contract: none.
@@ -188,7 +188,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Known consumers: all Material components and app layout.
 - Known gaps: complete family target-area and compact-behavior inventory.
 - Verification: component geometry/hit testing and representative visuals.
-- Last reviewed: 2026-07-16.
+- Last reviewed: 2026-07-19.
 
 ## Accessibility
 
@@ -196,7 +196,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material accessibility pages, native HTML semantics, and repository policy.
 - Verified snapshot: not yet recorded as one exact policy snapshot.
 - Current production owner: `accessibility.md`; components/overlays/focus owners implement it.
-- Canonical library owner: policy remains under `docs/material-3`.
+- Canonical library owner: `src/shared/ui/material/docs/accessibility.md`.
 - Migration status: `migrated`.
 - Public contract: accessible names, native semantics first, focus-visible, keyboard behavior, target areas, contrast-safe roles, modal focus, and meaningful state exposure.
 - Private bridge contract: none.
@@ -204,7 +204,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Known consumers: all interactive/semantic Material components and product composition.
 - Known gaps: exact policy snapshot and family compliance.
 - Verification: component contract, browser behavior, and focused accessibility checks.
-- Last reviewed: 2026-07-16.
+- Last reviewed: 2026-07-19.
 
 ## Overlay containment and lifecycle
 
@@ -228,7 +228,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material window classes, canonical layouts, navigation adaptation, pane, app bar, sheet, and toolbar guidance.
 - Verified snapshot: not yet recorded — policy and product evidence are mixed.
 - Current production owner: `layout-adaptive.md` plus current layout primitives and product composition.
-- Canonical library owner: policy remains under `docs/material-3`; concrete component/pattern owners are added only from current needs.
+- Canonical library owner: policy under `src/shared/ui/material/docs/layout-adaptive.md`; concrete component/pattern owners are added only from current needs.
 - Migration status: `legacy`.
 - Public contract: compact/medium/expanded decisions, canonical-layout choice, pane ownership, and navigation choice based on product information architecture.
 - Private bridge contract: current layout contexts and scroll-container contracts where implemented.
@@ -236,7 +236,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Known consumers: pages, panes, navigation, sheets, app bars, and responsive components.
 - Known gaps: no complete app-wide adaptive-switching contract; component adaptation remains family-specific.
 - Verification: responsive browser/story checks and product-flow verification for layout/component choice.
-- Last reviewed: 2026-07-16.
+- Last reviewed: 2026-07-19.
 
 ## Update rules
 
