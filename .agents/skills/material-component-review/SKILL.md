@@ -1,6 +1,6 @@
 ---
 name: material-component-review
-description: 'Use for an independent contradiction-seeking review of an official Material component family. Compare implementation with project documentation, then documentation with canonical Material 3 Expressive, and replace only the family AUDIT.md.'
+description: 'Use for a complete independent, contradiction-seeking review of an official Material component family. Reconstruct the rendered implementation, native semantics, architecture, lifecycle, foundations, tests, and documentation before reviewing token names. Replace only the family AUDIT.md.'
 ---
 
 # Material component review
@@ -17,8 +17,10 @@ The component name is sufficient.
 - Change only the family `AUDIT.md`.
 - Do not modify production code, tests, stories, README, exports, consumers, roadmap, registries, or policy.
 - Use the current workspace, current task, current successful Material MCP reads, official sources, and local verification results.
-- Source-control history is not Material evidence. The current diff may be inspected for scope, unrelated changes, missing cleanup, and regression risk.
+- Source-control history is not Material evidence. The current diff may be inspected for scope, missing cleanup, compatibility paths, and regression risk.
 - Keep concrete findings in the reviewed AUDIT; do not add them to shared skills.
+
+This is a complete implementation review. It is not a token-name audit, documentation confirmation pass, or rerun of the previous AUDIT.
 
 ## Policy loading
 
@@ -33,28 +35,103 @@ Always read:
 
 Read only when applicable:
 
-- `component-tokens.md` for token, namespace, or rendered-property findings;
+- `component-tokens.md` for token, namespace, cascade, override, or rendered-property findings;
 - `component-testing.md` for browser behavior, motion, geometry, visual evidence, or test-sufficiency findings.
 
 Use `component-conversion-checklist.md` once as the final review pass. Independently re-evaluate every prior claim.
 
+## Mandatory coverage ledger
+
+Before writing AUDIT, record direct evidence and `pass | fail | unresolved` for every applicable domain:
+
+```text
+API and native semantics
+rendered DOM and browser-default reset
+anatomy, ownership, layout, hit and visual bounds
+painted layers, clipping, stacking, focus, and accessibility
+state acquisition, precedence, release, cancellation, and cleanup
+state layer, ripple, focus indicator, and other shared foundations
+motion owner, endpoints, trajectory, interruption, and cleanup
+normalization, fallback, warning, error, and extension behavior
+token sources, cascade, override contract, namespace, and final owner
+exports, consumers, migration, and obsolete paths
+tests, stories, helpers, screenshots, and verification blind spots
+README, shared-owner documentation, and operator feedback
+architecture, duplication, complexity, and repair/restructure/replace strategy
+```
+
+A review is incomplete when an applicable domain has no direct evidence. Reconfirming previous findings does not satisfy this ledger.
+
+Do not begin the custom-property naming pass until rendered structure, native semantics, ownership, lifecycle, foundations, and test blind spots have been reviewed.
+
 ## Workflow
 
-### 1. Reconstruct evidence independently
+### 1. Reconstruct the implementation from runtime outward
 
-Keep separate:
+Do not start from the README or previous AUDIT conclusion.
 
-1. current implementation evidence;
-2. project documentation claims;
-3. canonical Material evidence from the current run;
-4. explicit operator feedback;
-5. current-diff scope evidence when available.
+Trace:
 
-Do not start from the README conclusion. Reconstruct the official contract, actual owners, final rendered routes, and current behavior from evidence.
+1. public entrypoint, native element, props, emits, slots, exports, and consumers;
+2. actual rendered DOM, pseudo-elements, dynamically inserted nodes, UA styles, global CSS, and inheritance;
+3. layout footprint, hit bounds, visible bounds, painted layers, clipping, and stacking;
+4. each real input through event handlers, reactive state, classes/attributes, shared foundations, rendered properties, release, cancellation, and cleanup;
+5. tests and helpers, including elements, states, frames, branches, and environments they never inspect.
 
-Tests and screenshots prove current behavior or regression stability, not Material correctness by themselves.
+Keep implementation evidence, documentation claims, canonical Material evidence, operator feedback, and current-diff scope evidence separate.
 
-### 2. Search for contradictions before checking completeness
+Tests and screenshots prove only the exact path they causally exercise.
+
+### 2. Inspect the complete rendered tree adversarially
+
+Do not inspect only the element that documentation or test helpers call the visual owner.
+
+Verify applicable:
+
+- native appearance, background, border, padding, font, outline, and default behavior are intentionally controlled;
+- a semantic host cannot paint an unintended surface around a nested visual container;
+- state layer, ripple, focus, outline, elevation, content, loading, and auxiliary layers use coherent bounds and clipping;
+- stacking cannot expose a rectangular, stale, or incorrectly clipped layer;
+- different hit and visible bounds form one contiguous, layout-reserved interaction region;
+- every DOM node has a necessary responsibility.
+
+For a reported visual defect, enumerate every element and pseudo-element capable of painting it. A scalar value on one expected owner cannot disprove a composition defect.
+
+### 3. Review native semantics and lifecycle
+
+Verify applicable click propagation/default action, form behavior, keyboard activation, pointer/touch/leave/cancel/release behavior, disabled/loading behavior, focus-visible, accessibility state, listener cleanup, and multi-instance isolation.
+
+Build one causal map:
+
+```text
+real event
+→ state owner
+→ class/attribute/property
+→ shared foundation
+→ rendered layer/property
+→ release/cancel/cleanup
+```
+
+Report parallel event families, timers, CSS pseudo-states, or state models that can disagree.
+
+Inspect the implementation of shared foundations, not only their call sites. Timing and geometry must come from the property actually being animated; asynchronous work must not outlive or reorder the interaction incorrectly.
+
+### 4. Review architecture and strategy
+
+Review the implementation as a system, not a collection of declarations.
+
+Report:
+
+- duplicated variant/state/size matrices that can diverge;
+- several owners for one semantic or rendered concern;
+- component-local patches around a foundation defect;
+- obsolete or parallel anatomy, state, and compatibility models;
+- tests coupled to or hiding a wrong structure;
+- complexity that prevents one contract fact from having one obvious owner.
+
+File length alone is not a finding. Repetition and conflicting ownership are. Verify whether `repair`, `restructure`, or `replace` is the honest next strategy.
+
+### 5. Search for contradictions
 
 Compare every materially repeated claim across:
 
@@ -64,6 +141,7 @@ README
 stories and Storybook descriptions
 component tests
 browser and visual tests
+test helpers and fixtures
 shared-owner documentation
 verification claims
 operator feedback
@@ -71,73 +149,55 @@ operator feedback
 
 Report mismatches such as:
 
-- documentation names a different owner than production;
-- a story describes superseded anatomy or behavior;
-- a test title claims a branch its setup never enters;
-- a warning describes a different fallback than the rendered result;
-- a forced state is presented as real lifecycle proof;
-- a public token is asserted on an intermediate alias rather than the final owner;
-- README closes or weakens an operator-rejected surface without explicit acceptance.
+- different owners or anatomy;
+- warning text that describes another fallback;
+- forced state presented as lifecycle proof;
+- a helper that reads only the expected owner and hides other painted layers;
+- a test title whose setup never enters the named branch;
+- one override class demonstrated but all token classes claimed;
+- operator rejection weakened without explicit acceptance.
 
-If the same contract fact appears in multiple places, reviewer must compare them explicitly. Agreement is not assumed.
+Agreement is not assumed.
 
-### 3. Review implementation against project documentation
+### 6. Review implementation and documentation
 
-Check applicable API, semantics, accessibility, controlled state, normalization, anatomy, ownership, geometry, tokens, states, motion, exports, consumers, migration, tests, stories, verification claims, known defects, and source limits.
+Check API, semantics, accessibility, controlled state, normalization, anatomy, ownership, geometry, painted layers, foundations, tokens, states, motion, exports, consumers, migration, tests, stories, verification claims, known defects, and source limits.
 
 For DOM structure:
 
-- enforce the repository-wide prohibition on unnecessary nodes;
+- enforce minimal DOM;
 - treat ownership roles as responsibilities, not an element checklist;
-- reject wrappers or helpers added only for styling, selectors, test hooks, or future flexibility;
-- require a distinct node only when official anatomy, semantics, accessibility, layout, interaction geometry, clipping/stacking, or a platform API needs it.
+- reject nodes added only for styling, selectors, test hooks, or future flexibility;
+- require a distinct node only for official anatomy, semantics, accessibility, layout, interaction geometry, clipping/stacking, transition ownership, or a platform API.
 
-A declaration, alias, class name, story, screenshot, test title, or green check is not implementation proof.
+Then review project documentation against current Material evidence: family boundary, capability classification, semantics, anatomy, geometry, token meanings, final owners, motion, extensions, deviations, and source claims.
 
-### 4. Review project documentation against Material
+Capture age alone is not a finding. Use official visual evidence or the Design Kit when published evidence does not resolve an objective structural decision.
 
-Check official family mapping, current-run source claims, capability classification, variants, states, semantics, accessibility, anatomy, geometry, token meanings and names, final rendered owners, motion, extensions, deviations, and evidence citations.
+### 7. Review token cascade and naming last
 
-Use current successful MCP reads as working official evidence when complete and healthy. Capture age alone is not a finding.
+For every materially used custom property verify:
 
-Use official visual evidence or the Design Kit when text and token tables do not resolve an objective structural decision.
+1. exact official or justified private meaning;
+2. where its default is declared;
+3. whether inheritance and ordinary consumer override work as documented;
+4. whether a local declaration blocks ancestor override;
+5. correct final owner and rendered effect;
+6. semantic naming and necessity.
 
-### 5. Review diagnosis and implementation strategy
+Only then report invalid namespace, mechanism naming, or unnecessary aliases. Correct names do not compensate for wrong rendering, semantics, lifecycle, cascade, or architecture.
 
-Verify that authoring correctly classified material problems as canonical behavior, implementation defect, architecture defect, foundation defect, evidence gap, or product deviation.
+### 8. Review motion and operator feedback
 
-Verify the chosen strategy:
+Distinguish forced-state endpoint evidence, real input acquisition/release, meaningful intermediate trajectory evidence, interruption/cancellation/cleanup, and operator-perceived quality.
 
-- `repair` did not preserve a wrong ownership model;
-- `restructure` removed superseded structure;
-- `replace` did not retain hidden compatibility paths without necessity.
+Reject endpoint-only proof when composition can fail between endpoints.
 
-Repeated patches, parallel models, or unresolved ownership after two correction rounds are findings even when isolated tests pass.
+Explicit rejection reopens the complete affected visible surface. Do not infer acceptance from silence, tests, screenshots, routing, or prior audit text. Objective rendering, anatomy, native reset, geometry, ownership, clipping, lifecycle, foundation behavior, accessibility, contradictions, and test sufficiency remain reviewer-owned.
 
-### 6. Review motion and lifecycle causally
+### 9. Write AUDIT
 
-For applicable motion, distinguish:
-
-- forced-state endpoint evidence;
-- real input acquisition and release;
-- intermediate trajectory evidence when composition can fail between endpoints;
-- interruption/cancellation and cleanup;
-- operator-perceived quality.
-
-Reject endpoint-only or forced-state proof when the claim concerns acquisition, transition composition, interruption, release, or cleanup.
-
-### 7. Apply operator feedback correctly
-
-- Explicit visible rejection overrides weaker README wording.
-- Broad rejection reopens the complete affected visible surface.
-- Do not infer acceptance from silence, tests, screenshots, routing, or prior audit text.
-- Objective anatomy, geometry, ownership, clipping, endpoints, naming, accessibility, contradictions, and test sufficiency remain reviewer-owned.
-
-### 8. Write a concise AUDIT
-
-Run the final component checklist once, then replace the family AUDIT.
-
-Do not duplicate the complete family README. Record only enough verified context to make findings reproducible.
+Run the final checklist once, then replace the family AUDIT. Keep it concise, but expose incomplete coverage.
 
 ```text
 # <Family> implementation audit
@@ -147,16 +207,19 @@ Result: compliant | partially-compliant | non-compliant | blocked
 Canonical source status: ...
 Official coverage: ...
 Visual review: not reviewed | required | rejected | awaiting re-review | accepted
+Implementation coverage: complete | incomplete (<domains>)
 
 ## Evidence inspected
+## Implementation coverage
 ## Contradictions
 ## Objective findings
+## Test and evidence blind spots
 ## Evidence gaps
 ## Operator status
 ## Required next work
 ```
 
-Use explicit `none` for empty categories. Verify absent capability independently rather than copying README.
+Use explicit `none` for empty categories.
 
 ## Output
 
@@ -165,22 +228,26 @@ Finish with:
 ```text
 MATERIAL COMPONENT REVIEW
 Official family:
-Official documentation path:
 Implementation path:
 Audit file:
 Canonical source status:
 Official coverage:
+Implementation coverage:
 Contradictions:
+Rendered-tree result:
+Native-semantics result:
+Lifecycle/foundation result:
+Architecture/strategy result:
+Token/cascade result:
 Stage 1 result:
 Stage 2 result:
-Diagnosis/strategy result:
 Overall result:
-Ownership and DOM structure:
 Latest operator feedback:
 Visual review:
 Findings:
+Test and evidence blind spots:
 Evidence gaps:
 Required next work:
 ```
 
-A review is complete only after AUDIT is replaced. Any high-severity structural defect, unnecessary DOM structure, invalid route, unresolved contradiction, non-causal proof, or unchanged operator-rejected behavior requires `non-compliant`.
+A review is complete only after AUDIT is replaced and every applicable ledger domain has direct evidence. Any high-severity structural defect, uncontrolled native rendering, incorrect native semantics, parallel lifecycle model, unnecessary DOM, invalid route, unresolved contradiction, test blind spot masking a named risk, non-causal proof, or unchanged operator-rejected behavior requires `non-compliant`.
