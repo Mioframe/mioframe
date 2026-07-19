@@ -10,7 +10,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
 - All Material-owned implementation, documentation, family/domain contracts, stories, fixtures, and focused tests live under `src/shared/ui/material`. Repository-level rules and skills may route into that boundary but must not become parallel Material fact owners.
-- Material implementation uses one staged workflow: `src/shared/ui/material/docs/component-development.md`, executed through `material-component`. Review-only work uses `material-component-review` and never becomes a competing implementation path.
+- Material implementation has one orchestrator, `material-component`, and three internal stage owners: `material-component-contract`, `material-component-implementation`, and `material-component-adoption`. Review-only work uses `material-component-review` and never becomes a competing implementation path.
 - For Material work, read only the task-relevant canonical documents under `src/shared/ui/material/docs`. Update `roadmap.md` only when its active family, status, blocker, or single next action changes.
 - Official Material components target the current canonical Material 3 Expressive contract. The coding agent must close every non-visual evidence gate; the operator normally performs only prepared visual comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
 - Do not create Material registries, inventories, durable audit documents, checklists, progress ledgers, or duplicated workflow policy. Family/domain README files, code, tests, stories, exports, Git history, and the short roadmap are the canonical records.
@@ -53,8 +53,10 @@ Dependency rules:
 Use the applicable skill instead of duplicating its rules in the task:
 
 - `material-library-status`: concise read-only Material roadmap, active-family, PR, and verification status;
-- `material-library-next`: follow the roadmap's one next family and execute no second family;
-- `material-component`: the sole staged implementation workflow for creating, migrating, aligning, or repairing one official Material family;
+- `material-component`: sole implementation orchestrator for one official Material family;
+- `material-component-contract`: internal source, ownership, API, DOM, state, token, foundation, proof, and migration contract stage;
+- `material-component-implementation`: internal primary-slice, representative-consumer, supported-family, Storybook, and proportional-proof stage;
+- `material-component-adoption`: internal remaining-consumer migration and obsolete-owner removal stage;
 - `material-component-review`: independent review-only assessment of one complete Material family without production changes or durable audit artifacts;
 - `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
 - `material-foundation`: cross-family Material token, theme, units, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, and adaptive contracts;
