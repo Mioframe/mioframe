@@ -13,20 +13,21 @@ Expected invocation:
 material-library-status
 ```
 
-This skill reports owned facts. It must not implement components, change queue order, update audits, edit roadmap state, or repair inconsistencies during the status run.
+This repository-level skill reports shared-owned facts. It must not implement components, change queue order, update audits, edit roadmap state, repair inconsistencies, or become a second Material status owner.
 
 ## Read the program owners
 
 Read:
 
-1. `docs/material-3/library-roadmap.md` for milestone, status, blocker, and single next action;
-2. `docs/material-3/ui-library-inventory.md` for classification, priority, queue state, dependencies, and terminal outcomes;
-3. `docs/material-3/component-registry.md` for Material alignment and proof status;
-4. `docs/material-3/foundation-registry.md` for foundation readiness and gaps;
-5. `src/shared/ui/material/README.md` for physical current and canonical owners;
-6. family `README.md` files only for active or immediately queued families;
-7. `docs/material-3/audits/*.md` for the latest completed compliance evaluation per family;
-8. current pull request or verification state when available.
+1. `src/shared/ui/material/AGENTS.md` for the complete boundary;
+2. `src/shared/ui/material/docs/library-roadmap.md` for milestone, status, blocker, and single next action;
+3. `src/shared/ui/material/docs/ui-library-inventory.md` for classification, priority, queue state, dependencies, and terminal outcomes;
+4. `src/shared/ui/material/docs/component-registry.md` for Material alignment and proof status;
+5. `src/shared/ui/material/docs/foundation-registry.md` for foundation readiness and gaps;
+6. `src/shared/ui/material/README.md` for physical current and canonical owners;
+7. family `README.md` files only for active or immediately queued families;
+8. `src/shared/ui/material/docs/audits/*.md` for the latest completed compliance evaluation per family;
+9. current pull request or verification state when available.
 
 Do not expand into a full repository audit. Inspect only records needed to report current work, executable candidates, blockers, stale evidence, and pending acceptance.
 
