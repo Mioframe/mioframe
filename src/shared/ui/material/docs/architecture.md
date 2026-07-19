@@ -95,7 +95,8 @@ After it exists:
 Keep facts with their implementation owner:
 
 - library-wide architecture and workflow: this documentation set;
-- family contract: `components/<family>/README.md`;
+- canonical family contract: `components/<family>/README.md`;
+- temporary legacy-family contract: `docs/legacy/<family>.md` until that family migrates into the canonical root;
 - foundation contract: `foundation/<domain>/README.md` when a real domain owner exists;
 - current implementation: code and public exports;
 - proof: colocated tests, Storybook stories, browser specs, and accepted visual baselines;
@@ -114,7 +115,7 @@ A complete family migration normally:
 2. implements and proves the library owner;
 3. migrates affected consumers through the public API;
 4. verifies only integration risks introduced by migration;
-5. removes obsolete files, exports, tests, stories, and compatibility paths.
+5. removes obsolete files, exports, tests, stories, compatibility paths, and any temporary `docs/legacy/<family>.md` contract.
 
 Temporary compatibility requires exact named consumers, no new usage, and a removal target. Permanent parallel ownership is forbidden.
 
