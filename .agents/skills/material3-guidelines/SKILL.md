@@ -5,7 +5,7 @@ paths:
   - 'src/**/*.vue'
   - 'src/shared/ui/**'
   - 'src/shared/lib/md/**'
-  - 'docs/material-3/**'
+  - 'src/shared/ui/material/docs/**'
   - 'tests/e2e/visual/**'
   - 'tests/e2e/storybook/**'
 ---
@@ -22,7 +22,7 @@ Use for decisions about:
 - accessibility, interaction, adaptive behavior, and visual evidence;
 - whether a surface is official Material, a pattern, or project-specific UI.
 
-For an official public component family, `material-component-authoring` owns execution, migration, proportional proof, rule refinement, and completion. This skill supplies source and usage decisions.
+For an official public component family, `material-component-authoring` owns execution, migration, proportional proof, rule refinement, and completion. This skill supplies source and usage decisions. All Material-specific durable policy is owned under `src/shared/ui/material`.
 
 ## Canonical target
 
@@ -46,7 +46,7 @@ A public, visual, foundation, ownership, or state-model change is not `none`.
 
 ## Official authority
 
-Use the source hierarchy in `docs/material-3/source-of-truth.md`.
+Use the source hierarchy in `src/shared/ui/material/docs/source-of-truth.md`.
 
 - Current published Material 3 Expressive documentation is authoritative for documented usage, anatomy, behavior, accessibility, tokens, foundations, motion, and adaptive guidance.
 - The current official Material Design Kit is authoritative only for applicable visual decisions that published documentation does not resolve.
@@ -92,12 +92,12 @@ Do not create an `MD*` surface for a project-specific workflow merely because it
 
 ## Minimum complete surface
 
-- Start from named scenarios and affected consumers.
-- Use the current canonical Expressive default only when no narrower scenario is supplied.
-- Add variants, sizes, shapes, modes, anatomy, and behavior only for a current scenario or consumer.
+- Start from named library requirements and affected external compatibility obligations.
+- Use the current canonical Expressive default only when no narrower supported surface is supplied.
+- Add variants, sizes, shapes, modes, anatomy, and behavior only for a current library requirement.
 - Include every reachable state, accessibility requirement, and applicable dependency of the supported surface.
 - Record remaining official capabilities as unsupported.
-- Add no Mioframe extension without an explicit requirement, owner, and deviation record.
+- Add no Mioframe extension without an explicit requirement, generic owner, and deviation record inside `src/shared/ui/material`.
 
 Minimum scope is not partial correctness.
 
@@ -111,9 +111,9 @@ Product layers own:
 - product-level adaptive composition;
 - consumer data and content.
 
-Official component families own only their supported usage, public API, native semantics, anatomy, states, tokens, behavior, and rendering.
+Official component families own only their generic supported usage, public API, native semantics, anatomy, states, tokens, behavior, and rendering.
 
-Reusable compositions belong in `material/patterns` only when official evidence defines them, a current scenario requires them, they are independent of one product domain, and they can be tested without product data.
+Reusable compositions belong in `src/shared/ui/material/patterns` only when official evidence defines them, they are independent of one product domain, and they can be tested without product data.
 
 ## Accessibility and interaction
 
@@ -133,7 +133,7 @@ Visual similarity alone is not alignment.
 
 ## Rule refinement
 
-When real source evidence or implementation proves a project rule inaccurate or needlessly complex, correct the owning rule through `material-component-authoring`. Do not work around it with a component-specific exception.
+When real source evidence or implementation proves a Material rule inaccurate or needlessly complex, correct the owning file under `src/shared/ui/material` through `material-component-authoring`. Do not work around it with a component-specific exception or create policy outside the shared boundary.
 
 ## Review and verification
 
@@ -145,6 +145,6 @@ For product-facing Material changes, name:
 - affected official component contracts;
 - applicable browser, visual, accessibility, or consumer proof.
 
-For official component work, `material-component-authoring` owns adaptive family contracts, proportional proof, migration completion, and continuation to the next ready family. `autonomous-review.md` owns agent/operator role separation.
+For official component work, `material-component-authoring` owns adaptive family contracts, proportional proof, migration completion, and continuation. `src/shared/ui/material/docs/autonomous-review.md` owns agent/operator role separation.
 
 The agent may mark non-visual evidence review `passed` only when every applicable decision is resolved and proved. It never reports operator visual acceptance as accepted.
