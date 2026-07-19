@@ -16,17 +16,13 @@ Blocker: PR #155 must pass final verification and merge before the Button implem
 
 ## Next action
 
-After PR #155 merges, create a fresh branch from the updated `develop` and run `material-component Button` through the complete staged workflow:
+After PR #155 merges, create a fresh branch from the updated `develop` and run:
 
 ```text
-0 task lock
-→ 1 resolved family contract
-→ 2 primary vertical slice
-→ 3 complete supported family
-→ 4 consumer migration and old-owner removal
-→ 5 full-result review and visual handoff
-→ 6 final verification
+material-component Button
 ```
+
+The orchestrator starts with `material-component-contract`, invokes required foundation work only when the resolved contract proves it, then continues through implementation, adoption, complete review, and final verification.
 
 Do not reuse implementation, workflow, review, or audit conclusions from PR #150. Resolve the current Button family from the merged repository and current official Material 3 Expressive sources.
 
