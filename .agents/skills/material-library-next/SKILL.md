@@ -7,7 +7,7 @@ description: 'Use when the user wants the Material 3 Expressive library work to 
 
 Use this as the no-name entrypoint for continuing the Material 3 Expressive library program.
 
-This skill owns only next-family selection and workflow startup. It must not duplicate component implementation, review, testing, or completion rules owned by `material-component`, `material-component-authoring`, and `docs/material-3`.
+This skill owns only next-family selection and workflow startup. All Material-specific program facts and rules are owned under `src/shared/ui/material`.
 
 ## Required input
 
@@ -25,13 +25,14 @@ Do not ask the user to choose a family when repository evidence can select one.
 
 Read, in order:
 
-1. `docs/material-3/library-roadmap.md`;
-2. `docs/material-3/ui-library-inventory.md`;
-3. `docs/material-3/component-registry.md` and `foundation-registry.md` only for candidate dependencies or alignment facts;
-4. `src/shared/ui/material/README.md` for physical ownership;
-5. `docs/material-3/audits/<family-slug>.md` for candidate audit state when present.
+1. `src/shared/ui/material/AGENTS.md`;
+2. `src/shared/ui/material/docs/library-roadmap.md`;
+3. `src/shared/ui/material/docs/ui-library-inventory.md`;
+4. `src/shared/ui/material/docs/component-registry.md` and `foundation-registry.md` only for candidate dependencies or alignment facts;
+5. `src/shared/ui/material/README.md` for physical ownership;
+6. `src/shared/ui/material/docs/audits/<family-slug>.md` for candidate audit state when present.
 
-Treat each file only as the owner of the facts assigned to it. Correct a stale owning source during the implementation workflow rather than inventing a parallel queue.
+Treat each file only as the owner of the facts assigned to it. Correct a stale owning source during the implementation workflow rather than inventing a parallel queue or storing Material status outside the shared root.
 
 ## Select exactly one family
 
@@ -72,7 +73,7 @@ Stop only when:
 - no executable queued family exists after the pilots;
 - candidate records conflict materially and the owning source cannot be corrected safely;
 - every remaining family is blocked or already terminal;
-- a genuine blocker defined by `material-component-authoring` applies.
+- a genuine blocker defined by the canonical component workflow applies.
 
 When no executable family exists, report the exact records that must be assessed, queued, or unblocked. Do not choose from memory or component-name familiarity.
 
@@ -93,11 +94,11 @@ The component workflow owns:
 - adaptive family contract;
 - rule refinement;
 - required foundation work;
-- implementation and consumer migration;
-- proportional proof;
+- isolated library implementation and proof;
+- external consumer migration and integration proof;
 - obsolete-owner removal;
 - agent review and visual handoff;
-- affected roadmap and inventory updates.
+- affected roadmap and inventory updates inside `src/shared/ui/material/docs`.
 
 ## Result
 
@@ -119,4 +120,4 @@ Next candidate: none | <family>
 Status: complete | blocked (<exact reason>)
 ```
 
-`complete` means one selected family reached the completion state defined by `material-component-authoring`. Naming a second candidate is informational only and must not start another implementation cycle.
+`complete` means one selected family reached the completion state defined by the canonical shared Material workflow. Naming a second candidate is informational only and must not start another implementation cycle.
