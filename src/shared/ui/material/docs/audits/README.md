@@ -4,10 +4,12 @@ This directory stores the latest completed source-backed Material 3 Expressive c
 
 ## Ownership
 
-- `docs/material-3/audits/<family-slug>.md` owns the latest completed compliance evaluation for one resolved family.
-- The family `README.md` remains the owner of the accepted implementation contract.
-- The component registry remains the owner of program-level alignment status.
-- An audit records evidence and findings; it does not silently change the accepted contract or registry state.
+- `src/shared/ui/material/docs/audits/<family-slug>.md` owns the latest completed independent compliance evaluation for one resolved family.
+- The family `README.md` owns the accepted implementation contract.
+- `../component-registry.md` owns program-level alignment status.
+- An audit records evidence and findings; it does not silently change the family contract, registry, inventory, roadmap, implementation, or operator acceptance.
+
+Audits are Material-library artifacts and must not be stored outside `src/shared/ui/material`.
 
 ## Naming
 
@@ -19,9 +21,9 @@ switch.md
 navigation-rail.md
 ```
 
-Do not create dated copies or one file per run. A later review replaces the same family audit file; Git history preserves prior audits.
+Do not create dated copies or one file per run. A later review replaces the same file; Git history preserves earlier audits.
 
-When a requested child component belongs to a larger official family, use the resolved owning family slug rather than the user-entered spelling.
+When a requested child component belongs to a larger official family, use the resolved owning-family slug rather than the user-entered spelling.
 
 ## Required metadata
 
@@ -30,11 +32,11 @@ Every audit records:
 - requested name;
 - resolved family;
 - audit date;
-- implementation ref and commit reviewed before the audit-file write;
+- implementation ref and commit reviewed before the audit write;
 - current and canonical owners;
 - official source pages and snapshots;
 - claimed supported surface;
-- required consumer scenarios;
+- required external compatibility scenarios, when any;
 - compliance result;
 - operator visual status.
 
@@ -43,10 +45,10 @@ Every audit records:
 Each audit contains:
 
 1. official evidence;
-2. claimed supported surface and required scenarios;
+2. claimed supported surface;
 3. confirmed findings with severity, source evidence, implementation evidence, mismatch, and required correction;
 4. evidence gaps;
-5. project-rule defects;
+5. library-rule defects or agent non-compliance;
 6. verified compliant areas;
 7. recommended next action.
 
@@ -55,10 +57,10 @@ Use explicit `none` values instead of omitting empty sections.
 ## Lifecycle
 
 - `material-component-review` creates or replaces the family audit in its review branch.
-- The review is incomplete until the audit file is written and its path is reported.
-- The family audit is the only repository file changed by a review-only run; production code, tests, stories, snapshots, registries, family contracts, policy documents, and this directory's README remain unchanged.
-- `material-component` and `material-component-authoring` must inspect the current family audit when one exists.
-- Confirmed findings remain actionable until resolved or shown to be stale using newer official or implementation evidence.
+- The review is incomplete until the audit file is written under this directory and its path is reported.
+- The family audit is the only repository file changed by a review-only run; production code, tests, stories, snapshots, registries, family contracts, policy documents, and this README remain unchanged.
+- `material-component` and `material-component-authoring` inspect the current family audit when one exists.
+- Confirmed findings remain actionable until resolved or shown stale using newer official or implementation evidence.
 - After fixes, rerun `material-component-review` to replace the audit with a current result.
 
-An audit status does not become current merely because code changed after the recorded implementation commit. Consumers must compare the audit metadata with the implementation under review.
+An audit status does not become current merely because code changed after its recorded implementation commit.
