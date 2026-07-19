@@ -10,6 +10,6 @@ Read only the documents required by the current task:
 - [`foundation-development.md`](./foundation-development.md) — the single workflow for cross-family Material foundations;
 - [`roadmap.md`](./roadmap.md) — current family, blocker, and one next action.
 
-Family-specific contracts live beside their implementation in `components/<family>/README.md`. A foundation domain gets `foundation/<domain>/README.md` only after a real runtime or public contract exists.
+Canonical family contracts live beside migrated implementation in `components/<family>/README.md`. While a legacy Material family still lives elsewhere under `src/shared/ui`, its current contract may live under `docs/legacy/<family>.md` and must move with the family during canonical migration. A foundation domain gets `foundation/<domain>/README.md` only after a real runtime or public contract exists.
 
 Do not create separate registries, inventories, audits, checklists, verification manuals, Storybook manuals, or duplicated workflow documents. Code, family/domain contracts, tests, stories, exports, and Git history are the factual implementation record.
