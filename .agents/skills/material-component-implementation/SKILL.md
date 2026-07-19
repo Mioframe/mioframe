@@ -1,8 +1,6 @@
 ---
 name: material-component-implementation
 description: 'Internal Material workflow stage for implementing and proving one resolved component family, including representative consumer validation.'
-paths:
-  - 'src/shared/ui/material/components/**'
 ---
 
 # Material component implementation
