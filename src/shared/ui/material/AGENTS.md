@@ -10,9 +10,9 @@ Everything canonical and Material-specific lives under this root: implementation
 
 Read only what the current task needs:
 
-- `docs/architecture.md` for boundary, ownership, dependency direction, and public API;
+- `docs/architecture.md` for boundary, ownership, dependency direction, public API, and workflow ownership;
 - `docs/sources.md` for official Material evidence;
-- `docs/component-development.md` for the only staged component implementation workflow;
+- `docs/component-development.md` for the only component workflow and stage gates;
 - `docs/foundation-development.md` when a cross-family foundation contract changes;
 - `docs/roadmap.md` when selecting or changing the active family.
 
@@ -22,29 +22,36 @@ Do not create registries, inventories, durable audit reports, checklists, progre
 
 ## Routing
 
-- Use `material-component` as the sole implementation workflow for one official Material family.
-- Use `material-component-review` only for review-only work without production changes.
-- Use `material-foundation` only for a real cross-family foundation contract change.
+- Use `material-component` as the sole implementation orchestrator for one official Material family.
+- `material-component-contract` owns only the ready family contract before production edits.
+- `material-component-implementation` owns the primary vertical slice, representative consumer validation, complete supported family, Storybook, and proportional proof.
+- `material-component-adoption` owns remaining consumer migration and complete removal of obsolete ownership.
+- Use `material-component-review` only for review-only assessment; it never fixes production files.
+- Use `material-foundation` only for a real cross-family foundation contract change reported by the contract stage or requested as focused standalone work.
 - Use `material3-guidelines` for official source lookup and Material usage decisions.
-- Use `material-library-next` only to select the roadmap's one next family and invoke `material-component`.
 - Use `material-library-status` only for concise read-only roadmap, PR, and verification status.
-- Use Vue and testing skills only at the exact stage and proof layer required by `docs/component-development.md`.
+- Use Vue and testing skills only at the exact implementation checkpoint and proof layer required by `docs/component-development.md`.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
-Implementation must follow the component stages in order:
+Implementation follows one sequence:
 
 ```text
-0 task lock
-→ 1 resolved family contract
-→ 2 primary vertical slice
-→ 3 complete supported family
-→ 4 consumer migration and old-owner removal
-→ 5 full-result review and visual handoff
-→ 6 final verification
+material-component
+→ material-component-contract
+→ material-foundation when required
+→ material-component-implementation
+   primary slice
+   → representative consumer
+   → complete supported family
+→ material-component-adoption
+→ material-component-review
+→ verification
 ```
 
-Do not create a second plan, authoring flow, audit flow, or stage tracker. Do not stop after research, contract writing, Storybook preparation, or a partial slice when implementation was requested.
+Only `material-component` chooses the next stage and updates the roadmap. Internal stage skills do not invoke each other, select another family, or create a second plan.
+
+Do not stop after research, contract writing, Storybook preparation, a primary slice, or focused checks when end-to-end implementation was requested.
 
 ## Isolation and dependency direction
 
@@ -76,6 +83,6 @@ product and project-specific shared UI
 
 ## Completion
 
-Use one cohesive family migration by default. Complete the library contract before product integration, migrate consumers through the public API, remove obsolete owners, review the full resulting family, and verify integration separately.
+Use one cohesive family migration by default. Resolve the contract, validate one complete slice in a representative consumer, finish the supported family, migrate remaining consumers, remove obsolete ownership, review the complete result, and run final verification.
 
 Automation proves only deterministic contracts represented by actual tooling. The coding agent owns all non-visual decisions; the operator owns final comparison of prepared visible evidence when required. An automated agent never reports operator acceptance without an explicit recorded result.
