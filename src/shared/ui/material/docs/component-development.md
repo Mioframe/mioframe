@@ -173,6 +173,7 @@ The coding agent records operator visual status only as `not required`, `require
 
 ## Progression and recovery rules
 
+- In every intermediate report, name the current stage and its next exit gate; do not restart planning or describe later stages as current work.
 - Do not stop after research, contract writing, Storybook preparation, a primary slice, or focused tests when implementation was requested.
 - Do not ask the user to choose variants, APIs, files, foundations, or tests that official sources and repository evidence can resolve.
 - Do not switch to a review-only workflow during implementation.
