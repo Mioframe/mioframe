@@ -1,8 +1,6 @@
 ---
 name: material-component-adoption
 description: 'Internal Material workflow stage for migrating remaining consumers and removing obsolete family ownership.'
-paths:
-  - 'src/shared/ui/**'
 ---
 
 # Material component adoption
