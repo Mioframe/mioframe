@@ -313,9 +313,10 @@ export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
  * Resolve the Storybook behavior lane mode for the given changed files, in
  * priority order: invalid (scenario registry failed self-validation; fail
  * closed instead of silently skipping), full (global infrastructure risk,
- * behavior support file changes, or a Storybook/Playwright-relevant
- * `package.json` change), focused (scenario registry matches and/or changed
- * behavior specs), or none (no relevant changes).
+ * behavior support file changes, removed or renamed directly changed specs,
+ * or a Storybook/Playwright-relevant `package.json` change), focused
+ * (scenario registry matches and/or changed behavior specs), or none (no
+ * relevant changes).
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Resolution options.
  * @param [options.packageJsonOldRef] Git ref to compare the current
