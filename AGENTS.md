@@ -9,10 +9,10 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
-- All Material-owned implementation, documentation, roadmap, registries, inventories, audits, stories, fixtures, and focused tests live under `src/shared/ui/material`. Repository-level rules and skills may route into that boundary but must not become parallel Material fact owners.
-- For Material library, foundation, component, migration, or validation work, read `src/shared/ui/material/docs/library-roadmap.md`, align with its active milestone and single `Next action`, and update it in the same PR when milestone status, blockers, dependencies, or next action change.
-- Official Material components target the current canonical Material 3 Expressive contract. Follow `src/shared/ui/material/docs/source-of-truth.md` and `src/shared/ui/material/docs/autonomous-review.md`: the coding agent must close every non-visual evidence gate, while the operator normally performs only prepared screenshot comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
-- When a PR adds, removes, consolidates, reclassifies, reprioritizes, or changes the public owner of a shared UI artifact, update the affected row in `src/shared/ui/material/docs/ui-library-inventory.md` in the same PR. Project-specific and generic UI are valid retained outcomes and must not be forced into the Material library.
+- All Material-owned implementation, documentation, family/domain contracts, stories, fixtures, and focused tests live under `src/shared/ui/material`. Repository-level rules and skills may route into that boundary but must not become parallel Material fact owners.
+- For Material work, read `src/shared/ui/material/docs/roadmap.md` and the task-relevant canonical documents: `architecture.md`, `sources.md`, `component-development.md`, and `foundation-development.md`. Update the roadmap only when its active family, status, blocker, or single next action changes.
+- Official Material components target the current canonical Material 3 Expressive contract. The coding agent must close every non-visual evidence gate; the operator normally performs only prepared visual comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
+- Do not create Material registries, inventories, durable audit documents, checklists, or duplicated workflow policy. Family/domain README files, code, tests, stories, exports, Git history, and the short roadmap are the canonical records.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
@@ -51,13 +51,13 @@ Dependency rules:
 
 Use the applicable skill instead of duplicating its rules in the task:
 
-- `material-library-status`: read-only Material program status, audit freshness, blockers, executable candidates, visual acceptance, and recommended next command;
-- `material-library-next`: select and execute exactly one next Material component family when the user does not name one;
-- `material-component`: resolve a user-named Material component or family and start its complete implementation, migration, or alignment workflow;
-- `material-component-review`: independently review a user-named Material family and persist its durable compliance audit;
+- `material-library-status`: concise read-only Material roadmap, active-family, PR, and verification status;
+- `material-library-next`: follow the roadmap's one next family and execute no second family;
+- `material-component`: resolve a user-named Material family and start creation, migration, alignment, or review;
+- `material-component-review`: independently review a Material family without production changes or durable audit artifacts;
 - `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
-- `material-component-authoring`: creation, migration, alignment, or material change of an official public Material component family, including legacy `MD*` components outside the canonical library;
-- `material-foundation`: Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, icons, overlays, accessibility, density, and adaptive foundation contracts;
+- `material-component-authoring`: canonical end-to-end execution for an already resolved official Material family;
+- `material-foundation`: cross-family Material token, theme, units, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, and adaptive contracts;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;

@@ -4,40 +4,29 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 ## Routing
 
-- Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component families.
-- Use `material-library-status` for a read-only Material program status report.
-- Use `material-library-next` when the user wants Material library work to continue without selecting a component; it selects exactly one family.
-- Use `material-component` when the user provides only a Material component or family name and expects autonomous creation, migration, or alignment.
-- Use `material-component-review` when the user provides a Material component or family name and wants an evidence-backed compliance review without implementation changes.
-- Use `material-component-authoring` as the canonical execution workflow after the Material family is resolved, including legacy `MD*` components outside `src/shared/ui/material`.
-- Use `material-foundation` for changes to cross-family Material foundation contracts.
-- Use `material3-guidelines` for official source lookup, component choice, usage, composition, and product-facing Material decisions.
-- Inside `src/shared/ui/material`, follow `src/shared/ui/material/AGENTS.md` and `src/shared/ui/material/docs/`.
+- Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material families.
+- Use `material-component` for creation, migration, alignment, or review of an official Material component family.
+- Use `material-component-authoring` after the family and change mode are resolved.
+- Use `material-foundation` for cross-family Material foundation changes.
+- Use `material3-guidelines` for official source lookup, component choice, usage, and composition.
+- `material-library-next` and `material-library-status` are thin roadmap/status entry points and must not create independent Material state.
+- Inside `src/shared/ui/material`, follow its `AGENTS.md` and minimal documentation set.
 
-A one-name invocation is sufficient input for `material-component` and `material-component-review`; do not require the user to supply variants, API, files, tests, foundations, consumers, or expected defects before repository and source discovery. `material-library-next` requires no component name and must select only one family per run. `material-library-status` is read-only.
+A component or family name is sufficient input. Resolve variants, API, foundations, consumers, files, and proof from official sources and the repository rather than asking the user to design the component.
 
-A completed `material-component-review` run must create or replace `src/shared/ui/material/docs/audits/<family-slug>.md`. Review-only means no implementation, test, registry, family-contract, or policy changes; the durable audit artifact is required.
-
-Do not assemble an official Material component workflow from generic shared UI rules. `material-component-authoring` remains the primary execution contract after target resolution.
-
-## Contains
-
-- `src/shared/ui/material`: the complete canonical Material library boundary, including all Material-specific documentation, tests, stories, fixtures, audits, roadmap, registries, foundations, components, and patterns;
-- project-specific shared presentation primitives and wrappers outside the Material root;
-- generic shared UI layout, interaction, and infrastructure that are not Material-owned.
+Review-only work reports findings in the conversation or PR review. It must not create a durable audit document.
 
 ## Boundaries
 
-- All Material-owned artifacts belong under `src/shared/ui/material`; do not create Material policy, documentation, stories, fixtures, tests, audits, or implementation in sibling shared UI paths.
-- Project-specific and generic shared UI stays outside official Material component families.
-- New official public `MD*` components belong under `material/components/<family>`.
-- New Material foundation runtime/testing owners belong under `material/foundation/<domain>`.
+- All Material-owned implementation, documentation, family/domain contracts, stories, fixtures, and focused tests belong under `src/shared/ui/material`.
+- Project-specific and generic shared UI remains outside official Material ownership.
+- New official public `MD*` families belong under `material/components/<family>`.
+- New cross-family Material owners belong under `material/foundation/<domain>` only after a real need is proven.
 - Reusable official Material compositions belong under `material/patterns/<pattern>` only after the pattern gate passes.
 - Existing Material directories outside the canonical root are legacy and may receive only strict local repairs until focused migration.
-- New Material ownership at a legacy path is forbidden.
 - Shared UI must not import product layers or domain models.
 
-Detailed generic component rules belong to `shared-ui-implementation`. Material program status belongs to `material-library-status`; automatic next-family selection belongs to `material-library-next`; target resolution belongs to `material-component`; review-only compliance assessment and durable audit creation belong to `material-component-review`; detailed execution belongs to `material-component-authoring`, `src/shared/ui/material/AGENTS.md`, and the documentation inside that root.
+Do not create Material registries, inventories, durable audits, or duplicate workflow policy outside the Material root.
 
 ## Verification
 
