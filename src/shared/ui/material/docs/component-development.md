@@ -2,37 +2,59 @@
 
 This is the only implementation workflow for an official public Material component family.
 
-The purpose of the workflow is to keep the coding agent focused on one family, one resolved contract, and one ordered path from evidence to merge-ready implementation. Do not split the same implementation across competing planning, authoring, audit, or status workflows.
+The process has one external implementation entry point and three internal stage owners. Supporting source, foundation, Vue, testing, and verification skills do not create parallel plans or choose the next stage.
+
+## Workflow map
+
+```text
+material-component
+  0 lock one family and objective
+  1 material-component-contract
+  2 material-foundation when the resolved contract requires it
+  3 material-component-implementation
+      primary vertical slice
+      → representative consumer validation
+      → complete supported family
+  4 material-component-adoption
+  5 material-component-review
+  6 verification
+```
+
+`material-component-review` may also be invoked directly for review-only work. It never becomes an implementation path.
 
 ## Invariants
 
 - Work on exactly one component family per task and PR.
-- Follow the stages below in order.
-- Do not begin production edits until Stage 1 is complete.
-- Do not expand variants before the primary vertical slice is coherent.
-- Do not migrate consumers before the library contract is complete.
+- `material-component` is the only implementation orchestrator.
+- Internal stage skills do not invoke each other, choose another family, or update the roadmap.
+- Follow the stages in order and pass each exit gate before advancing.
+- Do not begin production edits until the family contract is ready.
+- Validate the primary architecture in one real representative consumer before expanding the full family.
 - Do not report completion while an obsolete owner, compatibility path, unresolved decision, failed check, or required visual acceptance remains.
-- Use repository code and consumers as compatibility evidence, not as Material authority.
-- Use official Material sources as the authority for Material semantics and visible contracts.
+- Use repository code and consumers as compatibility evidence, not Material authority.
+- Use current official Material sources as authority for Material semantics and visible contracts.
 - Create no registry, inventory, audit file, checklist, progress ledger, or second family contract.
 
-## Stage 0 — Lock the task
+## Stage 0 — Orchestrator locks the task
 
-Resolve and keep fixed for the task:
+`material-component` resolves and keeps fixed:
 
 - one family;
 - one change mode: `new-component`, `end-to-end-migration`, `library-relocation-only`, or `alignment-only`;
 - one concrete objective;
 - required user and component scenarios;
-- explicit non-goals.
+- explicit non-goals;
+- the current stage and its next exit gate.
+
+A family name is optional only when `docs/roadmap.md` already names one active family. Do not infer another family from an inventory or begin a second family.
 
 Use `end-to-end-migration` by default for a legacy official family. Use a narrower mode only when it produces a complete independently valid result and the reason is recorded in the family contract.
 
-Do not include unrelated shared UI cleanup, another family, speculative foundation work, or product redesign.
+**Exit gate:** family, mode, objective, scenarios, non-goals, and current stage are unambiguous.
 
-**Exit gate:** the family, mode, objective, required scenarios, and non-goals are unambiguous.
+## Stage 1 — Contract
 
-## Stage 1 — Resolve the family contract
+Owner: `material-component-contract`.
 
 Before production edits:
 
@@ -41,10 +63,10 @@ Before production edits:
 3. identify the canonical owner under `components/<family>`;
 4. define the minimum complete supported surface and explicit unsupported surface;
 5. resolve public API, native semantics, accessibility, anatomy, DOM ownership, state ownership, token routing, and required proof;
-6. inspect only foundation domains required by this family;
+6. identify only foundation domains required by this family;
 7. create or update `components/<family>/README.md`.
 
-The family README is the only durable family contract. It must contain:
+The family README is the only durable family contract:
 
 ```text
 MATERIAL COMPONENT CONTRACT
@@ -59,6 +81,7 @@ Current owner:
 Canonical owner:
 Public export:
 Affected consumers:
+Representative consumer:
 Official sources and snapshot:
 Supported Material surface:
 Unsupported Material surface:
@@ -75,13 +98,19 @@ Unresolved: none | <blocking decisions>
 Readiness: ready | blocked
 ```
 
-Omit only a field that is objectively inapplicable. Do not replace unresolved decisions with placeholders or defer them to implementation.
+Omit only objectively inapplicable fields. Do not replace unresolved decisions with placeholders or defer them to implementation.
 
-**Exit gate:** `Unresolved: none` and `Readiness: ready`. If this gate cannot be reached, stop and report the exact source, ownership, scenario, API, or cross-family decision that blocks it.
+When the contract proves that a cross-family foundation change is required, the orchestrator invokes `material-foundation` and resumes only after that foundation exit gate passes.
 
-## Stage 2 — Implement one primary vertical slice
+**Exit gate:** `Unresolved: none`, `Readiness: ready`, and every required foundation dependency is available.
 
-Choose one representative configuration that exercises the real component contract. Implement it end to end:
+## Stage 2 — Implementation
+
+Owner: `material-component-implementation`.
+
+### Checkpoint A — Primary vertical slice
+
+Choose one representative configuration and implement it end to end:
 
 - canonical production component and public entry point;
 - native semantic and accessible owner;
@@ -91,20 +120,29 @@ Choose one representative configuration that exercises the real component contra
 - one stable bounded canonical Storybook story;
 - focused proof at the lowest faithful layer.
 
-Add or change a foundation only when the Stage 1 contract proves a current cross-family need. A foundation API must remain component-agnostic.
-
 Do not implement every size, variant, configuration, or state before this slice is coherent.
 
-**Exit gate:** the primary slice matches the family contract, renders coherently in Storybook, and its focused checks pass. Review the rendered output and implementation before expanding the family.
+### Checkpoint B — Representative consumer
 
-## Stage 3 — Complete the supported family
+Integrate the primary slice into the one representative consumer named by the contract and verify:
 
-Expand only the supported surface recorded in the family contract:
+- public API usability in real composition;
+- placement and parent-owned layout;
+- attribute, slot, event, and state wiring;
+- focus, keyboard, pointer, touch, disabled, and loading behavior when applicable;
+- token inheritance and surrounding theme behavior;
+- preservation of the required product scenario.
+
+If this integration exposes an API, ownership, DOM, state, or foundation defect, return to Stage 1. Do not patch the consumer around a wrong library contract.
+
+### Checkpoint C — Complete supported family
+
+Expand only the supported surface recorded in the contract:
 
 - required components, variants, sizes, configurations, and states;
 - invalid-combination handling;
 - complete public props, emits, slots, attributes, and events;
-- required keyboard, pointer, touch, focus, ripple, motion, cancellation, interruption, and cleanup behavior;
+- required interaction, ripple, focus, motion, cancellation, interruption, disabled, failure, and cleanup behavior;
 - materially distinct Storybook examples and behavior fixtures;
 - proportional component, browser, pure, and visual proof.
 
@@ -117,79 +155,88 @@ Rules:
 - Use the shortest explicit route. Do not add aliases, managers, generic resolvers, universal bases, or files that do not improve current clarity or proof.
 - Do not create Cartesian Storybook matrices or tests for framework behavior the project does not own.
 
-**Exit gate:** every supported route is implemented and proved; unsupported routes remain absent.
+**Exit gate:** the representative consumer works, every supported family route is implemented and proved, and unsupported routes remain absent.
 
-## Stage 4 — Migrate consumers and remove the old owner
+## Stage 3 — Adoption
+
+Owner: `material-component-adoption`.
 
 For an end-to-end migration:
 
-1. migrate every affected in-repository consumer through the curated public API;
+1. migrate every remaining in-repository consumer through the curated public API;
 2. preserve accepted product behavior except for named intentional deltas;
 3. verify only integration risks introduced by the migration;
 4. remove obsolete implementation, exports, tests, stories, snapshots, temporary contracts, and compatibility paths.
 
-Do not keep two active family owners. Do not leave permanent aliases for a later cleanup PR.
+Do not keep two active family owners. Do not leave permanent aliases or deferred cleanup for another PR.
 
 **Exit gate:** all consumers use the canonical owner and no obsolete active path remains.
 
-## Stage 5 — Review the complete result
+## Stage 4 — Review
 
-Review the full resulting family, not only the latest diff. Compare:
+Owner: `material-component-review`.
 
-- official sources;
-- the family contract;
-- production code and public exports;
-- actual rendered Storybook output;
-- tests and behavior fixtures;
-- direct consumers;
-- removed legacy ownership.
+Review the complete resulting family, not only the latest diff. Compare official sources, the family contract, production code, actual rendered Storybook output, tests, direct consumers, and removed legacy ownership.
 
-Inspect every applicable contract: ownership, supported surface, API, native semantics, accessibility, anatomy, DOM, states, lifecycle, tokens, rendered properties, behavior, motion, foundations, proof, migration, and cleanup.
+README text, tests, snapshots, stories, and green checks are claims or regression guards, not proof of Material correctness by themselves.
 
-Treat README text, tests, snapshots, stories, and green checks as claims or regression guards, not proof of Material correctness by themselves.
+The review reports consolidated findings and exactly one verdict. The orchestrator routes corrections back to:
 
-Fix all confirmed non-visual blockers and major issues before proceeding. When a correction invalidates the family contract, return to Stage 1 and update it. Otherwise remain in Stage 5 until the complete result is coherent.
+- `material-component-contract` for source, ownership, supported-surface, API, anatomy-contract, state-contract, or foundation decisions;
+- `material-component-implementation` for family implementation, behavior, token routing, Storybook, or proof defects;
+- `material-component-adoption` for consumer, compatibility, parallel-owner, or cleanup defects.
 
-When visible output changed, prepare:
+After corrections, run the complete review again.
 
-- the canonical Storybook URL or story identifier;
-- bounded screenshots or diffs;
-- the official visual references used;
-- expected deviations;
-- confirmation that non-visual review is complete.
+When visible output changed, prepare the canonical Storybook location, bounded screenshots or diffs, official visual references, expected deviations, and confirmation that non-visual review is complete. The agent never invents operator acceptance.
 
-The coding agent records operator visual status only as `not required`, `required`, `accepted`, or `rejected`. It never invents acceptance.
+**Exit gate:** no unresolved blocker or major issue remains, and required operator visual acceptance is recorded.
 
-**Exit gate:** no unresolved non-visual blocker or major issue remains, and required operator visual acceptance is recorded.
+## Stage 5 — Verification and finish
 
-## Stage 6 — Verify and finish
+Owner: `verification` through the orchestrator.
 
-1. run focused checks while implementing through repository verification tooling;
+1. run focused checks during the owning implementation stage;
 2. run final read-only `pnpm verify`;
-3. update `docs/roadmap.md` only when the active family, status, blocker, or single next action changes;
-4. report the final family, change mode, supported and unsupported surface, foundation impact, proof, consumer migration, removed ownership, visual status, verification, and exact remaining blockers.
+3. update `docs/roadmap.md` only when active family, status, blocker, or single next action changes;
+4. report the final family, change mode, supported and unsupported surface, foundation impact, proof, consumer migration, removed ownership, review verdict, visual status, verification, and exact remaining blockers.
 
 **Exit gate:** final verification passes and every required acceptance gate is complete.
 
-## Progression and recovery rules
+## Stage result contract
 
-- In every intermediate report, name the current stage and its next exit gate; do not restart planning or describe later stages as current work.
-- Do not stop after research, contract writing, Storybook preparation, a primary slice, or focused tests when implementation was requested.
+Every internal stage returns:
+
+```text
+MATERIAL STAGE RESULT
+
+Family:
+Stage: contract | implementation | adoption | review
+Status: complete | blocked
+Exit gate: passed | failed
+Evidence:
+Changed ownership:
+Blocker: none | <exact blocker>
+```
+
+Only `material-component` chooses and starts the next stage.
+
+## Progression and recovery
+
+- Every intermediate report names the family, current stage, current objective, next exit gate, and exact blocker or `none`.
+- Do not stop after research, contract writing, Storybook preparation, a primary slice, or focused tests when end-to-end implementation was requested.
 - Do not ask the user to choose variants, APIs, files, foundations, or tests that official sources and repository evidence can resolve.
-- Do not switch to a review-only workflow during implementation.
 - Do not start another family because the current family is blocked.
-- If new evidence invalidates the contract, return explicitly to Stage 1; do not patch around it.
-- If two correction rounds retain the same defect, add workaround logic, or create ownership ambiguity, discard the patch strategy and reconstruct Stage 1 before continuing.
+- If new evidence invalidates the contract, return explicitly to Stage 1.
+- If two correction rounds retain the same defect, add workaround logic, or create ownership ambiguity, discard the patch strategy and reconstruct the contract before continuing.
 
 ## Proof ownership
-
-Use one primary proof owner per contract:
 
 - component contract tests: API, defaults, native owner, explicit attributes, ARIA, controlled state, slots, emits, invalid combinations, and non-browser wiring;
 - browser behavior tests: real focus, keyboard, pointer/touch, target area, overlay, responsive behavior, ripple, motion lifecycle, cancellation, interruption, and cleanup owned by the family;
 - pure tests: extracted deterministic logic or lifecycle only;
 - visual regression: bounded protection of an already accepted stable rendered contract;
-- consumer checks: compatibility and composition risks introduced by migration;
+- consumer checks: compatibility and composition risks introduced by representative integration or migration;
 - repository verification: format, lint, types, tests, build, and dependency guards selected by `verify`.
 
 Generic foundation behavior is proved once by its owner. A family proves only its routing into that contract and its own semantics, anatomy, behavior, and rendering.
