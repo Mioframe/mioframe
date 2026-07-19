@@ -7,7 +7,7 @@
  * times the preview is re-deployed.
  *
  * Usage:
- *   node scripts/pages/upsertPreviewComment.mjs --pr 42 --url https://...
+ *   node scripts/pages/upsertPreviewComment.mjs --pr 42 --url https://... [--storybook-url https://...]
  *
  * Required env:
  *   GITHUB_TOKEN      - token with pull-requests:write
@@ -48,19 +48,21 @@ async function githubFetch(url, { token, method = 'GET', body } = {}) {
 }
 
 /**
- * Build the comment body for the given preview URL.
- * @param previewUrl URL to the deployed preview.
+ * Build the comment body for the given preview URL(s).
+ * @param previewUrl URL to the deployed application preview.
+ * @param [storybookUrl] URL to the deployed Storybook preview, when published.
  * @returns Markdown comment body including the sticky marker.
  */
-function buildCommentBody(previewUrl) {
-  return [
-    COMMENT_MARKER,
-    '### Preview deployment',
-    '',
-    `The latest build for this PR is available at: ${previewUrl}`,
-    '',
-    '_This comment is updated automatically on every push to this PR._',
-  ].join('\n');
+function buildCommentBody(previewUrl, storybookUrl) {
+  const lines = [COMMENT_MARKER, '### Preview deployment', '', `- Application: ${previewUrl}`];
+
+  if (storybookUrl) {
+    lines.push(`- Storybook: ${storybookUrl}`);
+  }
+
+  lines.push('', '_This comment is updated automatically on every push to this PR._');
+
+  return lines.join('\n');
 }
 
 /**
@@ -70,16 +72,27 @@ function buildCommentBody(previewUrl) {
 export async function upsertPreviewComment(argv = process.argv.slice(2), env = process.env) {
   const prIndex = argv.indexOf('--pr');
   const urlIndex = argv.indexOf('--url');
+  const storybookUrlIndex = argv.indexOf('--storybook-url');
 
   if (prIndex === -1 || !argv[prIndex + 1]) {
-    throw new Error('Usage: upsertPreviewComment.mjs --pr <number> --url <preview-url>');
+    throw new Error(
+      'Usage: upsertPreviewComment.mjs --pr <number> --url <preview-url> [--storybook-url <storybook-url>]',
+    );
   }
   if (urlIndex === -1 || !argv[urlIndex + 1]) {
-    throw new Error('Usage: upsertPreviewComment.mjs --pr <number> --url <preview-url>');
+    throw new Error(
+      'Usage: upsertPreviewComment.mjs --pr <number> --url <preview-url> [--storybook-url <storybook-url>]',
+    );
+  }
+  if (storybookUrlIndex !== -1 && !argv[storybookUrlIndex + 1]) {
+    throw new Error(
+      'Usage: upsertPreviewComment.mjs --pr <number> --url <preview-url> [--storybook-url <storybook-url>]',
+    );
   }
 
   const prNumber = argv[prIndex + 1];
   const previewUrl = argv[urlIndex + 1];
+  const storybookUrl = storybookUrlIndex !== -1 ? argv[storybookUrlIndex + 1] : undefined;
 
   if (!/^\d+$/.test(prNumber)) {
     throw new Error(`Invalid PR number: ${prNumber}`);
@@ -90,7 +103,7 @@ export async function upsertPreviewComment(argv = process.argv.slice(2), env = p
   if (!GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY is required');
 
   const apiBase = `https://api.github.com/repos/${GITHUB_REPOSITORY}`;
-  const body = buildCommentBody(previewUrl);
+  const body = buildCommentBody(previewUrl, storybookUrl);
 
   // List comments and find an existing sticky one.
   const comments = await githubFetch(`${apiBase}/issues/${prNumber}/comments?per_page=100`, {
