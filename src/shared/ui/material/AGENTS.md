@@ -1,6 +1,8 @@
 # src/shared/ui/material
 
-Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 Expressive library boundary.
+Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 Expressive shared-library boundary.
+
+The Material library is an implementation tool consumed by Mioframe. It is not a product layer and must remain isolated from product architecture and domain behavior.
 
 ## Routing
 
@@ -37,52 +39,61 @@ Only:
 - `foundation` — cross-family Material contracts required by current work;
 - `components` — official public Material component families;
 - `patterns` — accepted reusable official Material compositions;
-- local family/domain contracts and curated public entry points.
+- local family/domain contracts, owner-local fixtures, tests, stories, and curated public entry points.
 
-Policy documents remain under `docs/material-3`. Product-specific UI and generic platform infrastructure remain outside.
+Policy documents remain under `docs/material-3`. Product-specific UI, product adapters, domain fixtures, and generic platform infrastructure remain outside.
 
-## Dependency direction
+## Isolation and dependency direction
+
+The import direction is one-way:
 
 ```text
-shared/lib generic infrastructure
-  ├─→ material/foundation
-  ├─→ material/components
-  └─→ material/patterns
+product and project-specific shared UI
+  └─ imports → @shared/ui/material
 
-material/foundation → material/components → material/patterns
-material library → project-specific shared UI and product layers
+@shared/ui/material
+  ├─ may import → Material-owned local code
+  ├─ may import → Vue and browser platform contracts
+  └─ may import → correctly owned generic shared/lib infrastructure
 ```
 
-- Any Material layer may use a correctly owned generic utility directly.
+- Library production code must not import entities, features, widgets, pages, panes, app shells, routes, services, workers, stores, or domain models.
+- Library production code must not import project-specific or generic presentation components from sibling `shared/ui` modules outside the Material root.
+- Library stories, tests, and fixtures must remain owner-local and generic; they must not import product layers, domain fixtures, feature components, widgets, pages, or app shells.
+- Product-specific wrappers, adapters, compositions, usage policy, and layout belong outside the Material root.
+- Product needs may select scope and migration priority, but must not create domain-shaped props, product state ownership, hidden consumer behavior, or feature-specific branches inside the library.
+- Any Material layer may use a correctly owned generic low-level utility directly.
 - Do not create foundation wrappers merely to route generic behavior.
 - Foundation must not import components or patterns.
 - Families must not deep-import another family's private files.
 - Patterns use public component/foundation contracts only.
-- Library code must not import product layers.
 - Generic infrastructure must not depend on Material family knowledge.
 
 ## New artifacts
 
 - New official components belong under `components/<family>`.
 - New foundation artifacts belong under `foundation/<domain>` only when current work proves a cross-family need.
-- New patterns require official composition evidence and a current scenario.
+- New patterns require official composition evidence and a current shared Material scenario.
 - Multi-component families require an official relationship and a real current shared contract.
-- Do not add placeholder files, empty structural layers, speculative extension points, universal bases, or project-specific UI under official families.
+- Do not add placeholder files, empty structural layers, speculative extension points, universal bases, product adapters, or project-specific UI under official families.
 
 ## Public API
 
-- Product consumers use `@shared/ui/material` after the root entry point exists.
+- External consumers use `@shared/ui/material` after the root entry point exists.
 - Internal library code does not import the root barrel.
-- External deep imports into private implementation or testing files are forbidden.
-- Every public export has one clear owner.
+- External deep imports into private implementation, fixture, story, or testing files are forbidden.
+- Every public export has one clear Material owner.
+- A public Material API must remain generic and source-backed; do not mirror a single Mioframe feature, domain record, route, or workflow.
 
 ## Migration boundary
 
 - Existing Material code outside this directory is legacy, not a template for new work.
 - Strict local repairs may remain at legacy paths only under a valid `Architecture impact: none` decision.
 - Use one cohesive end-to-end family migration by default.
+- Complete the isolated library contract and library-owned proof before treating product integration as evidence.
 - Split foundation, relocation, or alignment work only when blast radius, reviewability, compatibility, or a safer independent state justifies it.
-- Migrate affected consumers and remove obsolete ownership.
+- Migrate affected consumers through the public API and remove obsolete ownership.
+- Consumer tests prove only external integration risks; they do not prove internal Material semantics, routing, lifecycle, or fidelity.
 - Update only contracts, maps, registries, inventory, roadmap, stories, tests, snapshots, and risk records whose owned facts changed.
 - Temporary compatibility requires exact consumers, no new usage, and a removal target.
 
@@ -93,6 +104,7 @@ material library → project-specific shared UI and product layers
 - Keep responsibilities clear without requiring a fixed number of CSS or helper files.
 - Every new or migrated component has component-contract tests.
 - Use browser, pure, consumer, visual-regression, and operator-review layers only when the component owns those contracts.
+- Use owner-local Storybook fixtures to develop and prove the component independently from product composition.
 - Use `StateMatrix` only when multiple distinct component-owned visual routes exist; a simple visible component may use one bounded canonical story.
 
 ## Rule refinement
@@ -105,7 +117,7 @@ When a real migration exposes an inaccurate, contradictory, incomplete, obsolete
 - do not preserve the rule through a family-specific exception;
 - continue after the applicable rules are coherent.
 
-Escalate only for a genuine product decision, materially unresolved official source, cross-project public-contract change, unsafe shared blast radius, unresolved verification failure, or rejected visual evidence.
+Escalate only for a genuine product-scope decision, materially unresolved official source, cross-project public-contract change, unsafe shared blast radius, unresolved verification failure, or rejected visual evidence. Product composition details are not reasons to weaken the library boundary.
 
 ## Verification and review
 
