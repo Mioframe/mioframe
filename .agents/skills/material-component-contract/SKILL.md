@@ -1,9 +1,6 @@
 ---
 name: material-component-contract
 description: 'Internal Material workflow stage for resolving one component family contract before production implementation.'
-paths:
-  - 'src/shared/ui/material/components/**'
-  - 'src/shared/ui/material/docs/legacy/**'
 ---
 
 # Material component contract
