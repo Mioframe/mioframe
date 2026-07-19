@@ -5,41 +5,28 @@ description: 'Internal Material workflow stage for migrating remaining consumers
 
 # Material component adoption
 
-This is an internal stage skill. Use it only after `material-component-implementation` has completed the supported canonical family and validated one representative consumer.
+Internal stage only. Use it after implementation has completed the supported canonical family and validated the representative consumer.
 
-It owns remaining consumer migration, integration-risk proof, and complete removal of obsolete ownership. It does not redesign the family contract, implement missing family capability, update the roadmap, or start another stage.
-
-## Required sources
+## Inputs
 
 Read:
 
 - root and applicable nested `AGENTS.md` files;
 - `src/shared/ui/material/docs/architecture.md`;
-- `src/shared/ui/material/docs/component-development.md`;
-- the ready family README;
-- canonical public exports;
+- Stage 3 of `src/shared/ui/material/docs/component-development.md`;
+- the ready family README and canonical public exports;
 - every remaining affected consumer;
-- the complete legacy implementation, exports, stories, tests, snapshots, contracts, and compatibility paths.
+- the complete legacy implementation, exports, stories, tests, snapshots, contracts, aliases, and compatibility paths.
 
-## Workflow
+## Responsibility
 
-1. Confirm the canonical family already covers every required consumer scenario.
-2. Migrate every remaining in-repository consumer through the curated Material public API.
-3. Preserve accepted product behavior except for named intentional deltas.
-4. Add only integration proof for risks introduced by the migration.
-5. Remove obsolete implementation, exports, tests, stories, snapshots, temporary contracts, aliases, and compatibility paths.
-6. Search the repository for stale imports and references to the removed owner.
+Execute Stage 3 exactly: migrate remaining consumers, preserve accepted product scenarios, prove only migration-specific integration risks, and remove the obsolete owner completely.
 
-If a consumer requires unsupported family capability or exposes a wrong public contract, return an exact blocker to `material-component`. Do not extend the family or add a consumer-specific adapter in this stage.
+If a consumer exposes unsupported family capability or a wrong public contract, return an exact blocker to `material-component`. Do not extend the family or add a consumer-specific adapter in this stage.
 
 ## Exit gate
 
-Pass only when:
-
-- every affected consumer uses the canonical public owner;
-- required product scenarios remain preserved;
-- no obsolete active implementation, export, contract, test, story, snapshot, alias, or compatibility path remains;
-- one family owner remains.
+Pass only when every affected consumer uses the canonical public owner, required product scenarios remain preserved, no obsolete active path or compatibility residue remains, and exactly one family owner exists.
 
 ## Result
 
@@ -59,10 +46,7 @@ Blocker: none | <exact blocker>
 
 ## Forbidden
 
-- silent public-contract changes;
-- family implementation expansion;
+- silent public-contract or family-implementation changes;
 - consumer-specific Material APIs or adapters;
-- permanent aliases or deferred cleanup;
-- two active family owners;
-- roadmap updates;
-- starting review, verification, another stage, or another family directly.
+- permanent aliases, deferred cleanup, or parallel owners;
+- roadmap updates or starting review, verification, another stage, or another family directly.
