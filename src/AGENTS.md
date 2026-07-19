@@ -57,3 +57,49 @@ UI changes must preserve the intent, discoverability, and relative priority of e
 Before replacing, removing, merging, renaming, or moving an action surface, build an action preservation matrix with: old action, old entry point, old interaction tier, new entry point, new interaction tier, and verification path. Interaction tiers include primary, secondary, contextual, menu, overflow, fallback, and hidden.
 
 Do not treat raw reachability as scenario preservation. A path that is technically still available may still be a regression when it becomes less discoverable, takes more steps, moves to a different context, loses its affordance, or no longer matches the user's mental model.
+
+When a design-system rule or layout constraint conflicts with existing action topology, redesign the action model instead of deleting or hiding actions mechanically. Prefer a coherent composition that preserves user intent and priority. Escalate when preserving both the design rule and the existing interaction tier requires a product decision.
+
+New labels, icons, grouping, and containers must honestly describe the full set of actions or state behind them. Do not place a broader action set behind a narrow label, icon, or component name.
+
+Verification must exercise the resulting user path at the same level as the changed behavior. Component stubs can verify wiring contracts, but primary product flows require browser or e2e coverage when layout, discovery, focus, overlays, menus, sheets, or action hierarchy changes.
+
+## Vue, styling, stories, and copy
+
+For Vue and user-visible UI work, follow the applicable Vue, Material, browser, and visual skills and preserve these project conventions:
+
+- The root class of a Vue component matches the component name in kebab-case. Components keep one stable meaningful root; parent composition owns whether the component renders.
+- Use classic BEM syntax: `block`, `block__element`, `block_modifier`, and explicit key-value modifiers such as `block_size_medium`. Do not introduce `block--modifier`, loose unowned classes, or ambiguous modifier names.
+- Keep component implementation styles scoped. Global CSS belongs only in app-level style modules or documented token/theme files.
+- Use project Material tokens and preserve project authoring units such as `dp` and `sp` where the token pipeline expects them; do not rewrite them to `px` only because a generic reviewer suggests it.
+- When visually resetting a native interactive element, restore the enabled clickable cursor and visible focus/state-layer behavior. Disabled or non-action states must not appear clickable.
+- Colocate CSF stories as `<Component>.stories.ts`. Add the `visual` tag only to stories intentionally used for screenshot coverage.
+- Keep user-facing copy in the application's established UI language. After user-visible changes, scan touched surfaces for mixed-language strings, stale task wording, and unnecessary technical terms.
+
+## Diagnostics and privacy
+
+This section defines source-code error and diagnostics invariants under `src`.
+
+The goal is not to hide all unexpected errors from diagnostics. Sentry must still receive actionable internal failures so real bugs can be fixed.
+
+**Two concerns are distinct:**
+
+1. **Trusted in-app runtime and proxy transfer**: `DomainError.cause` may hold raw runtime errors inside the app and across trusted proxy boundaries. This does not require sanitization.
+2. **External diagnostics export**: The `beforeSend` sanitizer enforces privacy at the outgoing Sentry event boundary. It scrubs exception value messages, linked cause messages, tags, extras, contexts, breadcrumbs, and user fields using denylist-based filtering.
+
+**Error construction rules for `src` code:**
+
+- Wrap boundary failures in a `DomainError` with a project-controlled user-facing `message`, a stable `code` enum value, and the raw runtime error as `cause`.
+- Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern. Do not put clients, adapters, providers, callbacks, capabilities, credentials, or service objects in `message`, `cause`, serialization, or user-facing payloads.
+- Do not create feature-local classifiers or manual VFS-to-feature error mappings. Use enum codes and raw cause instead.
+- Keep `DomainError.message` free of paths, names, ids, URLs, and raw external text.
+- `DomainError.cause` may hold the original raw error — the Sentry sanitizer handles scrubbing at the outgoing event boundary.
+- Internal programmer errors and project-controlled invariant failures may be reported as raw `Error` objects when their messages are stable and do not include user-controlled values.
+- Expected user outcomes (cancelled picker, invalid input, permission denied with recovery UI) should not be reported unless there is a specific product reason.
+
+**Error code rules:**
+
+- Define each string enum close to the boundary where the error originates (e.g., `RepositoryErrorCode` in the repository layer, `ExampleDocumentsCreateErrorCode` in that feature).
+- Do not create a global error-code registry.
+
+Do not attach local paths, virtual paths, file names, document names, document ids, file ids, Google Drive ids, URLs, record values, document contents, or raw external error text to `captureDiagnosticException` context, Sentry tags, or Sentry extra.
