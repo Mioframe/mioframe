@@ -18,7 +18,7 @@ Canonical source policy lives in `src/shared/ui/material/docs/sources.md`. Libra
 - Prefer an existing official component or documented composition when it covers the need.
 - Do not create an `MD*` surface for a product-specific workflow merely because it resembles Material visually.
 - Use baseline Material only when the supported surface has no applicable Expressive contract or an explicit deviation requires it.
-- Record exact source pages and snapshot or verification dates in the owning family/foundation contract.
+- Record exact source pages and snapshot or verification dates in the owning family or foundation contract.
 - Treat repository code, tests, stories, snapshots, and third-party implementations as evidence, not Material authority.
 
-For official family implementation, return the resolved evidence to the current Stage 1 of `material-component`; do not start a parallel implementation plan. For review-only work, return evidence to `material-component-review`. For a cross-family foundation change, use `material-foundation`.
+For official family implementation, return resolved evidence to `material-component-contract`; do not create or advance a parallel implementation plan. For review-only work, return evidence to `material-component-review`. For a cross-family foundation change, use `material-foundation`.
