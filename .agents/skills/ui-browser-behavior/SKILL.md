@@ -7,7 +7,7 @@ description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch,
 
 Follow `docs/testing/architecture.md`. Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, or visual appearance.
 
-For new or migrated public Material components, also follow `src/shared/ui/material/docs/component-testing.md`.
+For new or migrated public Material components, also follow `src/shared/ui/material/docs/component-development.md`.
 
 ## Activation
 
@@ -49,7 +49,6 @@ This proof owns real focus order, keyboard operation, focus restoration, pointer
 ## Storybook rules
 
 - Fixtures contain only rendering dependencies.
-- Material fixtures remain owner-local under `src/shared/ui/material` and must not import product layers.
 - Keep product bootstrap, storage, navigation, network, and diagnostics outside isolated stories.
 - Specs contain no screenshots.
 - Forced visual state never proves acquisition, transition, cancellation, cleanup, or actionability.

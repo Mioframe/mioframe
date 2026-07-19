@@ -7,13 +7,13 @@ description: 'Use for canonical Storybook visual references, bounded screenshots
 
 Follow `docs/testing/architecture.md`. Visual regression detects unintended changes in accepted rendered appearance. It does not prove component API, browser behavior, product flow, accessibility interaction, or Material correctness.
 
-For public Material components, also follow `src/shared/ui/material/docs/component-testing.md`.
+For public Material components, also follow `src/shared/ui/material/docs/component-development.md`.
 
 ## Activation
 
 Use when a stable visible contract is created or intentionally changed and a bounded deterministic screenshot provides material regression value.
 
-Use isolated Storybook stories with deterministic data, rendering-only dependencies, no product side effects, and a stable bounded root. Material stories and fixtures remain under `src/shared/ui/material` and do not import product layers.
+Use isolated Storybook stories with deterministic data, rendering-only dependencies, no product side effects, and a stable bounded root.
 
 ## Canonical visual reference
 
