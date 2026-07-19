@@ -5,45 +5,33 @@ description: 'Internal Material workflow stage for resolving one component famil
 
 # Material component contract
 
-This is an internal stage skill. Use it only when `material-component` has locked one family, objective, scenarios, and non-goals.
+Internal stage only. `material-component` must lock the family, objective, scenarios, and non-goals before invoking it.
 
-It owns source-backed family decisions before production edits. It does not implement the component, migrate consumers, update the roadmap, or start another stage.
-
-## Required sources
+## Inputs
 
 Read:
 
 - root and applicable nested `AGENTS.md` files;
 - `src/shared/ui/material/docs/architecture.md`;
 - `src/shared/ui/material/docs/sources.md`;
-- `src/shared/ui/material/docs/component-development.md`;
-- the current implementation, exports, consumers, stories, tests, snapshots, and legacy contract when present;
+- Stage 1 of `src/shared/ui/material/docs/component-development.md`;
+- current implementation, exports, consumers, stories, tests, snapshots, and legacy contract when present;
 - current official Material 3 Expressive sources for the required scenarios.
 
-## Resolve
+## Responsibility
 
-1. Confirm the current and canonical family owners.
-2. Define the minimum complete supported surface and explicit unsupported surface.
-3. Resolve public API, invalid combinations, native semantics, accessibility, anatomy, DOM ownership, target ownership, state ownership, lifecycle, token routing, and final rendered-property ownership.
-4. Select one representative consumer that can validate the primary architecture in real composition.
-5. Identify only foundation dependencies required by the supported surface.
-6. Define proportional proof and the complete consumer migration boundary.
-7. Create or update the single family contract at `components/<family>/README.md`.
+Execute Stage 1 exactly. Resolve the complete family contract before production edits and write its single durable owner at `components/<family>/README.md`, or at the permitted temporary legacy location while the implementation remains outside the canonical boundary.
 
-A legacy family still outside the canonical root may temporarily use `docs/legacy/<family>.md`, but an end-to-end migration must move the contract beside the canonical implementation.
+Return any missing cross-family foundation capability as an exact blocker. Do not create a family-local substitute or invoke another stage.
 
 ## Exit gate
 
-Pass only when:
+Pass only when the canonical contract records the representative consumer and every required foundation dependency, with:
 
 ```text
 Unresolved: none
 Readiness: ready
 ```
-
-and the contract records every required foundation dependency and representative consumer.
-
-When a required cross-family foundation capability is missing, return it as an exact blocker to `material-component`. Do not create a family-local substitute or invoke another stage directly.
 
 ## Result
 
@@ -63,9 +51,7 @@ Blocker: none | <exact blocker>
 
 ## Forbidden
 
-- production component edits;
-- consumer migration;
-- roadmap updates;
-- speculative variants, APIs, foundations, abstractions, or extension points;
-- placeholders that defer ownership, API, DOM, state, token, or scenario decisions to implementation;
-- a second family contract, audit, checklist, registry, or progress record.
+- production component edits or consumer migration;
+- roadmap updates or starting another stage;
+- unresolved placeholders or speculative surface, APIs, foundations, or abstractions;
+- another family contract, audit, checklist, registry, or progress record.
