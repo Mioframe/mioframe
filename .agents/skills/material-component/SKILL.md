@@ -7,7 +7,7 @@ description: 'Use when the user provides only a Material component or family nam
 
 Use this as the one-name entrypoint for Material 3 Expressive component work.
 
-This skill owns only target resolution and workflow startup. It must not duplicate component architecture, implementation, testing, review, or completion rules owned by `material-component-authoring` and `docs/material-3`.
+This skill owns only target resolution and workflow startup. All Material-specific architecture, implementation, migration, proof, and review policy is owned under `src/shared/ui/material` and must not be duplicated here.
 
 ## Required input
 
@@ -30,15 +30,29 @@ material-component Button
 
 Do not ask the user to predefine variants, API, scenarios, foundations, files, tests, or consumers.
 
+## Load the canonical Material boundary
+
+Before resolving the target, read:
+
+- `src/shared/ui/material/AGENTS.md`;
+- `src/shared/ui/material/docs/README.md`;
+- `src/shared/ui/material/docs/library-roadmap.md`;
+- `src/shared/ui/material/docs/source-of-truth.md`;
+- `src/shared/ui/material/docs/component-architecture.md`;
+- `src/shared/ui/material/docs/component-testing.md`;
+- the selected family contract and latest audit when present.
+
+Treat these files as the only Material-specific fact owners. This routing skill must not create an independent architecture or workflow.
+
 ## Resolve the target
 
 Before implementation:
 
 1. normalize the supplied name against current official Material 3 Expressive terminology;
-2. inspect existing `MD*` implementations, public exports, direct consumers, the latest `docs/material-3/audits/<family-slug>.md` when present, the component registry, UI inventory, migration map, and roadmap;
+2. inspect existing `MD*` implementations, public exports, direct consumers, the latest `src/shared/ui/material/docs/audits/<family-slug>.md` when present, the component registry, UI inventory, migration map, and roadmap;
 3. resolve the official component surface and smallest cohesive owning family;
 4. identify current and canonical owners;
-5. identify current consumers and required compatibility;
+5. identify current consumers and required external compatibility;
 6. select the change mode automatically.
 
 Choose:
@@ -69,12 +83,13 @@ An absent audit is not a blocker for implementation.
 
 Use `material3-guidelines` and current official sources.
 
-- Existing consumers and user flows define required scenarios.
+- Existing consumers define required compatibility, not internal library architecture.
 - When no consumer exists, the explicit request is sufficient to implement the current canonical Expressive default.
-- Implement the minimum complete surface required by those scenarios.
+- Implement the minimum complete official surface required by the accepted library contract.
 - Record optional official capabilities as unsupported unless a current requirement needs them.
 - Do not preserve baseline Material 3 merely because it matches legacy code.
 - Narrow unsupported scope when official guidance is incomplete and required scenarios remain valid.
+- Do not introduce product-shaped props, product state, product fixtures, or product imports into `src/shared/ui/material`.
 
 Do not ask the user to choose variants or scope that official sources and repository evidence can determine.
 
@@ -82,7 +97,7 @@ Do not ask the user to choose variants or scope that official sources and reposi
 
 After resolving the target, load and execute `material-component-authoring` for the resolved family and mode.
 
-Do not stop after research, an audit, a plan, or the family contract. Continue through the complete applicable workflow defined by that skill, including implementation, consumer migration, proportional proof, obsolete-owner removal, rule refinement, agent review, visual handoff, and progress updates.
+Do not stop after research, an audit, a plan, or the family contract. Continue through the complete applicable workflow owned by the shared Material documentation, including owner-local implementation and proof, external consumer migration, obsolete-owner removal, independent review, visual handoff, and progress updates.
 
 Use `material-foundation` only when a cross-family foundation contract changes. Use specialized Vue and testing skills only for applicable implementation and proof layers.
 
@@ -90,10 +105,10 @@ Use `material-foundation` only when a cross-family foundation contract changes. 
 
 Resolve routine technical decisions without requesting approval.
 
-Escalate only for a genuine blocker already defined by `material-component-authoring`, such as:
+Escalate only for a genuine blocker defined by the canonical Material documentation, such as:
 
-- an unresolved product choice;
-- materially conflicting or unavailable official evidence for a required scenario;
+- an unresolved product-scope choice;
+- materially conflicting or unavailable official evidence for a required surface;
 - an intentional Mioframe deviation;
 - an incompatible public contract requiring product approval;
 - an unsafe cross-family foundation change;
@@ -114,7 +129,7 @@ Change mode:
 Canonical owner:
 Supported surface:
 Unsupported surface:
-Audit consumed: none | docs/material-3/audits/<family-slug>.md
+Audit consumed: none | src/shared/ui/material/docs/audits/<family-slug>.md
 Audit findings resolved or invalidated: none | <summary>
 Consumers migrated:
 Foundation changes:
@@ -125,4 +140,4 @@ Operator visual acceptance: not applicable | required | blocked
 Status: complete | blocked (<exact reason>)
 ```
 
-`complete` requires every non-visual completion gate from `material-component-authoring` to pass and one canonical production owner to remain.
+`complete` requires every non-visual completion gate from the canonical shared Material workflow to pass and one canonical production owner to remain.
