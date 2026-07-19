@@ -1,8 +1,10 @@
 # src/shared/ui/material
 
-Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 Expressive shared-library boundary.
+Inherits `src/shared/ui/AGENTS.md`. This directory is the complete canonical Material 3 Expressive shared-library boundary.
 
 The Material library is an implementation tool consumed by Mioframe. It is not a product layer and must remain isolated from product architecture and domain behavior.
+
+Everything Material-specific lives under this root, including implementation, foundations, official component families, patterns, public entry points, documentation, roadmap, inventories, registries, audits, source policy, stories, fixtures, and focused tests.
 
 ## Routing
 
@@ -14,14 +16,14 @@ The Material library is an implementation tool consumed by Mioframe. It is not a
 - Use `material-foundation` when a cross-family foundation contract changes.
 - Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and supported surface.
 - Use Vue and testing skills only for applicable implementation and proof layers.
-- Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
-- Use `library-roadmap.md` and `ui-library-inventory.md` through `material-library-next` to select sequential migration work when the user did not explicitly select a component.
+- Use `docs/autonomous-review.md` for agent evidence review and operator visual handoff.
+- Use `docs/library-roadmap.md` and `docs/ui-library-inventory.md` through `material-library-next` to select sequential migration work when the user did not explicitly select a component.
 
 A component name is sufficient input for `material-component` and `material-component-review`. Do not require the user to predefine variants, API, foundations, files, tests, consumers, or expected defects. Resolve them from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
 
 `material-library-next` requires no component name. It follows the active roadmap milestone first and, after the pilots, selects one unblocked `queued` official-component family with satisfied dependencies. It must not start a second family in the same task or PR. `material-library-status` never modifies repository files.
 
-A completed `material-component-review` run creates or replaces `docs/material-3/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
+A completed `material-component-review` run creates or replaces `docs/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
@@ -34,14 +36,15 @@ Do not use `shared-ui-implementation` as the primary workflow for an official Ma
 
 ## Contains
 
-Only:
+Only Material-owned artifacts:
 
+- `docs` — all Material-specific policy, architecture, roadmap, inventories, registries, audits, source evidence, authoring, testing, Storybook, review, verification, and deviation guidance;
 - `foundation` — cross-family Material contracts required by current work;
 - `components` — official public Material component families;
 - `patterns` — accepted reusable official Material compositions;
-- local family/domain contracts, owner-local fixtures, tests, stories, and curated public entry points.
+- root and family contracts, owner-local support code, fixtures, tests, stories, and curated public entry points.
 
-Policy documents remain under `docs/material-3`. Product-specific UI, product adapters, domain fixtures, and generic platform infrastructure remain outside.
+Product-specific UI, product adapters, domain fixtures, and generic platform infrastructure remain outside. Material-specific documentation must not exist outside this root.
 
 ## Isolation and dependency direction
 
@@ -69,32 +72,41 @@ product and project-specific shared UI
 - Patterns use public component/foundation contracts only.
 - Generic infrastructure must not depend on Material family knowledge.
 
+## Documentation ownership
+
+- All Material-specific durable facts live under `docs/` in this directory.
+- Root and ancestor `AGENTS.md` files may route work here but must not duplicate Material policy.
+- Repository-level `.agents/skills` are execution routers; they must reference this boundary and must not become independent owners of architecture, roadmap, registries, audits, or source interpretation.
+- Family `README.md` files remain beside their owning implementation under `components/<family>`.
+- No Material document, audit, registry, roadmap, fixture, story, or focused test may be created under repository-level `docs/` or a sibling shared UI owner.
+
 ## New artifacts
 
 - New official components belong under `components/<family>`.
 - New foundation artifacts belong under `foundation/<domain>` only when current work proves a cross-family need.
 - New patterns require official composition evidence and a current shared Material scenario.
 - Multi-component families require an official relationship and a real current shared contract.
+- New Material documentation belongs under `docs/` or the owning family directory.
 - Do not add placeholder files, empty structural layers, speculative extension points, universal bases, product adapters, or project-specific UI under official families.
 
 ## Public API
 
 - External consumers use `@shared/ui/material` after the root entry point exists.
 - Internal library code does not import the root barrel.
-- External deep imports into private implementation, fixture, story, or testing files are forbidden.
+- External deep imports into private implementation, documentation, fixture, story, or testing files are forbidden.
 - Every public export has one clear Material owner.
 - A public Material API must remain generic and source-backed; do not mirror a single Mioframe feature, domain record, route, or workflow.
 
 ## Migration boundary
 
-- Existing Material code outside this directory is legacy, not a template for new work.
-- Strict local repairs may remain at legacy paths only under a valid `Architecture impact: none` decision.
+- Existing Material code or documentation outside this directory is legacy, not a template for new work.
+- Strict local repairs may remain at legacy paths only under a valid `Architecture impact: none` decision; they must not create new Material ownership there.
 - Use one cohesive end-to-end family migration by default.
 - Complete the isolated library contract and library-owned proof before treating product integration as evidence.
 - Split foundation, relocation, or alignment work only when blast radius, reviewability, compatibility, or a safer independent state justifies it.
 - Migrate affected consumers through the public API and remove obsolete ownership.
 - Consumer tests prove only external integration risks; they do not prove internal Material semantics, routing, lifecycle, or fidelity.
-- Update only contracts, maps, registries, inventory, roadmap, stories, tests, snapshots, and risk records whose owned facts changed.
+- Update only local contracts, docs, maps, registries, inventory, roadmap, stories, tests, snapshots, and risk records whose owned facts changed.
 - Temporary compatibility requires exact consumers, no new usage, and a removal target.
 
 ## Adaptive contract and proof
@@ -113,7 +125,7 @@ When a real migration exposes an inaccurate, contradictory, incomplete, obsolete
 
 - identify the concrete evidence and owning source;
 - make the smallest evidence-backed correction;
-- update only directly affected rule owners;
+- update only directly affected rule owners inside this boundary;
 - do not preserve the rule through a family-specific exception;
 - continue after the applicable rules are coherent.
 
