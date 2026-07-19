@@ -409,10 +409,11 @@ export function isUnmappedSourcePath(filePath) {
 /**
  * Resolve the app e2e mode for the given changed files, in priority order:
  * invalid (scenario registry failed self-validation; fail closed instead of
- * silently skipping), full (low-level/unmapped/e2e-support/package.json
- * risk), focused (scenario registry matches and/or changed app e2e specs),
- * or skip (no app e2e relevant changes). Visual specs and visual-relevant
- * paths never feed this resolver; visual selection stays independent.
+ * silently skipping), full (low-level/unmapped/e2e-support/package.json risk
+ * or a removed/renamed directly changed app spec), focused (scenario registry
+ * matches and/or changed existing app e2e specs), or skip (no app e2e relevant
+ * changes). Visual specs and visual-relevant paths never feed this resolver;
+ * visual selection stays independent.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Resolution options.
  * @param [options.packageJsonOldRef] Git ref to compare the current
