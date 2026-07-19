@@ -61,16 +61,16 @@ Current status: `active`
 
 Current blocker: none.
 
-Next action: merge the focused Material development-process PR that establishes the component-first vertical-slice workflow, then restart the canonical Button end-to-end pilot from current `develop`. PR #150 was closed without merge and must not be reused as implementation evidence.
+Next action: restart the canonical Button end-to-end pilot from current `develop` using the component-first vertical-slice workflow in `adoption-plan.md`. PR #150 was closed without merge and must not be reused as implementation evidence.
 
 ## Milestone overview
 
-| ID  | Milestone                                             | Status    | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                                            |
-| --- | ----------------------------------------------------- | --------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Architecture and operating model                      | `done`    | none       | PR #149 merged; canonical Expressive source target, ownership, authoring, testing, review, registry, migration-map, inventory, and scoped agent contracts are available from `develop`                                                                                                                                                                               |
+| ID  | Milestone                                             | Status    | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------- | --------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model                      | `done`    | none       | PR #149 merged; canonical Expressive source target, ownership, authoring, testing, review, registry, migration-map, inventory, and scoped agent contracts are available from `develop`                                                                                                                                                                        |
 | M1  | `MDButton` end-to-end pilot                           | `active`  | M0         | Button family has one canonical Material owner, an accepted complete primary vertical slice, canonical Storybook evidence, representative consumer validation, accepted Expressive alignment, required foundation gaps only, migrated consumers and proof artifacts, removed legacy ownership, passed agent evidence review, and recorded operator visual acceptance |
-| M2  | Independent stateful pilot                            | `planned` | M1         | one high-priority stateful family validates controlled state, interaction and cancellation, multiple anatomy owners, accessibility, browser proof, agent review, operator visual acceptance, and rule refinement without bespoke architecture                                                                                                                        |
-| M3  | Autonomous sequential Material 3 Expressive migration | `planned` | M2         | the agent repeatedly selects the highest-priority ready family, completes the full migration loop, improves inaccurate rules, updates the queue, and continues until every inventory row reaches `migrated`, `retained`, or `removed` and every Material artifact has one canonical owner                                                                            |
+| M2  | Independent stateful pilot                            | `planned` | M1         | one high-priority stateful family validates controlled state, interaction and cancellation, multiple anatomy owners, accessibility, browser proof, agent review, operator visual acceptance, and rule refinement without bespoke architecture                                                                                                                 |
+| M3  | Autonomous sequential Material 3 Expressive migration | `planned` | M2         | the agent repeatedly selects the highest-priority ready family, completes the full migration loop, improves inaccurate rules, updates the queue, and continues until every inventory row reaches `migrated`, `retained`, or `removed` and every Material artifact has one canonical owner                                                                       |
 
 ## Milestone details
 
@@ -116,7 +116,7 @@ The milestone includes:
 
 The default is one end-to-end milestone. Architecture migration and visual alignment may use separate focused PRs only when they preserve a valid intermediate state and materially improve reviewability. They are not permanent sequential milestones.
 
-PR #150 was closed without merge. Its branch, implementation, workflow changes, reports, and audit conclusions are not accepted M1 evidence. Restart the pilot from current `develop` after the focused development-process PR is merged.
+PR #150 was closed without merge. Its branch, implementation, workflow changes, reports, and audit conclusions are not accepted M1 evidence. The pilot restarts from current `develop` under the workflow defined by `adoption-plan.md`.
 
 M1 also records process evidence:
 
@@ -231,11 +231,11 @@ Do not automate hypothetical future mistakes. A migration may introduce a focuse
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date       | Milestone | Change                                                                                                                                                                                                                                       | Evidence |
-| ---------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                                                                                   | PR #149  |
-| 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with end-to-end pilots and autonomous sequential migration; real migrations now refine inaccurate rules, foundations, inventory, and automation                                    | PR #152  |
-| 2026-07-19 | M1        | Closed PR #150 without merge and re-established a component-first development focus: canonical Storybook laboratory, complete primary vertical slice, representative consumer validation, proportional proof, and complete old-owner removal | this PR  |
+| Date       | Milestone | Change                                                                                                                                                                                                                                             | Evidence |
+| ---------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                                                                                         | PR #149  |
+| 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with end-to-end pilots and autonomous sequential migration; real migrations now refine inaccurate rules, foundations, inventory, and automation                                          | PR #152  |
+| 2026-07-19 | M1        | Closed PR #150 without merge and re-established a component-first development focus: canonical Storybook laboratory, complete primary vertical slice, representative consumer validation, proportional proof, and complete old-owner removal        | PR #155  |
 
 ## Update protocol
 
