@@ -55,6 +55,8 @@ When `material-component-review` reports blockers or major issues, route them to
 
 After corrections, run the complete review again. Do not patch findings inside the review skill.
 
+If two correction rounds retain the same underlying defect, add workaround logic, or preserve ownership ambiguity, stop the current run. Report `fresh agent session required`, record the family, responsible stage, exact unresolved defect, and repository state needed to resume. Continue only from a fresh agent session that reloads the current repository and reconstructs the responsible contract; do not carry rejected implementation assumptions forward.
+
 ## Focus rules
 
 - Complete exactly one family per task and PR.
@@ -76,6 +78,7 @@ Stop only for an exact unresolved blocker in one of these categories:
 - required user or component scenario;
 - public contract requiring product approval;
 - unsafe cross-family foundation blast radius;
+- repeated correction failure requiring a fresh agent session;
 - unresolved verification failure;
 - rejected required visual evidence.
 
