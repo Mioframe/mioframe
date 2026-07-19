@@ -35,7 +35,7 @@ Start with [`docs/README.md`](./docs/README.md). The canonical set is intentiona
 - [`foundation-development.md`](./docs/foundation-development.md);
 - [`roadmap.md`](./docs/roadmap.md).
 
-Do not create parallel registries, inventories, audits, checklists, or duplicated workflow documents.
+Do not create parallel registries, inventories, audits, checklists, progress ledgers, or duplicated workflow documents.
 
 ## Dependency direction
 
@@ -65,18 +65,16 @@ Create it only when a real public artifact can be exported honestly. External co
 
 ## Development
 
-Use one family at a time:
+`material-component` executes the only component implementation workflow, one family at a time:
 
 ```text
-official evidence
-→ family contract
-→ owner-local Storybook laboratory
-→ complete primary vertical slice
-→ library-owned proof
-→ complete supported family
-→ consumer migration and integration proof
-→ obsolete-owner removal
-→ review and visual acceptance
+0 task lock
+→ 1 resolved family contract
+→ 2 primary vertical slice
+→ 3 complete supported family
+→ 4 consumer migration and old-owner removal
+→ 5 full-result review and visual handoff
+→ 6 final verification
 ```
 
-The current family and one next action are recorded in [`docs/roadmap.md`](./docs/roadmap.md).
+Review-only assessment uses `material-component-review` and does not edit production files. The current family and one next action are recorded in [`docs/roadmap.md`](./docs/roadmap.md).
