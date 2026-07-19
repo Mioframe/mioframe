@@ -1275,7 +1275,7 @@ export function buildCommands(
     changedFiles.some(isVisualRelevantFile) || isPackageJsonVisualRelevant;
   const appE2EPlan = resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
   const storybookBehaviorPlan = resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
-  const mutationScope = getMutationScope(changedFiles);
+  const mutationScope = getMutationScope(existingChangedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
 

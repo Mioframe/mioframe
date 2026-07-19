@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/packageJsonImpact.mjs', () => ({
   isVisualRelevantPackageJsonChange: vi.fn(),
@@ -259,6 +260,38 @@ describe('buildCommands mutation scope', () => {
     const mutationEntry = commands.find((entry) => entry.label === 'mutation');
 
     expect(mutationEntry.kind).toBe('skipped');
+  });
+
+  describe('deleted production path with a surviving sibling test', () => {
+    const fixtureDir = 'src/shared/lib/verifyMutationScopeFixture';
+    const deletedProductionPath = `${fixtureDir}/deletedSource.ts`;
+    const survivingTestPath = `${fixtureDir}/deletedSource.test.ts`;
+
+    beforeEach(() => {
+      fs.mkdirSync(fixtureDir, { recursive: true });
+      fs.writeFileSync(
+        survivingTestPath,
+        '// fixture sibling test for a deleted production file\n',
+      );
+    });
+
+    afterEach(() => {
+      fs.rmSync(fixtureDir, { recursive: true, force: true });
+    });
+
+    it('skips mutation instead of targeting a nonexistent production file', () => {
+      expect(fs.existsSync(deletedProductionPath)).toBe(false);
+      expect(fs.existsSync(survivingTestPath)).toBe(true);
+
+      const commands = buildCommands([deletedProductionPath], { fullMode: false });
+      const mutationEntry = commands.find((entry) => entry.label === 'mutation');
+
+      expect(mutationEntry.kind).toBe('skipped');
+
+      for (const entry of commands) {
+        expect(JSON.stringify(entry.args ?? [])).not.toContain(deletedProductionPath);
+      }
+    });
   });
 });
 
