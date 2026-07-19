@@ -6,9 +6,9 @@ This family remains a supported production owner until a focused end-to-end migr
 
 Canonical library rules:
 
-- [`../material/docs/architecture.md`](../material/docs/architecture.md)
-- [`../material/docs/sources.md`](../material/docs/sources.md)
-- [`../material/docs/component-development.md`](../material/docs/component-development.md)
+- [`../architecture.md`](../architecture.md)
+- [`../sources.md`](../sources.md)
+- [`../component-development.md`](../component-development.md)
 
 ## Public components
 
@@ -26,7 +26,7 @@ Props:
 
 - `listStyle?: 'standard' | 'segmented'`, default `standard`;
 - `selectionMode?: 'none' | 'single' | 'multiple'`, default `none`;
-- `modelValue?: boolean | number | string | readonly (boolean | number | string)[]`;
+- `modelValue?: boolean | number | string | (boolean | number | string)[]`;
 - `tag?: 'div' | 'ul'`, default `div`.
 
 Emits:
@@ -207,7 +207,7 @@ Public Material token namespaces are:
 - `--md-comp-list-*` and `--md-comp-list-list-item-*` for exact List component tokens;
 - `--md-sys-*` for system roles.
 
-Official component paths map mechanically to CSS names without shortening path segments. Token declaration, configuration selection, state resolution, and final rendering remain separate responsibilities, following [`../material/docs/component-development.md`](../material/docs/component-development.md).
+Official component paths map mechanically to CSS names without shortening path segments. Token declaration, configuration selection, state resolution, and final rendering remain separate responsibilities, following [`../component-development.md`](../component-development.md).
 
 `--md-private-list-item-*`, internal classes, generic foundation bridges, and module names are private implementation details. Consumers must not set or query them.
 
@@ -230,4 +230,4 @@ The family composes the existing generic state-layer, ripple, focus, elevation, 
 
 The current implementation was based on Material List overview/specification/guideline/accessibility evidence and literal List token tables available through the project Material source workflow.
 
-Exact source pages and unresolved visual evidence must be revalidated when this family enters canonical migration. Existing rendering, this legacy README, and visual baselines are not Material authority.
+Exact source pages and unresolved visual evidence must be revalidated when this family enters canonical migration. Existing rendering, this legacy contract, and visual baselines are not Material authority.
