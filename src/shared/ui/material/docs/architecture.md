@@ -94,15 +94,20 @@ Avoid:
 
 ## Workflow ownership
 
-Component implementation has one owner:
+Component implementation has one external owner and three internal stage owners:
 
-- `docs/component-development.md` defines the staged workflow;
-- `material-component` executes that workflow for exactly one family;
-- `material-component-review` is a separate review-only path and never edits production code;
-- `material-library-next` selects only the roadmap's one next family and invokes `material-component`;
-- supporting Material, Vue, testing, and verification skills are loaded only at the stage that needs them.
+- `docs/component-development.md` defines the only component workflow and exit gates;
+- `material-component` is the sole implementation orchestrator and the only owner allowed to select a family, choose the next stage, or update the roadmap;
+- `material-component-contract` owns source-backed family decisions and the ready family README before production edits;
+- `material-component-implementation` owns the primary vertical slice, representative consumer validation, complete supported family, Storybook, and proportional family proof;
+- `material-component-adoption` owns remaining consumer migration and complete removal of obsolete ownership;
+- `material-component-review` is review-only, may be invoked independently, and never fixes production files;
+- `material-foundation` is invoked only for a proven cross-family prerequisite or focused standalone foundation work;
+- supporting Material, Vue, testing, and verification skills operate only inside the owning stage.
 
-Do not create another authoring flow, implementation plan, audit workflow, checklist, stage tracker, or family-state owner.
+Internal stage skills do not invoke each other, select another family, update the roadmap, or create independent plans.
+
+Do not create another authoring flow, implementation plan, next-family orchestrator, audit workflow, checklist, stage tracker, or family-state owner.
 
 ## Canonical records
 
@@ -122,25 +127,29 @@ Do not create registries, inventories, durable audits, checklists, progress ledg
 
 Use one cohesive end-to-end migration by default:
 
-1. resolve the family contract from official evidence and repository facts;
-2. implement and prove one primary vertical slice;
-3. complete the supported canonical family;
-4. migrate affected consumers through the public API;
-5. verify integration risks;
-6. remove obsolete implementation, exports, tests, stories, snapshots, temporary contracts, and compatibility paths;
-7. review the full resulting family and prepare visual acceptance evidence;
-8. run final repository verification.
+1. lock one family, objective, scenarios, and non-goals;
+2. resolve the ready family contract;
+3. complete any proven cross-family foundation prerequisite;
+4. implement and prove one primary vertical slice;
+5. validate that slice in one representative real consumer;
+6. complete only the supported canonical family;
+7. migrate remaining consumers through the public API;
+8. remove obsolete implementation, exports, tests, stories, snapshots, temporary contracts, aliases, and compatibility paths;
+9. review the complete resulting family and prepare visual acceptance evidence;
+10. run final repository verification.
 
-Split work only when a narrower result is complete, independently valid, and safer because of real blast radius, compatibility, or reviewability constraints.
+Split work only when a narrower result is complete, independently valid, and safer because of real blast radius, compatibility, or reviewability constraints. A split must not create two active owners or require promised later cleanup to make the merged state correct.
 
 ## Simplicity gate
 
-Before adding an abstraction, layer, file, state owner, foundation, pattern, or compatibility mechanism, prove that:
+Before adding an abstraction, layer, file, state owner, foundation, pattern, compatibility mechanism, or workflow skill, prove that:
 
 - an existing mechanism is insufficient;
 - a current requirement needs it;
 - ownership remains explicit;
 - total complexity decreases;
 - the result is easier to understand, test, and change.
+
+A workflow skill is justified only when it owns a distinct responsibility and exit gate. Do not create separate skills for source lookup, Storybook, accessibility, tokens, visual acceptance, or testing when those concerns belong inside an existing stage.
 
 If the simpler alternative cannot be shown to be insufficient, use it.
