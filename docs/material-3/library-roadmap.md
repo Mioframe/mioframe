@@ -13,7 +13,7 @@ Durable architecture and workflow rules remain in the canonical Material policy 
 
 ## Sources of truth
 
-- `adoption-plan.md` owns the rollout rationale, rule-refinement contract, and pilot-first migration loop.
+- `adoption-plan.md` owns the rollout rationale, component-first development focus, rule-refinement contract, and pilot-first migration loop.
 - `source-of-truth.md` owns the current canonical Material 3 Expressive target and source hierarchy.
 - `autonomous-review.md` owns agent evidence review, operator visual acceptance, and the review merge gate.
 - `ui-library-inventory.md` owns shared-UI classification, evidence-backed priority, queue state, and completion evidence.
@@ -53,7 +53,7 @@ Only one milestone should normally be `active`. Focused PRs may contribute to an
 
 ## Current state
 
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 Current milestone: `M1 — MDButton end-to-end pilot`
 
@@ -61,16 +61,16 @@ Current status: `active`
 
 Current blocker: none.
 
-Next action: complete and merge the focused Button contract work in PR #150, then start the canonical end-to-end Button migration from current `develop`; correct any inaccurate applicable rule discovered by the migration instead of adding an exception or a speculative validator.
+Next action: merge the focused Material development-process PR that establishes the component-first vertical-slice workflow, then restart the canonical Button end-to-end pilot from current `develop`. PR #150 was closed without merge and must not be reused as implementation evidence.
 
 ## Milestone overview
 
-| ID  | Milestone                                             | Status    | Depends on | Exit gate                                                                                                                                                                                                                                                                                                |
-| --- | ----------------------------------------------------- | --------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | Architecture and operating model                      | `done`    | none       | PR #149 merged; canonical Expressive source target, ownership, authoring, testing, review, registry, migration-map, inventory, and scoped agent contracts are available from `develop`                                                                                                                   |
-| M1  | `MDButton` end-to-end pilot                           | `active`  | M0         | Button family has one canonical Material owner, accepted Expressive alignment, required foundation gaps only, migrated consumers and proof artifacts, removed legacy ownership, passed agent evidence review, recorded operator visual acceptance, and corrected inaccurate rules found by the migration |
-| M2  | Independent stateful pilot                            | `planned` | M1         | one high-priority stateful family validates controlled state, interaction and cancellation, multiple anatomy owners, accessibility, browser proof, agent review, operator visual acceptance, and rule refinement without bespoke architecture                                                            |
-| M3  | Autonomous sequential Material 3 Expressive migration | `planned` | M2         | the agent repeatedly selects the highest-priority ready family, completes the full migration loop, improves inaccurate rules, updates the queue, and continues until every inventory row reaches `migrated`, `retained`, or `removed` and every Material artifact has one canonical owner                |
+| ID  | Milestone                                             | Status    | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------- | --------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Architecture and operating model                      | `done`    | none       | PR #149 merged; canonical Expressive source target, ownership, authoring, testing, review, registry, migration-map, inventory, and scoped agent contracts are available from `develop`                                                                                                                                                                        |
+| M1  | `MDButton` end-to-end pilot                           | `active`  | M0         | Button family has one canonical Material owner, an accepted complete primary vertical slice, canonical Storybook evidence, representative consumer validation, accepted Expressive alignment, required foundation gaps only, migrated consumers and proof artifacts, removed legacy ownership, passed agent evidence review, and recorded operator visual acceptance |
+| M2  | Independent stateful pilot                            | `planned` | M1         | one high-priority stateful family validates controlled state, interaction and cancellation, multiple anatomy owners, accessibility, browser proof, agent review, operator visual acceptance, and rule refinement without bespoke architecture                                                                                                                 |
+| M3  | Autonomous sequential Material 3 Expressive migration | `planned` | M2         | the agent repeatedly selects the highest-priority ready family, completes the full migration loop, improves inaccurate rules, updates the queue, and continues until every inventory row reaches `migrated`, `retained`, or `removed` and every Material artifact has one canonical owner                                                                       |
 
 ## Milestone details
 
@@ -100,22 +100,28 @@ The milestone includes:
 1. inspect the current Button family, API, consumers, workflows, stories, tests, tokens, and known defects;
 2. resolve the exact supported Material 3 Expressive surface;
 3. audit only foundation domains required by Button;
-4. verify that applicable rules accurately describe the real component and migration case;
-5. correct inaccurate, contradictory, incomplete, obsolete, or unnecessarily complex rules in their owning sources;
-6. make separate foundation changes only when their blast radius requires independent review;
-7. implement the canonical Button family;
-8. migrate consumers and remove obsolete owners and exports;
-9. align the implementation with the accepted Expressive contract;
-10. update affected blueprint, registry, inventory, map, stories, tests, snapshots, and risk registration;
-11. pass agent evidence review;
-12. complete operator visual acceptance.
+4. create the compact accepted family contract before production changes;
+5. prepare the canonical Storybook laboratory;
+6. implement and validate one complete primary vertical slice before expanding the family;
+7. verify that applicable rules accurately describe the real component and migration case;
+8. correct inaccurate, contradictory, incomplete, obsolete, or unnecessarily complex rules in their owning sources;
+9. make separate foundation changes only when their blast radius requires independent review;
+10. implement the canonical Button family;
+11. validate the public API in representative product consumers;
+12. migrate consumers and remove obsolete owners and exports;
+13. align the implementation with the accepted Expressive contract;
+14. update affected blueprint, registry, inventory, map, stories, tests, snapshots, and risk registration;
+15. pass agent evidence review;
+16. complete operator visual acceptance.
 
 The default is one end-to-end milestone. Architecture migration and visual alignment may use separate focused PRs only when they preserve a valid intermediate state and materially improve reviewability. They are not permanent sequential milestones.
 
-PR #150 contributes focused current-contract evidence but does not by itself complete M1.
+PR #150 was closed without merge. Its branch, implementation, workflow changes, reports, and audit conclusions are not accepted M1 evidence. Restart the pilot from current `develop` after the focused development-process PR is merged.
 
 M1 also records process evidence:
 
+- whether the component-first vertical-slice sequence kept implementation work focused;
+- whether the canonical Storybook laboratory exposed defects before family-wide expansion;
 - which rules were accurate;
 - which rules required correction and why;
 - which documents were necessary;
@@ -151,7 +157,7 @@ After the pilots, maintain a short evidence-backed `P0`/`P1` queue in `ui-librar
 The agent must:
 
 1. select the highest-priority `ready` family whose dependencies are satisfied;
-2. perform the complete discovery, contract, implementation, migration, proof, and review loop;
+2. perform the complete discovery, contract, Storybook laboratory, vertical-slice implementation, family expansion, consumer migration, proof, and review loop;
 3. correct inaccurate applicable rules in their owning sources when the real migration exposes them;
 4. move the completed family to its accepted terminal state;
 5. update affected inventory rows and the next ready queue position;
@@ -178,9 +184,10 @@ Inventory is updated just in time:
 Each migration repeats one loop:
 
 ```text
-discovery → accepted contract → rule refinement → required foundation work →
-implementation → consumer migration → proof → agent review →
-operator visual acceptance → queue update → next ready family
+discovery → accepted contract → canonical Storybook laboratory →
+complete vertical slice → family expansion → consumer validation and migration →
+proportional proof → agent review → operator visual acceptance →
+queue update → next ready family
 ```
 
 Rules:
@@ -204,7 +211,7 @@ When real migration evidence conflicts with a rule, the agent must identify the 
 The correction must:
 
 - name the concrete case that exposed the problem;
-- distinguish a rule defect from a component defect;
+- distinguish a rule defect from a component defect or agent non-compliance;
 - use official Material sources, repository architecture, and accepted product behavior as authority;
 - update all directly affected documents, skills, checklists, registries, or scoped instructions;
 - record the reason, evidence, affected scope, and migration consequence;
@@ -224,10 +231,11 @@ Do not automate hypothetical future mistakes. A migration may introduce a focuse
 
 Add one row only when a milestone changes status or its exit gate materially changes.
 
-| Date       | Milestone | Change                                                                                                                                                                                                    | Evidence |
-| ---------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                                                | PR #149  |
-| 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with end-to-end pilots and autonomous sequential migration; real migrations now refine inaccurate rules, foundations, inventory, and automation | PR #152  |
+| Date       | Milestone | Change                                                                                                                                                                                                                                             | Evidence |
+| ---------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 2026-07-16 | M0        | Architecture and operating model completed                                                                                                                                                                                                         | PR #149  |
+| 2026-07-17 | M1        | Replaced validator-first and exhaustive-preparation gates with end-to-end pilots and autonomous sequential migration; real migrations now refine inaccurate rules, foundations, inventory, and automation                                          | PR #152  |
+| 2026-07-19 | M1        | Closed PR #150 without merge and re-established a component-first development focus: canonical Storybook laboratory, complete primary vertical slice, representative consumer validation, proportional proof, and complete old-owner removal        | this PR  |
 
 ## Update protocol
 
@@ -248,6 +256,7 @@ Before starting a new Material session:
 1. read `Current state` and `Next action`;
 2. confirm the active milestone against merged repository state;
 3. inspect only the documents owned by that milestone and selected family;
-4. correct inaccurate applicable rules instead of creating exceptions or speculative infrastructure;
-5. continue with the highest-priority ready family after the current family reaches its terminal state;
-6. update this roadmap when the session changes progress.
+4. follow the component-first vertical-slice development focus from `adoption-plan.md`;
+5. correct inaccurate applicable rules instead of creating exceptions or speculative infrastructure;
+6. continue with the highest-priority ready family after the current family reaches its terminal state;
+7. update this roadmap when the session changes progress.
