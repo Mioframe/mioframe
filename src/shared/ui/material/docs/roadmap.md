@@ -1,41 +1,37 @@
 # Material library roadmap
 
-This file owns only current execution state. Durable architecture and workflow live in the other documents in this directory.
+This file records only the active family, current blocker, and one next action. It is not a registry, inventory, queue, audit, checklist, or stage tracker.
 
 ## Current state
 
 Last updated: 2026-07-19
 
-Current stage: `MDButton first end-to-end family`
+Active family: `Button`
 
-Status: `active`
+Intended change mode: `end-to-end-migration`
 
-Blocker: none.
+Status: `blocked`
 
-Next action: start a fresh canonical Button migration from current `develop` using `component-development.md`. Do not reuse PR #150 implementation, workflow reports, or audit conclusions; PR #150 was closed without merge.
+Blocker: PR #155 must pass final verification and merge before the Button implementation branch is created.
 
-## Required result
+## Next action
 
-The Button stage exits when:
+After PR #155 merges, create a fresh branch from the updated `develop` and run `material-component Button` through the complete staged workflow:
 
-- one canonical Button family owner exists under `components/button`;
-- the minimum complete supported Material 3 Expressive surface is explicit;
-- one complete primary vertical slice works before optional family expansion;
-- the owner-local Storybook surface and proportional library proof are complete;
-- affected consumers use the curated Material API;
-- obsolete Button owners and compatibility paths are removed;
-- non-visual review passes;
-- required operator visual acceptance is recorded;
-- final repository verification passes.
+```text
+0 task lock
+→ 1 resolved family contract
+→ 2 primary vertical slice
+→ 3 complete supported family
+→ 4 consumer migration and old-owner removal
+→ 5 full-result review and visual handoff
+→ 6 final verification
+```
 
-## Following work
+Do not reuse implementation, workflow, review, or audit conclusions from PR #150. Resolve the current Button family from the merged repository and current official Material 3 Expressive sources.
 
-After Button, use one independent stateful family, currently `MDSwitch`, to validate controlled state, interaction lifecycle, accessibility, and foundation reuse.
-
-After those two families, continue one family at a time based on current product need, consumer reach, correctness risk, foundation leverage, dependency readiness, and migration blast radius.
-
-Do not maintain an exhaustive shared-UI inventory or parallel component registry. Select the next family from current repository evidence when the current family completes, and record only the selected next action here.
+Do not select or pre-plan a second family until Button reaches a terminal result.
 
 ## Update rule
 
-Update this file only when the active family, status, blocker, or next action changes. Do not repeat architecture, source, testing, review, or completion policy beyond the short current-stage result above.
+Update this file only when the active family, status, blocker, or one next action changes.
