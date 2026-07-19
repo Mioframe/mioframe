@@ -16,11 +16,13 @@ Blocker: PR #155 must pass final verification and merge before the Button implem
 
 ## Next action
 
-After PR #155 merges, create a fresh branch from the updated `develop` and run:
+After PR #155 merges, create a fresh branch from the updated `develop` and start a fresh agent session before running:
 
 ```text
 material-component Button
 ```
+
+The fresh session must load the merged repository rules and skills. Do not continue a session that loaded the pre-PR #155 Material workflow, and remove any stale project auto-memory that treats PR #150, old audits, registries, or removed `docs/material-3` files as current evidence.
 
 The orchestrator starts with `material-component-contract`, invokes required foundation work only when the resolved contract proves it, then continues through implementation, adoption, complete review, and final verification.
 
