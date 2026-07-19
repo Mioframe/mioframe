@@ -10,6 +10,7 @@
 - Keep safe broad fallback until a deterministic replacement is implemented and tested.
 - Do not make `verify` depend on `TEST IMPACT` or any uncommitted agent report.
 - Do not redesign proof ownership inside resolver implementation.
+- Every migration PR must be independently safe to merge into `develop`: broadening an upstream input contract (for example, exposing deleted paths or both rename sides through `getChangedFileProjection()`) requires auditing and adapting all existing downstream consumers in the same PR. Deferred phases may postpone new capabilities, but must not leave invalid commands, false skips, false failures, or dependence on a later PR.
 - Remove this document after all completion criteria are satisfied.
 
 ## Current mismatches

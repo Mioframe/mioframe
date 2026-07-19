@@ -398,6 +398,28 @@ describe('buildCommands package.json app e2e relevance', () => {
   });
 });
 
+describe('buildCommands removed/renamed spec safety', () => {
+  it('runs full app e2e for a deleted app e2e spec without passing it as a command argument', () => {
+    const commands = buildCommands(['tests/e2e/removedFlow.spec.ts'], { fullMode: false });
+    const e2eEntry = commands.find((entry) => entry.label === 'e2e');
+
+    expect(e2eEntry.kind).toBe('run');
+    expect(e2eEntry.triggerReason).toContain('removed or renamed app e2e spec');
+    expect(e2eEntry.args).not.toContain('tests/e2e/removedFlow.spec.ts');
+  });
+
+  it('runs the full storybook-behavior lane for a deleted behavior spec without passing it as a command argument', () => {
+    const commands = buildCommands(['tests/e2e/storybook/removedFlow.spec.ts'], {
+      fullMode: false,
+    });
+    const behaviorEntry = commands.find((entry) => entry.label === 'storybook-behavior');
+
+    expect(behaviorEntry.kind).toBe('run');
+    expect(behaviorEntry.triggerReason).toContain('removed or renamed Storybook behavior spec');
+    expect(behaviorEntry.args).not.toContain('tests/e2e/storybook/removedFlow.spec.ts');
+  });
+});
+
 describe('buildCommands storybook-behavior lane', () => {
   beforeEach(() => {
     isPackageJsonRuntimeRelevantChange.mockReset();

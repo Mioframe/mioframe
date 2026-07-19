@@ -322,9 +322,16 @@ export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
  * `package.json` against, for the version-only impact refinement. Pass
  * `null` when no reliable base ref is known; that fails closed to
  * runtime-relevant (full lane).
+ * @param [options.fileExists] Test-only override for the directly changed
+ * spec existence check, bypassing the real filesystem. Production callers
+ * should omit this so a deleted or renamed-away spec is detected against the
+ * real repository state.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
  */
-export function resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef = null } = {}) {
+export function resolveStorybookBehaviorPlan(
+  changedFiles,
+  { packageJsonOldRef = null, fileExists = isExistingFile } = {},
+) {
   const registryValidation = validateStorybookBehaviorScenarioRegistry();
 
   if (!registryValidation.valid) {
@@ -333,6 +340,9 @@ export function resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef =
 
   const fullLaneHit = changedFiles.find(isFullStorybookBehaviorLanePath);
   const supportHit = changedFiles.find(isStorybookBehaviorSupportPath);
+  const missingSpecHit = changedFiles.find(
+    (filePath) => isStorybookBehaviorSpecPath(filePath) && !fileExists(filePath),
+  );
   const isPackageJsonRelevant =
     changedFiles.includes(PACKAGE_JSON_PATH) &&
     isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef });
@@ -350,6 +360,12 @@ export function resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef =
 
   if (supportHit) {
     fullReasons.push(`behavior support file ${supportHit} changed -> full behavior lane`);
+  }
+
+  if (missingSpecHit) {
+    fullReasons.push(
+      `removed or renamed Storybook behavior spec ${missingSpecHit} -> full behavior lane`,
+    );
   }
 
   if (fullReasons.length > 0) {

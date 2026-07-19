@@ -419,9 +419,16 @@ export function isUnmappedSourcePath(filePath) {
  * `package.json` against, for the version-only e2e impact refinement. Pass
  * `null` when no reliable base ref is known; that fails closed to
  * runtime-relevant (full app e2e).
+ * @param [options.fileExists] Test-only override for the directly changed
+ * spec existence check, bypassing the real filesystem. Production callers
+ * should omit this so a deleted or renamed-away spec is detected against the
+ * real repository state.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
  */
-export function resolveAppE2EPlan(changedFiles, { packageJsonOldRef = null } = {}) {
+export function resolveAppE2EPlan(
+  changedFiles,
+  { packageJsonOldRef = null, fileExists = isExistingFile } = {},
+) {
   const registryValidation = validateE2EScenarioRegistry();
 
   if (!registryValidation.valid) {
@@ -431,6 +438,9 @@ export function resolveAppE2EPlan(changedFiles, { packageJsonOldRef = null } = {
   const lowLevelHit = changedFiles.find(isLowLevelE2EPath);
   const unmappedHit = changedFiles.find(isUnmappedSourcePath);
   const supportHit = changedFiles.find(isAppE2ESupportPath);
+  const missingSpecHit = changedFiles.find(
+    (filePath) => isAppE2ESpecPath(filePath) && !fileExists(filePath),
+  );
   const isPackageJsonRuntimeRelevant =
     changedFiles.includes(PACKAGE_JSON_PATH) &&
     isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef });
@@ -452,6 +462,10 @@ export function resolveAppE2EPlan(changedFiles, { packageJsonOldRef = null } = {
 
   if (supportHit) {
     fullReasons.push(`e2e support file ${supportHit} changed -> full app e2e`);
+  }
+
+  if (missingSpecHit) {
+    fullReasons.push(`removed or renamed app e2e spec ${missingSpecHit} -> full app e2e`);
   }
 
   if (fullReasons.length > 0) {
