@@ -1,10 +1,50 @@
 # Material 3 adoption plan
 
+## Purpose
+
+Build a product-local canonical Material 3 Expressive UI library for Mioframe.
+
+The library is not:
+
+- a general-purpose UI framework;
+- a complete clone of every published Material capability;
+- an external npm package;
+- an abstraction platform for hypothetical future components;
+- a documentation, audit, or validation system whose output is more important than working UI.
+
+Material defines the visual and behavioral contract. The Web platform defines native semantics. Mioframe architecture defines ownership, dependency direction, public API, and product integration.
+
+## Development focus
+
+Keep this order of authority and work:
+
+```text
+official Material evidence
+→ required foundation contracts
+→ one component-family contract
+→ canonical Storybook laboratory
+→ complete vertical implementation slice
+→ real product consumer
+→ proportional proof
+→ complete migration and old-owner removal
+```
+
+The center of development is the rendered component and its accepted contract. Documentation, stories, tests, audits, registries, and automation support that work; they do not replace it.
+
+Use these boundaries:
+
+- `foundation` owns only proven cross-family Material contracts;
+- a component family owns its API, native semantics, anatomy, states, component tokens, routing, rendering, and family-specific behavior;
+- Material patterns exist only after repeated real composition proves a stable owner;
+- features, widgets, pages, and panes own product meaning, placement, workflows, and layout composition.
+
+Do not move product behavior into Material, family behavior into foundation, or cross-family behavior into one component merely to remove duplication.
+
 ## Principle
 
-Adopt Material incrementally through real component migrations.
+Adopt Material incrementally through real component-family migrations and explicit foundation tasks.
 
-Do not build a complete validation framework, exhaustive migration database, generic test DSL, or mass source-tree migration before the first canonical families prove what is actually needed.
+Do not build a complete validation framework, exhaustive migration database, generic test DSL, broad runtime framework, or mass source-tree migration before real work proves it necessary.
 
 Every in-scope shared UI artifact must eventually reach one accepted terminal outcome:
 
@@ -12,62 +52,122 @@ Every in-scope shared UI artifact must eventually reach one accepted terminal ou
 - explicitly retained project-specific or generic UI owner outside Material;
 - removed or consolidated obsolete or duplicate owner.
 
-The operating model, source hierarchy, ownership rules, blueprint contract, testing layers, agent evidence review, and operator visual acceptance were established by PR #149. Later work should use and improve those contracts rather than add another preparatory architecture phase.
+The existing source hierarchy, ownership rules, component architecture, foundation architecture, testing policy, and operator visual acceptance remain authoritative in their owning documents. This plan owns the development sequence and focus.
 
-## Default migration loop
+## Contract before production changes
+
+Before editing a component family, resolve the smallest complete contract required by current scenarios and consumers:
+
+1. required scenarios and non-goals;
+2. supported and unsupported Material surface;
+3. public API;
+4. native HTML semantics and accessibility ownership;
+5. anatomy and DOM ownership;
+6. states, sources of truth, precedence, cancellation, and cleanup;
+7. component tokens and final rendered-property owners;
+8. applicable motion endpoints and Web adaptation;
+9. required foundation dependencies and their current owners;
+10. required proof and affected consumers.
+
+Record the accepted contract in the family `README.md` using `component-architecture.md`. Every field must affect an implementation decision, a proof artifact, or an explicit unsupported capability. Do not add ceremonial documentation.
+
+## Family development loop
 
 Each family migration follows one practical loop:
 
-1. inspect the current owner, public API, consumers, user flows, tests, stories, and known defects;
-2. resolve the current official Material 3 Expressive contract and the minimum supported surface;
-3. audit only the foundation domains required by that family;
-4. verify that applicable project rules are accurate, coherent, and sufficient for the real migration;
-5. correct inaccurate, contradictory, incomplete, or unnecessarily complex rules before relying on them;
-6. make focused foundation changes only when the migration proves they are necessary;
-7. implement the canonical family and migrate consumers;
-8. align the family with the accepted Expressive contract;
-9. update tests, Storybook evidence, snapshots, registries, inventory rows, risk registration, and migration maps that are actually affected;
-10. complete agent evidence review;
-11. hand prepared visual evidence to the operator when visual acceptance is required;
-12. record process lessons and add automation only when a stable repeated need has been demonstrated.
+1. inspect the current owner, public API, consumers, user scenarios, tests, stories, and known defects;
+2. resolve the current official Material 3 Expressive contract and minimum complete supported surface;
+3. audit only the foundation domains required by that surface;
+4. create or update the compact family contract before production edits;
+5. prepare a canonical Storybook laboratory showing distinct visible routes and relevant edge cases;
+6. implement one complete vertical slice first: native semantics, DOM, target area, default and interaction states, foundation routing, tokens, motion, accessibility, and real browser behavior;
+7. validate the public API in at least one real consumer when a production consumer exists;
+8. expand variants, sizes, and optional supported routes only after the primary slice is coherent;
+9. add proportional proof at the lowest faithful layer;
+10. migrate affected consumers, exports, stories, tests, and impact metadata and remove the obsolete owner and compatibility paths;
+11. complete independent evidence review and required operator visual acceptance;
+12. record process lessons and add automation only when stable repeated evidence justifies it.
 
-The default unit of work is one cohesive family end to end. Split work into separate PRs only when a broad foundation blast radius, reviewability, or the need for a safe independently valid intermediate state justifies it.
+The default unit of work is one cohesive family end to end. Split work into separate PRs only when a broad foundation blast radius, reviewability, or a safe independently valid intermediate state requires it.
+
+## Storybook role
+
+Storybook is the primary component development laboratory and the readable catalogue of accepted rendered surfaces.
+
+For visible components provide:
+
+- one canonical bounded example;
+- only materially distinct variants and states;
+- simultaneous states needed to prove precedence;
+- relevant theme and background contexts;
+- realistic content and supported boundary cases;
+- real interaction fixtures for browser-owned behavior.
+
+Do not create Cartesian prop matrices or screenshots that repeat equivalent output. Forced states may stabilize appearance but never prove interaction acquisition, release, cancellation, interruption, trajectory, or cleanup.
+
+## Proof model
+
+Use one primary proof owner for each contract:
+
+- component contract tests: public API, native semantics, attributes, ARIA, controlled state, invalid combinations, and non-browser foundation wiring;
+- browser behavior tests: real focus, keyboard, pointer/touch, ripple, expanded targets, motion lifecycle, cancellation, interruption, and cleanup;
+- visual regression: protection of an already accepted rendered baseline;
+- representative consumer proof: integration risks caused by API, composition, owner, or migration changes;
+- operator visual acceptance: perceived fidelity to the accepted Material reference after objective gates close.
+
+Green tests prove only their owned contracts. They do not establish correspondence with current Material sources or replace visual review.
+
+## Focus guard
+
+Reject or simplify work when it:
+
+- adds a validator, registry, manager, generic API, helper layer, or test framework before repeated real work proves the need;
+- optimizes documents, audits, or agent reports while the rendered component remains defective;
+- expands foundation for hypothetical reuse;
+- implements all variants before one complete vertical slice works correctly;
+- preserves an obsolete owner, permanent compatibility path, or parallel mechanism;
+- delegates unresolved source, semantics, accessibility, ownership, lifecycle, or migration decisions to operator visual review;
+- treats screenshots or forced states as proof of real interaction behavior;
+- broadens a component migration into unrelated library cleanup.
+
+If two correction rounds retain the same objective defect, add workarounds, or create new ownership ambiguity, stop patching and reconstruct the contract and implementation strategy.
 
 ## Phase 0: operating model
 
 Status: complete.
 
-PR #149 established:
+The repository already provides:
 
 - the canonical Material 3 Expressive source hierarchy;
 - the `src/shared/ui/material` ownership target;
 - component and foundation contracts;
-- the family blueprint and testing model;
-- agent evidence review and operator-only visual acceptance;
-- registries, inventory ownership, migration-map ownership, and scoped agent instructions.
+- family-local documentation and testing ownership;
+- proportional proof layers;
+- independent agent review and operator-only visual acceptance;
+- registries, inventory ownership, and migration-map ownership.
 
-No additional validator or full-library inventory gate is required before the first pilot.
+No additional validator or full-library inventory gate is required before implementation.
 
 ## Phase 1: first end-to-end pilot — `MDButton`
 
-Use Button as the first pilot unless current consumer evidence proves another family is a materially better starting point.
+Use Button as the first pilot unless current consumer evidence proves another family is materially better.
 
-The pilot includes, in one milestone:
+The pilot must validate the complete development loop, not calibrate a documentation or audit framework. It includes:
 
 - current implementation and consumer audit;
 - exact supported Material 3 Expressive surface;
-- only the foundation readiness work required by Button;
+- only foundation readiness work required by Button;
 - canonical Button family ownership;
-- API, native semantics, accessibility, interaction, token, state, anatomy, and DOM ownership;
-- consumer migration;
-- Material alignment;
-- contract, browser, pure, consumer, and visual proof as applicable;
-- removal of obsolete Button owners and exports;
-- agent evidence review and operator visual acceptance.
+- one complete primary vertical slice before family expansion;
+- API, native semantics, accessibility, interaction, token, state, anatomy, DOM, motion, and rendered-property ownership;
+- canonical Storybook laboratory and real interaction evidence;
+- validation in representative product consumers;
+- complete consumer migration and obsolete-owner removal;
+- proportional proof, independent review, and operator visual acceptance.
 
-Focused preparatory or foundation PRs are allowed, but they do not become permanent roadmap phases and do not complete the pilot by themselves.
+Focused prerequisite or foundation PRs are allowed only when they preserve a valid intermediate state and materially improve reviewability. They do not complete the pilot by themselves.
 
-At the end of the pilot, record which rules were accurate, which required correction, which documents duplicated work, which foundation gaps were real, and which defects could have been prevented by a small precise check.
+At the end of the pilot, record which rules were useful, which duplicated work, which foundation gaps were real, and which repeated defects justify a small precise guard.
 
 ## Phase 2: independent stateful pilot
 
@@ -82,96 +182,52 @@ The second pilot must challenge the process with:
 - multiple anatomy or DOM owners;
 - property-specific coexistence;
 - focus, ripple, motion, shape, color, accessibility, and target-area dependencies;
-- separation of visual-state proof from real browser behavior.
+- separation of stable visual-state evidence from real browser behavior.
 
-After two pilots, consolidate only the workflow and automation that both migrations prove to be stable and valuable.
+After two pilots, consolidate only workflow and automation that both migrations prove stable and valuable.
 
-## Phase 3: autonomous sequential migration
+## Phase 3: sequential migration
 
-After the pilots, maintain a short evidence-backed `P0`/`P1` queue rather than requiring exhaustive classification before work begins.
+After the pilots, maintain a short evidence-backed `P0`/`P1` queue rather than requiring exhaustive classification before useful work begins.
 
-The agent selects the highest-priority `ready` family whose dependencies are satisfied. After one family reaches its accepted terminal state, the agent updates the queue and proceeds to the next ready family without requiring a new architecture-planning phase or manual component selection.
-
-Priority considers:
+Select the highest-priority ready family whose dependencies are satisfied. Priority considers:
 
 - consumer reach;
 - critical repeated workflows;
 - interaction frequency;
 - Material and foundation leverage;
-- current correctness or maintenance risk;
+- current correctness and maintenance risk;
 - dependency readiness;
 - migration blast radius;
-- whether removal or consolidation is more valuable than migration.
+- removal or consolidation value.
 
-Inventory work is just in time:
-
-- fully inspect and update the family selected for the next migration;
-- keep directly affected rows current;
-- add newly discovered shared UI owners as they become relevant;
-- progressively classify the remaining library without blocking high-value migrations.
-
-The continuous migration loop remains:
-
-```text
-discovery → accepted contract → rule refinement → required foundation work →
-implementation → consumer migration → proof → agent review →
-operator visual acceptance → queue update → next ready family
-```
-
-A genuinely new component without a legacy owner is implemented when the product needs it. It is not a gate before normal migration can continue.
+Inventory work remains just in time. Fully inspect the selected family, keep directly affected records current, and progressively classify the rest without blocking high-value migrations.
 
 ## Rule refinement
 
 Project rules are durable working contracts, not immutable assumptions.
 
-When a migration reveals that a rule is inaccurate, contradictory, incomplete, ambiguous, obsolete, or creates complexity without protecting a real contract, the agent must:
+When real implementation exposes an inaccurate, contradictory, incomplete, obsolete, or unnecessarily complex rule:
 
-1. identify the concrete migration case and evidence that exposes the problem;
-2. identify the document, skill, checklist, registry, or scoped instruction that owns the rule;
-3. determine whether official Material sources, repository architecture, or product behavior provides the authoritative answer;
-4. make the smallest correction that resolves the real case without weakening unrelated contracts;
-5. update every directly affected rule source in the same PR, or in a focused prerequisite PR when the correction has wider scope;
-6. record the reason, evidence, affected scope, and any migration consequence;
-7. resume implementation only after the applicable rules are coherent.
+1. identify the concrete case and evidence;
+2. identify the narrowest owning document or skill;
+3. distinguish a rule defect from implementation non-compliance;
+4. make the smallest artifact-independent correction;
+5. update only directly affected owners;
+6. resume implementation after the applicable rules are coherent.
 
-The agent must not:
-
-- silently violate a documented rule;
-- preserve an inaccurate rule through a component-specific exception;
-- duplicate a corrected rule in another document;
-- broaden the correction into an unrelated architecture rewrite;
-- delegate a resolvable technical inconsistency to operator visual review.
-
-Escalate only when the conflict requires a genuine product decision, official sources are materially unresolved, or correcting the rule would change a public cross-project contract beyond the migration scope.
+Do not create component-specific exceptions, duplicate corrected rules, or broaden a correction into unrelated architecture work.
 
 ## Evidence-driven automation
 
-Automation is a consequence of migration evidence, not a prerequisite for migration.
+Automation is a consequence of migration evidence, not a prerequisite.
 
-Add a guard only when all of the following are true:
+Add a guard only when it protects a stable accepted contract, addresses a repeated or materially risky failure, has low false-positive risk, fits existing repository tooling, and costs less to maintain than the review burden it removes.
 
-- it protects a stable accepted contract demonstrated by real work;
-- the failure is repeated or has a clearly material regression risk;
-- the check is precise and has a low false-positive rate;
-- existing repository tooling can express it without a parallel architecture system;
-- maintenance cost is lower than the review burden it removes.
-
-Do not add automation merely because a future mistake is imaginable.
-
-Static or structured checks may be introduced inside a migration or follow-up PR when these conditions are met. They do not require their own roadmap milestone.
-
-## Foundation changes
-
-Audit foundation domains only for the selected family.
-
-Reuse an existing owner when it is sufficient and remains the single accepted owner. Create a focused foundation PR when a correction, replacement, relocation, or additive extension has wider consumer impact than the component migration can safely review.
-
-Do not relocate every foundation owner in advance and do not split a cohesive legacy owner merely to match the target directory structure.
+Do not automate semantic completeness, anatomy correctness, source interpretation, or visual fidelity through Markdown validators or generic rule engines.
 
 ## Program completion
 
 The program is complete when every in-scope shared UI artifact has a terminal outcome and every Material-owned artifact has one canonical current owner.
 
-Exhaustive inventory is therefore a completion requirement, not a prerequisite for starting useful migrations.
-
-The program does not require implementing every optional component or capability published by Material.
+Exhaustive inventory is a completion requirement, not a prerequisite for useful migrations. The program does not require implementing every optional component or capability published by Material.
