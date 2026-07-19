@@ -1,92 +1,85 @@
 # Mioframe Material library
 
-`src/shared/ui/material` is the canonical source boundary for Mioframe's Material implementation.
+`src/shared/ui/material` is the complete canonical boundary for Mioframe's Material 3 Expressive implementation.
 
-The library contains:
+Everything Material-specific lives here:
 
-- cross-family Material foundation contracts required by current work;
-- official public Material component families;
-- reusable official Material compositions independent of product domains.
+- `docs` — architecture, official-source policy, roadmap, inventories, registries, audits, authoring, testing, Storybook, review, verification, and deviations;
+- `foundation` — proven cross-family Material contracts;
+- `components` — official public Material component families;
+- `patterns` — accepted reusable official Material compositions;
+- root and family contracts, public entry points, local support code, stories, fixtures, and focused tests.
 
-Canonical architecture:
+Generic platform utilities, project-specific shared UI, features, widgets, pages, app behavior, and product adapters remain outside.
 
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-testing.md`.
+## Documentation
 
-Operational progress and the next ready family are tracked in `docs/material-3/library-roadmap.md` and `ui-library-inventory.md`.
+Start with:
 
-## Ownership map
+- [`docs/README.md`](./docs/README.md);
+- [`docs/library-architecture.md`](./docs/library-architecture.md);
+- [`docs/adoption-plan.md`](./docs/adoption-plan.md);
+- [`docs/library-roadmap.md`](./docs/library-roadmap.md);
+- [`docs/source-of-truth.md`](./docs/source-of-truth.md);
+- [`docs/foundation-architecture.md`](./docs/foundation-architecture.md);
+- [`docs/component-architecture.md`](./docs/component-architecture.md);
+- [`docs/component-testing.md`](./docs/component-testing.md).
 
-```text
-material/foundation
-  Cross-family Material tokens, roles, primitives, adapters, and verification helpers.
-
-material/components
-  Official public component families, adaptive contracts, implementations, stories, and focused tests.
-
-material/patterns
-  Reusable official Material compositions required by current scenarios.
-```
-
-Generic platform utilities, project-specific shared UI, features, widgets, pages, and app behavior remain outside.
+No Material-owned document may live under repository-level `docs/` or a sibling shared UI owner.
 
 ## Dependency direction
 
 ```text
-shared/lib generic infrastructure
-  ├─→ material/foundation
-  ├─→ material/components
-  └─→ material/patterns
-
-material/foundation → material/components → material/patterns
-material library → project-specific shared UI and product layers
+Vue / browser platform
+        ↓
+generic shared/lib infrastructure
+        ↓
+material/foundation
+        ↓
+material/components
+        ↓
+material/patterns
+        ↓
+project-specific shared UI and product layers
 ```
 
-Higher Material layers may use correctly owned generic utilities directly. Do not create foundation wrappers merely to route generic behavior.
+The product consumes the Material public API. Material production code, documentation fixtures, stories, and focused tests do not import product layers or product-specific shared UI.
 
-Product imports inside the Material library, dependency inversion, and private cross-family imports are forbidden.
+Higher Material layers may use correctly owned generic low-level utilities directly. Do not create foundation wrappers merely to route generic behavior.
 
 ## Public API
 
-The intended project-facing entry point is:
+The external entry point is:
 
 ```ts
 import { MDButton } from '@shared/ui/material';
 ```
 
-Do not create the root production `index.ts` until at least one real family or foundation artifact can be exported honestly.
+Do not create the root production `index.ts` until at least one real public family or foundation artifact can be exported honestly.
 
 After it exists:
 
-- product consumers use the root entry point by default;
-- internal library modules use owning family, foundation, or generic entry points;
-- private implementation and testing files remain private.
+- external consumers use the curated root entry point by default;
+- internal Material modules use their owning local entry points;
+- private implementation, documentation, fixture, story, and testing files remain private;
+- public contracts remain generic and source-backed rather than shaped around one Mioframe consumer.
 
-## New implementation
+## New work
 
-- Create new official Material components under `components/<family>`.
-- Create new foundation artifacts under `foundation/<domain>` only when current work proves the cross-family need.
-- Create patterns under `patterns/<pattern>` only after the pattern conditions pass.
-- Treat legacy directories as existing owners, not templates for new ownership.
-- Create no placeholder files, empty structural layers, or speculative abstractions.
+- New official components: `components/<family>`.
+- New cross-family foundations: `foundation/<domain>`, only when current work proves the need.
+- New accepted official compositions: `patterns/<pattern>`, only after the pattern gate passes.
+- New Material policy or status documentation: `docs/`.
+- Family contracts: beside the owning implementation.
+- Stories, fixtures, and focused tests: beside their Material owner.
 
-Every new public component includes:
-
-- the mandatory adaptive family-contract core;
-- only conditional contract sections applicable to the component;
-- colocated component-contract tests;
-- one stable canonical visual story when it has visible output;
-- `StateMatrix` only when multiple distinct visual routes exist;
-- browser, pure, consumer, visual-regression, and operator-review layers only when applicable.
+Do not create placeholders, speculative frameworks, product adapters, or parallel Material owners.
 
 ## Physical migration map
 
-This table tracks physical ownership only. Material alignment belongs to component and foundation contracts and registries. Program sequencing belongs to the roadmap.
-
 | Area                              | Current production owner                            | Canonical owner                                                                     | Migration status              |
 | --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
+| Material policy and program docs  | `src/shared/ui/material/docs`                       | `src/shared/ui/material/docs`                                                       | `migrated`                    |
 | Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                      | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
 | Typography utilities              | `src/shared/lib/md`                                 | `material/foundation/typography`                                                    | `legacy`                      |
 | State layer, ripple, and focus    | `src/shared/ui/State`                               | `material/foundation/interaction`                                                   | `legacy`                      |
@@ -96,32 +89,21 @@ This table tracks physical ownership only. Material alignment belongs to compone
 | New official Material family      | none                                                | `material/components/<family>`                                                      | create directly as `migrated` |
 | Reusable Material patterns        | scattered or missing compositions                   | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
 
-Do not split a valid cohesive owner merely to match this table. Migration follows confirmed ownership and reviewable boundaries.
+A domain must not have parallel permanent legacy and canonical owners. Temporary compatibility requires exact consumers, no new usage, and a removal target.
 
-## Migration status
+## Migration loop
 
-- `legacy` — current code remains accepted for existing consumers but is not a template for new work;
-- `migrating` — one active family or domain migration owns the applicable implementation and consumer changes;
-- `migrated` — the canonical owner is active, obsolete paths are removed, proportional proof exists, and required agent/operator review is complete.
+```text
+discovery
+→ accepted library contract
+→ owner-local Storybook laboratory
+→ complete vertical slice
+→ library-owned proof
+→ complete supported family surface
+→ external consumer migration and integration proof
+→ obsolete-owner removal
+→ review and operator visual acceptance
+→ queue update
+```
 
-A domain must not have parallel permanent legacy and canonical owners. Temporary compatibility requires exact consumers and a removal target.
-
-## Migration rules
-
-Use one cohesive end-to-end family migration by default:
-
-1. inspect the current family and consumers;
-2. resolve the supported Expressive contract;
-3. correct inaccurate applicable rules;
-4. change only required foundations;
-5. implement the canonical family;
-6. migrate consumers and public exports;
-7. add proportional proof;
-8. remove obsolete ownership;
-9. update only records whose owned facts changed;
-10. complete agent review and required operator visual acceptance;
-11. update the queue and continue to the next ready family.
-
-Split work only when shared blast radius, compatibility, reviewability, or a safer independently valid state justifies it.
-
-The program sequence is `MDButton`, an independent stateful pilot such as `MDSwitch`, then autonomous priority-driven migration. A genuinely new component is added when the product requires it, not as a process gate.
+The active milestone and single next action are owned by [`docs/library-roadmap.md`](./docs/library-roadmap.md).
