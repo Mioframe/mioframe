@@ -102,7 +102,7 @@ After target lock, assess every category or mark it `not-applicable` with a reas
 - semantic and transient state, precedence, interruption, cancellation, and cleanup;
 - token declarations, configuration, state routing, rendered properties, and public overrides;
 - geometry, typography, icon placement, RTL, responsive behavior, and text scaling;
-- motion, rapid input, interruption, and reduced motion;
+- complete motion implementation inventory, rapid input, interruption, reversal, cancellation, cleanup, and reduced motion;
 - project extensions;
 - external Material and generic foundation dependencies;
 - owners, exports, consumers, aliases, and cleanup;
@@ -118,6 +118,62 @@ Classify proof as canonical, compatibility-only, implementation-detail, legacy-d
 
 Classify each dependency as canonical Material, temporary legacy Material, project extension, or generic non-Material foundation. Repeated use does not make a Material component generic foundation.
 
+## Mandatory motion implementation inventory
+
+The current-state audit and final review must search the complete family and directly owned foundations, not only changed files, for:
+
+- CSS `transition` shorthand and longhands;
+- CSS `animation` shorthand and longhands;
+- every `@keyframes` definition and reference;
+- WAAPI or `Element.animate` calls;
+- `requestAnimationFrame`, motion timers, and animation classes;
+- `transitionend` and `animationend` listeners;
+- `will-change`;
+- motion token/custom-property declarations and uses;
+- every `prefers-reduced-motion` override.
+
+Every route is recorded in the family README:
+
+```text
+MOTION ROUTE
+Owner/file/selector or runtime target:
+Trigger and state edge:
+Mechanism: transition | animation | WAAPI | JS
+Properties or keyframes:
+Initial and final values:
+Duration, delay, easing, iterations, direction, fill:
+Official token/source → private route → declaration:
+Rendered target:
+Interruption, reversal, cancellation, cleanup:
+Reduced-motion result:
+Performance impact:
+Primary proof:
+Classification:
+Required correction: none | <exact correction>
+```
+
+A motion route is not compliant merely because a token, custom property, keyframe, transition, or snapshot exists.
+
+Reject or classify as misaligned:
+
+- `transition: all`;
+- declared motion tokens that do not drive actual rendered behavior;
+- unused or unreachable keyframes;
+- transition/animation declarations on the wrong rendered owner;
+- shadowed or conflicting cascade declarations;
+- shorthand resets that silently replace property, duration, delay, easing, iteration, direction, or fill;
+- missing stable initial/final values;
+- undefined rapid-input, interruption, reversal, cancellation, disable, or unmount behavior;
+- stale classes, listeners, timers, frames, or WAAPI animations after cleanup;
+- reduced-motion handling that removes the final state or leaves non-essential long motion active;
+- layout/paint-heavy animation without a required visual contract and bounded performance reasoning;
+- broad or permanently retained `will-change` without evidence;
+- tests that only assert custom-property existence, keyframe text, snapshots, or framework/browser internals.
+
+Static proof may protect exact token-to-declaration routing. User-visible acquisition, completion, interruption, reversal, cancellation, and reduced-motion behavior require browser proof through public input.
+
+Do not test Vue, the browser animation engine, or third-party animation internals. Test Mioframe's routing and observable behavior.
+
 ## Decomposition and correction units
 
 Map each concern to one owner with inputs, outputs, dependencies, observable contract, primary proof, and co-location rationale. Split by ownership and proof, not line count. Do not retain monoliths by default or add wrappers and DOM merely for separation.
@@ -132,21 +188,21 @@ Correction priority is:
 6. anatomy and DOM;
 7. token and rendered-property routing;
 8. geometry, responsive behavior, typography, RTL, and text scaling;
-9. motion and browser lifecycle;
+9. motion implementation and browser lifecycle;
 10. project extensions;
 11. adoption;
 12. obsolete-owner removal.
 
 Do not bypass a higher-priority blocker with an easier local improvement.
 
-Each correction unit records expected behavior, current defect, owner, dependencies, blast radius, proof lane, prepared failing observation, compatibility impact, visible impact, operator requirement, and completion condition.
+Each correction unit records expected behavior, current defect, owner, dependencies, blast radius, proof lane, prepared failing observation, affected motion routes, whether a motion code audit is required, compatibility impact, visible impact, operator requirement, and completion condition.
 
 Rewrite only the smallest owner when incremental repair would preserve wrong ownership or add more workaround logic.
 
 ## Proof lanes
 
-- unit/component proof: deterministic API, normalization, native attributes, state precedence, and non-browser wiring;
-- browser proof: layout, focus, keyboard, form behavior, propagation, pointer/touch, target area, responsive behavior, platform behavior, and motion lifecycle;
+- unit/component proof: deterministic API, normalization, native attributes, state precedence, non-browser wiring, and narrow token-to-declaration routing;
+- browser proof: layout, focus, keyboard, form behavior, propagation, pointer/touch, target area, responsive behavior, platform behavior, animation acquisition, completion, interruption, reversal, cancellation, and reduced-motion lifecycle;
 - visual proof: screenshots only;
 - consumer proof: integration and compatibility.
 
@@ -156,13 +212,15 @@ Visual specs do not contain behavior success criteria or large computed-style as
 
 After contract synthesis, run `material-component-review` with `Review scope: contract-gate` from a fresh read-only context.
 
-It validates target provenance, source decisions, platform applicability, complete concern coverage, classifications, dependencies, correction priority, proof lane, compatibility, workflow state, and that production work did not precede the gate.
+It validates target provenance, source decisions, platform applicability, complete concern coverage, classifications, dependencies, complete motion inventory, correction priority, proof lane, compatibility, workflow state, and that production work did not precede the gate.
 
 Implementation starts only after `Contract review status: passed`.
 
 ## Implementation and adoption
 
-Implement exactly one approved correction unit. The target, classifications, dependencies, priority, owner, proof lane, and compatibility decision remain locked. New invalidating evidence returns work to contract while preserving unaffected confirmed work.
+Implement exactly one approved correction unit. The target, classifications, dependencies, priority, owner, proof lane, compatibility decision, and motion inventory remain locked. New invalidating evidence returns work to contract while preserving unaffected confirmed work.
+
+Use the Vue implementation skill for `.vue` or UI-composable changes. Use the browser-behavior skill whenever motion, interaction lifecycle, layout, or responsive behavior is changed or confirmed. Use visual regression only for appearance protection and operator handoff.
 
 Validate affected browser behavior and representative consumers. Handle visual evidence and operator handoff when required.
 
@@ -172,14 +230,16 @@ Adoption runs only when ownership, public-entry migration, or obsolete-owner rem
 
 After implementation and conditional adoption, run `material-component-review` with `Review scope: final-gate` from a different fresh read-only context.
 
-Review the complete family and resulting PR. Determine separately whether the correction objective is mergeable and whether the family is `aligned`, `converging`, or `blocked`.
+Review the complete family and resulting PR. The reviewer independently compares the README motion inventory with every actual transition, animation, keyframe, WAAPI/JS route, token, listener, timer, reduced-motion override, and `will-change` declaration.
+
+Determine separately whether the correction objective is mergeable and whether the family is `aligned`, `converging`, or `blocked`.
 
 A bounded correction may merge while the family remains `converging` only when the repository is fully valid and remaining gaps are explicit and non-blocking.
 
-Family completion requires no required `misaligned`, `unresolved`, or `obsolete` concern, one canonical owner, required consumers on that owner, required operator acceptance, and final verification.
+Family completion requires no required `misaligned`, `unresolved`, or `obsolete` concern, a passed motion implementation audit, one canonical owner, required consumers on that owner, required operator acceptance, and final verification.
 
 ## Recovery
 
-New evidence returns work to the owning stage. A fresh session resets reasoning, not repository progress. Hidden source conflicts, omitted concerns, wrong proof lanes, stale workflow state, same-context self-review, or two repeated ineffective correction rounds are workflow defects and block progression.
+New evidence returns work to the owning stage. A fresh session resets reasoning, not repository progress. Hidden source conflicts, omitted concerns or motion routes, wrong proof lanes, stale workflow state, same-context self-review, or two repeated ineffective correction rounds are workflow defects and block progression.
 
 Do not create duplicate contracts, durable audits, registries, scorecards, or progress ledgers.
