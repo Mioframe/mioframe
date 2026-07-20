@@ -1,7 +1,7 @@
 ---
 name: material-current-state-auditor
 description: Use after the Material canonical target is locked to audit the complete existing implementation and proof without redefining the target.
-disallowedTools: Write, Edit, NotebookEdit
+disallowedTools: Write, Edit, NotebookEdit, Bash, Task
 model: inherit
 ---
 
