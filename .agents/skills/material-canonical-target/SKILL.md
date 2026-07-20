@@ -21,20 +21,25 @@ Do not inspect current or proposed implementation, component-specific tests, sto
 
 ## Responsibility
 
-Use `src/shared/ui/material/docs/sources.md` and current official Material evidence to resolve:
+Use `src/shared/ui/material/docs/sources.md`, `src/shared/ui/material/docs/tokens.md`, and current official Material evidence to resolve:
 
 - applicable platforms;
 - supported and unsupported surface;
 - public semantics and invalid combinations;
 - anatomy and accessibility;
 - state and interaction behavior;
-- token, rendered-property, motion, and adaptive requirements;
+- exact official reference/system/component token paths required by the supported scenarios;
+- semantic meaning and value kind of each required token group;
+- intentionally unsupported official token surface;
+- required rendered properties, motion, and adaptive behavior;
 - required Material or generic dependencies;
 - exact unresolved decisions.
 
 For every contradiction, absence, inference, or platform-specific rule, return a source decision with both claims, applicability, narrower authority, decision, rationale, and `resolved` or `unresolved` status.
 
-Token presence does not prove supported behavior. Token absence does not cancel explicit guidance. Android, iOS, and Web guidance are not interchangeable without an explicit decision.
+Token presence does not prove supported behavior. Token absence does not cancel explicit guidance. Do not invent or shorten an official-looking token name. Android, iOS, and Web guidance are not interchangeable without an explicit decision.
+
+Do not decide private CSS routing or file decomposition. Return canonical token semantics and required public surface only; current-state and contract stages own implementation mapping.
 
 ## Result
 
@@ -48,6 +53,9 @@ Applicable platforms:
 Supported surface:
 Unsupported surface:
 Canonical contracts:
+Official token groups and exact paths:
+Token value kinds and rendered meanings:
+Intentionally unsupported token surface:
 Source decisions:
 Required dependencies:
 Unresolved decisions:
@@ -60,6 +68,8 @@ Blocker: none | <exact blocker>
 - repository edits;
 - current implementation or proof inspection;
 - legacy behavior used to fill missing official evidence;
+- invented, shortened, or project-specific values in the official `--md-*` namespace;
+- private routing or file-layout decisions;
 - architecture or implementation planning beyond required dependency facts;
 - delegation;
 - declaring unresolved evidence resolved from memory or convenience.
