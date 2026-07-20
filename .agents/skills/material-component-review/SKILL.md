@@ -1,117 +1,125 @@
 ---
 name: material-component-review
-description: 'Use for an independent review-only assessment of one Material component family and its current correction objective against official sources, the alignment map, implementation ownership, rendered behavior, proof, consumers, and cleanup. Never modify production files.'
+description: 'Use for an independent read-only contract-gate or final-gate review of one Material component family against official sources, complete concern coverage, ownership, proof, consumers, rendered behavior, and workflow state. Never modify repository files.'
 ---
 
 # Material component review
 
-This is the only review-only workflow for an official Material component family. It may be invoked directly or by `material-component` after the current correction objective and any conditional adoption complete.
+This is the only review-only workflow for an official Material component family.
 
-Do not implement or repair the family through this skill. Report consolidated findings with their correction owner.
+It supports two scopes:
+
+- `contract-gate` — before production edits;
+- `final-gate` — after implementation and any conditional adoption.
+
+Do not implement or repair through this skill.
 
 ## Independence requirement
 
-Run from a fresh agent session or isolated read-only context that did not implement the current patch. Receive only the family, current correction objective, required scenarios, current repository ref, and applicable operator evidence. Reconstruct the canonical target and current state from repository and official sources.
+Run from a fresh agent session or isolated read-only context that did not author the contract or implement the patch being reviewed.
 
-Do not accept implementation reasoning, rejected approaches, previous self-review, green CI, or claims of correctness as evidence. When an independent context is unavailable, return `blocked — independent review handoff required`.
+Receive only the family, review scope, current objective, required scenarios, applicable platforms, current repository ref, and applicable operator evidence. Reconstruct repository rules and official evidence independently.
+
+Do not accept implementation reasoning, rejected approaches, previous self-review, green CI, or claims of correctness as evidence. When independent context is unavailable, return `blocked — independent review handoff required`.
+
+Claude Code may use `material-contract-gate-reviewer` or `material-final-reviewer` from `.claude/agents/`. Codex may use a separate agent thread or isolated worktree. The reviewer does not delegate further.
 
 ## Required sources
 
-Read:
+Read root and nested `AGENTS.md`, Material architecture and source rules, component workflow, family README, applicable official sources, and repository evidence appropriate to the scope.
 
-- root and applicable nested `AGENTS.md` files;
-- `src/shared/ui/material/docs/architecture.md`;
-- `src/shared/ui/material/docs/sources.md`;
-- `src/shared/ui/material/docs/component-development.md`;
-- the current family README;
-- current and previous production owners, public exports, tests, stories, snapshots, direct consumers, compatibility paths, and official sources.
+## Contract-gate scope
 
-## Review questions
+Review before any production edit for the correction unit.
 
-Answer separately:
+Verify:
 
-1. **Current objective:** Is the documented correction objective complete, correct, independently valid, and mergeable?
-2. **Family alignment:** Is the whole family `aligned`, `converging`, or `blocked`?
+- canonical target was produced without current implementation, component proof, or prior family conclusions determining it;
+- applicable platforms are explicit;
+- diagrams, prose, specs, accessibility guidance, and token tables are reconciled;
+- every contradiction, absence, inference, and platform-specific rule has a source-decision entry;
+- required unresolved decisions block dependent work;
+- every mandatory concern is classified or marked not applicable with a reason;
+- `confirmed-compliant` and `project-extension` satisfy their full evidence requirements;
+- every dependency is correctly classified;
+- current proof is honestly classified;
+- the selected correction unit is the highest-priority complete unit available;
+- proof lane, prepared failing observation, compatibility impact, visible impact, and operator requirement are resolved;
+- workflow state, detailed README sections, and roadmap agree;
+- production, test, story, or snapshot changes for the unit did not precede the gate.
 
-A family may remain `converging` after a successful focused correction. This is acceptable only when remaining gaps are honestly classified, outside the objective, and do not make the merged repository state incorrect.
+Use exactly one contract result:
 
-## Review scope
+- `contract gate passed`;
+- `contract gate failed`;
+- `blocked — insufficient evidence`;
+- `blocked — independent review handoff required`.
 
-Review the complete current family state and resulting PR, not only the latest diff.
+Production may begin only after `contract gate passed`.
+
+## Final-gate scope
+
+Review the complete current family and resulting PR, not only the latest diff.
 
 Inspect:
 
-- canonical target provenance and unresolved source conflicts;
-- separation between canonical target and legacy current-state assessment;
-- alignment classifications and remaining known gaps;
-- current correction units and completion conditions;
-- family ownership and dependency direction;
-- supported and unsupported Material surface;
-- public API and invalid combinations;
-- native semantics and accessibility;
-- anatomy, DOM ownership, target area, and unnecessary nodes;
-- semantic and transient state, lifecycle, cancellation, interruption, disabled and failure behavior;
-- implementation decomposition, co-location decisions, and actual owner boundaries;
-- public Vue composition-root focus and absence of accidental monoliths;
-- style and motion ownership, token declarations, configuration routes, state resolution, and final rendered-property ownership;
-- interaction, ripple, focus, responsive, and adaptive behavior;
-- foundation ownership and component-agnostic inputs;
-- proof map and classification of existing tests, stories, snapshots, and fixtures;
-- actual rendered Storybook output;
-- representative and remaining consumer compatibility;
-- obsolete implementation, exports, proof, contracts, aliases, and compatibility paths.
+- target provenance, source decisions, and platform applicability;
+- full alignment map and remaining gaps;
+- public API, native and form semantics, event propagation, accessibility, anatomy, DOM, target area, and unnecessary nodes;
+- semantic and transient state, precedence, lifecycle, interruption, cancellation, disabled and failure behavior;
+- dependency and ownership direction;
+- token declarations, configuration, state routing, rendered properties, public overrides, geometry, typography, responsive behavior, RTL, and text scaling;
+- motion acquisition, rapid input, interruption, and reduced motion;
+- project extensions and dependency health;
+- decomposition and actual file/style ownership;
+- proof lanes and actual proof contents;
+- Storybook output, visual baselines, official comparison, and operator status;
+- representative and remaining consumers;
+- obsolete owners, exports, tests, stories, snapshots, aliases, and compatibility residue;
+- workflow state, roadmap, and verification readiness.
 
-Compare semantic and architectural delta from the previous owner. A relocation, decomposition, renamed file, extracted function, copied stylesheet, stable snapshot, or new test is not Material improvement by itself.
+Determine separately:
 
-README text, tests, snapshots, stories, and green CI are claims or regression guards. They do not prove official correctness by themselves.
+1. whether the current correction objective is complete and mergeable;
+2. whether the family is `aligned`, `converging`, or `blocked`.
 
 ## Mandatory defect patterns
 
-Treat these as blockers or major issues unless a narrower severity is justified:
+Treat as blockers or major issues unless narrowly justified:
 
-- canonical target was derived from legacy code before official requirements were independently resolved;
-- source contradiction affecting the objective was hidden as `Unresolved: none`;
-- behavior was preserved through blanket `no behavior change`, `relocation only`, or `verbatim copy` without alignment classification;
-- existing proof was reused without classifying whether it protects canonical behavior, compatibility, implementation detail, or a legacy defect;
-- a new failing test merely protects extraction or relocation while the Material behavior remains unverified;
-- the current correction objective does not produce a source-backed or ownership-backed improvement;
-- production began without a ready correction unit and faithful proof;
-- a `.vue`, `.ts`, or stylesheet combines independently changing responsibilities or proof owners without documented cohesion;
-- implementation is fragmented into files or wrappers that add indirection, forwarding, or DOM without clearer ownership;
-- foundation dependencies were accepted only because they already existed rather than because their required contract is sufficient;
-- known misaligned consumers were migrated onto a new public path;
-- the README reports the family aligned while required `misaligned`, `unresolved`, or `obsolete` concerns remain.
+- target derived from legacy code or proof;
+- hidden or selectively omitted source conflict;
+- platform-specific guidance applied to another platform without a decision;
+- token absence used to cancel explicit guidance, or token presence used as sole proof of support;
+- mandatory concern omitted from assessment;
+- existing proof reused without classification;
+- dependency classified as generic merely because it is widely reused;
+- lower-priority improvement selected around a higher-priority blocker;
+- proof placed in the wrong lane;
+- visual spec containing browser-behavior assertions or computed-style matrices;
+- visible change without required official comparison or operator acceptance;
+- production work preceding the contract gate;
+- stale or contradictory workflow state or roadmap;
+- relocation, decomposition, copied styles, stable snapshots, or green CI presented as Material improvement without source-backed or ownership-backed delta;
+- accidental monolith or artificial fragmentation;
+- consumer migration onto a misaligned or unresolved contract;
+- family declared aligned while required gaps remain.
 
 ## Findings
 
-Consolidate confirmed findings into:
+Consolidate findings into blockers, major issues, minor issues, and items outside the current objective.
 
-1. blockers;
-2. major issues;
-3. minor issues;
-4. items not required for the current correction objective.
+Every actionable finding states requirement, concrete evidence, mismatch, affected scenario, required final state, whether it blocks objective or family completion, and correction owner:
 
-Every actionable finding states:
+- `material-component-contract`;
+- `material-component-implementation`;
+- `material-component-adoption`.
 
-- official or repository requirement;
-- concrete implementation evidence;
-- mismatch and affected scenario;
-- required final state;
-- whether it blocks the current objective or only family completion;
-- correction owner:
-  - `material-component-contract`;
-  - `material-component-implementation`;
-  - `material-component-adoption`.
+Do not scatter one root problem across repetitive findings.
 
-Do not scatter one underlying contract or ownership problem across repetitive findings.
+## Final verdicts
 
-## Verdict
-
-Report two explicit results.
-
-### Current objective verdict
-
-Use exactly one:
+For `final-gate`, use exactly one objective verdict:
 
 - `correction objective complete`;
 - `correction objective complete — operator visual acceptance required`;
@@ -119,46 +127,34 @@ Use exactly one:
 - `blocked — insufficient evidence`;
 - `blocked — independent review handoff required`.
 
-### Family alignment status
+Family status is exactly `aligned`, `converging`, or `blocked`.
 
-Use exactly one:
+Green verification never upgrades a review result by itself.
 
-- `aligned`;
-- `converging`;
-- `blocked`.
-
-Green verification is necessary but never upgrades either result by itself.
-
-When invoked by the orchestrator, return:
+## Result
 
 ```text
 MATERIAL STAGE RESULT
-
 Family:
 Stage: review
+Review scope: contract-gate | final-gate
 Status: complete | blocked
 Exit gate: passed | failed
+Contract gate result: not-applicable | passed | failed
 Current objective result:
 Family alignment status: aligned | converging | blocked
-Evidence:
-Changed ownership: none
 Independent context: confirmed | unavailable
-Operator visual status: not required | required | accepted | rejected
+Evidence:
+Operator visual status: not-required | required | accepted | rejected
 Remaining known gaps:
 Next correction unit: none | <exact unit>
 Blocker: none | <exact blocker>
 ```
 
-`Status: complete` requires confirmed independent context and no blocker or major issue in the current correction objective. `Exit gate: passed` additionally requires operator visual status `not required` or `accepted` for changed visible output.
-
-Family completion requires `Family alignment status: aligned`. A successful correction may pass with `converging` when remaining gaps are non-blocking and explicit.
-
 ## Restrictions
 
 - Do not modify production, consumer, test, story, snapshot, contract, roadmap, or export files.
-- Do not create a durable audit, separate checklist, registry, scorecard, or second family-state document.
-- Do not review only naming or token declarations while skipping canonical-target provenance, alignment classifications, decomposition, rendered anatomy, behavior, and motion.
-- Do not approve the current objective while its ownership, scenarios, proof, compatibility, visual evidence, or verification remain unresolved.
-- Do not declare the family aligned while required gaps remain.
-- Do not require deleting or rewriting already confirmed owners merely because another owner is defective.
-- Do not invoke correction skills or the next workflow stage directly.
+- Do not invoke correction skills or advance the workflow.
+- Do not create durable audits, registries, scorecards, or second family-state documents.
+- Do not approve incomplete ownership, proof, scenarios, dependencies, workflow state, visual evidence, or verification.
+- Do not require deletion of already confirmed owners because another owner is defective.
