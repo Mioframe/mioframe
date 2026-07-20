@@ -7,7 +7,7 @@ description: 'Use when creating, repairing, aligning, migrating, continuing, or 
 
 This is the sole implementation entry point for one official Material component family. Use `material-component-review` for review-only requests.
 
-Follow `src/shared/ui/material/docs/component-development.md` as the single canonical workflow. Do not restate or alter its classifications, correction priority, proof lanes, or completion rules here.
+Follow `src/shared/ui/material/docs/component-development.md` as the single canonical workflow and `src/shared/ui/material/docs/tokens.md` for token architecture. Do not restate or alter their classifications, correction priority, proof lanes, token taxonomy, or completion rules here.
 
 ## Task lock
 
@@ -87,18 +87,19 @@ A stale README or roadmap blocks progression.
 
 Route findings to one owner:
 
-- target, source decision, classification, dependency, supported surface, contract, decomposition, correction priority, or proof lane → `material-component-contract`;
-- production, DOM, styles, state implementation, token routing, motion implementation, Storybook, or proof implementation → `material-component-implementation`;
+- target, source decision, classification, dependency, supported surface, token public surface, token taxonomy decision, contract, decomposition, correction priority, or proof lane → `material-component-contract`;
+- production, DOM, styles, state implementation, token declaration placement, private routing, rendered-property routing, motion implementation, Storybook, static token guard, or proof implementation → `material-component-implementation`;
+- reference/system token ownership or cross-family token dependency → `material-foundation`;
 - consumers, parallel owners, import migration, obsolete paths, aliases, or cleanup → `material-component-adoption`.
 
 Run the applicable independent gate again after corrections.
 
 ## Stop conditions
 
-Stop for an exact unresolved blocker in official evidence, platform applicability, required scenario, ownership, dependency direction, public contract, foundation blast radius, proof ownership, independent context, repeated correction failure, visual acceptance, or verification.
+Stop for an exact unresolved blocker in official evidence, platform applicability, required scenario, ownership, dependency direction, token architecture, public contract, foundation blast radius, proof ownership, independent context, repeated correction failure, visual acceptance, or verification.
 
 A fresh context resets reasoning, not independently confirmed repository progress.
 
 ## Result
 
-Report family, mode, objective, current workflow state, target and assessment results, contract-gate result, completed correction unit, preserved or replaced owners, foundation and consumer impact, proof result, final-gate result, family alignment status, operator visual status, verification, remaining gaps, next action, and exact blocker or `none`.
+Report family, mode, objective, current workflow state, target and assessment results, contract-gate result, token graph result, completed correction unit, preserved or replaced owners, foundation and consumer impact, proof result, final-gate result, family alignment status, operator visual status, verification, remaining gaps, next action, and exact blocker or `none`.
