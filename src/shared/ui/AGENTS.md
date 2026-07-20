@@ -6,16 +6,15 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material families.
 - Use `material-component` as the sole implementation entry point for exactly one official Material family.
-- `material-component` internally routes contract work to `material-component-contract`, family implementation to `material-component-implementation`, and remaining consumer migration plus legacy cleanup to `material-component-adoption`.
-- Use `material-component-review` only for review-only assessment without production changes.
-- Use `material-foundation` for a real cross-family Material foundation contract change.
+- Use `material-component-review` only for independent review-only assessment without production changes.
+- Use `material-foundation` for a focused real cross-family Material foundation contract change.
 - Use `material3-guidelines` for official source lookup, component choice, usage, and composition.
 - Use `material-library-status` only for concise read-only roadmap, PR, and verification status.
-- Inside `src/shared/ui/material`, follow its `AGENTS.md` and canonical component workflow.
+- Inside `src/shared/ui/material`, follow its `AGENTS.md`; it owns internal Material stages and detailed workflow routing.
 
 A component or family name is sufficient input. When none is supplied, `material-component` may continue only the one active family recorded by the roadmap. Resolve variants, API, foundations, consumers, files, and proof from official sources and the repository rather than asking the user to design the component.
 
-Implementation and review are separate entry points. Internal stage skills do not invoke each other, choose another family, or update the roadmap.
+Implementation and review are separate entry points. Do not invoke internal Material stage skills directly.
 
 ## Boundaries
 
@@ -27,7 +26,7 @@ Implementation and review are separate entry points. Internal stage skills do no
 - Existing Material directories outside the canonical root are legacy and may receive only strict local repairs until focused migration.
 - Shared UI must not import product layers or domain models.
 
-Do not create Material registries, inventories, durable audits, checklists, progress ledgers, or duplicate workflow policy outside the Material root.
+Do not create Material registries, inventories, durable audits, separate checklists, progress ledgers, or duplicate workflow policy outside the Material root.
 
 ## Verification
 
