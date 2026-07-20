@@ -1,6 +1,6 @@
 ---
 name: material-component-adoption
-description: 'Internal Material workflow stage for migrating remaining consumers and removing obsolete family ownership.'
+description: 'Internal-only Material stage. Never use directly for a user request. Use exclusively when material-component delegates migration of remaining consumers and complete removal of obsolete family ownership after the canonical supported family is proved.'
 ---
 
 # Material component adoption
@@ -13,16 +13,16 @@ Read:
 
 - root and applicable nested `AGENTS.md` files;
 - `src/shared/ui/material/docs/architecture.md`;
-- Stage 3 of `src/shared/ui/material/docs/component-development.md`;
+- the adoption phase of `src/shared/ui/material/docs/component-development.md`;
 - the ready family README and canonical public exports;
 - every remaining affected consumer;
 - the complete legacy implementation, exports, stories, tests, snapshots, contracts, aliases, and compatibility paths.
 
 ## Responsibility
 
-Execute Stage 3 exactly: migrate remaining consumers, preserve accepted product scenarios, prove only migration-specific integration risks, and remove the obsolete owner completely.
+Execute the adoption phase exactly: migrate remaining consumers, preserve accepted product scenarios, prove only migration-specific integration risks, and remove the obsolete owner completely.
 
-If a consumer exposes unsupported family capability or a wrong public contract, return an exact blocker to `material-component`. Do not extend the family or add a consumer-specific adapter in this stage.
+If a consumer exposes unsupported family capability or a wrong public contract, decomposition, or implementation, return an exact blocker to `material-component`. Do not extend the family or add a consumer-specific adapter in this stage.
 
 ## Exit gate
 
@@ -46,7 +46,8 @@ Blocker: none | <exact blocker>
 
 ## Forbidden
 
-- silent public-contract or family-implementation changes;
+- direct user invocation;
+- silent public-contract, decomposition, or family-implementation changes;
 - consumer-specific Material APIs or adapters;
 - permanent aliases, deferred cleanup, or parallel owners;
 - roadmap updates or starting review, verification, another stage, or another family directly.
