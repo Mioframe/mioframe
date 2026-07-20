@@ -4,7 +4,7 @@ This file records only the active family, current blocker, and one next action. 
 
 ## Current state
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 Active family: `Button`
 
@@ -22,11 +22,22 @@ After PR #155 merges, create a fresh branch from the updated `develop` and start
 material-component Button
 ```
 
-The fresh session must load the merged repository rules and skills. Do not continue a session that loaded the pre-PR #155 Material workflow, and remove any stale project auto-memory that treats PR #150, old audits, registries, or removed `docs/material-3` files as current evidence.
+Before the run, confirm that the fresh session loaded the merged root and nested `AGENTS.md` files and current Material skills. Do not continue a session that loaded the pre-PR #155 workflow.
 
-Treat Button as the first calibration run. If the agent skips the contract gate, expands before representative-consumer validation, starts another family, or continues through an exact blocker, stop and correct the workflow before continuing implementation.
+Persistent agent memory is not Material authority. Ignore any entry that conflicts with the current repository, including claims based on PR #150, removed audits or registries, or removed `docs/material-3` files. Do not delete unrelated memory automatically.
 
-The orchestrator starts with `material-component-contract`, invokes required foundation work only when the resolved contract proves it, then continues through implementation, adoption, complete review, and final verification.
+Treat Button as the first calibration run. Stop and correct the workflow before continuing implementation if the agent:
+
+- skips the family README contract;
+- begins production edits before implementation decomposition, style ownership, proof map, implementation order, required foundation work, and applicable initial failing proof are ready;
+- writes the family as one undifferentiated Vue, TypeScript, or style artifact despite independent responsibilities;
+- fragments the implementation without clearer ownership or proof;
+- expands before representative-consumer validation;
+- performs final review in the same implementation context;
+- starts another family;
+- continues through an exact blocker.
+
+The orchestrator starts with `material-component-contract`, invokes required foundation work only when the resolved contract proves it, continues through proof-first implementation and adoption, then requires independent review and final verification.
 
 Do not reuse implementation, workflow, review, or audit conclusions from PR #150. Resolve the current Button family from the merged repository and current official Material 3 Expressive sources.
 
