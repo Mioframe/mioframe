@@ -26,7 +26,7 @@ function topLevelKeys(frontmatter) {
 }
 
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
@@ -115,7 +115,9 @@ describe('Claude project agent adapters', () => {
       expect(listItemExists(frontmatter, 'skills', skillName), relativePath).toBe(true);
       expect(fs.existsSync(path.join(SKILLS_ROOT, skillName, 'SKILL.md')), relativePath).toBe(true);
       expect(scalar(frontmatter, 'permissionMode'), relativePath).toBe('plan');
-      expect(tools, relativePath).not.toMatch(/\b(?:Write|Edit|NotebookEdit|Bash|Agent|Task|Skill)\b/);
+      expect(tools, relativePath).not.toMatch(
+        /\b(?:Write|Edit|NotebookEdit|Bash|Agent|Task|Skill)\b/,
+      );
       expect(body.split('\n').filter(Boolean).length, relativePath).toBeLessThanOrEqual(2);
       expect(body, relativePath).not.toContain('##');
       expect(body, relativePath).not.toMatch(
