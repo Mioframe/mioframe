@@ -1,6 +1,6 @@
 ---
 name: material-foundation
-description: 'Use when a real cross-family Material token, theme, unit, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, or adaptive contract changes.'
+description: 'Use for a focused standalone change to a real cross-family Material token, theme, unit, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, or adaptive contract, or only when material-component delegates an exact foundation prerequisite.'
 paths:
   - 'src/shared/ui/material/foundation/**'
   - 'src/shared/lib/md/**'
@@ -24,14 +24,28 @@ Use this skill standalone for a focused foundation change or conditionally when 
 
 ## Workflow
 
-1. Confirm the current component or platform scenario and why an existing mechanism is insufficient.
-2. Verify that the concern is inherently cross-family and remains family-agnostic.
-3. Resolve official evidence, current owner, canonical owner, change mode, affected consumers, compatibility, and proof.
-4. Create or update a domain README only when a real runtime, public, private, or testing contract exists.
-5. Implement the minimum complete shared contract without family knowledge or a parallel owner.
-6. Verify the owner and representative affected components or consumers in proportion to blast radius.
-7. Remove local substitutes, obsolete owners, and temporary compatibility where the change replaces them.
-8. Run focused checks and the verification required for the foundation scope.
+Execute the canonical foundation workflow in order:
+
+```text
+official evidence and current scenario
+→ domain README contract
+→ implementation decomposition and style ownership
+→ proof map and implementation order
+→ applicable initial failing proof
+→ implementation units
+→ representative affected consumers
+→ obsolete-owner removal
+→ independent review when required by blast radius
+→ verification
+```
+
+Confirm why the existing mechanism is insufficient and why the concern is inherently cross-family and family-agnostic. Do not begin production edits until the domain README is ready and applicable initial proof fails for the expected reason.
+
+Keep deterministic contracts, reactive lifecycle, rendered artifacts, owner-local styles, browser adapters, and testing-only bridges separate when they have different reasons to change or proof owners. Do not impose a fixed file count and do not create wrappers or DOM merely for separation.
+
+If implementation evidence invalidates ownership, compatibility, decomposition, or proof, return to the domain contract instead of adding a local substitute or workaround.
+
+A correction or replacement affecting multiple families, shared rendering, interaction lifecycle, or platform adaptation requires a fresh agent session or isolated read-only review context. Report `independent review handoff required` when that context is unavailable.
 
 When invoked by `material-component`, return:
 
@@ -43,10 +57,13 @@ Status: complete | blocked
 Exit gate: passed | failed
 Evidence:
 Changed ownership:
+Implementation decomposition:
+Initial proof result:
 Affected families:
+Independent review: not required | confirmed | unavailable
 Blocker: none | <exact blocker>
 ```
 
 Return control to `material-component`; do not update the Material roadmap, start component implementation, or select another family.
 
-Do not create registries, universal bases, runtime token/state managers, generic resolvers, cross-family state machines, duplicate theme/overlay/interaction systems, or speculative foundation domains.
+Do not create registries, universal bases, runtime token/state managers, generic resolvers, cross-family state machines, duplicate theme/overlay/interaction systems, speculative foundation domains, monolithic mixed-responsibility artifacts, or file fragmentation that only moves lines.
