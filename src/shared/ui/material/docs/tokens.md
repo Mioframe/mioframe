@@ -9,7 +9,7 @@ The goal is a small directed graph that can be understood from names and file lo
 1. A token is a stable design decision with a semantic identity. A CSS custom property used only to route a selected value to one rendered property is an implementation variable, not a token.
 2. Official Material tokens keep their exact official path. Do not shorten, reinterpret, or invent an `--md-*` alias.
 3. Every token category has one owner and one allowed location.
-4. Dependencies point from more specific tokens to more general tokens. They never point upward from reference/system roles into component or private implementation state.
+4. References point from more specific tokens to more general tokens. They never point upward from reference/system roles into component or private implementation state.
 5. A rendered CSS property consumes an official/project token directly or through one justified owner-local private route.
 6. Custom-property chains must be as short as possible. Do not create base → state → rendered aliases when the CSS cascade can override one final private route directly.
 7. Exact selectors and runtime values remain owned by code. Family documentation records semantic token surface, public overrides, private routing purpose, and known gaps—not a duplicate declaration ledger.
@@ -110,7 +110,7 @@ Rules:
 
 ## Dependency direction
 
-Allowed references form this directed graph:
+Value selection flows from general design roles toward rendered output:
 
 ```text
 literal/reference source
@@ -125,6 +125,8 @@ literal/reference source
         ↓
 rendered CSS longhand
 ```
+
+CSS `var()` references point in the opposite direction: a private route references a component/system token, a component token references system/reference tokens, and a system token references reference/system tokens. A general token never references a more specific level.
 
 Detailed rules:
 
@@ -203,7 +205,7 @@ It does not copy every declaration or selector.
 Token correctness requires three different checks:
 
 1. **Source evidence** — exact official name, semantic meaning, supported state/configuration, and applicable platform.
-2. **Static architecture guard** — naming, placement, dependency direction, unresolved references, cycles, duplicate component-token declarations, and dead component tokens.
+2. **Static architecture guard** — `scripts/materialTokenArchitecture.test.mjs` checks naming, placement, dependency direction, unresolved references, cycles, duplicate component-token declarations, and dead component tokens.
 3. **Rendered proof** — final computed property, state routing, consumer inheritance/override behavior, browser parsing, and visible result where applicable.
 
 The static guard does not prove official semantics or visual correctness. Browser screenshots do not prove naming, ownership, or dependency direction. All three are required for a token route classified `confirmed-compliant`.
