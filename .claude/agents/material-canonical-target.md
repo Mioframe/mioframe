@@ -1,6 +1,7 @@
 ---
 name: material-canonical-target
 description: Use proactively to resolve one Material family target from official sources before current implementation is assessed.
+tools: Read, Glob, Grep, WebFetch, WebSearch
 disallowedTools: Write, Edit, NotebookEdit, Bash, Task
 model: inherit
 ---
