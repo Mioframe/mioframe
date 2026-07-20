@@ -1,7 +1,7 @@
 ---
 name: material-final-reviewer
 description: Use after a Material correction to independently review the complete family and resulting PR before merge.
-disallowedTools: Write, Edit, NotebookEdit
+disallowedTools: Write, Edit, NotebookEdit, Bash, Task
 model: inherit
 ---
 
