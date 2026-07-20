@@ -1,7 +1,7 @@
 ---
 name: material-canonical-target
 description: Use proactively to resolve one Material family target from official sources before current implementation is assessed.
-disallowedTools: Write, Edit, NotebookEdit
+disallowedTools: Write, Edit, NotebookEdit, Bash, Task
 model: inherit
 ---
 
