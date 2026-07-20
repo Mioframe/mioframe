@@ -110,7 +110,7 @@ Operator visual status: not required | required | accepted | rejected
 Blocker: none | <exact blocker>
 ```
 
-`Status: complete` requires confirmed independent context and no unresolved blocker or major issue. The agent never invents operator acceptance.
+`Status: complete` requires confirmed independent context and no unresolved blocker or major issue. `Exit gate: passed` additionally requires operator visual status `not required` or `accepted`; a technically compliant result awaiting operator comparison remains `Exit gate: failed` and blocks verification completion. The agent never invents operator acceptance.
 
 ## Restrictions
 
