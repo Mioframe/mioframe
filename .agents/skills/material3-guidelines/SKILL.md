@@ -1,10 +1,6 @@
 ---
 name: material3-guidelines
-description: 'Use for official Material 3 Expressive source lookup, component choice, usage, composition, accessibility, adaptive behavior, and supported-surface decisions.'
-paths:
-  - 'src/**/*.vue'
-  - 'src/shared/ui/**'
-  - 'src/shared/lib/md/**'
+description: 'Use for official Material 3 Expressive source lookup, component choice, intended and prohibited usage, composition, accessibility, adaptive behavior, motion guidance, and supported-surface decisions for product or shared UI work.'
 ---
 
 # Material 3 guidelines
@@ -21,4 +17,4 @@ Canonical source policy lives in `src/shared/ui/material/docs/sources.md`. Libra
 - Record exact source pages and snapshot or verification dates in the owning family or foundation contract.
 - Treat repository code, tests, stories, snapshots, and third-party implementations as evidence, not Material authority.
 
-For official family implementation, return resolved evidence to `material-component-contract`; do not create or advance a parallel implementation plan. For review-only work, return evidence to `material-component-review`. For a cross-family foundation change, use `material-foundation`.
+For official family implementation, return resolved evidence to `material-component-contract`; do not create or advance a parallel plan. For review-only work, return evidence to `material-component-review`. For a cross-family foundation change, use `material-foundation`.
