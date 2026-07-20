@@ -64,7 +64,7 @@ After target lock, cover every category below or mark it `not-applicable` with a
 - semantic and transient state, precedence, cancellation, interruption, and cleanup;
 - tokens, configuration, state routing, rendered properties, and public overrides;
 - geometry, typography, icon placement, RTL, responsive behavior, and text scaling;
-- motion, rapid input, interruption, and reduced motion;
+- complete motion implementation inventory, rapid input, interruption, reversal, cancellation, cleanup, and reduced motion;
 - project extensions and their scenarios;
 - external Material component dependencies;
 - generic foundation dependencies;
@@ -74,6 +74,56 @@ After target lock, cover every category below or mark it `not-applicable` with a
 For each concern record canonical target, current behavior, classification, owner, dependency classification, proof classification, and exact correction.
 
 Classify proof as `canonical-proof`, `compatibility-proof`, `implementation-detail-test`, `legacy-defect-preservation`, or `obsolete`.
+
+## Mandatory motion implementation inventory
+
+Search the complete family and directly owned foundations, not only changed files, for:
+
+- CSS `transition` shorthand and longhands;
+- CSS `animation` shorthand and longhands;
+- every `@keyframes` definition and reference;
+- WAAPI or `Element.animate` calls;
+- `requestAnimationFrame`, motion timers, and animation classes;
+- `transitionend` and `animationend` listeners;
+- `will-change`;
+- motion token/custom-property declarations and uses;
+- every `prefers-reduced-motion` override.
+
+Record every route:
+
+```text
+MOTION ROUTE
+Owner/file/selector or runtime target:
+Trigger and state edge:
+Mechanism: transition | animation | WAAPI | JS
+Properties or keyframes:
+Initial and final values:
+Duration, delay, easing, iterations, direction, fill:
+Official token/source → private route → declaration:
+Rendered target:
+Interruption, reversal, cancellation, cleanup:
+Reduced-motion result:
+Performance impact:
+Primary proof:
+Classification: confirmed-compliant | project-extension | misaligned | unresolved | obsolete
+Required correction: none | <exact correction>
+```
+
+The inventory is incomplete when any declaration, keyframe, runtime animation, listener, timer, or motion token is omitted.
+
+A route cannot be `confirmed-compliant` when:
+
+- a token is declared but does not drive the actual declaration;
+- a keyframe is unused or unreachable from supported state;
+- `transition: all` is used;
+- the declaration lives on the wrong rendered owner or is shadowed by the cascade;
+- shorthand resets or duplicate declarations silently change property, timing, delay, iteration, direction, or fill;
+- initial/final values, interruption, cancellation, cleanup, or reduced-motion behavior are undefined;
+- layout/paint-heavy animation has no concrete visual need or bounded performance reasoning;
+- `will-change` is broad or permanently retained without a proven need;
+- proof asserts only token/custom-property existence, keyframe text, snapshots, or framework/browser internals.
+
+Static proof may protect exact token-to-declaration routing. User-visible acquisition, completion, interruption, reversal, cancellation, and reduced-motion behavior require browser proof through public input.
 
 ## Classification rules
 
@@ -110,7 +160,7 @@ Select the smallest complete unit in this priority order:
 6. anatomy and DOM;
 7. token and rendered-property routing;
 8. geometry, responsive behavior, typography, RTL, and text scaling;
-9. motion and browser lifecycle;
+9. motion implementation and browser lifecycle;
 10. project extensions;
 11. adoption;
 12. obsolete-owner removal.
@@ -130,6 +180,8 @@ Dependencies and blast radius:
 Primary proof lane:
 Why that lane owns the behavior:
 Prepared failing observation:
+Motion routes affected: none | <exact routes>
+Motion code audit required: yes | no
 Compatibility impact:
 Visible impact:
 Operator acceptance required: yes | no
@@ -167,7 +219,7 @@ Next gate: independent contract review
 Blocker: none | <exact blocker>
 ```
 
-The README also contains target, source decisions, full alignment map, dependency classification, decomposition, proof map, correction units, compatibility impact, representative consumers, and remaining gaps.
+The README also contains target, source decisions, full alignment map, dependency classification, decomposition, proof map, complete motion inventory, correction units, compatibility impact, representative consumers, and remaining gaps.
 
 Do not leave contradictory stage descriptions or stale roadmap state.
 
@@ -175,7 +227,7 @@ Do not leave contradictory stage descriptions or stale roadmap state.
 
 Return `Status: complete` only when the contract package is ready for independent contract review. This does not authorize production edits.
 
-Pass only when target lock is credible, source conflicts are explicit, mandatory concerns are complete, classifications and dependencies are justified, the highest-priority unit is selected, proof lane is locked, and workflow state is consistent.
+Pass only when target lock is credible, source conflicts are explicit, mandatory concerns are complete, the motion implementation inventory covers every route, classifications and dependencies are justified, the highest-priority unit is selected, proof lane is locked, and workflow state is consistent.
 
 ## Result
 
@@ -193,6 +245,8 @@ Source decisions:
 Assessment completeness:
 Alignment classifications:
 Dependency classifications:
+Motion implementation inventory: complete | incomplete
+Motion routes requiring correction:
 Correction priority:
 Current correction unit:
 Proof lane:
@@ -209,9 +263,10 @@ Blocker: none | <exact blocker>
 - one-pass target and legacy assessment without isolation;
 - deriving target from existing behavior;
 - hidden source conflicts or platform assumptions;
-- omitted concern categories;
+- omitted concern categories or motion routes;
 - blanket preservation or rewrite decisions;
 - legacy proof treated as authority;
+- `transition: all`, dead motion tokens, unused keyframes, or unclassified motion declarations accepted as compliant;
 - lower-priority correction around a higher-priority blocker;
 - wrong proof lane;
 - roadmap updates or starting another stage;
