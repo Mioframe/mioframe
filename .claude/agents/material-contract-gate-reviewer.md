@@ -1,7 +1,7 @@
 ---
 name: material-contract-gate-reviewer
 description: Use before Material production edits to independently review the locked target, complete assessment, correction priority, dependencies, and proof lane.
-disallowedTools: Write, Edit, NotebookEdit
+disallowedTools: Write, Edit, NotebookEdit, Bash, Task
 model: inherit
 ---
 
