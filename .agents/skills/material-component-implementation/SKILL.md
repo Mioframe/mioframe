@@ -20,7 +20,7 @@ Every required foundation prerequisite must also be available.
 
 Read root and nested `AGENTS.md`, Material architecture and component workflow, the current family README, the passed contract-gate result, current production owners, affected consumers, public exports, stories, tests, and verification mappings.
 
-Load Vue and testing skills only for the approved owner and proof lane.
+Use `vue-component-implementation` whenever a `.vue` file or UI composable is changed. Use `ui-browser-behavior` whenever a transition, animation, WAAPI/JS motion route, focus/pointer lifecycle, layout, or responsive behavior is added, changed, or preserved as compliant. Use `visual-regression-testing` whenever visible output or accepted motion appearance changes.
 
 ## Responsibility
 
@@ -48,7 +48,8 @@ The following are immutable during implementation unless new evidence returns th
 - correction priority and selected unit;
 - implementation owner and blast radius;
 - primary proof lane and expected observation;
-- compatibility and operator-acceptance requirements.
+- compatibility and operator-acceptance requirements;
+- motion inventory and approved motion routes.
 
 Do not silently rewrite README contract sections. Report an exact contract blocker and preserve completed unaffected work.
 
@@ -56,8 +57,8 @@ Do not silently rewrite README contract sections. Report an exact contract block
 
 Use the approved lane:
 
-- unit/component proof for deterministic API, normalization, native attributes, state precedence, and non-browser wiring;
-- browser proof for layout, focus, keyboard, form behavior, event propagation, pointer/touch, target area, responsive behavior, platform behavior, and motion lifecycle;
+- unit/component proof for deterministic API, normalization, native attributes, state precedence, non-browser wiring, and narrow token-to-declaration routing;
+- browser proof for layout, focus, keyboard, form behavior, event propagation, pointer/touch, target area, responsive behavior, platform behavior, animation acquisition, completion, interruption, reversal, cancellation, and reduced-motion lifecycle;
 - visual proof for screenshots only;
 - consumer proof for integration and compatibility.
 
@@ -79,6 +80,57 @@ Implement only the documented owner and required dependencies.
 
 A dependency classified `temporary-legacy-material-dependency` remains explicit; do not relabel it generic to avoid prerequisite work.
 
+## Mandatory motion code audit
+
+Before editing motion and again before implementation exit, search the complete family and directly owned foundations for:
+
+- CSS `transition` shorthand and longhands;
+- CSS `animation` shorthand and longhands;
+- every `@keyframes` definition and reference;
+- WAAPI or `Element.animate` calls;
+- `requestAnimationFrame`, motion timers, and animation classes;
+- `transitionend` and `animationend` listeners;
+- `will-change`;
+- motion token/custom-property declarations and uses;
+- every `prefers-reduced-motion` override.
+
+For each route verify and keep documented:
+
+```text
+MOTION ROUTE
+Owner/file/selector or runtime target:
+Trigger and state edge:
+Mechanism: transition | animation | WAAPI | JS
+Properties or keyframes:
+Initial and final values:
+Duration, delay, easing, iterations, direction, fill:
+Official token/source → private route → declaration:
+Rendered target:
+Interruption, reversal, cancellation, cleanup:
+Reduced-motion result:
+Performance impact:
+Primary proof:
+Classification:
+```
+
+Code requirements:
+
+- enumerate transition properties explicitly; `transition: all` is forbidden;
+- a declared motion token must drive the actual transition/animation or be classified obsolete/unsupported;
+- keyframes must be referenced by a reachable supported state; unused keyframes are obsolete;
+- transition and animation declarations must live on the element that owns the rendered property and must not be shadowed by later cascade rules;
+- check shorthand resets and duplicate declarations so duration, delay, easing, iteration, fill, and property lists are not silently replaced;
+- define stable initial and final values; do not rely on accidental `auto`, missing keyframe endpoints, or stale classes;
+- rapid repeated input and mid-flight state changes must retarget, reverse, cancel, or complete according to the locked contract without snapping to unrelated geometry;
+- WAAPI animations, frames, timers, classes, and listeners must be cancelled or cleaned up on replacement, cancellation, disable, and unmount;
+- reduced motion must preserve the final semantic and visual state while removing or shortening non-essential motion according to the locked platform decision;
+- prefer compositor-friendly properties when they can faithfully express the contract; animation of layout or paint-heavy properties requires a concrete visual need and bounded performance reasoning;
+- `will-change` must be narrow and temporary or have a documented persistent need;
+- avoid synchronous layout read/write loops and per-frame reactive churn;
+- tests that only assert custom-property existence, keyframe text, or framework internals do not prove working motion.
+
+Static routing proof may verify exact declarations, but any user-visible animation lifecycle requires browser proof through public input. Do not test Vue, the browser animation engine, or third-party library internals; test Mioframe's routing and observable result.
+
 ## Visible changes
 
 When visible output changes:
@@ -92,7 +144,7 @@ When visible output changes:
 
 ## Representative consumers
 
-Validate every materially affected consumer category when API, native behavior, event propagation, layout interaction, token inheritance, visible output, or extension behavior changes.
+Validate every materially affected consumer category when API, native behavior, event propagation, layout interaction, token inheritance, visible output, motion behavior, or extension behavior changes.
 
 Do not patch consumers around a wrong library contract.
 
@@ -111,7 +163,7 @@ Next gate:
 Blocker: none | <exact blocker>
 ```
 
-Update detailed target, assessment, proof, and correction sections only from evidence. Remove stale statements such as `documentation-only` after production changes.
+Update detailed target, assessment, proof, correction, and motion-inventory sections only from evidence. Remove stale statements such as `documentation-only` after production changes.
 
 The implementation stage does not update the roadmap or start another stage.
 
@@ -123,6 +175,8 @@ Pass only when:
 - proof is in the locked lane and passes;
 - actual changes stay within approved ownership and blast radius;
 - dependencies remain correctly classified;
+- the complete motion code audit agrees with actual declarations and runtime routes;
+- every changed or confirmed motion route has correct token routing, lifecycle, reduced-motion behavior, performance reasoning, and applicable browser proof;
 - affected consumers work without workarounds;
 - visible evidence and operator status are honest;
 - alignment map and workflow state are consistent;
@@ -146,6 +200,8 @@ Preserved confirmed owners:
 Locally replaced owners:
 Dependency result:
 Proof lane and result:
+Motion implementation audit: passed | failed
+Motion routes changed or confirmed:
 Representative-consumer result:
 Visual and operator result:
 Workflow-state changes:
@@ -158,11 +214,12 @@ Blocker: none | <exact blocker>
 
 - direct user invocation;
 - production edits without a passed contract gate;
-- changing target, classifications, dependency type, correction priority, or proof lane in place;
+- changing target, classifications, dependency type, correction priority, proof lane, or motion inventory in place;
 - implementing a different or lower-priority gap;
 - preserving code because it is legacy or replacing it only to reduce similarity;
 - tests that protect implementation details or known defects as canonical behavior;
 - behavior assertions in visual specs;
+- `transition: all`, dead motion tokens, unused keyframes, shadowed/conflicting motion declarations, or unbounded `will-change`;
 - visible changes without required operator handoff;
 - monoliths that hide independent owners or fragmentation that only moves lines;
 - consumer migration or obsolete-owner removal unless adoption delegated it;
