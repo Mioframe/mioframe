@@ -82,9 +82,7 @@ function isTokenFile(sourceFile) {
 }
 
 function componentFamily(sourceFile) {
-  return baseFile(sourceFile).match(
-    /^src\/shared\/ui\/material\/components\/([^/]+)\//,
-  )?.[1];
+  return baseFile(sourceFile).match(/^src\/shared\/ui\/material\/components\/([^/]+)\//)?.[1];
 }
 
 function isFoundationFile(sourceFile) {
@@ -164,8 +162,7 @@ function extractVarReferences(value) {
 
     references.push({
       name: match[1],
-      hasFallback:
-        endIndex === -1 ? false : hasTopLevelFallback(value, nameEnd, endIndex),
+      hasFallback: endIndex === -1 ? false : hasTopLevelFallback(value, nameEnd, endIndex),
     });
   }
 
@@ -456,9 +453,9 @@ describe('Material token architecture', () => {
 
     expect(errors.some((error) => error.includes('--md-button-radius'))).toBe(true);
     expect(errors.some((error) => error.includes('circular token dependency'))).toBe(true);
-    expect(errors.some((error) => error.includes("dead component token '--md-comp-button-unused'"))).toBe(
-      true,
-    );
+    expect(
+      errors.some((error) => error.includes("dead component token '--md-comp-button-unused'")),
+    ).toBe(true);
   });
 
   it('keeps the repository token graph valid', () => {
