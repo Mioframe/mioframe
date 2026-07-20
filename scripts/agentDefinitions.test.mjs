@@ -26,7 +26,7 @@ function topLevelKeys(frontmatter) {
 }
 
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
@@ -51,8 +51,7 @@ function materialClaudeAgentFiles() {
   return fs
     .readdirSync(CLAUDE_AGENTS_ROOT, { withFileTypes: true })
     .filter(
-      (entry) =>
-        entry.isFile() && entry.name.startsWith('material-') && entry.name.endsWith('.md'),
+      (entry) => entry.isFile() && entry.name.startsWith('material-') && entry.name.endsWith('.md'),
     )
     .map((entry) => entry.name)
     .sort();
