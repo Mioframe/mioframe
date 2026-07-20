@@ -38,9 +38,11 @@ Foundation does not own:
 
 Foundation code must not import or name consuming families. Components map their final values and semantics into narrow generic contracts.
 
-## Domain contract
+## Domain contract and implementation blueprint
 
 Create `foundation/<domain>/README.md` only when a real runtime, public, private, or testing contract exists. Do not pre-create domain folders or status records.
+
+Before production edits, resolve official evidence, ownership, supported scenarios, affected consumers, implementation decomposition, style ownership when applicable, proof ownership, and implementation order.
 
 Record only applicable facts:
 
@@ -59,12 +61,34 @@ Private bridge contract:
 Testing-only contract:
 Known affected consumers:
 Compatibility or migration decision:
-Applicable proof:
+
+IMPLEMENTATION DECOMPOSITION
+Public entry point:
+Deterministic contract owner:
+Reactive or lifecycle owner:
+Rendered artifact owner:
+Style owner:
+Browser or platform adapter owner:
+Testing-only owner:
+Co-location decisions:
+
+PROOF MAP
+Observable contract → primary proof owner:
+Initial failing proof:
+Browser scenarios prepared before implementation:
+Visual acceptance surface:
+Representative consumers:
+
+Implementation order:
 Unresolved: none | <blocking decisions>
 Readiness: ready | blocked
 ```
 
-The domain README, code, exports, and tests are the current record. Do not maintain a separate foundation registry.
+The decomposition describes responsibility owners, not a fixed file tree. A responsibility with an independent reason to change or proof owner needs one explicit implementation owner. Co-location is valid only when the responsibilities change and are proved together. A non-trivial rendered visual contract normally has an owner-local stylesheet separate from its Vue composition root.
+
+The domain README, code, exports, tests, stories or fixtures when required, and accepted snapshots are the current record. Do not maintain a separate foundation registry or durable checklist.
+
+**Contract gate:** `Unresolved: none`, `Readiness: ready`, decomposition and proof ownership are complete, and implementation order is explicit.
 
 ## Change modes
 
@@ -78,6 +102,55 @@ Choose one:
 - `refresh` — revalidate against newer official evidence before deciding whether production changes are needed.
 
 Physical relocation must not hide a correction or replacement. Use a focused PR when foundation blast radius is materially wider than the selected family.
+
+## Implementation sequence
+
+Follow this order:
+
+```text
+official evidence
+→ domain README and implementation decomposition
+→ proof map and implementation order
+→ applicable initial failing proof
+→ implementation units
+→ rendered or lifecycle integration
+→ representative affected consumers
+→ obsolete-owner removal
+→ independent review when required by blast radius
+→ verification
+```
+
+### Initial executable proof
+
+Before production edits, create or update the smallest applicable executable proof for resolved observable contracts:
+
+- deterministic tests for token mapping, normalization, state precedence, conversion, or pure lifecycle decisions;
+- focused public or private bridge contract tests;
+- a regression test for a reproducible defect when applicable.
+
+Confirm the focused proof fails for the expected missing or incorrect contract. For real browser, layout, focus, pointer, overlay, or platform behavior, define the public-input scenario and expected observable result before implementation; do not force it into unit tests merely to obtain a red check.
+
+Do not create or update visual baselines before the rendered result is implemented, compared with official evidence, and accepted.
+
+### Implementation units
+
+Implement the responsibility owners from the domain README in order. Keep deterministic logic, reactive lifecycle, rendered artifacts, styles, browser adapters, and testing-only bridges separate when they have different reasons to change or proof owners.
+
+A public Vue artifact remains a thin composition root. A non-trivial style contract belongs in an owner-local stylesheet. Do not introduce wrapper components, managers, contexts, registries, or DOM nodes merely to split files.
+
+Run focused proof after each independently testable unit. If implementation evidence invalidates ownership, supported scenarios, compatibility, or decomposition, return to the domain contract instead of adding a local workaround.
+
+### Representative consumers and cleanup
+
+Verify representative affected components or consumers in proportion to blast radius. A component proves only its narrow route into the foundation; generic foundation behavior is proved by the foundation owner.
+
+Remove local substitutes, obsolete owners, stale exports, and temporary compatibility when the change replaces them. Exactly one canonical owner must remain.
+
+### Independent review
+
+A correction or replacement affecting multiple families, shared rendering, interaction lifecycle, or platform adaptation requires review from a fresh agent session or isolated read-only context that did not implement the patch. The reviewer reconstructs the domain contract from current repository and official evidence and receives no implementation reasoning as proof.
+
+When such an independent context is unavailable, report `independent review handoff required` instead of treating same-context self-review as completion.
 
 ## Core domain invariants
 
@@ -133,7 +206,7 @@ A component may temporarily use one accepted legacy owner until focused migratio
 
 Use proof owned by the changed foundation contract:
 
-- focused owner contract tests;
+- focused deterministic and bridge contract tests;
 - real browser checks for interaction, focus, overlays, viewport behavior, computed roles, or Web adaptations when applicable;
 - representative component visuals when rendered output changes;
 - representative consumers for meaningfully different affected paths after correction or replacement;
@@ -144,13 +217,16 @@ Automation may protect precise deterministic invariants only after real work pro
 
 ## Completion
 
-Foundation work is complete when the domain contract, code, exports, focused tests, source evidence, and affected consumers agree; one owner remains; required migration is complete; and no family-specific knowledge, hidden blocking gap, permanent compatibility path, or local substitute remains.
+Foundation work is complete when the domain contract, decomposition, code, exports, focused tests, source evidence, affected consumers, cleanup, applicable independent review, and final verification agree; one owner remains; and no family-specific knowledge, hidden blocking gap, permanent compatibility path, or local substitute remains.
 
 ## Forbidden
 
+- production edits before the contract and applicable initial-proof gates pass;
 - universal Material base components;
 - runtime token or state registries;
 - generic resolvers or cross-family state machines;
 - duplicate theme, overlay, state, ripple, focus, icon, or motion systems;
 - foundation wrappers justified only by similar syntax or hypothetical reuse;
+- monolithic artifacts that combine independently changing deterministic, lifecycle, rendering, and style responsibilities;
+- file fragmentation that only moves lines without clarifying ownership or proof;
 - prebuilt palettes, motion catalogues, adaptive managers, test DSLs, or empty structural layers.
