@@ -56,7 +56,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: var(--md-button-height);
+  min-height: var(--md-button-height);
   padding-left: var(--md-button-padding-left);
   padding-right: var(--md-button-padding-right);
   border: var(--md-button-border-width) var(--md-button-border-style)
@@ -134,7 +134,9 @@
   }
 
   &__label-text {
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
     color: rgb(
       from var(--md-private-button-rendered-label-color) r g b /
         var(--md-private-button-label-opacity, 1)

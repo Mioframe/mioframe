@@ -1094,3 +1094,37 @@ export const TargetLayers: Story = {
     `,
   }),
 };
+
+/**
+ * Official Buttons accessibility guidance: labels should fit within two lines after 200% text
+ * scaling. Constraining the button's containing block reproduces the same effective narrowing a
+ * real large-text-zoom environment causes, without depending on the test runner's font-scaling
+ * support. Each fixture's `max-width` is intentionally narrower than the label's unwrapped width.
+ */
+export const LabelReflow: Story = {
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-label-reflow" class="visual-checker-backdrop">
+        <div class="visual-row">
+          <div style="max-width: 160px;">
+            <MDButton
+              data-testid="reflow-small"
+              label="This label is intentionally long enough to require wrapping"
+              size="small"
+            />
+          </div>
+          <div style="max-width: 220px;">
+            <MDButton
+              data-testid="reflow-medium"
+              label="This label is intentionally long enough to require wrapping"
+              size="medium"
+            >
+              <template #icon>+</template>
+            </MDButton>
+          </div>
+        </div>
+      </div>
+    `,
+  }),
+};

@@ -1106,6 +1106,48 @@ test('MDButton shape morph and color transitions use the documented Expressive W
   expect(durationFor('background-color')).toBe('0.15s');
 });
 
+test('MDButton label wraps across two lines under a narrowed containing block instead of overflowing', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--label-reflow');
+
+  await Promise.all(
+    (
+      [
+        { testId: 'reflow-small', singleLineHeight: 40 },
+        { testId: 'reflow-medium', singleLineHeight: 56 },
+      ] as const
+    ).map(async ({ testId, singleLineHeight }) => {
+      const button = page.getByTestId(testId);
+      const label = button.locator('.md-button__label-text');
+
+      const whiteSpace = await label.evaluate((el) => getComputedStyle(el).whiteSpace);
+      expect(whiteSpace).not.toBe('nowrap');
+
+      const buttonBox = await button.boundingBox();
+      const labelBox = await label.boundingBox();
+      expect(buttonBox).not.toBeNull();
+      expect(labelBox).not.toBeNull();
+      if (buttonBox == null || labelBox == null) {
+        throw new Error(`Missing bounding box for ${testId}.`);
+      }
+
+      // The label wraps onto more than one line, and the button grows to contain it — the fixed
+      // single-line height no longer clips or overflows the wrapped text.
+      expect(buttonBox.height).toBeGreaterThan(singleLineHeight);
+      expect(buttonBox.height).toBeGreaterThanOrEqual(labelBox.height);
+
+      // No content is hidden: the full label text is present and not CSS-truncated.
+      const labelContent = await label.evaluate((el) => ({
+        text: el.textContent,
+        textOverflow: getComputedStyle(el).textOverflow,
+      }));
+      expect(labelContent.text).toBe('This label is intentionally long enough to require wrapping');
+      expect(labelContent.textOverflow).not.toBe('ellipsis');
+    }),
+  );
+});
+
 test('MDStateLayer state-layer transition uses the Button family fast-effects mapping', async ({
   page,
 }) => {
