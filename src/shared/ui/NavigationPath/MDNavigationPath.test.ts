@@ -4,29 +4,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 
 vi.mock('../Button', () => ({
-  MDButton: defineComponent({
-    name: 'MDButtonStub',
-    props: {
-      label: {
-        type: String,
-        required: true,
-      },
-    },
-    emits: ['click'],
-    setup(props, { emit }) {
-      return () =>
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => {
-              emit('click');
-            },
-          },
-          props.label,
-        );
-    },
-  }),
   MDIconButton: defineComponent({
     name: 'MDIconButtonStub',
     props: {

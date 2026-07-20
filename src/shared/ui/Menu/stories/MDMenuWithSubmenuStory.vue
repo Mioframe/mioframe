@@ -2,7 +2,7 @@
 import { ref, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
 import MDMenu from '../MDMenu.vue';
-import { MDButton } from '../../Button';
+import { MDButton } from '@shared/ui/material';
 import type { BaseMenuButton, NonEmptyMenuButtonList } from '../types';
 
 const targetEl = useTemplateRef<MaybeElement>('targetEl');

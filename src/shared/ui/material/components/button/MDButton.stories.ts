@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
-import { MDStateLayerForcedStateProvider } from '../State/testing';
-import { useFocusIndicator } from '../State/useFocusIndicator';
+import { MDStateLayerForcedStateProvider } from '@shared/ui/State/testing';
+import { useFocusIndicator } from '@shared/ui/State/useFocusIndicator';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDButton',

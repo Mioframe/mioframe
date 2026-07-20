@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDCard } from '@shared/ui/Card';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 
 const emit = defineEmits<{
   dismiss: [];

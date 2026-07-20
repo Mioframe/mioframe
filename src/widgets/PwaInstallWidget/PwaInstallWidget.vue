@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { usePwaInstallAction } from '@feature/pwaInstall';
 import { MDCard } from '@shared/ui/Card';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 
 const { hasRetainedPrompt, runInstallAction, dismissHomeWidget } = usePwaInstallAction();
 

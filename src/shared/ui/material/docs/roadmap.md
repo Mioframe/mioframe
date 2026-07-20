@@ -10,19 +10,13 @@ Active family: `Button`
 
 Intended change mode: `end-to-end-migration`
 
-Status: `blocked`
+Status: `in-progress`
 
-Blocker: PR #155 must pass final verification and merge before the Button implementation branch is created.
+Blocker: none. Contract, implementation, adoption, and independent review are complete (verdict: compliant after one README correction). Final `pnpm verify` passes all 10 checks, including the full visual regression suite. The only remaining step is operator visual acceptance of the migrated `Material 3/Components/Buttons/MDButton` Storybook stories.
 
 ## Next action
 
-After PR #155 merges, create a fresh branch from the updated `develop` and start a fresh agent session before running:
-
-```text
-material-component Button
-```
-
-Before the run, confirm that the fresh session loaded the merged root and nested `AGENTS.md` files and current Material skills. Do not continue a session that loaded the pre-PR #155 workflow.
+Obtain operator visual acceptance of the canonical `MDButton` Storybook stories, then close out the Button family and select the next family.
 
 Persistent agent memory is not Material authority. Ignore any entry that conflicts with the current repository, including claims based on PR #150, removed audits or registries, or removed `docs/material-3` files. Do not delete unrelated memory automatically.
 

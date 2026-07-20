@@ -67,7 +67,7 @@ vi.mock('@shared/ui/Chips', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Button', () => ({
+vi.mock('@shared/ui/material', () => ({
   MDButton: defineComponent({
     name: 'MDButtonStub',
     props: {
