@@ -10,27 +10,27 @@ Everything canonical and Material-specific lives under this root: implementation
 
 Read only what the current task needs:
 
-- `docs/architecture.md` for boundary, ownership, dependency direction, implementation decomposition, public API, and workflow ownership;
+- `docs/architecture.md` for boundary, ownership, dependency direction, convergence, implementation decomposition, public API, and workflow ownership;
 - `docs/sources.md` for official Material evidence;
-- `docs/component-development.md` for the only component workflow and exit gates;
+- `docs/component-development.md` for the only component convergence workflow and exit gates;
 - `docs/foundation-development.md` when a cross-family foundation contract changes;
 - `docs/roadmap.md` when selecting or changing the active family.
 
-Family contracts live beside implementation in `components/<family>/README.md`. Foundation-domain contracts live in `foundation/<domain>/README.md` only after a real owner exists.
+Family contracts live beside canonical implementation in `components/<family>/README.md`. While one active legacy owner remains outside the boundary, its contract may live under `docs/legacy/<family>.md` and moves with the family during relocation. Foundation-domain contracts live in `foundation/<domain>/README.md` only after a real owner exists.
 
-Do not create registries, inventories, durable audit reports, separate checklists, progress ledgers, or additional workflow documents. Structured decomposition and proof sections inside the canonical family or foundation README are required contract records.
+Do not create registries, inventories, durable audit reports, separate checklists, progress ledgers, or additional workflow documents. Structured canonical-target, assessment, alignment, decomposition, proof, and correction-unit sections inside the owning README are required records.
 
 ## Routing
 
-- Use `material-component` as the sole implementation orchestrator for one official Material family.
-- `material-component-contract` owns only the ready family documentation contract, implementation decomposition, style ownership, proof map, and implementation order before production edits.
-- `material-component-implementation` owns applicable initial failing proof, documented implementation units, the primary composed slice, representative consumer validation, complete supported family, Storybook, and proportional proof.
-- `material-component-adoption` owns remaining consumer migration and complete removal of obsolete ownership.
+- Use `material-component` as the sole convergence orchestrator for one official Material family.
+- `material-component-contract` owns the independent canonical target, current implementation assessment, alignment map, correction units, decomposition, proof, compatibility, and foundation decisions.
+- `material-component-implementation` owns proof-first execution of documented correction units and validation of affected real consumers.
+- `material-component-adoption` is conditional and owns only in-scope consumer migration and obsolete-owner removal after the canonical owner is ready.
 - Use `material-component-review` only for independent review-only assessment; it never fixes production files.
-- Use `material-foundation` only for a real cross-family foundation contract change reported by the contract stage or requested as focused standalone work.
+- Use `material-foundation` for focused convergence of a real cross-family foundation contract reported by the component contract or requested as standalone work.
 - Use `material3-guidelines` for official source lookup and Material usage decisions.
 - Use `material-library-status` only for concise read-only roadmap, PR, and verification status.
-- Use Vue and testing skills only at the exact implementation checkpoint and proof layer required by `docs/component-development.md`.
+- Use Vue and testing skills only at the exact correction checkpoint and proof layer required by `docs/component-development.md`.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
@@ -38,20 +38,32 @@ Implementation follows one sequence:
 
 ```text
 material-component
-→ material-component-contract
-   documentation → decomposition → style ownership → proof map
+→ canonical target and current-state assessment
+→ alignment map and correction units
 → material-foundation when required
-→ material-component-implementation
-   initial proof → implementation units → primary composed slice
-   → representative consumer → complete supported family
-→ material-component-adoption
-→ independent material-component-review
+→ proof-first correction-unit implementation
+→ affected representative consumers
+→ conditional adoption
+→ independent review
 → verification
+→ next correction unit or family completion
 ```
 
 Only `material-component` chooses the next stage and updates the roadmap. Internal stage skills do not invoke each other, select another family, or create a second plan.
 
-Do not stop after research, contract writing, initial proof, Storybook preparation, a primary slice, or focused checks when end-to-end implementation was requested.
+A correction objective may complete while the family remains `converging`. This is valid only when the repository state is independently correct, remaining gaps are explicit and non-blocking, and one next correction unit is recorded. Do not require full-family rewrite or full consumer migration for every correction.
+
+## Existing implementation policy
+
+- Current implementation is evidence and editable state, not Material authority and not disposable by default.
+- Resolve the canonical target before using legacy API, DOM, CSS, state, tests, stories, snapshots, or consumers to make Material decisions.
+- Preserve owners classified `confirmed-compliant` or `project-extension`.
+- Correct `misaligned` owners through bounded units.
+- Block or narrow `unresolved` surface.
+- Remove `obsolete` owners only after replacement is complete.
+- Existing proof must be classified before reuse; passing legacy tests or snapshots do not establish canonical correctness.
+- Rewrite only the smallest owner when its contract is predominantly wrong or incremental repair would add more workaround logic.
+- A fresh agent session resets reasoning, not valid repository progress.
 
 ## Isolation and dependency direction
 
@@ -75,7 +87,7 @@ product and project-specific shared UI
 ## Implementation ownership
 
 - Public Vue artifacts are thin composition roots for public API, native host, minimum anatomy, and integration of internal owners.
-- A non-trivial visual contract uses a separate owner-local stylesheet. Inline scoped styles are limited to short, linear contracts that are clearer when colocated.
+- A non-trivial visual contract has explicit owner-local style and motion ownership. Inline scoped styles are limited to short, linear contracts that are clearer when colocated.
 - Deterministic normalization, invalid combinations, configuration selection, and state precedence use owner-local TypeScript modules when they have independent proof or reasons to change.
 - Vue and browser lifecycle uses focused composables; do not introduce hidden managers or duplicate state owners.
 - Split by responsibility and proof ownership, not by a universal file template or line count.
@@ -83,15 +95,18 @@ product and project-specific shared UI
 
 ## Public API and new artifacts
 
-- External consumers use `@shared/ui/material` after a real root entry point exists.
+- External consumers use `@shared/ui/material` only after the relevant canonical owner is ready for them.
 - Internal Material modules use owning local public entry points, not the root barrel.
 - New official families belong under `components/<family>`.
+- Existing legacy families may be corrected in place until a complete relocation is safe; never create parallel active owners.
 - New foundation domains belong under `foundation/<domain>` only when current work proves a cross-family need.
 - New patterns require official composition evidence and a current reusable scenario.
 - Do not add placeholders, universal bases, managers, registries, generic resolvers, speculative extension points, product adapters, or project-specific UI.
 
 ## Completion
 
-Use one cohesive family migration by default. Resolve documentation, decomposition, style ownership, proof, and foundation dependencies; implement and validate one complete composed slice; finish the supported family; migrate remaining consumers; remove obsolete ownership; obtain independent review; and run final verification.
+A correction objective is complete when its canonical target, alignment map, correction units, implementation, affected consumers, review, operator evidence, and verification agree and the repository remains independently valid.
 
-Automation proves only deterministic contracts represented by actual tooling. The coding agent owns all non-visual decisions; the operator owns final comparison of prepared visible evidence when required. An automated agent never reports operator acceptance without an explicit recorded result.
+The family is complete only when required surface has no `misaligned`, `unresolved`, or `obsolete` concern; one canonical owner remains; all required consumers use it; and final review and verification pass.
+
+Automation proves only deterministic contracts represented by actual tooling. The coding agent owns non-visual implementation decisions; the operator owns final comparison of prepared visible evidence when required. An automated agent never reports operator acceptance without an explicit recorded result.
