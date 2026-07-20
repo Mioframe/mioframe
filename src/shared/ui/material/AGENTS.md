@@ -7,6 +7,7 @@ The library is a reusable implementation tool, not a product layer. Material pro
 ## Read by task
 
 - `docs/architecture.md` — boundary, ownership, dependency direction, decomposition, and public API;
+- `docs/tokens.md` — token taxonomy, naming, location, dependency graph, routing, and verification;
 - `docs/sources.md` — official Material evidence and source-conflict rules;
 - `docs/component-development.md` — canonical component convergence workflow;
 - `docs/foundation-development.md` — canonical cross-family foundation workflow;
@@ -54,6 +55,10 @@ project-specific shared UI and product layers
 - Foundation does not import components or patterns.
 - Families do not deep-import another family's private files.
 - Internal Material code uses owning local entry points; external consumers use the curated Material public API when ready.
+
+## Token invariant
+
+Official token names and dependency direction follow `docs/tokens.md`. New canonical code must not invent ambiguous `--md-<component>-*` aliases, declare component tokens outside the owning family token file, or expose `--md-private-*` routes as public API.
 
 ## Durable records
 
