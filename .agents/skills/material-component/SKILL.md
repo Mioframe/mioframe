@@ -1,13 +1,13 @@
 ---
 name: material-component
-description: 'Use when creating, repairing, aligning, migrating, continuing, or materially improving one official Material component family. This is the sole convergence orchestrator from independent canonical target and current-state assessment through correction units, conditional adoption, independent review, and verification.'
+description: 'Use when creating, repairing, aligning, migrating, continuing, or materially improving one official Material component family. This is the sole evidence-gated convergence orchestrator from isolated target research through correction units, contract and final review, conditional adoption, and verification.'
 ---
 
 # Material component
 
 This is the only implementation entry point for an official Material component family.
 
-A family name is optional only when `src/shared/ui/material/docs/roadmap.md` already names one active family. Otherwise a component or family name is sufficient input. Resolve target behavior, current defects, ownership, foundations, consumers, proof, and next correction unit from official sources and repository evidence rather than asking the user to design the component.
+A family name is optional only when `src/shared/ui/material/docs/roadmap.md` already names one active family. Resolve target behavior, current defects, ownership, dependencies, consumers, proof, and the next correction unit from official sources and repository evidence rather than asking the user to design the component.
 
 Do not use this skill for review-only work. Use `material-component-review` instead.
 
@@ -24,125 +24,179 @@ Read:
 
 ## Task lock
 
-Lock:
+Lock one family, mode (`new-component`, `align-existing`, or `focused-correction`), correction objective, required scenarios, applicable platforms, non-goals, current stage, and next gate.
 
-- one family;
-- one mode: `new-component`, `align-existing`, or `focused-correction`;
-- one current correction objective;
-- required scenarios and non-goals;
-- current phase and next exit gate.
+Use `align-existing` whenever an implementation already exists. Relocation, API preservation, decomposition, adoption, and cleanup are actions, not modes and not proof of correctness.
 
-Use `align-existing` by default whenever an implementation already exists, regardless of its quality or location. Relocation, API preservation, decomposition, adoption, and cleanup are actions, not modes and not proof of correctness.
+One PR may complete the family or one bounded correction objective, but every merged state must be independently valid.
 
-One PR may complete the family or one bounded correction objective. It must leave a complete independently valid repository state and may record remaining non-blocking family gaps for later correction.
-
-## Orchestration
+## Evidence-gated orchestration
 
 Execute:
 
 ```text
-material-component-contract
-→ material-foundation             # only for an exact required cross-family prerequisite
+isolated canonical-target research
+→ canonical target lock
+→ isolated current-state audit
+→ material-component-contract synthesis
+→ independent material-component-review (Review scope: contract-gate)
+→ material-foundation when required
 → material-component-implementation
-→ material-component-adoption     # only when canonical ownership is ready and adoption is in scope
-→ independent material-component-review
+→ material-component-adoption when ownership change is in scope
+→ independent material-component-review (Review scope: final-gate)
 → verification
 → next correction unit or family completion
 ```
 
-Only this skill chooses and starts the next stage. Internal stage skills do not invoke each other or update the roadmap.
+Production edits are forbidden before the contract gate passes.
 
-For each stage:
+Only this skill chooses the next stage, synthesizes delegated results, writes workflow state or roadmap state, and decides whether to advance or stop. Internal stages and delegated agents do not invoke each other or update the roadmap.
 
-1. name the family, mode, correction objective, phase, exit gate, family alignment status, and blocker or `none`;
-2. invoke the owning stage skill;
-3. inspect its `MATERIAL STAGE RESULT`;
-4. advance only when the current objective reports `Status: complete` and `Exit gate: passed`;
-5. update `docs/roadmap.md` only when active family, status, blocker, or one next action changes.
+## Delegated responsibility
 
-The contract stage must independently resolve the canonical target before assessing current implementation. It then records the alignment map, proof classification, correction units, decomposition, compatibility impact, and exact foundation requirements. Production edits remain forbidden until the next correction unit and its applicable proof gate are ready.
+Use delegated agents or fresh isolated sessions to prevent one context from authoring and approving its own assumptions.
+
+Preferred read-only roles:
+
+- `material-canonical-target`: official target and source conflicts before implementation inspection;
+- `material-current-state-auditor`: exhaustive implementation and proof assessment after target lock;
+- `material-contract-gate-reviewer`: pre-production independent gate;
+- `material-final-reviewer`: independent complete-family and PR review.
+
+Claude Code may use the project definitions in `.claude/agents/`. Codex may use separate agent threads or isolated worktrees for bounded independent work. When no delegation mechanism exists, use fresh isolated sessions with the same input restrictions. Do not weaken a gate.
+
+Delegation rules:
+
+- give one bounded responsibility, explicit allowed and forbidden inputs, and a required output;
+- researchers and reviewers are read-only;
+- pass scenarios and evidence, not preferred conclusions or implementation reasoning;
+- parallelize only independent investigations;
+- never use concurrent writers on the same owner or worktree;
+- delegated agents never update README, roadmap, production, tests, stories, or snapshots;
+- the orchestrator validates every returned claim and remains responsible for the decision;
+- delegated agents do not delegate further.
+
+## Workflow state
+
+Require one current state block in the family README:
+
+```text
+MATERIAL WORKFLOW STATE
+Family:
+Mode:
+Current objective:
+Current stage: target | assessment | contract-review | foundation | implementation | adoption | final-review | verification
+Canonical target status: draft | locked | reopened
+Assessment status: not-started | complete | blocked
+Contract review status: not-started | passed | failed
+Current correction unit: none | <exact unit>
+Implementation status: not-started | complete | blocked
+Final review status: not-started | passed | failed
+Operator visual status: not-required | required | accepted | rejected
+Family alignment status: aligned | converging | blocked
+Next gate:
+Blocker: none | <exact blocker>
+```
+
+Every stage must leave this block, the detailed sections, and `docs/roadmap.md` mutually consistent. Stale or contradictory stage claims block progression.
+
+## Canonical target and assessment
+
+The canonical-target researcher receives repository rules, required scenarios, applicable platforms, and official-source access. It must not inspect the current component implementation, component tests, stories, snapshots, or prior family conclusions.
+
+After the target is locked, the current-state auditor inspects the complete implementation and proof but cannot redefine the target.
+
+The contract stage synthesizes both results. It must record source conflicts and platform applicability, classify every mandatory concern and dependency, classify existing proof, choose the highest-priority complete correction unit, and lock the correct proof lane.
+
+A target is reopened when new evidence invalidates it. Do not silently amend canonical decisions during implementation.
+
+## Mandatory concern coverage
+
+The assessment cannot omit:
+
+- API, defaults, invalid combinations, and attributes;
+- native, keyboard, form, and event-propagation semantics;
+- accessibility and platform adaptations;
+- anatomy, DOM, target area, and unnecessary nodes;
+- semantic and transient state, precedence, cancellation, interruption, and cleanup;
+- tokens, routing, rendered properties, geometry, typography, RTL, responsive behavior, and text scaling;
+- motion, rapid input, interruption, and reduced motion;
+- project extensions;
+- external Material component and generic foundation dependencies;
+- owners, exports, consumers, aliases, and cleanup;
+- unit, component, browser, visual, consumer, and verification proof.
+
+Each category receives a classification or `not-applicable` with a reason.
+
+## Classification and dependency rules
+
+`confirmed-compliant` requires a resolved applicable requirement, matching implementation, correct ownership, faithful observable proof in the correct lane, and no unresolved contradicting source.
+
+`project-extension` additionally requires a current Mioframe scenario, explicit owner, Material compatibility, valid dependencies, and separate proof. A known defect in the extension or dependency prevents completion.
+
+Every imported shared dependency is classified as `canonical-material-dependency`, `temporary-legacy-material-dependency`, `project-extension-dependency`, or `generic-non-material-foundation`. Repeated use does not make a Material component generic foundation.
+
+Existing proof is classified before reuse as canonical, compatibility-only, implementation-detail, legacy-defect preservation, or obsolete.
+
+## Correction priority
+
+Select the next unit in this order:
+
+1. unresolved required source or platform decisions;
+2. wrong family, dependency, or foundation ownership;
+3. native semantics, event propagation, accessibility, and form behavior;
+4. public API and invalid combinations;
+5. state ownership;
+6. anatomy and DOM;
+7. token and rendered-property routing;
+8. geometry, responsive behavior, typography, RTL, and text scaling;
+9. motion and browser lifecycle;
+10. project extensions;
+11. adoption;
+12. obsolete-owner removal.
+
+A lower-priority improvement cannot bypass a higher-priority blocker affecting the same supported surface.
+
+## Contract gate
+
+Before implementation, run an independent review with `Review scope: contract-gate`.
+
+The gate must validate target provenance, source conflicts, platform applicability, complete concern coverage, classifications, dependency ownership, correction priority, proof lane, compatibility impact, workflow-state consistency, and that production work did not precede approval.
+
+Advance only on `Contract gate result: passed`.
+
+## Implementation and final gate
+
+Implementation changes only the approved correction unit. If evidence invalidates target, classification, ownership, dependency, correction order, or proof lane, return to contract and preserve unaffected work.
+
+After implementation and any conditional adoption, run a different independent review context with `Review scope: final-gate`. It reviews the complete family and PR, not only the patch.
+
+If the environment cannot provide independent review, stop with `independent review handoff required`.
+
+## Review correction routing
+
+Route findings to exactly one owner:
+
+- target, source conflict, classification, dependency, supported surface, API contract, anatomy contract, state contract, decomposition, proof lane, compatibility, or correction priority → `material-component-contract`;
+- production owners, DOM, behavior, token routing, rendered properties, motion, Storybook, or proof implementation → `material-component-implementation`;
+- consumers, parallel ownership, stale references, compatibility residue, or cleanup → `material-component-adoption`.
+
+Run the applicable independent gate again after corrections.
 
 ## Existing implementation policy
 
-Treat current implementation as evidence and editable state, never as Material authority and never as disposable by default.
+Treat current implementation as editable evidence, never as Material authority and never as disposable by default.
 
-Preserve an existing owner only when the alignment map classifies it `confirmed-compliant` or `project-extension`. Correct `misaligned` owners through bounded correction units. Block or narrow `unresolved` surface. Remove `obsolete` owners when their replacement is complete.
+Preserve only independently confirmed owners. Correct misaligned owners in bounded units. Block or narrow unresolved surface. Remove obsolete owners after replacement. Rewrite only the smallest owner when its contract is predominantly wrong or incremental repair would add more workaround logic.
 
-A local rewrite is allowed only for the smallest owner whose contract is predominantly wrong or whose incremental repair would add more workaround logic than replacement. Do not reset the whole family merely because one owner is wrong.
-
-Existing tests, stories, snapshots, and consumer behavior must be classified before reuse. Passing legacy proof does not establish canonical correctness.
-
-## Independent review handoff
-
-The review must run in a fresh agent session or isolated read-only context that did not implement the current patch. Provide only the family, current correction objective, required scenarios, current repository ref, and applicable operator evidence. Do not pass implementation reasoning or claims of correctness as review evidence.
-
-The reviewer determines separately:
-
-- whether the current correction objective is complete and mergeable;
-- whether the family is `aligned`, `converging`, or `blocked` overall.
-
-If the environment cannot create an independent review context, stop with `independent review handoff required`. Do not silently substitute same-context self-review.
-
-## Review corrections
-
-Route every finding to exactly one owner:
-
-- canonical target, source conflict, classification, ownership, supported surface, public API, anatomy contract, state contract, decomposition, style ownership, proof map, compatibility, correction-unit, or foundation decision → `material-component-contract`;
-- production owners, composition roots, DOM, token routing, rendered properties, motion, behavior, Storybook, or proof → `material-component-implementation`;
-- consumers, parallel ownership, stale references, compatibility residue, or cleanup → `material-component-adoption`.
-
-After corrections, run the complete independent review again. Do not patch findings inside the review skill.
-
-If two correction rounds retain the same underlying defect, add workaround logic, or preserve ownership ambiguity, stop the current implementation context. Report `fresh agent session required`, record the family, responsible stage, exact unresolved defect, current alignment map, confirmed owners, and repository state needed to resume.
-
-A fresh session reloads and continues the current repository state. It discards rejected assumptions, not valid implementation or completed correction units.
-
-## Focus rules
-
-- Work on exactly one family per task and PR.
-- Do not create a second plan, workflow, durable checklist, audit, or stage tracker.
-- Do not inspect legacy implementation first and derive the canonical target from it.
-- Do not edit production before the current correction unit, foundation, and applicable proof gates pass.
-- Do not migrate consumers onto a known misaligned contract.
-- Do not run adoption when the objective does not change ownership or import paths.
-- Do not report family completion while required `misaligned`, `unresolved`, or `obsolete` concerns remain.
-- Do not require full-family completion when one bounded correction produces a complete valid PR and remaining gaps are honestly recorded.
-- Do not leave a knowingly broken intermediate mechanism for a later PR.
-- Do not pre-plan or start another family while the current family is active, converging, or blocked.
-- If new evidence invalidates a decision, return to the responsible stage and preserve unaffected confirmed work.
-- Persistent agent memory is never Material authority. Ignore entries that conflict with the current repository and do not delete unrelated memory automatically.
+A fresh session resets reasoning, not valid repository progress.
 
 ## Stop conditions
 
-Stop only for an exact unresolved blocker in one of these categories:
+Stop for an exact unresolved blocker in official evidence, platform applicability, required scenarios, ownership, dependency direction, public contract, foundation blast radius, proof ownership, missing independent context, repeated correction failure, verification, or required visual acceptance.
 
-- official source or required supported-surface decision;
-- family ownership or dependency direction;
-- required user or component scenario;
-- public contract requiring product approval;
-- unsafe cross-family foundation blast radius;
-- missing independent review context;
-- repeated correction failure requiring a fresh agent session;
-- unresolved verification failure;
-- rejected required visual evidence.
-
-Record the exact blocker and current alignment state. Do not continue with assumptions or select another family.
+Do not select another family or continue with assumptions.
 
 ## Final result
 
-Report:
-
-- family, mode, and current correction objective;
-- canonical target and current implementation assessment result;
-- alignment classifications changed by this work;
-- correction units completed;
-- preserved confirmed owners and locally replaced owners;
-- foundation impact;
-- proof and representative-consumer result;
-- conditional adoption and obsolete ownership removed;
-- independent review result for the objective;
-- family alignment status: `aligned`, `converging`, or `blocked`;
-- remaining known gaps and exact next correction unit;
-- operator visual status;
-- final verification;
-- exact blocker, or `none`.
+Report family, mode, objective, workflow state, target and assessment result, source conflicts, classification changes, dependencies, correction units, proof lanes, preserved and replaced owners, foundation impact, consumers, adoption, contract-gate result, final-gate result, family alignment status, remaining gaps, operator visual status, final verification, and exact blocker or `none`.

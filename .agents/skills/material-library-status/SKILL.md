@@ -1,6 +1,6 @@
 ---
 name: material-library-status
-description: 'Use for a concise read-only Material library convergence status report.'
+description: 'Use for a concise read-only Material library convergence and evidence-gate status report.'
 ---
 
 # Material library status
@@ -8,20 +8,25 @@ description: 'Use for a concise read-only Material library convergence status re
 Read only:
 
 1. `src/shared/ui/material/docs/roadmap.md`;
-2. the active family README and implementation when needed;
+2. the active family workflow-state block, target, alignment map, and implementation when needed;
 3. current PR and verification state when available.
 
 Report:
 
 - active family and mode;
-- current correction objective and orchestrated stage when recorded by repository evidence;
+- current correction objective and current stage;
+- canonical target status and unresolved source/platform decisions;
+- assessment completeness;
+- contract-gate status;
+- current correction unit and proof lane;
+- implementation and conditional adoption status;
+- final-gate and operator visual status;
 - family alignment status: `aligned`, `converging`, or `blocked`;
-- blocker;
-- alignment classifications changed by current work when known;
+- exact blocker;
 - confirmed owners preserved and owners still requiring correction;
-- one exact next correction unit or action;
-- pending foundation, representative-consumer, adoption, cleanup, operator visual, or verification work.
+- one exact next gate, correction unit, or action;
+- pending foundation, consumer, cleanup, visual, or verification work.
 
-Do not equate a completed correction objective with full family alignment. Do not treat green CI, stable snapshots, relocation, or consumer migration as Material correctness by themselves.
+Do not equate a completed correction objective with full family alignment. Do not treat green CI, stable snapshots, relocation, consumer migration, same-context self-review, or an unpassed contract gate as Material correctness.
 
 Do not modify repository files, infer unrecorded progress, execute implementation stages, or create inventories, registries, audits, checklists, scorecards, stage trackers, or parallel status records.

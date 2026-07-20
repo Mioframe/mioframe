@@ -1,110 +1,218 @@
 ---
 name: material-component-contract
-description: 'Internal-only Material stage. Never use directly for a user request. Use exclusively when material-component delegates independent canonical-target resolution, current implementation assessment, alignment classification, correction-unit planning, decomposition, and proof ownership for one family.'
+description: 'Internal-only Material stage. Never use directly for a user request. Use exclusively when material-component delegates synthesis of an isolated canonical target and current-state audit into a complete alignment map, dependency map, prioritized correction units, and locked proof lanes.'
 ---
 
 # Material component contract
 
-Internal stage only. `material-component` must lock the family, mode, correction objective, required scenarios, and non-goals before invoking it.
+Internal stage only. `material-component` must lock family, mode, objective, required scenarios, applicable platforms, and non-goals before invoking it.
 
-## Inputs
+## Required inputs
 
 Read:
 
 - root and applicable nested `AGENTS.md` files;
 - `src/shared/ui/material/docs/architecture.md`;
 - `src/shared/ui/material/docs/sources.md`;
-- the contract, assessment, and correction-blueprint phase of `src/shared/ui/material/docs/component-development.md`;
-- current official Material 3 Expressive sources for the required scenarios;
-- current implementation, exports, consumers, stories, tests, snapshots, known defects, and legacy contract when present.
+- `src/shared/ui/material/docs/component-development.md`;
+- the read-only canonical-target result produced without implementation inspection;
+- the read-only current-state audit produced after target lock;
+- current repository evidence needed to verify both results.
 
-## Responsibility
+Do not perform both investigations in one undifferentiated pass. If either isolated result is missing, return a blocker.
 
-Execute the contract stage in two independent passes.
+## Canonical target lock
 
-### Canonical target
+Confirm the target was resolved before current component implementation, component tests, stories, snapshots, or prior family conclusions were inspected.
 
-Resolve and record the current applicable official Material contract before using legacy behavior to decide Material semantics, API, anatomy, state, tokens, styles, motion, or proof.
+Record:
 
-Record exact unresolved source conflicts. Narrow optional surface when required scenarios remain complete; otherwise return an exact blocker. Do not choose the existing implementation merely because official evidence is incomplete.
+- applicable platforms;
+- supported and unsupported surface;
+- public API and invalid combinations;
+- native semantics, form behavior, accessibility, anatomy, state, tokens, rendered properties, motion, adaptive behavior, and dependencies;
+- official source names and verification dates;
+- every unresolved source decision.
 
-### Current implementation assessment
+For every contradiction, absence, inference, or platform-specific rule, record:
 
-After the target is recorded, inspect current code and proof. Classify each relevant concern as:
+```text
+SOURCE DECISION
+Concern:
+Applicable platform:
+Source A and statement:
+Source B and statement:
+Conflict or missing evidence:
+Narrower applicable authority:
+Decision:
+Rationale:
+Status: resolved | unresolved
+```
 
-- `confirmed-compliant`;
-- `project-extension`;
-- `misaligned`;
-- `unresolved`;
-- `obsolete`.
+Do not cancel explicit guidance only because a token is absent. Do not infer support only because a token exists. Do not apply Android, iOS, or Web guidance across platforms without an explicit decision. Reconcile diagrams, prose, specs, accessibility guidance, and tokens together.
 
-Classify existing tests, stories, snapshots, and fixtures as canonical proof, compatibility proof, implementation-detail proof, legacy-defect preservation, or obsolete. Passing legacy proof never establishes Material correctness by itself.
+Required unresolved decisions block dependent correction units. New evidence reopens the target; it is never silently inserted during implementation.
 
-Write the single durable family owner at `components/<family>/README.md`, or at the permitted temporary legacy location while the active implementation remains outside the canonical boundary.
+## Complete current-state assessment
 
-The README must contain the canonical target, current implementation assessment, alignment map, implementation decomposition, style and motion ownership, proof map, compatibility impact, representative consumers, correction units, implementation order, remaining known gaps, and every required foundation dependency.
+After target lock, cover every category below or mark it `not-applicable` with a reason:
 
-Select the smallest complete correction units required by the current objective. Do not require full-family rewrite when smaller owner corrections produce a complete valid result. Permit a local owner replacement only when incremental correction would preserve wrong ownership or add more workaround logic.
+- API, defaults, invalid combinations, and attributes;
+- native, keyboard, form, and event-propagation semantics;
+- accessibility, focus, disabled behavior, and platform adaptations;
+- anatomy, DOM, target area, and unnecessary nodes;
+- semantic and transient state, precedence, cancellation, interruption, and cleanup;
+- tokens, configuration, state routing, rendered properties, and public overrides;
+- geometry, typography, icon placement, RTL, responsive behavior, and text scaling;
+- motion, rapid input, interruption, and reduced motion;
+- project extensions and their scenarios;
+- external Material component dependencies;
+- generic foundation dependencies;
+- owners, exports, consumers, aliases, and obsolete paths;
+- unit, component, browser, visual, consumer, and verification proof.
 
-Return any missing cross-family foundation capability as exact required work. Do not create a family-local substitute or invoke another stage.
+For each concern record canonical target, current behavior, classification, owner, dependency classification, proof classification, and exact correction.
+
+Classify proof as `canonical-proof`, `compatibility-proof`, `implementation-detail-test`, `legacy-defect-preservation`, or `obsolete`.
+
+## Classification rules
+
+`confirmed-compliant` requires all of:
+
+- a resolved official requirement for the applicable platform;
+- matching implementation evidence;
+- correct ownership and dependency direction;
+- faithful observable proof in the correct proof lane;
+- no unresolved contradicting source.
+
+`project-extension` additionally requires a current Mioframe scenario, explicit owner, Material compatibility, valid dependencies, and separate proof. A known defect in the extension or dependency prevents completion.
+
+Consumer dependence, passing tests, stable snapshots, or official-looking names never upgrade a concern.
+
+Every shared dependency is classified as:
+
+- `canonical-material-dependency`;
+- `temporary-legacy-material-dependency`;
+- `project-extension-dependency`;
+- `generic-non-material-foundation`.
+
+Repeated use does not make a Material component generic foundation.
+
+## Correction units
+
+Select the smallest complete unit in this priority order:
+
+1. unresolved required source or platform decisions;
+2. wrong family, dependency, or foundation ownership;
+3. native semantics, event propagation, accessibility, and form behavior;
+4. public API and invalid combinations;
+5. state ownership;
+6. anatomy and DOM;
+7. token and rendered-property routing;
+8. geometry, responsive behavior, typography, RTL, and text scaling;
+9. motion and browser lifecycle;
+10. project extensions;
+11. adoption;
+12. obsolete-owner removal.
+
+A lower-priority improvement cannot bypass a higher-priority blocker affecting the same surface.
+
+Each unit records:
+
+```text
+CORRECTION UNIT
+Gap:
+Affected scenarios:
+Canonical expected behavior:
+Current defect:
+Implementation owner:
+Dependencies and blast radius:
+Primary proof lane:
+Why that lane owns the behavior:
+Prepared failing observation:
+Compatibility impact:
+Visible impact:
+Operator acceptance required: yes | no
+Completion condition:
+```
+
+Proof lanes:
+
+- unit/component for deterministic contracts and non-browser wiring;
+- browser for layout, focus, keyboard, propagation, pointer/touch, target area, responsive behavior, and motion lifecycle;
+- visual for screenshots only;
+- consumer for integration and compatibility.
+
+Visual specs must not contain browser-behavior success criteria or large computed-style matrices.
+
+## Workflow state and README
+
+Write the single family README with one current state block:
+
+```text
+MATERIAL WORKFLOW STATE
+Family:
+Mode:
+Current objective:
+Current stage: contract-review
+Canonical target status: locked | reopened
+Assessment status: complete | blocked
+Contract review status: not-started | failed
+Current correction unit: none | <exact unit>
+Implementation status: not-started
+Final review status: not-started
+Operator visual status: not-required | required
+Family alignment status: aligned | converging | blocked
+Next gate: independent contract review
+Blocker: none | <exact blocker>
+```
+
+The README also contains target, source decisions, full alignment map, dependency classification, decomposition, proof map, correction units, compatibility impact, representative consumers, and remaining gaps.
+
+Do not leave contradictory stage descriptions or stale roadmap state.
 
 ## Exit gate
 
-Pass only when:
+Return `Status: complete` only when the contract package is ready for independent contract review. This does not authorize production edits.
 
-```text
-Current objective readiness: ready
-Family alignment status: aligned | converging
-```
-
-and:
-
-- the canonical target is independently resolved for the current objective;
-- source conflicts affecting the objective are resolved, narrowed, or reported as blockers;
-- current implementation and proof are classified honestly;
-- every correction unit has one owner, dependency set, proof, compatibility impact, and completion condition;
-- decomposition and style or motion ownership are explicit;
-- representative consumers and foundation requirements are named;
-- remaining gaps are explicit and do not make the current correction objective or merged state invalid.
-
-`Family alignment status: converging` is allowed for a bounded correction objective. It is not permission to merge a broken intermediate mechanism or hide required gaps.
+Pass only when target lock is credible, source conflicts are explicit, mandatory concerns are complete, classifications and dependencies are justified, the highest-priority unit is selected, proof lane is locked, and workflow state is consistent.
 
 ## Result
 
 ```text
 MATERIAL STAGE RESULT
-
 Family:
 Stage: contract
 Status: complete | blocked
 Exit gate: passed | failed
-Current objective result:
+Current objective result: ready for contract review | blocked
 Family alignment status: aligned | converging | blocked
 Evidence:
-Canonical target:
-Current implementation assessment:
+Canonical target status:
+Source decisions:
+Assessment completeness:
 Alignment classifications:
-Implementation decomposition:
-Style and motion ownership:
-Proof map and existing-proof classification:
-Current correction units:
-Implementation order:
-Required foundation work: none | <exact work>
+Dependency classifications:
+Correction priority:
+Current correction unit:
+Proof lane:
 Representative consumers:
 Remaining known gaps:
-Next correction unit: none | <exact unit>
+Next correction unit:
 Blocker: none | <exact blocker>
 ```
 
 ## Forbidden
 
 - direct user invocation;
-- production component edits, executable proof implementation, or consumer migration;
-- inspecting legacy behavior first and deriving the canonical target from it;
-- blanket `preserve behavior`, `relocation only`, `verbatim copy`, or `no redesign` decisions before assessment;
-- treating existing tests, stories, snapshots, token names, or consumer dependence as Material authority;
-- unresolved placeholders or speculative surface, APIs, files, foundations, or abstractions;
-- requiring a full-family rewrite when smaller complete correction units are sufficient;
+- production, proof, story, snapshot, or consumer edits;
+- one-pass target and legacy assessment without isolation;
+- deriving target from existing behavior;
+- hidden source conflicts or platform assumptions;
+- omitted concern categories;
+- blanket preservation or rewrite decisions;
+- legacy proof treated as authority;
+- lower-priority correction around a higher-priority blocker;
+- wrong proof lane;
 - roadmap updates or starting another stage;
-- a universal file template or artifact count;
-- another family contract, durable audit, separate checklist, registry, or progress record.
+- duplicate contracts, durable audits, registries, or progress ledgers.

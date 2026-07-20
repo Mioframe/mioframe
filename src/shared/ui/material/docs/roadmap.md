@@ -12,49 +12,49 @@ Intended mode: `align-existing`
 
 Family alignment status: `blocked`
 
-Blocker: PR #157 exposed a workflow defect: legacy Button behavior, proof, and stylesheet were treated as the canonical target before independent alignment assessment. PR #155 must establish the convergence workflow and pass final verification before Button work continues.
+Blocker: PR #157 demonstrated that a single implementation context can still confirm legacy assumptions, hide source conflicts, choose a lower-priority correction, and review its own result. PR #155 must land the evidence-gated workflow with responsibility isolation, canonical-target lock, complete current-state coverage, independent contract review before production, and independent final review.
 
 ## Next action
 
-After the updated PR #155 workflow is available to the Button branch, start a fresh agent session and return PR #157 to `material-component-contract` with mode `align-existing`.
-
-The fresh session must:
-
-1. resolve the canonical Button target independently from the legacy implementation;
-2. assess the current PR #157 repository state rather than resetting it;
-3. classify every relevant owner and proof as `confirmed-compliant`, `project-extension`, `misaligned`, `unresolved`, or `obsolete`;
-4. preserve only independently confirmed changes;
-5. define the smallest complete next correction units;
-6. continue correction without full-family deletion unless one local owner demonstrably requires replacement.
-
-Run:
+After the updated PR #155 workflow is available to the Button branch, start a fresh orchestrator session and run:
 
 ```text
 material-component Button
 ```
 
-Before the run, confirm that the fresh session loaded the updated root and nested `AGENTS.md` files and current Material skills. Do not continue a session that loaded the earlier contract-first workflow.
+The orchestrator must:
 
-Persistent agent memory is not Material authority. Ignore any entry that conflicts with the current repository, including claims based on PR #150, removed audits or registries, removed `docs/material-3` files, or the pre-convergence PR #157 review. Do not delete unrelated memory automatically.
+1. delegate canonical target research to a read-only isolated context that does not inspect the current Button implementation or proof;
+2. lock the target and source-decision matrix;
+3. delegate a complete current-state audit to a different read-only context;
+4. synthesize the alignment and dependency maps without production edits;
+5. run an independent `contract-gate` review;
+6. proceed with only the highest-priority approved correction unit;
+7. run a different independent `final-gate` review after implementation;
+8. preserve valid repository progress and correct only owners proven wrong.
 
-Treat Button as the first convergence calibration. Stop and correct the workflow before continuing if the agent:
+Claude Code may use the project agents under `.claude/agents/`. Codex may use separate agent threads or isolated worktrees. If delegation is unavailable, use fresh isolated sessions and keep every gate.
 
-- derives the canonical target from the current Button implementation;
-- uses blanket `preserve behavior`, `relocation only`, `verbatim copy`, or `no redesign` decisions before alignment assessment;
-- accepts old tests, stories, snapshots, token names, or consumer dependence as proof of Material correctness without classification;
-- hides contradictory official evidence as resolved;
-- skips the alignment map or correction-unit plan;
-- rewrites or deletes the whole family when smaller owner corrections are sufficient;
-- preserves a wrong owner merely to minimize diff size;
-- migrates consumers before their required canonical contract is ready;
-- reports the family aligned while required gaps remain;
-- performs final review in the implementation context;
-- starts another family or continues through an exact blocker.
+The calibration fails as a workflow defect if the agent:
 
-A fresh session resets reasoning, not repository progress. Confirmed owners and completed valid correction units remain; rejected assumptions and legacy-defect proof do not.
+- reads the current component implementation before the target is locked;
+- hides a conflict between prose, diagrams, specs, accessibility guidance, or tokens;
+- applies Android, iOS, or Web guidance to another platform without an explicit decision;
+- omits API, propagation, accessibility, DOM, state, token, motion, extension, dependency, consumer, or proof concerns;
+- treats passing tests, snapshots, consumers, or token names as authority;
+- misclassifies a legacy Material component as generic foundation;
+- selects an easier lower-priority improvement around a blocking source, ownership, semantics, or dependency gap;
+- places browser behavior assertions in visual proof;
+- edits production before the contract gate passes;
+- lets the implementation context approve its own contract or patch;
+- leaves workflow state or roadmap inconsistent with the actual stage;
+- rewrites the whole family when smaller owner corrections are sufficient;
+- reports the family aligned while required gaps remain.
 
-Do not select or pre-plan a second family until Button reaches a terminal `aligned` state.
+A fresh session resets reasoning, not repository progress. Do not reset PR #157 by default. Preserve only independently confirmed owners and completed valid correction units.
+
+Do not select a second family until Button reaches a terminal `aligned` state.
 
 ## Update rule
 
-Update this file only when the active family, family alignment status, blocker, or one next correction action changes.
+Update this file only when active family, family alignment status, blocker, or one next action changes.
