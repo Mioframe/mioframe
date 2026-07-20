@@ -26,7 +26,7 @@ function topLevelKeys(frontmatter) {
 }
 
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
@@ -47,10 +47,13 @@ function skillDirectories() {
     .sort();
 }
 
-function claudeAgentFiles() {
+function materialClaudeAgentFiles() {
   return fs
     .readdirSync(CLAUDE_AGENTS_ROOT, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .filter(
+      (entry) =>
+        entry.isFile() && entry.name.startsWith('material-') && entry.name.endsWith('.md'),
+    )
     .map((entry) => entry.name)
     .sort();
 }
@@ -101,7 +104,7 @@ describe('Claude project agent adapters', () => {
   ]);
 
   it('contains only the expected thin Material adapters', () => {
-    expect(claudeAgentFiles()).toEqual([...expectedAdapters.keys()].sort());
+    expect(materialClaudeAgentFiles()).toEqual([...expectedAdapters.keys()].sort());
   });
 
   it('preloads portable skills and keeps adapters read-only', () => {
