@@ -21,7 +21,7 @@ src/shared/ui/material/
 - `foundation` contains proven cross-family contracts;
 - `components` contains official public Material families;
 - `patterns` contains accepted reusable official Material compositions;
-- family/domain contracts, stories, fixtures, and focused tests stay beside their owner.
+- family/domain contracts, implementation units, styles, stories, fixtures, and focused tests stay beside their owner.
 
 Generic platform utilities, project-specific shared UI, features, widgets, pages, app behavior, and product adapters remain outside.
 
@@ -35,7 +35,7 @@ Start with [`docs/README.md`](./docs/README.md). The canonical set is intentiona
 - [`foundation-development.md`](./docs/foundation-development.md);
 - [`roadmap.md`](./docs/roadmap.md).
 
-Do not create parallel registries, inventories, audits, checklists, progress ledgers, or duplicated workflow documents.
+Do not create parallel registries, inventories, audits, separate checklists, progress ledgers, or duplicated workflow documents. Structured implementation decomposition and proof sections belong inside the canonical family or foundation README.
 
 ## Dependency direction
 
@@ -68,17 +68,21 @@ Create it only when a real public artifact can be exported honestly. External co
 `material-component` is the only implementation entry point. It orchestrates one family through internal stage owners:
 
 ```text
-contract
-→ required foundation work
-→ implementation
-   primary slice
-   → representative consumer
-   → complete supported family
+contract documentation
+→ implementation decomposition and style ownership
+→ proof map and required foundation work
+→ applicable initial failing proof
+→ documented implementation units
+→ primary composed slice
+→ representative consumer
+→ complete supported family
 → adoption and old-owner removal
-→ complete review
+→ independent review
 → final verification
 ```
 
+Public Vue artifacts remain thin composition roots. Non-trivial visual contracts use owner-local stylesheets. Deterministic logic and lifecycle are separated only when ownership and proof become clearer; file count is not a goal.
+
 `material-component-contract`, `material-component-implementation`, and `material-component-adoption` are internal stages, not alternative entry points or independent workflows.
 
-Review-only assessment uses `material-component-review` and does not edit production files. The current family and one next action are recorded in [`docs/roadmap.md`](./docs/roadmap.md).
+Review-only assessment uses `material-component-review` from an independent context and does not edit production files. The current family and one next action are recorded in [`docs/roadmap.md`](./docs/roadmap.md).
