@@ -10,10 +10,10 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
 - All Material-owned implementation, documentation, family/domain contracts, stories, fixtures, and focused tests live under `src/shared/ui/material`. Repository-level rules and skills may route into that boundary but must not become parallel Material fact owners.
-- Material implementation has one orchestrator, `material-component`, and three internal stage owners: `material-component-contract`, `material-component-implementation`, and `material-component-adoption`. Review-only work uses `material-component-review` and never becomes a competing implementation path.
+- For Material implementation, use `material-component`; for focused cross-family foundation work, use `material-foundation`; for review-only work, use `material-component-review`. Internal Material stage skills are delegated only by `material-component` and are not direct user entry points.
 - For Material work, read only the task-relevant canonical documents under `src/shared/ui/material/docs`. Update `roadmap.md` only when its active family, status, blocker, or single next action changes.
 - Official Material components target the current canonical Material 3 Expressive contract. The coding agent must close every non-visual evidence gate; the operator normally performs only prepared visual comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
-- Do not create Material registries, inventories, durable audit documents, checklists, progress ledgers, or duplicated workflow policy. Family/domain README files, code, tests, stories, exports, Git history, and the short roadmap are the canonical records.
+- Do not create separate Material registries, inventories, durable audit documents, checklists, progress ledgers, or duplicated workflow policy. Structured implementation decomposition and proof sections inside canonical family/domain README files are required contract records, not parallel status systems.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
@@ -54,12 +54,9 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - `material-library-status`: concise read-only Material roadmap, active-family, PR, and verification status;
 - `material-component`: sole implementation orchestrator for one official Material family;
-- `material-component-contract`: internal source, ownership, API, DOM, state, token, foundation, proof, and migration contract stage;
-- `material-component-implementation`: internal primary-slice, representative-consumer, supported-family, Storybook, and proportional-proof stage;
-- `material-component-adoption`: internal remaining-consumer migration and obsolete-owner removal stage;
 - `material-component-review`: independent review-only assessment of one complete Material family without production changes or durable audit artifacts;
 - `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
-- `material-foundation`: cross-family Material token, theme, units, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, and adaptive contracts;
+- `material-foundation`: focused cross-family Material token, theme, units, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, and adaptive contract work;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
