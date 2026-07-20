@@ -5,7 +5,7 @@ description: 'Use for focused evidence-gated convergence of one real cross-famil
 
 # Material foundation
 
-Follow `src/shared/ui/material/docs/foundation-development.md` as the canonical workflow and `docs/architecture.md` for ownership.
+Follow `src/shared/ui/material/docs/foundation-development.md`, `docs/architecture.md`, and `docs/tokens.md`.
 
 Use standalone for one focused cross-family correction or when `material-component` delegates an exact prerequisite. Do not choose or advance a component stage.
 
@@ -35,19 +35,28 @@ The main foundation session owns synthesis and writes. Researchers and reviewers
 
 ## Foundation gate
 
-Confirm the concern is inherently cross-family and family-agnostic. For new capability, prove existing mechanisms are insufficient. Existing use by several families does not prove foundation ownership.
+Confirm the concern is inherently cross-family and family-agnostic. Existing use by several families does not prove foundation ownership.
 
-Resolve source conflicts and platform applicability before assessment. Classify every applicable contract, lifecycle, browser adaptation, rendered output, style, motion, accessibility, testing bridge, dependency, affected family, proof, and obsolete owner according to `foundation-development.md`.
+Resolve source conflicts and platform applicability before assessment. Classify every applicable contract, lifecycle, browser adaptation, rendered output, token graph, style, motion, accessibility, testing bridge, dependency, affected family, proof, and obsolete owner according to the canonical foundation workflow.
 
-Use the current-state audit's exact motion route result as transient evidence. Keep only durable motion semantics, ownership, and proof obligations in the domain README; do not mirror code routes as documentation.
+For token work:
 
-Choose one highest-priority complete correction unit with explicit owner, dependencies, affected families, proof lane, failing observation, compatibility impact, visible impact, operator requirement, and completion condition.
+- reference/system tokens and real `--mio-sys-*` extensions are foundation-owned;
+- component tokens and family-private routes remain family-owned;
+- exact official names, allowed locations, dependency direction, cycles, unresolved references, fallback behavior, and public/private surface are explicit;
+- `src/shared/lib/md/tokens.css` is a temporary legacy owner and receives no new canonical token category;
+- a coherent token group moves without duplicate active declarations;
+- the static token architecture guard and affected-family computed proof are required.
+
+Use exact token and motion route results as transient evidence. Keep only durable semantics, ownership, public surface, proof obligations, and gaps in the domain README; do not mirror code graphs or routes as documentation.
+
+Choose one highest-priority complete correction unit with explicit owner, dependencies, affected families, proof lane, failing observation, affected token graph, compatibility impact, visible impact, operator requirement, and completion condition.
 
 ## Reviews
 
-Before production, an independent context validates target provenance, source decisions, platform applicability, cross-family necessity, complete assessment, dependencies, correction priority, proof lane, transient motion audit, blast radius, and workflow state.
+Before production, an independent context validates target provenance, source decisions, platform applicability, cross-family necessity, complete assessment, token architecture, dependencies, correction priority, proof lane, transient motion audit, blast radius, and workflow state.
 
-After implementation, a different independent context reviews the complete domain, affected families, consumers, evidence, motion routes, cleanup, and resulting patch.
+After implementation, a different independent context reviews the complete domain, token graph, affected families, consumers, evidence, motion routes, cleanup, and resulting patch.
 
 When independent context is unavailable, return `independent review handoff required`.
 
@@ -69,7 +78,10 @@ Dependency classifications:
 Changed ownership:
 Correction unit completed:
 Proof result:
-Motion code audit: passed | failed
+Token graph audit: passed | failed | not-applicable
+Token route findings:
+Static token guard: passed | failed | not-applicable
+Motion code audit: passed | failed | not-applicable
 Motion route findings:
 Affected families:
 Final independent review: confirmed | failed | unavailable
@@ -87,6 +99,8 @@ Return control to `material-component`; do not update the Material roadmap, star
 - hidden source conflicts or platform assumptions;
 - same-context final approval;
 - dependencies accepted because they exist or are widely reused;
+- component tokens or family-private routes moved into foundation;
+- invented official-looking token names, upward/cyclic token graphs, parallel token owners, fallback-masked required references, runtime token managers, or registries;
 - wrong proof lanes or visible changes without operator handoff;
-- exact code-route ledgers in documentation;
-- universal bases, runtime token/state managers, generic resolvers, cross-family state machines, duplicate foundation systems, speculative domains, accidental monoliths, mechanical fragmentation, or full-domain rewrites without owner-level justification.
+- exact code-route or token-graph ledgers in documentation;
+- universal bases, generic resolvers, cross-family state machines, duplicate foundation systems, speculative domains, accidental monoliths, mechanical fragmentation, or full-domain rewrites without owner-level justification.
