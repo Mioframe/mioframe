@@ -5,7 +5,7 @@ description: 'Internal Material stage used only by material-component to synthes
 
 # Material component contract
 
-Internal stage only. Follow `src/shared/ui/material/docs/component-development.md`; do not redefine its workflow.
+Internal stage only. Follow `src/shared/ui/material/docs/component-development.md` and `src/shared/ui/material/docs/tokens.md`; do not redefine their workflow or token architecture.
 
 ## Required inputs
 
@@ -30,6 +30,7 @@ Resolve:
 - complete concern classifications;
 - dependency classifications and ownership;
 - proof classifications;
+- token taxonomy, public surface, private routing responsibility, and graph defects;
 - implementation decomposition;
 - durable style and motion contracts;
 - highest-priority complete correction unit;
@@ -42,30 +43,52 @@ Do not copy role claims without checking them against repository evidence and of
 
 Use the classifications and correction priority defined by `component-development.md`.
 
-`confirmed-compliant` requires resolved applicable authority, matching implementation, correct ownership, faithful proof in the correct lane, and no unresolved contradiction.
+`confirmed-compliant` requires resolved applicable authority, matching implementation, correct ownership, faithful proof in the correct lane, a valid token graph when applicable, and no unresolved contradiction.
 
-`project-extension` additionally requires a current Mioframe scenario, explicit owner, Material compatibility, valid dependencies, and separate proof. A known defect prevents completion.
+`project-extension` additionally requires a current Mioframe scenario, explicit owner, Material compatibility, valid dependencies, an allowed `--mio-*` namespace when public, and separate proof. A known defect prevents completion.
 
 Classify every shared dependency as canonical Material, temporary legacy Material, project extension, or generic non-Material foundation. Repeated use does not establish foundation ownership.
 
 Classify existing proof as canonical, compatibility-only, implementation-detail, legacy-defect preservation, or obsolete.
 
+## Token contract
+
+Validate that the current-state audit covered every Material-related custom-property declaration and reference in scope. Use the detailed graph as transient evidence.
+
+Write only durable token facts to the family README:
+
+- supported official token groups and exact path families;
+- intentionally unsupported official token surface;
+- public Mioframe extension tokens;
+- private routing responsibilities and final rendered-property owners;
+- static, browser, and consumer proof obligations;
+- alignment classifications and unresolved gaps.
+
+Do not copy every declaration, selector, or graph edge into the README.
+
+A token concern cannot be `confirmed-compliant` when the audit reports an invented/shortened official-looking name, ambiguous `--md-<component>-*` alias, wrong declaration location, official/project namespace collision, public private-route dependency, cross-family component-token edge, upward dependency, cycle, unresolved required reference, fallback-masked requirement, duplicate component-token declaration, dead component token, unnecessary private chain, token-driven shorthand without computed-longhand proof, or value-kind mismatch.
+
+Lock the smallest valid route for the correction unit:
+
+```text
+official/project token declaration
+→ allowed dependencies
+→ optional single owner-local private route
+→ final rendered property
+→ static and rendered proof
+```
+
+A second private hop requires an independently changing owner or narrow foundation bridge and explicit justification.
+
 ## Motion contract
 
 Validate that the current-state audit covered every motion route in code. Use its detailed route inventory as transient evidence.
 
-Write only durable motion facts to the family README:
+Write only durable motion facts to the family README: supported state edges, visible result, owner, official timing/easing or platform decision, lifecycle semantics, proof owner, classification, and unresolved gaps.
 
-- supported state edges and visible result;
-- owner of each independently changing motion concern;
-- official timing/easing or explicit platform decision;
-- interruption, reversal, cancellation, cleanup, and reduced-motion semantics;
-- primary proof owner;
-- classification and unresolved gaps.
+Do not copy exact selectors, declarations, keyframe references, token route lists, or runtime route lists into the README.
 
-Do not copy exact selectors, declarations, keyframe references, or runtime route lists into the README.
-
-A motion concern cannot be `confirmed-compliant` when the audit reports a dead token, unused keyframe, `transition: all`, wrong owner, cascade conflict, shorthand reset, unstable endpoints, missing lifecycle behavior, stale runtime resource, incorrect reduced motion, unjustified expensive property, broad persistent `will-change`, or declaration-only proof.
+A motion concern cannot be `confirmed-compliant` when the audit reports a dead token, unused keyframe, `transition: all`, wrong owner, cascade conflict, shorthand reset, unstable endpoints, easing incompatible with the property domain, missing lifecycle behavior, stale runtime resource, incorrect reduced motion, unjustified expensive property, broad persistent `will-change`, or declaration-only proof.
 
 ## Correction unit
 
@@ -84,6 +107,7 @@ Dependencies and blast radius:
 Primary proof lane:
 Why that lane owns the behavior:
 Prepared failing observation:
+Affected token graph: none | <exact graph slice>
 Affected motion contract: none | <exact concern>
 Compatibility impact:
 Visible impact:
@@ -91,11 +115,11 @@ Operator acceptance required: yes | no
 Completion condition:
 ```
 
-A lower-priority improvement cannot bypass a higher-priority blocker affecting the same supported surface.
+A lower-priority improvement cannot bypass a higher-priority blocker affecting the same supported surface. Styling or motion cannot proceed on top of a known-invalid token graph.
 
 ## README state
 
-Update one coherent `MATERIAL WORKFLOW STATE` block and the applicable target, source-decision, assessment, alignment, dependency, decomposition, style/motion contract, proof, correction-unit, and remaining-gap sections.
+Update one coherent `MATERIAL WORKFLOW STATE` block and the applicable target, source-decision, assessment, alignment, dependency, decomposition, token/style/motion contract, proof, correction-unit, and remaining-gap sections.
 
 Set:
 
@@ -113,17 +137,7 @@ The roadmap and README must not contradict each other.
 
 ## Exit gate
 
-Pass only when:
-
-- target provenance and source decisions are credible;
-- every mandatory concern is classified;
-- dependencies and proof are classified;
-- the transient motion audit is complete and durable motion contracts are accurate;
-- decomposition has explicit owners;
-- the highest-priority complete correction unit is selected;
-- proof and compatibility decisions are locked;
-- workflow state is coherent;
-- the package is ready for independent contract review.
+Pass only when target provenance and source decisions are credible, every mandatory concern is classified, dependencies and proof are classified, the transient token graph and motion audit are complete, durable contracts are accurate, decomposition has explicit owners, the highest-priority complete correction unit is selected, proof and compatibility decisions are locked, workflow state is coherent, and the package is ready for independent contract review.
 
 Passing this stage does not authorize production edits.
 
@@ -143,6 +157,8 @@ Source decisions:
 Alignment classifications:
 Dependency classifications:
 Proof classifications:
+Token graph evidence: complete | incomplete
+Durable token contract:
 Motion audit evidence: complete | incomplete
 Durable motion contract:
 Current correction unit:
@@ -158,7 +174,8 @@ Blocker: none | <exact blocker>
 - target and current-state research in one unisolated pass;
 - deriving target from existing behavior;
 - hidden source conflicts or omitted concerns;
-- exact implementation-route ledgers in the README;
+- exact implementation-route or token-graph ledgers in the README;
+- invented token namespaces, runtime token registries, or compatibility aliases without current consumers;
 - blanket preservation or rewrite decisions;
 - lower-priority correction around a higher-priority blocker;
 - wrong proof lane;
