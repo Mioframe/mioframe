@@ -10,23 +10,23 @@ Everything canonical and Material-specific lives under this root: implementation
 
 Read only what the current task needs:
 
-- `docs/architecture.md` for boundary, ownership, dependency direction, public API, and workflow ownership;
+- `docs/architecture.md` for boundary, ownership, dependency direction, implementation decomposition, public API, and workflow ownership;
 - `docs/sources.md` for official Material evidence;
-- `docs/component-development.md` for the only component workflow and stage gates;
+- `docs/component-development.md` for the only component workflow and exit gates;
 - `docs/foundation-development.md` when a cross-family foundation contract changes;
 - `docs/roadmap.md` when selecting or changing the active family.
 
 Family contracts live beside implementation in `components/<family>/README.md`. Foundation-domain contracts live in `foundation/<domain>/README.md` only after a real owner exists.
 
-Do not create registries, inventories, durable audit reports, checklists, progress ledgers, or additional workflow documents.
+Do not create registries, inventories, durable audit reports, separate checklists, progress ledgers, or additional workflow documents. Structured decomposition and proof sections inside the canonical family or foundation README are required contract records.
 
 ## Routing
 
 - Use `material-component` as the sole implementation orchestrator for one official Material family.
-- `material-component-contract` owns only the ready family contract before production edits.
-- `material-component-implementation` owns the primary vertical slice, representative consumer validation, complete supported family, Storybook, and proportional proof.
+- `material-component-contract` owns only the ready family documentation contract, implementation decomposition, style ownership, proof map, and implementation order before production edits.
+- `material-component-implementation` owns applicable initial failing proof, documented implementation units, the primary composed slice, representative consumer validation, complete supported family, Storybook, and proportional proof.
 - `material-component-adoption` owns remaining consumer migration and complete removal of obsolete ownership.
-- Use `material-component-review` only for review-only assessment; it never fixes production files.
+- Use `material-component-review` only for independent review-only assessment; it never fixes production files.
 - Use `material-foundation` only for a real cross-family foundation contract change reported by the contract stage or requested as focused standalone work.
 - Use `material3-guidelines` for official source lookup and Material usage decisions.
 - Use `material-library-status` only for concise read-only roadmap, PR, and verification status.
@@ -39,19 +39,19 @@ Implementation follows one sequence:
 ```text
 material-component
 → material-component-contract
+   documentation → decomposition → style ownership → proof map
 → material-foundation when required
 → material-component-implementation
-   primary slice
-   → representative consumer
-   → complete supported family
+   initial proof → implementation units → primary composed slice
+   → representative consumer → complete supported family
 → material-component-adoption
-→ material-component-review
+→ independent material-component-review
 → verification
 ```
 
 Only `material-component` chooses the next stage and updates the roadmap. Internal stage skills do not invoke each other, select another family, or create a second plan.
 
-Do not stop after research, contract writing, Storybook preparation, a primary slice, or focused checks when end-to-end implementation was requested.
+Do not stop after research, contract writing, initial proof, Storybook preparation, a primary slice, or focused checks when end-to-end implementation was requested.
 
 ## Isolation and dependency direction
 
@@ -72,6 +72,15 @@ product and project-specific shared UI
 - Patterns use public component and foundation contracts only.
 - Product needs may choose priority and compatibility scope, but must not shape internal Material ownership or public APIs around a domain workflow.
 
+## Implementation ownership
+
+- Public Vue artifacts are thin composition roots for public API, native host, minimum anatomy, and integration of internal owners.
+- A non-trivial visual contract uses a separate owner-local stylesheet. Inline scoped styles are limited to short, linear contracts that are clearer when colocated.
+- Deterministic normalization, invalid combinations, configuration selection, and state precedence use owner-local TypeScript modules when they have independent proof or reasons to change.
+- Vue and browser lifecycle uses focused composables; do not introduce hidden managers or duplicate state owners.
+- Split by responsibility and proof ownership, not by a universal file template or line count.
+- Do not introduce wrapper components or DOM nodes merely to achieve file separation.
+
 ## Public API and new artifacts
 
 - External consumers use `@shared/ui/material` after a real root entry point exists.
@@ -83,6 +92,6 @@ product and project-specific shared UI
 
 ## Completion
 
-Use one cohesive family migration by default. Resolve the contract, validate one complete slice in a representative consumer, finish the supported family, migrate remaining consumers, remove obsolete ownership, review the complete result, and run final verification.
+Use one cohesive family migration by default. Resolve documentation, decomposition, style ownership, proof, and foundation dependencies; implement and validate one complete composed slice; finish the supported family; migrate remaining consumers; remove obsolete ownership; obtain independent review; and run final verification.
 
 Automation proves only deterministic contracts represented by actual tooling. The coding agent owns all non-visual decisions; the operator owns final comparison of prepared visible evidence when required. An automated agent never reports operator acceptance without an explicit recorded result.
