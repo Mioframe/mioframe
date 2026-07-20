@@ -4,7 +4,7 @@ This directory contains the complete durable documentation for `src/shared/ui/ma
 
 Read only the documents required by the current task:
 
-- [`architecture.md`](./architecture.md) — boundary, ownership, dependency direction, public API, and workflow ownership;
+- [`architecture.md`](./architecture.md) — boundary, ownership, dependency direction, implementation decomposition, public API, and workflow ownership;
 - [`sources.md`](./sources.md) — official Material 3 Expressive authority and evidence rules;
 - [`component-development.md`](./component-development.md) — the only orchestrated implementation workflow for one component family;
 - [`foundation-development.md`](./foundation-development.md) — the workflow for a real cross-family Material foundation change;
@@ -14,4 +14,6 @@ Implementation starts only through `material-component`. It internally routes co
 
 Canonical family contracts live beside migrated implementation in `components/<family>/README.md`. While a legacy Material family still lives elsewhere under `src/shared/ui`, its current contract may live under `docs/legacy/<family>.md` and must move with the family during canonical migration. A foundation domain gets `foundation/<domain>/README.md` only after a real runtime or public contract exists.
 
-Do not create separate registries, inventories, audits, checklists, progress ledgers, verification manuals, Storybook manuals, or duplicated workflow documents. Code, family/domain contracts, tests, stories, exports, and Git history are the factual implementation record.
+Family and foundation README files must contain the applicable implementation decomposition, style ownership, proof map, and implementation order required by their canonical workflow. These structured sections are the implementation contract; they are not separate status documents.
+
+Do not create separate registries, inventories, audits, checklists, progress ledgers, verification manuals, Storybook manuals, or duplicated workflow documents. Code, family/domain contracts, tests, stories, exports, accepted snapshots, and Git history are the factual implementation record.
