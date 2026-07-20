@@ -28,6 +28,8 @@ Claude Code may use `material-contract-gate-reviewer` or `material-final-reviewe
 
 Read root and nested `AGENTS.md`, Material architecture and source rules, component workflow, family README, applicable official sources, and repository evidence appropriate to the scope.
 
+For both scopes, independently search the complete family and directly owned foundations for every CSS transition/animation declaration, `@keyframes`, WAAPI/JS motion route, motion token, reduced-motion override, listener/timer, animation class, and `will-change`. Do not trust the README inventory until it matches the code.
+
 ## Contract-gate scope
 
 Review before any production edit for the correction unit.
@@ -45,6 +47,8 @@ Verify:
 - current proof is honestly classified;
 - the selected correction unit is the highest-priority complete unit available;
 - proof lane, prepared failing observation, compatibility impact, visible impact, and operator requirement are resolved;
+- the motion inventory covers every code route and records owner, trigger, mechanism, properties/keyframes, timing, token route, rendered target, interruption/cancellation/cleanup, reduced motion, performance, proof, and classification;
+- no motion route is approved from declaration names, token existence, snapshots, or comments alone;
 - workflow state, detailed README sections, and roadmap agree;
 - production, test, story, or snapshot changes for the unit did not precede the gate.
 
@@ -69,7 +73,12 @@ Inspect:
 - semantic and transient state, precedence, lifecycle, interruption, cancellation, disabled and failure behavior;
 - dependency and ownership direction;
 - token declarations, configuration, state routing, rendered properties, public overrides, geometry, typography, responsive behavior, RTL, and text scaling;
-- motion acquisition, rapid input, interruption, and reduced motion;
+- every actual transition/animation/WAAPI/JS route, not only motion-related changed lines;
+- transition property lists, keyframe reachability, initial/final values, duration, delay, easing, iteration, direction, fill, state precedence, and cascade ownership;
+- token-to-private-route-to-declaration wiring and whether declared motion tokens affect rendered behavior;
+- rapid input, reversal, retargeting, interruption, cancellation, disable/unmount cleanup, transition/animation listeners, timers, and animation classes;
+- reduced-motion behavior and preservation of the final semantic/visual state;
+- performance risks: `transition: all`, layout/paint-heavy animation without need, synchronous layout loops, persistent/broad `will-change`, and per-frame reactive churn;
 - project extensions and dependency health;
 - decomposition and actual file/style ownership;
 - proof lanes and actual proof contents;
@@ -77,6 +86,8 @@ Inspect:
 - representative and remaining consumers;
 - obsolete owners, exports, tests, stories, snapshots, aliases, and compatibility residue;
 - workflow state, roadmap, and verification readiness.
+
+Static declaration/routing proof does not replace browser proof for acquisition, completion, interruption, reversal, cancellation, and reduced-motion lifecycle. Do not require tests of Vue, browser animation engine, or third-party internals; require proof of Mioframe's observable routing and outcome.
 
 Determine separately:
 
@@ -91,7 +102,7 @@ Treat as blockers or major issues unless narrowly justified:
 - hidden or selectively omitted source conflict;
 - platform-specific guidance applied to another platform without a decision;
 - token absence used to cancel explicit guidance, or token presence used as sole proof of support;
-- mandatory concern omitted from assessment;
+- mandatory concern or motion route omitted from assessment;
 - existing proof reused without classification;
 - dependency classified as generic merely because it is widely reused;
 - lower-priority improvement selected around a higher-priority blocker;
@@ -101,6 +112,17 @@ Treat as blockers or major issues unless narrowly justified:
 - production work preceding the contract gate;
 - stale or contradictory workflow state or roadmap;
 - relocation, decomposition, copied styles, stable snapshots, or green CI presented as Material improvement without source-backed or ownership-backed delta;
+- declared motion token that does not drive the real transition/animation;
+- unused or unreachable keyframes;
+- `transition: all`;
+- transition/animation attached to the wrong element or shadowed by later cascade;
+- shorthand reset or duplicate declaration changing property/timing/delay/iteration/fill unintentionally;
+- missing stable initial/final values;
+- interruption, reversal, cancellation, disable, or unmount leaving stale style, class, listener, timer, frame, or WAAPI animation;
+- reduced-motion handling that removes the final state or leaves non-essential long motion active;
+- layout/paint-heavy animation without a required visual contract and bounded performance reasoning;
+- persistent or broad `will-change` without evidence;
+- tests that only assert custom-property existence, keyframe text, snapshot output, or framework/browser internals;
 - accidental monolith or artificial fragmentation;
 - consumer migration onto a misaligned or unresolved contract;
 - family declared aligned while required gaps remain.
@@ -145,6 +167,8 @@ Current objective result:
 Family alignment status: aligned | converging | blocked
 Independent context: confirmed | unavailable
 Evidence:
+Motion implementation audit: passed | failed
+Unresolved motion routes: none | <exact routes>
 Operator visual status: not-required | required | accepted | rejected
 Remaining known gaps:
 Next correction unit: none | <exact unit>
@@ -156,5 +180,5 @@ Blocker: none | <exact blocker>
 - Do not modify production, consumer, test, story, snapshot, contract, roadmap, or export files.
 - Do not invoke correction skills or advance the workflow.
 - Do not create durable audits, registries, scorecards, or second family-state documents.
-- Do not approve incomplete ownership, proof, scenarios, dependencies, workflow state, visual evidence, or verification.
+- Do not approve incomplete ownership, proof, scenarios, dependencies, motion inventory, workflow state, visual evidence, or verification.
 - Do not require deletion of already confirmed owners because another owner is defective.
