@@ -1,6 +1,6 @@
 # Material library roadmap
 
-This file records only the active family, current blocker, and one next action. It is not a registry, inventory, queue, audit, checklist, or stage tracker.
+This file records only the active family, current blocker, and one next action. It is not a registry, inventory, queue, audit, checklist, alignment map, or stage tracker.
 
 ## Current state
 
@@ -8,35 +8,53 @@ Last updated: 2026-07-20
 
 Active family: `Button`
 
-Intended change mode: `end-to-end-migration`
+Intended mode: `align-existing`
 
-Status: `in-progress`
+Family alignment status: `blocked`
 
-Blocker: none. Contract, implementation, adoption, and independent review are complete (verdict: compliant after one README correction). Final `pnpm verify` passes all 10 checks, including the full visual regression suite. The only remaining step is operator visual acceptance of the migrated `Material 3/Components/Buttons/MDButton` Storybook stories.
+Blocker: PR #157 exposed a workflow defect: legacy Button behavior, proof, and stylesheet were treated as the canonical target before independent alignment assessment. PR #155 must establish the convergence workflow and pass final verification before Button work continues.
 
 ## Next action
 
-Obtain operator visual acceptance of the canonical `MDButton` Storybook stories, then close out the Button family and select the next family.
+After the updated PR #155 workflow is available to the Button branch, start a fresh agent session and return PR #157 to `material-component-contract` with mode `align-existing`.
 
-Persistent agent memory is not Material authority. Ignore any entry that conflicts with the current repository, including claims based on PR #150, removed audits or registries, or removed `docs/material-3` files. Do not delete unrelated memory automatically.
+The fresh session must:
 
-Treat Button as the first calibration run. Stop and correct the workflow before continuing implementation if the agent:
+1. resolve the canonical Button target independently from the legacy implementation;
+2. assess the current PR #157 repository state rather than resetting it;
+3. classify every relevant owner and proof as `confirmed-compliant`, `project-extension`, `misaligned`, `unresolved`, or `obsolete`;
+4. preserve only independently confirmed changes;
+5. define the smallest complete next correction units;
+6. continue correction without full-family deletion unless one local owner demonstrably requires replacement.
 
-- skips the family README contract;
-- begins production edits before implementation decomposition, style ownership, proof map, implementation order, required foundation work, and applicable initial failing proof are ready;
-- writes the family as one undifferentiated Vue, TypeScript, or style artifact despite independent responsibilities;
-- fragments the implementation without clearer ownership or proof;
-- expands before representative-consumer validation;
-- performs final review in the same implementation context;
-- starts another family;
-- continues through an exact blocker.
+Run:
 
-The orchestrator starts with `material-component-contract`, invokes required foundation work only when the resolved contract proves it, continues through proof-first implementation and adoption, then requires independent review and final verification.
+```text
+material-component Button
+```
 
-Do not reuse implementation, workflow, review, or audit conclusions from PR #150. Resolve the current Button family from the merged repository and current official Material 3 Expressive sources.
+Before the run, confirm that the fresh session loaded the updated root and nested `AGENTS.md` files and current Material skills. Do not continue a session that loaded the earlier contract-first workflow.
 
-Do not select or pre-plan a second family until Button reaches a terminal result.
+Persistent agent memory is not Material authority. Ignore any entry that conflicts with the current repository, including claims based on PR #150, removed audits or registries, removed `docs/material-3` files, or the pre-convergence PR #157 review. Do not delete unrelated memory automatically.
+
+Treat Button as the first convergence calibration. Stop and correct the workflow before continuing if the agent:
+
+- derives the canonical target from the current Button implementation;
+- uses blanket `preserve behavior`, `relocation only`, `verbatim copy`, or `no redesign` decisions before alignment assessment;
+- accepts old tests, stories, snapshots, token names, or consumer dependence as proof of Material correctness without classification;
+- hides contradictory official evidence as resolved;
+- skips the alignment map or correction-unit plan;
+- rewrites or deletes the whole family when smaller owner corrections are sufficient;
+- preserves a wrong owner merely to minimize diff size;
+- migrates consumers before their required canonical contract is ready;
+- reports the family aligned while required gaps remain;
+- performs final review in the implementation context;
+- starts another family or continues through an exact blocker.
+
+A fresh session resets reasoning, not repository progress. Confirmed owners and completed valid correction units remain; rejected assumptions and legacy-defect proof do not.
+
+Do not select or pre-plan a second family until Button reaches a terminal `aligned` state.
 
 ## Update rule
 
-Update this file only when the active family, status, blocker, or one next action changes.
+Update this file only when the active family, family alignment status, blocker, or one next correction action changes.
